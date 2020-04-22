@@ -199,12 +199,18 @@ for partition, x, y in [
         fine_label = fine_labels_map[y[i, 0]]
         fine_labels[img_path] = fine_label
         coarse_labels[img_path] = fine_2_course_mapping[fine_label]
-        print(fine_labels)
-        print(coarse_labels)
 
-        break
+    etas.write_json(
+        fine_labels,
+        os.path.join(data_dir, "%s_fine.json") % partition,
+        pretty_print=True,
+    )
 
-    etas.write_json(fine_labels, os.path.join(data_dir, "%s_fine.json") % partition)
+    etas.write_json(
+        coarse_labels,
+        os.path.join(data_dir, "%s_coarse.json") % partition,
+        pretty_print=True,
+    )
 
 # from pymongo import MongoClient
 # from tinymongo import TinyMongoClient
