@@ -1,0 +1,11 @@
+-r common.txt
+
+ipython==5.8.0;python_version<"3"
+ipython==7.8.0;python_version>="3"
+m2r==0.2.1
+pre-commit==2.0.1
+pylint==1.9.4;python_version<"3"
+pylint==2.3.1;python_version>="3"
+Sphinx==2.4.4
+sphinxcontrib-napoleon==0.7
+sphinx-rtd-theme==0.4.3
