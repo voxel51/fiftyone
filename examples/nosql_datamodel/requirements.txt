@@ -1,0 +1,3 @@
+pymongo
+tinymongo
+tensorflow
