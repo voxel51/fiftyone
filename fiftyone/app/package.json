@@ -2,7 +2,7 @@
   "name": "FiftyOne",
   "version": "0.0.1",
   "description": "FiftyOne by Voxel51",
-  "main": "index.js",
+  "main": "main.js",
   "repository": "https://github.com/voxel51/fiftyone",
   "author": "Voxel51",
   "license": "MIT",
@@ -12,6 +12,10 @@
     "semantic-ui-react": "^0.88.2"
   },
   "devDependencies": {
+    "electron": "^8.2.3",
     "prettier": "2.0.5"
+  },
+  "scripts": {
+    "start": "electron ."
   }
 }
