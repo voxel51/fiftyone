@@ -34,7 +34,7 @@ EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 
 
 # Package metadata
-_META = metadata("ETA")
+_META = metadata("fiftyone")
 NAME = _META["name"]
 VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
