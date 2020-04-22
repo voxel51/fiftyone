@@ -10,5 +10,8 @@
   "dependencies": {
     "semantic-ui-css": "^2.4.1",
     "semantic-ui-react": "^0.88.2"
+  },
+  "devDependencies": {
+    "prettier": "2.0.5"
   }
 }
