@@ -1,0 +1,10 @@
+{
+  "name": "FiftyOne",
+  "version": "0.0.1",
+  "description": "FiftyOne by Voxel51",
+  "main": "index.js",
+  "repository": "https://github.com/voxel51/fiftyone",
+  "author": "Voxel51",
+  "license": "MIT",
+  "private": true
+}
