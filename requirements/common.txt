@@ -1,3 +1,4 @@
 argcomplete==1.11.0
+Flask==1.1.2
 setuptools==44.0.0;python_version<"3"
 setuptools==45.2.0;python_version>="3"
