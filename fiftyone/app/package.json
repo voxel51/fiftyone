@@ -6,5 +6,9 @@
   "repository": "https://github.com/voxel51/fiftyone",
   "author": "Voxel51",
   "license": "MIT",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "semantic-ui-css": "^2.4.1",
+    "semantic-ui-react": "^0.88.2"
+  }
 }
