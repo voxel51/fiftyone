@@ -1,3 +1,7 @@
+'''
+Download CIFAR100 data and store as images and labels JSON
+
+'''
 import os
 
 from tensorflow.keras.datasets import cifar100
@@ -211,21 +215,3 @@ for partition, x, y in [
         os.path.join(data_dir, "%s_coarse.json") % partition,
         pretty_print=True,
     )
-
-# from pymongo import MongoClient
-# from tinymongo import TinyMongoClient
-
-# client = TinyMongoClient()
-# db = client.fiftyone_database
-# dataset = db.dataset_1
-
-# image = {
-#     "filepath": "image1.jpg",
-#     "width": 1280,
-#     "height": 720,
-#     "nChannels": 3,
-# }
-# image_id = dataset.insert_one(image).inserted_id
-# image_id
-
-# dataset.find_one({"filepath": "image1.jpg"})
