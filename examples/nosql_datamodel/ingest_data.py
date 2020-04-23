@@ -3,6 +3,7 @@ Ingest CIFAR100 data in noSQL database
 
 """
 import logging
+import os
 
 from pymongo import MongoClient
 
@@ -42,6 +43,7 @@ for partition in partitions:
     images = [
         {
             "filepath": filepath,
+            "filename": os.path.basename(filepath),
             "partition": partition,
             "labels": {
                 "fine_label": fine_labels[filepath],
