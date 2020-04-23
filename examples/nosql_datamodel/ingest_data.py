@@ -6,9 +6,8 @@ import logging
 import time
 
 from pymongo import MongoClient
-from tinymongo import TinyMongoClient, TinyMongoDatabase
+from tinymongo import TinyMongoClient
 
-from tinydb import TinyDB
 from tinydb.storages import JSONStorage
 from tinydb.middlewares import CachingMiddleware
 
@@ -35,6 +34,7 @@ coarse_labels_template = "data/%s_coarse.json"
 ########
 # CODE #
 ########
+
 
 class CachingTinyMongoClient(TinyMongoClient):
     @property
@@ -81,7 +81,9 @@ for partition in partitions:
         for i, filepath in enumerate(fine_labels):
             if not last_draw_time or time.time() - last_draw_time > 0.25:
                 last_draw_time = time.time()
-                bar.set_iteration(i, draw=True, suffix="%d/%d" % (i, len(fine_labels)))
+                bar.set_iteration(
+                    i, draw=True, suffix="%d/%d" % (i, len(fine_labels))
+                )
 
             metadata = etai.ImageMetadata.build_for(filepath)
 
