@@ -42,6 +42,7 @@ for partition in partitions:
     images = [
         {
             "filepath": filepath,
+            "partition": partition,
             "labels": {
                 "fine_label": fine_labels[filepath],
                 "coarse_label": coarse_labels[filepath],
@@ -50,4 +51,4 @@ for partition in partitions:
         }
         for filepath in fine_labels
     ]
-    dataset.insert(images)
+    dataset.insert_many(images)
