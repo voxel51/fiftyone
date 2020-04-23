@@ -2,3 +2,5 @@
 !.yarn/releases
 !.yarn/plugins
 .pnp.*
+node_modules/
+build/
