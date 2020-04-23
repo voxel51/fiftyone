@@ -2,6 +2,7 @@
 Ingest CIFAR100 data in noSQL database
 
 """
+from datetime import datetime
 import logging
 import os
 
@@ -28,6 +29,17 @@ coarse_labels_template = "data/%s_coarse.json"
 # CODE #
 ########
 
+
+def get_metadata(filepath):
+    return etai.ImageMetadata.build_for(filepath).serialize()
+
+
+def get_filehash(filepath):
+    with open(filepath, "rb") as f:
+        filehash = hash(f.read())
+    return filehash
+
+
 client = MongoClient()
 
 db = client.fiftyone_database
@@ -40,6 +52,8 @@ for partition in partitions:
     fine_labels = etas.read_json(fine_labels_template % partition)
     coarse_labels = etas.read_json(coarse_labels_template % partition)
 
+    ingest_time = datetime.now()
+
     images = [
         {
             "filepath": filepath,
@@ -49,7 +63,9 @@ for partition in partitions:
                 "fine_label": fine_labels[filepath],
                 "coarse_label": coarse_labels[filepath],
             },
-            "metadata": etai.ImageMetadata.build_for(filepath).serialize(),
+            "metadata": get_metadata(filepath),
+            "hash": get_filehash(filepath),
+            "ingest_time": ingest_time,
         }
         for filepath in fine_labels
     ]
