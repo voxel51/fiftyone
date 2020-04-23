@@ -5,7 +5,6 @@ export default function SidebarLayout({ children }) {
   return (
     <Sidebar.Pushable as={Segment}>
       <Sidebar as={Menu} icon="labeled" inverted vertical visible width="thin">
-        <Menu.Item>Dashboard Navigation</Menu.Item>
         <Menu.Item as="a">
           <Icon name="camera" />
           Option 1
