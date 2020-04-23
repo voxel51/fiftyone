@@ -21,7 +21,7 @@ function startBrowserSync(done) {
 }
 
 function injectBrowserSync() {
-  return src("app/renderer/index.html")
+  return src("src/renderer/index.html")
     .pipe(inject.before("</body>", browserSync.getOption("snippet")))
     .pipe(
       inject.after(

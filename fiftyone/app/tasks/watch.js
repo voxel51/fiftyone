@@ -6,21 +6,21 @@ const scripts = require("./scripts");
 
 function watchMainScripts() {
   return watch(
-    ["app/main/**/*.js"],
+    ["src/main/**/*.js"],
     series(scripts.developBuild, electron.stop, electron.start)
   );
 }
 
 function watchRendererScripts() {
   return watch(
-    ["app/renderer/**/*.js"],
+    ["src/renderer/**/*.js"],
     series(scripts.developBuild, hotreload.reload)
   );
 }
 
 function watchHtml() {
   return watch(
-    ["app/renderer/index.html"],
+    ["src/renderer/index.html"],
     series(assets.copyHtml, hotreload.inject, hotreload.reload)
   );
 }

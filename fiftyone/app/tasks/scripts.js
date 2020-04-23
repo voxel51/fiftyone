@@ -4,14 +4,14 @@ const sourcemaps = require("gulp-sourcemaps");
 const inject = require("gulp-inject-string");
 
 function build() {
-  return src("app/**/*.js")
+  return src("src/**/*.js")
     .pipe(babel())
     .pipe(inject.replace("process.env.NODE_ENV", '"production"'))
     .pipe(dest("build"));
 }
 
 function developBuild() {
-  return src("app/**/*.js")
+  return src("src/**/*.js")
     .pipe(sourcemaps.init())
     .pipe(babel())
     .pipe(sourcemaps.write())
