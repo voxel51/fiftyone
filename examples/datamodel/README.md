@@ -15,12 +15,6 @@ add it to the database...)
 I'm instead using MongoDB which looks promising, however, it requires
 installing and configuring a server.
 
-```
-pip install tensorflow pymongo
-```
-
-You will also need to install [ETA](https://github.com/voxel51/eta/)
-
 
 ## ElasticSearch
 
