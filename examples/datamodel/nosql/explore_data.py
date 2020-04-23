@@ -12,7 +12,7 @@ import eta.core.serial as etas
 logger = logging.getLogger(__name__)
 
 
-db = MongoClient().fiftyone_database
+db = MongoClient().fiftyone
 dataset = db.cifar100
 
 print("Num samples: %d" % dataset.count_documents({}))

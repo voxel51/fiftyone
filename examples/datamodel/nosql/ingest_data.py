@@ -42,7 +42,7 @@ def get_filehash(filepath):
 
 client = MongoClient()
 
-db = client.fiftyone_database
+db = client.fiftyone
 
 dataset = db.cifar100
 

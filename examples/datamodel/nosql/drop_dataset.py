@@ -10,7 +10,7 @@ from pymongo import MongoClient
 logger = logging.getLogger(__name__)
 
 
-db = MongoClient().fiftyone_database
+db = MongoClient().fiftyone
 
 print("Datasets before: %s" % db.list_collection_names())
 

@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 dataset = voxd.Dataset(name="cifar100")
 
+
+print("Num samples: %d" % len(dataset))
+
 import sys
 sys.exit("MADE IT!")
-
-print("Num samples: %d" % dataset.count_documents({}))
 
 partitions = dataset.distinct("partition")
 print("Partitions: %s" % partitions)
