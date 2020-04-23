@@ -5,6 +5,7 @@
 import path from 'path';
 import webpack from 'webpack';
 import { dependencies as externals } from '../app/package.json';
+import ExtractTextPlugin from 'extract-text-webpack-plugin';
 
 export default {
   externals: [...Object.keys(externals || {})],
@@ -21,6 +22,13 @@ export default {
           },
         },
       },
+      {
+        use: ExtractTextPlugin.extract({
+          fallback: 'style-loader',
+          use: ['css-loader', 'less-loader'],
+        }),
+        test: /\.less$/,
+      },
     ],
   },
 
@@ -36,6 +44,10 @@ export default {
   resolve: {
     extensions: ['.js', '.jsx', '.json', '.ts', '.tsx'],
     modules: [path.join(__dirname, '..', 'app'), 'node_modules'],
+    alias: {
+      '../../theme.config$': path.join(__dirname, '/semantic-ui/theme.config'),
+      '../semantic-ui/site': path.join(__dirname, '/semantic-ui/site'),
+    },
   },
 
   plugins: [
