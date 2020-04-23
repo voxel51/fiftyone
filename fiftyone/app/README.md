@@ -21,7 +21,7 @@ yarn install
 Start the app:
 
 ```sh
-yarn start
+yarn develop
 ```
 
 That's it!

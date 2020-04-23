@@ -2,27 +2,24 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Hello World!</title>
-    <!-- https://electronjs.org/docs/tutorial/security#csp-meta-tag -->
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="script-src 'self' 'unsafe-inline';"
+      content="default-src 'self'; script-src 'self'"
     />
+    <meta
+      http-equiv="X-Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'"
+    />
+    <title>Hello World!</title>
   </head>
   <body>
     <h1>Hello World!</h1>
-    We are using node
-    <script>
-      document.write(process.versions.node);
-    </script>
-    , Chrome
-    <script>
-      document.write(process.versions.chrome);
-    </script>
-    , and Electron
-    <script>
-      document.write(process.versions.electron);
-    </script>
-    .
+    We are using Node.js <span id="node-version"></span>, Chromium
+    <span id="chrome-version"></span>, and Electron
+    <span id="electron-version"></span>.
+
+    <!-- You can also require other files to run in this process -->
+    <script src="./renderer.js"></script>
   </body>
 </html>
