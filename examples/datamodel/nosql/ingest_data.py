@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 partitions = ["train", "test"]
 
-fine_labels_template = "data/%s_fine.json"
-coarse_labels_template = "data/%s_coarse.json"
+fine_labels_template = "../data/%s_fine.json"
+coarse_labels_template = "../data/%s_coarse.json"
 
 
 ########
@@ -56,17 +56,19 @@ for partition in partitions:
 
     images = [
         {
-            "filepath": filepath,
+            "filepath": os.path.abspath(filepath),
             "filename": os.path.basename(filepath),
             "partition": partition,
             "labels": {
-                "fine_label": fine_labels[filepath],
-                "coarse_label": coarse_labels[filepath],
+                "fine_label": fine_labels[key],
+                "coarse_label": coarse_labels[key],
             },
             "metadata": get_metadata(filepath),
-            "hash": get_filehash(filepath),
+            # "hash": get_filehash(filepath),
             "ingest_time": ingest_time,
         }
-        for filepath in fine_labels
+        for filepath, key in [
+            (os.path.join("..", key), key) for key in fine_labels
+        ]
     ]
     dataset.insert_many(images)

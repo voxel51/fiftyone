@@ -6,6 +6,8 @@ import logging
 
 from pymongo import MongoClient
 
+import eta.core.serial as etas
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,3 +25,6 @@ for partition in partitions:
         "Num '%s' samples: %d"
         % (partition, dataset.count_documents({"partition": partition}))
     )
+
+sample = dataset.find_one()
+print(etas.pretty_str(sample))
