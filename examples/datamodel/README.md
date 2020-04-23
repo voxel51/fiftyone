@@ -15,8 +15,3 @@ and add it to the database...)
 
 I'm instead using MongoDB which looks promising, however, it requires
 installing and configuring a server.
-
-
-## ElasticSearch
-
-TODO
