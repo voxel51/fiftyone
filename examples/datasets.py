@@ -60,8 +60,6 @@ show_sample(mnist)
 #
 # MS-COCO Detection
 #
-# Must have the COCO API installed. THETA does this, for example
-#
 # Steps below taken from
 # https://medium.com/randomai/pytorch-torchvision-coco-dataset-b7f5e8cad82
 #
