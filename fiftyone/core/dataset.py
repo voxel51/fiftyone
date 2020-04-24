@@ -12,16 +12,16 @@ DEFAULT_DATABASE = "fiftyone"
 META_COLLECTION = "_meta"
 
 
-def list_dataset_names(database_name=None):
-    return _list_collection_names(collection_type="dataset", database_name=database_name)
+def list_dataset_names():
+    return _list_collection_names(collection_type=Dataset.COLLECTION_TYPE)
 
 
 def ingest_dataset():
     pass
 
 
-def load_dataset(name, database_name=None):
-    return Dataset(name=name, database_name=database_name)
+def load_dataset(name):
+    return Dataset(name=name)
 
 
 class _SampleCollection(object):
@@ -33,10 +33,6 @@ class _SampleCollection(object):
 
     def __len__(self):
         return self._c.count_documents({})
-
-    @property
-    def database_name(self):
-        raise NotImplementedError("Subclass must implement")
 
     # def all_samples(self):
     #     # iterator?
@@ -60,16 +56,12 @@ class _SampleCollection(object):
 
     # PRIVATE #################################################################
 
-    @property
-    def _db(self):
-        raise NotImplementedError("Subclass must implement")
-
     def _init_collection(self):
         raise NotImplementedError("Subclass must implement")
 
     def _get_collection(self):
         '''Get the collection backing this _SampleCollection'''
-        if self.name in self._db.list_collection_names():
+        if self.name in _db().list_collection_names():
             # make sure it's the right collection type
             in_meta = _in_meta_collection(
                 name=self.name, collection_type=self.COLLECTION_TYPE)
@@ -77,25 +69,20 @@ class _SampleCollection(object):
 
         else:
             # add to meta collection
-            c = _get_meta_collection(database_name=self.database_name)
+            c = _get_meta_collection()
             c.update_one({"collection_type": self.COLLECTION_TYPE},
                          {"$push": {"members": self.name}})
 
             self._init_collection()
 
-        return self._db[self.name]
+        return _db[self.name]
 
 
 class Dataset(_SampleCollection):
     COLLECTION_TYPE = "dataset"
 
-    def __init__(self, name, database_name=None):
-        self._database_name = database_name or DEFAULT_DATABASE
+    def __init__(self, name):
         super(Dataset, self).__init__(name=name)
-
-    @property
-    def database_name(self):
-        return self._database_name
 
     def get_tags(self):
         return self._c.distinct("tags")
@@ -111,10 +98,6 @@ class Dataset(_SampleCollection):
 
     # PRIVATE #################################################################
 
-    @property
-    def _db(self):
-        return _get_database(self._database_name)
-
     def _init_collection(self):
         pass
 
@@ -127,22 +110,14 @@ class DatasetView(_SampleCollection):
         self.tag = tag
         super(DatasetView, self).__init__(name=self._get_name())
 
-    @property
-    def database_name(self):
-        return self.dataset.database_name
-
     # PRIVATE #################################################################
 
     def _get_name(self):
         return self.dataset.name + "_view--" + self.tag
 
-    @property
-    def _db(self):
-        return self.dataset._db
-
     def _init_collection(self):
         # create view
-        self._db.command({
+        _db().command({
             "create": self.name,
             "viewOn": self.dataset.name,
             "pipeline": [
@@ -158,44 +133,36 @@ class DatasetView(_SampleCollection):
 # PRIVATE #####################################################################
 
 
-def _get_database(name=None):
-    return pymongo.MongoClient()[name or DEFAULT_DATABASE]
+def _db():
+    return pymongo.MongoClient()[DEFAULT_DATABASE]
 
 
-def list_view_names(database_name=None):
-    return _list_collection_names(collection_type="view", database_name=database_name)
+def list_view_names():
+    return _list_collection_names(collection_type=DatasetView.COLLECTION_TYPE)
 
 
-def _list_collection_names(collection_type, database_name=None):
-    db = _get_database(name=database_name)
+def _list_collection_names(collection_type):
     return [
-        collection_name for collection_name in db.list_collection_names()
-        if _in_meta_collection(collection_name, collection_type, database_name=database_name)
+        collection_name
+        for collection_name in _db().list_collection_names()
+        if _in_meta_collection(collection_name, collection_type)
     ]
 
 
-def _get_meta_collection(database_name=None):
+def _get_meta_collection():
     '''Get the meta collection (and initialize if necessary)'''
-    db = _get_database(name=database_name)
-    c = db[META_COLLECTION]
-    if not c.count({"collection_type": "dataset"}):
+    c = _db()[META_COLLECTION]
+    if not c.count({"collection_type": Dataset.COLLECTION_TYPE}):
         c.insert_many(
             [
-                {"collection_type": "dataset", "members": []},
-                {"collection_type": "view", "members": []}
+                {"collection_type": Dataset.COLLECTION_TYPE, "members": []},
+                {"collection_type": DatasetView.COLLECTION_TYPE, "members": []}
             ]
         )
     return c
 
 
-def _in_meta_collection(name, collection_type, database_name=None):
-    '''
-
-    :param name:
-    :param collection_type: "dataset" or "view"
-    :param database_name:
-    :return:
-    '''
-    c = _get_meta_collection(database_name=database_name)
+def _in_meta_collection(name, collection_type):
+    c = _get_meta_collection()
     members = c.find_one({"collection_type": collection_type})["members"]
     return name in members
