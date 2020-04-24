@@ -75,7 +75,7 @@ class _SampleCollection(object):
 
             self._init_collection()
 
-        return _db[self.name]
+        return _db()[self.name]
 
 
 class Dataset(_SampleCollection):
