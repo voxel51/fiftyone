@@ -1,6 +1,20 @@
 """
+Core Module for `fiftyone` Dataset class
 
 """
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
+
 from pymongo import MongoClient
 
 import fiftyone.core.features as voxf
@@ -21,7 +35,8 @@ def drop_database():
 def list_dataset_names():
     members = _get_members_for_collection_type(Dataset.COLLECTION_TYPE)
     return [
-        collection_name for collection_name in _db().list_collection_names()
+        collection_name
+        for collection_name in _db().list_collection_names()
         if collection_name in members
     ]
 
@@ -68,16 +83,16 @@ class _SampleCollection(object):
     # PRIVATE #################################################################
 
     def _init_collection(self):
-        '''If a collection (such as a view) needs initialization, that is
+        """If a collection (such as a view) needs initialization, that is
         populated here.
-        '''
+        """
         raise NotImplementedError("Subclass must implement")
 
     def _get_collection(self):
-        '''Get the collection backing this _SampleCollection.
+        """Get the collection backing this _SampleCollection.
         Ensures that the collection is properly initialized and registered in
         the meta collection.
-        '''
+        """
         if self.name in _db().list_collection_names():
             # make sure it's the right collection type
             members = _get_members_for_collection_type(self.COLLECTION_TYPE)
@@ -86,8 +101,10 @@ class _SampleCollection(object):
         else:
             # add to meta collection
             c = _get_meta_collection()
-            c.update_one({"collection_type": self.COLLECTION_TYPE},
-                         {"$push": {"members": self.name}})
+            c.update_one(
+                {"collection_type": self.COLLECTION_TYPE},
+                {"$push": {"members": self.name}},
+            )
 
             self._init_collection()
 
@@ -114,7 +131,9 @@ class Dataset(_SampleCollection):
         self._c.insert_one(sample.serialize())
 
     def add_samples(self, samples):
-        self._c.insert_many([voxs.Sample.validate(sample).serialize() for sample in samples])
+        self._c.insert_many(
+            [voxs.Sample.validate(sample).serialize() for sample in samples]
+        )
 
     def register_model(self):
         # @todo(Tyler)
@@ -141,13 +160,13 @@ class DatasetView(_SampleCollection):
 
     def _init_collection(self):
         # create view
-        _db().command({
-            "create": self.name,
-            "viewOn": self.dataset.name,
-            "pipeline": [
-                {"$match": {"tags": self.tag}}
-            ]
-        })
+        _db().command(
+            {
+                "create": self.name,
+                "viewOn": self.dataset.name,
+                "pipeline": [{"$match": {"tags": self.tag}}],
+            }
+        )
 
     def _drop_view(self):
         # not sure if this is needed, but I want it available in case
@@ -162,13 +181,16 @@ def _db():
 
 
 def _get_meta_collection():
-    '''Get the meta collection (and initialize if necessary)'''
+    """Get the meta collection (and initialize if necessary)"""
     c = _db()[META_COLLECTION]
     if not c.count({"collection_type": Dataset.COLLECTION_TYPE}):
         c.insert_many(
             [
                 {"collection_type": Dataset.COLLECTION_TYPE, "members": []},
-                {"collection_type": DatasetView.COLLECTION_TYPE, "members": []}
+                {
+                    "collection_type": DatasetView.COLLECTION_TYPE,
+                    "members": [],
+                },
             ]
         )
     return c
