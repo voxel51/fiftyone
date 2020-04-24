@@ -14,10 +14,10 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+from datetime import datetime
 
 from pymongo import MongoClient
 
-import fiftyone.core.features as voxf
 import fiftyone.core.sample as voxs
 
 
@@ -45,11 +45,6 @@ def load_dataset(name):
     return Dataset(name=name)
 
 
-def ingest_dataset():
-    # @todo(Tyler)
-    raise NotImplementedError("TODO")
-
-
 class _SampleCollection(object):
     COLLECTION_TYPE = "subclass must specify"
 
@@ -60,10 +55,10 @@ class _SampleCollection(object):
     def __len__(self):
         return self._c.count_documents({})
 
-    # def all_samples(self):
-    #     # iterator?
-    #     pass
-    #
+    def iter_samples(self):
+        for sample_dict in self._c.find():
+            yield voxs.ImageSample.from_dict(sample_dict)
+
     # def index_samples_by_filehash(self):
     #     index_id = None
     #     return index_id
@@ -128,12 +123,15 @@ class Dataset(_SampleCollection):
 
     def add_sample(self, sample):
         voxs.Sample.validate(sample)
+        sample._set_ingest_time(datetime.utcnow())
         self._c.insert_one(sample.serialize())
 
     def add_samples(self, samples):
-        self._c.insert_many(
-            [voxs.Sample.validate(sample).serialize() for sample in samples]
-        )
+        ingest_time = datetime.utcnow()
+        for sample in samples:
+            voxs.Sample.validate(sample)
+            sample._set_ingest_time(ingest_time)
+        self._c.insert_many([sample.serialize() for sample in samples])
 
     def register_model(self):
         # @todo(Tyler)
