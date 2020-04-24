@@ -6,7 +6,7 @@ export default function Overview() {
   const [tab, setTab] = useState("overview");
 
   return (
-    <>
+    <Segment>
       <Header as="h3">Overview: [name]</Header>
 
       <Menu pointing secondary>
@@ -19,6 +19,6 @@ export default function Overview() {
           />
         ))}
       </Menu>
-    </>
+    </Segment>
   );
 }
