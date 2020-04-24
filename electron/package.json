@@ -1,8 +1,8 @@
 {
-  "name": "electron-react-boilerplate",
-  "productName": "ElectronReact",
-  "version": "1.1.0",
-  "description": "Electron application boilerplate based on React, React Router, Webpack, React Hot Loader for rapid application development",
+  "name": "fiftyone",
+  "productName": "FiftyOne",
+  "version": "0.0.1",
+  "description": "FiftyOne by Voxel51",
   "scripts": {
     "build": "concurrently \"yarn build-main\" \"yarn build-renderer\"",
     "build-dll": "cross-env NODE_ENV=development webpack --config ./configs/webpack.config.renderer.dev.dll.babel.js --colors",
@@ -52,8 +52,8 @@
     ]
   },
   "build": {
-    "productName": "ElectronReact",
-    "appId": "org.develar.ElectronReact",
+    "productName": "FiftyOne",
+    "appId": "com.voxel51.FiftyOne",
     "files": [
       "dist/",
       "node_modules/",
@@ -88,7 +88,7 @@
         "rpm",
         "AppImage"
       ],
-      "category": "Development"
+      "category": "Tool"
     },
     "directories": {
       "buildResources": "resources",
@@ -96,35 +96,22 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "electron-react-boilerplate",
-      "repo": "electron-react-boilerplate",
-      "private": false
+      "owner": "voxel51",
+      "repo": "fiftyone",
+      "private": true
     }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/electron-react-boilerplate/electron-react-boilerplate.git"
+    "url": "git+https://github.com/voxel51/fiftyone.git"
   },
   "author": {
-    "name": "Electron React Boilerplate Maintainers",
-    "email": "electronreactboilerplate@gmail.com",
-    "url": "https://electron-react-boilerplate.js.org"
+    "name": "Voxel51",
+    "email": "support@voxel51.com",
+    "url": "https://voxel51.com/fiftyone"
   },
-  "contributors": [
-    {
-      "name": "Vikram Rangaraj",
-      "email": "vikr01@icloud.com",
-      "url": "https://github.com/vikr01"
-    },
-    {
-      "name": "Amila Welihinda",
-      "email": "amilajack@gmail.com",
-      "url": "https://github.com/amilajack"
-    }
-  ],
-  "license": "MIT",
   "bugs": {
-    "url": "https://github.com/electron-react-boilerplate/electron-react-boilerplate/issues"
+    "url": "https://github.com/voxel51/fiftyone/issues"
   },
   "keywords": [
     "electron",
@@ -138,7 +125,7 @@
     "hot",
     "reload"
   ],
-  "homepage": "https://github.com/electron-react-boilerplate/electron-react-boilerplate#readme",
+  "homepage": "https://github.com/voxel51/fiftyone#readme",
   "jest": {
     "testURL": "http://localhost/",
     "moduleNameMapper": {
@@ -298,9 +285,6 @@
     "npm": ">=4.x",
     "yarn": ">=0.21.3"
   },
-  "collective": {
-    "url": "https://opencollective.com/electron-react-boilerplate-594"
-  },
   "browserslist": [
     "extends browserslist-config-erb"
   ],
@@ -317,8 +301,7 @@
           "parser": "json"
         }
       }
-    ],
-    "singleQuote": true
+    ]
   },
   "stylelint": {
     "extends": [
@@ -330,10 +313,5 @@
     "extends": [
       "bliss"
     ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
   }
 }
