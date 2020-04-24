@@ -1,27 +1,37 @@
 """
 
 """
-import pymongo
+from pymongo import MongoClient
 
 import fiftyone.core.features as voxf
 import fiftyone.core.sample as voxs
 
 
+# We are currently assuming this is not configurable
 DEFAULT_DATABASE = "fiftyone"
 
 META_COLLECTION = "_meta"
 
 
+def drop_database():
+    client = MongoClient()
+    client.drop_database(DEFAULT_DATABASE)
+
+
 def list_dataset_names():
-    return _list_collection_names(collection_type=Dataset.COLLECTION_TYPE)
-
-
-def ingest_dataset():
-    pass
+    members = _get_members_for_collection_type(Dataset.COLLECTION_TYPE)
+    return [
+        collection_name for collection_name in _db().list_collection_names()
+        if collection_name in members
+    ]
 
 
 def load_dataset(name):
     return Dataset(name=name)
+
+
+def ingest_dataset():
+    pass
 
 
 class _SampleCollection(object):
@@ -57,15 +67,20 @@ class _SampleCollection(object):
     # PRIVATE #################################################################
 
     def _init_collection(self):
+        '''If a collection (such as a view) needs initialization, that is
+        populated here.
+        '''
         raise NotImplementedError("Subclass must implement")
 
     def _get_collection(self):
-        '''Get the collection backing this _SampleCollection'''
+        '''Get the collection backing this _SampleCollection.
+        Ensures that the collection is properly initialized and registered in
+        the meta collection.
+        '''
         if self.name in _db().list_collection_names():
             # make sure it's the right collection type
-            in_meta = _in_meta_collection(
-                name=self.name, collection_type=self.COLLECTION_TYPE)
-            assert in_meta, "raise a better error!"
+            members = _get_members_for_collection_type(self.COLLECTION_TYPE)
+            assert self.name in members, "raise a better error!"
 
         else:
             # add to meta collection
@@ -79,7 +94,7 @@ class _SampleCollection(object):
 
 
 class Dataset(_SampleCollection):
-    COLLECTION_TYPE = "dataset"
+    COLLECTION_TYPE = "DATASET"
 
     def __init__(self, name):
         super(Dataset, self).__init__(name=name)
@@ -103,7 +118,7 @@ class Dataset(_SampleCollection):
 
 
 class DatasetView(_SampleCollection):
-    COLLECTION_TYPE = "view"
+    COLLECTION_TYPE = "DATASET_VIEW"
 
     def __init__(self, dataset, tag):
         self.dataset = dataset
@@ -134,19 +149,7 @@ class DatasetView(_SampleCollection):
 
 
 def _db():
-    return pymongo.MongoClient()[DEFAULT_DATABASE]
-
-
-def list_view_names():
-    return _list_collection_names(collection_type=DatasetView.COLLECTION_TYPE)
-
-
-def _list_collection_names(collection_type):
-    return [
-        collection_name
-        for collection_name in _db().list_collection_names()
-        if _in_meta_collection(collection_name, collection_type)
-    ]
+    return MongoClient()[DEFAULT_DATABASE]
 
 
 def _get_meta_collection():
@@ -162,7 +165,7 @@ def _get_meta_collection():
     return c
 
 
-def _in_meta_collection(name, collection_type):
+def _get_members_for_collection_type(collection_type):
     c = _get_meta_collection()
     members = c.find_one({"collection_type": collection_type})["members"]
-    return name in members
+    return members

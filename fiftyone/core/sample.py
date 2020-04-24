@@ -6,6 +6,7 @@ import os
 import eta.core.image as etai
 import eta.core.serial as etas
 
+
 class Sample(etas.Serializable):
     def __init__(self, filepath, partition=None, labels=None):
         self.filepath = os.path.abspath(filepath)
