@@ -12,67 +12,25 @@ DEFAULT_DATABASE = "fiftyone"
 META_COLLECTION = "_meta"
 
 
-def _get_dataset(name, database_name=None):
-    db = _get_database(name=database_name)
-
-    # if it exists, make sure it's in the right category
-
-    if name in db.list_collection_names():
-        # make sure it's a dataset
-        assert name in db[META_COLLECTION]["datasets"], "raise a better error!"
-    else:
-        # add to meta collection
-        # @todo(Tyler)
-        # db[META_COLLECTION]["datasets"].append(name)
-        pass
-
-    return db[name]
-
-def _get_view(name, dataset_name, tag, database_name=None):
-    db = _get_database(name=database_name)
-
-    # if it exists, make sure it's in the right category
-
-    if name in db.list_collection_names():
-        # make sure it's a dataset
-        assert name in db[META_COLLECTION]["views"], "raise a better error!"
-    else:
-        # add to meta collection
-        # @todo(Tyler)
-        # db[META_COLLECTION]["view"].append(name)
-
-        # create view
-        db.command({
-            "create": name,
-            "viewOn": dataset_name,
-            "pipeline": [
-                {"$match": {"tags": tag}}
-            ]
-        })
-
-    return db[name]
-
-
 def list_dataset_names(database_name=None):
+    return _list_collection_names(collection_type="dataset", database_name=database_name)
+
+def list_view_names(database_name=None):
+    return _list_collection_names(collection_type="view", database_name=database_name)
+
+def _list_collection_names(collection_type, database_name=None):
     db = _get_database(name=database_name)
-
-    # maybe there's a better way to check if a collection is a view...
-    dataset_names = []
-    for collection_name in db.list_collection_names():
-        try:
-            db.validate_collection(collection_name)
-        except pymongo.errors.OperationFailure:
-            continue
-        dataset_names.append(collection_name)
-
-    return dataset_names
+    return [
+        collection_name for collection_name in db.list_collection_names()
+        if _in_meta_collection(collection_name, collection_type, database_name=database_name)
+    ]
 
 def ingest_dataset():
     pass
 
 
-def load_dataset(name, database=None):
-    return Dataset(name=name, database=database)
+def load_dataset(name, database_name=None):
+    return Dataset(name=name, database_name=database_name)
 
 
 class _SampleCollection(object):
@@ -135,7 +93,7 @@ class Dataset(_SampleCollection):
         return _get_database(self._database_name)
 
     def _get_collection(self):
-        return self._db[self.name]
+        return _get_dataset(self.name, database_name=self._database_name)
 
 
 class DatasetView(_SampleCollection):
@@ -154,17 +112,10 @@ class DatasetView(_SampleCollection):
         return self.dataset._db
 
     def _get_collection(self):
-        if not self.name in self._db.list_collection_names():
-            # create view
-            self._db.command({
-                "create": self.name,
-                "viewOn": self.dataset.name,
-                "pipeline": [
-                    {"$match": {"tags": self.tag}}
-                ]
-            })
-
-        return self._db[self.name]
+        return _get_view(
+            name=self.name, dataset_name=self.dataset.name,
+            tag=self.tag, database_name=self.dataset._database_name
+        )
 
     def _drop_view(self):
         # not sure if this is needed, but I want it available in case
@@ -176,3 +127,72 @@ class DatasetView(_SampleCollection):
 
 def _get_database(name=None):
     return pymongo.MongoClient()[name or DEFAULT_DATABASE]
+
+
+def _get_meta_collection(database_name=None):
+    db = _get_database(name=database_name)
+    c = db[META_COLLECTION]
+    if not c.count({"collection_type": "dataset"}):
+        c.insert_many(
+            [
+                {"collection_type": "dataset", "members": []},
+                {"collection_type": "view", "members": []}
+            ]
+        )
+    return c
+
+
+def _in_meta_collection(name, collection_type, database_name=None):
+    '''
+
+    :param name:
+    :param collection_type: "dataset" or "view"
+    :param database_name:
+    :return:
+    '''
+    c = _get_meta_collection(database_name=database_name)
+    members = c.find_one({"collection_type": collection_type})["members"]
+    return name in members
+
+
+def _get_dataset(name, database_name=None):
+    collection_type = "dataset"
+
+    db = _get_database(name=database_name)
+
+    if name in db.list_collection_names():
+        # make sure it's a dataset
+        in_meta = _in_meta_collection(name=name,
+                                      collection_type=collection_type)
+        assert in_meta, "raise a better error!"
+    else:
+        # add to meta collection
+        c = _get_meta_collection(database_name=database_name)
+        c.update_one({"collection_type": collection_type}, {"$push": {"members": name}})
+
+    return db[name]
+
+
+def _get_view(name, dataset_name, tag, database_name=None):
+    collection_type = "view"
+
+    db = _get_database(name=database_name)
+
+    if name in db.list_collection_names():
+        # make sure it's a view
+        in_meta = _in_meta_collection(name=name,
+                                      collection_type=collection_type)
+        assert in_meta, "raise a better error!"
+    else:
+        # add to meta collection
+        c = _get_meta_collection(database_name=database_name)
+        c.update_one({"collection_type": "view"}, {"$push": {"members": name}})
+
+        # create view
+        db.command({
+            "create": name,
+            "viewOn": dataset_name,
+            "pipeline": [
+                {"$match": {"tags": tag}}
+            ]
+        })
