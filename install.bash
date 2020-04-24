@@ -32,7 +32,7 @@ while getopts "hd" FLAG; do
     esac
 done
 [ ${SHOW_HELP} = true ] && usage && exit 0
-
+OS=$(uname -s)
 
 echo "***** INSTALLING ETA *****"
 if [[ ! -d "eta" ]]; then
@@ -46,6 +46,18 @@ if [[ ! -f config.json ]]; then
     cp config-example.json config.json
 fi
 cd ..
+
+
+echo "***** INSTALLING MONGODB *****"
+mkdir .fiftyone && cd fiftyone
+if [ "${OS}" == "Darwin" ]; then
+    curl https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz --output mongodb.tgz
+    tar -zxvf mongodb.tgz
+elif [ "${OS}" == "Linux" ]; then
+    sudo apt-get install libcurl4 openssl
+    curl https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.2.6.tgz --output mongodb.tgz
+    tar -zxvf mongodb.tgz
+fi
 
 
 echo "***** INSTALLING FIFTYONE *****"
