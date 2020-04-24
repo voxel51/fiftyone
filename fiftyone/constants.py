@@ -43,3 +43,10 @@ AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
 VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
+
+# MongoDB setup
+DB_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/mongodb")
+DB_BIN_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
+DB_LOGS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "log/mongodb/mongo.log")
+os.environ["PATH"] = ":".join([FIFTYONE_CONFIG_DIR, os.environ["PATH"]])
+START_DB = "mongod --dbpath %s --logpath %s --fork" % (DB_PATH, DB_LOGS_PATH)
