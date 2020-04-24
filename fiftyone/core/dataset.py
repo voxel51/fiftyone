@@ -1,53 +1,88 @@
 """
 
 """
-import os
-
-from pymongo import MongoClient
-
-import eta.core.image as etai
-import eta.core.serial as etas
+import pymongo
 
 import fiftyone.core.features as voxf
+import fiftyone.core.sample as voxs
 
+
+DEFAULT_DATABASE = "fiftyone"
+
+META_COLLECTION = "_meta"
+
+
+def _get_dataset(name, database_name=None):
+    db = _get_database(name=database_name)
+
+    # if it exists, make sure it's in the right category
+
+    if name in db.list_collection_names():
+        # make sure it's a dataset
+        assert name in db[META_COLLECTION]["datasets"], "raise a better error!"
+    else:
+        # add to meta collection
+        # @todo(Tyler)
+        # db[META_COLLECTION]["datasets"].append(name)
+        pass
+
+    return db[name]
+
+def _get_view(name, dataset_name, tag, database_name=None):
+    db = _get_database(name=database_name)
+
+    # if it exists, make sure it's in the right category
+
+    if name in db.list_collection_names():
+        # make sure it's a dataset
+        assert name in db[META_COLLECTION]["views"], "raise a better error!"
+    else:
+        # add to meta collection
+        # @todo(Tyler)
+        # db[META_COLLECTION]["view"].append(name)
+
+        # create view
+        db.command({
+            "create": name,
+            "viewOn": dataset_name,
+            "pipeline": [
+                {"$match": {"tags": tag}}
+            ]
+        })
+
+    return db[name]
+
+
+def list_dataset_names(database_name=None):
+    db = _get_database(name=database_name)
+
+    # maybe there's a better way to check if a collection is a view...
+    dataset_names = []
+    for collection_name in db.list_collection_names():
+        try:
+            db.validate_collection(collection_name)
+        except pymongo.errors.OperationFailure:
+            continue
+        dataset_names.append(collection_name)
+
+    return dataset_names
 
 def ingest_dataset():
     pass
 
 
-def load_dataset(name):
-    pass
+def load_dataset(name, database=None):
+    return Dataset(name=name, database=database)
 
 
-class Sample(etas.Serializable):
-    def __init__(self, filepath, partition=None, labels=None):
-        self.filepath = os.path.abspath(filepath)
-        self.filename = os.path.basename(filepath)
-        self.partition = partition
-        self.labels = labels
+class _SampleCollection(object):
 
-    def add_label(self, label, tag):
-        pass
-
-
-class ImageSample(Sample):
-    def __init__(self, metadata=None, *args, **kwargs):
-        super(ImageSample, self).__init__(*args, **kwargs)
-        self.metadata = metadata or etai.ImageMetadata.build_for(self.filepath)
-
-
-class SampleContainer(object):
-    '''Call this a view instead?'''
-    def export(self):
-        pass
-
-
-class _Dataset(object):
     def __init__(self, name):
         self.name = name
+        self._c = self._get_collection()
 
-    def register_model(self):
-        pass
+    def __len__(self):
+        return self._c.count_documents({})
 
     def all_samples(self):
         # iterator?
@@ -61,24 +96,83 @@ class _Dataset(object):
                        format="voxf.types.datasets.PytorchImageDataset"):
         pass
 
+    def export(self):
+        '''
+        samples.export(
+           "/path/for/export", format=voxf.types.datasets.LabeledImageDataset,
+        )
+        '''
+        pass
 
-class NoSQLDataset(_Dataset):
-    DEFAULT_DATABASE = "fiftyone"
+    # PRIVATE #################################################################
 
-    def __init__(self, name, database=None):
-        super(NoSQLDataset, self).__init__(name=name)
-        client = MongoClient()
-        self._collection = client[database or self.DEFAULT_DATABASE][name]
-
-    def __len__(self):
-        return self._collection.count_documents({})
-
-
-class DataFrameDataset(_Dataset):
-    pass
+    def _get_collection(self):
+        '''Get the collection backing this _SampleCollection'''
+        raise NotImplementedError("Subclass must implement")
 
 
-# Toggle which dataset model to use
-class Dataset(NoSQLDataset):
-# class Dataset(DataFrameDataset):
-    pass
+class Dataset(_SampleCollection):
+    def __init__(self, name, database_name=None):
+        self._database_name = database_name or DEFAULT_DATABASE
+        super(Dataset, self).__init__(name=name)
+
+    def get_tags(self):
+        return self._c.distinct("tags")
+
+    def get_view(self, tag):
+        return DatasetView(dataset=self, tag=tag)
+
+    def get_views(self):
+        return [self.get_view(tag) for tag in self.get_tags()]
+
+    def register_model(self):
+        pass
+
+    # PRIVATE #################################################################
+
+    @property
+    def _db(self):
+        return _get_database(self._database_name)
+
+    def _get_collection(self):
+        return self._db[self.name]
+
+
+class DatasetView(_SampleCollection):
+    def __init__(self, dataset, tag):
+        self.dataset = dataset
+        self.tag = tag
+        super(DatasetView, self).__init__(name=self._get_name())
+
+    # PRIVATE #################################################################
+
+    def _get_name(self):
+        return self.dataset.name + "_view--" + self.tag
+
+    @property
+    def _db(self):
+        return self.dataset._db
+
+    def _get_collection(self):
+        if not self.name in self._db.list_collection_names():
+            # create view
+            self._db.command({
+                "create": self.name,
+                "viewOn": self.dataset.name,
+                "pipeline": [
+                    {"$match": {"tags": self.tag}}
+                ]
+            })
+
+        return self._db[self.name]
+
+    def _drop_view(self):
+        # not sure if this is needed, but I want it available in case
+        self._c.drop()
+
+
+# PRIVATE #####################################################################
+
+
+def _get_database(name=None):
+    return pymongo.MongoClient()[name or DEFAULT_DATABASE]

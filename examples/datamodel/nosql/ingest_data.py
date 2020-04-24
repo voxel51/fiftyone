@@ -5,6 +5,7 @@ Ingest CIFAR100 data in noSQL database
 from datetime import datetime
 import logging
 import os
+import random
 
 from pymongo import MongoClient
 
@@ -59,6 +60,7 @@ for partition in partitions:
             "filepath": os.path.abspath(filepath),
             "filename": os.path.basename(filepath),
             "partition": partition,
+            "tags": [partition] + (["rand"] if random.random() > 0.7 else []),
             "labels": {
                 "fine_label": fine_labels[key],
                 "coarse_label": coarse_labels[key],
