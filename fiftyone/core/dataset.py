@@ -31,7 +31,8 @@ def load_dataset(name):
 
 
 def ingest_dataset():
-    pass
+    # @todo(Tyler)
+    raise NotImplementedError("TODO")
 
 
 class _SampleCollection(object):
@@ -108,8 +109,16 @@ class Dataset(_SampleCollection):
     def get_views(self):
         return [self.get_view(tag) for tag in self.get_tags()]
 
+    def add_sample(self, sample):
+        voxs.Sample.validate(sample)
+        self._c.insert_one(sample.serialize())
+
+    def add_samples(self, samples):
+        self._c.insert_many([voxs.Sample.validate(sample).serialize() for sample in samples])
+
     def register_model(self):
-        pass
+        # @todo(Tyler)
+        raise NotImplementedError("TODO")
 
     # PRIVATE #################################################################
 

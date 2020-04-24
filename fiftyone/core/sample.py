@@ -17,6 +17,13 @@ class Sample(etas.Serializable):
     def add_label(self, label, tag):
         pass
 
+    @classmethod
+    def validate(cls, sample):
+        if not isinstance(sample, cls):
+            raise ValueError("Unexpected 'sample' type: '%s', expected: '%s'"
+                             % (type(sample), cls))
+        return sample
+
 
 class ImageSample(Sample):
     def __init__(self, metadata=None, *args, **kwargs):
