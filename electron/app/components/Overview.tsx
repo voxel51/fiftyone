@@ -96,7 +96,9 @@ export default function Overview() {
         ))}
       </Menu>
 
-      <Gallery images={IMAGES} enableImageSelection={false} />
+      <div style={{ overflowY: "auto" }}>
+        <Gallery images={IMAGES} enableImageSelection={false} />
+      </div>
     </Segment>
   );
 }
