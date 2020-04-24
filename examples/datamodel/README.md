@@ -15,3 +15,7 @@ and add it to the database...)
 
 I'm instead using MongoDB which looks promising, however, it requires
 installing and configuring a server.
+
+- `nosql/`: raw MongoDB implementation of ingesting data
+- `interface/`: ingesting dataset using the `fiftyone.core.dataset.Dataset`
+objects

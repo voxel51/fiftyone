@@ -6,6 +6,7 @@ from datetime import datetime
 import logging
 import os
 import random
+import time
 
 from pymongo import MongoClient
 
@@ -24,6 +25,8 @@ partitions = ["train", "test"]
 
 fine_labels_template = "../data/%s_fine.json"
 coarse_labels_template = "../data/%s_coarse.json"
+
+dataset_name = "cifar100"
 
 
 ########
@@ -45,8 +48,9 @@ client = MongoClient()
 
 db = client.fiftyone
 
-dataset = db.cifar100
+dataset = db[dataset_name]
 
+start = time.time()
 for partition in partitions:
     logger.info("Ingesting '%s' partition" % partition)
 
@@ -74,3 +78,4 @@ for partition in partitions:
         ]
     ]
     dataset.insert_many(images)
+print("'%s' ingest time: %.2fs" % (dataset_name, time.time() - start))
