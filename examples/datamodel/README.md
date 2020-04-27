@@ -1,6 +1,6 @@
 # noSQL Backend Data Model
 
-## Data
+# Data
 
 You can download the data via the script `download_data.py`
 
