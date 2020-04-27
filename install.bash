@@ -48,16 +48,29 @@ fi
 cd ..
 
 
+OS=$(uname -s)
 echo "***** INSTALLING MONGODB *****"
-mkdir .fiftyone && cd fiftyone
+mkdir -p ~/.fiftyone/bin && cd ~/.fiftyone
+mkdir log && mkdir var
 if [ "${OS}" == "Darwin" ]; then
+    sudo apt-get install libcurl4 openssl
     curl https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz --output mongodb.tgz
     tar -zxvf mongodb.tgz
+    mv mongodb-macos-x86_64-4.2.6/bin/* ./bin/
+    rm -rf mongodb-macos-x86_64-4.2.6
 elif [ "${OS}" == "Linux" ]; then
     sudo apt-get install libcurl4 openssl
     curl https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.2.6.tgz --output mongodb.tgz
     tar -zxvf mongodb.tgz
+    mv mongodb-linux-x86_64-ubuntu1804-4.2.6/bin/* ./bin/
+    rm -rf mongodb-linux-x86_64-ubuntu1804-4.2.6
 fi
+cd -
+
+
+echo "***** INSTALLING ELECTRON APP *****"
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
+nvm use v12.16.2 && cd electron && npm install -g yarn && yarn install
 
 
 echo "***** INSTALLING FIFTYONE *****"
