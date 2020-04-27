@@ -50,7 +50,7 @@ cd ..
 
 echo "***** INSTALLING MONGODB *****"
 mkdir -p ~/.fiftyone/bin && cd ~/.fiftyone
-mkdir log && mkdir var
+mkdir var/log/mongodb && mkdir -p var/lib/mongo
 if [ "${OS}" == "Darwin" ]; then
     sudo apt-get install libcurl4 openssl
     curl https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz --output mongodb.tgz

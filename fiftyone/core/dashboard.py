@@ -28,16 +28,9 @@ import fiftyone.constants as foc
 
 def launch_dashboard():
     """Launches the FiftyOne server and app"""
-    gunicorn = [
-        "gunicorn",
-        "-w",
-        "2",
-        "-b",
-        "127.0.0.1:5151",
-        "fiftyone.server.main:app",
-        "--daemon",
-    ]
-    etau.call(gunicorn)
     devnull = open(os.devnull, "wb")
+    supress = {"stderr": devnull, "stdout": devnull}
+    etau.call(foc.START_DB, **supress)
+    etau.call(foc.START_SERVER, **supress)
     with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
-        etau.call(["yarn", "background-dev"], stdout=devnull, stderr=devnull)
+        etau.call(foc.START_APP, **supress)
