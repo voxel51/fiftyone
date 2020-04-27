@@ -22,7 +22,10 @@ logger = logging.getLogger(__name__)
 
 dataset_name = "cifar100"
 
-partitions = ["train", "test"]
+partitions = [
+    "train",
+    "test"
+]
 
 fine_labels_template = "../data/%s_fine.json"
 coarse_labels_template = "../data/%s_coarse.json"
