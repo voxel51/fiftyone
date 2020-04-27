@@ -28,6 +28,7 @@ except ImportError:
 
 # Directories
 FIFTYONE_DIR = os.path.abspath(os.path.dirname(__file__))
+FIFTYONE_ENV = os.environ["VIRTUAL_ENV"]
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
@@ -46,7 +47,7 @@ VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
 
 
 # App setup
-FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "electron")
+FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 
 
 # MongoDB setup

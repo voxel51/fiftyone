@@ -48,7 +48,6 @@ fi
 cd ..
 
 
-OS=$(uname -s)
 echo "***** INSTALLING MONGODB *****"
 mkdir -p ~/.fiftyone/bin && cd ~/.fiftyone
 mkdir log && mkdir var
