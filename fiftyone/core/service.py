@@ -1,5 +1,5 @@
 """
-Core module that defines the dashboard interactions.
+Core module that defines the FiftyOne services.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

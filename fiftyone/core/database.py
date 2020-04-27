@@ -19,10 +19,13 @@ from future.utils import itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import os
-
 from pymongo import MongoClient
 
 
 def db():
+    """Get a db client
+
+    Returns:
+        A MongoDB client connected to the `fiftyone` database
+    """
     return MongoClient().fiftyone
