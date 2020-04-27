@@ -1,5 +1,5 @@
 """
-Core module that defines the dashboard interactions.
+Core module that defines the database interactions.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -19,9 +19,10 @@ from future.utils import itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import fiftyone.core.service as fos
+import os
+
+from pymongo import MongoClient
 
 
-def launch_dashboard():
-    """Launches the FiftyOne db, server, and app in that order"""
-    return fos.AppService()
+def db():
+    return MongoClient().fiftyone
