@@ -24,14 +24,14 @@ def get():
     return "I am FiftyOne"
 
 
-@socketio.on('connect')
+@socketio.on("connect")
 def handle_connect():
-    print('Client connected')
+    print("Client connected")
 
 
-@socketio.on('disconnect')
+@socketio.on("disconnect")
 def handle_disconnect():
-    print('Client disconnected')
+    print("Client disconnected")
 
 
 @socketio.on("update")
