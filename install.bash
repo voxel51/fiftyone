@@ -9,6 +9,7 @@
 #
 
 # Show usage information
+set -e
 usage() {
     echo "Usage:  bash $0 [-h] [-d]
 
@@ -49,8 +50,10 @@ cd ..
 
 
 echo "***** INSTALLING MONGODB *****"
-mkdir -p ~/.fiftyone/bin && cd ~/.fiftyone
-mkdir -p var/log/mongodb && mkdir -p var/lib/mongo
+mkdir -p ~/.fiftyone/bin
+cd ~/.fiftyone
+mkdir -p var/log/mongodb
+mkdir -p var/lib/mongo
 if [ "${OS}" == "Darwin" ]; then
     sudo apt-get install libcurl4 openssl
     curl https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz --output mongodb.tgz
@@ -74,7 +77,11 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 # This loads nvm bash_completion
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
-nvm use v12.16.2 && cd electron && npm install -g yarn && yarn install && cd ..
+nvm use v12.16.2
+cd electron
+npm install -g yarn
+yarn install
+cd ..
 
 
 echo "***** INSTALLING FIFTYONE *****"
