@@ -24,13 +24,11 @@ print()
 
 print("Sample from dataset:")
 for sample in dataset.iter_samples():
-    print("'_id': %s" % sample.id)
     print(sample)
     break
 print()
 
 print("Sample from dataset 'test' view:")
 for sample in dataset.get_view("test").iter_samples():
-    print("'_id': %s" % sample.id)
     print(sample)
     break
