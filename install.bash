@@ -33,7 +33,6 @@ while getopts "hd" FLAG; do
     esac
 done
 [ ${SHOW_HELP} = true ] && usage && exit 0
-set -e
 OS=$(uname -s)
 
 echo "***** INSTALLING ETA *****"
