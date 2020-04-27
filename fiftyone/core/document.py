@@ -30,16 +30,20 @@ def insert_one(collection, document):
 def insert_many(collection, documents):
     ingest_time = datetime.utcnow()
     result = collection.insert_many(
-        [document._set_ingest_time(ingest_time).serialize(reflective=True) for document in documents])
+        [
+            document._set_ingest_time(ingest_time).serialize(reflective=True)
+            for document in documents
+        ]
+    )
     for inserted_id, document in zip(result.inserted_ids, documents):
         document._set_id(inserted_id)
 
 
 class Document(etas.Serializable):
-    '''Adds additional functionality to Serializable class to handle `_id` and
+    """Adds additional functionality to Serializable class to handle `_id` and
     `_ingest_time` fields which are created when a document is added to the
     database.
-    '''
+    """
 
     @property
     def id(self):

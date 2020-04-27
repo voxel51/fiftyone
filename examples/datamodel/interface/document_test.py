@@ -1,6 +1,6 @@
-'''Testing the fiftyone.core.Document module
+"""Testing the fiftyone.core.Document module
 
-'''
+"""
 import os
 
 import fiftyone.core.dataset as voxd
@@ -13,7 +13,9 @@ dataset = voxd.Dataset("serializable_test")
 # sample_type = voxs.Sample
 sample_type = voxs.ImageSample
 
-s = sample_type(filepath="/Users/tylerganter/data/fiftyone/as_images/cifar100/test/0.jpg")
+s = sample_type(
+    filepath="/Users/tylerganter/data/fiftyone/as_images/cifar100/test/0.jpg"
+)
 
 
 print("Not in database:")

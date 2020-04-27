@@ -50,10 +50,7 @@ class Sample(voxd.Document):
 
     @classmethod
     def _parse_kwargs_from_dict(cls, d):
-        return {
-            "filepath": d["filepath"],
-            "tags": d.get("tags", None)
-        }
+        return {"filepath": d["filepath"], "tags": d.get("tags", None)}
 
 
 class ImageSample(Sample):
@@ -72,4 +69,3 @@ class ImageSample(Sample):
             kwargs["metadata"] = etai.ImageMetadata.from_dict(metadata)
 
         return kwargs
-
