@@ -48,6 +48,7 @@ VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
 # MongoDB setup
 DB_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
 DB_BIN_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "bin", "mongod")
+DB_CLIENT_BIN_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "bin", "mongo")
 DB_LOG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/log/mongodb/mongo.log")
 os.environ["PATH"] = ":".join([FIFTYONE_CONFIG_DIR, os.environ["PATH"]])
 START_DB = [
@@ -58,7 +59,11 @@ START_DB = [
     DB_LOG_PATH,
     "--fork",
 ]
-STOP_DB = [DB_BIN_PATH, "--eval", "db.getSiblingDB('admin').shutdownServer()"]
+STOP_DB = [
+    DB_CLIENT_BIN_PATH,
+    "--eval",
+    "db.getSiblingDB('admin').shutdownServer()",
+]
 
 # Server setup
 START_SERVER = [
@@ -77,4 +82,3 @@ STOP_SERVER = ["fuser", "-k", "5151/tcp"]
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 START_APP = ["yarn", "background-dev"]
 STOP_APP = ["fuser", "-k", "1212/tcp"]
-print("hello")

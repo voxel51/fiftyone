@@ -26,12 +26,11 @@ import eta.core.utils as etau
 import fiftyone.constants as foc
 
 
-DEVNULL = open(os.devnull, "wb")
-SUPRESS = {"stderr": DEVNULL, "stdout": DEVNULL}
-
-
 class Service(object):
     """A Service is a class that implements a start method and stop method"""
+
+    _DEVNULL = open(os.devnull, "wb")
+    _SUPRESS = {"stderr": _DEVNULL, "stdout": _DEVNULL}
 
     def __init__(self):
         """Creates the `Service`."""
@@ -45,7 +44,7 @@ class Service(object):
         """Start the service"""
         raise NotImplementedError("subclasses must implement `start()`")
 
-    def start(self):
+    def stop(self):
         """Stop the service"""
         raise NotImplementedError("subclasses must implement `stop()`")
 
@@ -57,11 +56,11 @@ class DatabaseService(Service):
 
     def start(self):
         """Stop the `DatabaseService`."""
-        etau.call(foc.START_DB, **SUPRESS)
+        etau.call(foc.START_DB, **self._SUPRESS)
 
     def stop(self):
         """Start the `DatabaseService`."""
-        etau.call(foc.STOP_DB, **SUPRESS)
+        etau.call(foc.STOP_DB, **self._SUPRESS)
 
 
 class ServerService(Service):
@@ -71,11 +70,11 @@ class ServerService(Service):
 
     def start(self):
         """Stop the `ServerService`."""
-        etau.call(foc.START_SERVER, **SUPRESS)
+        etau.call(foc.START_SERVER, **self._SUPRESS)
 
     def stop(self):
         """Start the `ServerService`."""
-        etau.call(foc.STOP_SERVER, **SUPRESS)
+        etau.call(foc.STOP_SERVER, **self._SUPRESS)
 
 
 class AppService(Service):
@@ -85,8 +84,8 @@ class AppService(Service):
     def start(self):
         """Stop the `AppService`."""
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
-            etau.call(foc.START_APP, **SUPRESS)
+            etau.call(foc.START_APP, **self._SUPRESS)
 
     def stop(self):
         """Start the `AppService`."""
-        etau.call(foc.STOP_APP, **SUPRESS)
+        etau.call(foc.STOP_APP, **self._SUPRESS)
