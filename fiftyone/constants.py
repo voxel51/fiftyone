@@ -85,5 +85,3 @@ STOP_SERVER = ["fuser", "-k", "5151/tcp"]
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 START_APP = ["yarn", "background-dev"]
 STOP_APP = ["fuser", "-k", "1212/tcp"]
-print(" ".join(STOP_SERVER))
-print(" ".join(START_SERVER))
