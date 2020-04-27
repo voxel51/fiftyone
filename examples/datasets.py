@@ -35,6 +35,20 @@ def show_sample(dataset):
     plt.show()
 
 
+def show_coco_sample(dataset):
+    # Extract first sample
+    img, target = dataset[0]
+    img = np.asarray(img)
+
+    plt.imshow(img)
+    dataset.coco.showAnns(target)
+    plt.title(
+        "Dataset root: %s\nNumber of samples: %d" % (
+            dataset.root, len(dataset))
+    )
+    plt.show()
+
+
 #
 # CIFAR10
 #
@@ -77,6 +91,6 @@ etau.extract_zip(COCO_ANNO_ZIP_PATH)
 
 coco_data_path = os.path.join(COCO_DIR, "train2017")
 coco_anno_path = os.path.join(COCO_DIR, "annotations/instances_train2017.json")
-coco = torchvision.datasets.MNIST(coco_data_path, coco_anno_path)
+coco = torchvision.datasets.CocoDetection(coco_data_path, coco_anno_path)
 
-show_sample(coco)
+show_coco_sample(coco)
