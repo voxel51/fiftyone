@@ -23,5 +23,5 @@ import fiftyone.core.service as fos
 
 
 def launch_dashboard():
-    """Launches the FiftyOne db, server, and app in that order"""
+    """Launches the FiftyOne App"""
     return fos.AppService()
