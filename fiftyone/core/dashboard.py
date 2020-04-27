@@ -27,10 +27,24 @@ import fiftyone.constants as foc
 
 
 def launch_dashboard():
-    """Launches the FiftyOne server and app"""
-    devnull = open(os.devnull, "wb")
+    """Launches the FiftyOne db, server, and app in that order"""
+    devnull = _get_devnull()
     supress = {"stderr": devnull, "stdout": devnull}
     etau.call(foc.START_DB, **supress)
     etau.call(foc.START_SERVER, **supress)
     with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
         etau.call(foc.START_APP, **supress)
+
+
+def close_dashboard():
+    """Close the FiftyOne app, server, and db in that order"""
+    devnull = _get_devnull()
+    supress = {"stderr": devnull, "stdout": devnull}
+    with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
+        etau.call(foc.STOP_APP, **supress)
+    etau.call(foc.STOP_SERVER, **supress)
+    etau.call(foc.STOP_DB, **supress)
+
+
+def _get_devnull():
+    return open(os.devnull, "wb")

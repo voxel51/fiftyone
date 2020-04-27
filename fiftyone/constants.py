@@ -58,6 +58,7 @@ START_DB = [
     DB_LOG_PATH,
     "--fork",
 ]
+STOP_DB = [DB_BIN_PATH, "--eval", "db.getSiblingDB('admin').shutdownServer()"]
 
 # Server setup
 START_SERVER = [
@@ -69,7 +70,9 @@ START_SERVER = [
     "fiftyone.server.main:app",
     "--daemon",
 ]
+STOP_SERVER = ["fuser", "-k", "5151/tcp"]
 
 # App setup
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 START_APP = ["yarn", "background-dev"]
+STOP_APP = ["fuser", "-k", "1212/tcp"]
