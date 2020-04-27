@@ -14,11 +14,12 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-from datetime import datetime
-
 from pymongo import MongoClient
 
+import eta.core.serial as etas
+
 import fiftyone.core.sample as voxs
+import fiftyone.core.document as voxd
 
 
 # We are currently assuming this is not configurable
@@ -57,7 +58,8 @@ class _SampleCollection(object):
 
     def iter_samples(self):
         for sample_dict in self._c.find():
-            yield voxs.ImageSample.from_dict(sample_dict)
+            yield etas.Serializable.from_dict(sample_dict)
+            # yield voxs.ImageSample.from_dict(sample_dict)
 
     # def index_samples_by_filehash(self):
     #     index_id = None
@@ -123,15 +125,12 @@ class Dataset(_SampleCollection):
 
     def add_sample(self, sample):
         voxs.Sample.validate(sample)
-        sample._set_ingest_time(datetime.utcnow())
-        self._c.insert_one(sample.serialize())
+        voxd.insert_one(self._c, sample)
 
     def add_samples(self, samples):
-        ingest_time = datetime.utcnow()
         for sample in samples:
             voxs.Sample.validate(sample)
-            sample._set_ingest_time(ingest_time)
-        self._c.insert_many([sample.serialize() for sample in samples])
+        voxd.insert_many(self._c, samples)
 
     def register_model(self):
         # @todo(Tyler)
