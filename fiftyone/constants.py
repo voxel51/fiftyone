@@ -69,6 +69,7 @@ START_SERVER = [
     "127.0.0.1:5151",
     "fiftyone.server.main:app",
     "--daemon",
+    "--reload",
 ]
 STOP_SERVER = ["fuser", "-k", "5151/tcp"]
 
