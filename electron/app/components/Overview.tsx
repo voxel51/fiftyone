@@ -1,5 +1,14 @@
 import React, { useState } from "react";
 import { Header, Icon, Menu, Segment, Sidebar } from "semantic-ui-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 import Gallery from "react-grid-gallery";
 import SidebarLayout from "./SidebarLayout";
 
@@ -112,16 +121,39 @@ export default function Overview() {
     ].sort(() => Math.random() - 0.5)
   );
 
-  let gallery;
-  if (tab == "pools") {
-    const tags = Array.from(
-      new Set(
-        IMAGES.reduce(
-          (arr, image) => arr.concat(image.tags.map((tag) => tag.value)),
-          []
-        )
+  const tags = Array.from(
+    new Set(
+      IMAGES.reduce(
+        (arr, image) => arr.concat(image.tags.map((tag) => tag.value)),
+        []
       )
+    )
+  );
+
+  let gallery;
+  if (tab == "overview") {
+    const data = tags
+      .map((tagName) => ({
+        name: tagName,
+        count: IMAGES.filter((img) =>
+          img.tags.some((tag) => tag.value == tagName)
+        ).length,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    gallery = (
+      <Segment>
+        <BarChart width={250} height={250} data={data} layout="vertical">
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis type="number" />
+          <YAxis type="category" dataKey="name" />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="count" fill="#8884d8" />
+        </BarChart>
+      </Segment>
     );
+  } else if (tab == "pools") {
     gallery = (
       <>
         {tags.map((tagName) => (
