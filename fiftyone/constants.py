@@ -66,13 +66,16 @@ STOP_DB = [
 ]
 
 # Server setup
+SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
 START_SERVER = [
     "gunicorn",
     "-w",
-    "2",
+    "1",
+    "--worker-class",
+    "eventlet",
     "-b",
     "127.0.0.1:5151",
-    "fiftyone.server.main:app",
+    "main:app",
     "--daemon",
     "--reload",
 ]
@@ -82,3 +85,5 @@ STOP_SERVER = ["fuser", "-k", "5151/tcp"]
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 START_APP = ["yarn", "background-dev"]
 STOP_APP = ["fuser", "-k", "1212/tcp"]
+print(" ".join(STOP_SERVER))
+print(" ".join(START_SERVER))

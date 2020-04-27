@@ -70,7 +70,8 @@ class ServerService(Service):
 
     def start(self):
         """Stop the `ServerService`."""
-        etau.call(foc.START_SERVER, **self._SUPRESS)
+        with etau.WorkingDir(foc.SERVER_DIR):
+            etau.call(foc.START_SERVER, **self._SUPRESS)
 
     def stop(self):
         """Start the `ServerService`."""
