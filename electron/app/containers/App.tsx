@@ -1,6 +1,5 @@
 import React, { ReactNode } from "react";
-import Nav from "../components/Sidebar";
-import { Segment, Sidebar } from "semantic-ui-react";
+import Sidebar from "../components/Sidebar";
 
 type Props = {
   children: ReactNode;
@@ -9,9 +8,9 @@ type Props = {
 export default function App(props: Props) {
   const { children } = props;
   return (
-    <Sidebar.Pushable>
-      <Nav />
-      <Sidebar.Pusher>{children}</Sidebar.Pusher>
-    </Sidebar.Pushable>
+    <>
+      <Sidebar />
+      <div style={{ marginLeft: 260 }}>{children}</div>
+    </>
   );
 }

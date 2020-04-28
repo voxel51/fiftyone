@@ -59,11 +59,14 @@ START_DB = [
     DB_LOG_PATH,
     "--fork",
 ]
-STOP_DB = [
-    DB_CLIENT_BIN_PATH,
-    "--eval",
-    "db.getSiblingDB('admin').shutdownServer()",
-]
+STOP_DB = " ".join(
+    [
+        DB_CLIENT_BIN_PATH,
+        "--eval",
+        '''"db.getSiblingDB('admin').shutdownServer()"''',
+        ">/dev/null 2>&1",
+    ]
+)
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
@@ -79,9 +82,9 @@ START_SERVER = [
     "--daemon",
     "--reload",
 ]
-STOP_SERVER = ["fuser", "-k", "5151/tcp"]
+STOP_SERVER = " ".join(["fuser", "-k", "5151/tcp", ">/dev/null 2>&1"])
 
 # App setup
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 START_APP = ["yarn", "background-dev"]
-STOP_APP = ["fuser", "-k", "1212/tcp"]
+STOP_APP = " ".join(["fuser", "-k", "1212/tcp", ">/dev/null 2>&1"])
