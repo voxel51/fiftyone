@@ -71,13 +71,29 @@ class _SampleCollection(object):
             yield self._deserialize(sample_dict)
 
     def query(self, sortby=None, sort_order=ASCENDING, skip=None, limit=None):
+        """
+
+        Args:
+            sortby: string field to sort by. Examples:
+                "_id", "filename", "metadata.size_bytes",
+                "metadata.frame_size[0]"
+            sort_order:
+            skip: number of samples to skip when sampling
+            limit: max number of samples to return when sampling
+
+        Returns:
+             a generator that yields tuples of:
+                query_idx: the integer index into the query
+                    skip <= query_idx < skip + limit
+                sample: a fiftyone.core.sample.Sample object
+        """
         pipeline = self._make_pipeline(
             sortby=sortby, sort_order=sort_order, skip=skip, limit=limit
         )
-        idx = skip - 1
+        query_idx = skip - 1
         for s in self._c.aggregate(pipeline):
-            idx += 1
-            yield idx, self._deserialize(s)
+            query_idx += 1
+            yield query_idx, self._deserialize(s)
 
     # def index_samples_by_filehash(self):
     #     index_id = None
@@ -147,7 +163,6 @@ class _SampleCollection(object):
         Returns:
              a pipeline (list of dicts)
         """
-
         pipeline = []
 
         if sortby is not None:
