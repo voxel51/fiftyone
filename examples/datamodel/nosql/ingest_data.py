@@ -2,7 +2,6 @@
 Ingest CIFAR100 data in noSQL database
 
 """
-from datetime import datetime
 import logging
 import os
 import random
@@ -57,8 +56,6 @@ for partition in partitions:
     fine_labels = etas.read_json(fine_labels_template % partition)
     coarse_labels = etas.read_json(coarse_labels_template % partition)
 
-    ingest_time = datetime.now()
-
     images = [
         {
             "filepath": os.path.abspath(filepath),
@@ -71,7 +68,6 @@ for partition in partitions:
             },
             "metadata": get_metadata(filepath),
             # "hash": get_filehash(filepath),
-            "ingest_time": ingest_time,
         }
         for filepath, key in [
             (os.path.join("..", key), key) for key in fine_labels

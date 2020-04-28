@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 dataset = voxd.Dataset(name="cifar100")
 
+# Access by ID
 sample_id = next(dataset.iter_samples()).id  # in DB
 # sample_id = "F" * 24                         # NOT in DB
-
-print(dataset[sample_id])
+# print(dataset[sample_id])
