@@ -1,5 +1,5 @@
 """
-Test if the server is available
+Test if the MongoDB server is available
 
 """
 # pragma pylint: disable=redefined-builtin
