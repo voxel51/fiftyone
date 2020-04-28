@@ -104,4 +104,4 @@ class HasViewClient(HasClient):
     """Mixin for Dataset to maintain state of the current view"""
 
     _HC_NAMESPACE = "view"
-    _HC_DATANAME = "view"
+    _HC_ATTR_NAME = "view"
