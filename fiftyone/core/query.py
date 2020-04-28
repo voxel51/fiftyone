@@ -57,6 +57,18 @@ class DatasetQuery(object):
             query_idx += 1
             yield query_idx, dataset_or_view._deserialize(s)
 
+    def filter(self, filter):
+        """
+        Args:
+            filter: a MongoDB query dict
+
+        Returns:
+            DatasetQuery instance
+
+        ref: https://docs.mongodb.com/manual/tutorial/query-documents
+        """
+        return self._create_new_query(stage={"$match": filter})
+
     def sort(self, field, sort_order=ASCENDING):
         """
         Args:

@@ -37,3 +37,26 @@ for query_idx, sample in query.iter_samples(view):
     print("Query Index: %d" % query_idx)
     print(sample)
     print()
+
+###############################################################################
+# Action 3: More complex queries
+###############################################################################
+
+# Using filter we can use the full power of MongoDB query syntax
+# This query matches num_channels == 3 AND size_bytes > 1000
+# ref: https://docs.mongodb.com/manual/tutorial/query-documents
+
+query = (
+    voxq.DatasetQuery()
+    .filter(
+        {"metadata.num_channels": 3, "metadata.size_bytes": {"$gt": 1000},}
+    )
+    .sort("metadata.size_bytes")
+    .offset(0)
+    .limit(1)
+)
+
+for query_idx, sample in query.iter_samples(dataset):
+    print("Query Index: %d" % query_idx)
+    print(sample)
+    print()
