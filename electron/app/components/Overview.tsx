@@ -1,16 +1,7 @@
 import React, { useState } from "react";
 import { Header, Icon, Menu, Segment, Sidebar } from "semantic-ui-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
 import Gallery from "react-grid-gallery";
-import SidebarLayout from "./SidebarLayout";
+import Histogram from "./Histogram";
 
 const GalleryWrapper = (props) => (
   <div style={{ overflowY: "auto" }}>
@@ -130,7 +121,7 @@ export default function Overview() {
     )
   );
 
-  let gallery;
+  let content;
   if (tab == "overview") {
     const data = tags
       .map((tagName) => ({
@@ -141,20 +132,13 @@ export default function Overview() {
       }))
       .sort((a, b) => b.count - a.count);
 
-    gallery = (
+    content = (
       <Segment>
-        <BarChart width={250} height={250} data={data} layout="vertical">
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" />
-          <YAxis type="category" dataKey="name" />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey="count" fill="#8884d8" />
-        </BarChart>
+        <Histogram data={data} />
       </Segment>
     );
   } else if (tab == "pools") {
-    gallery = (
+    content = (
       <>
         {tags.map((tagName) => (
           <React.Fragment key={tagName}>
@@ -170,7 +154,7 @@ export default function Overview() {
       </>
     );
   } else {
-    gallery = <GalleryWrapper images={IMAGES} />;
+    content = <GalleryWrapper images={IMAGES} />;
   }
 
   return (
@@ -188,7 +172,7 @@ export default function Overview() {
         ))}
       </Menu>
 
-      {gallery}
+      {content}
     </Segment>
   );
 }
