@@ -20,50 +20,27 @@ from future.utils import itervalues
 # pragma pylint: enable=wildcard-import
 
 
-import eta.core.serial as etas
+import eta.core.data as etad
 
 
-class DatasetView(etas.Serializable):
+class DatasetView(etad.DataRecords):
     """DatasetView docs
 
     """
 
-    def __init__(self, operations=[], **kwargs):
-        self.operations = operations
-        super(DatasetView, self).__init__(**kwargs)
+    _ELE_CLS_FIELD = "_OPERATION_CLS"
+    _ELE_ATTR = "operations"
 
-    @classmethod
-    def from_dict(cls, d):
-        """Constructs an DatasetView from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a DatasetView
-        """
-        operations = d.get("operations", [])
-        operations = [DatasetViewOperation.from_dict(o) for o in operations]
-
-        return super(DatasetView, cls).from_dict(d, operations=operations)
+    def __init__(self, **kwargs):
+        """Creates the DatasetView"""
+        super(DatasetView, self).__init__(DatasetViewOperation, **kwargs)
 
 
-class DatasetViewOperation(etas.Serializable):
+class DatasetViewOperation(etad.BaseDataRecord):
     """DatasetViewOperation docs
 
     """
 
     def __init__(self, **kwargs):
+        """Creates the DatasetViewOperation"""
         super(DatasetViewOperation, self).__init__(**kwargs)
-
-    @classmethod
-    def from_dict(cls, d):
-        """Constructs an DatasetViewOperation from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a DatasetViewOperation
-        """
-        return super(DatasetViewOperation, cls).from_dict(d)
