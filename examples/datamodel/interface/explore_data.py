@@ -52,3 +52,19 @@ print("Sample from dataset 'test' view:")
 sample = next(dataset.get_view("test").iter_samples())
 print(sample)
 print("Ingested at: %s" % sample.ingest_time)
+
+###############################################################################
+# Action 5: Access sample by ID
+###############################################################################
+
+# ID not in dataset
+sample_id = "F" * 24
+print("Accessing invalid ID: %s" % sample_id)
+print(dataset[sample_id])
+print()
+
+# ID in dataset
+sample_id = next(dataset.iter_samples()).id
+print("Accessing valid ID: %s" % sample_id)
+print(dataset[sample_id])
+print()

@@ -1,5 +1,5 @@
 """
-Core Module for `fiftyone` Dataset class
+Core Module for `fiftyone` DatasetQuery class
 
 """
 # pragma pylint: disable=redefined-builtin
