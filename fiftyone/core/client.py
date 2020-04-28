@@ -34,6 +34,8 @@ logging.getLogger("engineio").setLevel(logging.ERROR)
 def start_background_task(target, *args, **kwargs):
     """We are monkey patching here to start threads in `daemon` mode.
 
+    ### Original Docs Below ###
+
     The patch allows for clean exits out of python.
 
     Start a background task.
