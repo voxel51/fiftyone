@@ -135,9 +135,10 @@ class HasClient(object):
 
     def __setattr__(self, name, value):
         """Set the data to the attribute defined by `_HC_ATTR_NAME`."""
-        super(HasClient, self).__setattr__(name, value)
         if name == self._HC_ATTR_NAME:
             self.__client.update(value)
+        else:
+            super(HasClient, self).__setattr__(name, value)
 
 
 class HasViewClient(HasClient):
