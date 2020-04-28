@@ -1,5 +1,5 @@
 """
-Core module that defines the database view.
+Core module that defines web socket client mixins for the SDK.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
