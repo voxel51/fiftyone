@@ -23,10 +23,16 @@ DESCENDING = -1
 
 class DatasetQuery(object):
     def __init__(self):
+        """... """
         self._pipeline = []
 
-    def count(self, dataset_or_view):
-        """Count the number of samples returned by this query"""
+    def count(self, dataset_or_view=None):
+        """Count the number of samples returned by this query
+
+        Args:
+            dataset_or_view: the fiftyone.core.dataset.(Dataset or DatasetView)
+                to be queried
+        """
         return next(
             dataset_or_view._c.aggregate(
                 self._pipeline + [{"$count": "count"}]

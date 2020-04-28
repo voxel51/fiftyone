@@ -44,7 +44,7 @@ for query_idx, sample in query.iter_samples(dataset):
     print()
 
 ###############################################################################
-# Action 2: Query a DatasetView
+# Action 3: Query a DatasetView
 ###############################################################################
 
 view = dataset.get_view("test")
