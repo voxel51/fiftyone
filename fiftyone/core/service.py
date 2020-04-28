@@ -33,7 +33,7 @@ class Service(object):
 
     def __init__(self):
         """Creates the `Service`."""
-        self._os = os
+        self._system = os.system
         self.start()
 
     def __del__(self):
@@ -60,7 +60,7 @@ class DatabaseService(Service):
 
     def stop(self):
         """Stop the `DatabaseService`."""
-        self._os.system(foc.STOP_DB)
+        self._system(foc.STOP_DB)
 
 
 class ServerService(Service):
