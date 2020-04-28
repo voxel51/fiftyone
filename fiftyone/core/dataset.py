@@ -19,8 +19,9 @@ from pymongo import MongoClient
 
 import eta.core.serial as etas
 
-import fiftyone.core.sample as voxs
+import fiftyone.core.client as voxc
 import fiftyone.core.document as voxd
+import fiftyone.core.sample as voxs
 
 
 # We are currently assuming this is not configurable

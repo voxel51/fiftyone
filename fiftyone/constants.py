@@ -89,3 +89,4 @@ STOP_SERVER = " ".join(["fuser", "-k", "5151/tcp", ">/dev/null 2>&1"])
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 START_APP = ["yarn", "background-dev"]
 STOP_APP = " ".join(["fuser", "-k", "1212/tcp", ">/dev/null 2>&1"])
+print(" ".join(START_SERVER))
