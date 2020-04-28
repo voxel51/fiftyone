@@ -6,7 +6,7 @@ FiftyOne Flask server.
 |
 """
 from flask import Flask
-from flask_socketio import emit, SocketIO
+from flask_socketio import emit, Namespace, SocketIO
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "fiftyone"
@@ -24,25 +24,25 @@ def get():
     return "I am FiftyOne"
 
 
-@socketio.on("connect")
-def handle_connect():
-    print("Client connected")
+class Views(Namespace):
+    """Controller for views"""
+
+    def on_connect(self):
+        """On connect"""
+        print("connected")
+
+    def on_disconnect(self):
+        """On disconnect"""
+        print("disconnected")
+
+    def on_update(self, view):
+        """On update"""
+        print("received update")
+        print(view)
+        emit("update", view, broadcast=True)
 
 
-@socketio.on("disconnect")
-def handle_disconnect():
-    print("Client disconnected")
-
-
-@socketio.on("update")
-def update_view(view):
-    """Update the dataset view
-
-    Args:
-        view: the serialized view object
-    """
-    print(view)
-    emit("update", view, broadcast=True)
+socketio.on_namespace(Views("/views"))
 
 
 if __name__ == "__main__":
