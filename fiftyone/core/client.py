@@ -58,26 +58,46 @@ def start_background_task(target, *args, **kwargs):
 
 
 class BaseClient(socketio.ClientNamespace):
-    """SocketIO Client
+    """SocketIO Client.
+
+    It is possible to add any arbitrary `on_my_event()` method to a socketio
+    ClientNamespace, but using a single generic `on_update()` is sufficient.
+
+    Organizing message categories can instead be done by subclassing
+    `HasClient`.
 
     Attributes:
         data: the current data
     """
 
     def on_connect(self):
-        print("Client connected")
+        """Receive the "connect" event.
+
+        Nothing is required of us at the moment
+        """
+        pass
 
     def on_disconnect(self):
-        print("Client disconnected")
+        """Receive the "disconnect" event.
+
+        Nothing is required of us at the moment
+        """
+        pass
 
     def on_update(self, data):
-        print("Update received")
-        print(data)
+        """Receive an update.
+
+        Args:
+            data: the new data
+        """
         self.data = data
 
     def update(self, data):
-        print("Sending update")
-        print(data)
+        """Send an update.
+
+        Args:
+            data: the new data
+        """
         self.data = data
         self.emit("update", data)
 
@@ -86,6 +106,13 @@ class HasClient(object):
     """HasClient is a mixin that supports maintaining a shared state of data
     using web sockets.
 
+    `_HC_NAMESPACE` and `_HC_ATTR_NAME` MUST be set by subclasses at the class
+    level.
+
+    Attributes:
+        _HC_NAMESPACE: The socketio namespace to use. To be set by subclasses.
+        _HC_ATTR_NAME: The attribute name to use for that shared data. The data
+            must be a subclass of eta.core.serial.Serializable
     """
 
     _HC_NAMESPACE = None
@@ -108,14 +135,13 @@ class HasClient(object):
 
     def __setattr__(self, name, value):
         """Set the data to the attribute defined by `_HC_ATTR_NAME`."""
+        super(HasClient, self).__setattr__(name, value)
         if name == self._HC_ATTR_NAME:
             self.__client.update(value)
-        else:
-            super(HasClient, self).__setattr__(name, value)
 
 
 class HasViewClient(HasClient):
-    """Mixin for Dataset to maintain state of the current view"""
+    """Mixin for `Dataset` to maintain state of the current view."""
 
     _HC_NAMESPACE = "view"
     _HC_ATTR_NAME = "view"
