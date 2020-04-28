@@ -92,6 +92,7 @@ class HasClient(object):
     def __init__(self):
         """Creates the SocketIO client"""
         self.__sio = socketio.Client()
+        # the following is a monkey patch to set threads to daemon mode
         self.__sio.eio.start_background_task = start_background_task
         self.__client = BaseClient("/" + self._HC_NAMESPACE)
         self.__sio.register_namespace(self.__client)
@@ -109,11 +110,6 @@ class HasClient(object):
             self.__client.update(value)
         else:
             super(HasClient, self).__setattr__(name, value)
-
-    def __del__(self):
-        """Disconnect upon deletion"""
-        # @todo: exit cleanly. a ctr-c/ctrl-d spasm will do for now
-        pass
 
 
 class HasViewClient(HasClient):
