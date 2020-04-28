@@ -23,9 +23,6 @@ import fiftyone.core.sample as voxs
 import fiftyone.core.document as voxd
 
 
-ASCENDING = 1
-DESCENDING = -1
-
 # We are currently assuming this is not configurable
 DEFAULT_DATABASE = "fiftyone"
 
@@ -69,31 +66,6 @@ class _SampleCollection(object):
         for sample_dict in self._c.find():
             # uses reflective `_CLS` to determine type
             yield self._deserialize(sample_dict)
-
-    def query(self, sortby=None, sort_order=ASCENDING, skip=None, limit=None):
-        """
-
-        Args:
-            sortby: string field to sort by. Examples:
-                "_id", "filename", "metadata.size_bytes",
-                "metadata.frame_size[0]"
-            sort_order:
-            skip: number of samples to skip when sampling
-            limit: max number of samples to return when sampling
-
-        Returns:
-             a generator that yields tuples of:
-                query_idx: the integer index into the query
-                    skip <= query_idx < skip + limit
-                sample: a fiftyone.core.sample.Sample object
-        """
-        pipeline = self._make_pipeline(
-            sortby=sortby, sort_order=sort_order, skip=skip, limit=limit
-        )
-        query_idx = skip - 1
-        for s in self._c.aggregate(pipeline):
-            query_idx += 1
-            yield query_idx, self._deserialize(s)
 
     # def index_samples_by_filehash(self):
     #     index_id = None
@@ -146,35 +118,6 @@ class _SampleCollection(object):
         if sample_dict is None:
             return sample_dict
         return etas.Serializable.from_dict(sample_dict)
-
-    def _make_pipeline(
-        self, sortby=None, sort_order=ASCENDING, skip=None, limit=None
-    ):
-        """
-
-        Args:
-            sortby: string field to sort by. Examples:
-                "_id", "filename", "metadata.size_bytes",
-                "metadata.frame_size[0]"
-            sort_order:
-            skip: number of samples to skip when sampling
-            limit: max number of samples to return when sampling
-
-        Returns:
-             a pipeline (list of dicts)
-        """
-        pipeline = []
-
-        if sortby is not None:
-            pipeline.append({"$sort": {sortby: sort_order}})
-
-        if skip is not None:
-            pipeline.append({"$skip": skip})
-
-        if limit is not None:
-            pipeline.append({"$limit": limit})
-
-        return pipeline
 
 
 class Dataset(_SampleCollection):
