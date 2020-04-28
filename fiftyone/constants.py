@@ -62,7 +62,7 @@ START_DB = [
 STOP_DB = [
     DB_CLIENT_BIN_PATH,
     "--eval",
-    "db.getSiblingDB('admin').shutdownServer()",
+    '''"db.getSiblingDB('admin').shutdownServer()"''',
 ]
 
 # Server setup
