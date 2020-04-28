@@ -29,11 +29,11 @@ class View(Namespace):
 
     def on_connect(self):
         """On connect"""
-        print("connected")
+        print("connected view")
 
     def on_disconnect(self):
         """On disconnect"""
-        print("disconnected")
+        print("disconnected view")
 
     def on_update(self, view):
         """On update"""

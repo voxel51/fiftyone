@@ -26,24 +26,18 @@ import socketio
 import fiftyone.constants as voxc
 
 
-# logging.getLogger('socketio').setLevel(logging.ERROR)
-# logging.getLogger('engineio').setLevel(logging.ERROR)
+logging.getLogger("socketio").setLevel(logging.ERROR)
+logging.getLogger("engineio").setLevel(logging.ERROR)
 
 
-class Client(socketio.ClientNamespace):
+class BaseClient(socketio.ClientNamespace):
     """SocketIO Client
 
     Attributes:
         data: the current data
     """
 
-    def __init__(self, *args, **kwargs):
-        """Creates the Client"""
-        self.data = None
-        super(Client, self).__init__(*args, **kwargs)
-
     def on_connect(self):
-        raise ValueError("asfgh")
         print("Client connected")
 
     def on_disconnect(self):
@@ -73,9 +67,9 @@ class HasClient(object):
     def __init__(self):
         """Creates the SocketIO client"""
         self._hc_sio = socketio.Client()
-        self._hc_sio.connect(voxc.SERVER_ADDR)
-        self._hc_client = Client("/" + self._HC_NAMESPACE)
+        self._hc_client = BaseClient("/" + self._HC_NAMESPACE)
         self._hc_sio.register_namespace(self._hc_client)
+        self._hc_sio.connect(voxc.SERVER_ADDR)
 
     def __getattr__(self, name):
         """Get the data via the attribute defined by `_HC_ATTR_NAME`."""
@@ -92,12 +86,8 @@ class HasClient(object):
 
     def __del__(self):
         """Disconnect upon deletion"""
-        print("asfahg")
-        self._hc_client.emit("disconnect")
         self._hc_client.disconnect()
-        self._hc_sio.emit("disconnect")
         self._hc_sio.disconnect()
-        self._hc_sio.eio.disconnect(True)
 
 
 class HasViewClient(HasClient):
