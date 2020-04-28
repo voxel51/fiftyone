@@ -121,11 +121,12 @@ class _SampleCollection(object):
         return etas.Serializable.from_dict(sample_dict)
 
 
-class Dataset(_SampleCollection):
+class Dataset(_SampleCollection, voxc.HasViewClient):
     COLLECTION_TYPE = "DATASET"
 
     def __init__(self, name):
         super(Dataset, self).__init__(name=name)
+        self.view = []
 
     def get_tags(self):
         return self._c.distinct("tags")
