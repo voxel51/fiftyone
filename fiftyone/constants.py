@@ -70,6 +70,7 @@ STOP_DB = " ".join(
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
+SERVER_ADDR = "http://127.0.0.1:5151"
 START_SERVER = [
     "gunicorn",
     "-w",
