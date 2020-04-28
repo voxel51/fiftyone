@@ -54,12 +54,12 @@ class DatabaseService(Service):
     """
 
     def start(self):
-        """Stop the `DatabaseService`."""
+        """Start the `DatabaseService`."""
         etau.call(foc.START_DB, **self._SUPPRESS)
 
     def stop(self):
-        """Start the `DatabaseService`."""
-        etau.call(foc.STOP_DB, **self._SUPPRESS)
+        """Stop the `DatabaseService`."""
+        os.system(foc.STOP_DB)
 
 
 class ServerService(Service):
@@ -68,23 +68,22 @@ class ServerService(Service):
     """
 
     def start(self):
-        """Stop the `ServerService`."""
+        """Start the `ServerService`."""
         etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
-        """Start the `ServerService`."""
-        etau.call(foc.STOP_SERVER, **self._SUPPRESS)
+        """Stop the `ServerService`."""
+        os.system(foc.STOP_SERVER)
 
 
 class AppService(Service):
-    """An `AppService` has start and stop control over the FiftyOne app.
-    """
+    """An `AppService` has start and stop control over the FiftyOne app."""
 
     def start(self):
-        """Stop the `AppService`."""
+        """Start the `AppService`."""
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             etau.call(foc.START_APP, **self._SUPPRESS)
 
     def stop(self):
-        """Start the `AppService`."""
-        etau.call(foc.STOP_APP, **self._SUPPRESS)
+        """Stop the `AppService`."""
+        os.system(foc.STOP_APP)
