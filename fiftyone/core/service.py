@@ -74,7 +74,7 @@ class ServerService(Service):
 
     def stop(self):
         """Stop the `ServerService`."""
-        os.system(foc.STOP_SERVER)
+        self._system(foc.STOP_SERVER)
 
 
 class AppService(Service):
@@ -87,4 +87,4 @@ class AppService(Service):
 
     def stop(self):
         """Stop the `AppService`."""
-        os.system(foc.STOP_APP)
+        self._system(foc.STOP_APP)
