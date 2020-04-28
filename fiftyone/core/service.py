@@ -60,7 +60,7 @@ class DatabaseService(Service):
 
     def stop(self):
         """Stop the `DatabaseService`."""
-        self._system(" ".join(foc.STOP_DB))
+        self._system(foc.STOP_DB)
 
 
 class ServerService(Service):
