@@ -31,32 +31,6 @@ logging.getLogger("socketio").setLevel(logging.ERROR)
 logging.getLogger("engineio").setLevel(logging.ERROR)
 
 
-def start_background_task(target, *args, **kwargs):
-    """We are monkey patching here to start threads in `daemon` mode.
-
-    ### Original Docs Below ###
-
-    The patch allows for clean exits out of python.
-
-    Start a background task.
-
-    This is a utility function that applications can use to start a
-    background task.
-
-    Args:
-        target: the target function to execute.
-        args: arguments to pass to the function.
-        kwargs: keyword arguments to pass to the function.
-
-    This function returns an object compatible with the `Thread` class in
-    the Python standard library. The `start()` method on this object is
-    already called by this function.
-    """
-    th = threading.Thread(target=target, args=args, kwargs=kwargs, daemon=True)
-    th.start()
-    return th
-
-
 class BaseClient(socketio.ClientNamespace):
     """SocketIO Client.
 
@@ -122,7 +96,7 @@ class HasClient(object):
         """Creates the SocketIO client"""
         self.__sio = socketio.Client()
         # the following is a monkey patch to set threads to daemon mode
-        self.__sio.eio.start_background_task = start_background_task
+        self.__sio.eio.start_background_task = _start_background_task
         self.__client = BaseClient("/" + self._HC_NAMESPACE)
         self.__sio.register_namespace(self.__client)
         self.__sio.connect(voxc.SERVER_ADDR)
@@ -146,3 +120,29 @@ class HasViewClient(HasClient):
 
     _HC_NAMESPACE = "view"
     _HC_ATTR_NAME = "view"
+
+
+def _start_background_task(target, *args, **kwargs):
+    """We are monkey patching here to start threads in `daemon` mode.
+
+    ### Original Docs Below ###
+
+    The patch allows for clean exits out of python.
+
+    Start a background task.
+
+    This is a utility function that applications can use to start a
+    background task.
+
+    Args:
+        target: the target function to execute.
+        args: arguments to pass to the function.
+        kwargs: keyword arguments to pass to the function.
+
+    This function returns an object compatible with the `Thread` class in
+    the Python standard library. The `start()` method on this object is
+    already called by this function.
+    """
+    th = threading.Thread(target=target, args=args, kwargs=kwargs, daemon=True)
+    th.start()
+    return th
