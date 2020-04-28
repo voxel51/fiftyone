@@ -19,6 +19,7 @@ from future.utils import itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import socketio
 
 import eta.core.data as etad
 
@@ -44,3 +45,19 @@ class DatasetViewOperation(etad.BaseDataRecord):
     def __init__(self, **kwargs):
         """Creates the DatasetViewOperation"""
         super(DatasetViewOperation, self).__init__(**kwargs)
+
+
+class ViewClient(socketio.ClientNamespace):
+    def __init__(self, *args, **kwargs):
+        """Creates the ViewClient"""
+        self.current_view = None
+        super(ViewClient, self).__init__(**kwargs)
+
+    def on_connect(self):
+        print("client connected")
+
+    def ondisconnect(self):
+        print("client disconnected")
+
+    def on_update(self, view):
+        self.current_view = DatasetView.from_dict(view)
