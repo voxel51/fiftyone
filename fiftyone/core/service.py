@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -30,10 +29,11 @@ class Service(object):
     """A Service is a class that implements a start method and stop method"""
 
     _DEVNULL = open(os.devnull, "wb")
-    _SUPRESS = {"stderr": _DEVNULL, "stdout": _DEVNULL}
+    _SUPPRESS = {"stderr": _DEVNULL, "stdout": _DEVNULL}
 
     def __init__(self):
         """Creates the `Service`."""
+        self._system = os.system
         self.start()
 
     def __del__(self):
@@ -55,12 +55,12 @@ class DatabaseService(Service):
     """
 
     def start(self):
-        """Stop the `DatabaseService`."""
-        etau.call(foc.START_DB, **self._SUPRESS)
+        """Start the `DatabaseService`."""
+        etau.call(foc.START_DB, **self._SUPPRESS)
 
     def stop(self):
-        """Start the `DatabaseService`."""
-        etau.call(foc.STOP_DB, **self._SUPRESS)
+        """Stop the `DatabaseService`."""
+        self._system(foc.STOP_DB)
 
 
 class ServerService(Service):
@@ -69,23 +69,22 @@ class ServerService(Service):
     """
 
     def start(self):
-        """Stop the `ServerService`."""
-        etau.call(foc.START_SERVER, **self._SUPRESS)
+        """Start the `ServerService`."""
+        etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
-        """Start the `ServerService`."""
-        etau.call(foc.STOP_SERVER, **self._SUPRESS)
+        """Stop the `ServerService`."""
+        os.system(foc.STOP_SERVER)
 
 
 class AppService(Service):
-    """An `AppService` has start and stop control over the FiftyOne app.
-    """
+    """An `AppService` has start and stop control over the FiftyOne app."""
 
     def start(self):
-        """Stop the `AppService`."""
+        """Start the `AppService`."""
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
-            etau.call(foc.START_APP, **self._SUPRESS)
+            etau.call(foc.START_APP, **self._SUPPRESS)
 
     def stop(self):
-        """Start the `AppService`."""
-        etau.call(foc.STOP_APP, **self._SUPRESS)
+        """Stop the `AppService`."""
+        os.system(foc.STOP_APP)
