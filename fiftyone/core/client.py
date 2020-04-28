@@ -19,9 +19,15 @@ from future.utils import itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
+
 import socketio
 
 import fiftyone.constants as voxc
+
+
+# logging.getLogger('socketio').setLevel(logging.ERROR)
+# logging.getLogger('engineio').setLevel(logging.ERROR)
 
 
 class Client(socketio.ClientNamespace):
@@ -34,9 +40,10 @@ class Client(socketio.ClientNamespace):
     def __init__(self, *args, **kwargs):
         """Creates the Client"""
         self.data = None
-        super(Client, self).__init__(**kwargs)
+        super(Client, self).__init__(*args, **kwargs)
 
     def on_connect(self):
+        raise ValueError("asfgh")
         print("Client connected")
 
     def on_disconnect(self):
@@ -67,7 +74,7 @@ class HasClient(object):
         """Creates the SocketIO client"""
         self._hc_sio = socketio.Client()
         self._hc_sio.connect(voxc.SERVER_ADDR)
-        self._hc_client = Client("/" + self._NAMESPACE)
+        self._hc_client = Client("/" + self._HC_NAMESPACE)
         self._hc_sio.register_namespace(self._hc_client)
 
     def __getattr__(self, name):
@@ -81,7 +88,16 @@ class HasClient(object):
         if name == self._HC_ATTR_NAME:
             self._hc_client.update(value)
         else:
-            raise AttributeError(name)
+            super(HasClient, self).__setattr__(name, value)
+
+    def __del__(self):
+        """Disconnect upon deletion"""
+        print("asfahg")
+        self._hc_client.emit("disconnect")
+        self._hc_client.disconnect()
+        self._hc_sio.emit("disconnect")
+        self._hc_sio.disconnect()
+        self._hc_sio.eio.disconnect(True)
 
 
 class HasViewClient(HasClient):

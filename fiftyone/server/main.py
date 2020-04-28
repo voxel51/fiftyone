@@ -24,7 +24,7 @@ def get():
     return "I am FiftyOne"
 
 
-class Views(Namespace):
+class View(Namespace):
     """Controller for views"""
 
     def on_connect(self):
@@ -42,7 +42,7 @@ class Views(Namespace):
         emit("update", view, broadcast=True)
 
 
-socketio.on_namespace(Views("/views"))
+socketio.on_namespace(View("/view"))
 
 
 if __name__ == "__main__":
