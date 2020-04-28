@@ -8,3 +8,4 @@ import fiftyone.core.service as fos
 from fiftyone.core.dashboard import launch_dashboard
 
 dataset_service = fos.DatabaseService()
+server_service = fos.ServerService()

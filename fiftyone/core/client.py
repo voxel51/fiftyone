@@ -20,6 +20,7 @@ from future.utils import itervalues
 # pragma pylint: enable=wildcard-import
 
 import logging
+import threading
 
 import socketio
 
@@ -28,6 +29,30 @@ import fiftyone.constants as voxc
 
 logging.getLogger("socketio").setLevel(logging.ERROR)
 logging.getLogger("engineio").setLevel(logging.ERROR)
+
+
+def start_background_task(target, *args, **kwargs):
+    """We are monkey patching here to start threads in `daemon` mode.
+
+    The patch allows for clean exits out of python.
+
+    Start a background task.
+
+    This is a utility function that applications can use to start a
+    background task.
+
+    Args:
+        target: the target function to execute.
+        args: arguments to pass to the function.
+        kwargs: keyword arguments to pass to the function.
+
+    This function returns an object compatible with the `Thread` class in
+    the Python standard library. The `start()` method on this object is
+    already called by this function.
+    """
+    th = threading.Thread(target=target, args=args, kwargs=kwargs, daemon=True)
+    th.start()
+    return th
 
 
 class BaseClient(socketio.ClientNamespace):
@@ -67,6 +92,7 @@ class HasClient(object):
     def __init__(self):
         """Creates the SocketIO client"""
         self.__sio = socketio.Client()
+        self.__sio.eio.start_background_task = start_background_task
         self.__client = BaseClient("/" + self._HC_NAMESPACE)
         self.__sio.register_namespace(self.__client)
         self.__sio.connect(voxc.SERVER_ADDR)
