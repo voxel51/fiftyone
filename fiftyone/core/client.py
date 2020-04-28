@@ -66,28 +66,28 @@ class HasClient(object):
 
     def __init__(self):
         """Creates the SocketIO client"""
-        self._hc_sio = socketio.Client()
-        self._hc_client = BaseClient("/" + self._HC_NAMESPACE)
-        self._hc_sio.register_namespace(self._hc_client)
-        self._hc_sio.connect(voxc.SERVER_ADDR)
+        self.__sio = socketio.Client()
+        self.__client = BaseClient("/" + self._HC_NAMESPACE)
+        self.__sio.register_namespace(self.__client)
+        self.__sio.connect(voxc.SERVER_ADDR)
 
     def __getattr__(self, name):
         """Get the data via the attribute defined by `_HC_ATTR_NAME`."""
         if name == self._HC_ATTR_NAME:
-            return self._hc_client.data
+            return self.__client.data
         raise AttributeError(name)
 
     def __setattr__(self, name, value):
         """Set the data to the attribute defined by `_HC_ATTR_NAME`."""
         if name == self._HC_ATTR_NAME:
-            self._hc_client.update(value)
+            self.__client.update(value)
         else:
             super(HasClient, self).__setattr__(name, value)
 
     def __del__(self):
         """Disconnect upon deletion"""
-        self._hc_client.disconnect()
-        self._hc_sio.disconnect()
+        # @todo: exit cleanly. a ctr-c/ctrl-d spasm will do for now
+        pass
 
 
 class HasViewClient(HasClient):
