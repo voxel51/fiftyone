@@ -23,12 +23,10 @@ for view in dataset.get_views():
 print()
 
 print("Sample from dataset:")
-for sample in dataset.iter_samples():
-    print(sample)
-    break
+sample = next(dataset.iter_samples())
+print(sample)
 print()
 
 print("Sample from dataset 'test' view:")
-for sample in dataset.get_view("test").iter_samples():
-    print(sample)
-    break
+sample = next(dataset.get_view("test").iter_samples())
+print(sample)

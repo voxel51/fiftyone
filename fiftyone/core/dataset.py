@@ -14,6 +14,7 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 import eta.core.serial as etas
@@ -56,10 +57,15 @@ class _SampleCollection(object):
     def __len__(self):
         return self._c.count_documents({})
 
+    def __getitem__(self, sample_id):
+        return self._deserialize(
+            self._c.find_one({"_id": ObjectId(sample_id)})
+        )
+
     def iter_samples(self):
         for sample_dict in self._c.find():
-            yield etas.Serializable.from_dict(sample_dict)
-            # yield voxs.ImageSample.from_dict(sample_dict)
+            # uses reflective `_CLS` to determine type
+            yield self._deserialize(sample_dict)
 
     # def index_samples_by_filehash(self):
     #     index_id = None
@@ -106,6 +112,12 @@ class _SampleCollection(object):
             self._init_collection()
 
         return _db()[self.name]
+
+    @staticmethod
+    def _deserialize(sample_dict):
+        if sample_dict is None:
+            return sample_dict
+        return etas.Serializable.from_dict(sample_dict)
 
 
 class Dataset(_SampleCollection):
