@@ -35,7 +35,7 @@ def insert_many(collection, documents):
 
 class Document(etas.Serializable):
     """Adds additional functionality to Serializable class to handle `_id`
-     fields which is created when a document is added to the database.
+    field which is created when a document is added to the database.
     """
 
     @property
