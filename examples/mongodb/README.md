@@ -16,7 +16,9 @@ You will also need to
 that this is different from the `fiftyone` install process.
 
 You will also need to have downloaded the example CIFAR100 dataset via:
-[../download_data.py](../download_data.py)
+```bash
+python ../download_data.py
+```
 
 ## Scripts
 

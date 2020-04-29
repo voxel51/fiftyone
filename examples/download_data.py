@@ -1,5 +1,6 @@
 """
-Download CIFAR100 data and store as images and labels JSON to ./data/
+Download CIFAR100 data and store as images and labels JSON to:
+    {{fiftyone}}/examples/data/cifar100/
 
 """
 import os
@@ -178,7 +179,11 @@ fine_2_course_mapping = {
     for fine in fine_list
 }
 
-data_dir = "data"
+dir_path = os.path.dirname(os.path.realpath(__file__))
+data_dir = os.path.join(dir_path, "data/cifar100")
+
+# if not empty, don't download
+etau.ensure_empty_dir(data_dir)
 
 (x_train, y_train), (x_test, y_test) = cifar100.load_data(label_mode="fine")
 
@@ -193,16 +198,17 @@ for partition, x, y in [
     coarse_labels = {}
 
     for i in range(x.shape[0]):
-        img_path = os.path.join(image_dir, "%d.jpg" % i)
+        rel_img_path = os.path.join(partition, "%d.jpg" % i)
+        abs_img_path = os.path.join(data_dir, rel_img_path)
 
         # write image
         img = x[i, :]
-        etai.write(img, img_path)
+        etai.write(img, abs_img_path)
 
         # save labels
         fine_label = fine_labels_map[y[i, 0]]
-        fine_labels[img_path] = fine_label
-        coarse_labels[img_path] = fine_2_course_mapping[fine_label]
+        fine_labels[rel_img_path] = fine_label
+        coarse_labels[rel_img_path] = fine_2_course_mapping[fine_label]
 
     etas.write_json(
         fine_labels,
