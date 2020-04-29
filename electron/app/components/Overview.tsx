@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Header, Icon, Menu, Segment, Sidebar } from "semantic-ui-react";
 import Gallery from "react-grid-gallery";
-import SidebarLayout from "./SidebarLayout";
+import Histogram from "./Histogram";
 
 const GalleryWrapper = (props) => (
   <div style={{ overflowY: "auto" }}>
@@ -112,17 +112,33 @@ export default function Overview() {
     ].sort(() => Math.random() - 0.5)
   );
 
-  let gallery;
-  if (tab == "pools") {
-    const tags = Array.from(
-      new Set(
-        IMAGES.reduce(
-          (arr, image) => arr.concat(image.tags.map((tag) => tag.value)),
-          []
-        )
+  const tags = Array.from(
+    new Set(
+      IMAGES.reduce(
+        (arr, image) => arr.concat(image.tags.map((tag) => tag.value)),
+        []
       )
+    )
+  );
+
+  let content;
+  if (tab == "overview") {
+    const data = tags
+      .map((tagName) => ({
+        name: tagName,
+        count: IMAGES.filter((img) =>
+          img.tags.some((tag) => tag.value == tagName)
+        ).length,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    content = (
+      <Segment>
+        <Histogram data={data} />
+      </Segment>
     );
-    gallery = (
+  } else if (tab == "pools") {
+    content = (
       <>
         {tags.map((tagName) => (
           <React.Fragment key={tagName}>
@@ -138,7 +154,7 @@ export default function Overview() {
       </>
     );
   } else {
-    gallery = <GalleryWrapper images={IMAGES} />;
+    content = <GalleryWrapper images={IMAGES} />;
   }
 
   return (
@@ -156,7 +172,7 @@ export default function Overview() {
         ))}
       </Menu>
 
-      {gallery}
+      {content}
     </Segment>
   );
 }
