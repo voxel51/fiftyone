@@ -1,4 +1,4 @@
-"""Testing the fiftyone.core.Document module
+"""Testing the fiftyone.core.document module
 
 """
 import os

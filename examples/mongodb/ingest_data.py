@@ -20,18 +20,19 @@ logger = logging.getLogger(__name__)
 # PARAMETERS #
 ##############
 
-partitions = ["train", "test"]
-
-fine_labels_template = "../data/%s_fine.json"
-coarse_labels_template = "../data/%s_coarse.json"
-
 dataset_name = "cifar100"
 
+partitions = ["train", "test"]
 
 ########
 # CODE #
 ########
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+data_dir = os.path.abspath(os.path.join(dir_path, "..", "data", dataset_name))
+
+fine_labels_template = os.path.join(data_dir, "%s_fine.json")
+coarse_labels_template = os.path.join(data_dir, "%s_coarse.json")
 
 client = MongoClient()
 
