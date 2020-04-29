@@ -18,8 +18,14 @@ import fiftyone.core.client as voxc
 import fiftyone.core.dataset as voxd
 
 
-class Session(object):
+class Session(voxc.HasClient):
+    """Sessions have a 1-to-1 shared state with the GUI."""
+
+    _HC_NAMESPACE = "state"
+    _HC_ATTR_NAME = "state"
+
     def __init__(self, offset=0, limit=10):
+        super(Session, self).__init__()
         self.offset = offset
         self.limit = limit
 
@@ -61,3 +67,15 @@ class Session(object):
 
     def clear_query(self):
         self._query = None
+
+    # def count(self, dataset_or_view=None):
+    #     """Count the number of samples returned by this query
+    #
+    #     Args:
+    #         dataset_or_view: the fiftyone.core.dataset.(Dataset or DatasetView)
+    #             to be queried
+    #     """
+    #     pipeline = self._pipeline + [{"$count": "count"}]
+    #     result = next(dataset_or_view._c.aggregate(pipeline))["count"]
+    #     dataset_or_view.state = {"pipeline": pipeline, "count": result}
+    #     return result

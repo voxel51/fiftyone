@@ -92,7 +92,7 @@ class HasClient(object):
     _HC_NAMESPACE = None
     _HC_ATTR_NAME = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         """Creates the SocketIO client"""
         self._hc_sio = socketio.Client()
         # the following is a monkey patch to set threads to daemon mode
@@ -112,16 +112,6 @@ class HasClient(object):
             self._hc_client.update(value)
         else:
             super(HasClient, self).__setattr__(name, value)
-
-
-class HasStateClient(HasClient):
-    """Mixin for `Dataset` to maintain shared state with the GUI."""
-
-    _HC_NAMESPACE = "state"
-    _HC_ATTR_NAME = "state"
-
-    def __init__(self, *args, **kwargs):
-        super(HasStateClient, self).__init__(*args, **kwargs)
 
 
 def _start_background_task(target, *args, **kwargs):
