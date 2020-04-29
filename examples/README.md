@@ -7,3 +7,6 @@ installed
 
 `download_data.py` - download test data (images and JSON labels)
 
+`mongodb/` - example that ingests and explores data **WITHOUT** using
+`fiftyone`
+

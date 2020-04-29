@@ -1,5 +1,5 @@
 """
-Ingest CIFAR100 data in noSQL database
+Ingest CIFAR100 data into the database
 
 """
 import logging
@@ -48,6 +48,7 @@ for partition in partitions:
     samples = [
         voxs.ImageSample(
             filepath=filepath,
+            # this gives a second tag to a random 30% of the data
             tags=[partition] + (["rand"] if random.random() > 0.7 else []),
             # labels={
             #     "fine_label": fine_labels[key],

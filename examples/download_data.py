@@ -1,7 +1,7 @@
-'''
+"""
 Download CIFAR100 data and store as images and labels JSON to ./data/
 
-'''
+"""
 import os
 
 from tensorflow.keras.datasets import cifar100

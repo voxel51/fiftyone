@@ -3,7 +3,7 @@
 This directory is a set of examples for interacting with a MongoDB database.
 
 This code is **NOT** dependent on the `fiftyone` python module. It stands as
-an example of using MongoDB for the use case the `fiftyone` project. 
+an example of using MongoDB for the use case of image dataset representation.
 
 ## Requirements
 
@@ -20,6 +20,6 @@ You will also need to have downloaded the example CIFAR100 dataset via:
 
 ## Scripts
 
-1) Test your connection to the server via `test_db_conn.py`
-2) Ingest (and reset) the database via `ingest_data.py` and `drop_database.py`
-3) Explore the data via `explore_data.py`
+1. Test your connection to the server via `test_db_conn.py`
+2. Ingest (and reset) the database via `ingest_data.py` and `drop_database.py`
+3. Explore the data via `explore_data.py`

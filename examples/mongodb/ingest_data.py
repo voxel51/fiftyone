@@ -33,16 +33,6 @@ dataset_name = "cifar100"
 ########
 
 
-def get_metadata(filepath):
-    return etai.ImageMetadata.build_for(filepath).serialize()
-
-
-def get_filehash(filepath):
-    with open(filepath, "rb") as f:
-        filehash = hash(f.read())
-    return filehash
-
-
 client = MongoClient()
 
 db = client.fiftyone
@@ -61,13 +51,13 @@ for partition in partitions:
             "filepath": os.path.abspath(filepath),
             "filename": os.path.basename(filepath),
             "partition": partition,
+            # this gives a second tag to a random 30% of the data
             "tags": [partition] + (["rand"] if random.random() > 0.7 else []),
             "labels": {
                 "fine_label": fine_labels[key],
                 "coarse_label": coarse_labels[key],
             },
-            "metadata": get_metadata(filepath),
-            # "hash": get_filehash(filepath),
+            "metadata": etai.ImageMetadata.build_for(filepath).serialize(),
         }
         for filepath, key in [
             (os.path.join("..", key), key) for key in fine_labels
