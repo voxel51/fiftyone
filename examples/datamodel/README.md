@@ -44,3 +44,6 @@ Data is downloaded as:
 - `explore_data.py`: snippets for exploring the database and example dataset
 
 - `query_data.py`: snippets for querying the example dataset
+
+- `session_example.py`: example using a `Session` which interacts 1-to-1 with
+  the GUI

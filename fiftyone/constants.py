@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import os
+import sys
 
 try:
     from importlib.metadata import metadata  # Python 3.8
@@ -68,6 +69,15 @@ STOP_DB = " ".join(
     ]
 )
 
+if sys.platform == "linux":
+    STOP_SERVICE = "fuser -k %d/tcp >/dev/null 2>&1"
+elif sys.platform == "darwin":
+    STOP_SERVICE = (
+        "lsof -i tcp:%d | grep -v PID | awk '{print $2}' | xargs kill"
+    )
+else:
+    raise OSError("Unsupported OS: %s" % sys.platform)
+
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
 SERVER_ADDR = "http://127.0.0.1:5151"
@@ -83,9 +93,9 @@ START_SERVER = [
     "--daemon",
     "--reload",
 ]
-STOP_SERVER = " ".join(["fuser", "-k", "5151/tcp", ">/dev/null 2>&1"])
+STOP_SERVER = STOP_SERVICE % 5151
 
 # App setup
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 START_APP = ["yarn", "background-dev"]
-STOP_APP = " ".join(["fuser", "-k", "1212/tcp", ">/dev/null 2>&1"])
+STOP_APP = STOP_SERVICE % 1212
