@@ -69,13 +69,17 @@ STOP_DB = " ".join(
 )
 
 # Server setup
+SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
+SERVER_ADDR = "http://127.0.0.1:5151"
 START_SERVER = [
     "gunicorn",
     "-w",
-    "2",
+    "1",
+    "--worker-class",
+    "eventlet",
     "-b",
     "127.0.0.1:5151",
-    "fiftyone.server.main:app",
+    "main:app",
     "--daemon",
     "--reload",
 ]

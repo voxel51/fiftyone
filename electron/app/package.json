@@ -18,6 +18,7 @@
     "fomantic-ui-less": "^2.8.4",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "semantic-ui-react": "^0.88.2"
+    "semantic-ui-react": "^0.88.2",
+    "socket.io-client": "^2.3.0"
   }
 }

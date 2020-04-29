@@ -33,11 +33,10 @@ class DatasetQuery(object):
             dataset_or_view: the fiftyone.core.dataset.(Dataset or DatasetView)
                 to be queried
         """
-        return next(
-            dataset_or_view._c.aggregate(
-                self._pipeline + [{"$count": "count"}]
-            )
-        )["count"]
+        pipeline = self._pipeline + [{"$count": "count"}]
+        result = next(dataset_or_view._c.aggregate(pipeline))["count"]
+        dataset_or_view.state = {"pipeline": pipeline, "count": result}
+        return result
 
     def iter_samples(self, dataset_or_view):
         """Query a dataset

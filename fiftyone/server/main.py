@@ -6,12 +6,15 @@ FiftyOne Flask server.
 |
 """
 from flask import Flask
+from flask_socketio import emit, Namespace, SocketIO
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = "fiftyone"
+socketio = SocketIO(app)
 
 
 @app.route("/")
-def root():
+def get():
     """
     Root API route
 
@@ -19,3 +22,28 @@ def root():
         String
     """
     return "I am FiftyOne"
+
+
+class State(Namespace):
+    """Controller for state"""
+
+    def on_connect(self):
+        """On connect"""
+        print("connected state")
+
+    def on_disconnect(self):
+        """On disconnect"""
+        print("disconnected state")
+
+    def on_update(self, state):
+        """On update"""
+        print("received update")
+        print(state)
+        emit("update", state, broadcast=True)
+
+
+socketio.on_namespace(State("/state"))
+
+
+if __name__ == "__main__":
+    socketio.run(app, debug=True)
