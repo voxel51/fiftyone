@@ -62,7 +62,7 @@ This is still up in the air simply because it complicates things.
 
 We could also add a view, which takes precedence over the active dataset if set
 
-```
+```python
 session.view = session.dataset.get_view("train") # GUI displays train subset
 session.clear_view()    # GUI displays CIFAR100 dataset
 session.clear_dataset() # displays dataset browser (clears view as well if set)
