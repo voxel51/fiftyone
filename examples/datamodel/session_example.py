@@ -13,15 +13,25 @@ import fiftyone.core.query as voxq
 
 logger = logging.getLogger(__name__)
 
+
+def print_state(session):
+    """Replace the sample dicts with strings to condense the output"""
+    state = session.state
+    state["samples"] = {
+        k: v["filename"] + ", ..." for k, v in state["samples"].items()
+    }
+    print(etas.pretty_str(session.state))
+
+
 ###############################################################################
 # Initialize the Session
 #
 # GUI displays dataset browser landing page
 ###############################################################################
 
-session = voxs.Session()
+session = voxs.Session(limit=3)
 print("Empty session:")
-print(etas.pretty_str(session.state))
+print_state(session)
 print()
 
 ###############################################################################
@@ -32,7 +42,7 @@ print()
 
 session.dataset = voxd.Dataset("cifar100")
 print("CIFAR100 dataset set:")
-print(etas.pretty_str(session.state))
+print_state(session)
 print()
 
 ###############################################################################
@@ -43,7 +53,7 @@ print()
 
 session.view = session.dataset.get_view("test")
 print("'train' view set:")
-print(etas.pretty_str(session.state))
+print_state(session)
 print()
 
 ###############################################################################
@@ -58,7 +68,7 @@ session.query = (
     .sort("metadata.size_bytes")
 )
 print("'metadata.size_bytes > 1000' query set:")
-print(etas.pretty_str(session.state))
+print_state(session)
 print()
 
 
@@ -70,7 +80,7 @@ print()
 
 session.clear_view()
 print("View cleared:")
-print(etas.pretty_str(session.state))
+print_state(session)
 print()
 
 ###############################################################################
@@ -80,8 +90,9 @@ print()
 ###############################################################################
 
 session.clear_query()
-print("Query cleared:")
-print(etas.pretty_str(session.state))
+session.offset = session.limit
+print("Query cleared and offset increased:")
+print_state(session)
 print()
 
 ###############################################################################
@@ -92,5 +103,5 @@ print()
 
 session.clear_dataset()
 print("Dataset cleared:")
-print(etas.pretty_str(session.state))
+print_state(session)
 print()
