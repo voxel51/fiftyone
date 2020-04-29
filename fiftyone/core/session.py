@@ -27,9 +27,7 @@ def update_state(func):
     return wrapper
 
 
-# @todo(Tyler) TEMP
-# class Session(voxc.HasClient):
-class Session:
+class Session(voxc.HasClient):
     """Sessions have a 1-to-1 shared state with the GUI."""
 
     _HC_NAMESPACE = "state"
