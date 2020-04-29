@@ -19,7 +19,6 @@ from pymongo import MongoClient
 
 import eta.core.serial as etas
 
-import fiftyone.core.client as voxc
 import fiftyone.core.document as voxd
 import fiftyone.core.sample as voxs
 
@@ -54,7 +53,6 @@ class _SampleCollection(object):
     def __init__(self, name):
         self.name = name
         self._c = self._get_collection()
-        super(_SampleCollection, self).__init__()
 
     def __len__(self):
         return self._c.count_documents({})
@@ -122,7 +120,7 @@ class _SampleCollection(object):
         return etas.Serializable.from_dict(sample_dict)
 
 
-class Dataset(_SampleCollection, voxc.HasStateClient):
+class Dataset(_SampleCollection):
     COLLECTION_TYPE = "DATASET"
 
     def __init__(self, name):

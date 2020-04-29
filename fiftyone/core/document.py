@@ -1,6 +1,15 @@
 """
 Core Module for `fiftyone` Database Serializable Documents
 
+This is an extension of `eta.core.serial.Serializable` class that provides
+additional functionality centered around `Document` objects, which are
+serializables that can be inserted and read from the MongoDB database.
+
+Important functionality includes:
+- access to the ID when is automatically generated when the Document is
+    inserted in the database
+- default reflective serialization when storing to the database
+
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import

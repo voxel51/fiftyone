@@ -1,21 +1,49 @@
-# noSQL Backend Data Model
+# Core Examples of `fiftyone` Data Model
 
-# Data
+## Data
 
-You can download the data via the script `download_data.py`
+First you must download the example CIFAR100 dataset via:
 
-## noSQL (MongoDB)
+```bash
+python ../download_data.py
+```
 
-I entertained the idea of using
-[TinyDB](https://tinydb.readthedocs.io/en/latest/)
-with [tinymongo](https://github.com/schapman1974/tinymongo) which is a
-lightweight pip installable non-relational database, but it took over an hour to
-ingest 50k images from CIFAR100 (that means make a document with the filepath
-and add it to the database...)
+Data is downloaded as:
 
-I'm instead using MongoDB which looks promising, however, it requires
-installing and configuring a server.
+```
+{{fiftyone}}/examples/data/
+└── cifar100/
+    ├── test/                       # 10k test images
+    │   ├── 0.jpg
+    │   ├── 1.jpg
+    │   ├── ...
+    │   └── 9999.jpg
+    ├── test_coarse.json            # coarse labels for test images
+    ├── test_fine.json              # fine-grain labels for test images
+    ├── train/                      # 50k train images
+    │   ├── 0.jpg
+    │   ├── 1.jpg
+    │   ├── ...
+    │   └── 49999.jpg
+    ├── train_coarse.json           # coarse labels for test images
+    └── train_fine.json             # fine-grain labels for train images
+```
 
-- `nosql/`: raw MongoDB implementation of ingesting data
-- `interface/`: ingesting dataset using the `fiftyone.core.dataset.Dataset`
-objects
+## Scripts
+
+- `test_db_conn.py`: test that you have the `fiftyone` MongoDB server
+  properly installed
+
+- `drop_database.py`: clear the database at anytime
+
+- `document_test.py`: test the functionality of the `fiftyone.core.document`
+  module which extends `eta.core.serial` for database read/write
+
+- `ingest_data.py`: read CIFAR100 data into the database
+
+- `explore_data.py`: snippets for exploring the database and example dataset
+
+- `query_data.py`: snippets for querying the example dataset
+
+- `session_example.py`: example using a `Session` which interacts 1-to-1 with
+  the GUI
