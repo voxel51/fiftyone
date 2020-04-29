@@ -1,5 +1,5 @@
 '''
-Download CIFAR100 data and store as images and labels JSON
+Download CIFAR100 data and store as images and labels JSON to ./data/
 
 '''
 import os
