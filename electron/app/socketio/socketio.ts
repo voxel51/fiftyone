@@ -3,7 +3,8 @@ import { update } from "../actions/update";
 
 export default function initSocket() {
   const socket = io("http://127.0.0.1:5151/state");
-
+  console.log(socket.connected);
+  alert("g");
   socket.on("connect", () => console.log("connected"));
 
   socket.on("disconnect", () => console.log("disconnected"));

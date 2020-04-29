@@ -19,7 +19,7 @@ export default class App extends React.Component {
   }
 
   render() {
-    const { children } = props;
+    const { children } = this.props;
     return (
       <>
         <Sidebar />
