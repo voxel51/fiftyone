@@ -92,34 +92,36 @@ class HasClient(object):
     _HC_NAMESPACE = None
     _HC_ATTR_NAME = None
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """Creates the SocketIO client"""
-        self.__sio = socketio.Client()
+        self._hc_sio = socketio.Client()
         # the following is a monkey patch to set threads to daemon mode
-        self.__sio.eio.start_background_task = _start_background_task
-        self.__client = BaseClient("/" + self._HC_NAMESPACE)
-        self.__sio.register_namespace(self.__client)
-        self.__sio.connect(voxc.SERVER_ADDR)
+        self._hc_sio.eio.start_background_task = _start_background_task
+        self._hc_client = BaseClient("/" + self._HC_NAMESPACE)
+        self._hc_sio.register_namespace(self._hc_client)
+        self._hc_sio.connect(voxc.SERVER_ADDR)
 
     def __getattr__(self, name):
         """Get the data via the attribute defined by `_HC_ATTR_NAME`."""
         if name == self._HC_ATTR_NAME:
-            return self.__client.data
-        raise AttributeError(name)
+            return self._hc_client.data
 
     def __setattr__(self, name, value):
         """Set the data to the attribute defined by `_HC_ATTR_NAME`."""
         if name == self._HC_ATTR_NAME:
-            self.__client.update(value)
+            self._hc_client.update(value)
         else:
             super(HasClient, self).__setattr__(name, value)
 
 
-class HasViewClient(HasClient):
-    """Mixin for `Dataset` to maintain state of the current view."""
+class HasStateClient(HasClient):
+    """Mixin for `Dataset` to maintain shared state with the GUI."""
 
-    _HC_NAMESPACE = "view"
-    _HC_ATTR_NAME = "view"
+    _HC_NAMESPACE = "state"
+    _HC_ATTR_NAME = "state"
+
+    def __init__(self, *args, **kwargs):
+        super(HasStateClient, self).__init__(*args, **kwargs)
 
 
 def _start_background_task(target, *args, **kwargs):

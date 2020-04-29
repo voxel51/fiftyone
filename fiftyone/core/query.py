@@ -35,7 +35,7 @@ class DatasetQuery(object):
         """
         pipeline = self._pipeline + [{"$count": "count"}]
         result = next(dataset_or_view._c.aggregate(pipeline))["count"]
-        dataset_or_view.view = {"pipeline": pipeline, "count": result}
+        dataset_or_view.state = {"pipeline": pipeline, "count": result}
         return result
 
     def iter_samples(self, dataset_or_view):

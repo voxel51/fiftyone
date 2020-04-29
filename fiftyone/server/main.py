@@ -24,25 +24,25 @@ def get():
     return "I am FiftyOne"
 
 
-class View(Namespace):
-    """Controller for views"""
+class State(Namespace):
+    """Controller for state"""
 
     def on_connect(self):
         """On connect"""
-        print("connected view")
+        print("connected state")
 
     def on_disconnect(self):
         """On disconnect"""
-        print("disconnected view")
+        print("disconnected state")
 
-    def on_update(self, view):
+    def on_update(self, state):
         """On update"""
         print("received update")
-        print(view)
-        emit("update", view, broadcast=True)
+        print(state)
+        emit("update", state, broadcast=True)
 
 
-socketio.on_namespace(View("/view"))
+socketio.on_namespace(State("/state"))
 
 
 if __name__ == "__main__":
