@@ -55,16 +55,17 @@ cd ~/.fiftyone
 mkdir -p var/log/mongodb
 mkdir -p var/lib/mongo
 if [ "${OS}" == "Darwin" ]; then
-    sudo apt-get install libcurl4 openssl
     curl https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz --output mongodb.tgz
     tar -zxvf mongodb.tgz
     mv mongodb-macos-x86_64-4.2.6/bin/* ./bin/
+    rm mongodb.tgz
     rm -rf mongodb-macos-x86_64-4.2.6
 elif [ "${OS}" == "Linux" ]; then
     sudo apt-get install libcurl4 openssl
     curl https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.2.6.tgz --output mongodb.tgz
     tar -zxvf mongodb.tgz
     mv mongodb-linux-x86_64-ubuntu1804-4.2.6/bin/* ./bin/
+    rm mongodb.tgz
     rm -rf mongodb-linux-x86_64-ubuntu1804-4.2.6
 fi
 cd -
@@ -77,6 +78,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 # This loads nvm bash_completion
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+nvm install v12.16.2
 nvm use v12.16.2
 cd electron
 npm install -g yarn
