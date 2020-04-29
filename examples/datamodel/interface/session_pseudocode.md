@@ -23,6 +23,7 @@ session.clear_dataset() # displays dataset browser
 ## "Thing being serialized" on every modification to `session` object
 
 ```python
+# we paginate the query
 samples = {
     query_idx: sample.serialize
     for query_idx, sample in (
@@ -42,7 +43,7 @@ session.serilized_info = {
     "page": {
         "offset": offset,
         "limit": limit,
-        "count": query.count(dataset)
+        "count": query.count(dataset) # this gives the un-paginated count
     }
     "samples": {
         offset: {"filepath": "...", ...},
