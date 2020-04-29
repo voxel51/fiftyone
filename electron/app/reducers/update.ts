@@ -1,10 +1,12 @@
 import { Action } from "redux";
 import { UPDATE } from "../actions/update";
 
-export default function counter(state = 0, action: Action<string>) {
+export default function update(state = {}, action) {
+  console.log(action);
   switch (action.type) {
     case UPDATE:
-      return state;
+      alert("fsgs");
+      return { ...state, state: action.data };
     default:
       return state;
   }

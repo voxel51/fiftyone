@@ -1,17 +1,29 @@
 import React, { ReactNode } from "react";
+import { connect } from "react-redux";
 import Sidebar from "../components/Sidebar";
-import socketio from "../socketio/socketio";
+import { updateState } from "../actions/update";
+import io from "socket.io-client";
 
 type Props = {
   children: ReactNode;
 };
 
+const mapStateToProps = (state = {}) => {
+  return { ...state };
+};
 let socket;
 
-export default class App extends React.Component {
+class App extends React.Component {
   constructor(props: Props) {
     super(props);
-    socket = socketio();
+    const { dispatch } = this.props;
+    socket = io.connect("http://localhost:5151/state");
+    socket.on("connect", () => console.log("connected"));
+
+    socket.on("disconnect", () => console.log("disconnected"));
+    socket.on("update", (data) => {
+      dispatch(updateState(data));
+    });
   }
 
   componentWillUnmount() {
@@ -19,6 +31,7 @@ export default class App extends React.Component {
   }
 
   render() {
+    console.log(this.props);
     const { children } = this.props;
     return (
       <>
@@ -28,3 +41,5 @@ export default class App extends React.Component {
     );
   }
 }
+
+export default connect(mapStateToProps)(App);
