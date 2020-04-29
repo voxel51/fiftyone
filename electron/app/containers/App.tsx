@@ -9,6 +9,7 @@ type Props = {
 };
 
 const mapStateToProps = (state = {}) => {
+  console.log(state, "asgg");
   return { ...state };
 };
 let socket;
@@ -32,10 +33,10 @@ class App extends React.Component {
 
   render() {
     console.log(this.props);
-    const { children } = this.props;
+    const { children, update } = this.props;
     return (
       <>
-        <Sidebar />
+        <Sidebar update={update} />
         <div style={{ marginLeft: 260 }}>{children}</div>
       </>
     );
