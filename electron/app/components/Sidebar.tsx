@@ -5,7 +5,7 @@ import { Grid, Image, Menu, Sidebar } from "semantic-ui-react";
 export default () => (
   <Sidebar
     as={Menu}
-    animation={"push"}
+    animation={"overlay"}
     inverted
     vertical
     direction={"left"}
