@@ -1,5 +1,5 @@
 """
-Ingest CIFAR100 data in noSQL database
+Ingest CIFAR100 data into the database
 
 """
 import logging
@@ -27,14 +27,16 @@ partitions = [
     "test"
 ]
 
-fine_labels_template = "../data/%s_fine.json"
-coarse_labels_template = "../data/%s_coarse.json"
-
 
 ########
 # CODE #
 ########
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+data_dir = os.path.abspath(os.path.join(dir_path, "..", "data", dataset_name))
+
+fine_labels_template = os.path.join(data_dir, "%s_fine.json")
+coarse_labels_template = os.path.join(data_dir, "%s_coarse.json")
 
 dataset = voxd.Dataset(dataset_name)
 
@@ -47,16 +49,15 @@ for partition in partitions:
 
     samples = [
         voxs.ImageSample(
-            filepath=filepath,
+            filepath=os.path.join(data_dir, rel_img_path),
+            # this gives a second tag to a random 30% of the data
             tags=[partition] + (["rand"] if random.random() > 0.7 else []),
             # labels={
-            #     "fine_label": fine_labels[key],
-            #     "coarse_label": coarse_labels[key],
+            #     "fine_label": fine_labels[rel_img_path],
+            #     "coarse_label": coarse_labels[rel_img_path],
             # },
         )
-        for filepath, key in [
-            (os.path.join("..", key), key) for key in fine_labels
-        ]
+        for rel_img_path in fine_labels
     ]
     dataset.add_samples(samples)
 print("'%s' ingest time: %.2fs" % (dataset_name, time.time() - start))

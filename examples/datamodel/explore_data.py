@@ -9,6 +9,7 @@ import fiftyone.core.dataset as voxd
 
 logger = logging.getLogger(__name__)
 
+
 ###############################################################################
 # Action 0: List datasets
 ###############################################################################
@@ -27,6 +28,12 @@ print()
 
 ###############################################################################
 # Action 2: Check for tags/views on the dataset
+#
+# A Dataset can have multiple `DatasetView`s on it, one for each "tag" which is
+# simply the `DatasetView`'s name.
+#
+# The CIFAR100 dataset was ingested with two disjoint tags: 'train' and 'test'
+# and a third tag 'rand' that was randomly added to 30% of the samples.
 ###############################################################################
 
 print("Tags: %s" % dataset.get_tags())
@@ -55,6 +62,11 @@ print("Ingested at: %s" % sample.ingest_time)
 
 ###############################################################################
 # Action 5: Access sample by ID
+#
+# When inserted into a dataset, a sample is automatically given a unique ID
+# (universally unique but different from a UUID).
+#
+# The dataset can be keyed by this ID to return a sample.
 ###############################################################################
 
 # ID not in dataset
