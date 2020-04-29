@@ -20,28 +20,19 @@ logger = logging.getLogger(__name__)
 # PARAMETERS #
 ##############
 
-partitions = ["train", "test"]
-
-fine_labels_template = "../data/%s_fine.json"
-coarse_labels_template = "../data/%s_coarse.json"
-
 dataset_name = "cifar100"
 
+partitions = ["train", "test"]
 
 ########
 # CODE #
 ########
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+data_dir = os.path.abspath(os.path.join(dir_path, "..", "data", dataset_name))
 
-def get_metadata(filepath):
-    return etai.ImageMetadata.build_for(filepath).serialize()
-
-
-def get_filehash(filepath):
-    with open(filepath, "rb") as f:
-        filehash = hash(f.read())
-    return filehash
-
+fine_labels_template = os.path.join(data_dir, "%s_fine.json")
+coarse_labels_template = os.path.join(data_dir, "%s_coarse.json")
 
 client = MongoClient()
 
@@ -61,13 +52,13 @@ for partition in partitions:
             "filepath": os.path.abspath(filepath),
             "filename": os.path.basename(filepath),
             "partition": partition,
+            # this gives a second tag to a random 30% of the data
             "tags": [partition] + (["rand"] if random.random() > 0.7 else []),
             "labels": {
                 "fine_label": fine_labels[key],
                 "coarse_label": coarse_labels[key],
             },
-            "metadata": get_metadata(filepath),
-            # "hash": get_filehash(filepath),
+            "metadata": etai.ImageMetadata.build_for(filepath).serialize(),
         }
         for filepath, key in [
             (os.path.join("..", key), key) for key in fine_labels
