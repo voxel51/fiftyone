@@ -34,7 +34,7 @@ samples = {
         )
 }
 
-session.serilized_info = {
+session.serilized_stuff = {
     "dataset": {
         "name": dataset.name,
         ...
