@@ -2,6 +2,16 @@
 Download CIFAR100 data and store as images and labels JSON to:
     {{fiftyone}}/examples/data/cifar100/
 
+Data is downloaded as:
+data/
+└── cifar100/
+    ├── test/                       # 10k INDEX.jpg test images
+    ├── test_coarse.json            # coarse labels for test images
+    ├── test_fine.json              # fine-grain labels for test images
+    ├── train/                      # 50k INDEX.jpg train images
+    ├── train_coarse.json           # coarse labels for test images
+    └── train_fine.json             # fine-grain labels for train images
+
 """
 import os
 

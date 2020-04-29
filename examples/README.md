@@ -2,7 +2,7 @@
 
 `pseudocode.py` - first draft pseudocode for `fiftyone`
 
-`download_data.py` - download test data (images and JSON labels)
+`download_data.py` - download CIFAR100 dataset (images and JSON labels)
 
 `mongodb/` - example that ingests and explores data **WITHOUT** using
 `fiftyone`

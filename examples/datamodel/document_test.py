@@ -10,17 +10,30 @@ voxd.drop_database()
 dataset = voxd.Dataset("serializable_test")
 
 
+##############
+# PARAMETERS #
+##############
+
+
 # sample_type = voxs.Sample
 sample_type = voxs.ImageSample
+
+
+###############################################################################
+# Sample NOT in database
+###############################################################################
 
 s = sample_type(
     filepath="/Users/tylerganter/data/fiftyone/as_images/cifar100/test/0.jpg"
 )
 
-
 print("Not in database:")
 print(s)
 print()
+
+###############################################################################
+# Sample loaded from disk (never in database)
+###############################################################################
 
 s.write_json("sample.json", pretty_print=True)
 s = sample_type.from_json("sample.json")
@@ -28,6 +41,10 @@ s = sample_type.from_json("sample.json")
 print("Loaded from disk:")
 print(s)
 print()
+
+###############################################################################
+# Sample added to database (but NOT read from database)
+###############################################################################
 
 dataset.add_sample(s)
 # dataset.add_samples([s])
@@ -38,13 +55,21 @@ print(type(s.id))
 print(type(s.ingest_time))
 print()
 
-s = list([s for s in dataset.iter_samples()])[0]
+###############################################################################
+# Sample read from database
+###############################################################################
+
+s = next(dataset.iter_samples())
 
 print("Loaded from database:")
 print(s)
 print(type(s.id))
 print(type(s.ingest_time))
 print()
+
+###############################################################################
+# Sample loaded from disk (after reading from database)
+###############################################################################
 
 s.write_json("sample.json")
 s = sample_type.from_json("sample.json")
@@ -53,5 +78,7 @@ print("Loaded from disk:")
 print(s)
 print(type(s.id))
 print(type(s.ingest_time))
+
+# CLEANUP #####################################################################
 
 os.remove("sample.json")
