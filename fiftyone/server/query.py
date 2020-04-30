@@ -11,7 +11,9 @@ import fiftyone.core.query as foq
 class Query(foq.DatasetQuery):
     """Server side class definition of a DatasetQuery"""
 
-    def __init__(self, pipeline):
+    def __init__(self, pipeline=None):
         """Initialize a query"""
         super(Query, self).__init__()
+        if pipeline is None:
+            pipeline = []
         self._pipeline = pipeline
