@@ -1,8 +1,16 @@
 import React from "react";
+import { connect } from "react-redux";
+
 import Overview from "../components/Overview";
 
-export default function OverviewPage(props) {
-  console.log(props);
-  console.log("afsgasg");
+const mapStateToProps = (state) => {
+  return {
+    state: state.update.state,
+  };
+};
+
+function OverviewPage(props) {
   return <Overview />;
 }
+
+export default connect(mapStateToProps)(OverviewPage);
