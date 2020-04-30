@@ -29,6 +29,13 @@ def get_sample_media():
 class State(Namespace):
     """Controller for state"""
 
+    state = {
+        "dataset_name": None,
+        "query": None,
+        "samples": None,
+        "view_tag": None,
+    }
+
     def on_connect(self):
         """On connect"""
         pass
@@ -39,7 +46,22 @@ class State(Namespace):
 
     def on_update(self, state):
         """On update"""
-        emit("update", state, broadcast=True)
+        self.state = state
+        emit("update", state, broadcast=True, include_self=False)
+
+    def on_get_current_state(self, _):
+        """Get the current state"""
+        return self.state
+
+    def on_previous(self, _):
+        """Get the previous state using the query iterator"""
+        # @todo
+        pass
+
+    def on_next(self, _):
+        """Get the next state using the query iterator"""
+        # @todo
+        pass
 
 
 socketio.on_namespace(State("/state"))
