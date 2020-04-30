@@ -9,108 +9,25 @@ const GalleryWrapper = (props) => (
   </div>
 );
 
-export default function Overview() {
+export default function Overview(props) {
+  console.log(props);
+  const state = props.state;
   const [tab, setTab] = useState("overview");
-  const [IMAGES] = useState(
-    [
-      {
-        src: "https://c7.staticflickr.com/9/8106/28941228886_86d1450016_b.jpg",
-        thumbnail:
-          "https://c7.staticflickr.com/9/8106/28941228886_86d1450016_n.jpg",
-        thumbnailWidth: 271,
-        thumbnailHeight: 320,
-        tags: [{ value: "Nature" }],
-      },
-      {
-        src: "https://c3.staticflickr.com/9/8583/28354353794_9f2d08d8c0_b.jpg",
-        thumbnail:
-          "https://c3.staticflickr.com/9/8583/28354353794_9f2d08d8c0_n.jpg",
-        thumbnailWidth: 320,
-        thumbnailHeight: 190,
-        tags: [{ value: "Building" }],
-      },
-      {
-        src: "https://c7.staticflickr.com/9/8569/28941134686_d57273d933_b.jpg",
-        thumbnail:
-          "https://c7.staticflickr.com/9/8569/28941134686_d57273d933_n.jpg",
-        thumbnailWidth: 320,
-        thumbnailHeight: 148,
-        tags: [{ value: "Person" }, { value: "Building" }],
-      },
-      {
-        src: "https://c6.staticflickr.com/9/8342/28897193381_800db6419e_b.jpg",
-        thumbnail:
-          "https://c6.staticflickr.com/9/8342/28897193381_800db6419e_n.jpg",
-        thumbnailWidth: 320,
-        thumbnailHeight: 213,
-        tags: [{ value: "Building" }],
-      },
-      {
-        src: "https://c2.staticflickr.com/9/8239/28897202241_1497bec71a_b.jpg",
-        thumbnail:
-          "https://c2.staticflickr.com/9/8239/28897202241_1497bec71a_n.jpg",
-        thumbnailWidth: 248,
-        thumbnailHeight: 320,
-        tags: [{ value: "Building" }],
-      },
-      {
-        src: "https://c1.staticflickr.com/9/8785/28687743710_870813dfde_h.jpg",
-        thumbnail:
-          "https://c1.staticflickr.com/9/8785/28687743710_3580fcb5f0_n.jpg",
-        thumbnailWidth: 320,
-        thumbnailHeight: 113,
-        tags: [{ value: "Person" }, { value: "Building" }],
-      },
-      {
-        src: "https://c6.staticflickr.com/9/8520/28357073053_cafcb3da6f_b.jpg",
-        thumbnail:
-          "https://c6.staticflickr.com/9/8520/28357073053_cafcb3da6f_n.jpg",
-        thumbnailWidth: 313,
-        thumbnailHeight: 320,
-        tags: [{ value: "Building" }],
-      },
-      {
-        src: "https://c8.staticflickr.com/9/8104/28973555735_ae7c208970_b.jpg",
-        thumbnail:
-          "https://c8.staticflickr.com/9/8104/28973555735_ae7c208970_n.jpg",
-        thumbnailWidth: 320,
-        thumbnailHeight: 213,
-        tags: [{ value: "Nature" }],
-      },
-      {
-        src: "https://c4.staticflickr.com/9/8578/28357117603_97a8233cf5_b.jpg",
-        thumbnail:
-          "https://c4.staticflickr.com/9/8578/28357117603_97a8233cf5_n.jpg",
-        thumbnailWidth: 320,
-        thumbnailHeight: 213,
-        tags: [{ value: "Person" }, { value: "Nature" }],
-      },
-      {
-        src: "https://c2.staticflickr.com/9/8817/28973449265_07e3aa5d2e_b.jpg",
-        thumbnail:
-          "https://c2.staticflickr.com/9/8817/28973449265_07e3aa5d2e_n.jpg",
-        thumbnailWidth: 320,
-        thumbnailHeight: 174,
-        tags: [{ value: "Nature" }],
-      },
-      {
-        src: "https://c1.staticflickr.com/9/8056/28354485944_148d6a5fc1_b.jpg",
-        thumbnail:
-          "https://c1.staticflickr.com/9/8056/28354485944_148d6a5fc1_n.jpg",
-        thumbnailWidth: 257,
-        thumbnailHeight: 320,
-        tags: [{ value: "Nature" }],
-      },
-      {
-        src: "https://c1.staticflickr.com/9/8707/28868704912_cba5c6600e_b.jpg",
-        thumbnail:
-          "https://c1.staticflickr.com/9/8707/28868704912_cba5c6600e_n.jpg",
-        thumbnailWidth: 320,
-        thumbnailHeight: 213,
-        tags: [{ value: "Person" }, { value: "Building" }],
-      },
-    ].sort(() => Math.random() - 0.5)
-  );
+  const IMAGES = state
+    ? Object.keys(state.samples).map((k) => {
+        const src = state.samples[k].filepath.replace(
+          "/home/ben/code/fiftyone/examples/data",
+          "http://127.0.0.1:5151"
+        );
+        return {
+          src: src,
+          thumbnail: src,
+          thumbnailWidth: state.samples[k].metadata.frame_size[0],
+          thumbnailHeight: state.samples[k].metadata.frame_size[1],
+          tags: [{ value: "cifar" }],
+        };
+      })
+    : [];
 
   const tags = Array.from(
     new Set(
@@ -154,12 +71,15 @@ export default function Overview() {
       </>
     );
   } else {
+    console.log(IMAGES);
     content = <GalleryWrapper images={IMAGES} />;
   }
 
   return (
     <Segment>
-      <Header as="h3">Overview: [name]</Header>
+      <Header as="h3">
+        Overview: {state && state.dataset_name ? state.dataset_name : ""}
+      </Header>
 
       <Menu pointing secondary>
         {["overview", "pools", "side-by-side", "overlayed"].map((item) => (

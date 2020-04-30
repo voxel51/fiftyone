@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import { Grid, Image, Menu, Sidebar } from "semantic-ui-react";
 
 export default (props) => {
-  console.log(props);
   return (
     <Sidebar
       as={Menu}
@@ -34,7 +33,9 @@ export default (props) => {
         : null}
       <Menu.Item as="h5">View Info:</Menu.Item>
       <Menu.Item as="h5">
-        {props.update.state.view_tag ? props.update.state.view_tag : "No view"}
+        {props.update.state && props.update.state.view_tag
+          ? props.update.state.view_tag
+          : "No view"}
       </Menu.Item>
       <Menu.Item as="h5">Query Info:</Menu.Item>
       {props.update.state && props.update.state.query ? (

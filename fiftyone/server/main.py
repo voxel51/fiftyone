@@ -5,7 +5,9 @@ FiftyOne Flask server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from flask import Flask
+import os
+
+from flask import Flask, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
 
 app = Flask(__name__)
@@ -13,15 +15,22 @@ app.config["SECRET_KEY"] = "fiftyone"
 socketio = SocketIO(app)
 
 
-@app.route("/")
-def get():
+@app.route("/<path:subpath>/<fl>")
+def get_file(subpath, fl):
     """
-    Root API route
+    Get a file. Assumes the file is image at the moment
 
     Returns:
         String
     """
-    return "I am FiftyOne"
+    base = "/home/ben/code/fiftyone/examples/data"
+    path = os.path.join(base, subpath, fl)
+    return send_file(
+        path,
+        mimetype="image/jpeg",
+        as_attachment=True,
+        attachment_filename=os.path.basename(fl),
+    )
 
 
 class State(Namespace):

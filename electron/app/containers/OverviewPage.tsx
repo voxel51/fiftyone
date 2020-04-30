@@ -10,7 +10,7 @@ const mapStateToProps = (state) => {
 };
 
 function OverviewPage(props) {
-  return <Overview />;
+  return <Overview state={props.state} />;
 }
 
 export default connect(mapStateToProps)(OverviewPage);
