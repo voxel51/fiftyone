@@ -191,7 +191,9 @@ def load_labeled_image_dataset(
         image_labels = fou.load_serializable(image_labels, etai.ImageLabels)
         labels.append(image_labels)
 
-    return Dataset.from_ground_truth_dataset(image_paths, labels)
+    return Dataset.from_ground_truth_dataset(
+        name, backing_dir, image_paths, labels
+    )
 
 
 def load_images_from_dir(
@@ -260,7 +262,7 @@ def load_images(image_paths, name=None, backing_dir=None):
 
     image_paths = [os.path.abspath(p) for p in image_paths]
 
-    return Dataset.from_unlabeled_data(image_paths)
+    return Dataset.from_unlabeled_data(name, backing_dir, image_paths)
 
 
 def get_default_dataset_name():
@@ -343,15 +345,19 @@ class Dataset(object):
     ground truth annotations, and model(s) predictions.
     """
 
-    def __init__(self, samples=None):
+    def __init__(self, name, backing_dir, samples=None):
         """Creates a Dataset instance.
 
         Args:
+            name: the name of the dataset
+            backing_dir: the backing directory for the dataset
             samples: a list of ``DatasetSample``s
         """
         if samples is None:
             samples = []
 
+        self._name = name
+        self._backing_dir = backing_dir
         self._samples = {sample.sample_id: sample for sample in samples}
         self._models = []
 
@@ -378,43 +384,63 @@ class Dataset(object):
         """
         return iter(self._samples)
 
+    @property
+    def name(self):
+        """The name of the dataset."""
+        return self._name
+
+    @property
+    def backing_dir(self):
+        """The backing directory of the dataset."""
+        return self._backing_dir
+
     @classmethod
-    def empty(cls):
+    def empty(cls, name, backing_dir):
         """Creates an empty Dataset.
 
+        Args:
+            name: the name of the dataset
+            backing_dir: the backing directory for the dataset
+
         Returns:
-            a Dataset
+            a ``fiftyone.core.data.Dataset``
         """
-        return cls()
+        return cls(name, backing_dir)
 
     @classmethod
-    def from_unlabeled_data(cls, data_paths):
+    def from_unlabeled_data(cls, name, backing_dir, data_paths):
         """Creates a Dataset from a list of unlabeled data paths.
 
         Args:
+            name: the name of the dataset
+            backing_dir: the backing directory for the dataset
             data_paths: a list of data paths
 
         Returns:
-            a Dataset
+            a ``fiftyone.core.data.Dataset``
         """
         samples = []
         for data_path in data_paths:
             sample_id = str(uuid4())  # placeholder UUID
             samples.append(DatasetSample(sample_id, data_path))
 
-        return cls(samples=samples)
+        return cls(name, backing_dir, samples=samples)
 
     @classmethod
-    def from_ground_truth_dataset(cls, data_paths, gt_labels):
+    def from_ground_truth_dataset(
+        cls, name, backing_dir, data_paths, gt_labels
+    ):
         """Creates a Dataset from a set of samples with ground truth
         annotations.
 
         Args:
+            name: the name of the dataset
+            backing_dir: the backing directory for the dataset
             data_paths: an iterable of data paths
             gt_labels: an iterable of ground truth labels
 
         Returns:
-            a Dataset
+            a ``fiftyone.core.data.Dataset``
         """
         samples = []
         for data_path, labels in zip(data_paths, gt_labels):
@@ -423,22 +449,28 @@ class Dataset(object):
                 DatasetSample(sample_id, data_path, gt_labels=labels)
             )
 
-        return cls(samples=samples)
+        return cls(name, backing_dir, samples=samples)
 
     @classmethod
-    def from_ground_truth_labeled_dataset(cls, labeled_dataset):
+    def from_ground_truth_labeled_dataset(
+        cls, name, backing_dir, labeled_dataset
+    ):
         """Creates a Dataset from an ``eta.core.datasets.LabeledDataset`` of
         ground truth annotations.
 
         Args:
+            name: the name of the dataset
+            backing_dir: the backing directory for the dataset
             labeled_dataset: an ``eta.core.datasets.LabeledDataset``
 
         Returns:
-            a Dataset
+            a ``fiftyone.core.data.Dataset``
         """
         data_paths = labeled_dataset.iter_data_paths()
         gt_labels = labeled_dataset.iter_labels()
-        return cls.from_ground_truth_dataset(data_paths, gt_labels)
+        return cls.from_ground_truth_dataset(
+            name, backing_dir, data_paths, gt_labels
+        )
 
     def get_image_context(self):
         """Returns a ``fiftyone.core.contexts.ImageContext`` for the images in
