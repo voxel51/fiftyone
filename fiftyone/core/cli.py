@@ -13,23 +13,31 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import itervalues
+from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
 import argparse
-import argcomplete
 
+import argcomplete
+from tabulate import tabulate
+
+import eta.core.serial as etas
+
+import fiftyone as fo
 import fiftyone.constants as foc
+
+
+TABLE_FORMAT = "simple"
 
 
 class Command(object):
     """Interface for defining commands.
 
     Command instances must implement the `setup()` method, and they should
-    implement the `run()` method if they perform any functionality beyond
+    implement the `execute()` method if they perform any functionality beyond
     defining subparsers.
     """
 
@@ -43,7 +51,7 @@ class Command(object):
         raise NotImplementedError("subclass must implement setup()")
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         """Executes the command on the given args.
 
         args:
@@ -51,7 +59,7 @@ class Command(object):
             args: an `argparse.Namespace` instance containing the arguments
                 for the command
         """
-        raise NotImplementedError("subclass must implement run()")
+        raise NotImplementedError("subclass must implement execute()")
 
 
 class FiftyOneCommand(Command):
@@ -60,31 +68,93 @@ class FiftyOneCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "test", TestCommand)
+        _register_command(subparsers, "config", ConfigCommand)
+        _register_command(subparsers, "constants", ConstantsCommand)
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         parser.print_help()
 
 
-class TestCommand(Command):
-    """Test command.
+class ConfigCommand(Command):
+    """Tools for working with your FiftyOne config.
 
     Examples:
-        # Test command
-        fiftyone test --print
+        # Print your entire config
+        fiftyone config --print
+
+        # Print a specific config field
+        fiftyone config --print <field>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-p", "--print", action="store_true", help="prints a test message"
+            "field", nargs="?", metavar="FIELD", help="a config field"
+        )
+        parser.add_argument(
+            "-p",
+            "--print",
+            action="store_true",
+            help="print your FiftyOne config",
         )
 
     @staticmethod
-    def run(parser, args):
+    def execute(parser, args):
         if args.print:
-            print("I am FiftyOne")
+            if args.field:
+                field = getattr(fo.config, args.field)
+                print(etas.json_to_str(field))
+            else:
+                print(fo.config)
+
+
+class ConstantsCommand(Command):
+    """Print constants from `fiftyone.constants`.
+
+    Examples:
+        # Print the specified constant
+        fiftyone constants <CONSTANT>
+
+        # Print all constants
+        fiftyone constants --all
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "constant",
+            nargs="?",
+            metavar="CONSTANT",
+            help="the constant to print",
+        )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="print all available constants",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.all:
+            d = {
+                k: v
+                for k, v in iteritems(vars(foc))
+                if not k.startswith("_") and k == k.upper()
+            }
+            _print_constants_table(d)
+
+        if args.constant:
+            print(getattr(foc, args.constant))
+
+
+def _print_constants_table(d):
+    contents = sorted(iteritems(d), key=lambda kv: kv[0])
+    table_str = tabulate(
+        contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT
+    )
+    print(table_str)
 
 
 def _has_subparsers(parser):
@@ -117,7 +187,7 @@ class _RecursiveHelpAction(argparse._HelpAction):
 def _register_main_command(command, version=None, recursive_help=True):
     parser = argparse.ArgumentParser(description=command.__doc__.rstrip())
 
-    parser.set_defaults(run=lambda args: command.run(parser, args))
+    parser.set_defaults(execute=lambda args: command.execute(parser, args))
     command.setup(parser)
 
     if version:
@@ -148,7 +218,7 @@ def _register_command(parent, name, command, recursive_help=True):
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
-    parser.set_defaults(run=lambda args: command.run(parser, args))
+    parser.set_defaults(execute=lambda args: command.execute(parser, args))
     command.setup(parser)
 
     if recursive_help and _has_subparsers(parser):
@@ -165,4 +235,4 @@ def main():
     """Executes the `fiftyone` tool with the given command-line args."""
     parser = _register_main_command(FiftyOneCommand, version=foc.VERSION_LONG)
     args = parser.parse_args()
-    args.run(args)
+    args.execute(args)
