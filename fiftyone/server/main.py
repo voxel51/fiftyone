@@ -5,8 +5,6 @@ FiftyOne Flask server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-
 from flask import Flask, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
 
@@ -21,7 +19,7 @@ def get_sample_media():
     Get the sample media
 
     Returns:
-        String
+        bytes
     """
     path = request.args.get("path")
     mime_type = request.args.get("mime_type")
@@ -33,16 +31,14 @@ class State(Namespace):
 
     def on_connect(self):
         """On connect"""
-        print("connected state")
+        pass
 
     def on_disconnect(self):
         """On disconnect"""
-        print("disconnected state")
+        pass
 
     def on_update(self, state):
         """On update"""
-        print("received update")
-        print(state)
         emit("update", state, broadcast=True)
 
 
