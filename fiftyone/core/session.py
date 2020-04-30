@@ -133,7 +133,6 @@ class Session(voxc.HasClient):
                 "limit": self.limit,
                 "count": self._compute_count(),
             },
-            "samples": self._compute_samples(),
         }
 
     def _get_dataset_or_view(self):
@@ -147,20 +146,3 @@ class Session(voxc.HasClient):
         if dataset_or_view:
             return len(dataset_or_view)
         return 0
-
-    def _compute_samples(self):
-        dataset_or_view = self._get_dataset_or_view()
-
-        if not dataset_or_view:
-            return {}
-
-        query = self.query if self.query else voxq.DatasetQuery()
-
-        return {
-            query_idx: sample.serialize()
-            for query_idx, sample in (
-                query.offset(self.offset)
-                .limit(self.limit)
-                .iter_samples(dataset_or_view)
-            )
-        }
