@@ -17,16 +17,22 @@ from builtins import *
 import os
 
 import eta.core.image as etai
+import eta.core.labels as etal
 
 import fiftyone.core.document as voxd
+import fiftyone.core.labels as voxl
 
 
 class Sample(voxd.Document):
+    # @todo(Tyler) this maybe should be an abstract class
+    # Setting LABELS_SET_CLS may not really make sense...
+    _LABELS_SET_CLS = etal.LabelsSet
+
     def __init__(self, filepath, tags=None, labels=None):
         self.filepath = os.path.abspath(filepath)
         self.filename = os.path.basename(filepath)
         self.tags = tags or []
-        self.labels = labels
+        self.labels = labels or self._LABELS_SET_CLS()
 
     def add_label(self, label, tag):
         pass
@@ -50,10 +56,20 @@ class Sample(voxd.Document):
 
     @classmethod
     def _parse_kwargs_from_dict(cls, d):
-        return {"filepath": d["filepath"], "tags": d.get("tags", None)}
+        kwargs = {
+            "filepath": d["filepath"],
+            "tags": d.get("tags", None),
+        }
+
+        if "labels" in d:
+            kwargs["labels"] = cls._LABELS_SET_CLS.from_dict(d["labels"])
+
+        return kwargs
 
 
 class ImageSample(Sample):
+    _LABELS_SET_CLS = voxl.FiftyOneImageSetLabels
+
     def __init__(self, metadata=None, *args, **kwargs):
         super(ImageSample, self).__init__(*args, **kwargs)
         self.metadata = metadata or etai.ImageMetadata.build_for(self.filepath)
@@ -64,8 +80,7 @@ class ImageSample(Sample):
     def _parse_kwargs_from_dict(cls, d):
         kwargs = super(ImageSample, cls)._parse_kwargs_from_dict(d)
 
-        metadata = d.get("metadata", None)
-        if metadata is not None:
-            kwargs["metadata"] = etai.ImageMetadata.from_dict(metadata)
+        if "metadata" in d:
+            kwargs["metadata"] = etai.ImageMetadata.from_dict(d["metadata"])
 
         return kwargs
