@@ -141,18 +141,18 @@ class ImageNet2012Dataset(foz.ZooDataset):
     Note that labels were never publicly released for the test set, so only the
     training and validation sets are provided here.
 
-    Manual download instructions:
+    **Manual download instructions**
 
-        This dataset requires you to download the source data manually into
-        the requested backing directory. In particular, you must provide the
-        following files:
+    This dataset requires you to download the source data manually into
+    the requested backing directory. In particular, you must provide the
+    following files::
 
-                both splits: ``ILSVRC2012_devkit_t12.tar.gz``
-            ``train`` split: ``ILSVRC2012_img_train.tar``
-             ``test`` split: ``ILSVRC2012_img_val.tar``
+            both splits: ILSVRC2012_devkit_t12.tar.gz
+            train split: ILSVRC2012_img_train.tar
+             test split: ILSVRC2012_img_val.tar
 
-        You need to register on http://www.image-net.org/download-images in
-        order to get the link to download the dataset.
+    You need to register on http://www.image-net.org/download-images in
+    order to get the link to download the dataset.
 
     Dataset size:
         144.02 GiB
