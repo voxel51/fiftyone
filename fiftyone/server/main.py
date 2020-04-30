@@ -7,7 +7,7 @@ FiftyOne Flask server.
 """
 import os
 
-os.environ["FIFTYONE_SERVER"] = True  # noqa
+os.environ["FIFTYONE_SERVER"] = "1"  # noqa
 
 from flask import Flask, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
