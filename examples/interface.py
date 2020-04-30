@@ -14,7 +14,7 @@ import fiftyone.core.config as foc
 # foc.set_config_settings(default_ml_backend="tensorflow")
 # foc.set_config_settings(default_ml_backend="torch")
 
-import fiftyone as fo
+import fiftyone.core.data as fod
 import fiftyone.core.datautils as fodu
 import fiftyone.zoo as foz
 
@@ -94,7 +94,7 @@ print_gt_detection_head(dataset2, num_samples=1, shuffle=True)
 
 class_dir = "/Users/Brian/Desktop/class-dir"
 samples, _ = fodu.parse_image_classification_dataset_directory(class_dir)
-dataset3 = fo.load_image_classification_dataset(samples)
+dataset3 = fod.load_image_classification_dataset(samples)
 
 print_gt_classification_head(dataset3)
 
@@ -104,7 +104,7 @@ print_gt_classification_head(dataset3)
 #
 
 class_dir = "/Users/Brian/Desktop/class-dir"
-dataset4 = fo.load_images_from_dir(class_dir, recursive=True)
+dataset4 = fod.load_images_from_dir(class_dir, recursive=True)
 
 print_images_head(dataset4)
 
