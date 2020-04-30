@@ -64,26 +64,26 @@ def load_zoo_dataset(
     download_if_necessary=True,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
-    a ``fiftyone.core.data.Dataset``.
+    a :class:`fiftyone.core.data.Dataset`.
 
     Args:
         name: the name of the zoo dataset to load. Call
-            ``fiftyone.zoo.list_zoo_datasets()`` to see the available datasets
-        dataset_dir: the directory in which the dataset is stored or will be
-            downloaded
-        split: an optional split of the dataset to load, if applicable. Typical
-            values are ("train", "validation", "test"). If not specified, the
-            default split is loaded. Consult the documentation for the
-            ``fiftyone.zoo.ZooDataset`` you specified to see the supported
-            splits
-        backing_dir: an optional backing directory in which store
+            :func:`list_zoo_datasets` to see the available datasets
+        split (None): an optional split of the dataset to load, if applicable.
+            Typical values are ``("train", "validation", "test")``. If not
+            specified, the default split is loaded. Consult the documentation
+            for the :class:`fiftyone.zoo.ZooDataset` you specified to see the
+            supported splits
+        dataset_dir (None): the directory in which the dataset is stored or
+            will be downloaded
+        backing_dir (None): an optional backing directory in which store
             FiftyOne-generated metadata about the dataset. The default is
-            ``fiftyone.core.data.get_default_backing_dir(name)``
-        download_if_necessary: whether to download the dataset if it is not
-            found in the specified dataset directory. The default is True
+            generated via :func:`fiftyone.core.data.get_default_backing_dir`
+        download_if_necessary (True): whether to download the dataset if it is
+            not found in the specified dataset directory
 
     Returns:
-        a ``fiftyone.core.data.Dataset`` instance
+        a :class:`fiftyone.core.data.Dataset`
     """
     zoo_dataset = _get_zoo_dataset(name)
     name = zoo_dataset.name  # get the official name
@@ -105,7 +105,9 @@ def load_zoo_dataset(
         zoo_dataset.download_and_prepare(dataset_dir, split=split)
 
     labeled_dataset = etads.load_dataset(dataset_dir)
-    return fod.Dataset.from_ground_truth_labeled_dataset(labeled_dataset)
+    return fod.Dataset.from_ground_truth_labeled_dataset(
+        name, backing_dir, labeled_dataset
+    )
 
 
 def _get_zoo_dataset(name):
@@ -128,11 +130,12 @@ class ZooDatasetInfo(etas.Serializable):
 
         Args:
             name: the name of the dataset
-            zoo_dataset: the ZooDataset class
+            zoo_dataset: the :class:`ZooDataset` class
             split: the dataset split
             num_samples: the number of samples in the dataset
             format: the class of the dataset on disk
-            labels_map: an optional dict mapping class IDs to class labels
+            labels_map (None): an optional dict mapping class IDs to class
+                labels
         """
         self.name = name
         self.zoo_dataset = etau.get_class_name(zoo_dataset)
@@ -200,14 +203,14 @@ class ZooDataset(object):
         """Downloads the dataset and prepares it for use in the given directory
         as an ``eta.core.datasets.LabeledDataset``.
 
-        If the ``ZooDatasetInfo`` file already exists in the directory, this
-        method assumes that the dataset is already downloaded, and does
+        If the :class:`ZooDatasetInfo` file already exists in the directory,
+        this method assumes that the dataset is already downloaded, and does
         nothing.
 
         Args:
             dataset_dir: the directory in which to construct the dataset
-            split: the dataset split to download, if applicable. If omitted,
-                the default split is downloaded
+            split (None): the dataset split to download, if applicable. If
+                omitted, the default split is downloaded
         """
         info_path = os.path.join(dataset_dir, "info.json")
 

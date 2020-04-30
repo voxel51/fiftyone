@@ -1,6 +1,6 @@
 """
-Methods for working with datasets provided by the `tensorflow_datasets` package
-in the FiftyOne Dataset Zoo.
+Methods for working with datasets provided by the ``tensorflow_datasets``
+package in the FiftyOne Dataset Zoo.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -130,13 +130,14 @@ class ImageNet2012Dataset(foz.ZooDataset):
     training and validation sets are provided here.
 
     Manual download instructions:
+
         This dataset requires you to download the source data manually into
         the requested backing directory. In particular, you must provide the
         following files:
 
-              both splits: `ILSVRC2012_devkit_t12.tar.gz`
-            `train` split: `ILSVRC2012_img_train.tar`
-              `test split: `ILSVRC2012_img_val.tar`
+                both splits: ``ILSVRC2012_devkit_t12.tar.gz``
+            ``train`` split: ``ILSVRC2012_img_train.tar``
+             ``test`` split: ``ILSVRC2012_img_val.tar``
 
         You need to register on http://www.image-net.org/download-images in
         order to get the link to download the dataset.

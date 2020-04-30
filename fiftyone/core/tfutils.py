@@ -40,8 +40,7 @@ def from_images_dir(images_dir, recursive=False):
 
     Args:
         images_dir: a directory of images
-        recursive: whether to recursively traverse subdirectories. By
-                default, this is False
+        recursive (False): whether to recursively traverse subdirectories
 
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
@@ -120,8 +119,8 @@ def from_labeled_image_dataset(labeled_dataset, features_cls):
 
     Args:
         labeled_dataset: an ``eta.core.datasets.LabeledImageDataset``
-        features_cls: a ``fiftyone.core.tfutils.Features`` subclass describing
-            how to format the samples in the output records
+        features_cls: a :class:`Features` subclass describing how to format the
+            samples in the output records
 
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
@@ -177,7 +176,7 @@ def write_image_classification_tf_records(labeled_dataset, tf_records_path):
 
     Args:
         labeled_dataset: an ``eta.core.datasets.LabeledImageDataset``
-        tf_records_path: the path to write the `.tfrecords` file
+        tf_records_path: the path to write the ``.tfrecords`` file
     """
     dataset = labeled_dataset.iter_paths()
     features_cls = ImageClassificationFeatures
@@ -188,16 +187,17 @@ def load_image_classification_tf_records(
     tf_records_patt, buffer_size=None, num_parallel_reads=None,
 ):
     """Loads the image classification TFRecords from the given path(s) as a
-    `tf.data.Dataset`.
+    ``tf.data.Dataset``.
 
     Args:
         tf_records_patt: the path (or glob pattern of paths) to the TFRecords
             file(s) to load
-        buffer_size: an optional buffer size, in bytes, to use when reading the
-            records. Reasonable values are 1-100MBs
-        num_parallel_reads: an optional number of files to read in parallel. If
-            a negative value is passed, this parameter is set to the number of
-            CPU cores on the host machine
+        buffer_size (None): an optional buffer size, in bytes, to use when
+            reading the records. Reasonable values are 1-100MBs
+        num_parallel_reads (None): an optional number of files to read in
+            parallel. If a negative value is passed, this parameter is set to
+            the number of CPU cores on the host machine. By default, the files
+            are read in series
 
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
@@ -214,14 +214,14 @@ def load_image_classification_tf_records(
 # @todo support writing sharded TFRecords
 def write_tf_records(dataset, features_cls, tf_records_path):
     """Writes the given dataset to disk in TFRecord format with features
-    described by the provided ``eta.core.tfutils.Features`` class.
+    described by the provided :class:`Features` class.
 
     Args:
         dataset: an iterable that emits samples
-        features_cls: a ``eta.core.tfutils.Features`` class whose
-            ``make_tf_example()`` method can be used to format the samples in
-            the output records
-        tf_records_path: the path to write the `.tfrecords` file
+        features_cls: a :class:`Features` class whose
+            :func:`Features.make_tf_example` method can be used to format the
+            samples in the output records
+        tf_records_path: the path to write the ``.tfrecords`` file
     """
     with tf.io.TFRecordWriter(tf_records_path) as writer:
         for sample in dataset:
@@ -237,14 +237,15 @@ def load_tf_records(
     Args:
         tf_records_patt: the path (or glob pattern of paths) to the TFRecords
             file(s) to load
-        features_cls: a ``eta.core.tfutils.Features`` class whose
-            ``parse_tf_example()`` method can be used to parse the input
-            records
-        buffer_size: an optional buffer size, in bytes, to use when reading the
-            records. Reasonable values are 1-100MBs
-        num_parallel_reads: an optional number of files to read in parallel. If
-            a negative value is passed, this parameter is set to the number of
-            CPU cores on the host machine
+        features_cls: a :class:`Features` class whose
+            :func:`Features.parse_tf_example` method can be used to parse the
+            input records
+        buffer_size (None): an optional buffer size, in bytes, to use when
+            reading the records. Reasonable values are 1-100MBs
+        num_parallel_reads (None): an optional number of files to read in
+            parallel. If a negative value is passed, this parameter is set to
+            the number of CPU cores on the host machine. By default, the files
+            are read in series
 
     Returns:
         a ``tf.data.Dataset``
@@ -333,8 +334,8 @@ class ImageClassificationFeatures(Features):
         image and labels.
 
         Args:
-            sample: an (img_path, image_labels_path) tuple containing the path
-                to an image and ``eta.core.image.ImageLabels`` on disk
+            sample: an ``(img_path, image_labels_path)`` tuple containing the
+                path to an image and ``eta.core.image.ImageLabels`` on disk
 
         Returns:
             a ``tf.train.Example``

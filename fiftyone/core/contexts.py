@@ -27,15 +27,15 @@ import fiftyone.core.views as fov
 
 class DatasetContext(object):
     """Base class for dataset contexts, which allow for performing operations
-    on a ``fiftyone.core.data.Dataset`` with respect to a specific subset of
-    its contents (the "context").
+    on a :class:`fiftyone.core.data.Dataset` with respect to a specific subset
+    of its contents (the "context").
     """
 
     def __init__(self, dataset):
         """Initializes the base DatasetContext.
 
         Args:
-            dataset: a ``fiftyone.core.data.Dataset``
+            dataset: a :class:`fiftyone.core.data.Dataset`
         """
         self._dataset = dataset
 
@@ -69,32 +69,32 @@ class DatasetContext(object):
         return self._dataset.iter_sample_ids()
 
     def get_view(self):
-        """Returns a ``fiftyone.core.views.DatasetView`` for the context.
+        """Returns a :class:`fiftyone.core.views.DatasetView` for the context.
 
         Returns:
-            a ``fiftyone.core.views.DatasetView``
+            a :class:`fiftyone.core.views.DatasetView`
         """
         raise NotImplementedError("subclasses must implement get_view()")
 
 
 class ImageContext(DatasetContext):
     """A context for working with the images in a
-    ``fiftyone.core.data.Dataset``.
+    :class:`fiftyone.core.data.Dataset`.
     """
 
     def __init__(self, dataset):
         """Creates an ImageContext.
 
         Args:
-            dataset: a ``fiftyone.core.data.Dataset``
+            dataset: a :class:`fiftyone.core.data.Dataset`
         """
         super(ImageContext, self).__init__(dataset)
 
     def get_view(self):
-        """Returns a ``fiftyone.core.views.ImageView`` for the context.
+        """Returns a :class:`fiftyone.core.views.ImageView` for the context.
 
         Returns:
-            a ``fiftyone.core.views.ImageView``
+            a :class:`fiftyone.core.views.ImageView`
         """
         return fov.ImageView(self)
 
@@ -123,39 +123,40 @@ class ImageContext(DatasetContext):
 
 
 class LabeledImageContext(DatasetContext):
-    """A context for working with ``fiftyone.core.data.Dataset``s of images
-    and a particular set of labels associated with the images.
+    """A context for working with :class:`fiftyone.core.data.Dataset`s of
+    images and a particular set of labels associated with the images.
     """
 
     def __init__(self, dataset, label_field):
         """Creates a LabeledImageContext.
 
         Args:
-            dataset: a ``fiftyone.core.data.Dataset``
-            label_field: the DatasetSample field containing the labels for this
-                context
+            dataset: a :class:`fiftyone.core.data.Dataset`
+            label_field: the :class:`fiftyone.core.data.DatasetSample` field
+                containing the labels for this context
         """
         super(LabeledImageContext, self).__init__(dataset)
         self._label_field = label_field
 
     def get_view(self):
-        """Returns a ``fiftyone.core.views.LabeledImageView`` for the context.
+        """Returns a :class:`fiftyone.core.views.LabeledImageView` for the
+        context.
 
         Returns:
-            a ``fiftyone.core.views.LabeledImageView``
+            a :class:`fiftyone.core.views.LabeledImageView`
         """
         return fov.LabeledImageView(self)
 
     def get_classification_context(self, attr_name=None):
-        """Returns a ``fiftyone.core.contexts.ImageClassificationContext`` for
-        the specified frame attribute of the labels.
+        """Returns a :class:`fiftyone.core.contexts.ImageClassificationContext`
+        for the specified frame attribute of the labels.
 
         Args:
-            attr_name: the name of the frame attribute. If not specified, the
-                labels must contain a single frame attribute
+            attr_name (None): the name of the frame attribute. If not
+                specified, the labels must contain a single frame attribute
 
         Returns:
-            a ``fiftyone.core.contexts.ImageClassificationContext``
+            a :class:`fiftyone.core.contexts.ImageClassificationContext`
         """
         if attr_name is None:
             sample_ids = self._dataset.iter_sample_ids()
@@ -214,16 +215,16 @@ class LabeledImageContext(DatasetContext):
 
 
 class ImageClassificationContext(DatasetContext):
-    """A context for working with a ``fiftyone.core.data.Dataset`` with respect
-    to an image classification task represented by a particular frame attribute
-    of a particular set of labels in the dataset.
+    """A context for working with a :class:`fiftyone.core.data.Dataset` with
+    respect to an image classification task represented by a particular frame
+    attribute of a particular set of labels in the dataset.
     """
 
     def __init__(self, dataset, label_field, attr_name):
         """Creates an ImageClassificationContext.
 
         Args:
-            dataset: a ``fiftyone.core.data.Dataset``
+            dataset: a :class:`fiftyone.core.data.Dataset`
             label_field: the DatasetSample field containing the labels for this
                 context
             attr_name: the frame attribute of interest from each sample's
@@ -234,11 +235,11 @@ class ImageClassificationContext(DatasetContext):
         self._attr_name = attr_name
 
     def get_view(self):
-        """Returns a ``fiftyone.core.views.ImageClassificationView`` for the
-        context.
+        """Returns a :class:`fiftyone.core.views.ImageClassificationView` for
+        the context.
 
         Returns:
-            a ``fiftyone.core.views.ImageClassificationView``
+            a :class:`fiftyone.core.views.ImageClassificationView`
         """
         return fov.ImageClassificationView(self)
 
@@ -295,14 +296,14 @@ class ImageClassificationContext(DatasetContext):
 
 class ModelContext(DatasetContext):
     """Context class for performing operations on a
-    ``fiftyone.core.data.Dataset`` with respect to a model.
+    :class:`fiftyone.core.data.Dataset` with respect to a model.
     """
 
     def __init__(self, dataset, name):
         """Creates a ModelContext instance.
 
         Args:
-            dataset: a ``fiftyone.core.data.Dataset``
+            dataset: a :class:`fiftyone.core.data.Dataset`
             name: the name of the model
         """
         super(ModelContext, self).__init__(dataset)
@@ -327,10 +328,10 @@ class ModelContext(DatasetContext):
         return self._predictions
 
     def get_view(self):
-        """Returns a ``fiftyone.core.views.ModelView`` for the context.
+        """Returns a :class:`fiftyone.core.views.ModelView` for the context.
 
         Returns:
-            a ``fiftyone.core.views.ModelView``
+            a :class:`fiftyone.core.views.ModelView`
         """
         return fov.ModelView(self)
 
@@ -348,7 +349,7 @@ class ModelContext(DatasetContext):
         self._predictions = {}
 
     def publish(self):
-        """Publishes the context to the dataset."""
+        """Publishes the context to the parent dataset."""
         self._dataset.publish_model_context(self)
 
     def _iter_image_paths_and_sample_ids(self, sample_ids):

@@ -50,15 +50,15 @@ def to_labeled_image_dataset(
     Args:
         dataset: an iterable of samples that can be parsed by the provided
             sample parser. If no ``sample_parser`` is provideed, the dataset
-            must directly emit (image, ImageLabels) tuples
-        dataset_dir: the directory to which to write the LabeledImageDataset
-        sample_parser: a ``fiftyone.core.datautils.LabeledImageSampleParser``
-            for parsing
-        num_samples: the number of samples in the dataset. If omitted, it is
-            assumed that this can be computed via `len(dataset)`
-        image_format: the image format to use to write the images to disk in
-            the output dataset. The default is
-            ``fiftyone.config.default_image_ext``
+            must directly emit ``(img, ImageLabels)`` tuples
+        dataset_dir: the directory to which to write the
+            ``eta.core.datasets.LabeledImageDataset``
+        sample_parser (None): an optional :class:`LabeledImageSampleParser` for
+            parsing the samples emited from ``dataset``
+        num_samples (None): the number of samples in the dataset. If omitted, it is
+            assumed that this can be computed via ``len(dataset)``
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk in the output dataset
 
     Returns:
         the LabeledImageDataset instance
@@ -97,10 +97,10 @@ def write_labeled_image_dataset(image_paths, labels, dataset_dir):
     Args:
         image_paths: an iterable of image paths
         labels: an iterable of ImageLabels
-        dataset_dir: the directory to which to write the LabeledImageDataset
+        dataset_dir: the directory to which to write the dataset
 
     Returns:
-        the LabeledImageDataset instance
+        the ``eta.core.datasets.LabeledImageDataset`` instance
     """
     logger.info("Creating LabeledImageDataset in '%s'", dataset_dir)
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
@@ -202,8 +202,7 @@ class UnlabeledImageSampleParser(SampleParser):
     converted to numpy format via ``np.asarray(img)`` or the path to an image
     on disk.
 
-    Instances of ``UnlabeledImageSampleParser`` must output images as numpy
-    arrays.
+    Instances of this class must output images as numpy arrays.
     """
 
     def parse(self, sample):
@@ -283,9 +282,10 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
         """Creates an ImageClassificationSampleParser instance.
 
         Args:
-            labels_map: an optional dict mapping class IDs to class strings. If
-                provided, it is assumed that ``target`` is a class ID that
-                should be mapped to a class string via ``labels_map[target]``
+            labels_map (None): an optional dict mapping class IDs to class
+                strings. If provided, it is assumed that ``target`` is a class
+                ID that should be mapped to a class string via
+                ``labels_map[target]``
         """
         self.labels_map = labels_map
 
@@ -355,18 +355,18 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
         """Creates an ImageDetectionSampleParser instance.
 
         Args:
-            bbox_field: the name of the bounding box field in the target dicts.
-                The default is "bbox"
-            label_field: the name of the object label field in the target
-                dicts. The default is "label"
-            labels_map: an optional dict mapping class IDs to class strings. If
-                provided, it is assumed that the ``label``s in ``target`` are
-                class IDs that should be mapped to class strings via
-                ``labels_map[target]``
-            normalized: whether the bounding box coordinates provided in
-                ``target`` are absolute pixel coordinates (False) or relative
-                coordinates in [0, 1] (True). By default, absolute pixel
-                coordinates are assumed
+            bbox_field ("bbox"): the name of the bounding box field in the
+                target dicts
+            label_field ("label"): the name of the object label field in the
+                target dicts
+            labels_map (None): an optional dict mapping class IDs to class
+                strings. If provided, it is assumed that the ``label``s in
+                ``target`` are class IDs that should be mapped to class strings
+                via ``labels_map[target]``
+            normalized (False): whether the bounding box coordinates provided
+                in ``target`` are absolute pixel coordinates (False) or
+                relative coordinates in [0, 1] (True). By default, absolute
+                pixel coordinates are assumed
         """
         self.bbox_field = bbox_field
         self.label_field = label_field

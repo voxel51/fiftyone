@@ -45,8 +45,7 @@ class TorchImageDataset(Dataset):
 
         Args:
             image_paths: a list of image paths
-            transform: an optional transform to apply to the images. By
-                default, no transform is applied
+            transform (None): an optional transform to apply to the images
         """
         self.image_paths = image_paths
         self.transform = transform
@@ -68,8 +67,7 @@ class TorchImageDataset(Dataset):
 
         Args:
             images_dir: a directory of images
-            recursive: whether to recursively traverse subdirectories. By
-                default, this is False
+            recursive (False): whether to recursively traverse subdirectories
 
         Returns:
             a TorchImageDataset
@@ -108,7 +106,7 @@ class TorchImageDataset(Dataset):
 class TorchImageClassificationDataset(Dataset):
     """A ``torch.utils.data.Dataset`` for image classification.
 
-    The dataset emits (img, label) pairs.
+    Instances of this dataset emit ``(img, label)`` pairs.
     """
 
     def __init__(
@@ -119,8 +117,7 @@ class TorchImageClassificationDataset(Dataset):
         Args:
             image_paths: a list of image paths
             labels: a list of labels
-            transform: an optional transform to apply to the images. By
-                default, no transform is applied
+            transform (None): an optional transform to apply to the images
         """
         self.image_paths = image_paths
         self.labels = labels

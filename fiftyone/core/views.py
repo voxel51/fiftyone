@@ -23,13 +23,15 @@ import random
 
 
 class DatasetView(object):
-    """Class for performing read-only manipulations on a Dataset."""
+    """Class for performing read-only manipulations on a
+    :class:`fiftyone.core.data.Dataset`.
+    """
 
     def __init__(self, context):
         """Creates a DatasetView instance.
 
         Args:
-            context: a DatasetContext
+            context: a :class:`fiftyone.core.contexts.DatasetContext`.
         """
         self._context = context
         self._sample_ids = list(context.iter_sample_ids())
@@ -106,7 +108,7 @@ class DatasetView(object):
 
 class ImageView(DatasetView):
     """Class for performing read-only manipulations on a
-    ``fiftyone.core.contexts.ImageContext``.
+    :class:`fiftyone.core.contexts.ImageContext`.
     """
 
     def as_numpy_iterator(self):
@@ -139,7 +141,7 @@ class ImageView(DatasetView):
 
 class LabeledImageView(DatasetView):
     """Class for performing read-only manipulations on a
-    ``fiftyone.core.contexts.LabeledImageContext``.
+    :class:`fiftyone.core.contexts.LabeledImageContext`.
     """
 
     def as_numpy_iterator(self):
@@ -172,7 +174,7 @@ class LabeledImageView(DatasetView):
 
 class ImageClassificationView(DatasetView):
     """Class for performing read-only manipulations on a
-    ``fiftyone.core.contexts.ImageClassificationContext``.
+    :class:`fiftyone.core.contexts.ImageClassificationContext`.
     """
 
     def as_numpy_iterator(self):
@@ -214,7 +216,7 @@ class ImageClassificationView(DatasetView):
 
 class ModelView(DatasetView):
     """Class for performing read-only manipulations on a
-    ``fiftyone.core.contexts.ModelContext``.
+    :class:`fiftyone.core.contexts.ModelContext`.
     """
 
     def as_numpy_iterator(self):
