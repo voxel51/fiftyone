@@ -46,6 +46,7 @@ class State(Namespace):
 
     def on_update(self, state):
         """On update"""
+        print(state)
         self.state = state
         emit("update", state, broadcast=True, include_self=False)
 
