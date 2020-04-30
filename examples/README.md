@@ -8,3 +8,15 @@
 `fiftyone`
 
 `datamodel/` - example scripts for interacting with the database/model
+
+`datasets/` - example scripts for downloading and wrangling common public
+datasets
+
+`inference/` - example scripts for running inference on CIFAR-10 using
+pretrained models
+
+
+## Copyright
+
+Copyright 2017-2020, Voxel51, Inc.<br>
+voxel51.com
