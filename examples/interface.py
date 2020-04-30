@@ -14,7 +14,7 @@ import fiftyone.core.config as foc
 # foc.set_config_settings(default_ml_backend="tensorflow")
 # foc.set_config_settings(default_ml_backend="torch")
 
-import fiftyone.core.data as fod
+import fiftyone as fo
 import fiftyone.core.datautils as fodu
 import fiftyone.zoo as foz
 
@@ -64,7 +64,7 @@ print("Available datasets: %s" % foz.list_zoo_datasets())
 # Load a classification dataset from the zoo
 #
 
-dataset1 = fod.load_zoo_dataset("cifar10")
+dataset1 = foz.load_zoo_dataset("cifar10")
 
 print_gt_classification_head(dataset1, shuffle=True)
 
@@ -73,7 +73,7 @@ print_gt_classification_head(dataset1, shuffle=True)
 # Load a detection dataset from the zoo
 #
 
-dataset2 = fod.load_zoo_dataset("voc")
+dataset2 = foz.load_zoo_dataset("voc")
 
 print_gt_detection_head(dataset2, num_samples=1, shuffle=True)
 
@@ -94,7 +94,7 @@ print_gt_detection_head(dataset2, num_samples=1, shuffle=True)
 
 class_dir = "/Users/Brian/Desktop/class-dir"
 samples, _ = fodu.parse_image_classification_dataset_directory(class_dir)
-dataset3 = fod.load_image_classification_dataset(samples)
+dataset3 = fo.load_image_classification_dataset(samples)
 
 print_gt_classification_head(dataset3)
 
@@ -104,7 +104,7 @@ print_gt_classification_head(dataset3)
 #
 
 class_dir = "/Users/Brian/Desktop/class-dir"
-dataset4 = fod.load_images_from_dir(class_dir, recursive=True)
+dataset4 = fo.load_images_from_dir(class_dir, recursive=True)
 
 print_images_head(dataset4)
 
