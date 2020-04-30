@@ -20,6 +20,7 @@ from builtins import *
 
 import fiftyone.core.config as foc
 from fiftyone.core.dashboard import launch_dashboard
+from fiftyone.core.data import *
 import fiftyone.core.service as fos
 
 
