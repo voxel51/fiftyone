@@ -123,7 +123,7 @@ class ImageContext(DatasetContext):
 
 
 class LabeledImageContext(DatasetContext):
-    """A context for working with :class:`fiftyone.core.data.Dataset`s of
+    """A context for working with a :class:`fiftyone.core.data.Dataset` of
     images and a particular set of labels associated with the images.
     """
 

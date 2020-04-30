@@ -264,8 +264,8 @@ def load_tf_records(
 
 
 class Features(object):
-    """Interface for reading/writing ``tf.train.Example``s in common dataset
-    formats.
+    """Interface for reading/writing ``tf.train.Example`` instances in common
+    dataset formats.
     """
 
     @staticmethod
@@ -298,8 +298,8 @@ class Features(object):
 
 
 class ImageClassificationFeatures(Features):
-    """Interface for reading/writing ``tf.train.Example``s representing
-    image classification samples.
+    """Interface for reading/writing ``tf.train.Example`` instances
+    representing image classification samples.
     """
 
     _TF_EXAMPLE_FEATURES = {
