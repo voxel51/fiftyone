@@ -5,8 +5,15 @@ FiftyOne Flask server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
+os.environ["FIFTYONE_SERVER"] = True  # noqa
+
 from flask import Flask, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
+
+import fiftyone.core.dataset as fod
+import query
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "fiftyone"
@@ -32,9 +39,10 @@ class State(Namespace):
     state = {
         "dataset_name": None,
         "query": None,
-        "samples": None,
         "view_tag": None,
     }
+    it = None
+    ds = None
 
     def on_connect(self):
         """On connect"""
@@ -46,8 +54,11 @@ class State(Namespace):
 
     def on_update(self, state):
         """On update"""
-        print(state)
+        self.ds = fod.Dataset(state.dataset_name)
+        self.it = query.Query(state.query).iter_samples(self.ds)
+        state.update(self._next())
         self.state = state
+
         emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
@@ -63,6 +74,13 @@ class State(Namespace):
         """Get the next state using the query iterator"""
         # @todo
         pass
+
+    def _next(self):
+        results = {}
+        for i in range(0, 50):
+            qidx, sample = next(self.it)
+            results[qidx] = sample.serialize()
+        return {"samples": results}
 
 
 socketio.on_namespace(State("/state"))
