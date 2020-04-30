@@ -1,5 +1,10 @@
 argcomplete==1.11.0
+eventlet==0.25.2
 Flask==1.1.2
+flask-socketio==4.3.0
+gunicorn==20.0.4
+pymongo==3.10.1
+python-socketio[client]==4.5.1
 setuptools==44.0.0;python_version<"3"
 setuptools==45.2.0;python_version>="3"
 tabulate==0.8.5

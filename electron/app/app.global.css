@@ -1,0 +1,16 @@
+/*
+ * @NOTE: Prepend a `~` to css file paths that are in your node_modules
+ *        See https://github.com/webpack-contrib/sass-loader#imports
+ */
+@import "~semantic-ui-css/semantic.min.css";
+
+body {
+  position: relative;
+  color: black;
+  height: 100vh;
+  background-color: white;
+}
+
+#root {
+  height: 100%;
+}
