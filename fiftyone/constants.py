@@ -29,6 +29,7 @@ except ImportError:
 # Directories
 FIFTYONE_DIR = os.path.abspath(os.path.dirname(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
+FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 
