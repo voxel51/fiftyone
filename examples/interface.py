@@ -113,12 +113,12 @@ print_images_head(dataset4)
 # Register model predictions on a dataset
 #
 
-dataset5.register_model("my-classifier")
+dataset1.register_model("my-classifier")
 
 # Add predictions
 # Predictions are propagated to the dataset when the `with` statement exits
 sample_ids = []
-with dataset5.get_model_context("my-classifier") as context:
+with dataset1.get_model_context("my-classifier") as context:
     view = context.get_view().shuffle().take(5)
     for img, sample_id in view.as_numpy_iterator():
         sample_ids.append(sample_id)
@@ -130,7 +130,7 @@ with dataset5.get_model_context("my-classifier") as context:
 
 # Verify that predictions were added to the dataset samples
 for sample_id in sample_ids:
-    print(dataset5[sample_id])
+    print(dataset1[sample_id])
 
 
 #
