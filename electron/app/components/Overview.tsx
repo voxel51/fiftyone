@@ -15,10 +15,11 @@ export default function Overview(props) {
   const [tab, setTab] = useState("overview");
   const IMAGES = state
     ? Object.keys(state.samples).map((k) => {
-        const src = state.samples[k].filepath.replace(
-          "/home/ben/code/fiftyone/examples/data",
-          "http://127.0.0.1:5151"
-        );
+        const sample = state.samples[k];
+        const path = sample.filepath;
+        const mimeType = sample.metadata.mime_type;
+        const host = "http://127.0.0.1:5151/";
+        const src = `${host}?path=${path}&mime_type=${mimeType}`;
         return {
           src: src,
           thumbnail: src,

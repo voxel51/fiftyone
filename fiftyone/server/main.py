@@ -15,22 +15,17 @@ app.config["SECRET_KEY"] = "fiftyone"
 socketio = SocketIO(app)
 
 
-@app.route("/<path:subpath>/<fl>")
-def get_file(subpath, fl):
+@app.route("/")
+def get_sample_media():
     """
-    Get a file. Assumes the file is image at the moment
+    Get the sample media
 
     Returns:
         String
     """
-    base = "/home/ben/code/fiftyone/examples/data"
-    path = os.path.join(base, subpath, fl)
-    return send_file(
-        path,
-        mimetype="image/jpeg",
-        as_attachment=True,
-        attachment_filename=os.path.basename(fl),
-    )
+    path = request.args.get("path")
+    mime_type = request.args.get("mime_type")
+    return send_file(path, mimetype=mime_type)
 
 
 class State(Namespace):
