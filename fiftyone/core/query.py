@@ -102,6 +102,16 @@ class DatasetQuery(object):
         """
         return self._create_new_query(stage={"$limit": limit})
 
+    def sample(self, size):
+        """
+        Args:
+            limit: ...
+
+        Returns:
+            DatasetQuery instance
+        """
+        return self._create_new_query(stage={"$sample": {"$size": size}})
+
     # PRIVATE #################################################################
 
     def _create_new_query(self, stage=None):
