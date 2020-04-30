@@ -1,5 +1,5 @@
 """
-Core definitions of datasets.
+Core dataset definitions.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -24,7 +24,6 @@ import logging
 import os
 from uuid import uuid4
 
-import eta.core.datasets as etads
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -34,61 +33,9 @@ import fiftyone.constants as fc
 import fiftyone.core.contexts as foc
 import fiftyone.core.datautils as fodu
 import fiftyone.core.utils as fou
-import fiftyone.zoo as foz
 
 
 logger = logging.getLogger(__name__)
-
-
-def load_zoo_dataset(
-    name,
-    split=None,
-    dataset_dir=None,
-    backing_dir=None,
-    download_if_necessary=True,
-):
-    """Loads the dataset of the given name from the FiftyOne Dataset Zoo.
-
-    Args:
-        name: the name of the zoo dataset to load. Call
-            ``fiftyone.zoo.list_zoo_datasets()`` to see the available datasets
-        dataset_dir: the directory in which the dataset is stored or will be
-            downloaded
-        split: an optional split of the dataset to load, if applicable. Typical
-            values are ("train", "validation", "test"). If not specified, the
-            default split is loaded. Consult the documentation for the
-            ``fiftyone.zoo.ZooDataset`` you specified to see the supported
-            splits
-        backing_dir: an optional backing directory in which store
-            FiftyOne-generated metadata about the dataset. The default is
-            ``get_default_backing_dir(name)``
-        download_if_necessary: whether to download the dataset if it is not
-            found in the specified dataset directory
-
-    Returns:
-        a ``fiftyone.core.data.Dataset`` instance
-    """
-    zoo_dataset = foz.get_zoo_dataset(name)
-    name = zoo_dataset.name  # get the official name
-
-    if split is None:
-        split = zoo_dataset.default_split
-        if split is not None:
-            logger.info("Using default split '%s'", split)
-
-    if backing_dir is None:
-        backing_dir = get_default_backing_dir(name)
-        logger.info("Using default backing directory '%s'", backing_dir)
-
-    if dataset_dir is None:
-        dataset_dir = get_default_dataset_dir(name, split=split)
-        logger.info("Using default dataset directory '%s'", dataset_dir)
-
-    if download_if_necessary:
-        zoo_dataset.download_and_prepare(dataset_dir, split=split)
-
-    labeled_dataset = etads.load_dataset(dataset_dir)
-    return Dataset.from_ground_truth_labeled_dataset(labeled_dataset)
 
 
 def load_image_classification_dataset(

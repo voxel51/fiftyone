@@ -1,5 +1,5 @@
 """
-Base definitions for the FiftyOne Dataset Zoo.
+Base definitions of the FiftyOne Dataset Zoo.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -26,6 +26,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.data as fod
 
 
 logger = logging.getLogger(__name__)
@@ -45,15 +46,69 @@ def __init_zoo_datasets__():
         import fiftyone.zoo.torch  # pylint: disable=unused-import
 
 
-def get_zoo_dataset(name):
-    """Returns the ZooDataset instance for the dataset of the given name.
-
-    Args:
-        name: the name of the dataset
+def list_zoo_datasets():
+    """Returns the list of available datasets in the FiftyOne Dataset Zoo.
 
     Returns:
-        the ZooDataset instance
+        a list of dataset names
     """
+    __init_zoo_datasets__()
+    return list(AVAILABLE_DATASETS.keys())
+
+
+def load_zoo_dataset(
+    name,
+    split=None,
+    dataset_dir=None,
+    backing_dir=None,
+    download_if_necessary=True,
+):
+    """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
+    a ``fiftyone.core.data.Dataset``.
+
+    Args:
+        name: the name of the zoo dataset to load. Call
+            ``fiftyone.zoo.list_zoo_datasets()`` to see the available datasets
+        dataset_dir: the directory in which the dataset is stored or will be
+            downloaded
+        split: an optional split of the dataset to load, if applicable. Typical
+            values are ("train", "validation", "test"). If not specified, the
+            default split is loaded. Consult the documentation for the
+            ``fiftyone.zoo.ZooDataset`` you specified to see the supported
+            splits
+        backing_dir: an optional backing directory in which store
+            FiftyOne-generated metadata about the dataset. The default is
+            ``fiftyone.core.data.get_default_backing_dir(name)``
+        download_if_necessary: whether to download the dataset if it is not
+            found in the specified dataset directory. The default is True
+
+    Returns:
+        a ``fiftyone.core.data.Dataset`` instance
+    """
+    zoo_dataset = _get_zoo_dataset(name)
+    name = zoo_dataset.name  # get the official name
+
+    if split is None:
+        split = zoo_dataset.default_split
+        if split is not None:
+            logger.info("Using default split '%s'", split)
+
+    if backing_dir is None:
+        backing_dir = fod.get_default_backing_dir(name)
+        logger.info("Using default backing directory '%s'", backing_dir)
+
+    if dataset_dir is None:
+        dataset_dir = fod.get_default_dataset_dir(name, split=split)
+        logger.info("Using default dataset directory '%s'", dataset_dir)
+
+    if download_if_necessary:
+        zoo_dataset.download_and_prepare(dataset_dir, split=split)
+
+    labeled_dataset = etads.load_dataset(dataset_dir)
+    return fod.Dataset.from_ground_truth_labeled_dataset(labeled_dataset)
+
+
+def _get_zoo_dataset(name):
     __init_zoo_datasets__()
 
     if name.lower() not in AVAILABLE_DATASETS:
@@ -61,12 +116,6 @@ def get_zoo_dataset(name):
 
     zoo_dataset_cls = AVAILABLE_DATASETS[name.lower()]
     return zoo_dataset_cls()
-
-
-def list_zoo_datasets():
-    """Returns the list of available datasets in the zoo."""
-    __init_zoo_datasets__()
-    return list(AVAILABLE_DATASETS.keys())
 
 
 class ZooDatasetInfo(etas.Serializable):
@@ -186,25 +235,3 @@ class ZooDataset(object):
         raise NotImplementedError(
             "subclasses must implement download_and_prepare()"
         )
-
-    #
-    # @todo support other formats here? just delete?
-    #
-    def load(self, dataset_dir, split=None, download=False):
-        """Loads the dataset backed by the given directory as an
-        ``eta.core.datasets.LabeledDataset``.
-
-        Args:
-            dataset_dir: the backing directory for the dataset
-            split: the dataset split to download, if applicable. If omitted,
-                the default split is loaded
-            download: whether to download the dataset, if necessary. The
-                default is False
-
-        Returns:
-            an ``eta.core.datasets.LabeledDataset``
-        """
-        if download:
-            self.download_and_prepare(dataset_dir, split=split)
-
-        return etads.load_dataset(dataset_dir)
