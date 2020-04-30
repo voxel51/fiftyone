@@ -11,8 +11,8 @@ import random
 import fiftyone.core.config as foc
 
 # Set these to configure which ML backend will be used to provide zoo datasets
-# foc.set(default_ml_backend="tensorflow")
-# foc.set(default_ml_backend="torch")
+# foc.set_config_settings(default_ml_backend="tensorflow")
+# foc.set_config_settings(default_ml_backend="torch")
 
 import fiftyone.core.data as fod
 import fiftyone.core.datautils as fodu

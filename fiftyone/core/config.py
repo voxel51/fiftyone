@@ -85,7 +85,7 @@ class FiftyOneConfig(EnvConfig):
                 logger.debug("No suitable default ML backend found")
 
 
-def load():
+def load_config():
     """Loads the FiftyOne config.
 
     Returns:
@@ -96,7 +96,7 @@ def load():
     return FiftyOneConfig.from_json(foc.FIFTYONE_CONFIG_PATH)
 
 
-def set(**kwargs):
+def set_config_settings(**kwargs):
     """Sets the given FiftyOne config setting(s).
 
     Args:
