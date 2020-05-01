@@ -25,7 +25,7 @@ import random
 import eta.core.data as etad
 
 import fiftyone.core.dataset as voxd
-import fiftyone.core.labels as voxl
+import fiftyone.core.label as voxl
 import fiftyone.core.query as voxq
 
 import fiftyone.core.data as fod
@@ -103,18 +103,11 @@ group = "my-classifier_V1.0_preds"
 
 for _, sample in query.iter_samples(dataset):
     prediction = MyClassifier().predict(sample.load_image())
-    label = voxl.FiftyOneImageLabels(
+    label = voxl.ClassificationLabel(
         group=group,
+        label=prediction["label"],
+        confidence=prediction["confidence"]
         # model=MyClassifier, # TODO
-        attrs=etad.AttributeContainer(
-            attrs=[
-                etad.CategoricalAttribute(
-                    name="label",
-                    value=prediction["label"],
-                    confidence=prediction["confidence"],
-                )
-            ]
-        ),
     )
 
     sample.add_label(label=label)
@@ -123,18 +116,11 @@ for _, sample in query.iter_samples(dataset):
 predictions = {}
 for _, sample in query.iter_samples(dataset):
     prediction = MyClassifier().predict(sample.load_image())
-    predictions[sample.id] = voxl.FiftyOneImageLabels(
+    predictions[sample.id] = voxl.ClassificationLabel(
         group=group,
+        label=prediction["label"],
+        confidence=prediction["confidence"]
         # model=MyClassifier, # TODO
-        attrs=etad.AttributeContainer(
-            attrs=[
-                etad.CategoricalAttribute(
-                    name="label",
-                    value=prediction["label"],
-                    confidence=prediction["confidence"],
-                )
-            ]
-        ),
     )
 
 dataset.add_labels(labels_dict=predictions)
@@ -143,23 +129,20 @@ dataset.add_labels(labels_dict=predictions)
 for sample_id in predictions.keys():
     print(dataset[sample_id])
 
-import sys
-
-sys.exit("SUCCESS")
-
 
 #
 # Export a random subset of a dataset
 #
 
-# export_dir = "/Users/Brian/Desktop/fiftyone-export"
-#
-# # Export 5 random images and their ground truth annotations as a LabeledDataset
-# context = dataset1.get_ground_truth_context()
-# context.get_view().shuffle().take(5).export(export_dir)
-#
-# # Re-export these samples in TFRecords format
-#
+export_dir = "~/Desktop/fiftyone-export"
+
+# Export 5 random images and their ground truth annotations as a LabeledDataset
+query = voxq.DatasetQuery().sample(5)
+query.export(dataset, export_dir, pretty_print=True)
+
+# Re-export these samples in TFRecords format
+
+# @todo(Tyler)
 # import os
 # import eta.core.datasets as etads
 # import fiftyone.core.tfutils as fotu

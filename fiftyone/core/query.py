@@ -15,6 +15,10 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 from copy import deepcopy
+import os
+import shutil
+
+import eta.core.utils as etau
 
 
 ASCENDING = 1
@@ -56,6 +60,37 @@ class DatasetQuery(object):
         for s in dataset_or_view._c.aggregate(self._pipeline):
             query_idx += 1
             yield query_idx, dataset_or_view._deserialize(s)
+
+    def export(self, dataset_or_view, export_dir, pretty_print=False):
+        """Export the query output to a location on disk
+
+        Args:
+            dataset_or_view: the fiftyone.core.dataset.(Dataset or DatasetView)
+                to be queried
+            export_dir: the name of the directory to export to
+        """
+        export_dir = os.path.expanduser(export_dir)
+
+        etau.ensure_empty_dir(export_dir)
+
+        data_dir = os.path.join(export_dir, "data")
+        labels_dir = os.path.join(export_dir, "labels")
+        etau.ensure_dir(data_dir)
+        etau.ensure_dir(labels_dir)
+
+        for _, sample in self.iter_samples(dataset_or_view):
+            # @todo(Tyler) this doesn't check for duplicate filenames
+            data_filepath = os.path.join(data_dir, sample.filename)
+            labels_filepath = os.path.join(
+                labels_dir, os.path.splitext(sample.filename)[0] + ".json"
+            )
+
+            shutil.copy(sample.filepath, data_filepath)
+            sample.labels.write_json(
+                labels_filepath, pretty_print=pretty_print
+            )
+
+    # QUERY OPERATIONS ########################################################
 
     def filter(self, filter):
         """
