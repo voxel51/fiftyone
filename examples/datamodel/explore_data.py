@@ -29,20 +29,19 @@ print()
 ###############################################################################
 # Action 2: Check for tags/views on the dataset
 #
-# A Dataset can have multiple `DatasetView`s on it, one for each "tag" which is
-# simply the `DatasetView`'s name.
+# A Dataset can have arbitrary "tags" which could be used as dataset splits
+# (train, test, etc.) but are not constrained to be disjoint and could be used
+# for anything the user desires
 #
 # The CIFAR100 dataset was ingested with two disjoint tags: 'train' and 'test'
 # and a third tag 'rand' that was randomly added to 30% of the samples.
 ###############################################################################
 
+print("Tags: %s" % dataset.get_tags())
+print()
+
 import sys
 sys.exit("SUCCESS")
-
-print("Tags: %s" % dataset.get_tags())
-for view in dataset.get_views():
-    print("Num '%s' samples: %d" % (view.tag, len(view)))
-print()
 
 ###############################################################################
 # Action 3: Iterate samples of the dataset
