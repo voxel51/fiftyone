@@ -74,8 +74,8 @@ def ensure_torch():
         )
 
 
-def load_serializable(obj, cls):
-    """Loads the given object as an instance of the given
+def parse_serializable(obj, cls):
+    """Parses the given object as an instance of the given
     ``eta.core.serial.Serializable`` class.
 
     Args:
