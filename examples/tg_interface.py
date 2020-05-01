@@ -1,20 +1,6 @@
 """
 Initial demo of the FiftyOne interface.
 
-Goals of this interface:
-    "It's not magic": I have to do the things I want done and they aren't
-        overly obfuscated
-
-    "I can name it whatever I want":
-        - fiftyone doesn't know which labels are GT
-        - I can add/delete/name/organize samples, labels, views, ... as I please
-
-TODO:
-creating a voxl.FiftyOneImageLabels should be painless
-I think there should be subclasses for each simple representation, and then
-we can also provide a `CompositeLabel` which is composed of potentially many
-other labels.
-
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -22,15 +8,9 @@ other labels.
 
 import random
 
-import eta.core.data as etad
-
 import fiftyone.core.dataset as voxd
 import fiftyone.core.label as voxl
 import fiftyone.core.query as voxq
-
-import fiftyone.core.data as fod
-import fiftyone.core.datautils as fodu
-import fiftyone.zoo as foz
 
 
 def print_images_head(dataset, num_samples=5, shuffle=False):
