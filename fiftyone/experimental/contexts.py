@@ -1,5 +1,5 @@
 """
-Dataset contexts.
+Experimental dataset contexts.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -22,7 +22,7 @@ import eta.core.data as etad
 import eta.core.image as etai
 
 import fiftyone.core.datautils as fodu
-import fiftyone.core.views as fov
+import fiftyone.experimental.views as fev
 
 
 class DatasetContext(object):
@@ -92,7 +92,7 @@ class ImageContext(DatasetContext):
         Returns:
             a :class:`fiftyone.core.views.ImageView`
         """
-        return fov.ImageView(self)
+        return fev.ImageView(self)
 
     def _iter_image_paths(self, sample_ids):
         for sample_id in sample_ids:
@@ -137,7 +137,7 @@ class LabeledImageContext(DatasetContext):
         Returns:
             a :class:`fiftyone.core.views.LabeledImageView`
         """
-        return fov.LabeledImageView(self)
+        return fev.LabeledImageView(self)
 
     def get_classification_context(self, attr_name=None):
         """Returns a :class:`fiftyone.core.contexts.ImageClassificationContext`
@@ -231,7 +231,7 @@ class ImageClassificationContext(DatasetContext):
         Returns:
             a :class:`fiftyone.core.views.ImageClassificationView`
         """
-        return fov.ImageClassificationView(self)
+        return fev.ImageClassificationView(self)
 
     def _get_label(self, sample):
         image_labels = getattr(sample, self._label_field)
@@ -321,7 +321,7 @@ class ModelContext(DatasetContext):
         Returns:
             a :class:`fiftyone.core.views.ModelView`
         """
-        return fov.ModelView(self)
+        return fev.ModelView(self)
 
     def add_prediction(self, sample_id, prediction):
         """Adds the model prediction for the given sample to the context.
