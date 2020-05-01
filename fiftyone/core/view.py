@@ -44,8 +44,34 @@ class SampleCollection(object):
     def iter_samples(self):
         raise NotImplementedError("Subclass must implement")
 
-    def export(self):
-        raise NotImplementedError("Subclass must implement")
+    def export(self, export_dir, pretty_print=False):
+        """Export the view to a location on disk
+
+        Args:
+            dataset_or_view: the fiftyone.core.dataset.(Dataset or DatasetView)
+                to be queried
+            export_dir: the name of the directory to export to
+        """
+        export_dir = os.path.expanduser(export_dir)
+
+        etau.ensure_empty_dir(export_dir)
+
+        data_dir = os.path.join(export_dir, "data")
+        labels_dir = os.path.join(export_dir, "labels")
+        etau.ensure_dir(data_dir)
+        etau.ensure_dir(labels_dir)
+
+        for _, sample in self.iter_samples():
+            # @todo(Tyler) this doesn't check for duplicate filenames
+            data_filepath = os.path.join(data_dir, sample.filename)
+            labels_filepath = os.path.join(
+                labels_dir, os.path.splitext(sample.filename)[0] + ".json"
+            )
+
+            shutil.copy(sample.filepath, data_filepath)
+            sample.labels.write_json(
+                labels_filepath, pretty_print=pretty_print
+            )
 
 
 class DatasetView(SampleCollection):
@@ -86,34 +112,6 @@ class DatasetView(SampleCollection):
             view_idx += 1
             yield view_idx, self.dataset._deserialize(s)
 
-    def export(self, export_dir, pretty_print=False):
-        """Export the view to a location on disk
-
-        Args:
-            dataset_or_view: the fiftyone.core.dataset.(Dataset or DatasetView)
-                to be queried
-            export_dir: the name of the directory to export to
-        """
-        export_dir = os.path.expanduser(export_dir)
-
-        etau.ensure_empty_dir(export_dir)
-
-        data_dir = os.path.join(export_dir, "data")
-        labels_dir = os.path.join(export_dir, "labels")
-        etau.ensure_dir(data_dir)
-        etau.ensure_dir(labels_dir)
-
-        for _, sample in self.iter_samples():
-            # @todo(Tyler) this doesn't check for duplicate filenames
-            data_filepath = os.path.join(data_dir, sample.filename)
-            labels_filepath = os.path.join(
-                labels_dir, os.path.splitext(sample.filename)[0] + ".json"
-            )
-
-            shutil.copy(sample.filepath, data_filepath)
-            sample.labels.write_json(
-                labels_filepath, pretty_print=pretty_print
-            )
 
     # VIEW OPERATIONS #########################################################
 

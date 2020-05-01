@@ -27,7 +27,7 @@ print("Num samples: %d" % len(dataset))
 print()
 
 ###############################################################################
-# Action 2: Check for tags/views on the dataset
+# Action 2: Check for tags on the dataset
 #
 # A Dataset can have arbitrary "tags" which could be used as dataset splits
 # (train, test, etc.) but are not constrained to be disjoint and could be used
@@ -40,8 +40,26 @@ print()
 print("Tags: %s" % dataset.get_tags())
 print()
 
-import sys
-sys.exit("SUCCESS")
+###############################################################################
+# Action 2: Check for label groups on the dataset
+#
+# Each sample in a dataset contains a dictionary of labels with label groups
+# as keys. A label group spans all samples with the given label
+###############################################################################
+
+# print("Label Groups: %s" % dataset.get_label_groups())
+# print()
+
+###############################################################################
+# Action 2: Check for insight groups on the dataset
+#
+# Similar to labels, each sample contains a set of insights. An insight group
+# is a group of insights, one per sample, spanning across a dataset or subset
+# of a dataset.
+###############################################################################
+
+# print("Insight Groups: %s" % dataset.get_insight_groups())
+# print()
 
 ###############################################################################
 # Action 3: Iterate samples of the dataset
@@ -52,6 +70,9 @@ sample = next(dataset.iter_samples())
 print(sample)
 print("Ingested at: %s" % sample.ingest_time)
 print()
+
+import sys
+sys.exit("SUCCESS")
 
 ###############################################################################
 # Action 4: Iterate samples of a view

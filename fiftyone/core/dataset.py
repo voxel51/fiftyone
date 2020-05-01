@@ -63,6 +63,9 @@ class Dataset(fov.SampleCollection):
             self._c.find_one({"_id": ObjectId(sample_id)})
         )
 
+    def get_tags(self):
+        return self._c.distinct("tags")
+
     def add_sample(self, sample):
         fos.Sample.validate(sample)
         fod.insert_one(self._c, sample)
