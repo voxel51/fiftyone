@@ -14,3 +14,7 @@ body {
 #root {
   height: 100%;
 }
+
+.ui.vertical.inverted.menu .menu span.item {
+  color: rgba(255, 255, 255, 0.8);
+}

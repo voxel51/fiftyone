@@ -28,7 +28,7 @@ export default (props) => {
                 ? Object.keys(props.update.state.page).map((k) => {
                     const v = props.update.state.page[k];
                     return (
-                      <Menu.Item>
+                      <Menu.Item as="span">
                         {k}: {v}
                       </Menu.Item>
                     );
@@ -39,7 +39,7 @@ export default (props) => {
           <Menu.Item as="h4">
             View Info:
             <Menu inverted vertical>
-              <Menu.Item>
+              <Menu.Item as="span">
                 {props.update.state && props.update.state.view_tag
                   ? props.update.state.view_tag
                   : "No view"}
