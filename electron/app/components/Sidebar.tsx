@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import { Grid, Image, Menu, Sidebar } from "semantic-ui-react";
 
 export default (props) => {
+  const hasDataset = Boolean(props.update.state);
   return (
     <Sidebar
       as={Menu}
@@ -12,43 +13,57 @@ export default (props) => {
       direction={"left"}
       visible={true}
     >
-      <Menu.Item as="h3">FiftyOne</Menu.Item>
-      <Menu.Item as="h4">
-        {props.update.state ? (
-          <>Dataset: {props.update.state.dataset_name}</>
-        ) : (
-          <>No dataset loaded</>
-        )}
+      <Menu.Item as="h2">FiftyOne</Menu.Item>
+      <Menu.Item as="h3">
+        {hasDataset
+          ? `Dataset: ${props.update.state.dataset_name}`
+          : "No dataset loaded"}
       </Menu.Item>
-      <Menu.Item as="h5">Page Info:</Menu.Item>
-      {props.update.state && props.update.state.page
-        ? Object.keys(props.update.state.page).map((k) => {
-            const v = props.update.state.page[k];
-            return (
-              <Menu.Item as="h5">
-                {k} : {v}
+      {hasDataset ? (
+        <>
+          <Menu.Item as="h4">
+            Page Info:
+            <Menu inverted vertical>
+              {props.update.state && props.update.state.page
+                ? Object.keys(props.update.state.page).map((k) => {
+                    const v = props.update.state.page[k];
+                    return (
+                      <Menu.Item as="span">
+                        {k}: {v}
+                      </Menu.Item>
+                    );
+                  })
+                : null}
+            </Menu>
+          </Menu.Item>
+          <Menu.Item as="h4">
+            View Info:
+            <Menu inverted vertical>
+              <Menu.Item as="span">
+                {props.update.state && props.update.state.view_tag
+                  ? props.update.state.view_tag
+                  : "No view"}
               </Menu.Item>
-            );
-          })
-        : null}
-      <Menu.Item as="h5">View Info:</Menu.Item>
-      <Menu.Item as="h5">
-        {props.update.state && props.update.state.view_tag
-          ? props.update.state.view_tag
-          : "No view"}
-      </Menu.Item>
-      <Menu.Item as="h5">Query Info:</Menu.Item>
-      {props.update.state && props.update.state.query ? (
-        Object.keys(props.update.state.query).map((k) => {
-          return (
-            <Menu.Item as="h5">
-              {String(Object.keys(props.update.state.query[k])[0])}
-            </Menu.Item>
-          );
-        })
-      ) : (
-        <Menu.Item as="h5">Empty query</Menu.Item>
-      )}
+            </Menu>
+          </Menu.Item>
+          <Menu.Item as="h4">
+            Query Info:
+            <Menu inverted vertical>
+              {props.update.state && props.update.state.query ? (
+                Object.keys(props.update.state.query).map((k) => {
+                  return (
+                    <Menu.Item as="span">
+                      {String(Object.keys(props.update.state.query[k])[0])}
+                    </Menu.Item>
+                  );
+                })
+              ) : (
+                <Menu.Item as="span">Empty query</Menu.Item>
+              )}
+            </Menu>
+          </Menu.Item>
+        </>
+      ) : null}
     </Sidebar>
   );
 };
