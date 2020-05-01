@@ -1,5 +1,8 @@
 """
-FiftyOne package namespace.
+The FiftyOne Dataset Zoo.
+
+This package defines a collection of open source datasets made available for
+download via FiftyOne.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,11 +21,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import fiftyone.core.config as foc
-from fiftyone.core.dashboard import launch_dashboard
-import fiftyone.core.service as fos
+import fiftyone as fo
 
-
-config = foc.load_config()
-dataset_service = fos.DatabaseService()
-server_service = fos.ServerService()
+from .base import *
