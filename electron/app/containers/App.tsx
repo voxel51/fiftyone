@@ -2,7 +2,7 @@ import React, { ReactNode } from "react";
 import { connect } from "react-redux";
 import Sidebar from "../components/Sidebar";
 import { updateState } from "../actions/update";
-import io from "socket.io-client";
+import { getSocket, useSubscribe } from "../utils/socket";
 
 type Props = {
   children: ReactNode;
@@ -11,34 +11,22 @@ type Props = {
 const mapStateToProps = (state = {}) => {
   return { ...state };
 };
-let socket;
 
-class App extends React.Component {
-  constructor(props: Props) {
-    super(props);
-    const { dispatch } = this.props;
-    socket = io.connect("http://localhost:5151/state");
-    socket.on("connect", () => console.log("connected"));
+function App(props: Props) {
+  const { children, dispatch, update } = props;
+  const socket = getSocket("state");
+  useSubscribe(socket, "connect", () => console.log("connected"));
+  useSubscribe(socket, "disconnect", () => console.log("disconnected"));
+  useSubscribe(socket, "update", (data) => {
+    dispatch(updateState(data));
+  });
 
-    socket.on("disconnect", () => console.log("disconnected"));
-    socket.on("update", (data) => {
-      dispatch(updateState(data));
-    });
-  }
-
-  componentWillUnmount() {
-    socket.disconnect();
-  }
-
-  render() {
-    const { children, update } = this.props;
-    return (
-      <>
-        <Sidebar update={update} />
-        <div style={{ marginLeft: 260 }}>{children}</div>
-      </>
-    );
-  }
+  return (
+    <>
+      <Sidebar update={update} />
+      <div style={{ marginLeft: 260 }}>{children}</div>
+    </>
+  );
 }
 
 export default connect(mapStateToProps)(App);
