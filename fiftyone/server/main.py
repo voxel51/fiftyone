@@ -40,6 +40,7 @@ class State(Namespace):
         "dataset_name": None,
         "query": None,
         "view_tag": None,
+        "samples": [],
     }
     it = None
     ds = None
@@ -56,10 +57,8 @@ class State(Namespace):
         """On update"""
         if state["dataset_name"]:
             self.ds = fod.Dataset(state["dataset_name"])
-            self.it = query.Query(state["query"]).iter_samples(self.ds)
-            state.update(self._next())
+            self.it = query.Query([]).iter_samples(self.ds)
             self.state = state
-
             emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
@@ -73,13 +72,23 @@ class State(Namespace):
 
     def on_next(self, _):
         """Get the next state using the query iterator"""
-        # @todo
-        pass
+        print(_)
+        state = self._next()
+        samples = state["samples"]
+        state.update(self.state)
+        state["samples"] = samples
+        self.state = state
+        return self.state
 
     def _next(self):
         results = {}
-        for i in range(0, 50):
-            qidx, sample = next(self.it)
+        for i in range(0, 25):
+            while True:
+                try:
+                    qidx, sample = next(self.it)
+                    break
+                except ValueError:
+                    pass
             results[qidx] = sample.serialize()
         return {"samples": results}
 

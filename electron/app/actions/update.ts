@@ -1,3 +1,4 @@
+import io from "socket.io-client";
 import { GetState, Dispatch } from "../reducers/types";
 
 export const UPDATE = "UPDATE";

@@ -10,103 +10,60 @@ const GalleryWrapper = (props) => (
   </div>
 );
 
-function createImageData(data) {
-  const images = data
-    ? Object.keys(state.samples).map((k) => {
-        const sample = state.samples[k];
-        const path = sample.filepath;
-        const mimeType = sample.metadata.mime_type;
-        const host = "http://127.0.0.1:5151/";
-        const src = `${host}?path=${path}&mime_type=${mimeType}`;
-        return {
-          src: src,
-          thumbnail: src,
-          thumbnailWidth: state.samples[k].metadata.frame_size[0],
-          thumbnailHeight: state.samples[k].metadata.frame_size[1],
-          tags: [{ value: "cifar" }],
-        };
-      })
-    : [];
-}
-
 export default function Overview(props) {
-  console.log(props);
   const { state, socket } = props;
   const [tab, setTab] = useState("overview");
-  const [images, setImages] = React.useState([]);
-  const loadMore = (count = 50) => {
-    socket.emit("next", "", (data) => {
-      React.useEffect(() => {
-        setImages([...images, ...createImageData(data)]);
-      });
+  const [images, setImages] = useState([]);
+  const [loaded, setIsLoaded] = useState(false);
+  function createImageData(data) {
+    const l = data
+      ? Object.keys(data.samples).map((k) => {
+          const sample = data.samples[k];
+          const path = sample.filepath;
+          const mimeType = sample.metadata.mime_type;
+          const host = "http://127.0.0.1:5151/";
+          const src = `${host}?path=${path}&mime_type=${mimeType}`;
+          return {
+            src: src,
+            thumbnail: src,
+            thumbnailWidth: sample.metadata.frame_size[0],
+            thumbnailHeight: sample.metadata.frame_size[1],
+            tags: [{ value: "cifar", title: "cifar" }],
+          };
+        })
+      : [];
+    return l;
+  }
+
+  React.useEffect(() => {
+    loadMore();
+  }, []);
+
+  const loadMore = (p) => {
+    socket.emit("next", p, (data) => {
+      const more = createImageData(data);
+      setImages([...images, ...more]);
+      setIsLoaded(true);
     });
   };
-  const IMAGES = createImageData(data);
 
-  const tags = Array.from(
-    new Set(
-      IMAGES.reduce(
-        (arr, image) => arr.concat(image.tags.map((tag) => tag.value)),
-        []
-      )
-    )
-  );
-
-  let content;
-  if (tab == "overview") {
-    const data = tags
-      .map((tagName) => ({
-        name: tagName,
-        count: IMAGES.filter((img) =>
-          img.tags.some((tag) => tag.value == tagName)
-        ).length,
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    content = (
-      <Segment>
-        <Histogram data={data} />
-      </Segment>
-    );
-  } else if (tab == "pools") {
-    content = (
-      <>
-        {tags.map((tagName) => (
-          <React.Fragment key={tagName}>
-            <h3>{tagName}</h3>
-            <GalleryWrapper
-              images={IMAGES.filter(
-                (image) =>
-                  image.tags.filter((tag) => tag.value === tagName).length
-              )}
-            />
-          </React.Fragment>
-        ))}
-      </>
-    );
-  } else {
-    console.log(IMAGES);
-    content = <GalleryWrapper images={IMAGES} />;
-  }
+  socket.on("update", (data) => {
+    setImages([]);
+    loadMore();
+  });
+  const content = <GalleryWrapper images={images} />;
 
   return (
     <Segment>
-      <Header as="h3">
-        Overview: {state && state.dataset_name ? state.dataset_name : ""}
-      </Header>
+      <Header as="h3">Scroll</Header>
 
-      <Menu pointing secondary>
-        {["overview", "pools", "side-by-side", "overlayed"].map((item) => (
-          <Menu.Item
-            key={item}
-            name={item}
-            active={tab === item}
-            onClick={() => setTab(item)}
-          />
-        ))}
-      </Menu>
-
-      <InfiniteScroll pageStart={0} loadMore={}>
+      <InfiniteScroll
+        pageStart={0}
+        loadMore={(p) => loadMore(p)}
+        hasMore={true}
+        loader={"loading"}
+        useWindow={true}
+      >
         {content}
       </InfiniteScroll>
     </Segment>

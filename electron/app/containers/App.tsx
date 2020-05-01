@@ -2,24 +2,20 @@ import React, { ReactNode } from "react";
 import { connect } from "react-redux";
 import Sidebar from "../components/Sidebar";
 import { updateState } from "../actions/update";
-import io from "socket.io-client";
-
 type Props = {
   children: ReactNode;
 };
 
-let socket;
 const mapStateToProps = (state = {}) => {
-  return { ...state, socket: socket };
+  return { ...state, socket: state.update.socket };
 };
 
 class App extends React.Component {
   constructor(props: Props) {
     super(props);
-    const { dispatch } = this.props;
-    socket = io.connect("http://localhost:5151/state");
+    console.log(props);
+    const { dispatch, socket } = this.props;
     socket.on("connect", () => console.log("connected"));
-
     socket.on("disconnect", () => console.log("disconnected"));
     socket.on("update", (data) => {
       dispatch(updateState(data));
@@ -27,7 +23,7 @@ class App extends React.Component {
   }
 
   componentWillUnmount() {
-    socket.disconnect();
+    //this.props.socket.disconnect();
   }
 
   render() {
