@@ -8,9 +8,17 @@ import fiftyone.core.query as foq
 dataset = fod.Dataset(name="cifar100")
 sample = next(dataset.iter_samples())
 
+###############################################################################
+# TAGS
+###############################################################################
+
 # samples can have arbitrary tags
 sample.tags
 # ['train']
+
+###############################################################################
+# LABELS
+###############################################################################
 
 sample.labels
 # <fiftyone.core.label.LabelSet>
@@ -24,18 +32,27 @@ print(sample.labels["ground_truth_fine"])
 #     "confidence": null
 # }
 
+sample.labels["ground_truth_fine"].group
+# "ground_truth_fine"
+
 print(sample.labels["model_1_pred"])
 # {
 #     "label": "cattle",
 #     "confidence": 0.43415618
 # }
 
+###############################################################################
+# INSIGHTS
+###############################################################################
 
 sample.insights
 # <fiftyone.core.insight.InsightSet>
 
 sample.insights["model_1_hardness"]
 # <fiftyone.core.insight.HardnessInsight>
+
+sample.insights["model_1_hardness"].group
+# "model_1_hardness"
 
 print(sample.insights["model_1_hardness"])
 # {
@@ -44,6 +61,7 @@ print(sample.insights["model_1_hardness"])
 #     "prediction": "model_1_pred"
 # }
 
+###############################################################################
 
 # Give me the top 10 hardest samples with GT label of 'mountain'
 query = (
@@ -70,4 +88,5 @@ fo.launch_dashboard(dataset=dataset, query=query)
   samples, e.g.
   `label_groups = [ground_truth, model_1_preds, ...]`
   `insight_groups = [file_hash, hardness_1, hardness_2, ...]`
-- `*_set`: a `label_set` or `insight_set` of all `*` for a single sample
+- `*Set`: a `sample.labels`/`sample.insights` returns a `LabelSet`/`InsightSet`
+  of all `Label`/`Insight`s for a single sample
