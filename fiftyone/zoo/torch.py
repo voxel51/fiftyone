@@ -304,10 +304,7 @@ def _download_and_prepare(
 
     # Consturct the LabeledDataset in `dataset_dir`
     labeled_dataset = fodu.to_labeled_image_dataset(
-        dataset,
-        dataset_dir,
-        sample_parser=sample_parser,
-        num_samples=num_samples,
+        dataset, sample_parser, dataset_dir, num_samples=num_samples,
     )
 
     info = foz.ZooDatasetInfo(

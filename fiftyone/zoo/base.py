@@ -57,11 +57,7 @@ def list_zoo_datasets():
 
 
 def load_zoo_dataset(
-    name,
-    split=None,
-    dataset_dir=None,
-    backing_dir=None,
-    download_if_necessary=True,
+    name, split=None, dataset_dir=None, download_if_necessary=True,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
     a :class:`fiftyone.core.data.Dataset`.
@@ -75,10 +71,8 @@ def load_zoo_dataset(
             for the :class:`fiftyone.zoo.ZooDataset` you specified to see the
             supported splits
         dataset_dir (None): the directory in which the dataset is stored or
-            will be downloaded
-        backing_dir (None): an optional backing directory in which store
-            FiftyOne-generated metadata about the dataset. The default is
-            generated via :func:`fiftyone.core.data.get_default_backing_dir`
+            will be downloaded. By default,
+            :func:`fiftyone.core.data.get_default_dataset_dir` is used
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
 
@@ -93,10 +87,6 @@ def load_zoo_dataset(
         if split is not None:
             logger.info("Using default split '%s'", split)
 
-    if backing_dir is None:
-        backing_dir = fod.get_default_backing_dir(name)
-        logger.info("Using default backing directory '%s'", backing_dir)
-
     if dataset_dir is None:
         dataset_dir = fod.get_default_dataset_dir(name, split=split)
         logger.info("Using default dataset directory '%s'", dataset_dir)
@@ -105,9 +95,7 @@ def load_zoo_dataset(
         zoo_dataset.download_and_prepare(dataset_dir, split=split)
 
     labeled_dataset = etads.load_dataset(dataset_dir)
-    return fod.Dataset.from_ground_truth_labeled_dataset(
-        name, backing_dir, labeled_dataset
-    )
+    return fod.Dataset.from_ground_truth_labeled_samples(name, labeled_dataset)
 
 
 def _get_zoo_dataset(name):
