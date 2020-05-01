@@ -204,6 +204,7 @@ class ZooDataset(object):
 
         if os.path.isfile(info_path):
             logger.debug("ZooDatasetInfo file '%s' already exists", info_path)
+            logger.info("Dataset already downloaded")
             return
 
         if split is None:

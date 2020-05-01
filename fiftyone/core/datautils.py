@@ -50,7 +50,7 @@ def to_labeled_image_dataset(
     format.
 
     FiftyOne provides a number of sample parsers out-of-the-box to ingest
-    samples in for common tasks:
+    samples for common tasks:
 
         - Image classification: :class:`ImageClassificationSampleParser`
 
@@ -114,12 +114,11 @@ def write_labeled_image_dataset(image_paths, labels, dataset_dir):
         a ``eta.core.datasets.LabeledImageDataset`` backed by the specified
         ``dataset_dir``
     """
-    logger.info("Writing samples to '%s'...", dataset_dir)
-    lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-
     num_samples = len(image_paths)
     data_filename_counts = defaultdict(int)
 
+    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
         for img_path, image_labels in zip(image_paths, labels):
             name, ext = os.path.splitext(os.path.basename(img_path))
@@ -323,17 +322,14 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
           a class string
 
     Subclasses can support other input sample formats as necessary.
+
+    Args:
+        labels_map (None): an optional dict mapping class IDs to class strings.
+            If provided, it is assumed that ``target`` is a class ID that
+            should be mapped to a class string via ``labels_map[target]``
     """
 
     def __init__(self, labels_map=None):
-        """Creates an ImageClassificationSampleParser instance.
-
-        Args:
-            labels_map (None): an optional dict mapping class IDs to class
-                strings. If provided, it is assumed that ``target`` is a class
-                ID that should be mapped to a class string via
-                ``labels_map[target]``
-        """
         self.labels_map = labels_map
 
     def parse_label(self, sample):

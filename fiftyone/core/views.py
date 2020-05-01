@@ -25,14 +25,12 @@ import random
 class DatasetView(object):
     """Class for performing read-only manipulations on a
     :class:`fiftyone.core.data.Dataset`.
+
+    Args:
+        context: a :class:`fiftyone.core.contexts.DatasetContext`.
     """
 
     def __init__(self, context):
-        """Creates a DatasetView instance.
-
-        Args:
-            context: a :class:`fiftyone.core.contexts.DatasetContext`.
-        """
         self._context = context
         self._sample_ids = list(context.iter_sample_ids())
         self._orig_sample_ids = copy(self._sample_ids)
@@ -120,14 +118,22 @@ class ImageView(DatasetView):
         """
         return self._context._make_numpy_iterator(self._sample_ids)
 
-    def as_tf_dataset(self):
+    def as_tf_dataset(self, num_parallel_calls=None):
         """Returns a ``tf.data.Dataset`` that contains the images for the
         samples in the view.
+
+        Args:
+            num_parallel_calls (None): the number of samples to read
+                asynchronously in parallel. See
+                https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map
+                for details
 
         Returns:
             a ``tf.data.Dataset``
         """
-        return self._context._make_tf_dataset(self._sample_ids)
+        return self._context._make_tf_dataset(
+            self._sample_ids, num_parallel_calls
+        )
 
     def as_torch_dataset(self):
         """Returns a ``torch.utils.data.Dataset`` that contains the images for
@@ -186,14 +192,22 @@ class ImageClassificationView(DatasetView):
         """
         return self._context._make_numpy_iterator(self._sample_ids)
 
-    def as_tf_dataset(self):
+    def as_tf_dataset(self, num_parallel_calls=None):
         """Returns a ``tf.data.Dataset`` that contains ``(img, label)`` pairs
         for the samples in the view.
+
+        Args:
+            num_parallel_calls (None): the number of samples to read
+                asynchronously in parallel. See
+                https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map
+                for details
 
         Returns:
             a ``tf.data.Dataset``
         """
-        return self._context._make_tf_dataset(self._sample_ids)
+        return self._context._make_tf_dataset(
+            self._sample_ids, num_parallel_calls
+        )
 
     def as_torch_dataset(self):
         """Returns a ``torch.utils.data.Dataset`` that contains
@@ -228,14 +242,22 @@ class ModelView(DatasetView):
         """
         return self._context._make_numpy_iterator(self._sample_ids)
 
-    def as_tf_dataset(self):
+    def as_tf_dataset(self, num_parallel_calls=None):
         """Returns a ``tf.data.Dataset`` that contains ``(img, sample_id)``
         pairs for the samples in the view.
+
+        Args:
+            num_parallel_calls (None): the number of samples to read
+                asynchronously in parallel. See
+                https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map
+                for details
 
         Returns:
             a ``tf.data.Dataset``
         """
-        return self._context._make_tf_dataset(self._sample_ids)
+        return self._context._make_tf_dataset(
+            self._sample_ids, num_parallel_calls
+        )
 
     def as_torch_dataset(self):
         """Returns a ``torch.utils.data.Dataset`` that contains

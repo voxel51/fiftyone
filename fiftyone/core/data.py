@@ -302,17 +302,15 @@ def get_default_dataset_dir(name, split=None):
 
 
 class DatasetSample(etas.Serializable):
-    """Class encapsulating a sample in a dataset."""
+    """Class encapsulating a sample in a dataset.
+
+    Args:
+        sample_id: the ID of the sample
+        data_path: the path to the data on disk
+        gt_labels (None): optional ground truth ``eta.core.image.ImageLabels``
+    """
 
     def __init__(self, sample_id, data_path, gt_labels=None, **kwargs):
-        """Creates a DatasetSample.
-
-        Args:
-            sample_id: the ID of the sample
-            data_path: the path to the data on disk
-            gt_labels (None): optional ground truth
-                ``eta.core.image.ImageLabels``
-        """
         self.sample_id = sample_id
         self.data_path = data_path
         self.gt_labels = gt_labels
@@ -340,15 +338,13 @@ class DatasetSample(etas.Serializable):
 class Dataset(object):
     """Class encapsulating a FiftyOne dataset and its associated samples,
     ground truth annotations, and model(s) predictions.
+
+    Args:
+        name: the name of the dataset
+        samples (None): a list of :class:`DatasetSample`s
     """
 
     def __init__(self, name, samples=None):
-        """Creates a Dataset instance.
-
-        Args:
-            name: the name of the dataset
-            samples (None): a list of :class:`DatasetSample`s
-        """
         if samples is None:
             samples = []
 

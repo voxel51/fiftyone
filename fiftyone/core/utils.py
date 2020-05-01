@@ -111,20 +111,18 @@ class ResourceLimit(object):
 
         with ResourceLimit(resource.RLIMIT_NOFILE, soft=4096):
             # temporarily do things with up to 4096 open files
+
+    Args:
+        limit: the resource to limit. See the documentation of the
+            `resource` module for supported values
+        soft: a new soft limit to apply, which cannot exceed the hard limit
+        hard: a new hard limit to apply, which cannot exceed the current
+            hard limit
+        warn_on_failure: whether to issue a warning rather than an error
+            if the resource limit change is not successful
     """
 
     def __init__(self, limit, soft=None, hard=None, warn_on_failure=False):
-        """Creates a ResourceLimit instance.
-
-        Args:
-            limit: the resource to limit. See the documentation of the
-                `resource` module for supported values
-            soft: a new soft limit to apply, which cannot exceed the hard limit
-            hard: a new hard limit to apply, which cannot exceed the current
-                hard limit
-            warn_on_failure: whether to issue a warning rather than an error
-                if the resource limit change is not successful
-        """
         self._limit = limit
         self._soft = soft
         self._hard = hard
