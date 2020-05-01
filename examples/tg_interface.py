@@ -79,12 +79,12 @@ class MyClassifier:
         }
 
 
-group = "my-classifier_V1.0_preds"
+label_group = "my-classifier_V1.0_preds"
 
 for _, sample in query.iter_samples(dataset):
     prediction = MyClassifier().predict(sample.load_image())
     label = voxl.ClassificationLabel(
-        group=group,
+        group=label_group,
         label=prediction["label"],
         confidence=prediction["confidence"]
         # model=MyClassifier, # TODO
@@ -97,7 +97,7 @@ predictions = {}
 for _, sample in query.iter_samples(dataset):
     prediction = MyClassifier().predict(sample.load_image())
     predictions[sample.id] = voxl.ClassificationLabel(
-        group=group,
+        group=label_group,
         label=prediction["label"],
         confidence=prediction["confidence"]
         # model=MyClassifier, # TODO
