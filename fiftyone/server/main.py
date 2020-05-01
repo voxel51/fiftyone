@@ -7,7 +7,7 @@ FiftyOne Flask server.
 """
 import os
 
-os.environ["FIFTYONE_SERVER"] = True  # noqa
+os.environ["FIFTYONE_SERVER"] = "1"  # noqa
 
 from flask import Flask, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
@@ -54,8 +54,8 @@ class State(Namespace):
 
     def on_update(self, state):
         """On update"""
-        self.ds = fod.Dataset(state.dataset_name)
-        self.it = query.Query(state.query).iter_samples(self.ds)
+        self.ds = fod.Dataset(state["dataset_name"])
+        self.it = query.Query(state["query"]).iter_samples(self.ds)
         state.update(self._next())
         self.state = state
 
