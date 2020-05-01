@@ -94,8 +94,7 @@ def load_zoo_dataset(
     if download_if_necessary:
         zoo_dataset.download_and_prepare(dataset_dir, split=split)
 
-    labeled_dataset = etads.load_dataset(dataset_dir)
-    return fod.Dataset.from_ground_truth_labeled_samples(name, labeled_dataset)
+    return fod.from_labeled_image_dataset(dataset_dir, name=name)
 
 
 def _get_zoo_dataset(name):
