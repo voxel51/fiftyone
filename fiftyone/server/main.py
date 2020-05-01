@@ -54,9 +54,11 @@ class State(Namespace):
 
     def on_update(self, state):
         """On update"""
-        self.ds = fod.Dataset(state["dataset_name"])
-        self.it = query.Query(state["query"]).iter_samples(self.ds)
-        state.update(self._next())
+        if state.get("dataset_name") is not None:
+            self.ds = fod.Dataset(state["dataset_name"])
+        if state.get("query") is not None:
+            self.it = query.Query(state["query"]).iter_samples(self.ds)
+            state.update(self._next())
         self.state = state
 
         emit("update", state, broadcast=True, include_self=False)
