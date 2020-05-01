@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Header, Icon, Menu, Segment, Sidebar } from "semantic-ui-react";
+import {
+  Header,
+  Icon,
+  Menu,
+  Message,
+  Segment,
+  Sidebar,
+} from "semantic-ui-react";
 import Gallery from "react-grid-gallery";
 import Histogram from "./Histogram";
 
@@ -10,9 +17,18 @@ const GalleryWrapper = (props) => (
 );
 
 export default function Overview(props) {
-  console.log(props);
   const state = props.state;
+  const hasDataset = state && state.dataset_name;
   const [tab, setTab] = useState("overview");
+
+  if (!hasDataset) {
+    return (
+      <Segment>
+        <Message>No dataset loaded</Message>
+      </Segment>
+    );
+  }
+
   const IMAGES = state
     ? Object.keys(state.samples).map((k) => {
         const sample = state.samples[k];
@@ -78,9 +94,7 @@ export default function Overview(props) {
 
   return (
     <Segment>
-      <Header as="h3">
-        Overview: {state && state.dataset_name ? state.dataset_name : ""}
-      </Header>
+      <Header as="h3">Overview: {hasDataset ? state.dataset_name : ""}</Header>
 
       <Menu pointing secondary>
         {["overview", "pools", "side-by-side", "overlayed"].map((item) => (
