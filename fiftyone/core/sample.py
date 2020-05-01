@@ -19,24 +19,15 @@ import os
 import eta.core.image as etai
 import eta.core.serial as etas
 
-import fiftyone.core.document as voxd
-import fiftyone.core.label as voxl
+import fiftyone.core.document as fod
 
 
-class Sample(voxd.Document):
+class Sample(fod.Document):
     def __init__(self, filepath, tags=None, labels=None):
         self.filepath = os.path.abspath(filepath)
         self.filename = os.path.basename(filepath)
         self.tags = tags or []
-
-        if isinstance(labels, voxl.LabelSet):
-            self.labels = labels
-        elif isinstance(labels, voxl.Label):
-            self.labels = voxl.LabelSet(labels=[labels])
-        elif labels is None:
-            self.labels = voxl.LabelSet()
-        else:
-            raise ValueError("Unexpected labels type: %s" % type(labels))
+        self.labels = labels or {}
 
     @property
     def dataset(self):
@@ -73,7 +64,10 @@ class Sample(voxd.Document):
         }
 
         if "labels" in d:
-            kwargs["labels"] = etas.Serializable.from_dict(d["labels"])
+            kwargs["labels"] = {
+                label_group: etas.Serializable.from_dict(labels_dict)
+                for label_group, labels_dict in d["labels"].items()
+            }
 
         return kwargs
 

@@ -7,12 +7,11 @@ import os
 import random
 import time
 
-import eta.core.data as etad
 import eta.core.serial as etas
 
-import fiftyone.core.dataset as voxd
-import fiftyone.core.label as voxl
-import fiftyone.core.sample as voxs
+import fiftyone.core.dataset as fod
+import fiftyone.core.labels as fol
+import fiftyone.core.sample as fos
 
 
 logger = logging.getLogger(__name__)
@@ -40,7 +39,7 @@ data_dir = os.path.abspath(os.path.join(dir_path, "..", "data", dataset_name))
 fine_labels_template = os.path.join(data_dir, "%s_fine.json")
 coarse_labels_template = os.path.join(data_dir, "%s_coarse.json")
 
-dataset = voxd.Dataset(dataset_name)
+dataset = fod.Dataset(dataset_name)
 
 start = time.time()
 
@@ -52,22 +51,16 @@ for partition in partitions:
 
     samples = []
     for rel_img_path in fine_labels:
-        # create label set (with both coarse and fine labels)
-        labels = voxl.LabelSet(
-            labels=[
-                voxl.ClassificationLabel(
-                    group="ground_truth_fine",
-                    label=fine_labels[rel_img_path],
-                ),
-                voxl.ClassificationLabel(
-                    group="ground_truth_coarse",
-                label = coarse_labels[rel_img_path],
-                ),
-            ]
-        )
+        # create labels dict (with both coarse and fine labels)
+        labels = {
+            "ground_truth_fine": fol.ClassificationLabel(
+                label=fine_labels[rel_img_path]),
+            "ground_truth_coarse": fol.ClassificationLabel(
+                label=coarse_labels[rel_img_path]),
+        }
 
         # create sample
-        sample = voxs.ImageSample(
+        sample = fos.ImageSample(
             filepath=os.path.join(data_dir, rel_img_path),
             # this gives a second tag to a random 30% of the data
             tags=[partition] + (["rand"] if random.random() > 0.7 else []),

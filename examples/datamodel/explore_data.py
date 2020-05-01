@@ -4,7 +4,7 @@ Explore CIFAR100 data that has been ingested into a dataset
 """
 import logging
 
-import fiftyone.core.dataset as voxd
+import fiftyone.core.dataset as fod
 
 
 logger = logging.getLogger(__name__)
@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 # Action 0: List datasets
 ###############################################################################
 
-print("Datasets: %s" % voxd.list_dataset_names())
+print("Datasets: %s" % fod.list_dataset_names())
 print()
 
 ###############################################################################
 # Action 1: Load dataset
 ###############################################################################
 
-dataset = voxd.Dataset(name="cifar100")
+dataset = fod.Dataset(name="cifar100")
 
 print("Num samples: %d" % len(dataset))
 print()
@@ -35,6 +35,9 @@ print()
 # The CIFAR100 dataset was ingested with two disjoint tags: 'train' and 'test'
 # and a third tag 'rand' that was randomly added to 30% of the samples.
 ###############################################################################
+
+import sys
+sys.exit("SUCCESS")
 
 print("Tags: %s" % dataset.get_tags())
 for view in dataset.get_views():

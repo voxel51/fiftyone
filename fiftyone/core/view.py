@@ -32,6 +32,15 @@ class SampleCollection(object):
     def __getitem__(self, sample_id):
         raise NotImplementedError("Subclass must implement")
 
+    def get_tags(self):
+        raise NotImplementedError("Subclass must implement")
+
+    def get_label_groups(self):
+        raise NotImplementedError("Subclass must implement")
+
+    def get_insight_groups(self):
+        raise NotImplementedError("Subclass must implement")
+
     def iter_samples(self):
         raise NotImplementedError("Subclass must implement")
 
