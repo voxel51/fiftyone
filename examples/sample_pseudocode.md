@@ -62,6 +62,21 @@ print(sample.insights["model_1_hardness"])
 # }
 
 ###############################################################################
+# TAGS/GROUPS ON DATASETS
+###############################################################################
+
+dataset.get_tags()
+# ["train", "test"]
+
+dataset.get_label_groups()
+# ["ground_truth_fine", "ground_truth_coarse", "model_1_pred", "model_2_pred"]
+
+dataset.get_insight_groups()
+# ["file_hash", "model_1_hardness", "model_2_hardness"]
+
+###############################################################################
+# QUERIES
+###############################################################################
 
 # Give me the top 10 hardest samples with GT label of 'mountain'
 query = (
@@ -69,6 +84,13 @@ query = (
     .filter({"labels.ground_truth_label.label": "mountain"})
     .sort("insights.model_1_hardness.hardness", order=foq.DESCENDING)
     .limit(10)
+)
+
+# Give me 5 random samples that have "model_1_pred" label on them
+query = (
+    foq.DatasetQuery()
+    .filter({"labels": "model_1_pred"})
+    .sample(5)
 )
 
 # iterate the query
