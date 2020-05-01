@@ -35,12 +35,16 @@ import tensorflow as tf
 logger = logging.getLogger(__name__)
 
 
-def from_images_dir(images_dir, recursive=False):
-    """Loads the directory of images as a ``tf.data.Dataset``.
+def from_images_dir(images_dir, recursive=False, num_parallel_calls=None):
+    """Creates a ``tf.data.Dataset`` for the given directory of images.
 
     Args:
         images_dir: a directory of images
         recursive (False): whether to recursively traverse subdirectories
+        num_parallel_calls (None): the number of samples to read
+            asynchronously in parallel. See
+            https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
+            details
 
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
@@ -48,43 +52,55 @@ def from_images_dir(images_dir, recursive=False):
     image_paths = etau.list_files(
         images_dir, abs_paths=True, recursive=recursive
     )
-    return from_images(image_paths)
+    return from_images(image_paths, num_parallel_calls=num_parallel_calls)
 
 
-def from_image_patt(image_patt):
-    """Loads the glob pattern of images as a ``tf.data.Dataset``.
+def from_image_patt(image_patt, num_parallel_calls=None):
+    """Creates a ``tf.data.Dataset`` for the given glob pattern of images.
 
     Args:
         image_patt: a glob pattern of images like ``/path/to/images/*.jpg``
+        num_parallel_calls (None): the number of samples to read
+            asynchronously in parallel. See
+            https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
+            details
 
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
     image_paths = etau.parse_glob_pattern(image_patt)
-    return from_images(image_paths)
+    return from_images(image_paths, num_parallel_calls=num_parallel_calls)
 
 
-def from_images(image_paths):
-    """Loads the list of images as a ``tf.data.Dataset``.
+def from_images(image_paths, num_parallel_calls=None):
+    """Creates a ``tf.data.Dataset`` for the given list of images.
 
     Args:
         image_paths: a list of image paths
+        num_parallel_calls (None): the number of samples to read
+            asynchronously in parallel. See
+            https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
+            details
 
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
     return tf.data.Dataset.from_tensor_slices(image_paths).map(
-        _parse_image, num_parallel_calls=tf.data.experimental.AUTOTUNE
+        _parse_image, num_parallel_calls=num_parallel_calls
     )
 
 
-def from_image_paths_and_labels(image_paths, labels):
-    """Loads an image classification dataset stored as a list of image paths
-    and labels as a ``tf.data.Dataset``.
+def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
+    """Creates a ``tf.data.Dataset`` for an image classification dataset stored
+    as a list of image paths and labels.
 
     Args:
         image_paths: a list of image paths
         labels: a list of labels
+        num_parallel_calls (None): the number of samples to read
+            asynchronously in parallel. See
+            https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
+            details
 
     Returns:
         a ``tf.data.Dataset`` that emits ``(img, label)`` pairs
@@ -96,31 +112,46 @@ def from_image_paths_and_labels(image_paths, labels):
         return img, label
 
     return tf.data.Dataset.from_tensor_slices((image_paths, labels)).map(
-        parse_sample, num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        parse_sample, num_parallel_calls=num_parallel_calls,
     )
 
 
-def from_image_classification_labeled_dataset(labeled_dataset):
-    """Loads an image classification dataset as a ``tf.data.Dataset``.
+def from_image_classification_labeled_dataset(
+    labeled_dataset, num_parallel_calls=None
+):
+    """Creates a ``tf.data.Dataset`` for the given image classification
+    dataset.
 
     Args:
-        labeled_dataset: an ``eta.core.datasets.LabeledImageDataset``
+        labeled_dataset: a ``eta.core.datasets.LabeledImageDataset``
+        num_parallel_calls (None): the number of samples to read
+            asynchronously in parallel. See
+            https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
+            details
 
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
     """
     return from_labeled_image_dataset(
-        labeled_dataset, ImageClassificationFeatures
+        labeled_dataset,
+        ImageClassificationFeatures,
+        num_parallel_calls=num_parallel_calls,
     )
 
 
-def from_labeled_image_dataset(labeled_dataset, features_cls):
-    """Loads a labeled image dataset as a ``tf.data.Dataset``.
+def from_labeled_image_dataset(
+    labeled_dataset, features, num_parallel_calls=None
+):
+    """Creates a ``tf.data.Dataset`` for the given labeled image dataset.
 
     Args:
-        labeled_dataset: an ``eta.core.datasets.LabeledImageDataset``
-        features_cls: a :class:`Features` subclass describing how to format the
+        labeled_dataset: a ``eta.core.datasets.LabeledImageDataset``
+        features: a :class:`Features` instance describing how to format the
             samples in the output records
+        num_parallel_calls (None): the number of samples to read
+            asynchronously in parallel. See
+            https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
+            details
 
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
@@ -129,14 +160,15 @@ def from_labeled_image_dataset(labeled_dataset, features_cls):
     labels_paths = list(labeled_dataset.iter_labels_paths())
 
     return tf.data.Dataset.from_tensor_slices((data_paths, labels_paths)).map(
-        features_cls.parse_tf_sample,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        features.parse_tf_sample, num_parallel_calls=num_parallel_calls,
     )
 
 
-def from_image_classification_dataset_directory(dataset_dir):
-    """Loads the image classification dataset from the given directory as a
-    ``tf.data.Dataset``.
+def from_image_classification_dataset_directory(
+    dataset_dir, num_parallel_calls=None
+):
+    """Creates a ``tf.data.Dataset`` for the given image classification dataset
+    directory.
 
     The dataset directory should have the following format::
 
@@ -152,6 +184,10 @@ def from_image_classification_dataset_directory(dataset_dir):
 
     Args:
         dataset_dir: the dataset directory
+        num_parallel_calls (None): the number of samples to read
+            asynchronously in parallel. See
+            https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
+            details
 
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
@@ -166,7 +202,7 @@ def from_image_classification_dataset_directory(dataset_dir):
         return img, label
 
     return tf.data.Dataset.from_tensor_slices(samples).map(
-        parse_sample, num_parallel_calls=tf.data.experimental.AUTOTUNE
+        parse_sample, num_parallel_calls=num_parallel_calls
     )
 
 
@@ -179,8 +215,8 @@ def write_image_classification_tf_records(labeled_dataset, tf_records_path):
         tf_records_path: the path to write the ``.tfrecords`` file
     """
     dataset = labeled_dataset.iter_paths()
-    features_cls = ImageClassificationFeatures
-    write_tf_records(dataset, features_cls, tf_records_path)
+    features = ImageClassificationFeatures()
+    write_tf_records(dataset, features, tf_records_path)
 
 
 def load_image_classification_tf_records(
@@ -202,42 +238,42 @@ def load_image_classification_tf_records(
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
     """
-    features_cls = ImageClassificationFeatures
+    features = ImageClassificationFeatures()
     return load_tf_records(
         tf_records_patt,
-        features_cls,
+        features,
         buffer_size=buffer_size,
         num_parallel_reads=num_parallel_reads,
     )
 
 
 # @todo support writing sharded TFRecords
-def write_tf_records(dataset, features_cls, tf_records_path):
+def write_tf_records(dataset, features, tf_records_path):
     """Writes the given dataset to disk in TFRecord format with features
     described by the provided :class:`Features` class.
 
     Args:
         dataset: an iterable that emits samples
-        features_cls: a :class:`Features` class whose
+        features: a :class:`Features` instance whose
             :func:`Features.make_tf_example` method can be used to format the
             samples in the output records
         tf_records_path: the path to write the ``.tfrecords`` file
     """
     with tf.io.TFRecordWriter(tf_records_path) as writer:
         for sample in dataset:
-            tf_example = features_cls.make_tf_example(sample)
+            tf_example = features.make_tf_example(sample)
             writer.write(tf_example.SerializeToString())
 
 
 def load_tf_records(
-    tf_records_patt, features_cls, buffer_size=None, num_parallel_reads=None,
+    tf_records_patt, features, buffer_size=None, num_parallel_reads=None,
 ):
     """Loads the TFRecords from the given path(s) as a ``tf.data.Dataset``.
 
     Args:
         tf_records_patt: the path (or glob pattern of paths) to the TFRecords
             file(s) to load
-        features_cls: a :class:`Features` class whose
+        features: a :class:`Features` instance whose
             :func:`Features.parse_tf_example` method can be used to parse the
             input records
         buffer_size (None): an optional buffer size, in bytes, to use when
@@ -258,7 +294,7 @@ def load_tf_records(
         buffer_size=buffer_size,
         num_parallel_reads=num_parallel_reads,
     ).map(
-        features_cls.parse_tf_example,
+        features.parse_tf_example,
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
     )
 
@@ -268,8 +304,7 @@ class Features(object):
     dataset formats.
     """
 
-    @staticmethod
-    def make_tf_example(sample):
+    def make_tf_example(self, sample):
         """Makes a ``tf.train.Example`` for the given sample.
 
         Args:
@@ -282,8 +317,7 @@ class Features(object):
             "subclasses must implement make_tf_example()"
         )
 
-    @staticmethod
-    def parse_tf_example(example_proto):
+    def parse_tf_example(self, example_proto):
         """Parses the given ``tf.train.Example``.
 
         Args:
@@ -298,8 +332,8 @@ class Features(object):
 
 
 class ImageClassificationFeatures(Features):
-    """Interface for reading/writing ``tf.train.Example`` instances
-    representing image classification samples.
+    """Class for reading/writing ``tf.train.Example`` instances representing
+    image classification samples.
     """
 
     _TF_EXAMPLE_FEATURES = {
@@ -310,8 +344,7 @@ class ImageClassificationFeatures(Features):
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
     }
 
-    @staticmethod
-    def parse_tf_sample(img_path, image_labels_path):
+    def parse_tf_sample(self, img_path, image_labels_path):
         """Parses the sample in the context of a TF data pipeline.
 
         Args:
@@ -328,8 +361,7 @@ class ImageClassificationFeatures(Features):
         label = tf.py_function(_parse_labels, [labels_bytes], tf.string)
         return img, label
 
-    @staticmethod
-    def make_tf_example(sample):
+    def make_tf_example(self, sample):
         """Makes an image classification ``tf.train.Example`` for the given
         image and labels.
 
@@ -358,8 +390,7 @@ class ImageClassificationFeatures(Features):
 
         return tf.train.Example(features=tf.train.Features(feature=feature))
 
-    @staticmethod
-    def parse_tf_example(example_proto):
+    def parse_tf_example(self, example_proto):
         """Parses an image classification ``tf.train.Example``.
 
         Args:

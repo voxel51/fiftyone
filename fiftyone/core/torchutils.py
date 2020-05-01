@@ -38,15 +38,13 @@ class TorchImageDataset(Dataset):
     """A ``torch.utils.data.Dataset`` of unlabeled images.
 
     Instances of this class emit images with no associated labels.
+
+    Args:
+        image_paths: a list of image paths
+        transform (None): an optional transform to apply to the images
     """
 
     def __init__(self, image_paths, transform=None):
-        """Creates a TorchImageDataset instance.
-
-        Args:
-            image_paths: a list of image paths
-            transform (None): an optional transform to apply to the images
-        """
         self.image_paths = image_paths
         self.transform = transform
 
@@ -63,7 +61,7 @@ class TorchImageDataset(Dataset):
 
     @classmethod
     def from_images_dir(cls, images_dir, recursive=False):
-        """Creates a TorchImageDataset from a directory of images.
+        """Creates a TorchImageDataset for the given directory of images.
 
         Args:
             images_dir: a directory of images
@@ -79,7 +77,7 @@ class TorchImageDataset(Dataset):
 
     @classmethod
     def from_image_patt(cls, image_patt):
-        """Creates a TorchImageDataset from a pattern of images on disk.
+        """Creates a TorchImageDataset for a pattern of images on disk.
 
         Args:
             image_patt: a glob pattern of images like ``/path/to/images/*.jpg``
@@ -92,7 +90,7 @@ class TorchImageDataset(Dataset):
 
     @classmethod
     def from_images(cls, image_paths):
-        """Creates a TorchImageDataset from the given list of images.
+        """Creates a TorchImageDataset for the given list of images.
 
         Args:
             image_paths: a list of image paths
@@ -107,18 +105,14 @@ class TorchImageClassificationDataset(Dataset):
     """A ``torch.utils.data.Dataset`` for image classification.
 
     Instances of this dataset emit ``(img, label)`` pairs.
+
+    Args:
+        image_paths: a list of image paths
+        labels: a list of labels
+        transform (None): an optional transform to apply to the images
     """
 
-    def __init__(
-        self, image_paths, labels, transform=None,
-    ):
-        """Creates a TorchImageClassificationDataset instance.
-
-        Args:
-            image_paths: a list of image paths
-            labels: a list of labels
-            transform (None): an optional transform to apply to the images
-        """
+    def __init__(self, image_paths, labels, transform=None):
         self.image_paths = image_paths
         self.labels = labels
         self.transform = transform
@@ -156,7 +150,7 @@ def from_image_classification_dataset_directory(dataset_dir):
         dataset_dir: the dataset directory
 
     Returns:
-        a ``torchvision.datasets.ImageFolder`` instance
+        a ``torchvision.datasets.ImageFolder``
     """
     return torchvision.datasets.ImageFolder(dataset_dir)
 
@@ -170,7 +164,7 @@ def from_labeled_image_dataset(labeled_dataset, attr_name):
         attr_name: the name of the frame attribute to extract as label
 
     Returns:
-        a TorchImageClassificationDataset that emits (img, label) pairs
+        a TorchImageClassificationDataset that emits ``(img, label)`` pairs
     """
     image_paths = list(labeled_dataset.iter_data_paths)
     labels = []

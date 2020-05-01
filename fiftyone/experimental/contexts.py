@@ -1,5 +1,5 @@
 """
-Dataset contexts.
+Experimental dataset contexts.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -22,21 +22,19 @@ import eta.core.data as etad
 import eta.core.image as etai
 
 import fiftyone.core.datautils as fodu
-import fiftyone.core.views as fov
+import fiftyone.experimental.views as fev
 
 
 class DatasetContext(object):
     """Base class for dataset contexts, which allow for performing operations
     on a :class:`fiftyone.core.data.Dataset` with respect to a specific subset
     of its contents (the "context").
+
+    Args:
+        dataset: a :class:`fiftyone.core.data.Dataset`
     """
 
     def __init__(self, dataset):
-        """Initializes the base DatasetContext.
-
-        Args:
-            dataset: a :class:`fiftyone.core.data.Dataset`
-        """
         self._dataset = dataset
 
     def __len__(self):
@@ -80,14 +78,12 @@ class DatasetContext(object):
 class ImageContext(DatasetContext):
     """A context for working with the images in a
     :class:`fiftyone.core.data.Dataset`.
+
+    Args:
+        dataset: a :class:`fiftyone.core.data.Dataset`
     """
 
     def __init__(self, dataset):
-        """Creates an ImageContext.
-
-        Args:
-            dataset: a :class:`fiftyone.core.data.Dataset`
-        """
         super(ImageContext, self).__init__(dataset)
 
     def get_view(self):
@@ -96,7 +92,7 @@ class ImageContext(DatasetContext):
         Returns:
             a :class:`fiftyone.core.views.ImageView`
         """
-        return fov.ImageView(self)
+        return fev.ImageView(self)
 
     def _iter_image_paths(self, sample_ids):
         for sample_id in sample_ids:
@@ -107,34 +103,30 @@ class ImageContext(DatasetContext):
         for img_path in self._iter_image_paths(sample_ids):
             yield etai.read(img_path)
 
-    def _make_tf_dataset(self, sample_ids):
-        image_paths = list(self._iter_image_paths(sample_ids))
-
+    def _make_tf_dataset(self, sample_ids, num_parallel_calls):
         from fiftyone.core.tfutils import from_images
 
-        return from_images(image_paths)[0]
+        image_paths = list(self._iter_image_paths(sample_ids))
+        return from_images(image_paths, num_parallel_calls=num_parallel_calls)
 
     def _make_torch_dataset(self, sample_ids):
-        image_paths = list(self._iter_image_paths(sample_ids))
-
         from fiftyone.core.torchutils import TorchImageDataset
 
+        image_paths = list(self._iter_image_paths(sample_ids))
         return TorchImageDataset(image_paths)
 
 
 class LabeledImageContext(DatasetContext):
     """A context for working with a :class:`fiftyone.core.data.Dataset` of
     images and a particular set of labels associated with the images.
+
+    Args:
+        dataset: a :class:`fiftyone.core.data.Dataset`
+        label_field: the :class:`fiftyone.core.data.DatasetSample` field
+            containing the labels for this context
     """
 
     def __init__(self, dataset, label_field):
-        """Creates a LabeledImageContext.
-
-        Args:
-            dataset: a :class:`fiftyone.core.data.Dataset`
-            label_field: the :class:`fiftyone.core.data.DatasetSample` field
-                containing the labels for this context
-        """
         super(LabeledImageContext, self).__init__(dataset)
         self._label_field = label_field
 
@@ -145,7 +137,7 @@ class LabeledImageContext(DatasetContext):
         Returns:
             a :class:`fiftyone.core.views.LabeledImageView`
         """
-        return fov.LabeledImageView(self)
+        return fev.LabeledImageView(self)
 
     def get_classification_context(self, attr_name=None):
         """Returns a :class:`fiftyone.core.contexts.ImageClassificationContext`
@@ -218,18 +210,16 @@ class ImageClassificationContext(DatasetContext):
     """A context for working with a :class:`fiftyone.core.data.Dataset` with
     respect to an image classification task represented by a particular frame
     attribute of a particular set of labels in the dataset.
+
+    Args:
+        dataset: a :class:`fiftyone.core.data.Dataset`
+        label_field: the DatasetSample field containing the labels for this
+            context
+        attr_name: the frame attribute of interest from each sample's
+            labels
     """
 
     def __init__(self, dataset, label_field, attr_name):
-        """Creates an ImageClassificationContext.
-
-        Args:
-            dataset: a :class:`fiftyone.core.data.Dataset`
-            label_field: the DatasetSample field containing the labels for this
-                context
-            attr_name: the frame attribute of interest from each sample's
-                labels
-        """
         super(ImageClassificationContext, self).__init__(dataset)
         self._label_field = label_field
         self._attr_name = attr_name
@@ -241,7 +231,7 @@ class ImageClassificationContext(DatasetContext):
         Returns:
             a :class:`fiftyone.core.views.ImageClassificationView`
         """
-        return fov.ImageClassificationView(self)
+        return fev.ImageClassificationView(self)
 
     def _get_label(self, sample):
         image_labels = getattr(sample, self._label_field)
@@ -260,22 +250,22 @@ class ImageClassificationContext(DatasetContext):
             img = etai.read(img_path)
             yield img, label
 
-    def _make_tf_dataset(self, sample_ids):
-        image_paths, labels = zip(
-            *self._iter_image_paths_and_labels(sample_ids)
-        )
-
+    def _make_tf_dataset(self, sample_ids, num_parallel_calls):
         from fiftyone.core.tfutils import from_image_paths_and_labels
 
-        return from_image_paths_and_labels(image_paths, labels)
-
-    def _make_torch_dataset(self, sample_ids):
         image_paths, labels = zip(
             *self._iter_image_paths_and_labels(sample_ids)
         )
+        return from_image_paths_and_labels(
+            image_paths, labels, num_parallel_calls=num_parallel_calls
+        )
 
+    def _make_torch_dataset(self, sample_ids):
         from fiftyone.core.torchutils import TorchImageClassificationDataset
 
+        image_paths, labels = zip(
+            *self._iter_image_paths_and_labels(sample_ids)
+        )
         return TorchImageClassificationDataset(image_paths, labels)
 
     def _export(self, dataset_dir, sample_ids):
@@ -297,15 +287,13 @@ class ImageClassificationContext(DatasetContext):
 class ModelContext(DatasetContext):
     """Context class for performing operations on a
     :class:`fiftyone.core.data.Dataset` with respect to a model.
+
+    Args:
+        dataset: a :class:`fiftyone.core.data.Dataset`
+        name: the name of the model
     """
 
     def __init__(self, dataset, name):
-        """Creates a ModelContext instance.
-
-        Args:
-            dataset: a :class:`fiftyone.core.data.Dataset`
-            name: the name of the model
-        """
         super(ModelContext, self).__init__(dataset)
         self._name = name
         self._predictions = {}
@@ -333,7 +321,7 @@ class ModelContext(DatasetContext):
         Returns:
             a :class:`fiftyone.core.views.ModelView`
         """
-        return fov.ModelView(self)
+        return fev.ModelView(self)
 
     def add_prediction(self, sample_id, prediction):
         """Adds the model prediction for the given sample to the context.
@@ -365,20 +353,20 @@ class ModelContext(DatasetContext):
             img = etai.read(img_path)
             yield img, sample_id
 
-    def _make_tf_dataset(self, sample_ids):
-        image_paths, sample_ids = zip(
-            *self._iter_image_paths_and_sample_ids(sample_ids)
-        )
-
+    def _make_tf_dataset(self, sample_ids, num_parallel_calls):
         from fiftyone.core.tfutils import from_image_paths_and_labels
 
-        return from_image_paths_and_labels(image_paths, sample_ids)
-
-    def _make_torch_dataset(self, sample_ids):
         image_paths, sample_ids = zip(
             *self._iter_image_paths_and_sample_ids(sample_ids)
         )
+        return from_image_paths_and_labels(
+            image_paths, sample_ids, num_parallel_calls=num_parallel_calls
+        )
 
+    def _make_torch_dataset(self, sample_ids):
         from fiftyone.core.torchutils import TorchImageClassificationDataset
 
+        image_paths, sample_ids = zip(
+            *self._iter_image_paths_and_sample_ids(sample_ids)
+        )
         return TorchImageClassificationDataset(image_paths, sample_ids)
