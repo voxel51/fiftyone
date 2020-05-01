@@ -74,6 +74,9 @@ class FiftyOneImageLabels(etaf.FrameLabels):
             if frame_labels.has_group and not self.has_group:
                 self.group = frame_labels.group
 
+    def as_classification(self):
+        return self.attrs.get_attr_value_with_name("label")
+
     @classmethod
     def from_frame_labels(cls, frame_labels, group=None):
         """Constructs a FiftyOneImageLabels from a FrameLabels.

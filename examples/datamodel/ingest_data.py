@@ -11,7 +11,7 @@ import eta.core.data as etad
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as voxd
-import fiftyone.core.labels as voxl
+import fiftyone.core.label as voxl
 import fiftyone.core.sample as voxs
 
 
@@ -52,30 +52,19 @@ for partition in partitions:
 
     samples = []
     for rel_img_path in fine_labels:
-        # create labels set (with both coarse and fine labels)
-        labels = voxl.FiftyOneImageSetLabels()
-        for granularity, json_labels in [
-            ("coarse", coarse_labels),
-            ("fine", fine_labels),
-        ]:
-            labels.add(
-                voxl.FiftyOneImageLabels(
-                    group="ground_truth_%s" % granularity,
-                    attrs=etad.AttributeContainer(
-                        attrs=[
-                            etad.CategoricalAttribute(
-                                name="label", value=json_labels[rel_img_path]
-                            )
-                        ]
-                    ),
-                )
-            )
-
-        # @todo(Tyler) much less verbose, can we get closer to this?
-        # labels = {
-        #     "ground_truth_coarse": coarse_labels[rel_img_path],
-        #     "ground_truth_fine": fine_labels[rel_img_path],
-        # }
+        # create label set (with both coarse and fine labels)
+        labels = voxl.LabelSet(
+            labels=[
+                voxl.ClassificationLabel(
+                    group="ground_truth_fine",
+                    label=fine_labels[rel_img_path],
+                ),
+                voxl.ClassificationLabel(
+                    group="ground_truth_coarse",
+                label = coarse_labels[rel_img_path],
+                ),
+            ]
+        )
 
         # create sample
         sample = voxs.ImageSample(

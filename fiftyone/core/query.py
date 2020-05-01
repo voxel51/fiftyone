@@ -110,7 +110,7 @@ class DatasetQuery(object):
         Returns:
             DatasetQuery instance
         """
-        return self._create_new_query(stage={"$sample": {"$size": size}})
+        return self._create_new_query(stage={"$sample": {"size": size}})
 
     # PRIVATE #################################################################
 

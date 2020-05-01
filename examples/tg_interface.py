@@ -1,6 +1,20 @@
 """
 Initial demo of the FiftyOne interface.
 
+Goals of this interface:
+    "It's not magic": I have to do the things I want done and they aren't
+        overly obfuscated
+
+    "I can name it whatever I want":
+        - fiftyone doesn't know which labels are GT
+        - I can add/delete/name/organize samples, labels, views, ... as I please
+
+TODO:
+creating a voxl.FiftyOneImageLabels should be painless
+I think there should be subclasses for each simple representation, and then
+we can also provide a `CompositeLabel` which is composed of potentially many
+other labels.
+
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -8,11 +22,11 @@ Initial demo of the FiftyOne interface.
 
 import random
 
-import fiftyone.core.config as foc
+import eta.core.data as etad
 
-# Set these to configure which ML backend will be used to provide zoo datasets
-# foc.set_config_settings(default_ml_backend="tensorflow")
-# foc.set_config_settings(default_ml_backend="torch")
+import fiftyone.core.dataset as voxd
+import fiftyone.core.labels as voxl
+import fiftyone.core.query as voxq
 
 import fiftyone.core.data as fod
 import fiftyone.core.datautils as fodu
@@ -20,140 +34,131 @@ import fiftyone.zoo as foz
 
 
 def print_images_head(dataset, num_samples=5, shuffle=False):
-    context = dataset.get_image_context()
-    view = context.get_view()
-    if shuffle:
-        view = view.shuffle()
+    query = voxq.DatasetQuery()
 
-    view = view.take(num_samples)
-    for img in view.as_numpy_iterator():
+    if shuffle:
+        query = query.sample(num_samples)
+    else:
+        query = query.limit(num_samples)
+
+    for _, sample in query.iter_samples(dataset):
+        img = sample.load_image()
         print("Image: %s" % (img.shape,))
 
 
-def print_gt_classification_head(dataset, num_samples=5, shuffle=False):
-    gt_context = dataset.get_ground_truth_context()
-    context = gt_context.get_classification_context()
-    view = context.get_view()
-    if shuffle:
-        view = view.shuffle()
+def print_classification_head(dataset, labels_group, num_samples=5, shuffle=False):
+    query = voxq.DatasetQuery()
 
-    view = view.take(num_samples)
-    for img, label in view.as_numpy_iterator():
+    if shuffle:
+        query = query.sample(num_samples)
+    else:
+        query = query.limit(num_samples)
+
+    for _, sample in query.iter_samples(dataset):
+        img = sample.load_image()
+        label = sample.labels[labels_group].as_classification()
         print("Image: %s, label: %s" % (img.shape, label))
 
 
-def print_gt_detection_head(dataset, num_samples=5, shuffle=False):
-    context = dataset.get_ground_truth_context()
-    view = context.get_view()
-    if shuffle:
-        view = view.shuffle()
-
-    view = view.take(num_samples)
-    for img, image_labels in view.as_numpy_iterator():
-        print("Image: %s, ImageLabels:%s" % (img.shape, image_labels))
-
-
 #
-# List available datasets in the zoo
+# Load a classification dataset that has been ingested into fiftyone
 #
 
-print("Available datasets: %s" % foz.list_zoo_datasets())
+dataset = voxd.Dataset(name="cifar100")
 
-
-#
-# Load a classification dataset from the zoo
-#
-
-dataset1 = foz.load_zoo_dataset("cifar10")
-
-print_gt_classification_head(dataset1, shuffle=True)
-
-
-#
-# Load a detection dataset from the zoo
-#
-
-dataset2 = foz.load_zoo_dataset("voc")
-
-print_gt_detection_head(dataset2, num_samples=1, shuffle=True)
-
-
-#
-# Load a classification dataset stored on disk in the following format:
-#
-# dataset_dir/
-#     <classA>/
-#         <image1>.<ext>
-#         <image2>.<ext>
-#         ...
-#     <classB>/
-#         <image1>.<ext>
-#         <image2>.<ext>
-#         ...
-#
-
-class_dir = "/Users/Brian/Desktop/class-dir"
-samples, _ = fodu.parse_image_classification_dataset_directory(class_dir)
-dataset3 = fod.load_image_classification_dataset(samples)
-
-print_gt_classification_head(dataset3)
-
+print_classification_head(dataset, labels_group="ground_truth_fine", shuffle=False)
 
 #
 # Load a directory of unlabeled images
 #
 
-class_dir = "/Users/Brian/Desktop/class-dir"
-dataset4 = fod.load_images_from_dir(class_dir, recursive=True)
-
-print_images_head(dataset4)
+# shown in {{fiftyone}}/examples/datamodel/ingest_data.py
 
 
 #
 # Register model predictions on a dataset
 #
 
-dataset1.register_model("my-classifier")
+# there is no need to register a model
+# dataset1.register_model("my-classifier")
 
 # Add predictions
 # Predictions are propagated to the dataset when the `with` statement exits
-sample_ids = []
-with dataset1.get_model_context("my-classifier") as context:
-    view = context.get_view().shuffle().take(5)
-    for img, sample_id in view.as_numpy_iterator():
-        sample_ids.append(sample_id)
-        prediction = {
+query = voxq.DatasetQuery().sample(2)
+
+class MyClassifier:
+    def predict(self, img):
+        return {
             "label": random.choice("abcdefghijklmnopqrstuvwxyz"),
             "confidence": random.random(),
         }
-        context.add_prediction(sample_id, prediction)
+
+group = "my-classifier_V1.0_preds"
+
+for _, sample in query.iter_samples(dataset):
+    prediction = MyClassifier().predict(sample.load_image())
+    label = voxl.FiftyOneImageLabels(
+        group=group,
+        # model=MyClassifier, # TODO
+        attrs=etad.AttributeContainer(
+            attrs=[
+                etad.CategoricalAttribute(
+                    name="label", value=prediction["label"], confidence=prediction["confidence"]
+                )
+            ]
+        ),
+    )
+
+    sample.add_label(label=label)
+
+# or batch add
+predictions = {}
+for _, sample in query.iter_samples(dataset):
+    prediction = MyClassifier().predict(sample.load_image())
+    predictions[sample.id] = voxl.FiftyOneImageLabels(
+        group=group,
+        # model=MyClassifier, # TODO
+        attrs=etad.AttributeContainer(
+            attrs=[
+                etad.CategoricalAttribute(
+                    name="label", value=prediction["label"],
+                    confidence=prediction["confidence"]
+                )
+            ]
+        ),
+    )
+
+dataset.add_labels(labels_dict=predictions)
 
 # Verify that predictions were added to the dataset samples
-for sample_id in sample_ids:
-    print(dataset1[sample_id])
+for sample_id in predictions.keys():
+    print(dataset[sample_id])
+
+import sys
+sys.exit("SUCCESS")
 
 
 #
 # Export a random subset of a dataset
 #
 
-export_dir = "/Users/Brian/Desktop/fiftyone-export"
-
-# Export 5 random images and their ground truth annotations as a LabeledDataset
-context = dataset1.get_ground_truth_context()
-context.get_view().shuffle().take(5).export(export_dir)
-
-# Re-export these samples in TFRecords format
-
-import os
-import eta.core.datasets as etads
-import fiftyone.core.tfutils as fotu
-
-labeled_dataset = etads.load_dataset(export_dir)
-tf_records_path = os.path.join(export_dir, "dataset.tfrecords")
-fotu.write_image_classification_tf_records(labeled_dataset, tf_records_path)
-
-# Load the TFRecords back and print them
-tf_dataset = fotu.load_image_classification_tf_records(tf_records_path)
-for img, label in tf_dataset.as_numpy_iterator():
-    print("Image: %s, label: %s" % (img.shape, label.decode()))
+# export_dir = "/Users/Brian/Desktop/fiftyone-export"
+#
+# # Export 5 random images and their ground truth annotations as a LabeledDataset
+# context = dataset1.get_ground_truth_context()
+# context.get_view().shuffle().take(5).export(export_dir)
+#
+# # Re-export these samples in TFRecords format
+#
+# import os
+# import eta.core.datasets as etads
+# import fiftyone.core.tfutils as fotu
+#
+# labeled_dataset = etads.load_dataset(export_dir)
+# tf_records_path = os.path.join(export_dir, "dataset.tfrecords")
+# fotu.write_image_classification_tf_records(labeled_dataset, tf_records_path)
+#
+# # Load the TFRecords back and print them
+# tf_dataset = fotu.load_image_classification_tf_records(tf_records_path)
+# for img, label in tf_dataset.as_numpy_iterator():
+#     print("Image: %s, label: %s" % (img.shape, label.decode()))

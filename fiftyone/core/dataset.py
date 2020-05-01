@@ -144,9 +144,19 @@ class Dataset(_SampleCollection):
             voxs.Sample.validate(sample)
         voxd.insert_many(self._c, samples)
 
-    def register_model(self):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO")
+    def add_labels(self, labels_dict):
+        for sample_id, label in labels_dict.items():
+            # @todo(Tyler) this could be done better...
+            sample = self[sample_id]
+            sample.add_label(label)
+
+            # self._c.find_one_and_update(
+            #     {"_id": ObjectId(sample_id)},
+            #     {"$set": {"labels": label.serialize(reflective=True)}}
+            # )
+            self._c.find_one_and_replace(
+                {"_id": ObjectId(sample_id)}, sample._dbserialize()
+            )
 
     # PRIVATE #################################################################
 

@@ -17,25 +17,36 @@ from builtins import *
 import os
 
 import eta.core.image as etai
-import eta.core.labels as etal
+import eta.core.serial as etas
 
 import fiftyone.core.document as voxd
-import fiftyone.core.labels as voxl
+import fiftyone.core.label as voxl
 
 
 class Sample(voxd.Document):
-    # @todo(Tyler) this maybe should be an abstract class
-    # Setting LABELS_SET_CLS may not really make sense...
-    _LABELS_SET_CLS = etal.LabelsSet
-
     def __init__(self, filepath, tags=None, labels=None):
         self.filepath = os.path.abspath(filepath)
         self.filename = os.path.basename(filepath)
         self.tags = tags or []
-        self.labels = labels or self._LABELS_SET_CLS()
 
-    def add_label(self, label, tag):
-        pass
+        if isinstance(labels, voxl.LabelSet):
+            self.labels = labels
+        elif isinstance(labels, voxl.Label):
+            self.labels = voxl.LabelSet(labels=[labels])
+        elif labels is None:
+            self.labels = voxl.LabelSet()
+        else:
+            raise ValueError("Unexpected labels type: %s" % type(labels))
+
+    @property
+    def dataset(self):
+        # @todo(Tyler) This could be stored similar to how I originally
+        # implemented ingest_time
+        raise NotImplementedError("TODO")
+
+    def add_label(self, label):
+        # @todo(Tyler) this does not write to the database
+        self.labels.add(label)
 
     @classmethod
     def validate(cls, sample):
@@ -61,18 +72,20 @@ class Sample(voxd.Document):
             "tags": d.get("tags", None),
         }
 
-        if "labels" in d:
-            kwargs["labels"] = cls._LABELS_SET_CLS.from_dict(d["labels"])
+        if "label" in d:
+            kwargs["label"] = etas.Serializable.from_dict(d["label"])
 
         return kwargs
 
 
 class ImageSample(Sample):
-    _LABELS_SET_CLS = voxl.FiftyOneImageSetLabels
 
     def __init__(self, metadata=None, *args, **kwargs):
         super(ImageSample, self).__init__(*args, **kwargs)
         self.metadata = metadata or etai.ImageMetadata.build_for(self.filepath)
+
+    def load_image(self):
+        return etai.read(self.filepath)
 
     # PRIVATE #################################################################
 
