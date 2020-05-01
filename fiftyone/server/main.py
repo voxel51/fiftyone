@@ -54,12 +54,13 @@ class State(Namespace):
 
     def on_update(self, state):
         """On update"""
-        self.ds = fod.Dataset(state["dataset_name"])
-        self.it = query.Query(state["query"]).iter_samples(self.ds)
-        state.update(self._next())
-        self.state = state
+        if state["dataset_name"]:
+            self.ds = fod.Dataset(state["dataset_name"])
+            self.it = query.Query(state["query"]).iter_samples(self.ds)
+            state.update(self._next())
+            self.state = state
 
-        emit("update", state, broadcast=True, include_self=False)
+            emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
         """Get the current state"""

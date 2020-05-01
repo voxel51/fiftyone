@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Header, Icon, Menu, Segment, Sidebar } from "semantic-ui-react";
 import Gallery from "react-grid-gallery";
+import InfiniteScroll from "react-infinite-scroller";
 import Histogram from "./Histogram";
 
 const GalleryWrapper = (props) => (
@@ -9,11 +10,8 @@ const GalleryWrapper = (props) => (
   </div>
 );
 
-export default function Overview(props) {
-  console.log(props);
-  const state = props.state;
-  const [tab, setTab] = useState("overview");
-  const IMAGES = state
+function createImageData(data) {
+  const images = data
     ? Object.keys(state.samples).map((k) => {
         const sample = state.samples[k];
         const path = sample.filepath;
@@ -29,6 +27,21 @@ export default function Overview(props) {
         };
       })
     : [];
+}
+
+export default function Overview(props) {
+  console.log(props);
+  const { state, socket } = props;
+  const [tab, setTab] = useState("overview");
+  const [images, setImages] = React.useState([]);
+  const loadMore = (count = 50) => {
+    socket.emit("next", "", (data) => {
+      React.useEffect(() => {
+        setImages([...images, ...createImageData(data)]);
+      });
+    });
+  };
+  const IMAGES = createImageData(data);
 
   const tags = Array.from(
     new Set(
@@ -93,7 +106,9 @@ export default function Overview(props) {
         ))}
       </Menu>
 
-      {content}
+      <InfiniteScroll pageStart={0} loadMore={}>
+        {content}
+      </InfiniteScroll>
     </Segment>
   );
 }

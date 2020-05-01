@@ -8,10 +8,10 @@ type Props = {
   children: ReactNode;
 };
 
-const mapStateToProps = (state = {}) => {
-  return { ...state };
-};
 let socket;
+const mapStateToProps = (state = {}) => {
+  return { ...state, socket: socket };
+};
 
 class App extends React.Component {
   constructor(props: Props) {
