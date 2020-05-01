@@ -72,14 +72,13 @@ class Sample(voxd.Document):
             "tags": d.get("tags", None),
         }
 
-        if "label" in d:
-            kwargs["label"] = etas.Serializable.from_dict(d["label"])
+        if "labels" in d:
+            kwargs["labels"] = etas.Serializable.from_dict(d["labels"])
 
         return kwargs
 
 
 class ImageSample(Sample):
-
     def __init__(self, metadata=None, *args, **kwargs):
         super(ImageSample, self).__init__(*args, **kwargs)
         self.metadata = metadata or etai.ImageMetadata.build_for(self.filepath)

@@ -46,7 +46,9 @@ def print_images_head(dataset, num_samples=5, shuffle=False):
         print("Image: %s" % (img.shape,))
 
 
-def print_classification_head(dataset, labels_group, num_samples=5, shuffle=False):
+def print_classification_head(
+    dataset, labels_group, num_samples=5, shuffle=False
+):
     query = voxq.DatasetQuery()
 
     if shuffle:
@@ -56,7 +58,7 @@ def print_classification_head(dataset, labels_group, num_samples=5, shuffle=Fals
 
     for _, sample in query.iter_samples(dataset):
         img = sample.load_image()
-        label = sample.labels[labels_group].as_classification()
+        label = sample.labels[labels_group].label
         print("Image: %s, label: %s" % (img.shape, label))
 
 
@@ -66,7 +68,9 @@ def print_classification_head(dataset, labels_group, num_samples=5, shuffle=Fals
 
 dataset = voxd.Dataset(name="cifar100")
 
-print_classification_head(dataset, labels_group="ground_truth_fine", shuffle=False)
+print_classification_head(
+    dataset, labels_group="ground_truth_fine", shuffle=False
+)
 
 #
 # Load a directory of unlabeled images
@@ -86,12 +90,14 @@ print_classification_head(dataset, labels_group="ground_truth_fine", shuffle=Fal
 # Predictions are propagated to the dataset when the `with` statement exits
 query = voxq.DatasetQuery().sample(2)
 
+
 class MyClassifier:
     def predict(self, img):
         return {
             "label": random.choice("abcdefghijklmnopqrstuvwxyz"),
             "confidence": random.random(),
         }
+
 
 group = "my-classifier_V1.0_preds"
 
@@ -103,7 +109,9 @@ for _, sample in query.iter_samples(dataset):
         attrs=etad.AttributeContainer(
             attrs=[
                 etad.CategoricalAttribute(
-                    name="label", value=prediction["label"], confidence=prediction["confidence"]
+                    name="label",
+                    value=prediction["label"],
+                    confidence=prediction["confidence"],
                 )
             ]
         ),
@@ -121,8 +129,9 @@ for _, sample in query.iter_samples(dataset):
         attrs=etad.AttributeContainer(
             attrs=[
                 etad.CategoricalAttribute(
-                    name="label", value=prediction["label"],
-                    confidence=prediction["confidence"]
+                    name="label",
+                    value=prediction["label"],
+                    confidence=prediction["confidence"],
                 )
             ]
         ),
@@ -135,6 +144,7 @@ for sample_id in predictions.keys():
     print(dataset[sample_id])
 
 import sys
+
 sys.exit("SUCCESS")
 
 
