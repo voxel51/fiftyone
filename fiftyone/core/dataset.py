@@ -64,6 +64,9 @@ class Dataset(fov.SampleCollection):
             d=self._c.find_one({"_id": ObjectId(sample_id)}),
         )
 
+    def __delitem__(self, sample_id):
+        return fod.delete_one(collection=self._c, document_id=sample_id)
+
     def get_tags(self):
         return self._c.distinct("tags")
 

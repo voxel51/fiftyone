@@ -44,6 +44,11 @@ def insert_many(collection, documents):
         document._set_db_attrs(inserted_id, collection)
 
 
+def delete_one(collection, document_id):
+    """Returns True if the document was deleted, False, otherwise"""
+    result = collection.delete_one({"_id": ObjectId(document_id)})
+    return result.deleted_count == 1
+
 class Document(etas.Serializable):
     """Adds additional functionality to Serializable class to handle `_id` and
     `_collection_name` fields which are created when a document is added to the
