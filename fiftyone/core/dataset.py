@@ -94,7 +94,7 @@ class Dataset(fov.SampleCollection):
             # uses reflective `_CLS` to determine type
             yield self._deserialize(sample_dict)
 
-    def view(self):
+    def default_view(self):
         return fov.DatasetView(dataset=self)
 
     # PRIVATE #################################################################

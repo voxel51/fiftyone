@@ -113,6 +113,12 @@ class DatasetView(SampleCollection):
             view_idx += 1
             yield view_idx, self.dataset._deserialize(s)
 
+    @classmethod
+    def from_view(cls, view, dataset):
+        new_view = cls(dataset=dataset)
+        new_view._pipeline = deepcopy(view._pipeline)
+        return new_view
+
     # VIEW OPERATIONS #########################################################
 
     def filter(
