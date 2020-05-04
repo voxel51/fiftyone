@@ -63,13 +63,13 @@ class Sample(fod.Document):
 
         self._tags.add(tag)
 
-        # @todo(Tyler) how is the dataset accessed??
         import fiftyone.core.dataset as foda
-        dataset = foda.Dataset(name=self.dataset_name)
+
+        collection = foda.Dataset(name=self.dataset_name)._c
         return fod.update_one(
-            collection=dataset._c,
+            collection=collection,
             document=self,
-            update={"$push": {"tags": tag}}
+            update={"$push": {"tags": tag}},
         )
 
     def remove_tag(self, tag):
@@ -78,13 +78,13 @@ class Sample(fod.Document):
 
         self._tags.remove(tag)
 
-        # @todo(Tyler) how is the dataset accessed??
         import fiftyone.core.dataset as foda
-        dataset = foda.Dataset(name=self.dataset_name)
+
+        collection = foda.Dataset(name=self.dataset_name)._c
         return fod.update_one(
-            collection=dataset._c,
+            collection=collection,
             document=self,
-            update={"$pull": {"tags": tag}}
+            update={"$pull": {"tags": tag}},
         )
 
     @property
