@@ -97,6 +97,9 @@ class Dataset(fov.SampleCollection):
     def default_view(self):
         return fov.DatasetView(dataset=self)
 
+    def serialize(self):
+        return {"name": self.name}
+
     # PRIVATE #################################################################
 
     def _get_collection(self):

@@ -115,7 +115,7 @@ class DatasetView(SampleCollection):
 
     def serialize(self):
         """Serialize the dataset"""
-        return {"dataset": self.dataset, "view": self._pipeline}
+        return {"dataset": self.dataset.serialize(), "view": self._pipeline}
 
     @classmethod
     def from_view(cls, view, dataset):
