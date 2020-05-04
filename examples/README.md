@@ -15,6 +15,9 @@ datasets
 `inference/` - example scripts for running inference on CIFAR-10 using
 pretrained models
 
+`experimental/` - example of using Brian's experimental dataset structure
+defined by the `fiftyone.experimental` package
+
 
 ## Copyright
 
