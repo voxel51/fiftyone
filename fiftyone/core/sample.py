@@ -24,10 +24,10 @@ import fiftyone.core.document as fod
 
 class Sample(fod.Document):
     def __init__(self, filepath, tags=None, insights=None, labels=None):
-        self._filepath = os.path.abspath(filepath)
-        self._tags = tuple(tags) or ()
-        self._insights = tuple(insights) or ()
-        self._labels = tuple(labels) or ()
+        self._filepath = os.path.abspath(os.path.expanduser(filepath))
+        self._tags = list(tags) if tags else []
+        self._insights = list(insights) if insights else []
+        self._labels = list(labels) if labels else []
 
     @property
     def filepath(self):
@@ -39,18 +39,15 @@ class Sample(fod.Document):
 
     @property
     def tags(self):
-        # @todo(Tyler)
-        return self._tags
+        return list(self._tags)
 
     @property
     def insights(self):
-        # @todo(Tyler)
-        return self._insights
+        return list(self._insights)
 
     @property
     def labels(self):
-        # @todo(Tyler)
-        return self._labels
+        return list(self._labels)
 
     def attributes(self):
         """Returns a list of class attributes to be serialized.
