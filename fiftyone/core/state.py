@@ -30,21 +30,25 @@ class StateDescription(etas.Serializable):
 
     Attributes:
         dataset: (optional) the current dataset
-        view: (optional) the current view
         pipeline: (optional) the current pipeline (or query)
+        selected: (optional) the currently selected samples
+        view: (optional) the current view
     """
 
-    def __init__(self, dataset=None, view=None, pipeline=None):
+    def __init__(self, dataset=None, pipeline=None, selected=None, view=None):
         """Creates a StateDescription instance.
 
         Args:
             dataset: (optional) the current dataset
-            view: (optional) the current view
             pipeline: (optional) the current pipeline (or query)
+            selected: (optional) the currently selected samples
+            view: (optional) the current view
         """
         self.dataset = dataset
         self.view = view
         self.pipeline = pipeline or []
+        self.selected = []
+        super(StateDescription, self).__init__(self)
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -62,6 +66,10 @@ class StateDescription(etas.Serializable):
 
         view = d.get("view", None)
 
-        pipeline = d.get("pipeline", None)
+        pipeline = d.get("pipeline", [])
 
-        return cls(dataset=dataset, view=view, pipeline=pipeline)
+        selected = d.get("selected", [])
+
+        return cls(
+            dataset=dataset, pipeline=pipeline, selected=selected, view=view,
+        )
