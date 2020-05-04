@@ -24,11 +24,41 @@ import fiftyone.core.document as fod
 
 class Sample(fod.Document):
     def __init__(self, filepath, tags=None, insights=None, labels=None):
-        self.filepath = os.path.abspath(filepath)
-        self.filename = os.path.basename(filepath)
-        self.tags = tags or []
-        self.insights = insights or []
-        self.labels = labels or []
+        self._filepath = os.path.abspath(filepath)
+        self._tags = tuple(tags) or ()
+        self._insights = tuple(insights) or ()
+        self._labels = tuple(labels) or ()
+
+    @property
+    def filepath(self):
+        return self._filepath
+
+    @property
+    def filename(self):
+        return os.path.basename(self.filepath)
+
+    @property
+    def tags(self):
+        # @todo(Tyler)
+        return self._tags
+
+    @property
+    def insights(self):
+        # @todo(Tyler)
+        return self._insights
+
+    @property
+    def labels(self):
+        # @todo(Tyler)
+        return self._labels
+
+    def attributes(self):
+        """Returns a list of class attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
+        return ["filepath", "tags", "insights", "labels"]
 
     @property
     def dataset_name(self):
@@ -44,15 +74,6 @@ class Sample(fod.Document):
     # def add_label(self, label_group, label):
     #     # @todo(Tyler) this does not write to the database
     #     self.labels[label_group] = label
-
-    @classmethod
-    def validate(cls, sample):
-        if not isinstance(sample, cls):
-            raise ValueError(
-                "Unexpected 'sample' type: '%s', expected: '%s'"
-                % (type(sample), cls)
-            )
-        return sample
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -97,6 +118,16 @@ class ImageSample(Sample):
 
     def load_image(self):
         return etai.read(self.filepath)
+
+    def attributes(self):
+        """Returns a list of class attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
+        _attrs = super(ImageSample, self).attributes()
+        _attrs.append("metadata")
+        return _attrs
 
     @classmethod
     def from_dict(cls, d, **kwargs):

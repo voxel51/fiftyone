@@ -17,7 +17,7 @@ from builtins import *
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 
-import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.core.document as fod
 import fiftyone.core.sample as fos
@@ -77,12 +77,12 @@ class Dataset(fov.SampleCollection):
         return self._c.distinct("labels.group")
 
     def add_sample(self, sample):
-        fos.Sample.validate(sample)
+        etau.validate_type(sample, fos.Sample)
         fod.insert_one(self._c, sample)
 
     def add_samples(self, samples):
         for sample in samples:
-            fos.Sample.validate(sample)
+            etau.validate_type(sample, fos.Sample)
         fod.insert_many(self._c, samples)
 
     def add_labels(self, labels_dict):
