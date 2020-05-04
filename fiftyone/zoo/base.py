@@ -26,7 +26,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.data as fod
+import fiftyone.experimental.data as fed
 
 
 logger = logging.getLogger(__name__)
@@ -88,13 +88,13 @@ def load_zoo_dataset(
             logger.info("Using default split '%s'", split)
 
     if dataset_dir is None:
-        dataset_dir = fod.get_default_dataset_dir(name, split=split)
+        dataset_dir = fed.get_default_dataset_dir(name, split=split)
         logger.info("Using default dataset directory '%s'", dataset_dir)
 
     if download_if_necessary:
         zoo_dataset.download_and_prepare(dataset_dir, split=split)
 
-    return fod.from_labeled_image_dataset(dataset_dir, name=name)
+    return fed.from_labeled_image_dataset(dataset_dir, name=name)
 
 
 def _get_zoo_dataset(name):
@@ -223,6 +223,17 @@ class ZooDataset(object):
         logger.info("Dataset info written to '%s'", info_path)
 
     def _download_and_prepare(self, dataset_dir, split):
+        """Internal implementation of downloading the dataset and preparing it
+        for use in the given directory as an
+        ``eta.core.datasets.LabeledDataset``.
+
+        Args:
+            dataset_dir: the directory in which to construct the dataset
+            split: the dataset split to download, or None if not applicable
+
+        Returns:
+            the :class:`ZooDatasetInfo` for the dataset
+        """
         raise NotImplementedError(
             "subclasses must implement download_and_prepare()"
         )
