@@ -6,8 +6,10 @@ additional functionality centered around `Document` objects, which are
 serializables that can be inserted and read from the MongoDB database.
 
 Important functionality includes:
-- access to the ID when is automatically generated when the Document is
+- access to the ID which is automatically generated when the Document is
     inserted in the database
+- access to the dataset (collection) name which is similarly populated when
+    the sample is inserted into a dataset (collection)
 - default reflective serialization when storing to the database
 
 """
@@ -29,23 +31,23 @@ import eta.core.serial as etas
 
 
 def insert_one(collection, document):
-    # @todo(Tyler) include collection.name when serializing
-    result = collection.insert_one(document._dbserialize())
-    document._set_id(result.inserted_id)
+    result = collection.insert_one(document._to_db_dict())
+    document._set_db_attrs(result.inserted_id, collection)
     return result
 
 
 def insert_many(collection, documents):
     result = collection.insert_many(
-        [document._dbserialize() for document in documents]
+        [document._to_db_dict() for document in documents]
     )
     for inserted_id, document in zip(result.inserted_ids, documents):
-        document._set_id(inserted_id)
+        document._set_db_attrs(inserted_id, collection)
 
 
 class Document(etas.Serializable):
-    """Adds additional functionality to Serializable class to handle `_id`
-    field which is created when a document is added to the database.
+    """Adds additional functionality to Serializable class to handle `_id` and
+    `_collection_name` fields which are created when a document is added to the
+    database.
     """
 
     @property
@@ -66,6 +68,15 @@ class Document(etas.Serializable):
         return self._id
 
     @property
+    def collection_name(self):
+        """The name of the collection that the document has been inserted into.
+        Returns None if it has not been inserted in the database.
+        """
+        if not hasattr(self, "_collection_name"):
+            self._collection_name = None
+        return self._collection_name
+
+    @property
     def ingest_time(self):
         """Document UTC generation/ingest time
 
@@ -76,48 +87,27 @@ class Document(etas.Serializable):
             return ObjectId(self.id).generation_time
         return None
 
-    def attributes(self):
-        attributes = super(Document, self).attributes()
-        if hasattr(self, "_id"):
-            attributes += ["_id"]
-        return attributes
-
-    @classmethod
-    def from_dict(cls, d, *args, **kwargs):
-        obj = cls._from_dict(d, *args, **kwargs)
-
-        id = d.get("_id", None)
-        if id:
-            obj._set_id(id)
-
-        return obj
-
     # PRIVATE #################################################################
 
-    def _set_id(self, id):
-        """This should only be set when reading from the database"""
+    def _set_db_attrs(self, id, collection):
+        """This should only be set when reading from the database or updating
+        an in memory Document that has been inserted/deleted/updated in the
+        database.
+        """
         self._id = str(id)
+        self._collection_name = collection.name
         return self
 
-    def _dbserialize(self):
+    def _to_db_dict(self):
         """Serialize for insertion into a MongoDB database"""
-        d = self.serialize(reflective=True)
-        d.pop("_id", None)
-        return d
+        return self.serialize(reflective=True)
 
     @classmethod
-    def _from_dict(cls, d, *args, **kwargs):
-        """Constructs a Serializable object from a JSON dictionary.
-
-        Subclasses must implement this method if they intend to support being
-        read from disk.
-
-        Args:
-            d: a JSON dictionary representation of a Serializable object
-            *args: optional class-specific positional arguments
-            **kwargs: optional class-specific keyword arguments
-
-        Returns:
-            an instance of the Serializable class
-        """
-        raise NotImplementedError("Subclass must implement")
+    def _from_db_dict(cls, collection, d):
+        """De-serialize from a MongoDB database"""
+        if d is None:
+            return d
+        document_id = d.pop("_id")
+        document = cls.from_dict(d)
+        document._set_db_attrs(document_id, collection)
+        return document

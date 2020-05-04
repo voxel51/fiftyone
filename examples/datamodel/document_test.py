@@ -29,6 +29,9 @@ s = sample_type(
 
 print("Not in database:")
 print(s)
+print("dataset_name: %s %s" % (type(s.dataset_name), s.dataset_name))
+print("id: %s %s" % (type(s.id), s.id))
+print("ingest_time: %s %s" % (type(s.ingest_time), s.ingest_time))
 print()
 
 ###############################################################################
@@ -40,6 +43,9 @@ s = sample_type.from_json("sample.json")
 
 print("Loaded from disk:")
 print(s)
+print("dataset_name: %s %s" % (type(s.dataset_name), s.dataset_name))
+print("id: %s %s" % (type(s.id), s.id))
+print("ingest_time: %s %s" % (type(s.ingest_time), s.ingest_time))
 print()
 
 ###############################################################################
@@ -51,8 +57,9 @@ dataset.add_sample(s)
 
 print("Added to database:")
 print(s)
-print(type(s.id))
-print(type(s.ingest_time))
+print("dataset_name: %s %s" % (type(s.dataset_name), s.dataset_name))
+print("id: %s %s" % (type(s.id), s.id))
+print("ingest_time: %s %s" % (type(s.ingest_time), s.ingest_time))
 print()
 
 ###############################################################################
@@ -63,8 +70,9 @@ s = next(dataset.iter_samples())
 
 print("Loaded from database:")
 print(s)
-print(type(s.id))
-print(type(s.ingest_time))
+print("dataset_name: %s %s" % (type(s.dataset_name), s.dataset_name))
+print("id: %s %s" % (type(s.id), s.id))
+print("ingest_time: %s %s" % (type(s.ingest_time), s.ingest_time))
 print()
 
 ###############################################################################
@@ -76,8 +84,9 @@ s = sample_type.from_json("sample.json")
 
 print("Loaded from disk:")
 print(s)
-print(type(s.id))
-print(type(s.ingest_time))
+print("dataset_name: %s %s" % (type(s.dataset_name), s.dataset_name))
+print("id: %s %s" % (type(s.id), s.id))
+print("ingest_time: %s %s" % (type(s.ingest_time), s.ingest_time))
 
 # CLEANUP #####################################################################
 
