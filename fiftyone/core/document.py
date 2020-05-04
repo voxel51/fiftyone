@@ -97,18 +97,28 @@ class Document(etas.Serializable):
         return attributes
 
     @classmethod
-    def from_dict(cls, d, *args, **kwargs):
-        obj = cls._from_dict(d, *args, **kwargs)
+    def from_dict(cls, d, **kwargs):
+        """Constructs a Document from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+            **kwargs: keyword arguments that have already been parsed by a
+            subclass
+
+        Returns:
+            a Label
+        """
+        document = cls(**kwargs)
 
         id = d.get("_id", None)
         if id:
-            obj._set_id(id)
+            document._set_id(id)
 
         dataset_name = d.get("_dataset_name", None)
         if dataset_name:
-            obj._dataset_name = dataset_name
+            document._dataset_name = dataset_name
 
-        return obj
+        return document
 
     # PRIVATE #################################################################
 
@@ -124,19 +134,11 @@ class Document(etas.Serializable):
         d.pop("_id", None)
         return d
 
-    @classmethod
-    def _from_dict(cls, d, *args, **kwargs):
-        """Constructs a Serializable object from a JSON dictionary.
-
-        Subclasses must implement this method if they intend to support being
-        read from disk.
-
-        Args:
-            d: a JSON dictionary representation of a Serializable object
-            *args: optional class-specific positional arguments
-            **kwargs: optional class-specific keyword arguments
-
-        Returns:
-            an instance of the Serializable class
-        """
-        raise NotImplementedError("Subclass must implement")
+    # @classmethod
+    # def _from_db_dict(cls, collection, d):
+    #     """De-serialize from a MongoDB database"""
+    #     if d is None:
+    #         return d
+    #     d["_collection_name"]
+    #
+    #     return cls.from_dict(d)

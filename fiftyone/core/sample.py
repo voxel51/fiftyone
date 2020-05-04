@@ -59,33 +59,40 @@ class Sample(fod.Document):
         return sample
 
     @classmethod
-    def _from_dict(cls, d, *args, **kwargs):
-        sample = cls(**cls._parse_kwargs_from_dict(d))
+    def from_dict(cls, d, **kwargs):
+        """Constructs a Sample from a JSON dictionary.
 
-        return sample
+        Args:
+            d: a JSON dictionary
 
-    # PRIVATE #################################################################
+        Returns:
+            a Sample
+        """
+        filepath = d.pop("filepath")
+        tags = d.pop("tags", None)
 
-    @classmethod
-    def _parse_kwargs_from_dict(cls, d):
-        kwargs = {
-            "filepath": d["filepath"],
-            "tags": d.get("tags", None),
-        }
-
-        if "insights" in d:
-            kwargs["insights"] = {
-                insight_group: etas.Serializable.from_dict(insights_dict)
-                for insight_group, insights_dict in d["insights"].items()
+        insights = d.pop("insights", None)
+        if insights:
+            insights = {
+                insight_group: etas.Serializable.from_dict(insight_dict)
+                for insight_group, insight_dict in insights.items()
             }
 
-        if "labels" in d:
-            kwargs["labels"] = {
-                label_group: etas.Serializable.from_dict(labels_dict)
-                for label_group, labels_dict in d["labels"].items()
+        labels = d.pop("labels", None)
+        if labels:
+            labels = {
+                label_group: etas.Serializable.from_dict(label_dict)
+                for label_group, label_dict in labels.items()
             }
 
-        return kwargs
+        return super(Sample, cls).from_dict(
+            d,
+            filepath=filepath,
+            tags=tags,
+            insights=insights,
+            labels=labels,
+            **kwargs
+        )
 
 
 class ImageSample(Sample):
@@ -96,13 +103,20 @@ class ImageSample(Sample):
     def load_image(self):
         return etai.read(self.filepath)
 
-    # PRIVATE #################################################################
-
     @classmethod
-    def _parse_kwargs_from_dict(cls, d):
-        kwargs = super(ImageSample, cls)._parse_kwargs_from_dict(d)
+    def from_dict(cls, d, **kwargs):
+        """Constructs an ImageSample from a JSON dictionary.
 
-        if "metadata" in d:
-            kwargs["metadata"] = etai.ImageMetadata.from_dict(d["metadata"])
+        Args:
+            d: a JSON dictionary
 
-        return kwargs
+        Returns:
+            an ImageSample
+        """
+        metadata = d.pop("metadata", None)
+        if metadata:
+            metadata = etai.ImageMetadata.from_dict(metadata)
+
+        return super(ImageSample, cls).from_dict(
+            d, metadata=metadata, **kwargs
+        )
