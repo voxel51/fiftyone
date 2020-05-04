@@ -25,7 +25,6 @@ import resource
 
 import eta.core.utils as etau
 
-import fiftyone.core.data as fod
 import fiftyone.core.datautils as fodu
 import fiftyone.core.utils as fou
 import fiftyone.zoo as foz

@@ -1,10 +1,22 @@
 """
-Initial demo of the FiftyOne interface.
+Demo of the experimental FiftyOne datasets in `fiftyone.experimental.data`.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
 
 import random
 
@@ -14,8 +26,8 @@ import fiftyone.core.config as foc
 # foc.set_config_settings(default_ml_backend="tensorflow")
 # foc.set_config_settings(default_ml_backend="torch")
 
-import fiftyone.core.data as fod
 import fiftyone.core.datautils as fodu
+import fiftyone.experimental.data as fed
 import fiftyone.zoo as foz
 
 
@@ -94,7 +106,7 @@ print_gt_detection_head(dataset2, num_samples=1, shuffle=True)
 
 class_dir = "/Users/Brian/Desktop/class-dir"
 samples, _ = fodu.parse_image_classification_dataset_directory(class_dir)
-dataset3 = fod.from_image_classification_samples(samples)
+dataset3 = fed.from_image_classification_samples(samples)
 
 print_gt_classification_head(dataset3)
 
@@ -104,7 +116,7 @@ print_gt_classification_head(dataset3)
 #
 
 class_dir = "/Users/Brian/Desktop/class-dir"
-dataset4 = fod.from_images_from_dir(class_dir, recursive=True)
+dataset4 = fed.from_images_from_dir(class_dir, recursive=True)
 
 print_images_head(dataset4)
 
