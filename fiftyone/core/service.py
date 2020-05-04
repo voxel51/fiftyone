@@ -18,11 +18,15 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import os
 
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+
+
+logger = logging.getLogger(__name__)
 
 
 class Service(object):
@@ -70,11 +74,13 @@ class ServerService(Service):
 
     def start(self):
         """Start the `ServerService`."""
+        return
         with etau.WorkingDir(foc.SERVER_DIR):
-            etau.call(foc.START_SERVER)
+            etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
         """Stop the `ServerService`."""
+        return
         self._system(foc.STOP_SERVER)
 
 
@@ -83,9 +89,11 @@ class AppService(Service):
 
     def start(self):
         """Start the `AppService`."""
+        return
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             etau.call(foc.START_APP, **self._SUPPRESS)
 
     def stop(self):
         """Stop the `AppService`."""
+        return
         self._system(foc.STOP_APP)

@@ -18,19 +18,22 @@ from future.utils import itervalues
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+import logging
 
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
 
 
+logger = logging.getLogger(__name__)
+
+
 class StateDescription(etas.Serializable):
-    """A StateDescription describes the shared state between the FiftyOne GUI
-    and the FiftyOne Session.
+    """A ``StateDescription`` describes the shared state between the FiftyOne
+    GUI and the FiftyOne ``fiftyone.core.session.Session``.
 
     Attributes:
-        dataset: (optional) the current dataset
-        pipeline: (optional) the current pipeline (or query)
+        dataset: (optional) the current ``fiftyone.core.dataset.Dataset``
         selected: (optional) the currently selected samples
         view: (optional) the current view
     """
@@ -40,7 +43,6 @@ class StateDescription(etas.Serializable):
 
         Args:
             dataset: (optional) the current dataset
-            pipeline: (optional) the current pipeline (or query)
             selected: (optional) the currently selected samples
             view: (optional) the current view
         """
@@ -52,13 +54,13 @@ class StateDescription(etas.Serializable):
 
     @classmethod
     def from_dict(cls, d, **kwargs):
-        """Constructs a StateDescription from a JSON dictionary.
+        """Constructs a ``StateDescription`` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a StateDescription
+            a ``StateDescription``
         """
         dataset = d.get("dataset", None)
         if dataset is not None:
@@ -66,10 +68,6 @@ class StateDescription(etas.Serializable):
 
         view = d.get("view", None)
 
-        pipeline = d.get("pipeline", [])
-
         selected = d.get("selected", [])
 
-        return cls(
-            dataset=dataset, pipeline=pipeline, selected=selected, view=view,
-        )
+        return cls(dataset=dataset, selected=selected, view=view,)
