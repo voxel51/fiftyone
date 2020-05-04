@@ -18,7 +18,6 @@ pretrained models
 `experimental/` - example of using Brian's experimental dataset structure
 defined by the `fiftyone.experimental` package
 
-
 ## Copyright
 
 Copyright 2017-2020, Voxel51, Inc.<br>
