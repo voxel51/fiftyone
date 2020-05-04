@@ -41,7 +41,7 @@ def insert_many(collection, documents):
         [document._to_db_dict() for document in documents]
     )
     for inserted_id, document in zip(result.inserted_ids, documents):
-        document._set_db_attrs(result.inserted_id, collection)
+        document._set_db_attrs(inserted_id, collection)
 
 
 class Document(etas.Serializable):

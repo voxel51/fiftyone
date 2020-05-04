@@ -27,8 +27,8 @@ class Sample(fod.Document):
         self.filepath = os.path.abspath(filepath)
         self.filename = os.path.basename(filepath)
         self.tags = tags or []
-        self.insights = insights or {}
-        self.labels = labels or {}
+        self.insights = insights or []
+        self.labels = labels or []
 
     @property
     def dataset_name(self):
@@ -37,13 +37,13 @@ class Sample(fod.Document):
         """
         return self.collection_name
 
-    def add_insight(self, insight_group, insight):
-        # @todo(Tyler) this does not write to the database
-        self.insights[insight_group] = insight
+    # def add_insight(self, insight_group, insight):
+    #     # @todo(Tyler) this does not write to the database
+    #     self.insights[insight_group] = insight
 
-    def add_label(self, label_group, label):
-        # @todo(Tyler) this does not write to the database
-        self.labels[label_group] = label
+    # def add_label(self, label_group, label):
+    #     # @todo(Tyler) this does not write to the database
+    #     self.labels[label_group] = label
 
     @classmethod
     def validate(cls, sample):
@@ -69,17 +69,17 @@ class Sample(fod.Document):
 
         insights = d.pop("insights", None)
         if insights:
-            insights = {
-                insight_group: etas.Serializable.from_dict(insight_dict)
-                for insight_group, insight_dict in insights.items()
-            }
+            insights = [
+                etas.Serializable.from_dict(insight_dict)
+                for insight_dict in insights
+            ]
 
         labels = d.pop("labels", None)
         if labels:
-            labels = {
-                label_group: etas.Serializable.from_dict(label_dict)
-                for label_group, label_dict in labels.items()
-            }
+            labels = [
+                etas.Serializable.from_dict(label_dict)
+                for label_dict in labels
+            ]
 
         return cls(
             filepath=filepath,

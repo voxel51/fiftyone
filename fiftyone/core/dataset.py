@@ -67,6 +67,12 @@ class Dataset(fov.SampleCollection):
     def get_tags(self):
         return self._c.distinct("tags")
 
+    def get_insight_groups(self):
+        return self._c.distinct("insights.group")
+
+    def get_label_groups(self):
+        return self._c.distinct("labels.group")
+
     def add_sample(self, sample):
         fos.Sample.validate(sample)
         fod.insert_one(self._c, sample)
