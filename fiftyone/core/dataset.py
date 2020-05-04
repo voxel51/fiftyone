@@ -19,8 +19,9 @@ from pymongo import MongoClient
 
 import eta.core.serial as etas
 
-import fiftyone.core.document as voxd
-import fiftyone.core.sample as voxs
+import fiftyone.core.document as fod
+import fiftyone.core.sample as fos
+import fiftyone.core.view as fov
 
 
 # We are currently assuming this is not configurable
@@ -47,8 +48,8 @@ def load_dataset(name):
     return Dataset(name=name)
 
 
-class _SampleCollection(object):
-    COLLECTION_TYPE = "subclass must specify"
+class Dataset(fov.SampleCollection):
+    COLLECTION_TYPE = "DATASET"
 
     def __init__(self, name):
         self.name = name
@@ -62,34 +63,41 @@ class _SampleCollection(object):
             self._c.find_one({"_id": ObjectId(sample_id)})
         )
 
+    def get_tags(self):
+        return self._c.distinct("tags")
+
+    def add_sample(self, sample):
+        fos.Sample.validate(sample)
+        fod.insert_one(self._c, sample)
+
+    def add_samples(self, samples):
+        for sample in samples:
+            fos.Sample.validate(sample)
+        fod.insert_many(self._c, samples)
+
+    def add_labels(self, labels_dict):
+        for sample_id, label in labels_dict.items():
+            # @todo(Tyler) this could be done better...
+            sample = self[sample_id]
+            sample.add_label(label)
+
+            # self._c.find_one_and_update(
+            #     {"_id": ObjectId(sample_id)},
+            #     {"$set": {"labels": label.serialize(reflective=True)}}
+            # )
+            self._c.find_one_and_replace(
+                {"_id": ObjectId(sample_id)}, sample._dbserialize()
+            )
+
     def iter_samples(self):
         for sample_dict in self._c.find():
             # uses reflective `_CLS` to determine type
             yield self._deserialize(sample_dict)
 
-    # def index_samples_by_filehash(self):
-    #     index_id = None
-    #     return index_id
-    #
-    # def select_samples(index, method="max-covering", num_samples=100,
-    #                    format="voxf.types.datasets.PytorchImageDataset"):
-    #     pass
-    #
-    # def export(self):
-    #     '''
-    #     samples.export(
-    #        "/path/for/export", format=voxf.types.datasets.LabeledImageDataset,
-    #     )
-    #     '''
-    #     pass
+    def default_view(self):
+        return fov.DatasetView(dataset=self)
 
     # PRIVATE #################################################################
-
-    def _init_collection(self):
-        """If a collection (such as a view) needs initialization, that is
-        populated here.
-        """
-        raise NotImplementedError("Subclass must implement")
 
     def _get_collection(self):
         """Get the collection backing this _SampleCollection.
@@ -109,8 +117,6 @@ class _SampleCollection(object):
                 {"$push": {"members": self.name}},
             )
 
-            self._init_collection()
-
         return _db()[self.name]
 
     @staticmethod
@@ -118,68 +124,6 @@ class _SampleCollection(object):
         if sample_dict is None:
             return sample_dict
         return etas.Serializable.from_dict(sample_dict)
-
-
-class Dataset(_SampleCollection):
-    COLLECTION_TYPE = "DATASET"
-
-    def __init__(self, name):
-        super(Dataset, self).__init__(name=name)
-
-    def get_tags(self):
-        return self._c.distinct("tags")
-
-    def get_view(self, tag):
-        return DatasetView(dataset=self, tag=tag)
-
-    def get_views(self):
-        return [self.get_view(tag) for tag in self.get_tags()]
-
-    def add_sample(self, sample):
-        voxs.Sample.validate(sample)
-        voxd.insert_one(self._c, sample)
-
-    def add_samples(self, samples):
-        for sample in samples:
-            voxs.Sample.validate(sample)
-        voxd.insert_many(self._c, samples)
-
-    def register_model(self):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO")
-
-    # PRIVATE #################################################################
-
-    def _init_collection(self):
-        pass
-
-
-class DatasetView(_SampleCollection):
-    COLLECTION_TYPE = "DATASET_VIEW"
-
-    def __init__(self, dataset, tag):
-        self.dataset = dataset
-        self.tag = tag
-        super(DatasetView, self).__init__(name=self._get_name())
-
-    # PRIVATE #################################################################
-
-    def _get_name(self):
-        return self.dataset.name + "_view--" + self.tag
-
-    def _init_collection(self):
-        # create view
-        _db().command(
-            {
-                "create": self.name,
-                "viewOn": self.dataset.name,
-                "pipeline": [{"$match": {"tags": self.tag}}],
-            }
-        )
-
-    def _drop_view(self):
-        # not sure if this is needed, but I want it available in case
-        self._c.drop()
 
 
 # PRIVATE #####################################################################
@@ -194,13 +138,7 @@ def _get_meta_collection():
     c = _db()[META_COLLECTION]
     if not c.count({"collection_type": Dataset.COLLECTION_TYPE}):
         c.insert_many(
-            [
-                {"collection_type": Dataset.COLLECTION_TYPE, "members": []},
-                {
-                    "collection_type": DatasetView.COLLECTION_TYPE,
-                    "members": [],
-                },
-            ]
+            [{"collection_type": Dataset.COLLECTION_TYPE, "members": []}]
         )
     return c
 

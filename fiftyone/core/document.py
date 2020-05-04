@@ -29,14 +29,15 @@ import eta.core.serial as etas
 
 
 def insert_one(collection, document):
-    result = collection.insert_one(document.serialize(reflective=True))
+    # @todo(Tyler) include collection.name when serializing
+    result = collection.insert_one(document._dbserialize())
     document._set_id(result.inserted_id)
     return result
 
 
 def insert_many(collection, documents):
     result = collection.insert_many(
-        [document.serialize(reflective=True) for document in documents]
+        [document._dbserialize() for document in documents]
     )
     for inserted_id, document in zip(result.inserted_ids, documents):
         document._set_id(inserted_id)
@@ -97,6 +98,12 @@ class Document(etas.Serializable):
         """This should only be set when reading from the database"""
         self._id = str(id)
         return self
+
+    def _dbserialize(self):
+        """Serialize for insertion into a MongoDB database"""
+        d = self.serialize(reflective=True)
+        d.pop("_id", None)
+        return d
 
     @classmethod
     def _from_dict(cls, d, *args, **kwargs):

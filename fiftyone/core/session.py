@@ -14,8 +14,8 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-import fiftyone.core.client as voxc
-import fiftyone.core.query as voxq
+import fiftyone.core.client as foc
+import fiftyone.core.view as fov
 
 
 def update_state(func):
@@ -27,7 +27,7 @@ def update_state(func):
     return wrapper
 
 
-class Session(voxc.HasClient):
+class Session(foc.HasClient):
     """Sessions have a 1-to-1 shared state with the GUI."""
 
     _HC_NAMESPACE = "state"
@@ -37,10 +37,30 @@ class Session(voxc.HasClient):
     DEFAULT_LIMIT = 10
 
     @update_state
-    def __init__(self, offset=DEFAULT_OFFSET, limit=DEFAULT_LIMIT):
+    def __init__(
+        self,
+        offset=DEFAULT_OFFSET,
+        limit=DEFAULT_LIMIT,
+        dataset=None,
+        view=None,
+    ):
         super(Session, self).__init__()
         self._offset = offset
         self._limit = limit
+        self._dataset = None
+        self._view = None
+
+        if dataset is not None and view is not None:
+            assert view.dataset == dataset, (
+                "Inconsistent dataset and view: %s != %s"
+                % (dataset.name, view.dataset.name)
+            )
+
+        if view is not None:
+            self._view = view
+            self._dataset = self._view.dataset
+        elif dataset is not None:
+            self._dataset = dataset
 
     # GETTERS #################################################################
 
@@ -54,21 +74,13 @@ class Session(voxc.HasClient):
 
     @property
     def dataset(self):
-        if not hasattr(self, "_dataset"):
-            self._dataset = None
+        if self.view is not None:
+            return self.view.dataset
         return self._dataset
 
     @property
     def view(self):
-        if not hasattr(self, "_view"):
-            self._view = None
         return self._view
-
-    @property
-    def query(self):
-        if not hasattr(self, "_query"):
-            self._query = None
-        return self._query
 
     # SETTERS #################################################################
 
@@ -93,11 +105,6 @@ class Session(voxc.HasClient):
         self._view = view
         self._dataset = self._view.dataset
 
-    @query.setter
-    @update_state
-    def query(self, query):
-        self._query = query
-
     # CLEAR STATE #############################################################
 
     @update_state
@@ -117,17 +124,12 @@ class Session(voxc.HasClient):
     def clear_view(self):
         self._view = None
 
-    @update_state
-    def clear_query(self):
-        self._query = None
-
     # PRIVATE #################################################################
 
     def _update_state(self):
         self.state = {
             "dataset_name": self.dataset.name if self.dataset else None,
-            "view_tag": self.view.tag if self.view else None,
-            "query": self.query._pipeline if self.query else None,
+            "transform_pipeline": self.view._pipeline if self.view else None,
             "page": {
                 "offset": self.offset,
                 "limit": self.limit,
@@ -142,25 +144,24 @@ class Session(voxc.HasClient):
 
     def _compute_count(self):
         dataset_or_view = self._get_dataset_or_view()
-        if self.query and dataset_or_view:
-            return self.query.count(dataset_or_view)
         if dataset_or_view:
             return len(dataset_or_view)
         return 0
 
     def _compute_samples(self):
-        dataset_or_view = self._get_dataset_or_view()
-
-        if not dataset_or_view:
+        if not self.dataset:
             return {}
 
-        query = self.query if self.query else voxq.DatasetQuery()
+        if self.view:
+            view = self.view
+        else:
+            view = fov.DatasetView(dataset=self.dataset)
 
         return {
-            query_idx: sample.serialize()
-            for query_idx, sample in (
-                query.offset(self.offset)
+            view_idx: sample.serialize()
+            for view_idx, sample in (
+                view.offset(self.offset)
                 .limit(self.limit)
-                .iter_samples(dataset_or_view)
+                .iter_samples_with_view_index()
             )
         }

@@ -66,7 +66,7 @@ def print_gt_detection_head(dataset, num_samples=5, shuffle=False):
 
 
 #
-# List available datasetes in the zoo
+# List available datasets in the zoo
 #
 
 print("Available datasets: %s" % foz.list_zoo_datasets())
