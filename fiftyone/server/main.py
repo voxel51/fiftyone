@@ -50,6 +50,7 @@ class StateController(Namespace):
             **kwargs: kwargs dictionary
         """
         self.state = fos.StateDescription()
+        super(StateController, self).__init__(*args, **kwargs)
 
     def on_connect(self):
         """On connect"""
