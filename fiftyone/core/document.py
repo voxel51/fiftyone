@@ -31,22 +31,22 @@ import eta.core.serial as etas
 
 
 def insert_one(collection, document):
-    result = collection.insert_one(document._dbserialize(collection))
-    document._set_id(result.inserted_id)
+    result = collection.insert_one(document._to_db_dict())
+    document._set_db_attrs(result.inserted_id, collection)
     return result
 
 
 def insert_many(collection, documents):
     result = collection.insert_many(
-        [document._dbserialize(collection) for document in documents]
+        [document._to_db_dict() for document in documents]
     )
     for inserted_id, document in zip(result.inserted_ids, documents):
-        document._set_id(inserted_id)
+        document._set_db_attrs(result.inserted_id, collection)
 
 
 class Document(etas.Serializable):
     """Adds additional functionality to Serializable class to handle `_id` and
-    `_dataset_name` fields which are created when a document is added to the
+    `_collection_name` fields which are created when a document is added to the
     database.
     """
 
@@ -68,14 +68,13 @@ class Document(etas.Serializable):
         return self._id
 
     @property
-    def dataset_name(self):
-        """The name of the dataset (MongoDB collection) that the sample has
-        been inserted into. Returns None if it has not been inserted in a
-        dataset.
+    def collection_name(self):
+        """The name of the collection that the document has been inserted into.
+        Returns None if it has not been inserted in the database.
         """
-        if not hasattr(self, "_dataset_name"):
-            self._dataset_name = None
-        return self._dataset_name
+        if not hasattr(self, "_collection_name"):
+            self._collection_name = None
+        return self._collection_name
 
     @property
     def ingest_time(self):
@@ -88,57 +87,27 @@ class Document(etas.Serializable):
             return ObjectId(self.id).generation_time
         return None
 
-    def attributes(self):
-        attributes = super(Document, self).attributes()
-        if hasattr(self, "_id"):
-            attributes += ["_id"]
-        if hasattr(self, "_dataset_name"):
-            attributes += ["_dataset_name"]
-        return attributes
-
-    @classmethod
-    def from_dict(cls, d, **kwargs):
-        """Constructs a Document from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-            **kwargs: keyword arguments that have already been parsed by a
-            subclass
-
-        Returns:
-            a Label
-        """
-        document = cls(**kwargs)
-
-        id = d.get("_id", None)
-        if id:
-            document._set_id(id)
-
-        dataset_name = d.get("_dataset_name", None)
-        if dataset_name:
-            document._dataset_name = dataset_name
-
-        return document
-
     # PRIVATE #################################################################
 
-    def _set_id(self, id):
-        """This should only be set when reading from the database"""
+    def _set_db_attrs(self, id, collection):
+        """This should only be set when reading from the database or updating
+        an in memory Document that has been inserted/deleted/updated in the
+        database.
+        """
         self._id = str(id)
+        self._collection_name = collection.name
         return self
 
-    def _dbserialize(self, collection):
+    def _to_db_dict(self):
         """Serialize for insertion into a MongoDB database"""
-        self._dataset_name = collection.name
-        d = self.serialize(reflective=True)
-        d.pop("_id", None)
-        return d
+        return self.serialize(reflective=True)
 
-    # @classmethod
-    # def _from_db_dict(cls, collection, d):
-    #     """De-serialize from a MongoDB database"""
-    #     if d is None:
-    #         return d
-    #     d["_collection_name"]
-    #
-    #     return cls.from_dict(d)
+    @classmethod
+    def _from_db_dict(cls, collection, d):
+        """De-serialize from a MongoDB database"""
+        if d is None:
+            return d
+        document_id = d.pop("_id")
+        document = cls.from_dict(d)
+        document._set_db_attrs(document_id, collection)
+        return document

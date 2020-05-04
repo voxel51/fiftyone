@@ -24,6 +24,7 @@ import fiftyone.core.document as fod
 
 class Sample(fod.Document):
     def __init__(self, filepath, tags=None, insights=None, labels=None):
+        super(Sample, self).__init__()
         self.filepath = os.path.abspath(filepath)
         self.filename = os.path.basename(filepath)
         self.tags = tags or []
@@ -31,15 +32,11 @@ class Sample(fod.Document):
         self.labels = labels or {}
 
     @property
-    def dataset(self):
+    def dataset_name(self):
         """Backref to the dataset to which this sample belongs. Returns None
         if the sample has not been inserted in a dataset.
         """
-        if self.dataset_name is None:
-            return None
-        from fiftyone.core.dataset import load_dataset
-
-        return load_dataset(self.dataset_name)
+        return self.collection_name
 
     def add_insight(self, insight_group, insight):
         # @todo(Tyler) this does not write to the database
@@ -85,8 +82,7 @@ class Sample(fod.Document):
                 for label_group, label_dict in labels.items()
             }
 
-        return super(Sample, cls).from_dict(
-            d,
+        return cls(
             filepath=filepath,
             tags=tags,
             insights=insights,

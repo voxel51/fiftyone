@@ -59,8 +59,9 @@ class Dataset(fov.SampleCollection):
         return self._c.count_documents({})
 
     def __getitem__(self, sample_id):
-        return self._deserialize(
-            self._c.find_one({"_id": ObjectId(sample_id)})
+        return fos.Sample._from_db_dict(
+            collection=self._c,
+            d=self._c.find_one({"_id": ObjectId(sample_id)}),
         )
 
     def get_tags(self):
@@ -86,13 +87,13 @@ class Dataset(fov.SampleCollection):
             #     {"$set": {"labels": label.serialize(reflective=True)}}
             # )
             self._c.find_one_and_replace(
-                {"_id": ObjectId(sample_id)}, sample._dbserialize()
+                {"_id": ObjectId(sample_id)}, sample._to_db_dict()
             )
 
     def iter_samples(self):
-        for sample_dict in self._c.find():
+        for d in self._c.find():
             # uses reflective `_CLS` to determine type
-            yield self._deserialize(sample_dict)
+            yield fos.Sample._from_db_dict(collection=self._c, d=d)
 
     def default_view(self):
         return fov.DatasetView(dataset=self)
@@ -118,12 +119,6 @@ class Dataset(fov.SampleCollection):
             )
 
         return _db()[self.name]
-
-    @staticmethod
-    def _deserialize(sample_dict):
-        if sample_dict is None:
-            return sample_dict
-        return etas.Serializable.from_dict(sample_dict)
 
 
 # PRIVATE #####################################################################
