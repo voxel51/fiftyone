@@ -97,18 +97,6 @@ class Dataset(fov.SampleCollection):
     def view(self):
         return fov.DatasetView(dataset=self)
 
-    # def index_samples_by_filehash(self):
-    #     index_id = None
-    #     return index_id
-    #
-    # def export(self):
-    #     '''
-    #     samples.export(
-    #        "/path/for/export", format=voxf.types.datasets.LabeledImageDataset,
-    #     )
-    #     '''
-    #     pass
-
     # PRIVATE #################################################################
 
     def _get_collection(self):

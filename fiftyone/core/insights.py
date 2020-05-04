@@ -1,5 +1,5 @@
 """
-Core Module for `fiftyone` Labels class
+Core Module for `fiftyone` Insight class
 
 """
 # pragma pylint: disable=redefined-builtin
@@ -17,9 +17,9 @@ from builtins import *
 import eta.core.serial as etas
 
 
-class Labels(etas.Serializable):
+class Insight(etas.Serializable):
     # @todo(Tyler) this could all be deleted but I'll probably use it for
-    # some other common field that all labels need to have
+    # some other common field that all insights need to have
     def __init__(self, group=None):
         self._group = group
 
@@ -45,32 +45,21 @@ class Labels(etas.Serializable):
         return cls(group=group, **kwargs)
 
 
-class ClassificationLabel(Labels):
-    def __init__(self, label, confidence=None, *args, **kwargs):
-        super(ClassificationLabel, self).__init__(*args, **kwargs)
-        self.label = label
-        self.confidence = confidence
+class FileHashInsight(Insight):
+    def __init__(self, file_hash, *args, **kwargs):
+        super(FileHashInsight, self).__init__(*args, **kwargs)
+        self.file_hash = file_hash
 
     @classmethod
     def from_dict(cls, d, **kwargs):
-        """Constructs a ClassificationLabel from a JSON dictionary.
+        """Constructs a FileHashInsight from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a ClassificationLabel
+            a FileHashInsight
         """
-        label = d["label"]
+        file_hash = d["file_hash"]
 
-        confidence = d.get("confidence", None)
-
-        return super(ClassificationLabel, cls).from_dict(
-            d, label=label, confidence=confidence
-        )
-
-
-class DetectionLabels(Labels):
-    def __init__(self, detections, *args, **kwargs):
-        super(DetectionLabels, self).__init__(*args, **kwargs)
-        raise NotImplementedError("TODO")
+        return super(FileHashInsight, cls).from_dict(d, file_hash=file_hash)

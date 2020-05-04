@@ -87,6 +87,7 @@ class DatasetView(SampleCollection):
         )["count"]
 
     def __getitem__(self, sample_id):
+        # @todo(Tyler) maybe this should fail if the sample is not in the view?
         return self.dataset[sample_id]
 
     def iter_samples(self):
@@ -112,12 +113,16 @@ class DatasetView(SampleCollection):
             view_idx += 1
             yield view_idx, self.dataset._deserialize(s)
 
-
     # VIEW OPERATIONS #########################################################
 
-    def filter(self, filter):
+    def filter(
+        self, tag=None, insight_group=None, label_group=None, filter=None
+    ):
         """
         Args:
+            tag: a sample tag string
+            insight_group: an insight group string
+            label_group: a label group string
             filter: a MongoDB query dict
 
         Returns:
@@ -125,7 +130,27 @@ class DatasetView(SampleCollection):
 
         ref: https://docs.mongodb.com/manual/tutorial/query-documents
         """
-        return self._create_new_view(stage={"$match": filter})
+        view = self
+
+        if tag is not None:
+            view = view._create_new_view(stage={"$match": {"tags": tag}})
+
+        if insight_group is not None:
+            # @todo(Tyler) should this filter the insights as well? or just
+            # filter the samples based on whether or not the insight is
+            # present?
+            raise NotImplementedError("TODO")
+
+        if label_group is not None:
+            # @todo(Tyler) should this filter the labels as well? or just
+            # filter the samples based on whether or not the label is
+            # present?
+            raise NotImplementedError("TODO")
+
+        if filter is not None:
+            view = view._create_new_view(stage={"$match": filter})
+
+        return view
 
     def sort(self, field, sort_order=ASCENDING):
         """
