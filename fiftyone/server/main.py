@@ -15,7 +15,7 @@ from flask_socketio import emit, Namespace, SocketIO
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
-import query
+import fiftyone.core.state as fos
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "fiftyone"
@@ -36,16 +36,20 @@ def get_sample_media():
 
 
 class StateController(Namespace):
-    """Controller for state"""
+    """Controller for state
 
-    state = {
-        "dataset_name": None,
-        "query": None,
-        "view_tag": None,
-        "samples": [],
-    }
-    it = None
-    ds = None
+    Attributes:
+        state: a StateDescription instance
+    """
+
+    def __init__(self, *args, **kwargs):
+        """Creates a StateController instance.
+
+        Args:
+            *args: args tuple or list
+            **kwargs: kwargs dictionary
+        """
+        self.state = fos.StateDescription()
 
     def on_connect(self):
         """On connect"""
@@ -56,16 +60,17 @@ class StateController(Namespace):
         pass
 
     def on_update(self, state):
-        """On update"""
-        if state["dataset_name"]:
-            self.ds = fod.Dataset(state["dataset_name"])
-            self.it = query.Query([]).iter_samples(self.ds)
-            self.state = state
-            emit("update", state, broadcast=True, include_self=False)
+        """Update the StateDescription
+
+        Args:
+            state: a serialized StateDescription
+        """
+        self.state = fos.StateDescription.from_dict(state)
+        emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
         """Get the current state"""
-        return self.state
+        return self.state.serialize()
 
     def on_previous(self, _):
         """Get the previous state using the query iterator"""
