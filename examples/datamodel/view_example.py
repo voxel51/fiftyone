@@ -43,12 +43,58 @@ print("Can add sample to dataset: %s" % hasattr(dataset, "add_sample"))
 print("Can add sample to view: %s" % hasattr(view, "add_sample"))
 print()
 
-
 ###############################################################################
 # Action 1: Filter by "tag"
 ###############################################################################
 
 tag = "rand"
-view2 = view.filter(tag=tag)
-print("Num samples with '%s' tag: %d" % (tag, len(view2)))
+view = fov.DatasetView(dataset=dataset).filter(tag=tag)
+print("Num samples with '%s' tag: %d" % (tag, len(view)))
 print()
+
+###############################################################################
+# Action 2: Sort, Offset and Limit
+#
+# Transforms like `filter`, `sort`, `offset`, `limit` return a `DatasetView`
+# object with the additional transform appended to the view pipeline.
+###############################################################################
+
+view = (
+    fov.DatasetView(dataset=dataset)
+    .sort("metadata.size_bytes")
+    .offset(5)
+    .limit(2)
+)
+print("Num samples in view: %d" % len(view))
+for sample in view.iter_samples():
+    print(sample)
+print()
+
+###############################################################################
+# Action 3: More complex queries
+#
+# `filter` is a very powerful but complex query stage. We may want to constrain
+# the functionality here for the purpose of softening the learning curve, but
+# for now this is a simple wrapper on the MongoDB `$match` stage.
+#
+# This query matches num_channels == 3 AND size_bytes > 1000
+#
+# ref: https://docs.mongodb.com/manual/tutorial/query-documents
+###############################################################################
+
+view = (
+    fov.DatasetView(dataset=dataset)
+    .filter(
+        filter={
+            "metadata.num_channels": 3,
+            "metadata.size_bytes": {"$gt": 1000},
+        }
+    )
+    .sort("metadata.size_bytes")
+    .offset(0)
+    .limit(1)
+)
+
+for sample in view.iter_samples():
+    print(sample)
+    print()

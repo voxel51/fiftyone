@@ -41,9 +41,9 @@ Data is downloaded as:
 
 - `ingest_data.py`: read CIFAR100 data into the database
 
-- `explore_data.py`: snippets for exploring the database and example dataset
+- `explore_dataset.py`: snippets for exploring the database and example dataset
 
-- `query_data.py`: snippets for querying the example dataset
+- `view_example.py`: snippets for querying the example dataset
 
 - `session_example.py`: example using a `Session` which interacts 1-to-1 with
   the GUI
