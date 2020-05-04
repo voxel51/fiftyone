@@ -6,8 +6,10 @@ additional functionality centered around `Document` objects, which are
 serializables that can be inserted and read from the MongoDB database.
 
 Important functionality includes:
-- access to the ID when is automatically generated when the Document is
+- access to the ID which is automatically generated when the Document is
     inserted in the database
+- access to the dataset (collection) name which is similarly populated when
+    the sample is inserted into a dataset (collection)
 - default reflective serialization when storing to the database
 
 """
@@ -29,23 +31,23 @@ import eta.core.serial as etas
 
 
 def insert_one(collection, document):
-    # @todo(Tyler) include collection.name when serializing
-    result = collection.insert_one(document._dbserialize())
+    result = collection.insert_one(document._dbserialize(collection))
     document._set_id(result.inserted_id)
     return result
 
 
 def insert_many(collection, documents):
     result = collection.insert_many(
-        [document._dbserialize() for document in documents]
+        [document._dbserialize(collection) for document in documents]
     )
     for inserted_id, document in zip(result.inserted_ids, documents):
         document._set_id(inserted_id)
 
 
 class Document(etas.Serializable):
-    """Adds additional functionality to Serializable class to handle `_id`
-    field which is created when a document is added to the database.
+    """Adds additional functionality to Serializable class to handle `_id` and
+    `_dataset_name` fields which are created when a document is added to the
+    database.
     """
 
     @property
@@ -66,6 +68,16 @@ class Document(etas.Serializable):
         return self._id
 
     @property
+    def dataset_name(self):
+        """The name of the dataset (MongoDB collection) that the sample has
+        been inserted into. Returns None if it has not been inserted in a
+        dataset.
+        """
+        if not hasattr(self, "_dataset_name"):
+            self._dataset_name = None
+        return self._dataset_name
+
+    @property
     def ingest_time(self):
         """Document UTC generation/ingest time
 
@@ -80,6 +92,8 @@ class Document(etas.Serializable):
         attributes = super(Document, self).attributes()
         if hasattr(self, "_id"):
             attributes += ["_id"]
+        if hasattr(self, "_dataset_name"):
+            attributes += ["_dataset_name"]
         return attributes
 
     @classmethod
@@ -90,6 +104,10 @@ class Document(etas.Serializable):
         if id:
             obj._set_id(id)
 
+        dataset_name = d.get("_dataset_name", None)
+        if dataset_name:
+            obj._dataset_name = dataset_name
+
         return obj
 
     # PRIVATE #################################################################
@@ -99,8 +117,9 @@ class Document(etas.Serializable):
         self._id = str(id)
         return self
 
-    def _dbserialize(self):
+    def _dbserialize(self, collection):
         """Serialize for insertion into a MongoDB database"""
+        self._dataset_name = collection.name
         d = self.serialize(reflective=True)
         d.pop("_id", None)
         return d

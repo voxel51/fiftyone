@@ -32,9 +32,14 @@ class Sample(fod.Document):
 
     @property
     def dataset(self):
-        # @todo(Tyler) This could be stored similar to how I originally
-        # implemented ingest_time
-        raise NotImplementedError("TODO")
+        """Backref to the dataset to which this sample belongs. Returns None
+        if the sample has not been inserted in a dataset.
+        """
+        if self.dataset_name is None:
+            return None
+        from fiftyone.core.dataset import load_dataset
+
+        return load_dataset(self.dataset_name)
 
     def add_insight(self, insight_group, insight):
         # @todo(Tyler) this does not write to the database
