@@ -69,12 +69,32 @@ class Session(foc.HasClient):
     DEFAULT_LIMIT = 10
 
     @update_state
-    def __init__(self, offset=DEFAULT_OFFSET, limit=DEFAULT_LIMIT):
+    def __init__(
+        self,
+        offset=DEFAULT_OFFSET,
+        limit=DEFAULT_LIMIT,
+        dataset=None,
+        view=None,
+    ):
         if session is not None:
             raise ValueError("Only one session is permitted")
         super(Session, self).__init__()
         self._offset = offset
         self._limit = limit
+        self._dataset = None
+        self._view = None
+
+        if dataset is not None and view is not None:
+            assert view.dataset == dataset, (
+                "Inconsistent dataset and view: %s != %s"
+                % (dataset.name, view.dataset.name)
+            )
+
+        if view is not None:
+            self._view = view
+            self._dataset = self._view.dataset
+        elif dataset is not None:
+            self._dataset = dataset
         self._server_service = fos.ServerService()
         self._app_service = fos.AppService()
 
@@ -90,21 +110,13 @@ class Session(foc.HasClient):
 
     @property
     def dataset(self):
-        if not hasattr(self, "_dataset"):
-            self._dataset = None
+        if self.view is not None:
+            return self.view.dataset
         return self._dataset
 
     @property
     def view(self):
-        if not hasattr(self, "_view"):
-            self._view = None
         return self._view
-
-    @property
-    def query(self):
-        if not hasattr(self, "_query"):
-            self._query = None
-        return self._query
 
     # SETTERS #################################################################
 
@@ -129,11 +141,6 @@ class Session(foc.HasClient):
         self._view = view
         self._dataset = self._view.dataset
 
-    @query.setter
-    @update_state
-    def query(self, query):
-        self._query = query
-
     # CLEAR STATE #############################################################
 
     @update_state
@@ -153,17 +160,12 @@ class Session(foc.HasClient):
     def clear_view(self):
         self._view = None
 
-    @update_state
-    def clear_query(self):
-        self._query = None
-
     # PRIVATE #################################################################
 
     def _update_state(self):
         self.state = {
             "dataset_name": self.dataset.name if self.dataset else None,
-            "view_tag": self.view.tag if self.view else None,
-            "query": self.query._pipeline if self.query else None,
+            "transform_pipeline": self.view._pipeline if self.view else None,
             "page": {
                 "offset": self.offset,
                 "limit": self.limit,
@@ -177,8 +179,6 @@ class Session(foc.HasClient):
 
     def _compute_count(self):
         dataset_or_view = self._get_dataset_or_view()
-        if self.query and dataset_or_view:
-            return self.query.count(dataset_or_view)
         if dataset_or_view:
             return len(dataset_or_view)
         return 0

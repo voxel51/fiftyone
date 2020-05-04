@@ -41,9 +41,9 @@ extensions = [
 
 # Types of class members to generate documentation for.
 autodoc_default_flags = ["members", "inherited-members"]
-# autodoc_default_flags = ["members"]
-# autodoc_inherit_docstrings = False
+autodoc_inherit_docstrings = True
 autodoc_member_order = "bysource"
+autoclass_content = "class"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
