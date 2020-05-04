@@ -14,11 +14,41 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-import fiftyone.core.client as voxc
-import fiftyone.core.state as voxs
+import fiftyone.core.client as foc
+import fiftyone.core.service as fos
+from fiftyone.core.state import StateDescription
+
+
+# global session singleton
+session = None
+
+
+def launch_dashboard(dataset=None, view=None):
+    """Luanches the FiftyOne App.
+
+    Args:
+        dataset: (optional) the dataset
+        view: (optional) the view
+
+    Returns:
+        a Session instance
+    """
+    global session
+    session = Session()
+    session.dataset = dataset
+    session.view = view
 
 
 def update_state(func):
+    """Update state descorator.
+
+    Args:
+        func: the Session method to decorate
+
+    Returns:
+        the wrapped function
+    """
+
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         self._update_state()
@@ -27,21 +57,25 @@ def update_state(func):
     return wrapper
 
 
-class Session(voxc.HasClient):
+class Session(foc.HasClient):
     """Sessions have a 1-to-1 shared state with the GUI."""
 
     _HC_NAMESPACE = "state"
     _HC_ATTR_NAME = "state"
-    _HC_ATTR_TYPE = voxs.StateDescription
+    _HC_ATTR_TYPE = StateDescription
 
     DEFAULT_OFFSET = 0
     DEFAULT_LIMIT = 10
 
     @update_state
     def __init__(self, offset=DEFAULT_OFFSET, limit=DEFAULT_LIMIT):
+        if session is not None:
+            raise ValueError("Only one session is permitted")
         super(Session, self).__init__()
         self._offset = offset
         self._limit = limit
+        self._server_service = fos.ServerService()
+        self._app_service = fos.AppService()
 
     # GETTERS #################################################################
 
