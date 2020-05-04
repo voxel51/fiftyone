@@ -91,6 +91,7 @@ class HasClient(object):
 
     _HC_NAMESPACE = None
     _HC_ATTR_NAME = None
+    _HC_ATTR_TYPE = None
 
     def __init__(self):
         """Creates the SocketIO client"""
@@ -109,6 +110,13 @@ class HasClient(object):
     def __setattr__(self, name, value):
         """Set the data to the attribute defined by `_HC_ATTR_NAME`."""
         if name == self._HC_ATTR_NAME:
+            if self._HC_ATTR_TYPE is not None and not isinstance(
+                value, self._HC_ATTR_TYPE
+            ):
+                raise ValueError(
+                    "Client expected type %s, but got type %s"
+                    % (self._HC_ATTR_TYPE, type(value))
+                )
             self._hc_client.update(value)
         else:
             super(HasClient, self).__setattr__(name, value)

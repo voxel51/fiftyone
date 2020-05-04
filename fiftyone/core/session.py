@@ -15,7 +15,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 import fiftyone.core.client as voxc
-import fiftyone.core.query as voxq
+import fiftyone.core.state as voxs
 
 
 def update_state(func):
@@ -32,6 +32,7 @@ class Session(voxc.HasClient):
 
     _HC_NAMESPACE = "state"
     _HC_ATTR_NAME = "state"
+    _HC_ATTR_TYPE = voxs.StateDescription
 
     DEFAULT_OFFSET = 0
     DEFAULT_LIMIT = 10

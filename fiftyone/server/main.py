@@ -35,50 +35,7 @@ def get_sample_media():
     return send_file(path, mimetype=mime_type)
 
 
-class StateDescription(etas.Serializable):
-    """A StateDescription describes the shared state between the FiftyOne GUI
-    and the FiftyOne Session.
-
-    Attributes:
-        dataset: (optional) the current dataset
-        view: (optional) the current view
-        pipeline: (optional) the current pipeline (or query)
-    """
-
-    def __init__(self, dataset=None, view=None, pipeline=None):
-        """Creates a StateDescription instance.
-
-        Args:
-            dataset: (optional) the current dataset
-            view: (optional) the current view
-            pipeline: (optional) the current pipeline (or query)
-        """
-        self.dataset = dataset
-        self.view = view
-        self.pipeline = pipeline or []
-
-    @classmethod
-    def from_dict(cls, d, **kwargs):
-        """Constructs a StateDescription from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a StateDescription
-        """
-        dataset = d.get("dataset", None)
-        if dataset is not None:
-            dataset = fod.Dataset(dataset)
-
-        view = d.get("view", None)
-
-        pipeline = d.get("pipeline", None)
-
-        return cls(dataset=dataset, view=view, pipeline=pipeline)
-
-
-class State(Namespace):
+class StateController(Namespace):
     """Controller for state"""
 
     state = {
@@ -115,30 +72,13 @@ class State(Namespace):
         # @todo
         pass
 
-    def on_next(self, _):
+    def on_get(self, page):
         """Get the next state using the query iterator"""
-        print(_)
-        state = self._next()
-        samples = state["samples"]
-        state.update(self.state)
-        state["samples"] = samples
-        self.state = state
-        return self.state
-
-    def _next(self):
-        results = {}
-        for i in range(0, 25):
-            while True:
-                try:
-                    qidx, sample = next(self.it)
-                    break
-                except ValueError:
-                    pass
-            results[qidx] = sample.serialize()
-        return {"samples": results}
+        # @todo
+        pass
 
 
-socketio.on_namespace(State("/state"))
+socketio.on_namespace(StateController("/state"))
 
 
 if __name__ == "__main__":
