@@ -1,6 +1,15 @@
-# Sample Pseudocode
+"""Sample Example
 
-```python
+- `tag`: sample splits (or groupings because they could intersect)
+  `[train, test, validation, etc.]`
+- `insight`: `feature`, `attribute`, etc.
+- `*_group`: a `label_group` or `insight_group`, the group that spans across
+  samples, e.g.
+  `label_groups = [ground_truth, model_1_preds, ...]`
+  `insight_groups = [file_hash, hardness_1, hardness_2, ...]`
+- `*Set`: a `sample.labels`/`sample.insights` returns a `LabelSet`/`InsightSet`
+  of all `Label`/`Insight`s for a single sample
+"""
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.view as fov
@@ -99,16 +108,3 @@ for sample in view.iter_samples():
 
 # browse the images
 session = fo.launch_dashboard(view=view)
-```
-
-## Names up for debate:
-
-- `tag`: sample splits (or groupings because they could intersect)
-  `[train, test, validation, etc.]`
-- `insight`: `feature`, `attribute`, etc.
-- `*_group`: a `label_group` or `insight_group`, the group that spans across
-  samples, e.g.
-  `label_groups = [ground_truth, model_1_preds, ...]`
-  `insight_groups = [file_hash, hardness_1, hardness_2, ...]`
-- `*Set`: a `sample.labels`/`sample.insights` returns a `LabelSet`/`InsightSet`
-  of all `Label`/`Insight`s for a single sample
