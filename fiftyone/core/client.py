@@ -117,7 +117,7 @@ class HasClient(object):
                     "Client expected type %s, but got type %s"
                     % (self._HC_ATTR_TYPE, type(value))
                 )
-            self._hc_client.update(value)
+            self._hc_client.update(value.serialize())
         else:
             super(HasClient, self).__setattr__(name, value)
 

@@ -68,7 +68,6 @@ class Session(foc.HasClient):
     DEFAULT_OFFSET = 0
     DEFAULT_LIMIT = 10
 
-    @update_state
     def __init__(
         self,
         offset=DEFAULT_OFFSET,
@@ -78,6 +77,8 @@ class Session(foc.HasClient):
     ):
         if session is not None:
             raise ValueError("Only one session is permitted")
+        self._server_service = fos.ServerService()
+        self._app_service = fos.AppService()
         super(Session, self).__init__()
         self._offset = offset
         self._limit = limit
@@ -95,8 +96,6 @@ class Session(foc.HasClient):
             self._dataset = self._view.dataset
         elif dataset is not None:
             self._dataset = dataset
-        self._server_service = fos.ServerService()
-        self._app_service = fos.AppService()
 
     # GETTERS #################################################################
 
@@ -139,7 +138,10 @@ class Session(foc.HasClient):
     @update_state
     def view(self, view):
         self._view = view
-        self._dataset = self._view.dataset
+        if view is not None:
+            self._dataset = self._view.dataset
+        else:
+            self._view = None
 
     # CLEAR STATE #############################################################
 
@@ -154,7 +156,6 @@ class Session(foc.HasClient):
     @update_state
     def clear_dataset(self):
         self._dataset = None
-        self._view = None
 
     @update_state
     def clear_view(self):
@@ -163,15 +164,7 @@ class Session(foc.HasClient):
     # PRIVATE #################################################################
 
     def _update_state(self):
-        self.state = {
-            "dataset_name": self.dataset.name if self.dataset else None,
-            "transform_pipeline": self.view._pipeline if self.view else None,
-            "page": {
-                "offset": self.offset,
-                "limit": self.limit,
-                "count": self._compute_count(),
-            },
-        }
+        self.state = StateDescription(dataset=self._dataset, view=self._view)
 
     def _get_dataset_or_view(self):
         # view takes precedence over dataset if set

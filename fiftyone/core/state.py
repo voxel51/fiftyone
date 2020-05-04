@@ -48,7 +48,7 @@ class StateDescription(etas.Serializable):
         self.view = view
         self.pipeline = pipeline or []
         self.selected = []
-        super(StateDescription, self).__init__(self)
+        super(StateDescription, self).__init__()
 
     @classmethod
     def from_dict(cls, d, **kwargs):
