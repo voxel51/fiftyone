@@ -114,6 +114,8 @@ class Dataset(fov.SampleCollection):
         Ensures that the collection is properly initialized and registered in
         the meta collection.
         """
+        c = _db()[self.name]
+
         if self.name in _db().list_collection_names():
             # make sure it's the right collection type
             members = _get_members_for_collection_type(self.COLLECTION_TYPE)
@@ -121,13 +123,16 @@ class Dataset(fov.SampleCollection):
 
         else:
             # add to meta collection
-            c = _get_meta_collection()
-            c.update_one(
+            meta_c = _get_meta_collection()
+            meta_c.update_one(
                 {"collection_type": self.COLLECTION_TYPE},
                 {"$push": {"members": self.name}},
             )
 
-        return _db()[self.name]
+            # create indexes
+            c.create_index("filepath", unique=True)
+
+        return c
 
 
 # PRIVATE #####################################################################

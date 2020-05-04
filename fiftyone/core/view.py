@@ -18,11 +18,9 @@ from copy import deepcopy
 import os
 import shutil
 
+from pymongo import ASCENDING, DESCENDING
+
 import eta.core.utils as etau
-
-
-ASCENDING = 1
-DESCENDING = -1
 
 
 class SampleCollection(object):

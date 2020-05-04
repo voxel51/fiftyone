@@ -7,10 +7,7 @@ import fiftyone.core.sample as fos
 fod.drop_database()
 dataset = fod.Dataset("crud_test")
 
-sample = fos.Sample(
-    filepath="nonsense.txt",
-    tags=["tag1", "tag2"],
-)
+sample = fos.Sample(filepath="nonsense.txt", tags=["tag1", "tag2"],)
 
 print("Num samples: %d" % len(dataset))
 for sample in dataset.iter_samples():
@@ -26,6 +23,18 @@ dataset.add_sample(sample)
 print("Num samples: %d" % len(dataset))
 for sample in dataset.iter_samples():
     print(sample)
+print()
+
+###############################################################################
+# Create Duplicate
+###############################################################################
+
+print("Adding sample with duplicate filepath")
+try:
+    dataset.add_sample(sample)
+except Exception as err:
+    print(err)
+print("Num samples: %d" % len(dataset))
 print()
 
 ###############################################################################
