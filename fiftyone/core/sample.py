@@ -25,7 +25,7 @@ import fiftyone.core.document as fod
 class Sample(fod.Document):
     def __init__(self, filepath, tags=None, insights=None, labels=None):
         self._filepath = os.path.abspath(os.path.expanduser(filepath))
-        self._tags = list(tags) if tags else []
+        self._tags = set(tags) if tags else set()
         self._insights = list(insights) if insights else []
         self._labels = list(labels) if labels else []
 
@@ -56,6 +56,36 @@ class Sample(fod.Document):
             a list of attributes
         """
         return ["filepath", "tags", "insights", "labels"]
+
+    def add_tag(self, tag):
+        if tag in self._tags:
+            return False
+
+        self._tags.add(tag)
+
+        # @todo(Tyler) how is the dataset accessed??
+        import fiftyone.core.dataset as foda
+        dataset = foda.Dataset(name=self.dataset_name)
+        return fod.update_one(
+            collection=dataset._c,
+            document=self,
+            update={"$push": {"tags": tag}}
+        )
+
+    def remove_tag(self, tag):
+        if tag not in self.tags:
+            return False
+
+        self._tags.remove(tag)
+
+        # @todo(Tyler) how is the dataset accessed??
+        import fiftyone.core.dataset as foda
+        dataset = foda.Dataset(name=self.dataset_name)
+        return fod.update_one(
+            collection=dataset._c,
+            document=self,
+            update={"$pull": {"tags": tag}}
+        )
 
     @property
     def dataset_name(self):

@@ -44,6 +44,10 @@ def insert_many(collection, documents):
         document._set_db_attrs(inserted_id, collection)
 
 
+def update_one(collection, document, update):
+    result = collection.update_one({"_id": ObjectId(document.id)}, update)
+    return result.modified_count == 1
+
 def delete_one(collection, document_id):
     """Returns True if the document was deleted, False, otherwise"""
     result = collection.delete_one({"_id": ObjectId(document_id)})
