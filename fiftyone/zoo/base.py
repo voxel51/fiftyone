@@ -223,6 +223,17 @@ class ZooDataset(object):
         logger.info("Dataset info written to '%s'", info_path)
 
     def _download_and_prepare(self, dataset_dir, split):
+        """Internal implementation of downloading the dataset and preparing it
+        for use in the given directory as an
+        ``eta.core.datasets.LabeledDataset``.
+
+        Args:
+            dataset_dir: the directory in which to construct the dataset
+            split: the dataset split to download, or None if not applicable
+
+        Returns:
+            the :class:`ZooDatasetInfo` for the dataset
+        """
         raise NotImplementedError(
             "subclasses must implement download_and_prepare()"
         )
