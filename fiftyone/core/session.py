@@ -37,6 +37,7 @@ def launch_dashboard(dataset=None, view=None):
     session = Session()
     session.dataset = dataset
     session.view = view
+    return session
 
 
 def update_state(func):
