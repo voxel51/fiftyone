@@ -23,10 +23,11 @@ import fiftyone.core.document as fod
 
 
 class Sample(fod.Document):
-    def __init__(self, filepath, tags=None, labels=None):
+    def __init__(self, filepath, tags=None, insights=None, labels=None):
         self.filepath = os.path.abspath(filepath)
         self.filename = os.path.basename(filepath)
         self.tags = tags or []
+        self.insights = insights or {}
         self.labels = labels or {}
 
     @property
@@ -35,9 +36,13 @@ class Sample(fod.Document):
         # implemented ingest_time
         raise NotImplementedError("TODO")
 
-    def add_label(self, label):
+    def add_insight(self, insight_group, insight):
         # @todo(Tyler) this does not write to the database
-        self.labels.add(label)
+        self.insights[insight_group] = insight
+
+    def add_label(self, label_group, label):
+        # @todo(Tyler) this does not write to the database
+        self.labels[label_group] = label
 
     @classmethod
     def validate(cls, sample):
@@ -62,6 +67,12 @@ class Sample(fod.Document):
             "filepath": d["filepath"],
             "tags": d.get("tags", None),
         }
+
+        if "insights" in d:
+            kwargs["insights"] = {
+                insight_group: etas.Serializable.from_dict(insights_dict)
+                for insight_group, insights_dict in d["insights"].items()
+            }
 
         if "labels" in d:
             kwargs["labels"] = {

@@ -45,5 +45,7 @@ Data is downloaded as:
 
 - `view_example.py`: snippets for querying the example dataset
 
+- `sample_example.py`: snippets for working with an individual sample
+
 - `session_example.py`: example using a `Session` which interacts 1-to-1 with
   the GUI
