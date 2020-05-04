@@ -45,6 +45,7 @@ def insert_many(collection, documents):
 
 
 def update_one(collection, document, update):
+    """Returns True if the document was updated, False, otherwise"""
     result = collection.update_one({"_id": ObjectId(document.id)}, update)
     return result.modified_count == 1
 
