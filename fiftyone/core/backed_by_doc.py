@@ -1,5 +1,20 @@
 """
+Core module for serializable database documents.
 
+This is an extension of `eta.core.serial.Serializable` class that provides
+additional functionality centered around `Document` objects, which are
+serializables that can be inserted and read from the MongoDB database.
+
+Important functionality includes:
+- access to the ID which is automatically generated when the Document is
+    inserted in the database
+- access to the dataset (collection) name which is similarly populated when
+    the sample is inserted into a dataset (collection)
+- default reflective serialization when storing to the database
+
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -19,6 +34,13 @@ import fiftyone.core.odm as foo
 
 
 class BackedByDocument(object):
+    """Base class for objects that are serialized to the database.
+
+    This class adds functionality to ``eta.core.serial.Serializable`` to
+    provide `_id` and `_collection` fields which are populated when a document
+    is added to the database.
+    """
+
     # MongoEngine Document Type
     _ODM_DOCUMENT_TYPE = foo.ODMDocument
 
@@ -28,16 +50,25 @@ class BackedByDocument(object):
 
     @property
     def id(self):
-        """Document ObjectId value.
+        """The ID of the document.
 
-        - automatically created when added to the database)
-        - None, if it has not been added
+        Implementation details:
 
-        The 12-byte ObjectId value consists of:
-            - a 4-byte timestamp value, representing the ObjectId’s creation,
-              measured in seconds since the Unix epoch
-            - a 5-byte random value
-            - a 3-byte incrementing counter, initialized to a random value
+            - the ID of a document is automatically populated when it is added
+              to the database
+
+            - the ID is of a document is ``None`` if it has not been added to
+              the database
+
+            - the ID is a 12 byte value consisting of the concatentation of the
+              following:
+
+                - a 4 byte timestamp representing the document's commit time,
+                  measured in seconds since epoch
+
+                - a 5 byte random value
+
+                - a 3 byte incrementing counter, initialized to a random value
         """
         if self._is_in_db():
             return str(self._doc.id)
@@ -45,10 +76,8 @@ class BackedByDocument(object):
 
     @property
     def ingest_time(self):
-        """Document UTC generation/ingest time
-
-        - automatically created when added to the database)
-        - None, if it has not been added
+        """The time the document was added to the database, or ``None`` if it
+        has not been added to the database.
         """
         if self._is_in_db():
             return self._doc.id.generation_time
