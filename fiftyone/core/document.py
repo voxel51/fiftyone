@@ -34,94 +34,99 @@ import eta.core.serial as etas
 
 def insert_one(collection, document):
     # @todo(Tyler) include collection.name when serializing
-    result = collection.insert_one(document._dbserialize())
+    result = collection.insert_one(document.serialize())
     document._set_id(result.inserted_id)
     return result
 
 
 def insert_many(collection, documents):
-    result = collection.insert_many(
-        [document._dbserialize() for document in documents]
-    )
+    result = collection.insert_many([d.serialize() for d in documents])
     for inserted_id, document in zip(result.inserted_ids, documents):
         document._set_id(inserted_id)
 
 
 class Document(etas.Serializable):
-    """Adds additional functionality to Serializable class to handle `_id`
-    field which is created when a document is added to the database.
+    """Base class for objects that are serialized to the database.
+
+    This class adds functionality to ``eta.core.serial.Serializable`` to
+    provide an  `_id` field which is populated when a document is added to the
+    database.
     """
+
+    def __init__(self):
+        self._id = None
 
     @property
     def id(self):
-        """Document ObjectId value.
+        """The ID of the document.
 
-        - automatically created when added to the database)
-        - None, if it has not been added
+        Implementation details:
 
-        The 12-byte ObjectId value consists of:
-            - a 4-byte timestamp value, representing the ObjectId’s creation,
-              measured in seconds since the Unix epoch
-            - a 5-byte random value
-            - a 3-byte incrementing counter, initialized to a random value
+            - the ID of a document is automatically populated when it is added
+              to the database
+
+            - the ID is of a document is ``None`` if it has not been added to
+              the database
+
+            - the ID is a 12 byte value consisting of the concatentation of the
+              following:
+
+                - a 4 byte timestamp representing the document's commit time,
+                  measured in seconds since epoch
+
+                - a 5 byte random value
+
+                - a 3 byte incrementing counter, initialized to a random value
         """
-        if not hasattr(self, "_id"):
-            self._id = None
         return self._id
 
     @property
     def ingest_time(self):
-        """Document UTC generation/ingest time
-
-        - automatically created when added to the database)
-        - None, if it has not been added
+        """The time the document was added to the database, or ``None`` if it
+        has not been added to the database.
         """
         if self.id:
             return ObjectId(self.id).generation_time
+
         return None
 
-    def attributes(self):
-        attributes = super(Document, self).attributes()
-        if hasattr(self, "_id"):
-            attributes += ["_id"]
-        return attributes
-
     @classmethod
-    def from_dict(cls, d, *args, **kwargs):
-        obj = cls._from_dict(d, *args, **kwargs)
+    def from_dict(cls, d):
+        """Constructs a `class`:Document` from a JSON dictionary.
 
-        id = d.get("_id", None)
-        if id:
-            obj._set_id(id)
-
-        return obj
-
-    # PRIVATE #################################################################
-
-    def _set_id(self, id):
-        """This should only be set when reading from the database"""
-        self._id = str(id)
-        return self
-
-    def _dbserialize(self):
-        """Serialize for insertion into a MongoDB database"""
-        d = self.serialize(reflective=True)
-        d.pop("_id", None)
-        return d
-
-    @classmethod
-    def _from_dict(cls, d, *args, **kwargs):
-        """Constructs a Serializable object from a JSON dictionary.
-
-        Subclasses must implement this method if they intend to support being
-        read from disk.
+        *IMPORTANT*: all subclasses must call this superclass method to ensure
+        that the document's ``_id`` field is appropriately set.
 
         Args:
-            d: a JSON dictionary representation of a Serializable object
-            *args: optional class-specific positional arguments
-            **kwargs: optional class-specific keyword arguments
+            d: a JSON dictionary
 
         Returns:
-            an instance of the Serializable class
+            a `class`:Document`
         """
-        raise NotImplementedError("Subclass must implement")
+        document = cls._from_dict(d)
+
+        _id = d.get("_id", None)
+        if _id:
+            document._set_id(_id)
+
+        return document
+
+    @classmethod
+    def _from_dict(cls, d, **kwargs):
+        """Internal implementation of :func:`Document.from_dict`.
+
+        Subclasses should implement this method, not
+        :func:`Document.from_dict`.
+
+        Args:
+            d: a JSON dictionary representation of a :class:`Document`
+            **kwargs: keyword arguments for :class:`Document` that have already
+                been parsed
+
+        Returns:
+            a :class:`Document`
+        """
+        raise NotImplementedError("Subclass must implement _from_dict()")
+
+    def _set_id(self, _id):
+        self._id = str(_id)
