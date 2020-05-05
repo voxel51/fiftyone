@@ -48,8 +48,8 @@ class StateDescription(etas.Serializable):
         """
         self.dataset = dataset
         self.view = view
-        self.pipeline = pipeline or []
         self.selected = []
+        self.count = len(dataset) if dataset is not None else 0
         super(StateDescription, self).__init__()
 
     @classmethod

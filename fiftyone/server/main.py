@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "fiftyone"
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origin="*")
 
 
 @app.route("/")
@@ -64,6 +64,7 @@ class StateController(Namespace):
             state: a serialized StateDescription
         """
         self.state = state
+        print(state)
         emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
@@ -72,6 +73,7 @@ class StateController(Namespace):
 
     def on_page(self, page, page_length=20):
         """Get the next state using the query iterator"""
+        print(page)
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view

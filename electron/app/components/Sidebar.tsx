@@ -3,8 +3,7 @@ import React, { Component } from "react";
 import { Grid, Image, Menu, Sidebar } from "semantic-ui-react";
 
 export default (props) => {
-  const hasDataset = Boolean(props.update.state);
-  console.log(props);
+  const hasDataset = Boolean(props.update.state && props.update.state.dataset);
   return (
     <Sidebar
       as={Menu}
