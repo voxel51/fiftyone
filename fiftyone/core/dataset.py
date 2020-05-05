@@ -57,6 +57,7 @@ def load_dataset(name):
     Returns:
         a :class:`Dataset`
     """
+    # @todo reflectively load the right `Dataset` subclass
     return Dataset(name=name, create_empty=False)
 
 
@@ -212,7 +213,6 @@ class Dataset(fov.SampleCollection):
 class ImageDataset(Dataset):
     """A FiftyOne dataset of images."""
 
-    # The `Sample` class that this dataset can contain
     _SAMPLE_CLS = fos.ImageSample
 
 
