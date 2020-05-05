@@ -17,7 +17,7 @@ from builtins import *
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 
-import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.core.document as fod
 import fiftyone.core.sample as fos
@@ -64,16 +64,25 @@ class Dataset(fov.SampleCollection):
             d=self._c.find_one({"_id": ObjectId(sample_id)}),
         )
 
+    def __delitem__(self, sample_id):
+        return fod.delete_one(collection=self._c, document_id=sample_id)
+
     def get_tags(self):
         return self._c.distinct("tags")
 
+    def get_insight_groups(self):
+        return self._c.distinct("insights.group")
+
+    def get_label_groups(self):
+        return self._c.distinct("labels.group")
+
     def add_sample(self, sample):
-        fos.Sample.validate(sample)
+        etau.validate_type(sample, fos.Sample)
         fod.insert_one(self._c, sample)
 
     def add_samples(self, samples):
         for sample in samples:
-            fos.Sample.validate(sample)
+            etau.validate_type(sample, fos.Sample)
         fod.insert_many(self._c, samples)
 
     def add_labels(self, labels_dict):
@@ -105,6 +114,8 @@ class Dataset(fov.SampleCollection):
         Ensures that the collection is properly initialized and registered in
         the meta collection.
         """
+        c = _db()[self.name]
+
         if self.name in _db().list_collection_names():
             # make sure it's the right collection type
             members = _get_members_for_collection_type(self.COLLECTION_TYPE)
@@ -112,13 +123,16 @@ class Dataset(fov.SampleCollection):
 
         else:
             # add to meta collection
-            c = _get_meta_collection()
-            c.update_one(
+            meta_c = _get_meta_collection()
+            meta_c.update_one(
                 {"collection_type": self.COLLECTION_TYPE},
                 {"$push": {"members": self.name}},
             )
 
-        return _db()[self.name]
+            # create indexes
+            c.create_index("filepath", unique=True)
+
+        return c
 
 
 # PRIVATE #####################################################################

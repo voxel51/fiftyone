@@ -21,12 +21,7 @@ class Labels(etas.Serializable):
     # @todo(Tyler) this could all be deleted but I'll probably use it for
     # some other common field that all labels need to have
     def __init__(self, group=None):
-        self._group = group
-
-    @property
-    def group(self):
-        # @todo(Tyler) this needs to be accessed from the sample
-        raise NotImplementedError("TODO")
+        self.group = group
 
     @classmethod
     def from_dict(cls, d, **kwargs):

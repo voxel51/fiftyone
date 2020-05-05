@@ -24,11 +24,76 @@ import fiftyone.core.document as fod
 
 class Sample(fod.Document):
     def __init__(self, filepath, tags=None, insights=None, labels=None):
-        self.filepath = os.path.abspath(filepath)
-        self.filename = os.path.basename(filepath)
-        self.tags = tags or []
-        self.insights = insights or {}
-        self.labels = labels or {}
+        super(Sample, self).__init__()
+        self._filepath = os.path.abspath(os.path.expanduser(filepath))
+        self._tags = set(tags) if tags else set()
+        self._insights = list(insights) if insights else []
+        self._labels = list(labels) if labels else []
+
+    @property
+    def filepath(self):
+        return self._filepath
+
+    @property
+    def filename(self):
+        return os.path.basename(self.filepath)
+
+    @property
+    def tags(self):
+        # returns a copy such that the original cannot be modified
+        return list(self._tags)
+
+    @property
+    def insights(self):
+        # returns a copy such that the original cannot be modified
+        return list(self._insights)
+
+    @property
+    def labels(self):
+        # returns a copy such that the original cannot be modified
+        return list(self._labels)
+
+    def attributes(self):
+        """Returns a list of class attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
+        return ["filepath", "tags", "insights", "labels"]
+
+    def add_tag(self, tag):
+        # @todo(Tyler) this first check assumes that the Sample is in sync with
+        # the DB
+        if tag in self._tags:
+            return False
+
+        self._tags.add(tag)
+
+        if self._collection is None:
+            return True
+
+        return fod.update_one(
+            collection=self._collection,
+            document=self,
+            update={"$push": {"tags": tag}},
+        )
+
+    def remove_tag(self, tag):
+        # @todo(Tyler) this first check assumes that the Sample is in sync with
+        # the DB
+        if tag not in self.tags:
+            return False
+
+        self._tags.remove(tag)
+
+        if self._collection is None:
+            return True
+
+        return fod.update_one(
+            collection=self._collection,
+            document=self,
+            update={"$pull": {"tags": tag}},
+        )
 
     @property
     def dataset_name(self):
@@ -37,22 +102,13 @@ class Sample(fod.Document):
         """
         return self.collection_name
 
-    def add_insight(self, insight_group, insight):
-        # @todo(Tyler) this does not write to the database
-        self.insights[insight_group] = insight
+    # def add_insight(self, insight_group, insight):
+    #     # @todo(Tyler) this does not write to the database
+    #     self.insights[insight_group] = insight
 
-    def add_label(self, label_group, label):
-        # @todo(Tyler) this does not write to the database
-        self.labels[label_group] = label
-
-    @classmethod
-    def validate(cls, sample):
-        if not isinstance(sample, cls):
-            raise ValueError(
-                "Unexpected 'sample' type: '%s', expected: '%s'"
-                % (type(sample), cls)
-            )
-        return sample
+    # def add_label(self, label_group, label):
+    #     # @todo(Tyler) this does not write to the database
+    #     self.labels[label_group] = label
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -69,17 +125,17 @@ class Sample(fod.Document):
 
         insights = d.pop("insights", None)
         if insights:
-            insights = {
-                insight_group: etas.Serializable.from_dict(insight_dict)
-                for insight_group, insight_dict in insights.items()
-            }
+            insights = [
+                etas.Serializable.from_dict(insight_dict)
+                for insight_dict in insights
+            ]
 
         labels = d.pop("labels", None)
         if labels:
-            labels = {
-                label_group: etas.Serializable.from_dict(label_dict)
-                for label_group, label_dict in labels.items()
-            }
+            labels = [
+                etas.Serializable.from_dict(label_dict)
+                for label_dict in labels
+            ]
 
         return cls(
             filepath=filepath,
@@ -97,6 +153,16 @@ class ImageSample(Sample):
 
     def load_image(self):
         return etai.read(self.filepath)
+
+    def attributes(self):
+        """Returns a list of class attributes to be serialized.
+
+        Returns:
+            a list of attributes
+        """
+        _attrs = super(ImageSample, self).attributes()
+        _attrs.append("metadata")
+        return _attrs
 
     @classmethod
     def from_dict(cls, d, **kwargs):
