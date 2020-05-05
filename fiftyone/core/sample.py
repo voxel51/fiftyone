@@ -62,37 +62,35 @@ class Sample(fod.Document):
         return ["filepath", "tags", "insights", "labels"]
 
     def add_tag(self, tag):
+        # @todo(Tyler) this first check assumes that the Sample is in sync with
+        # the DB
         if tag in self._tags:
             return False
 
         self._tags.add(tag)
 
-        if self.dataset_name is None:
+        if self._collection is None:
             return True
 
-        import fiftyone.core.dataset as foda
-
-        collection = foda.Dataset(name=self.dataset_name)._c
         return fod.update_one(
-            collection=collection,
+            collection=self._collection,
             document=self,
             update={"$push": {"tags": tag}},
         )
 
     def remove_tag(self, tag):
+        # @todo(Tyler) this first check assumes that the Sample is in sync with
+        # the DB
         if tag not in self.tags:
             return False
 
         self._tags.remove(tag)
 
-        if self.dataset_name is None:
+        if self._collection is None:
             return True
 
-        import fiftyone.core.dataset as foda
-
-        collection = foda.Dataset(name=self.dataset_name)._c
         return fod.update_one(
-            collection=collection,
+            collection=self._collection,
             document=self,
             update={"$pull": {"tags": tag}},
         )
