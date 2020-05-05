@@ -32,6 +32,27 @@ def get_sample_media():
     return send_file(path, mimetype=mime_type)
 
 
+def load_state(func):
+    """Load state descorator.
+
+    Args:
+        func: the Session method to decorate
+
+    Returns:
+        the wrapped function
+    """
+
+    def wrapper(self, *args, **kwargs):
+        state = fos.StateDescription.from_dict(self.state)
+        state = func(self, state, *args, **kwargs)
+        self.state = state.serialize()
+        emit("update", self.state, broadcast=True, include_self=False)
+        print(self.state)
+        return self.state
+
+    return wrapper
+
+
 class StateController(Namespace):
     """Controller for state
 
@@ -64,12 +85,26 @@ class StateController(Namespace):
             state: a serialized StateDescription
         """
         self.state = state
-        print(state)
         emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
         """Get the current state"""
         return self.state
+
+    @load_state
+    def on_add_selection(self, state, _id):
+        selected = set(state.selected)
+        selected.add(_id)
+        state.selected = list(selected)
+        return state
+
+    @load_state
+    def on_remove_selection(self, state, _id):
+        print(state, _id)
+        selected = set(state.selected)
+        selected.remove(_id)
+        state.selected = list(selected)
+        return state
 
     def on_page(self, page, page_length=20):
         """Get the next state using the query iterator"""

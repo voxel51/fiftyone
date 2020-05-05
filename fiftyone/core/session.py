@@ -114,6 +114,10 @@ class Session(foc.HasClient):
         return self._dataset
 
     @property
+    def selected(self):
+        return list(self.state.selected)
+
+    @property
     def view(self):
         return self._view
 
@@ -133,6 +137,7 @@ class Session(foc.HasClient):
     @update_state
     def dataset(self, dataset):
         self._dataset = dataset
+        self.state.selected = []
 
     @view.setter
     @update_state
@@ -142,6 +147,7 @@ class Session(foc.HasClient):
             self._dataset = self._view.dataset
         else:
             self._view = None
+        self.state.selected = []
 
     # CLEAR STATE #############################################################
 
@@ -164,7 +170,11 @@ class Session(foc.HasClient):
     # PRIVATE #################################################################
 
     def _update_state(self):
-        self.state = StateDescription(dataset=self._dataset, view=self._view)
+        self.state = StateDescription(
+            dataset=self._dataset,
+            view=self._view,
+            selected=self.state.selected,
+        )
 
     def _get_dataset_or_view(self):
         # view takes precedence over dataset if set

@@ -9,7 +9,7 @@ type Props = {
 };
 
 const mapStateToProps = (state = {}) => {
-  return { ...state, socket: state.update.socket };
+  return { ...state };
 };
 
 function App(props: Props) {

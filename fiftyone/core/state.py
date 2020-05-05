@@ -38,7 +38,7 @@ class StateDescription(etas.Serializable):
         view: (optional) the current view
     """
 
-    def __init__(self, dataset=None, pipeline=None, selected=None, view=None):
+    def __init__(self, dataset=None, selected=None, view=None):
         """Creates a StateDescription instance.
 
         Args:
@@ -48,7 +48,7 @@ class StateDescription(etas.Serializable):
         """
         self.dataset = dataset
         self.view = view
-        self.selected = []
+        self.selected = selected or []
         self.count = len(dataset) if dataset is not None else 0
         super(StateDescription, self).__init__()
 
@@ -70,4 +70,4 @@ class StateDescription(etas.Serializable):
 
         selected = d.get("selected", [])
 
-        return cls(dataset=dataset, selected=selected, view=view,)
+        return cls(dataset=dataset, selected=selected, view=view)

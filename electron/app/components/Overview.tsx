@@ -10,15 +10,36 @@ import {
 import Gallery from "react-grid-gallery";
 import InfiniteScroll from "react-infinite-scroller";
 import { uuid } from "uuidv4";
-
+import { connect } from "react-redux";
+import { updateState } from "../actions/update";
 import Histogram from "./Histogram";
 import { getSocket, useSubscribe } from "../utils/socket";
 
-const GalleryWrapper = (props) => (
-  <div style={{ overflowY: "auto" }}>
-    <Gallery enableImageSelection={false} {...props} />
-  </div>
-);
+const mapStateToProps = (state = {}) => {
+  return { ...state };
+};
+
+const _GalleryWrapper = (props) => {
+  console.log(props);
+  const { images, dispatch, update } = props;
+  const socket = getSocket("state");
+  return (
+    <div style={{ overflowY: "auto" }}>
+      <Gallery
+        enableImageSelection={true}
+        onSelectImage={function (idx, item) {
+          item.isSelected = !item.isSelected;
+          const event = item.isSelected ? "add_selection" : "remove_selection";
+          socket.emit(event, item.sample._id, (data) => {
+            dispatch(updateState(data));
+          });
+        }}
+        {...props}
+      />
+    </div>
+  );
+};
+const GalleryWrapper = connect(mapStateToProps)(_GalleryWrapper);
 
 export default function Overview(props) {
   const state = props.state;
@@ -45,6 +66,7 @@ export default function Overview(props) {
             thumbnailWidth: samples[k].metadata.frame_size[0],
             thumbnailHeight: samples[k].metadata.frame_size[1],
             tags: [{ value: "cifar", title: "title" }],
+            sample: sample,
           };
         })
       : [];
@@ -87,19 +109,6 @@ export default function Overview(props) {
   const content = <GalleryWrapper images={scrollState.images} />;
   return (
     <Segment>
-      <Header as="h3">Overview: {hasDataset ? state.dataset.name : ""}</Header>
-
-      <Menu pointing secondary>
-        {["overview", "pools", "side-by-side", "overlayed"].map((item) => (
-          <Menu.Item
-            key={item}
-            name={item}
-            active={tab === item}
-            onClick={() => setTab(item)}
-          />
-        ))}
-      </Menu>
-
       <InfiniteScroll
         pageStart={1}
         initialLoad={true}

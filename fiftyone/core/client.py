@@ -24,7 +24,7 @@ import threading
 
 import socketio
 
-import fiftyone.constants as voxc
+import fiftyone.constants as foc
 
 
 logging.getLogger("socketio").setLevel(logging.ERROR)
@@ -42,7 +42,19 @@ class BaseClient(socketio.ClientNamespace):
 
     Attributes:
         data: the current data
+        data_cls: the data cls to load updated data as
     """
+
+    def __init__(self, namespace, data_cls):
+        """Creates a BaseClient
+
+        Args:
+            namespace: client namespace
+            data_cls: data class type (must be Serializable)
+        """
+        self.data_cls = data_cls
+        self.data = data_cls()
+        super(BaseClient, self).__init__(namespace)
 
     def on_connect(self):
         """Receive the "connect" event.
@@ -64,7 +76,7 @@ class BaseClient(socketio.ClientNamespace):
         Args:
             data: the new data
         """
-        self.data = data
+        self.data = self.data_cls.from_dict(data)
 
     def update(self, data):
         """Send an update.
@@ -73,7 +85,7 @@ class BaseClient(socketio.ClientNamespace):
             data: the new data
         """
         self.data = data
-        self.emit("update", data)
+        self.emit("update", data.serialize())
 
 
 class HasClient(object):
@@ -98,9 +110,11 @@ class HasClient(object):
         self._hc_sio = socketio.Client()
         # the following is a monkey patch to set threads to daemon mode
         self._hc_sio.eio.start_background_task = _start_background_task
-        self._hc_client = BaseClient("/" + self._HC_NAMESPACE)
+        self._hc_client = BaseClient(
+            "/" + self._HC_NAMESPACE, self._HC_ATTR_TYPE
+        )
         self._hc_sio.register_namespace(self._hc_client)
-        self._hc_sio.connect(voxc.SERVER_ADDR)
+        self._hc_sio.connect(foc.SERVER_ADDR)
 
     def __getattr__(self, name):
         """Get the data via the attribute defined by `_HC_ATTR_NAME`."""
@@ -117,7 +131,7 @@ class HasClient(object):
                     "Client expected type %s, but got type %s"
                     % (self._HC_ATTR_TYPE, type(value))
                 )
-            self._hc_client.update(value.serialize())
+            self._hc_client.update(value)
         else:
             super(HasClient, self).__setattr__(name, value)
 
