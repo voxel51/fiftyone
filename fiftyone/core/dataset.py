@@ -24,6 +24,7 @@ from pymongo import MongoClient
 
 import eta.core.utils as etau
 
+import fiftyone.core.collections as foc
 import fiftyone.core.document as fod
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
@@ -61,7 +62,7 @@ def load_dataset(name):
     return Dataset(name=name, create_empty=False)
 
 
-class Dataset(fov.SampleCollection):
+class Dataset(foc.SampleCollection):
     """A FiftyOne dataset.
 
     Datasets represent a homogenous collection of
