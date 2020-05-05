@@ -75,24 +75,29 @@ class Sample(fod.Document):
 
     @property
     def filename(self):
-        return os.path.basename(self.filepath)
+        return os.path.basename(self._filepath)
 
     @property
     def tags(self):
-        # returns a copy such that the original cannot be modified
-        return list(self._tags)
+        return self._tags
 
     @property
     def insights(self):
-        # returns a copy such that the original cannot be modified
-        return list(self._insights)
+        return self._insights
 
     @property
     def labels(self):
-        # returns a copy such that the original cannot be modified
-        return list(self._labels)
+        return self._labels
 
     def add_tag(self, tag):
+        """Adds the given tag to the sample.
+
+        Args:
+            tag: the tag
+
+        Returns:
+            True/False whether the tag was added
+        """
         # @todo(Tyler) this first check assumes that the Sample is in sync with
         # the DB
         if tag in self._tags:
@@ -110,6 +115,14 @@ class Sample(fod.Document):
         )
 
     def remove_tag(self, tag):
+        """Adds the given tag to the sample.
+
+        Args:
+            tag: the tag
+
+        Returns:
+            True/False whether the tag was removed
+        """
         # @todo(Tyler) this first check assumes that the Sample is in sync with
         # the DB
         if tag not in self.tags:
