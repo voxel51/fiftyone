@@ -9,9 +9,11 @@ import time
 
 import eta.core.serial as etas
 
-import fiftyone.core.dataset as fod
-import fiftyone.core.labels as fol
-import fiftyone.core.sample as fos
+# import fiftyone.core.dataset as fod
+# import fiftyone.core.labels as fol
+# import fiftyone.core.sample as fos
+
+import fiftyone.core.odm_wrappers as foow
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +41,7 @@ data_dir = os.path.abspath(os.path.join(dir_path, "..", "data", dataset_name))
 fine_labels_template = os.path.join(data_dir, "%s_fine.json")
 coarse_labels_template = os.path.join(data_dir, "%s_coarse.json")
 
-dataset = fod.Dataset(dataset_name)
+# dataset = foow.Dataset(dataset_name)
 
 start = time.time()
 
@@ -51,15 +53,15 @@ for partition in partitions:
 
     samples = []
     for rel_img_path in fine_labels:
-        # create labels dict (with both coarse and fine labels)
-        labels = [
-            fol.ClassificationLabel(
-                group="ground_truth_fine",
-                label=fine_labels[rel_img_path]),
-            fol.ClassificationLabel(
-                group="ground_truth_coarse",
-                label=coarse_labels[rel_img_path]),
-        ]
+        # # create labels dict (with both coarse and fine labels)
+        # labels = [
+        #     fol.ClassificationLabel(
+        #         group="ground_truth_fine",
+        #         label=fine_labels[rel_img_path]),
+        #     fol.ClassificationLabel(
+        #         group="ground_truth_coarse",
+        #         label=coarse_labels[rel_img_path]),
+        # ]
 
         # create sample
         sample = fos.ImageSample(
