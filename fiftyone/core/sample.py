@@ -39,14 +39,17 @@ class Sample(fod.Document):
 
     @property
     def tags(self):
+        # returns a copy such that the original cannot be modified
         return list(self._tags)
 
     @property
     def insights(self):
+        # returns a copy such that the original cannot be modified
         return list(self._insights)
 
     @property
     def labels(self):
+        # returns a copy such that the original cannot be modified
         return list(self._labels)
 
     def attributes(self):
