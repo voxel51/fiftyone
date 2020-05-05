@@ -63,6 +63,9 @@ class Sample(fod.Document):
 
         self._tags.add(tag)
 
+        if self.dataset_name is None:
+            return True
+
         import fiftyone.core.dataset as foda
 
         collection = foda.Dataset(name=self.dataset_name)._c
@@ -77,6 +80,9 @@ class Sample(fod.Document):
             return False
 
         self._tags.remove(tag)
+
+        if self.dataset_name is None:
+            return True
 
         import fiftyone.core.dataset as foda
 
