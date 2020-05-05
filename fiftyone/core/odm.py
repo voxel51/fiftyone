@@ -14,8 +14,6 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-import os
-
 from mongoengine import *
 
 DEFAULT_DATABASE = "fiftyone"
