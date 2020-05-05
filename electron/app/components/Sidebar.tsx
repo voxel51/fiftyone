@@ -4,6 +4,7 @@ import { Grid, Image, Menu, Sidebar } from "semantic-ui-react";
 
 export default (props) => {
   const hasDataset = Boolean(props.update.state);
+  console.log(props);
   return (
     <Sidebar
       as={Menu}
@@ -16,7 +17,7 @@ export default (props) => {
       <Menu.Item as="h2">FiftyOne</Menu.Item>
       <Menu.Item as="h3">
         {hasDataset
-          ? `Dataset: ${props.update.state.dataset_name}`
+          ? `Dataset: ${props.update.state.dataset.name}`
           : "No dataset loaded"}
       </Menu.Item>
       {hasDataset ? (

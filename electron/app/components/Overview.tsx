@@ -17,8 +17,8 @@ export default function Overview(props) {
   const [loaded, setIsLoaded] = useState(false);
   function createImageData(data) {
     const l = data
-      ? Object.keys(data.samples).map((k) => {
-          const sample = data.samples[k];
+      ? Object.keys(data).map((k) => {
+          const sample = data[k];
           const path = sample.filepath;
           const mimeType = sample.metadata.mime_type;
           const host = "http://127.0.0.1:5151/";
@@ -35,12 +35,10 @@ export default function Overview(props) {
     return l;
   }
 
-  React.useEffect(() => {
-    loadMore();
-  }, []);
-
   const loadMore = (p) => {
-    socket.emit("next", p, (data) => {
+    alert(p);
+    socket.emit("page", p, (data) => {
+      console.log("res", data);
       const more = createImageData(data);
       setImages([...images, ...more]);
       setIsLoaded(true);
@@ -48,8 +46,9 @@ export default function Overview(props) {
   };
 
   socket.on("update", (data) => {
+    console.log("update", data);
     setImages([]);
-    loadMore();
+    loadMore(1);
   });
   const content = <GalleryWrapper images={images} />;
 

@@ -46,7 +46,7 @@ class StateController(Namespace):
             *args: args tuple or list
             **kwargs: kwargs dictionary
         """
-        self.state = fos.StateDescription()
+        self.state = fos.StateDescription().serialize()
         super(StateController, self).__init__(*args, **kwargs)
 
     def on_connect(self):
@@ -63,7 +63,7 @@ class StateController(Namespace):
         Args:
             state: a serialized StateDescription
         """
-        self.state = fos.StateDescription.from_dict(state)
+        self.state = state
         emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
@@ -73,10 +73,15 @@ class StateController(Namespace):
     def on_page(self, page, page_length=20):
         """Get the next state using the query iterator"""
         state = fos.StateDescription.from_dict(self.state)
-        view = state.view if state.view is not None else state.dataset
-        view.offset(page * page_length)
-        view.limit(page_length)
-        return [s for s in view.iter_samples()]
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.default_view()
+        else:
+            return []
+        view = view.offset((page - 1) * page_length).limit(page_length)
+        res = [s.serialize() for s in view.iter_samples()]
+        return res
 
 
 socketio.on_namespace(StateController("/state"))

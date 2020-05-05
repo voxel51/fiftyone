@@ -68,13 +68,13 @@ class Sample(fod.Document):
             "tags": d.get("tags", None),
         }
 
-        if "insights" in d:
+        if "insights" in d and d["insights"] is not None:
             kwargs["insights"] = {
                 insight_group: etas.Serializable.from_dict(insights_dict)
                 for insight_group, insights_dict in d["insights"].items()
             }
 
-        if "labels" in d:
+        if "labels" in d and d["labels"] is not None:
             kwargs["labels"] = {
                 label_group: etas.Serializable.from_dict(labels_dict)
                 for label_group, labels_dict in d["labels"].items()
