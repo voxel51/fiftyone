@@ -58,9 +58,13 @@ def delete_one(collection, document_id):
 
 class Document(etas.Serializable):
     """Adds additional functionality to Serializable class to handle `_id` and
-    `_collection_name` fields which are created when a document is added to the
+    `_collection` fields which are created when a document is added to the
     database.
     """
+
+    def __init__(self):
+        self._id = None
+        self._collection = None
 
     @property
     def id(self):
@@ -75,8 +79,6 @@ class Document(etas.Serializable):
             - a 5-byte random value
             - a 3-byte incrementing counter, initialized to a random value
         """
-        if not hasattr(self, "_id"):
-            self._id = None
         return self._id
 
     @property
@@ -84,9 +86,9 @@ class Document(etas.Serializable):
         """The name of the collection that the document has been inserted into.
         Returns None if it has not been inserted in the database.
         """
-        if not hasattr(self, "_collection_name"):
-            self._collection_name = None
-        return self._collection_name
+        if self._collection:
+            return self._collection.name
+        return None
 
     @property
     def ingest_time(self):
@@ -107,7 +109,7 @@ class Document(etas.Serializable):
         database.
         """
         self._id = str(id)
-        self._collection_name = collection.name
+        self._collection = collection
         return self
 
     def _to_db_dict(self):

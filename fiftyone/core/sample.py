@@ -24,6 +24,7 @@ import fiftyone.core.document as fod
 
 class Sample(fod.Document):
     def __init__(self, filepath, tags=None, insights=None, labels=None):
+        super(Sample, self).__init__()
         self._filepath = os.path.abspath(os.path.expanduser(filepath))
         self._tags = set(tags) if tags else set()
         self._insights = list(insights) if insights else []
