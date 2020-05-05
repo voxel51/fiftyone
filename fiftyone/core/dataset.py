@@ -80,8 +80,6 @@ class Dataset(fov.SampleCollection):
             if it does not already exist
     """
 
-    COLLECTION_TYPE = "DATASET"
-
     # The `Sample` class that this dataset can contain
     _SAMPLE_CLS = fos.Sample
 
