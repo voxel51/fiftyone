@@ -47,7 +47,6 @@ def load_state(func):
         state = func(self, state, *args, **kwargs)
         self.state = state.serialize()
         emit("update", self.state, broadcast=True, include_self=False)
-        print(self.state)
         return self.state
 
     return wrapper
@@ -93,6 +92,15 @@ class StateController(Namespace):
 
     @load_state
     def on_add_selection(self, state, _id):
+        """Add a sample to the selected samples list
+
+        Args:
+            state: the current StateDescription
+            _id: the sample id
+
+        Returns:
+            the updated StateDescription
+        """
         selected = set(state.selected)
         selected.add(_id)
         state.selected = list(selected)
@@ -100,7 +108,15 @@ class StateController(Namespace):
 
     @load_state
     def on_remove_selection(self, state, _id):
-        print(state, _id)
+        """Remove a sample from the selected samples list
+
+        Args:
+            state: the current StateDescription
+            _id: the sample id
+
+        Returns:
+            the updated StateDescription
+        """
         selected = set(state.selected)
         selected.remove(_id)
         state.selected = list(selected)
@@ -108,7 +124,6 @@ class StateController(Namespace):
 
     def on_page(self, page, page_length=20):
         """Get the next state using the query iterator"""
-        print(page)
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view

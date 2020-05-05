@@ -20,7 +20,6 @@ const mapStateToProps = (state = {}) => {
 };
 
 const _GalleryWrapper = (props) => {
-  console.log(props);
   const { images, dispatch, update } = props;
   const socket = getSocket("state");
   return (
