@@ -1,6 +1,9 @@
 """
-Core Module for `fiftyone` Sample class
+Core definitions of FiftyOne dataset samples.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -10,25 +13,61 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
 import os
 
 import eta.core.image as etai
-import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.core.document as fod
+import fiftyone.core.labels as fol
+import fiftyone.core.insights as foi
 
 
 class Sample(fod.Document):
+    """A sample in a :class:`fiftyone.core.dataset.Dataset`.
+
+    Samples store all information associated with a particular piece of data in
+    a dataset, including basic metadata about the data, one or more sets of
+    labels (ground truth, user-provided, or FiftyOne-generated), and additional
+    features associated with subsets of the data and/or label sets.
+
+    Args:
+        filepath: the path to the data on disk
+        tags (None): the set of tags associated with the sample
+        insights (None): a list of :class:`fiftyone.core.insights.Insight`
+            instances associated with the sample
+        labels (None): a list of :class:`fiftyone.core.labels.Label` instances
+            associated with the sample
+    """
+
     def __init__(self, filepath, tags=None, insights=None, labels=None):
         super(Sample, self).__init__()
         self._filepath = os.path.abspath(os.path.expanduser(filepath))
         self._tags = set(tags) if tags else set()
         self._insights = list(insights) if insights else []
         self._labels = list(labels) if labels else []
+        self._dataset = None
+
+    @property
+    def type(self):
+        """The fully-qualified class name of the sample."""
+        return etau.get_class_name(self)
+
+    @property
+    def dataset_name(self):
+        """The name of the dataset to which this sample belongs, or ``None`` if
+        the sample has not been added to a dataset.
+        """
+        if self._dataset is None:
+            return None
+
+        return self._dataset.name
 
     @property
     def filepath(self):
@@ -36,32 +75,29 @@ class Sample(fod.Document):
 
     @property
     def filename(self):
-        return os.path.basename(self.filepath)
+        return os.path.basename(self._filepath)
 
     @property
     def tags(self):
-        # returns a copy such that the original cannot be modified
-        return list(self._tags)
+        return self._tags
 
     @property
     def insights(self):
-        # returns a copy such that the original cannot be modified
-        return list(self._insights)
+        return self._insights
 
     @property
     def labels(self):
-        # returns a copy such that the original cannot be modified
-        return list(self._labels)
-
-    def attributes(self):
-        """Returns a list of class attributes to be serialized.
-
-        Returns:
-            a list of attributes
-        """
-        return ["filepath", "tags", "insights", "labels"]
+        return self._labels
 
     def add_tag(self, tag):
+        """Adds the given tag to the sample.
+
+        Args:
+            tag: the tag
+
+        Returns:
+            True/False whether the tag was added
+        """
         # @todo(Tyler) this first check assumes that the Sample is in sync with
         # the DB
         if tag in self._tags:
@@ -69,16 +105,24 @@ class Sample(fod.Document):
 
         self._tags.add(tag)
 
-        if self._collection is None:
+        if self._dataset is None:
             return True
 
         return fod.update_one(
-            collection=self._collection,
+            collection=self._dataset._c,
             document=self,
             update={"$push": {"tags": tag}},
         )
 
     def remove_tag(self, tag):
+        """Adds the given tag to the sample.
+
+        Args:
+            tag: the tag
+
+        Returns:
+            True/False whether the tag was removed
+        """
         # @todo(Tyler) this first check assumes that the Sample is in sync with
         # the DB
         if tag not in self.tags:
@@ -86,98 +130,118 @@ class Sample(fod.Document):
 
         self._tags.remove(tag)
 
-        if self._collection is None:
+        if self._dataset is None:
             return True
 
         return fod.update_one(
-            collection=self._collection,
+            collection=self._dataset._c,
             document=self,
             update={"$pull": {"tags": tag}},
         )
 
-    @property
-    def dataset_name(self):
-        """Backref to the dataset to which this sample belongs. Returns None
-        if the sample has not been inserted in a dataset.
+    def add_insight(self, group, insight):
+        """Adds the given insight to the sample.
+
+        Args:
+            insight: a :class:`fiftyone.core.insights.Insight` instance
         """
-        return self.collection_name
+        # @todo(Tyler) this needs to write to the DB
+        self._insights[group] = insight
 
-    # def add_insight(self, insight_group, insight):
-    #     # @todo(Tyler) this does not write to the database
-    #     self.insights[insight_group] = insight
+    def add_label(self, group, label):
+        """Adds the given label to the sample.
 
-    # def add_label(self, label_group, label):
-    #     # @todo(Tyler) this does not write to the database
-    #     self.labels[label_group] = label
+        Args:
+            label: a :class:`fiftyone.core.label.Label` instance
+        """
+        # @todo(Tyler) this needs to write to the DB
+        self._dataset._validate_label(group, label)
+        self._labels[group] = label
 
-    @classmethod
-    def from_dict(cls, d, **kwargs):
-        """Constructs a Sample from a JSON dictionary.
+    def attributes(self):
+        """Returns the list of class attributes to be serialized.
+
+        Returns:
+            a list of class attributes
+        """
+        return ["type", "filepath", "tags", "insights", "labels"]
+
+    @staticmethod
+    def get_kwargs(d):
+        """Extracts the subclass-specific keyword arguments from the given
+        JSON dictionary for constructing an instance of the :class:`Sample`.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a Sample
+            a dictionary of parsed keyword arguments
         """
-        filepath = d.pop("filepath")
-        tags = d.pop("tags", None)
+        raise NotImplementedError("Subclass must implement get_kwargs()")
 
-        insights = d.pop("insights", None)
-        if insights:
-            insights = [
-                etas.Serializable.from_dict(insight_dict)
-                for insight_dict in insights
-            ]
+    @classmethod
+    def _from_dict(cls, d, **kwargs):
+        sample_cls = etau.get_class(d["type"])
 
-        labels = d.pop("labels", None)
-        if labels:
-            labels = [
-                etas.Serializable.from_dict(label_dict)
-                for label_dict in labels
-            ]
+        insights = d.get("insights", None)
+        if insights is not None:
+            insights = {
+                k: foi.Insight.from_dict(v) for k, v in iteritems(insights)
+            }
 
-        return cls(
-            filepath=filepath,
-            tags=tags,
+        labels = d.get("labels", None)
+        if labels is not None:
+            labels = {k: fol.Label.from_dict(v) for k, v in iteritems(labels)}
+
+        return sample_cls(
+            filepath=d["filepath"],
+            tags=d.get("tags", None),
             insights=insights,
             labels=labels,
-            **kwargs
+            **sample_cls.get_kwargs(d),
+            **kwargs,
         )
+
+    def _set_dataset(self, dataset):
+        self._dataset = dataset
 
 
 class ImageSample(Sample):
-    def __init__(self, metadata=None, *args, **kwargs):
-        super(ImageSample, self).__init__(*args, **kwargs)
+    """An image sample in a :class:`fiftyone.core.dataset.Dataset`.
+
+    The data associated with ``ImageSample`` instances are images.
+
+    Args:
+        metadata (None): an ``eta.core.image.ImageMetadata`` instance for the
+            image
+        **kwargs: keyword arguments for :func:`Sample.__init__`
+    """
+
+    def __init__(self, metadata=None, **kwargs):
+        super(ImageSample, self).__init__(**kwargs)
+
+        # WARNING: this reads the image from disk, so will be slow...
         self.metadata = metadata or etai.ImageMetadata.build_for(self.filepath)
 
     def load_image(self):
+        """Loads the image for the sample.
+
+        Returns:
+            a numpy image
+        """
         return etai.read(self.filepath)
 
     def attributes(self):
-        """Returns a list of class attributes to be serialized.
-
-        Returns:
-            a list of attributes
-        """
         _attrs = super(ImageSample, self).attributes()
-        _attrs.append("metadata")
+        if self.metadata is not None:
+            _attrs.append("metadata")
+
         return _attrs
 
-    @classmethod
-    def from_dict(cls, d, **kwargs):
-        """Constructs an ImageSample from a JSON dictionary.
+    @staticmethod
+    def get_kwargs(d):
+        metadata = d.get("metadata", None)
+        if metadata is not None:
+            metadata = etai.ImageMetadata.from_dict(d["metadata"])
 
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            an ImageSample
-        """
-        metadata = d.pop("metadata", None)
-        if metadata:
-            metadata = etai.ImageMetadata.from_dict(metadata)
-
-        return super(ImageSample, cls).from_dict(
-            d, metadata=metadata, **kwargs
-        )
+        return {"metadata": metadata}

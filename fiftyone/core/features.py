@@ -1,6 +1,9 @@
 """
-Core Module for `fiftyone` Featurizers
+Core definitions of FiftyOne dataset features.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -17,6 +20,13 @@ from builtins import *
 
 
 def compute_filehash(filepath):
+    """Computes the file hash of the given file.
+
+    Args:
+        filepath: the path to the file
+
+    Returns:
+        the file hash
+    """
     with open(filepath, "rb") as f:
-        filehash = hash(f.read())
-    return filehash
+        return hash(f.read())
