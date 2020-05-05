@@ -24,12 +24,13 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
-import fiftyone.core.document as fod
+import fiftyone.core.backed_by_doc as fob
 import fiftyone.core.labels as fol
 import fiftyone.core.insights as foi
+import fiftyone.core.odm as foo
 
 
-class Sample(fod.Document):
+class Sample(fob.BackedByDocument):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -46,164 +47,121 @@ class Sample(fod.Document):
             associated with the sample
     """
 
-    def __init__(self, filepath, tags=None, insights=None, labels=None):
-        super(Sample, self).__init__()
-        self._filepath = os.path.abspath(os.path.expanduser(filepath))
-        self._tags = set(tags) if tags else set()
-        self._insights = list(insights) if insights else []
-        self._labels = list(labels) if labels else []
-        self._dataset = None
+    _ODM_DOCUMENT_TYPE = foo.ODMSample
+
+    @staticmethod
+    def get_odm_kwargs(filepath, tags=None, insights=None, labels=None):
+        kwargs = {"filepath": os.path.abspath(os.path.expanduser(filepath))}
+
+        if tags:
+            kwargs["tags"] = tags
+
+        if insights:
+            kwargs["insights"] = insights
+
+        if labels:
+            kwargs["labels"] = labels
+
+        return kwargs
 
     @property
-    def type(self):
-        """The fully-qualified class name of the sample."""
-        return etau.get_class_name(self)
-
-    @property
-    def dataset_name(self):
-        """The name of the dataset to which this sample belongs, or ``None`` if
-        the sample has not been added to a dataset.
-        """
-        if self._dataset is None:
-            return None
-
-        return self._dataset.name
+    def dataset(self):
+        raise NotImplementedError("TODO TYLER")
 
     @property
     def filepath(self):
-        return self._filepath
+        return self._doc.filepath
 
     @property
     def filename(self):
-        return os.path.basename(self._filepath)
+        return os.path.basename(self.filepath)
 
     @property
     def tags(self):
-        return self._tags
+        return self._doc.tags
 
     @property
     def insights(self):
-        return self._insights
+        return self._doc.insights
 
     @property
     def labels(self):
-        return self._labels
+        return self._doc.labels
 
-    def add_tag(self, tag):
-        """Adds the given tag to the sample.
+    # def add_tag(self, tag):
+    #     """Adds the given tag to the sample.
+    #
+    #     Args:
+    #         tag: the tag
+    #
+    #     Returns:
+    #         True/False whether the tag was added
+    #     """
+    #     # @todo(Tyler) this first check assumes that the Sample is in sync with
+    #     # the DB
+    #     if tag in self._tags:
+    #         return False
+    #
+    #     self._tags.add(tag)
+    #
+    #     if self._dataset is None:
+    #         return True
+    #
+    #     return fod.update_one(
+    #         collection=self._dataset._c,
+    #         document=self,
+    #         update={"$push": {"tags": tag}},
+    #     )
 
-        Args:
-            tag: the tag
+    # def remove_tag(self, tag):
+    #     """Adds the given tag to the sample.
+    #
+    #     Args:
+    #         tag: the tag
+    #
+    #     Returns:
+    #         True/False whether the tag was removed
+    #     """
+    #     # @todo(Tyler) this first check assumes that the Sample is in sync with
+    #     # the DB
+    #     if tag not in self.tags:
+    #         return False
+    #
+    #     self._tags.remove(tag)
+    #
+    #     if self._dataset is None:
+    #         return True
+    #
+    #     return fod.update_one(
+    #         collection=self._dataset._c,
+    #         document=self,
+    #         update={"$pull": {"tags": tag}},
+    #     )
 
-        Returns:
-            True/False whether the tag was added
-        """
-        # @todo(Tyler) this first check assumes that the Sample is in sync with
-        # the DB
-        if tag in self._tags:
-            return False
-
-        self._tags.add(tag)
-
-        if self._dataset is None:
-            return True
-
-        return fod.update_one(
-            collection=self._dataset._c,
-            document=self,
-            update={"$push": {"tags": tag}},
-        )
-
-    def remove_tag(self, tag):
-        """Adds the given tag to the sample.
-
-        Args:
-            tag: the tag
-
-        Returns:
-            True/False whether the tag was removed
-        """
-        # @todo(Tyler) this first check assumes that the Sample is in sync with
-        # the DB
-        if tag not in self.tags:
-            return False
-
-        self._tags.remove(tag)
-
-        if self._dataset is None:
-            return True
-
-        return fod.update_one(
-            collection=self._dataset._c,
-            document=self,
-            update={"$pull": {"tags": tag}},
-        )
-
-    def add_insight(self, group, insight):
-        """Adds the given insight to the sample.
-
-        Args:
-            insight: a :class:`fiftyone.core.insights.Insight` instance
-        """
-        # @todo(Tyler) this needs to write to the DB
-        self._insights[group] = insight
-
-    def add_label(self, group, label):
-        """Adds the given label to the sample.
-
-        Args:
-            label: a :class:`fiftyone.core.label.Label` instance
-        """
-        # @todo(Tyler) this needs to write to the DB
-        self._dataset._validate_label(group, label)
-        self._labels[group] = label
-
-    def attributes(self):
-        """Returns the list of class attributes to be serialized.
-
-        Returns:
-            a list of class attributes
-        """
-        return ["type", "filepath", "tags", "insights", "labels"]
-
-    @staticmethod
-    def get_kwargs(d):
-        """Extracts the subclass-specific keyword arguments from the given
-        JSON dictionary for constructing an instance of the :class:`Sample`.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            a dictionary of parsed keyword arguments
-        """
-        raise NotImplementedError("Subclass must implement get_kwargs()")
-
-    @classmethod
-    def _from_dict(cls, d, **kwargs):
-        sample_cls = etau.get_class(d["type"])
-
-        insights = d.get("insights", None)
-        if insights is not None:
-            insights = {
-                k: foi.Insight.from_dict(v) for k, v in iteritems(insights)
-            }
-
-        labels = d.get("labels", None)
-        if labels is not None:
-            labels = {k: fol.Label.from_dict(v) for k, v in iteritems(labels)}
-
-        return sample_cls(
-            filepath=d["filepath"],
-            tags=d.get("tags", None),
-            insights=insights,
-            labels=labels,
-            **sample_cls.get_kwargs(d),
-            **kwargs,
-        )
+    # def add_insight(self, group, insight):
+    #     """Adds the given insight to the sample.
+    #
+    #     Args:
+    #         insight: a :class:`fiftyone.core.insights.Insight` instance
+    #     """
+    #     # @todo(Tyler) this needs to write to the DB
+    #     self._insights[group] = insight
+    #
+    # def add_label(self, group, label):
+    #     """Adds the given label to the sample.
+    #
+    #     Args:
+    #         label: a :class:`fiftyone.core.label.Label` instance
+    #     """
+    #     # @todo(Tyler) this needs to write to the DB
+    #     self._dataset._validate_label(group, label)
+    #     self._labels[group] = label
 
     def _set_dataset(self, dataset):
-        self._dataset = dataset
+        assert (
+            not self._is_in_db()
+        ), "This should never be called on a document in the database!"
+        self._doc.dataset = dataset.name
 
 
 class ImageSample(Sample):
@@ -217,11 +175,29 @@ class ImageSample(Sample):
         **kwargs: keyword arguments for :func:`Sample.__init__`
     """
 
-    def __init__(self, metadata=None, **kwargs):
-        super(ImageSample, self).__init__(**kwargs)
+    _ODM_DOCUMENT_TYPE = foo.ODMImageSample
 
-        # WARNING: this reads the image from disk, so will be slow...
-        self.metadata = metadata or etai.ImageMetadata.build_for(self.filepath)
+    @staticmethod
+    def get_odm_kwargs(
+        filepath, tags=None, metadata=None, insights=None, labels=None
+    ):
+        kwargs = super(ImageSample).get_odm_kwargs(
+            filepath=filepath, tags=tags, insights=insights, labels=labels
+        )
+
+        if not isinstance(metadata, etai.ImageMetadata):
+            # WARNING: this reads the image from disk, so will be slow...
+            metadata = etai.ImageMetadata.build_for(kwargs["filepath"])
+
+        kwargs["metadata"] = foo.ODMImageMetadata(
+            size_bytes=metadata.size_bytes,
+            mime_type=metadata.mime_type,
+            width=metadata.frame_size[0],
+            height=metadata.frame_size[1],
+            num_channels=metadata.num_channels,
+        )
+
+        return kwargs
 
     def load_image(self):
         """Loads the image for the sample.
@@ -230,18 +206,3 @@ class ImageSample(Sample):
             a numpy image
         """
         return etai.read(self.filepath)
-
-    def attributes(self):
-        _attrs = super(ImageSample, self).attributes()
-        if self.metadata is not None:
-            _attrs.append("metadata")
-
-        return _attrs
-
-    @staticmethod
-    def get_kwargs(d):
-        metadata = d.get("metadata", None)
-        if metadata is not None:
-            metadata = etai.ImageMetadata.from_dict(d["metadata"])
-
-        return {"metadata": metadata}

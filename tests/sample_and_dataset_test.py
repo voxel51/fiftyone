@@ -6,6 +6,7 @@ import eta.core.image as etai
 
 import fiftyone.core.odm as foo
 import fiftyone.core.odm_wrappers as foow
+import fiftyone.core.sample as fos
 
 foo.drop_database()
 
@@ -21,7 +22,12 @@ if not os.path.exists(img_path):
 # Create a Sample
 ###############################################################################
 
-sample = foow.Sample.create_new(filepath=img_path, tags=["train", "rand"])
+sample = fos.Sample.create_new(filepath=img_path, tags=["train", "rand"])
+
+print(sample.filepath)
+print(sample.filename)
+
+import sys; sys.exit("SUCCESS")
 
 ###############################################################################
 # Add to Dataset

@@ -17,140 +17,19 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-import os
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.odm as foo
-import fiftyone.core.backed_by_doc as fob
+import fiftyone.core.sample as fos
 
 
 def list_dataset_names():
     return foo.ODMSample.objects.distinct("dataset")
 
 
-class Sample(fob.BackedByDocument):
-    _ODM_DOCUMENT_TYPE = foo.ODMSample
-
-    @staticmethod
-    def get_odm_kwargs(filepath, tags=None, insights=None, labels=None):
-        kwargs = {"filepath": os.path.abspath(os.path.expanduser(filepath))}
-
-        if tags:
-            kwargs["tags"] = tags
-
-        if insights:
-            kwargs["insights"] = insights
-
-        if labels:
-            kwargs["labels"] = labels
-
-        return kwargs
-
-    @property
-    def dataset(self):
-        raise NotImplementedError("TODO TYLER")
-
-    @property
-    def filepath(self):
-        return self._doc
-
-    @property
-    def filename(self):
-        return os.path.basename(self.filepath)
-
-    @property
-    def tags(self):
-        return self._doc.tags
-
-    @property
-    def insights(self):
-        return self._doc.insights
-
-    @property
-    def labels(self):
-        return self._doc.labels
-
-    # def add_tag(self, tag):
-    #     # @todo(Tyler) this first check assumes that the Sample is in sync with
-    #     # the DB
-    #     if tag in self._tags:
-    #         return False
-    #
-    #     self._tags.add(tag)
-    #
-    #     if self._collection is None:
-    #         return True
-    #
-    #     return fod.update_one(
-    #         collection=self._collection,
-    #         document=self,
-    #         update={"$push": {"tags": tag}},
-    #     )
-    #
-    # def remove_tag(self, tag):
-    #     # @todo(Tyler) this first check assumes that the Sample is in sync with
-    #     # the DB
-    #     if tag not in self.tags:
-    #         return False
-    #
-    #     self._tags.remove(tag)
-    #
-    #     if self._collection is None:
-    #         return True
-    #
-    #     return fod.update_one(
-    #         collection=self._collection,
-    #         document=self,
-    #         update={"$pull": {"tags": tag}},
-    #     )
-
-    # def add_insight(self, insight_group, insight):
-    #     # @todo(Tyler) this does not write to the database
-    #     self.insights[insight_group] = insight
-
-    # def add_label(self, label_group, label):
-    #     # @todo(Tyler) this does not write to the database
-    #     self.labels[label_group] = label
-
-    def _set_dataset(self, dataset):
-        assert (
-            not self._is_in_db()
-        ), "This should never be called on a document in the database!"
-        self._doc.dataset = dataset.name
-
-
-class ImageSample(Sample):
-    _ODM_DOCUMENT_TYPE = foo.ODMImageSample
-
-    @staticmethod
-    def get_odm_kwargs(
-        filepath, tags=None, metadata=None, insights=None, labels=None
-    ):
-        kwargs = super(ImageSample).get_odm_kwargs(
-            filepath=filepath, tags=tags, insights=insights, labels=labels
-        )
-
-        if not isinstance(metadata, etai.ImageMetadata):
-            metadata = etai.ImageMetadata.build_for(kwargs["filepath"])
-
-        kwargs["metadata"] = foo.ODMImageMetadata(
-            size_bytes=metadata.size_bytes,
-            mime_type=metadata.mime_type,
-            width=metadata.frame_size[0],
-            height=metadata.frame_size[1],
-            num_channels=metadata.num_channels,
-        )
-
-        return kwargs
-
-    def load_image(self):
-        return etai.read(self.filepath)
-
-
 class Dataset(object):
-    _SAMPLE_CLS = Sample
+    _SAMPLE_CLS = fos.Sample
 
     def __init__(self, name):
         self._name = name
