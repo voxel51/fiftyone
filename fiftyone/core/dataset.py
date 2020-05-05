@@ -179,12 +179,13 @@ class Dataset(foc.SampleCollection):
         """
         return fov.DatasetView(self)
 
-    @staticmethod
-    def _deserialize_sample(sample_dict):
+    def _deserialize_sample(self, sample_dict):
         if sample_dict is None:
             return None
 
-        return fos.Sample.from_dict(sample_dict)
+        sample = fos.Sample.from_dict(sample_dict)
+        sample._set_dataset(self)
+        return sample
 
     def _validate_sample(self, sample):
         if not isinstance(sample, self._SAMPLE_CLS):

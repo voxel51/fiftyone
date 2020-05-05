@@ -52,12 +52,22 @@ class Sample(fod.Document):
         self._tags = set(tags) if tags else set()
         self._insights = list(insights) if insights else []
         self._labels = list(labels) if labels else []
-        self._dataset = None  # @ todo pass this reference
+        self._dataset = None
 
     @property
     def type(self):
         """The fully-qualified class name of the sample."""
         return etau.get_class_name(self)
+
+    @property
+    def dataset_name(self):
+        """The name of the dataset to which this sample belongs, or ``None`` if
+        the sample has not been added to a dataset.
+        """
+        if self._dataset is None:
+            return None
+
+        return self._dataset.name
 
     @property
     def filepath(self):
@@ -90,11 +100,11 @@ class Sample(fod.Document):
 
         self._tags.add(tag)
 
-        if self._collection is None:
+        if self._dataset is None:
             return True
 
         return fod.update_one(
-            collection=self._collection,
+            collection=self._dataset._c,
             document=self,
             update={"$push": {"tags": tag}},
         )
@@ -107,25 +117,14 @@ class Sample(fod.Document):
 
         self._tags.remove(tag)
 
-        if self._collection is None:
+        if self._dataset is None:
             return True
 
         return fod.update_one(
-            collection=self._collection,
+            collection=self._dataset._c,
             document=self,
             update={"$pull": {"tags": tag}},
         )
-
-    @property
-    def dataset_name(self):
-        """The name of the dataset to which this sample belongs.
-
-        Returns ``None`` is the sample has not been inserted into a dataset.
-        """
-        if self._dataset is None:
-            return None
-
-        return self._dataset.name
 
     def add_insight(self, group, insight):
         """Adds the given insight to the sample.
@@ -189,6 +188,9 @@ class Sample(fod.Document):
             **sample_cls.get_kwargs(d),
             **kwargs,
         )
+
+    def _set_dataset(self, dataset):
+        self._dataset = dataset
 
 
 class ImageSample(Sample):
