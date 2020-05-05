@@ -26,10 +26,10 @@ def drop_database():
 
 
 class Metadata(EmbeddedDocument):
-    meta = {"allow_inheritance": True}
-
     size_bytes = IntField(required=True)
     mime_type = StringField(required=True)
+
+    meta = {"allow_inheritance": True}
 
 
 class ImageMetadata(Metadata):
@@ -39,22 +39,35 @@ class ImageMetadata(Metadata):
 
 
 class Labels(EmbeddedDocument):
+    group = StringField(required=True)
+
     meta = {"allow_inheritance": True}
+
+
+class ClassificationLabel(Labels):
+    label = StringField(required=True)
+    confidence = FloatField()
 
 
 class Insight(EmbeddedDocument):
+    group = StringField(required=True)
+
     meta = {"allow_inheritance": True}
+
+
+class FileHashInsight(Insight):
+    file_hash = StringField(required=True)
 
 
 class Sample(Document):
-    meta = {"allow_inheritance": True}
-
     dataset = StringField(required=True)
     filepath = StringField(required=True, unique=True)
     metadata = EmbeddedDocumentField(Metadata)
     tags = ListField(StringField())
     insights = ListField(EmbeddedDocumentField(Insight))
     labels = ListField(EmbeddedDocumentField(Labels))
+
+    meta = {"allow_inheritance": True, "indexes": ["dataset", "filepath"]}
 
 
 class ImageSample(Sample):
