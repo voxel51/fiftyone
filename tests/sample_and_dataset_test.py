@@ -4,13 +4,13 @@ import numpy as np
 
 import eta.core.image as etai
 
+import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
-import fiftyone.core.odm_wrappers as foow
 import fiftyone.core.sample as fos
 
 foo.drop_database()
 
-dataset = foow.Dataset(name="test_dataset")
+dataset = fod.Dataset(name="test_dataset")
 
 img_path = "my_image.jpg"
 if not os.path.exists(img_path):
@@ -27,8 +27,6 @@ sample = fos.Sample.create_new(filepath=img_path, tags=["train", "rand"])
 print(sample.filepath)
 print(sample.filename)
 
-import sys; sys.exit("SUCCESS")
-
 ###############################################################################
 # Add to Dataset
 ###############################################################################
@@ -39,7 +37,7 @@ dataset.add_sample(sample)
 # Explore
 ###############################################################################
 
-print("Datasets: %s" % foow.list_dataset_names())
+print("Datasets: %s" % fod.list_dataset_names())
 print()
 
 print("Num samples: %d" % len(dataset))

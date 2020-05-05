@@ -20,12 +20,10 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 from bson.objectid import ObjectId
-from pymongo import MongoClient
 
 import eta.core.utils as etau
 
-import fiftyone.core.collections as foc
-import fiftyone.core.document as fod
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 
@@ -41,12 +39,7 @@ def list_dataset_names():
     Returns:
         a list of :class:`Dataset` names
     """
-    members = _get_members_for_collection_type(_DATASET_COLLECTION_TYPE)
-    return [
-        collection_name
-        for collection_name in _db().list_collection_names()
-        if collection_name in members
-    ]
+    return foo.ODMSample.objects.distinct("dataset")
 
 
 def load_dataset(name):
@@ -59,10 +52,10 @@ def load_dataset(name):
         a :class:`Dataset`
     """
     # @todo reflectively load the right `Dataset` subclass
-    return Dataset(name=name, create_empty=False)
+    return Dataset(name=name)
 
 
-class Dataset(foc.SampleCollection):
+class Dataset(object):
     """A FiftyOne dataset.
 
     Datasets represent a homogenous collection of
@@ -84,23 +77,25 @@ class Dataset(foc.SampleCollection):
     # The `Sample` class that this dataset can contain
     _SAMPLE_CLS = fos.Sample
 
-    def __init__(self, name, create_empty=True):
-        self.name = name
-        self._c = _get_dataset_collection(name, create_empty)
+    def __init__(self, name):
+        self._name = name
 
         # @todo populate this when reading an existing collection from the DB
         self._label_types = {}
 
+    @property
+    def name(self):
+        return self._name
+
     def __len__(self):
-        return self._c.count_documents({})
+        return self._objects().count()
 
     def __getitem__(self, sample_id):
-        return self._deserialize_sample(
-            self._c.find_one({"_id": ObjectId(sample_id)})
-        )
+        samples = self._objects(id=sample_id)
+        return samples[0] if samples else None
 
     def __delitem__(self, sample_id):
-        return fod.delete_one(collection=self._c, document_id=sample_id)
+        return self[sample_id].delete()
 
     def get_tags(self):
         """Returns the set of tags for this dataset.
@@ -108,7 +103,13 @@ class Dataset(foc.SampleCollection):
         Returns:
             a set of tags
         """
-        return set(self._c.distinct("tags"))
+        return self._objects().distinct("tags")
+
+    def get_insight_groups(self):
+        return self._objects().distinct("insights.group")
+
+    def get_label_groups(self):
+        return self._objects().distinct("labels.group")
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -116,14 +117,8 @@ class Dataset(foc.SampleCollection):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for sample_dict in self._c.find():
-            yield self._deserialize_sample(sample_dict)
-
-    def get_insight_groups(self):
-        return self._c.distinct("insights.group")
-
-    def get_label_groups(self):
-        return self._c.distinct("labels.group")
+        for doc in foo.ODMSample.objects(dataset=self.name):
+            yield self._SAMPLE_CLS(document=doc)
 
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
@@ -131,10 +126,9 @@ class Dataset(foc.SampleCollection):
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
         """
-        self._validate_sample(sample)
+        etau.validate_type(sample, self._SAMPLE_CLS)
         sample._set_dataset(self)
-
-        fod.insert_one(self._c, sample)
+        sample._save()
 
     def add_samples(self, samples):
         """Adds the given samples to the dataset.
@@ -144,10 +138,12 @@ class Dataset(foc.SampleCollection):
                 instances
         """
         for sample in samples:
-            self._validate_sample(sample)
+            etau.validate_type(sample, self._SAMPLE_CLS)
             sample._set_dataset(self)
+        self._objects().insert(samples)
 
-        fod.insert_many(self._c, samples)
+    def _objects(self, **kwargs):
+        return foo.ODMSample.objects(dataset=self.name, **kwargs)
 
     def add_labels(self, group, labels_dict):
         """Adds the given labels to the dataset.
@@ -156,6 +152,8 @@ class Dataset(foc.SampleCollection):
             labels_dict: a dictionary mapping label group names to
                 :class:`fiftyone.core.labels.Label` instances
         """
+        # @todo(Tyler)
+        raise NotImplementedError("TODO TYLER: Review this")
         self._register_label_cls(group, labels_dict)
 
         for sample_id, label in iteritems(labels_dict):
@@ -180,17 +178,13 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
+        # @todo(Tyler)
+        raise NotImplementedError("TODO TYLER: Review this")
         return fov.DatasetView(self)
 
-    def _deserialize_sample(self, sample_dict):
-        if sample_dict is None:
-            return None
-
-        sample = fos.Sample.from_dict(sample_dict)
-        sample._set_dataset(self)
-        return sample
-
     def _validate_sample(self, sample):
+        # @todo(Tyler)
+        raise NotImplementedError("TODO TYLER: Review this")
         if not isinstance(sample, self._SAMPLE_CLS):
             raise ValueError(
                 "Expected sample to be an instance of '%s'; found '%s'"
@@ -201,6 +195,8 @@ class Dataset(foc.SampleCollection):
             )
 
     def _validate_label(self, group, label):
+        # @todo(Tyler)
+        raise NotImplementedError("TODO TYLER: Review this")
         label_cls = self._label_types[group]
         if not isinstance(label, label_cls):
             raise ValueError(
@@ -209,6 +205,8 @@ class Dataset(foc.SampleCollection):
             )
 
     def _register_label_cls(self, group, labels_dict):
+        # @todo(Tyler)
+        raise NotImplementedError("TODO TYLER: Review this")
         if group not in self._label_types:
             self._label_types[group] = next(itervalues(labels_dict)).__class__
 
@@ -217,71 +215,3 @@ class ImageDataset(Dataset):
     """A FiftyOne dataset of images."""
 
     _SAMPLE_CLS = fos.ImageSample
-
-
-def drop_database():
-    client = MongoClient()
-    client.drop_database(_DATABASE)
-
-
-def _db():
-    return MongoClient()[_DATABASE]
-
-
-def _get_dataset_collection(name, create_empty):
-    """Gets the dataset collection of the given name from the database,
-    initializing
-
-    Args:
-        name: the name of the dataset
-        create_empty: whether to create a collection for the dataset if it does
-            not already exist
-
-    Returns:
-        a ``pymongo.collection``
-    """
-    db = _db()
-
-    if name in db.list_collection_names():
-        # Collection already exists
-        members = _get_members_for_collection_type(_DATASET_COLLECTION_TYPE)
-        if name not in members:
-            raise ValueError("'%s' is not a valid dataset" % name)
-    elif create_empty:
-        # Create new collection
-        c = _get_meta_collection()
-        c.update_one(
-            {"collection_type": _DATASET_COLLECTION_TYPE},
-            {"$push": {"members": name}},
-        )
-
-        # Create indexes
-        c.create_index("filepath", unique=True)
-    else:
-        raise ValueError("Dataset '%s' does not exist" % name)
-
-    return db[name]
-
-
-def _get_meta_collection():
-    """Gets the meta collection from the database.
-
-    The meta collection is initialized to store dataset collections, if
-    necessary.
-
-    Returns:
-        a ``pymongo.collection``
-    """
-    c = _db()[_META_COLLECTION]
-    if not c.count({"collection_type": _DATASET_COLLECTION_TYPE}):
-        c.insert_many(
-            [{"collection_type": _DATASET_COLLECTION_TYPE, "members": []}]
-        )
-
-    return c
-
-
-def _get_members_for_collection_type(collection_type):
-    c = _get_meta_collection()
-    members = c.find_one({"collection_type": collection_type})["members"]
-    return members

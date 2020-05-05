@@ -25,7 +25,23 @@ from pymongo import ASCENDING, DESCENDING
 import fiftyone.core.collections as foc
 
 
-class DatasetView(foc.SampleCollection):
+class DatasetView(object):
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self._pipeline = []
+
+    def __len__(self):
+        raise NotImplementedError("TODO")
+
+    def iter_samples(self):
+        raise NotImplementedError("TODO")
+
+    def sample(self, size):
+        raise NotImplementedError("TODO")
+        stage = {"$sample": {"size": size}}
+
+
+class DEPRECATEDDatasetView(foc.SampleCollection):
     """A view into a :class:`fiftyone.core.dataset.Dataset`.
 
     Dataset views represent read-only collections of
