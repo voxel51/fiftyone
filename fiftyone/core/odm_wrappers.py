@@ -80,7 +80,7 @@ class DatasetView(object):
         stage = {"$sample": {"size": size}}
 
 
-class Document(object):
+class BackedByDocument(object):
     # MongoEngine Document Type
     _ME_DOCUMENT_TYPE = foo.Document
 
@@ -117,25 +117,28 @@ class Document(object):
         return cls(_doc=document)
 
 
-
-class Sample(Document):
+class Sample(BackedByDocument):
     _ME_DOCUMENT_TYPE = foo.Sample
 
-    def __init__(self, filepath, tags=None, insights=None, labels=None,
-                 **kwargs):
-        document = self._ME_DOCUMENT_TYPE(
-
-        )
+    def __init__(
+        self, filepath, tags=None, insights=None, labels=None, **kwargs
+    ):
+        document = self._ME_DOCUMENT_TYPE()
 
         self._filepath = os.path.abspath(os.path.expanduser(filepath))
         self._tags = set(tags) if tags else set()
         self._insights = list(insights) if insights else []
         self._labels = list(labels) if labels else []
 
-        metadata = foo.ImageMetadata(
-            size_bytes=2048, mime_type=".jpg", width=32, height=32,
-            num_channels=3,
-        ),
+        metadata = (
+            foo.ImageMetadata(
+                size_bytes=2048,
+                mime_type=".jpg",
+                width=32,
+                height=32,
+                num_channels=3,
+            ),
+        )
 
         super(Sample, self).__init__(document=document)
 
@@ -294,4 +297,3 @@ class ImageSample(Sample):
         return super(ImageSample, cls).from_dict(
             d, metadata=metadata, **kwargs
         )
-
