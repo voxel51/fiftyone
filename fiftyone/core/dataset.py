@@ -99,6 +99,9 @@ class Dataset(fov.SampleCollection):
             self._c.find_one({"_id": ObjectId(sample_id)})
         )
 
+    def __delitem__(self, sample_id):
+        return fod.delete_one(collection=self._c, document_id=sample_id)
+
     def get_tags(self):
         """Returns the set of tags for this dataset.
 
@@ -115,6 +118,12 @@ class Dataset(fov.SampleCollection):
         """
         for sample_dict in self._c.find():
             yield self._deserialize_sample(sample_dict)
+
+    def get_insight_groups(self):
+        return self._c.distinct("insights.group")
+
+    def get_label_groups(self):
+        return self._c.distinct("labels.group")
 
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
@@ -161,14 +170,14 @@ class Dataset(fov.SampleCollection):
                 {"_id": ObjectId(sample_id)}, sample.serialize()
             )
 
-    def view(self):
+    def default_view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
         entire dataset.
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return fov.DatasetView(dataset=self)
+        return fov.DatasetView(self)
 
     @staticmethod
     def _deserialize_sample(sample_dict):
@@ -242,6 +251,9 @@ def _get_dataset_collection(name, create_empty):
             {"collection_type": _DATASET_COLLECTION_TYPE},
             {"$push": {"members": name}},
         )
+
+        # Create indexes
+        c.create_index("filepath", unique=True)
     else:
         raise ValueError("Dataset '%s' does not exist" % name)
 

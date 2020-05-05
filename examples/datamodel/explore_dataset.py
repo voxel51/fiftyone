@@ -41,28 +41,30 @@ print("Tags: %s" % dataset.get_tags())
 print()
 
 ###############################################################################
-# Action 2: Check for label groups on the dataset
+# Action 3: Check for label groups on the dataset
 #
 # Each sample in a dataset contains a dictionary of labels with label groups
 # as keys. A label group spans all samples with the given label
 ###############################################################################
 
-# print("Label Groups: %s" % dataset.get_label_groups())
-# print()
+# @todo(Tyler)
+print("Label Groups: %s" % dataset.get_label_groups())
+print()
 
 ###############################################################################
-# Action 2: Check for insight groups on the dataset
+# Action 4: Check for insight groups on the dataset
 #
 # Similar to labels, each sample contains a set of insights. An insight group
 # is a group of insights, one per sample, spanning across a dataset or subset
 # of a dataset.
 ###############################################################################
 
-# print("Insight Groups: %s" % dataset.get_insight_groups())
-# print()
+# @todo(Tyler)
+print("Insight Groups: %s" % dataset.get_insight_groups())
+print()
 
 ###############################################################################
-# Action 3: Iterate samples of the dataset
+# Action 5: Iterate samples of the dataset
 ###############################################################################
 
 print("Sample from dataset:")
@@ -71,20 +73,9 @@ print(sample)
 print("Ingested at: %s" % sample.ingest_time)
 print()
 
-import sys
-sys.exit("SUCCESS")
 
 ###############################################################################
-# Action 4: Iterate samples of a view
-###############################################################################
-
-print("Sample from dataset 'test' view:")
-sample = next(dataset.get_view("test").iter_samples())
-print(sample)
-print("Ingested at: %s" % sample.ingest_time)
-
-###############################################################################
-# Action 5: Access sample by ID
+# Action 6: Access sample by ID
 #
 # When inserted into a dataset, a sample is automatically given a unique ID
 # (universally unique but different from a UUID).

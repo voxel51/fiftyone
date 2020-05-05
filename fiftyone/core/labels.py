@@ -1,5 +1,9 @@
 """
+<<<<<<< HEAD
 Core definitions of labels stored in FiftyOne dataset samples.
+=======
+Core Module for `fiftyone` Labels class
+>>>>>>> develop
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

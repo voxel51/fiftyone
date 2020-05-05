@@ -52,12 +52,14 @@ for partition in partitions:
     samples = []
     for rel_img_path in fine_labels:
         # create labels dict (with both coarse and fine labels)
-        labels = {
-            "ground_truth_fine": fol.ClassificationLabel(
+        labels = [
+            fol.ClassificationLabel(
+                group="ground_truth_fine",
                 label=fine_labels[rel_img_path]),
-            "ground_truth_coarse": fol.ClassificationLabel(
+            fol.ClassificationLabel(
+                group="ground_truth_coarse",
                 label=coarse_labels[rel_img_path]),
-        }
+        ]
 
         # create sample
         sample = fos.ImageSample(

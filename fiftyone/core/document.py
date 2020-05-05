@@ -6,8 +6,10 @@ additional functionality centered around `Document` objects, which are
 serializables that can be inserted and read from the MongoDB database.
 
 Important functionality includes:
-- access to the ID when is automatically generated when the Document is
+- access to the ID which is automatically generated when the Document is
     inserted in the database
+- access to the dataset (collection) name which is similarly populated when
+    the sample is inserted into a dataset (collection)
 - default reflective serialization when storing to the database
 
 | Copyright 2017-2020, Voxel51, Inc.
@@ -33,28 +35,70 @@ import eta.core.serial as etas
 
 
 def insert_one(collection, document):
-    # @todo(Tyler) include collection.name when serializing
+    """Inserts the given document into the collection.
+
+    Args:
+        collection: a ``pymongo.collection``
+        document: a :class:`fiftyone.core.document.Document`
+    """
     result = collection.insert_one(document.serialize())
-    document._set_id(result.inserted_id)
+    document._set_db_attrs(result.inserted_id, collection)
     return result
 
 
 def insert_many(collection, documents):
+    """Inserts the given documents into the collection.
+
+    Args:
+        collection: a ``pymongo.collection``
+        document: an iterable of :class:`fiftyone.core.document.Document`
+            instances
+    """
     result = collection.insert_many([d.serialize() for d in documents])
     for inserted_id, document in zip(result.inserted_ids, documents):
-        document._set_id(inserted_id)
+        document._set_db_attrs(inserted_id, collection)
+
+
+def update_one(collection, document, update):
+    """Updates the given document in the collection.
+
+    Args:
+        collection: a ``pymongo.collection``
+        document: a :class:`fiftyone.core.document.Document`
+        update: an update dict
+
+    Returns:
+        True/False whether the document was modified
+    """
+    result = collection.update_one({"_id": ObjectId(document.id)}, update)
+    return result.modified_count == 1
+
+
+def delete_one(collection, document_id):
+    """Updates the given document in the collection.
+
+    Args:
+        collection: a ``pymongo.collection``
+        document_id: the ``_id`` of the :class:`fiftyone.core.document.Document`
+
+    Returns:
+        True/False whether the document was deleted
+    """
+    result = collection.delete_one({"_id": ObjectId(document_id)})
+    return result.deleted_count == 1
 
 
 class Document(etas.Serializable):
     """Base class for objects that are serialized to the database.
 
     This class adds functionality to ``eta.core.serial.Serializable`` to
-    provide an  `_id` field which is populated when a document is added to the
-    database.
+    provide `_id` and `_collection` fields which are populated when a document
+    is added to the database.
     """
 
     def __init__(self):
         self._id = None
+        self._collection = None
 
     @property
     def id(self):
@@ -79,6 +123,15 @@ class Document(etas.Serializable):
                 - a 3 byte incrementing counter, initialized to a random value
         """
         return self._id
+
+    @property
+    def collection_name(self):
+        """The name of the collection that the document has been inserted into.
+        Returns None if it has not been inserted in the database.
+        """
+        if self._collection:
+            return self._collection.name
+        return None
 
     @property
     def ingest_time(self):
@@ -106,8 +159,8 @@ class Document(etas.Serializable):
         document = cls._from_dict(d)
 
         _id = d.get("_id", None)
-        if _id:
-            document._set_id(_id)
+        _collection = d.get("_collection", None)
+        document._set_db_attrs(_id, _collection)
 
         return document
 
@@ -128,5 +181,6 @@ class Document(etas.Serializable):
         """
         raise NotImplementedError("Subclass must implement _from_dict()")
 
-    def _set_id(self, _id):
+    def _set_db_attrs(self, _id, _collection):
         self._id = str(_id)
+        self._collection = _collection

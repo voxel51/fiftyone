@@ -20,6 +20,8 @@ from builtins import *
 
 from copy import deepcopy
 
+from pymongo import ASCENDING, DESCENDING
+
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
@@ -130,6 +132,7 @@ class DatasetView(SampleCollection):
         )["count"]
 
     def __getitem__(self, sample_id):
+        # @todo(Tyler) maybe this should fail if the sample is not in the view?
         return self._dataset[sample_id]
 
     def iter_samples(self):
@@ -146,38 +149,66 @@ class DatasetView(SampleCollection):
         """Returns an iterator over the  a dataset
 
         Returns:
-            an iterator of tuples over the matching samples:
-                view_idx: the index relative to the last `offset`. i.e.
+            an iterator of ``(view_idx, sample)`` tuples, where:
+
+                view_idx: the index relative to the last ``offset``::
+
                     offset <= view_idx < offset + limit
-                the fiftyone.core.sample.Sample object
+
+                sample: a :class:`fiftyone.core.sample.Sample` instance
         """
         view_idx = self._get_latest_offset() - 1
         for s in self._dataset._c.aggregate(self._pipeline):
             view_idx += 1
             yield view_idx, self._dataset._deserialize_sample(s)
 
+    #
+    # @todo(brian) I think this should be deleted. Views should be inherently
+    # tied to a single dataset from the start
+    #
+    @classmethod
+    def from_view(cls, view, dataset):
+        new_view = cls(dataset)
+        new_view._pipeline = deepcopy(view._pipeline)
+        return new_view
+
     # VIEW OPERATIONS #########################################################
 
-    #
-    # @todo define our own wrapper around MongoDB query dicts here, so that the
-    # user reads our documentation, not MongoDBs.
-    #
-    # It could be that our query language is very similar to MongoDBs, but we
-    # should still document it ourselves.
-    #
-    def filter(self, filter):
+    def filter(
+        self, tag=None, insight_group=None, label_group=None, filter=None
+    ):
         """Filters the samples in the view by the given filter.
 
-        Reference:
-            https://docs.mongodb.com/manual/tutorial/query-documents
-
         Args:
+            tag: a sample tag string
+            insight_group: an insight group string
+            label_group: a label group string
             filter: a MongoDB query dict
 
         Returns:
             a :class:`DatasetView`
         """
-        return self._add_stage_to_pipeline({"$match": filter})
+        view = self
+
+        if tag is not None:
+            view = view._add_stage_to_pipeline(stage={"$match": {"tags": tag}})
+
+        if insight_group is not None:
+            # @todo(Tyler) should this filter the insights as well? or just
+            # filter the samples based on whether or not the insight is
+            # present?
+            raise NotImplementedError("TODO")
+
+        if label_group is not None:
+            # @todo(Tyler) should this filter the labels as well? or just
+            # filter the samples based on whether or not the label is
+            # present?
+            raise NotImplementedError("TODO")
+
+        if filter is not None:
+            view = view._add_stage_to_pipeline(stage={"$match": filter})
+
+        return view
 
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
@@ -194,7 +225,7 @@ class DatasetView(SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        order = -1 if reverse else 1
+        order = DESCENDING if reverse else ASCENDING
         return self._add_stage_to_pipeline({"$sort": {field: order}})
 
     def shuffle(self):

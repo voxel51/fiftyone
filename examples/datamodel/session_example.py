@@ -6,9 +6,8 @@ import logging
 
 import eta.core.serial as etas
 
-import fiftyone.core.dataset as voxd
-import fiftyone.core.session as voxs
-import fiftyone.core.query as voxq
+import fiftyone.core.dataset as fod
+import fiftyone.core.session as fos
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,7 @@ def print_state(session):
 # GUI displays dataset browser landing page
 ###############################################################################
 
-session = voxs.Session(limit=3)
+session = fos.Session(limit=3)
 print("Empty session:")
 print_state(session)
 print()
@@ -40,7 +39,7 @@ print()
 # GUI displays CIFAR100 dataset
 ###############################################################################
 
-session.dataset = voxd.Dataset("cifar100")
+session.dataset = fod.Dataset("cifar100")
 print("CIFAR100 dataset set:")
 print_state(session)
 print()
@@ -51,23 +50,21 @@ print()
 # GUI displays CIFAR100 'train' set
 ###############################################################################
 
-session.view = session.dataset.get_view("test")
-print("'train' view set:")
+session.view = session.dataset.default_view().filter(tag="test")
+print("'test' view set:")
 print_state(session)
 print()
 
 ###############################################################################
-# Set the query
+# Add transforms to the view
 #
-# GUI displays filtered/sorted CIFAR100 'train' set
+# GUI displays filtered/sorted CIFAR100 'test' set
 ###############################################################################
 
-session.query = (
-    voxq.DatasetQuery()
-    .filter({"metadata.size_bytes": {"$gt": 1000}})
-    .sort("metadata.size_bytes")
-)
-print("'metadata.size_bytes > 1000' query set:")
+session.view = session.view.filter(
+    filter={"metadata.size_bytes": {"$gt": 1000}}
+).sort("metadata.size_bytes")
+print("'metadata.size_bytes > 1000' transform added:")
 print_state(session)
 print()
 
@@ -79,19 +76,8 @@ print()
 ###############################################################################
 
 session.clear_view()
-print("View cleared:")
-print_state(session)
-print()
-
-###############################################################################
-# Clear the query
-#
-# GUI displays CIFAR100 dataset
-###############################################################################
-
-session.clear_query()
 session.offset = session.limit
-print("Query cleared and offset increased:")
+print("view cleared and offset increased:")
 print_state(session)
 print()
 

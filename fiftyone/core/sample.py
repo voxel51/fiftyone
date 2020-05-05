@@ -26,6 +26,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.document as fod
 import fiftyone.core.labels as fol
+import fiftyone.core.insights as foi
 
 
 class Sample(fod.Document):
@@ -38,16 +39,19 @@ class Sample(fod.Document):
 
     Args:
         filepath: the path to the data on disk
-        tags (None): a set of tags associated with the sample
-        labels (None): a dict of :class:`fiftyone.core.labels.Label` instances
+        tags (None): the set of tags associated with the sample
+        insights (None): a list of :class:`fiftyone.core.insights.Insight`
+            instances associated with the sample
+        labels (None): a list of :class:`fiftyone.core.labels.Label` instances
             associated with the sample
     """
 
-    def __init__(self, filepath, tags=None, labels=None):
-        self.filepath = os.path.abspath(filepath)
-        self.filename = os.path.basename(filepath)
-        self.tags = tags or set()
-        self.labels = labels or {}
+    def __init__(self, filepath, tags=None, insights=None, labels=None):
+        super(Sample, self).__init__()
+        self._filepath = os.path.abspath(os.path.expanduser(filepath))
+        self._tags = set(tags) if tags else set()
+        self._insights = list(insights) if insights else []
+        self._labels = list(labels) if labels else []
         self._dataset = None  # @ todo pass this reference
 
     @property
@@ -55,14 +59,92 @@ class Sample(fod.Document):
         """The fully-qualified class name of the sample."""
         return etau.get_class_name(self)
 
+    @property
+    def filepath(self):
+        return self._filepath
+
+    @property
+    def filename(self):
+        return os.path.basename(self.filepath)
+
+    @property
+    def tags(self):
+        # returns a copy such that the original cannot be modified
+        return list(self._tags)
+
+    @property
+    def insights(self):
+        # returns a copy such that the original cannot be modified
+        return list(self._insights)
+
+    @property
+    def labels(self):
+        # returns a copy such that the original cannot be modified
+        return list(self._labels)
+
+    def add_tag(self, tag):
+        # @todo(Tyler) this first check assumes that the Sample is in sync with
+        # the DB
+        if tag in self._tags:
+            return False
+
+        self._tags.add(tag)
+
+        if self._collection is None:
+            return True
+
+        return fod.update_one(
+            collection=self._collection,
+            document=self,
+            update={"$push": {"tags": tag}},
+        )
+
+    def remove_tag(self, tag):
+        # @todo(Tyler) this first check assumes that the Sample is in sync with
+        # the DB
+        if tag not in self.tags:
+            return False
+
+        self._tags.remove(tag)
+
+        if self._collection is None:
+            return True
+
+        return fod.update_one(
+            collection=self._collection,
+            document=self,
+            update={"$pull": {"tags": tag}},
+        )
+
+    @property
+    def dataset_name(self):
+        """The name of the dataset to which this sample belongs.
+
+        Returns ``None`` is the sample has not been inserted into a dataset.
+        """
+        if self._dataset is None:
+            return None
+
+        return self._dataset.name
+
+    def add_insight(self, group, insight):
+        """Adds the given insight to the sample.
+
+        Args:
+            insight: a :class:`fiftyone.core.insights.Insight` instance
+        """
+        # @todo(Tyler) this needs to write to the DB
+        self._insights[group] = insight
+
     def add_label(self, group, label):
         """Adds the given label to the sample.
 
         Args:
             label: a :class:`fiftyone.core.label.Label` instance
         """
+        # @todo(Tyler) this needs to write to the DB
         self._dataset._validate_label(group, label)
-        self.labels[group] = label
+        self._labels[group] = label
 
     def attributes(self):
         """Returns the list of class attributes to be serialized.
@@ -70,7 +152,7 @@ class Sample(fod.Document):
         Returns:
             a list of class attributes
         """
-        return ["type", "filepath", "tags", "labels"]
+        return ["type", "filepath", "tags", "insights", "labels"]
 
     @staticmethod
     def get_kwargs(d):
@@ -89,6 +171,12 @@ class Sample(fod.Document):
     def _from_dict(cls, d, **kwargs):
         sample_cls = etau.get_class(d["type"])
 
+        insights = d.get("insights", None)
+        if insights is not None:
+            insights = {
+                k: foi.Insight.from_dict(v) for k, v in iteritems(insights)
+            }
+
         labels = d.get("labels", None)
         if labels is not None:
             labels = {k: fol.Label.from_dict(v) for k, v in iteritems(labels)}
@@ -96,6 +184,7 @@ class Sample(fod.Document):
         return sample_cls(
             filepath=d["filepath"],
             tags=d.get("tags", None),
+            insights=insights,
             labels=labels,
             **sample_cls.get_kwargs(d),
             **kwargs,
