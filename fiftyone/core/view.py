@@ -1,6 +1,9 @@
 """
-Core Module for `fiftyone` DatasetView class
+Core definitions of FiftyOne dataset views.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -14,92 +17,133 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
 from copy import deepcopy
-import os
-import shutil
 
 import eta.core.utils as etau
 
-
-ASCENDING = 1
-DESCENDING = -1
+import fiftyone.core.labels as fol
 
 
 class SampleCollection(object):
+    """Abstract class representing a collection of
+    :class:`fiftyone.core.sample.Sample` instances.
+    """
+
     def __len__(self):
-        raise NotImplementedError("Subclass must implement")
+        raise NotImplementedError("Subclass must implement __len__()")
 
     def __getitem__(self, sample_id):
-        raise NotImplementedError("Subclass must implement")
+        raise NotImplementedError("Subclass must implement __getitem__()")
 
     def get_tags(self):
-        raise NotImplementedError("Subclass must implement")
+        raise NotImplementedError("Subclass must implement get_tags()")
 
     def get_label_groups(self):
-        raise NotImplementedError("Subclass must implement")
+        raise NotImplementedError("Subclass must implement get_label_groups()")
 
     def get_insight_groups(self):
-        raise NotImplementedError("Subclass must implement")
+        raise NotImplementedError(
+            "Subclass must implement get_insight_groups()"
+        )
 
     def iter_samples(self):
-        raise NotImplementedError("Subclass must implement")
+        raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def export(self, export_dir, pretty_print=False):
-        """Export the view to a location on disk
+    # EXPORT OPERATIONS #######################################################
+
+    def export(self, group, export_dir):
+        """Exports the view to disk in the specified directory.
 
         Args:
-            dataset_or_view: the fiftyone.core.dataset.(Dataset or DatasetView)
-                to be queried
-            export_dir: the name of the directory to export to
+            group: the label group to export
+            export_dir: the directory to which to write the export
         """
-        export_dir = os.path.expanduser(export_dir)
+        data_paths = []
+        labels = []
+        for sample in self.iter_samples():
+            data_paths.append(sample.filepath)
+            labels.append(sample.labels[group])
 
-        etau.ensure_empty_dir(export_dir)
+        if not labels:
+            return
 
-        data_dir = os.path.join(export_dir, "data")
-        labels_dir = os.path.join(export_dir, "labels")
-        etau.ensure_dir(data_dir)
-        etau.ensure_dir(labels_dir)
-
-        for _, sample in self.iter_samples():
-            # @todo(Tyler) this doesn't check for duplicate filenames
-            data_filepath = os.path.join(data_dir, sample.filename)
-            labels_filepath = os.path.join(
-                labels_dir, os.path.splitext(sample.filename)[0] + ".json"
-            )
-
-            shutil.copy(sample.filepath, data_filepath)
-            sample.labels.write_json(
-                labels_filepath, pretty_print=pretty_print
+        if isinstance(labels[0], fol.ClassificationLabel):
+            # @todo export as classification dataset
+            #
+            # proposal:
+            #   labels.json
+            #   images/
+            #       <filename>.<ext>
+            #
+            raise ValueError("Not yet implemented")
+        if isinstance(labels[0], fol.DetectionLabels):
+            # @todo export as a detection dataset
+            #
+            # proposal:
+            #   labels.json
+            #   images/
+            #       <filename>.<ext>
+            #
+            raise ValueError("Not yet implemented")
+        elif isinstance(labels[0], fol.ImageLabels):
+            # @todo Export as ``eta.core.datasets.LabeledImageDataset``
+            raise ValueError("Not yet implemented")
+        else:
+            raise ValueError(
+                "Cannot export labels of type '%s'"
+                % etau.get_class_name(labels[0])
             )
 
 
 class DatasetView(SampleCollection):
+    """A view into a :class:`fiftyone.core.dataset.Dataset`.
+
+    Dataset views represent read-only collections of
+    :class:`fiftyone.core.sample.Sample` instances in a dataset.
+
+    Operations on dataset views are designed to be chained together to yield
+    the desired subset of the dataset, which is then iterated over to directly
+    access the samples.
+
+    Example use::
+
+        # Print the metadata of the five largest samples in the dataset
+        view = (dataset.view()
+            sort_by("metadata.size_bytes")
+            take(5)
+        )
+        for sample in view:
+            print(sample.metadata)
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+    """
+
     def __init__(self, dataset):
-        """... """
-        self.dataset = dataset
+        self._dataset = dataset
         self._pipeline = []
 
     def __len__(self):
-        """Count the number of samples returned by this view"""
         return next(
-            self.dataset._c.aggregate(self._pipeline + [{"$count": "count"}])
+            self._dataset._c.aggregate(self._pipeline + [{"$count": "count"}])
         )["count"]
 
     def __getitem__(self, sample_id):
-        return self.dataset[sample_id]
+        return self._dataset[sample_id]
 
     def iter_samples(self):
-        """Iterate over the samples in the view
+        """Returns an iterator over the :class:`fiftyone.core.sample.Sample`
+        instances in the view.
 
         Returns:
-            an iterator over the matching samples
+            an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for s in self.dataset._c.aggregate(self._pipeline):
-            yield self.dataset._deserialize(s)
+        for s in self._dataset._c.aggregate(self._pipeline):
+            yield self._dataset._deserialize_sample(s)
 
-    def iter_samples_with_view_index(self):
-        """Query a dataset
+    def iter_samples_with_index(self):
+        """Returns an iterator over the  a dataset
 
         Returns:
             an iterator of tuples over the matching samples:
@@ -108,80 +152,127 @@ class DatasetView(SampleCollection):
                 the fiftyone.core.sample.Sample object
         """
         view_idx = self._get_latest_offset() - 1
-        for s in self.dataset._c.aggregate(self._pipeline):
+        for s in self._dataset._c.aggregate(self._pipeline):
             view_idx += 1
-            yield view_idx, self.dataset._deserialize(s)
-
+            yield view_idx, self._dataset._deserialize_sample(s)
 
     # VIEW OPERATIONS #########################################################
 
+    #
+    # @todo define our own wrapper around MongoDB query dicts here, so that the
+    # user reads our documentation, not MongoDBs.
+    #
+    # It could be that our query language is very similar to MongoDBs, but we
+    # should still document it ourselves.
+    #
     def filter(self, filter):
-        """
+        """Filters the samples in the view by the given filter.
+
+        Reference:
+            https://docs.mongodb.com/manual/tutorial/query-documents
+
         Args:
             filter: a MongoDB query dict
 
         Returns:
-            DatasetView instance
-
-        ref: https://docs.mongodb.com/manual/tutorial/query-documents
+            a :class:`DatasetView`
         """
-        return self._create_new_view(stage={"$match": filter})
+        return self._add_stage_to_pipeline({"$match": filter})
 
-    def sort(self, field, sort_order=ASCENDING):
-        """
+    def sort_by(self, field, reverse=False):
+        """Sorts the samples in the view by the given field.
+
         Args:
-            field: string field to sort by. Examples:
-                    "_id", "filename", "metadata.size_bytes",
-                    "metadata.frame_size[0]"
-            sort_order: ...
+            field: the field to sort by. Example fields::
+
+                filename
+                metadata.size_bytes
+                metadata.frame_size[0]
+
+            reverse (False): whether to return the results in descending order
 
         Returns:
-            DatasetView instance
+            a :class:`DatasetView`
         """
-        return self._create_new_view(stage={"$sort": {field: sort_order}})
+        order = -1 if reverse else 1
+        return self._add_stage_to_pipeline({"$sort": {field: order}})
+
+    def shuffle(self):
+        """Randomly shuffles the samples in the view.
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        raise NotImplementedError("Not yet implemented")
+
+    def select_samples(self, sample_ids):
+        """Selects only the samples with the given IDs from the view.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        raise NotImplementedError("Not yet implemented")
+
+    def remove_samples(self, sample_ids):
+        """Removes the samples with the given IDS from the view.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        raise NotImplementedError("Not yet implemented")
+
+    def take(self, size):
+        """Selects the given number of samples from the head of the view.
+
+        Args:
+            size: the number of samples to return
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._add_stage_to_pipeline({"$sample": {"size": size}})
 
     def offset(self, offset):
-        """
+        """Omits the given number of samples from the head of the view.
+
         Args:
-            offset: ...
+            offset: the offset
 
         Returns:
-            DatasetView instance
+            a :class:`DatasetView`
         """
-        return self._create_new_view(stage={"$skip": offset})
+        return self._add_stage_to_pipeline({"$skip": offset})
 
+    # @todo remove? redundant with `take()`?
     def limit(self, limit):
-        """
+        """Limits the view to the given number of samples.
+
         Args:
-            limit: ...
+            limit: the limit
 
         Returns:
-            DatasetView instance
+            a :class:`DatasetView`
         """
-        return self._create_new_view(stage={"$limit": limit})
-
-    def sample(self, size):
-        """
-        Args:
-            limit: ...
-
-        Returns:
-            DatasetView instance
-        """
-        return self._create_new_view(stage={"$sample": {"size": size}})
+        return self._add_stage_to_pipeline({"$limit": limit})
 
     # PRIVATE #################################################################
 
-    def _create_new_view(self, stage=None):
-        new_view = self.__class__(dataset=self.dataset)
+    def _add_stage_to_pipeline(self, stage):
+        new_view = self.__class__(dataset=self._dataset)
         new_view._pipeline = deepcopy(self._pipeline)
-        if stage:
-            new_view._pipeline.append(stage)
+        new_view._pipeline.append(stage)
         return new_view
 
     def _get_latest_offset(self):
-        """Get the offset of the last $skip stage"""
+        """Returns the offset of the last $skip stage."""
         for stage in self._pipeline[::-1]:
             if "$skip" in stage:
                 return stage["$skip"]
+
         return 0
