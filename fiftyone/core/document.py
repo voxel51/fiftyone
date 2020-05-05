@@ -1,5 +1,5 @@
 """
-Core Module for `fiftyone` Database Serializable Documents
+Core module for serializable database documents.
 
 This is an extension of `eta.core.serial.Serializable` class that provides
 additional functionality centered around `Document` objects, which are
@@ -10,6 +10,9 @@ Important functionality includes:
     inserted in the database
 - default reflective serialization when storing to the database
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -23,6 +26,7 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
 from bson.objectid import ObjectId
 
 import eta.core.serial as etas
