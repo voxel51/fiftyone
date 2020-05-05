@@ -59,7 +59,9 @@ class SampleCollection(object):
         labels = []
         for sample in self.iter_samples():
             data_paths.append(sample.filepath)
-            labels.append(sample.labels[group])
+            labels.append(
+                sample.labels[group]
+            )  # @todo `labels` is not yet a dict...
 
         if not labels:
             return

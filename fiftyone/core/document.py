@@ -126,11 +126,12 @@ class Document(etas.Serializable):
 
     @property
     def collection_name(self):
-        """The name of the collection that the document has been inserted into.
-        Returns None if it has not been inserted in the database.
+        """The name of the collection that the document has been inserted into,
+        or ``None`` if it has not been added to a collection.
         """
         if self._collection:
             return self._collection.name
+
         return None
 
     @property
