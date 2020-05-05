@@ -1,6 +1,9 @@
 """
-Core Module for `fiftyone` Dataset class
+Core definitions of FiftyOne datasets.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
