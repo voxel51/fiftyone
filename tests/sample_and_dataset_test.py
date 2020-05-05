@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 
-import eta.core.serial as etas
 import eta.core.image as etai
 
 import fiftyone.core.odm as foo
