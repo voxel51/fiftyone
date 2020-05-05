@@ -51,6 +51,7 @@ class Label(etas.Serializable):
 
     @property
     def group(self):
+        """The group name of the label."""
         return self._group
 
     def attributes(self):
