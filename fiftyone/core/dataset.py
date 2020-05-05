@@ -132,6 +132,8 @@ class Dataset(foc.SampleCollection):
             sample: a :class:`fiftyone.core.sample.Sample`
         """
         self._validate_sample(sample)
+        sample._set_dataset(self)
+
         fod.insert_one(self._c, sample)
 
     def add_samples(self, samples):
@@ -143,6 +145,7 @@ class Dataset(foc.SampleCollection):
         """
         for sample in samples:
             self._validate_sample(sample)
+            sample._set_dataset(self)
 
         fod.insert_many(self._c, samples)
 
