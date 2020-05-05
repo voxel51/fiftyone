@@ -1,18 +1,16 @@
 import React, { ReactNode, useState } from "react";
-import { connect } from "react-redux";
+
 import Sidebar from "../components/Sidebar";
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
+import connect from "../utils/connect";
 
 type Props = {
   children: ReactNode;
 };
 
-const mapStateToProps = (state = {}) => {
-  return { ...state };
-};
-
 function App(props: Props) {
+  console.log(props);
   const { children, dispatch, update } = props;
   const [connectionEstablished, setConnectionEstablished] = useState(false);
   const socket = getSocket("state");
@@ -32,10 +30,10 @@ function App(props: Props) {
 
   return (
     <>
-      <Sidebar update={update} />
+      <Sidebar />
       <div style={{ marginLeft: 260 }}>{children}</div>
     </>
   );
 }
 
-export default connect(mapStateToProps)(App);
+export default connect(App);

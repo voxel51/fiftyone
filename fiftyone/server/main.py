@@ -36,7 +36,7 @@ def load_state(func):
     """Load state descorator.
 
     Args:
-        func: the Session method to decorate
+        func: the StateController method to decorate
 
     Returns:
         the wrapped function

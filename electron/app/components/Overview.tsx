@@ -9,18 +9,19 @@ import {
 } from "semantic-ui-react";
 import Gallery from "react-grid-gallery";
 import InfiniteScroll from "react-infinite-scroller";
-import { connect } from "react-redux";
+import { Dimmer, Image, Loader } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
 import Histogram from "./Histogram";
 import { getSocket, useSubscribe } from "../utils/socket";
+import connect from "../utils/connect";
 
-const mapStateToProps = (state = {}) => {
-  return { ...state };
+const GalleryImage = (props) => {
+  return <img {...props.imageProps} />;
 };
 
 const _GalleryWrapper = (props) => {
-  const { images, dispatch, update } = props;
+  const { images, dispatch, state } = props;
   const socket = getSocket("state");
   return (
     <div style={{ overflowY: "auto" }}>
@@ -33,15 +34,18 @@ const _GalleryWrapper = (props) => {
             dispatch(updateState(data));
           });
         }}
+        thumbnailImageComponent={GalleryImage}
+        tagStyle={{ display: "none" }}
         {...props}
       />
     </div>
   );
 };
-const GalleryWrapper = connect(mapStateToProps)(_GalleryWrapper);
+const GalleryWrapper = connect(_GalleryWrapper);
 
-export default function Overview(props) {
-  const state = props.state;
+function Overview(props) {
+  const { state } = props;
+  console.log("asgsfagas", state);
   const hasDataset = Boolean(state && state.dataset);
   const [tab, setTab] = useState("overview");
   const socket = getSocket("state");
@@ -64,7 +68,7 @@ export default function Overview(props) {
             thumbnail: src,
             thumbnailWidth: samples[k].metadata.frame_size[0],
             thumbnailHeight: samples[k].metadata.frame_size[1],
-            tags: [{ value: "cifar", title: "title" }],
+            tags: [{ value: null, title: "title" }],
             sample: sample,
           };
         })
@@ -113,11 +117,14 @@ export default function Overview(props) {
         initialLoad={true}
         loadMore={() => loadMore()}
         hasMore={scrollState.hasMore}
-        loader={"loading"}
+        loader={<Loader />}
         useWindow={true}
       >
         {content}
       </InfiniteScroll>
+      {scrollState.hasMore ? <Loader /> : "End of list"}
     </Segment>
   );
 }
+
+export default connect(Overview);
