@@ -9,8 +9,8 @@ import {
 } from "semantic-ui-react";
 import Gallery from "react-grid-gallery";
 import InfiniteScroll from "react-infinite-scroller";
-import { uuid } from "uuidv4";
 import { connect } from "react-redux";
+
 import { updateState } from "../actions/update";
 import Histogram from "./Histogram";
 import { getSocket, useSubscribe } from "../utils/socket";
