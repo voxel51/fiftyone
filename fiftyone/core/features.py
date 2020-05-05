@@ -29,6 +29,4 @@ def compute_filehash(filepath):
         the file hash
     """
     with open(filepath, "rb") as f:
-        filehash = hash(f.read())
-
-    return filehash
+        return hash(f.read())
