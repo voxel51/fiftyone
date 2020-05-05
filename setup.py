@@ -8,6 +8,8 @@ Installs FiftyOne.
 """
 from setuptools import setup, find_packages
 
+with open("requirements/common.txt") as f:
+    requirements = f.readlines()
 
 setup(
     name="fiftyone",
@@ -27,4 +29,5 @@ setup(
     ],
     scripts=["fiftyone/fiftyone"],
     python_requires=">=2.7",
+    install_requires=requirements,
 )
