@@ -13,33 +13,35 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.core.document as fod
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 
 
-# We are currently assuming this is not configurable
-DEFAULT_DATABASE = "fiftyone"
-
-META_COLLECTION = "_meta"
-
-
-def drop_database():
-    client = MongoClient()
-    client.drop_database(DEFAULT_DATABASE)
+_DATABASE = "fiftyone"
+_META_COLLECTION = "_meta"
+_DATASET_COLLECTION_TYPE = "DATASET"
 
 
 def list_dataset_names():
-    members = _get_members_for_collection_type(Dataset.COLLECTION_TYPE)
+    """Returns the list of available FiftyOne datasets.
+
+    Returns:
+        a list of :class:`Dataset` names
+    """
+    members = _get_members_for_collection_type(_DATASET_COLLECTION_TYPE)
     return [
         collection_name
         for collection_name in _db().list_collection_names()
@@ -48,113 +50,221 @@ def list_dataset_names():
 
 
 def load_dataset(name):
-    return Dataset(name=name)
+    """Loads the FiftyOne dataset with the given name.
+
+    Args:
+        name: the name of the dataset
+
+    Returns:
+        a :class:`Dataset`
+    """
+    return Dataset(name=name, create_empty=False)
 
 
 class Dataset(fov.SampleCollection):
+    """A FiftyOne dataset.
+
+    Datasets represent a homogenous collection of
+    :class:`fiftyone.core.sample.Sample` instances that describe a particular
+    type of raw media (e.g., images) toegether with one or more sets of
+    :class:`fiftyone.core.labels.Label` instances (e.g., ground truth
+    annotations or model predictions) and metadata associated with those
+    labels.
+
+    FiftyOne datasets ingest and store the labels for all samples internally;
+    raw media is stored on disk and the dataset provides paths to the data.
+
+    Args:
+        name: the name of the dataset
+        create_empty (True): whether to create a dataset with the given name
+            if it does not already exist
+    """
+
     COLLECTION_TYPE = "DATASET"
 
-    def __init__(self, name):
+    # The `Sample` class that this dataset can contain
+    _SAMPLE_CLS = fos.Sample
+
+    def __init__(self, name, create_empty=True):
         self.name = name
-        self._c = self._get_collection()
+        self._c = _get_dataset_collection(name, create_empty)
+
+        # @todo populate this when reading an existing collection from the DB
+        self._label_types = {}
 
     def __len__(self):
         return self._c.count_documents({})
 
     def __getitem__(self, sample_id):
-        return self._deserialize(
+        return self._deserialize_sample(
             self._c.find_one({"_id": ObjectId(sample_id)})
         )
 
     def get_tags(self):
-        return self._c.distinct("tags")
+        """Returns the set of tags for this dataset.
+
+        Returns:
+            a set of tags
+        """
+        return set(self._c.distinct("tags"))
+
+    def iter_samples(self):
+        """Returns an iterator over the samples in the dataset.
+
+        Returns:
+            an iterator over :class:`fiftyone.core.sample.Sample` instances
+        """
+        for sample_dict in self._c.find():
+            yield self._deserialize_sample(sample_dict)
 
     def add_sample(self, sample):
-        fos.Sample.validate(sample)
+        """Adds the given sample to the dataset.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+        """
+        self._validate_sample(sample)
         fod.insert_one(self._c, sample)
 
     def add_samples(self, samples):
+        """Adds the given samples to the dataset.
+
+        Args:
+            sample: an iterable of :class:`fiftyone.core.sample.Sample`
+                instances
+        """
         for sample in samples:
-            fos.Sample.validate(sample)
+            self._validate_sample(sample)
+
         fod.insert_many(self._c, samples)
 
-    def add_labels(self, labels_dict):
-        for sample_id, label in labels_dict.items():
+    def add_labels(self, group, labels_dict):
+        """Adds the given labels to the dataset.
+
+        Args:
+            labels_dict: a dictionary mapping label group names to
+                :class:`fiftyone.core.labels.Label` instances
+        """
+        self._register_label_cls(group, labels_dict)
+        label_cls = self._label_types[group]
+
+        for sample_id, label in iteritems(labels_dict):
+            self._validate_label(group, label)
+
             # @todo(Tyler) this could be done better...
             sample = self[sample_id]
             sample.add_label(label)
 
             # self._c.find_one_and_update(
             #     {"_id": ObjectId(sample_id)},
-            #     {"$set": {"labels": label.serialize(reflective=True)}}
+            #     {"$set": {"labels": label.serialize()}}
             # )
             self._c.find_one_and_replace(
-                {"_id": ObjectId(sample_id)}, sample._dbserialize()
+                {"_id": ObjectId(sample_id)}, sample.serialize()
             )
-
-    def iter_samples(self):
-        for sample_dict in self._c.find():
-            # uses reflective `_CLS` to determine type
-            yield self._deserialize(sample_dict)
 
     def view(self):
+        """Returns a :class:`fiftyone.core.view.DatasetView` containing the
+        entire dataset.
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
         return fov.DatasetView(dataset=self)
 
-    # def index_samples_by_filehash(self):
-    #     index_id = None
-    #     return index_id
-    #
-    # def export(self):
-    #     '''
-    #     samples.export(
-    #        "/path/for/export", format=voxf.types.datasets.LabeledImageDataset,
-    #     )
-    #     '''
-    #     pass
+    @staticmethod
+    def _deserialize_sample(sample_dict):
+        if sample_dict is None:
+            return None
 
-    # PRIVATE #################################################################
+        return fos.Sample.from_dict(sample_dict)
 
-    def _get_collection(self):
-        """Get the collection backing this _SampleCollection.
-        Ensures that the collection is properly initialized and registered in
-        the meta collection.
-        """
-        if self.name in _db().list_collection_names():
-            # make sure it's the right collection type
-            members = _get_members_for_collection_type(self.COLLECTION_TYPE)
-            assert self.name in members, "raise a better error!"
-
-        else:
-            # add to meta collection
-            c = _get_meta_collection()
-            c.update_one(
-                {"collection_type": self.COLLECTION_TYPE},
-                {"$push": {"members": self.name}},
+    def _validate_sample(self, sample):
+        if not isinstance(sample, self._SAMPLE_CLS):
+            raise ValueError(
+                "Expected sample to be an instance of '%s'; found '%s'"
+                % (
+                    etau.get_class_name(self._SAMPLE_CLS),
+                    etau.get_class_name(sample),
+                )
             )
 
-        return _db()[self.name]
+    def _validate_label(self, group, label):
+        label_cls = self._label_types[group]
+        if not isinstance(label, label_cls):
+            raise ValueError(
+                "Expected label to be an instance of '%s'; found '%s'"
+                % (etau.get_class_name(label_cls), etau.get_class_name(label),)
+            )
 
-    @staticmethod
-    def _deserialize(sample_dict):
-        if sample_dict is None:
-            return sample_dict
-        return etas.Serializable.from_dict(sample_dict)
+    def _register_label_cls(self, group, labels_dict):
+        if group not in self._label_types:
+            self._label_types[group] = next(itervalues(labels_dict)).__class__
 
 
-# PRIVATE #####################################################################
+class ImageDataset(Dataset):
+    """A FiftyOne dataset of images."""
+
+    # The `Sample` class that this dataset can contain
+    _SAMPLE_CLS = fos.ImageSample
+
+
+def drop_database():
+    client = MongoClient()
+    client.drop_database(_DATABASE)
 
 
 def _db():
-    return MongoClient()[DEFAULT_DATABASE]
+    return MongoClient()[_DATABASE]
+
+
+def _get_dataset_collection(name, create_empty):
+    """Gets the dataset collection of the given name from the database,
+    initializing
+
+    Args:
+        name: the name of the dataset
+        create_empty: whether to create a collection for the dataset if it does
+            not already exist
+
+    Returns:
+        a ``pymongo.collection``
+    """
+    db = _db()
+
+    if name in db.list_collection_names():
+        # Collection already exists
+        members = _get_members_for_collection_type(_DATASET_COLLECTION_TYPE)
+        if name not in members:
+            raise ValueError("'%s' is not a valid dataset" % name)
+    elif create_empty:
+        # Create new collection
+        c = _get_meta_collection()
+        c.update_one(
+            {"collection_type": _DATASET_COLLECTION_TYPE},
+            {"$push": {"members": name}},
+        )
+    else:
+        raise ValueError("Dataset '%s' does not exist" % name)
+
+    return db[name]
 
 
 def _get_meta_collection():
-    """Get the meta collection (and initialize if necessary)"""
-    c = _db()[META_COLLECTION]
-    if not c.count({"collection_type": Dataset.COLLECTION_TYPE}):
+    """Gets the meta collection from the database.
+
+    The meta collection is initialized to store dataset collections, if
+    necessary.
+
+    Returns:
+        a ``pymongo.collection``
+    """
+    c = _db()[_META_COLLECTION]
+    if not c.count({"collection_type": _DATASET_COLLECTION_TYPE}):
         c.insert_many(
-            [{"collection_type": Dataset.COLLECTION_TYPE, "members": []}]
+            [{"collection_type": _DATASET_COLLECTION_TYPE, "members": []}]
         )
+
     return c
 
 
