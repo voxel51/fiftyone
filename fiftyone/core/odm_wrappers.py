@@ -23,7 +23,16 @@ class Dataset(object):
         self.name = name
 
     def __len__(self):
-        return len(foo.Sample.objects(dataset=self.name))
+        return foo.Sample.objects(dataset=self.name).count()
+
+    # def __getitem__(self, sample_id):
+    #     return fos.Sample._from_db_dict(
+    #         collection=self._c,
+    #         d=self._c.find_one({"_id": ObjectId(sample_id)}),
+    #     )
+    #
+    # def __delitem__(self, sample_id):
+    #     return fod.delete_one(collection=self._c, document_id=sample_id)
 
     def iter_samples(self):
         for sample in foo.Sample.objects(dataset=self.name):

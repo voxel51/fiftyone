@@ -41,7 +41,7 @@ class ImageMetadata(Metadata):
 class Labels(EmbeddedDocument):
     group = StringField(required=True)
 
-    meta = {"allow_inheritance": True}
+    meta = {"abstract": True}
 
 
 class ClassificationLabel(Labels):
@@ -52,7 +52,7 @@ class ClassificationLabel(Labels):
 class Insight(EmbeddedDocument):
     group = StringField(required=True)
 
-    meta = {"allow_inheritance": True}
+    meta = {"abstract": True}
 
 
 class FileHashInsight(Insight):
@@ -67,7 +67,7 @@ class Sample(Document):
     insights = ListField(EmbeddedDocumentField(Insight))
     labels = ListField(EmbeddedDocumentField(Labels))
 
-    meta = {"allow_inheritance": True, "indexes": ["dataset", "filepath"]}
+    meta = {"abstract": True, "indexes": ["dataset", "filepath"]}
 
 
 class ImageSample(Sample):
