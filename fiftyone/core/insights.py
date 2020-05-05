@@ -14,52 +14,95 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 
 class Insight(etas.Serializable):
-    # @todo(Tyler) this could all be deleted but I'll probably use it for
-    # some other common field that all insights need to have
+    """An insight in a :class:`fiftyone.core.dataset.Dataset`.
+
+    Insight instances represent features of the elements of a sample, such as
+    metadata about the raw data sample or attributes of the sample's labels.
+
+    Args:
+        group (None): the group name of the insight
+    """
+
     def __init__(self, group=None):
         self._group = group
 
     @property
+    def type(self):
+        """The fully-qualified class name of the label."""
+        return etau.get_class_name(self)
+
+    @property
     def group(self):
-        # @todo(Tyler) this needs to be accessed from the sample
-        raise NotImplementedError("TODO")
+        """The group name of the insight, or ``None`` if it is not associated
+        with a label group.
+        """
+        return self._group
+
+    def attributes(self):
+        """Returns the list of class attributes to be serialized.
+
+        Returns:
+            a list of class attributes
+        """
+        return ["type", "group"]
 
     @classmethod
-    def from_dict(cls, d, **kwargs):
-        """Constructs a Label from a JSON dictionary.
+    def from_dict(cls, d):
+        """Constructs an `class`:Insight` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
-            **kwargs: keyword arguments that have already been parsed by a
-            subclass
 
         Returns:
-            a Label
+            an `class`:Insight`
         """
-        group = d.get("group", None)
+        insight_cls = etau.get_class(d["type"])
+        return insight_cls._from_dict(d, group=d["group"])
 
-        return cls(group=group, **kwargs)
+    @classmethod
+    def _from_dict(cls, d, **kwargs):
+        """Internal implementation of :func:`Insight.from_dict`.
+
+        Subclasses should implement this method, not :func:`Insight.from_dict`.
+
+        Args:
+            d: a JSON dictionary
+            **kwargs: keyword arguments for :class:`Insight` that have already
+                been parsed by :func:`Insight.from_dict`
+
+        Returns:
+            an `class`:Insight`
+        """
+        raise NotImplementedError("Subclass must implement _from_dict()")
 
 
 class FileHashInsight(Insight):
-    def __init__(self, file_hash, *args, **kwargs):
-        super(FileHashInsight, self).__init__(*args, **kwargs)
+    """An insight that stores the file hash of the raw data associated with a
+    sample in a dataset.
+
+    Args:
+        file_hash: the file hash of the raw data
+        **kwargs: keyword arguments for :class:`Insight`
+    """
+
+    def __init__(self, file_hash, **kwargs):
+        super(FileHashInsight, self).__init__(**kwargs)
         self.file_hash = file_hash
 
-    @classmethod
-    def from_dict(cls, d, **kwargs):
-        """Constructs a FileHashInsight from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
+    def attributes(self):
+        """Returns the list of class attributes to be serialized.
 
         Returns:
-            a FileHashInsight
+            a list of class attributes
         """
-        file_hash = d["file_hash"]
+        return super(FileHashInsight, self).attributes() + ["file_hash"]
 
-        return super(FileHashInsight, cls).from_dict(d, file_hash=file_hash)
+    @classmethod
+    def _from_dict(cls, d, **kwargs):
+        return cls(d["file_hash"], **kwargs)
