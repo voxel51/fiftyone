@@ -22,7 +22,6 @@ from future.utils import iteritems, itervalues
 from bson.objectid import ObjectId
 from pymongo import MongoClient
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.document as fod
@@ -146,7 +145,6 @@ class Dataset(fov.SampleCollection):
                 :class:`fiftyone.core.labels.Label` instances
         """
         self._register_label_cls(group, labels_dict)
-        label_cls = self._label_types[group]
 
         for sample_id, label in iteritems(labels_dict):
             self._validate_label(group, label)

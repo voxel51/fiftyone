@@ -22,7 +22,6 @@ from future.utils import iteritems
 import os
 
 import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.document as fod

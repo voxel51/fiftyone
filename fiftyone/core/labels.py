@@ -19,7 +19,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import eta.core.image as etai
-import eta.core.labels as etal
 import eta.core.serial as etas
 import eta.core.utils as etau
 
