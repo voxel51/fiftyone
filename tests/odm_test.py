@@ -7,19 +7,19 @@ foo.drop_database()
 
 dataset_name = "my_dataset"
 
-sample1 = foo.ImageSample(
+sample1 = foo.ODMImageSample(
     dataset=dataset_name,
     filepath="path/to/a/file.jpg",
-    metadata=foo.ImageMetadata(
+    metadata=foo.ODMImageMetadata(
         size_bytes=1024, mime_type=".jpg", width=32, height=32, num_channels=3,
     ),
     tags=["train", "rand"],
 ).save()
 
-sample2 = foo.ImageSample(
+sample2 = foo.ODMImageSample(
     dataset=dataset_name,
     filepath="path/to/a/another/file.jpg",
-    metadata=foo.ImageMetadata(
+    metadata=foo.ODMImageMetadata(
         size_bytes=2048, mime_type=".jpg", width=32, height=32, num_channels=3,
     ),
     tags=["test", "rand"],

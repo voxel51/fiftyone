@@ -20,55 +20,58 @@ DEFAULT_DATABASE = "fiftyone"
 
 _db = connect(DEFAULT_DATABASE)
 
+class ODMDocument(Document):
+    """Renaming Document"""
+    meta = {"allow_inheritance": True}
 
 def drop_database():
     _db.drop_database(DEFAULT_DATABASE)
 
 
-class Metadata(EmbeddedDocument):
-    size_bytes = IntField(required=True)
-    mime_type = StringField(required=True)
+class ODMMetadata(EmbeddedDocument):
+    size_bytes = IntField()
+    mime_type = StringField()
 
     meta = {"allow_inheritance": True}
 
 
-class ImageMetadata(Metadata):
-    width = IntField(required=True)
-    height = IntField(required=True)
-    num_channels = IntField(required=True)
+class ODMImageMetadata(ODMMetadata):
+    width = IntField()
+    height = IntField()
+    num_channels = IntField()
 
 
-class Labels(EmbeddedDocument):
-    group = StringField(required=True)
+class ODMLabels(EmbeddedDocument):
+    group = StringField()
 
     meta = {"allow_inheritance": True}
 
 
-class ClassificationLabel(Labels):
-    label = StringField(required=True)
+class ODMClassificationLabel(ODMLabels):
+    label = StringField()
     confidence = FloatField()
 
 
-class Insight(EmbeddedDocument):
-    group = StringField(required=True)
+class ODMInsight(EmbeddedDocument):
+    group = StringField()
 
     meta = {"allow_inheritance": True}
 
 
-class FileHashInsight(Insight):
-    file_hash = StringField(required=True)
+class ODMFileHashInsight(ODMInsight):
+    file_hash = StringField()
 
 
-class Sample(Document):
-    dataset = StringField(required=True)
-    filepath = StringField(required=True, unique=True)
-    metadata = EmbeddedDocumentField(Metadata)
+class ODMSample(ODMDocument):
+    dataset = StringField()
+    filepath = StringField(unique=True)
+    metadata = EmbeddedDocumentField(ODMMetadata)
     tags = ListField(StringField())
-    insights = ListField(EmbeddedDocumentField(Insight))
-    labels = ListField(EmbeddedDocumentField(Labels))
+    insights = ListField(EmbeddedDocumentField(ODMInsight))
+    labels = ListField(EmbeddedDocumentField(ODMLabels))
 
     meta = {"allow_inheritance": True, "indexes": ["dataset", "filepath"]}
 
 
-class ImageSample(Sample):
-    metadata = EmbeddedDocumentField(ImageMetadata)
+class ODMImageSample(ODMSample):
+    metadata = EmbeddedDocumentField(ODMImageMetadata)
