@@ -111,7 +111,9 @@ class BackedByDocument(object):
         return cls(cls._ODM_DOCUMENT_CLS(**kwargs))
 
     def _save(self):
-        """Saves the underlying :class:`fiftyone.core.odm.ODMDocument` to the
-        database.
-        """
+        """Saves the document to the database."""
         self._doc.save()
+
+    def _delete(self):
+        """Deletes the document from the dataset."""
+        self._doc.delete()
