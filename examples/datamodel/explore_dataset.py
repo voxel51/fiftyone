@@ -47,7 +47,6 @@ print()
 # as keys. A label group spans all samples with the given label
 ###############################################################################
 
-# @todo(Tyler)
 print("Label Groups: %s" % dataset.get_label_groups())
 print()
 
@@ -59,7 +58,6 @@ print()
 # of a dataset.
 ###############################################################################
 
-# @todo(Tyler)
 print("Insight Groups: %s" % dataset.get_insight_groups())
 print()
 

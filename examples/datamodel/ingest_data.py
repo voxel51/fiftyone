@@ -51,6 +51,10 @@ for partition in partitions:
 
     samples = []
     for rel_img_path in fine_labels:
+        # this gives a second tag to a random 30% of the data
+        tags = [partition] + (["rand"] if random.random() > 0.7 else [])
+
+        # @todo(Tyler)
         # # create labels dict (with both coarse and fine labels)
         # labels = [
         #     fol.ClassificationLabel(
@@ -60,13 +64,13 @@ for partition in partitions:
         #         group="ground_truth_coarse",
         #         label=coarse_labels[rel_img_path]),
         # ]
+        labels=None
 
         # create sample
         sample = fos.ImageSample.create_new(
             filepath=os.path.join(data_dir, rel_img_path),
-            # this gives a second tag to a random 30% of the data
-            tags=[partition] + (["rand"] if random.random() > 0.7 else []),
-            # labels=labels,
+            tags=tags,
+            labels=labels,
         )
 
         samples.append(sample)
