@@ -66,20 +66,21 @@ class BackedByDocument(object):
 
                 - a 3 byte incrementing counter, initialized to a random value
         """
-        if self._is_in_db():
-            return str(self._doc.id)
-
-        return None
+        return str(self._doc.id) if self._in_db else None
 
     @property
     def ingest_time(self):
         """The time the document was added to the database, or ``None`` if it
         has not been added to the database.
         """
-        if self._is_in_db():
-            return self._doc.id.generation_time
+        return self._doc.id.generation_time if self._in_db else None
 
-        return None
+    @property
+    def _in_db(self):
+        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
+        been inserted into the database.
+        """
+        return self._doc.id is not None
 
     @classmethod
     def create_new(cls, *args, **kwargs):
@@ -114,12 +115,3 @@ class BackedByDocument(object):
         database.
         """
         self._doc.save()
-
-    def _is_in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
-        been inserted into the database.
-
-        Returns:
-            True/False
-        """
-        return self._doc.id is not None
