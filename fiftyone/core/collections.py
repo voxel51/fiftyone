@@ -28,6 +28,9 @@ class SampleCollection(object):
     :class:`fiftyone.core.sample.Sample` instances.
     """
 
+    def __bool__(self):
+        raise NotImplementedError("Subclass must implement __bool__()")
+
     def __len__(self):
         raise NotImplementedError("Subclass must implement __len__()")
 
@@ -35,21 +38,44 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement __getitem__()")
 
     def get_tags(self):
+        """Returns the list of tags for the samples in the collection.
+
+        Returns:
+            a list of tags
+        """
         raise NotImplementedError("Subclass must implement get_tags()")
 
     def get_label_groups(self):
+        """Returns the list of label groups attached to at least one sample
+        in the collection.
+
+        Returns:
+            a list of groups
+        """
         raise NotImplementedError("Subclass must implement get_label_groups()")
 
     def get_insight_groups(self):
+        """Returns the list of insight groups attached to at least one sample
+        in the collection.
+
+        Returns:
+            a list of groups
+        """
         raise NotImplementedError(
             "Subclass must implement get_insight_groups()"
         )
 
     def iter_samples(self):
+        """Returns an iterator over the samples in the collection.
+
+        Returns:
+            an iterator over :class:`fiftyone.core.sample.Sample` instances
+        """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
     def export(self, group, export_dir):
-        """Exports the view to disk in the specified directory.
+        """Exports the labeled samples in the collection for the given label
+        group to disk in the specified directory.
 
         Args:
             group: the label group to export
