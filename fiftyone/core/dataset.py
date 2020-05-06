@@ -23,7 +23,7 @@ from bson.objectid import ObjectId
 
 import eta.core.utils as etau
 
-import fiftyone.collections foc
+import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
