@@ -23,14 +23,10 @@ from bson.objectid import ObjectId
 
 import eta.core.utils as etau
 
+import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
-
-
-_DATABASE = "fiftyone"
-_META_COLLECTION = "_meta"
-_DATASET_COLLECTION_TYPE = "DATASET"
 
 
 def list_dataset_names():
@@ -52,10 +48,15 @@ def load_dataset(name):
         a :class:`Dataset`
     """
     # @todo reflectively load the right `Dataset` subclass
-    return Dataset(name=name)
+    return Dataset(name, create_empty=False)
 
 
-class Dataset(object):
+#
+# @todo datasets should be registered in the DB even if they are empty
+# Currently they only "appear" in the DB when they have their first sample
+# added
+#
+class Dataset(foc.SampleCollection):
     """A FiftyOne dataset.
 
     Datasets represent a homogenous collection of
@@ -77,39 +78,61 @@ class Dataset(object):
     # The `Sample` class that this dataset can contain
     _SAMPLE_CLS = fos.Sample
 
-    def __init__(self, name):
+    def __init__(self, name, create_empty=True):
         self._name = name
 
         # @todo populate this when reading an existing collection from the DB
         self._label_types = {}
 
-    @property
-    def name(self):
-        return self._name
+        if not create_empty and not self:
+            raise ValueError("Dataset '%s' not found" % name)
+
+    def __bool__(self):
+        return len(self) > 0
 
     def __len__(self):
-        return self._objects().count()
+        return self._get_sample_objects().count()
 
     def __getitem__(self, sample_id):
-        samples = self._objects(id=sample_id)
-        return self._SAMPLE_CLS(document=samples[0]) if samples else None
+        samples = self._get_sample_objects(id=sample_id)
+        if not samples:
+            raise ValueError("No sample found with ID '%s'" % sample_id)
+
+        return self._SAMPLE_CLS(samples[0])
 
     def __delitem__(self, sample_id):
-        return self[sample_id]._doc.delete()
+        return self[sample_id]._delete()
+
+    @property
+    def name(self):
+        """The name of the dataset."""
+        return self._name
 
     def get_tags(self):
-        """Returns the set of tags for this dataset.
+        """Returns the list of tags for this dataset.
 
         Returns:
-            a set of tags
+            a list of tags
         """
-        return self._objects().distinct("tags")
-
-    def get_insight_groups(self):
-        return self._objects().distinct("insights.group")
+        return self._get_sample_objects().distinct("tags")
 
     def get_label_groups(self):
-        return self._objects().distinct("labels.group")
+        """Returns the list of label groups attached to at least one sample
+        in the dataset.
+
+        Returns:
+            a list of groups
+        """
+        return self._get_sample_objects().distinct("labels.group")
+
+    def get_insight_groups(self):
+        """Returns the list of insight groups attached to at least one sample
+        in the dataset.
+
+        Returns:
+            a list of groups
+        """
+        return self._get_sample_objects().distinct("insights.group")
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -117,16 +140,19 @@ class Dataset(object):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for doc in foo.ODMSample.objects(dataset=self.name):
-            yield self._SAMPLE_CLS(document=doc)
+        for doc in self._get_sample_objects():
+            yield self._SAMPLE_CLS(doc)
 
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
+
+        Returns:
+            the ID of the sample
         """
-        etau.validate_type(sample, self._SAMPLE_CLS)
+        self._validate_sample(sample)
         sample._set_dataset(self)
         sample._save()
         return sample.id
@@ -135,42 +161,20 @@ class Dataset(object):
         """Adds the given samples to the dataset.
 
         Args:
-            sample: an iterable of :class:`fiftyone.core.sample.Sample`
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
                 instances
+
+        Returns:
+            a list of sample IDs
         """
         for sample in samples:
-            etau.validate_type(sample, self._SAMPLE_CLS)
+            self._validate_sample(sample)
             sample._set_dataset(self)
-        self._objects().insert(samples)
 
-    def _objects(self, **kwargs):
-        return foo.ODMSample.objects(dataset=self.name, **kwargs)
-
-    def add_labels(self, group, labels_dict):
-        """Adds the given labels to the dataset.
-
-        Args:
-            labels_dict: a dictionary mapping label group names to
-                :class:`fiftyone.core.labels.Label` instances
-        """
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
-        self._register_label_cls(group, labels_dict)
-
-        for sample_id, label in iteritems(labels_dict):
-            self._validate_label(group, label)
-
-            # @todo(Tyler) this could be done better...
-            sample = self[sample_id]
-            sample.add_label(label)
-
-            # self._c.find_one_and_update(
-            #     {"_id": ObjectId(sample_id)},
-            #     {"$set": {"labels": label.serialize()}}
-            # )
-            self._c.find_one_and_replace(
-                {"_id": ObjectId(sample_id)}, sample.serialize()
-            )
+        sample_docs = self._get_sample_objects().insert(
+            [s._backing_doc for s in samples]
+        )
+        return [str(s.id) for s in sample_docs]
 
     def default_view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -183,9 +187,10 @@ class Dataset(object):
         raise NotImplementedError("TODO TYLER: Review this")
         return fov.DatasetView(self)
 
+    def _get_sample_objects(self, **kwargs):
+        return foo.ODMSample.objects(dataset=self.name, **kwargs)
+
     def _validate_sample(self, sample):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
         if not isinstance(sample, self._SAMPLE_CLS):
             raise ValueError(
                 "Expected sample to be an instance of '%s'; found '%s'"
@@ -195,21 +200,19 @@ class Dataset(object):
                 )
             )
 
-    def _validate_label(self, group, label):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
-        label_cls = self._label_types[group]
-        if not isinstance(label, label_cls):
-            raise ValueError(
-                "Expected label to be an instance of '%s'; found '%s'"
-                % (etau.get_class_name(label_cls), etau.get_class_name(label),)
-            )
-
-    def _register_label_cls(self, group, labels_dict):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
-        if group not in self._label_types:
-            self._label_types[group] = next(itervalues(labels_dict)).__class__
+    def _validate_label(self, label):
+        if labels.group not in self._label_types:
+            self._label_types[labels.group] = labels.__class__
+        else:
+            label_cls = self._label_types[label.group]
+            if not isinstance(label, label_cls):
+                raise ValueError(
+                    "Expected label to be an instance of '%s'; found '%s'" %
+                    (
+                        etau.get_class_name(label_cls),
+                        etau.get_class_name(label),
+                    )
+                )
 
 
 class ImageDataset(Dataset):

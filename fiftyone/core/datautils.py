@@ -365,8 +365,9 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
 
             [
                 {
-                    "bbox": [top-left-x, top-left-y, width, height],
                     "label": label,
+                    "bounding_box": [top-left-x, top-left-y, width, height],
+                    "confidence": confidence,
                     ...
                 },
                 ...
@@ -382,10 +383,12 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
     Subclasses can support other input sample formats as necessary.
 
     Args:
-        bbox_field ("bbox"): the name of the bounding box field in the
-            target dicts
         label_field ("label"): the name of the object label field in the
             target dicts
+        bounding_box_field ("bounding_box"): the name of the bounding box field
+            in the target dicts
+        confidence_field ("confidence"): the name of the confidence field in
+            the target dicts
         labels_map (None): an optional dict mapping class IDs to class
             strings. If provided, it is assumed that the ``label``s in
             ``target`` are class IDs that should be mapped to class strings
@@ -398,13 +401,15 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
 
     def __init__(
         self,
-        bbox_field="bbox",
         label_field="label",
+        bounding_box_field="bounding_box",
+        confidence_field="confidence",
         labels_map=None,
         normalized=False,
     ):
-        self.bbox_field = bbox_field
         self.label_field = label_field
+        self.bounding_box_field = bounding_box_field
+        self.confidence_field = confidence_field
         self.labels_map = labels_map
         self.normalized = normalized
 
@@ -464,7 +469,7 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
     def _parse_label(self, target, img=None):
         image_labels = etai.ImageLabels()
         for obj in target:
-            tlx, tly, w, h = obj[self.bbox_field]
+            tlx, tly, w, h = obj[self.bounding_box_field]
             brx = tlx + w
             bry = tly + h
             if self.normalized:

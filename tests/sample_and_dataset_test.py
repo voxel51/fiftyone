@@ -12,11 +12,13 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 
+
 foo.drop_database()
 
-dataset = fod.Dataset(name="test_dataset")
+dataset = fod.Dataset("test_dataset")
 
-img_path = "my_image.jpg"
+img_path = "/tmp/my_image.jpg"
+
 if not os.path.exists(img_path):
     img = np.random.randint(0, 255, (32, 32, 3))
     etai.write(img, img_path)
@@ -26,7 +28,7 @@ if not os.path.exists(img_path):
 # Create a Sample
 ###############################################################################
 
-sample = fos.Sample.create_new(filepath=img_path, tags=["train", "rand"])
+sample = fos.Sample.create_new(img_path, tags=["train", "rand"])
 
 print(sample.filepath)
 print(sample.filename)
@@ -35,7 +37,8 @@ print(sample.filename)
 # Add to Dataset
 ###############################################################################
 
-dataset.add_sample(sample)
+sample_id = dataset.add_sample(sample)
+# sample_ids = dataset.add_samples([sample])
 
 ###############################################################################
 # Explore

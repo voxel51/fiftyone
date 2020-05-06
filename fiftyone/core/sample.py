@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -24,71 +23,76 @@ import os
 from mongoengine.errors import InvalidDocumentError
 
 import eta.core.image as etai
-import eta.core.utils as etau
 
-import fiftyone.core.backed_by_doc as fob
-import fiftyone.core.labels as fol
-import fiftyone.core.insights as foi
+import fiftyone.core.document as fod
 import fiftyone.core.odm as foo
 
 
-class Sample(fob.BackedByDocument):
+class Sample(fod.BackedByDocument):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
     a dataset, including basic metadata about the data, one or more sets of
     labels (ground truth, user-provided, or FiftyOne-generated), and additional
     features associated with subsets of the data and/or label sets.
-
-    Args:
-        filepath: the path to the data on disk
-        tags (None): the set of tags associated with the sample
-        insights (None): a list of :class:`fiftyone.core.insights.Insight`
-            instances associated with the sample
-        labels (None): a list of :class:`fiftyone.core.labels.Label` instances
-            associated with the sample
     """
 
-    _ODM_DOCUMENT_TYPE = foo.ODMSample
+    _ODM_DOCUMENT_CLS = foo.ODMSample
 
-    @staticmethod
-    def get_odm_kwargs(filepath, tags=None, insights=None, labels=None):
-        kwargs = {"filepath": os.path.abspath(os.path.expanduser(filepath))}
+    def __init__(self, document):
+        super(Sample, self).__init__(document)
+        self._dataset = None
 
-        if tags:
-            kwargs["tags"] = tags
+    @classmethod
+    def create_new(cls, filepath, tags=None, insights=None, labels=None):
+        """Creates a new :class:`Sample`.
 
-        if insights:
-            kwargs["insights"] = insights
-
-        if labels:
-            kwargs["labels"] = labels
-
-        return kwargs
+        Args:
+            filepath: the path to the data on disk
+            tags (None): the set of tags associated with the sample
+            insights (None): a list of :class:`fiftyone.core.insights.Insight`
+                instances associated with the sample
+            labels (None): a list of :class:`fiftyone.core.labels.Label`
+                instances associated with the sample
+        """
+        return cls._create_new(
+            filepath=os.path.abspath(os.path.expanduser(filepath)),
+            tags=tags,
+            insights=insights,
+            labels=labels,
+        )
 
     @property
-    def dataset(self):
-        raise NotImplementedError("TODO TYLER")
+    def dataset_name(self):
+        """The name of the dataset to which this sample belongs, or ``None`` if
+        it has not been added to a dataset.
+        """
+        return self._dataset.name if self._dataset is not None else None
 
     @property
     def filepath(self):
-        return self._doc.filepath
+        """The path to the raw data on disk."""
+        return self._backing_doc.filepath
 
     @property
     def filename(self):
+        """The name of the raw data file on disk."""
         return os.path.basename(self.filepath)
 
     @property
     def tags(self):
-        return self._doc.tags
+        """The list of tags attached to the sample."""
+        return self._backing_doc.tags
 
     @property
     def insights(self):
-        return self._doc.insights
+        """The list of insights attached to the sample."""
+        return self._backing_doc.insights
 
     @property
     def labels(self):
-        return self._doc.labels
+        """The list of labels attached to the sample."""
+        return self._backing_doc.labels
 
     def add_tag(self, tag):
         """Adds the given tag to the sample only if it is not already there.
@@ -103,13 +107,13 @@ class Sample(fob.BackedByDocument):
             fiftyone.core.odm.DoesNotExist if the sample has been deleted
         """
         try:
-            if not self._doc.modify(add_to_set__tags=tag):
-                self._doc.reload()  # this will raise a DoesNotExist error
+            if not self._backing_doc.modify(add_to_set__tags=tag):
+                self._backing_doc.reload()  # this will raise a DoesNotExist error
         except InvalidDocumentError:
             # document not in the database, add tag locally
             if tag not in self.tags:
-                self._doc.tags.append("train")
-            pass
+                self._backing_doc.tags.append("train")
+
         return True
 
     def remove_tag(self, tag):
@@ -125,12 +129,13 @@ class Sample(fob.BackedByDocument):
             fiftyone.core.odm.DoesNotExist if the sample has been deleted
         """
         try:
-            if not self._doc.modify(pull__tags=tag):
-                self._doc.reload()  # this will raise a DoesNotExist error
+            if not self._backing_doc.modify(pull__tags=tag):
+                self._backing_doc.reload()  # this will raise a DoesNotExist error
         except InvalidDocumentError:
             # document not in the database, remove tag locally
             if tag in self.tags:
                 self.tags.pop(self.tags.index(tag))
+
         return True
 
     # def add_insight(self, group, insight):
@@ -141,58 +146,61 @@ class Sample(fob.BackedByDocument):
     #     """
     #     # @todo(Tyler) this needs to write to the DB
     #     self._insights[group] = insight
-    #
-    # def add_label(self, group, label):
-    #     """Adds the given label to the sample.
-    #
-    #     Args:
-    #         label: a :class:`fiftyone.core.label.Label` instance
-    #     """
-    #     # @todo(Tyler) this needs to write to the DB
-    #     self._dataset._validate_label(group, label)
-    #     self._labels[group] = label
+
+    def add_label(self, label):
+        """Adds the given label to the sample.
+
+        Args:
+            label: a :class:`fiftyone.core.labels.Label`
+        """
+        self._dataset._validate_label(label)
+        self.labels.append(label._backing_doc)
+        self._save()
 
     def _set_dataset(self, dataset):
-        assert (
-            not self._is_in_db()
-        ), "This should never be called on a document in the database!"
-        self._doc.dataset = dataset.name
+        self._backing_doc.dataset = dataset.name
+        self._dataset = dataset
 
 
 class ImageSample(Sample):
     """An image sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     The data associated with ``ImageSample`` instances are images.
-
-    Args:
-        metadata (None): an ``eta.core.image.ImageMetadata`` instance for the
-            image
-        **kwargs: keyword arguments for :func:`Sample.__init__`
     """
 
-    _ODM_DOCUMENT_TYPE = foo.ODMImageSample
+    _ODM_DOCUMENT_CLS = foo.ODMImageSample
 
-    @staticmethod
-    def get_odm_kwargs(
-        filepath, tags=None, metadata=None, insights=None, labels=None
+    @classmethod
+    def create_new(
+        cls, filepath, tags=None, insights=None, labels=None, metadata=None
     ):
-        kwargs = super(ImageSample).get_odm_kwargs(
-            filepath=filepath, tags=tags, insights=insights, labels=labels
-        )
+        """Creates a new :class:`ImageSample`.
 
-        if not isinstance(metadata, etai.ImageMetadata):
+        Args:
+            filepath: the path to the image on disk
+            tags (None): the set of tags associated with the sample
+            insights (None): a list of :class:`fiftyone.core.insights.Insight`
+                instances associated with the sample
+            labels (None): a list of :class:`fiftyone.core.labels.Label`
+                instances associated with the sample
+            metadata (None): an ``eta.core.image.ImageMetadata`` instance for
+                the image
+        """
+        if metadata is None:
             # WARNING: this reads the image from disk, so will be slow...
-            metadata = etai.ImageMetadata.build_for(kwargs["filepath"])
+            metadata = etai.ImageMetadata.build_for(filepath)
 
-        kwargs["metadata"] = foo.ODMImageMetadata(
+        return cls._create_new(
+            filepath=os.path.abspath(os.path.expanduser(filepath)),
+            tags=tags,
+            insights=insights,
+            labels=labels,
             size_bytes=metadata.size_bytes,
             mime_type=metadata.mime_type,
             width=metadata.frame_size[0],
             height=metadata.frame_size[1],
             num_channels=metadata.num_channels,
         )
-
-        return kwargs
 
     def load_image(self):
         """Loads the image for the sample.
