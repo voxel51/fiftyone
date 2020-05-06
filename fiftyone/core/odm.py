@@ -129,7 +129,7 @@ class ODMSample(ODMDocument):
 
     dataset = StringField()
     filepath = StringField(unique=True)
-    metadata = EmbeddedDocumentField(ODMMetadata)
+    metadata = EmbeddedDocumentField(ODMMetadata, null=True)
     tags = ListField(StringField())
     insights = ListField(EmbeddedDocumentField(ODMInsight))
     labels = ListField(EmbeddedDocumentField(ODMLabel))
@@ -141,4 +141,4 @@ class ODMImageSample(ODMSample):
     instances.
     """
 
-    metadata = EmbeddedDocumentField(ODMImageMetadata)
+    metadata = EmbeddedDocumentField(ODMImageMetadata, null=True)
