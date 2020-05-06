@@ -5,6 +5,7 @@ import { Container, Menu, Ref, Sticky } from "semantic-ui-react";
 import routes from "../constants/routes.json";
 import SampleList from "../components/SampleList";
 import Histogram from "../components/Histogram";
+import FacetBuilder from "../components/FacetBuilder";
 import connect from "../utils/connect";
 
 function Dataset(props) {
@@ -18,6 +19,7 @@ function Dataset(props) {
     <Ref innerRef={stickyRef}>
       <Container fluid={true} style={{ padding: "2rem" }}>
         <Sticky context={stickyRef}>
+          <FacetBuilder />
           <Menu pointing secondary style={{ background: "white" }}>
             {Object.keys(tabs).map((k) => {
               return (

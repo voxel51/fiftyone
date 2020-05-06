@@ -145,6 +145,16 @@ class StateController(Namespace):
             return []
         return view._class_distribution()
 
+    def on_get_facets(self, _):
+        state = fos.StateDescription.from_dict(self.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.default_view()
+        else:
+            return []
+        return view._facets()
+
 
 socketio.on_namespace(StateController("/state"))
 
