@@ -51,6 +51,11 @@ def load_dataset(name):
     return Dataset(name, create_empty=False)
 
 
+#
+# @todo datasets should be registered in the DB even if they are empty
+# Currently they only "appear" in the DB when they have their first sample
+# added
+#
 class Dataset(foc.SampleCollection):
     """A FiftyOne dataset.
 
