@@ -191,7 +191,7 @@ class ImageSample(Sample):
             metadata = etai.ImageMetadata.build_for(filepath)
 
         return cls._create_new(
-            filepath=os.path.abspath(filepath),
+            filepath=os.path.abspath(os.path.expanduser(filepath)),
             tags=tags,
             insights=insights,
             labels=labels,
