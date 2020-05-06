@@ -75,7 +75,6 @@ class DEPRECATEDDatasetView(foc.SampleCollection):
         )["count"]
 
     def __getitem__(self, sample_id):
-        # @todo(Tyler) maybe this should fail if the sample is not in the view?
         return self._dataset[sample_id]
 
     def iter_samples(self):
@@ -171,13 +170,31 @@ class DEPRECATEDDatasetView(foc.SampleCollection):
         order = DESCENDING if reverse else ASCENDING
         return self._add_stage_to_pipeline({"$sort": {field: order}})
 
-    def shuffle(self):
-        """Randomly shuffles the samples in the view.
+    def take(self, size, random=False):
+        """Takes the given number of samples from the view.
+
+        Args:
+            size: the number of samples to return
+            random (False): whether to randomly select the samples
 
         Returns:
             a :class:`DatasetView`
         """
-        raise NotImplementedError("Not yet implemented")
+        if random:
+            return self._add_stage_to_pipeline({"$sample": {"size": size}})
+
+        return self._add_stage_to_pipeline({"$limit": size})
+
+    def offset(self, offset):
+        """Omits the given number of samples from the head of the view.
+
+        Args:
+            offset: the offset
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._add_stage_to_pipeline({"$skip": offset})
 
     def select_samples(self, sample_ids):
         """Selects only the samples with the given IDs from the view.
@@ -201,44 +218,10 @@ class DEPRECATEDDatasetView(foc.SampleCollection):
         """
         raise NotImplementedError("Not yet implemented")
 
-    def take(self, size):
-        """Selects the given number of samples from the head of the view.
-
-        Args:
-            size: the number of samples to return
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self._add_stage_to_pipeline({"$sample": {"size": size}})
-
-    def offset(self, offset):
-        """Omits the given number of samples from the head of the view.
-
-        Args:
-            offset: the offset
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self._add_stage_to_pipeline({"$skip": offset})
-
-    # @todo remove? redundant with `take()`?
-    def limit(self, limit):
-        """Limits the view to the given number of samples.
-
-        Args:
-            limit: the limit
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self._add_stage_to_pipeline({"$limit": limit})
-
     # PRIVATE #################################################################
 
     def _add_stage_to_pipeline(self, stage):
-        new_view = self.__class__(dataset=self._dataset)
+        new_view = self.__class__(self._dataset)
         new_view._pipeline = deepcopy(self._pipeline)
         new_view._pipeline.append(stage)
         return new_view
