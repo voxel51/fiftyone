@@ -21,6 +21,7 @@ from builtins import *
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.odm as foo
 
 
 class SampleCollection(object):
@@ -29,49 +30,86 @@ class SampleCollection(object):
     """
 
     def __bool__(self):
-        raise NotImplementedError("Subclass must implement __bool__()")
+        return len(self) > 0
 
     def __len__(self):
-        raise NotImplementedError("Subclass must implement __len__()")
+        return self._get_query_set().count()
+
+    def __contains__(self, sample_id):
+        samples = self._get_query_set(id=sample_id)
+        return bool(samples)
 
     def __getitem__(self, sample_id):
-        raise NotImplementedError("Subclass must implement __getitem__()")
+        samples = self._get_query_set(id=sample_id)
+        if not samples:
+            raise ValueError("No sample found with ID '%s'" % sample_id)
+
+        return self._sample_class(samples[0])
 
     def get_tags(self):
-        """Returns the list of tags for the samples in the collection.
+        """Returns the list of tags for this SampleCollection.
 
         Returns:
             a list of tags
         """
-        raise NotImplementedError("Subclass must implement get_tags()")
+        return self._get_query_set().distinct("tags")
 
     def get_label_groups(self):
         """Returns the list of label groups attached to at least one sample
-        in the collection.
+        in the SampleCollection.
 
         Returns:
             a list of groups
         """
-        raise NotImplementedError("Subclass must implement get_label_groups()")
+        return self._get_query_set().distinct("labels.group")
 
     def get_insight_groups(self):
         """Returns the list of insight groups attached to at least one sample
-        in the collection.
+        in the SampleCollection.
 
         Returns:
             a list of groups
         """
-        raise NotImplementedError(
-            "Subclass must implement get_insight_groups()"
-        )
+        return self._get_query_set().distinct("insights.group")
 
-    def iter_samples(self):
-        """Returns an iterator over the samples in the collection.
+    def iter_samples(self, offset=None, limit=None):
+        """Returns an iterator over the samples in the SampleCollection.
+
+        Args:
+            offset: the integer offset to start iterating at
+            limit: the maximum number of samples to iterate over
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        raise NotImplementedError("Subclass must implement iter_samples()")
+        query_set = self._get_query_set()
+
+        if offset is not None:
+            query_set = query_set.skip(offset)
+
+        if limit is not None:
+            query_set = query_set.limit(limit)
+
+        for doc in query_set:
+            yield self._sample_class(doc)
+
+    def iter_samples_with_index(self, offset=None, limit=None):
+        """Returns an iterator over the samples in the SampleCollection with
+        integer indices.
+
+        Args:
+            offset: the integer offset to start iterating at
+            limit: the maximum number of samples to iterate over
+
+        Returns:
+            an iterator over tuples of:
+                - integer index relative to the offset
+                        offset <= view_idx < offset + limit
+                - :class:`fiftyone.core.sample.Sample` instances
+        """
+        iterator = self.iter_samples(offset=offset, limit=limit)
+        for idx, sample in enumerate(iterator, start=offset):
+            yield idx, sample
 
     def export(self, group, export_dir):
         """Exports the labeled samples in the collection for the given label
@@ -118,3 +156,14 @@ class SampleCollection(object):
                 "Cannot export labels of type '%s'"
                 % etau.get_class_name(labels[0])
             )
+
+    @property
+    def _sample_class(self):
+        raise NotImplementedError(
+            "Subclass must implement _get_sample_class()"
+        )
+
+    def _get_query_set(self, **kwargs):
+        raise NotImplementedError(
+            "Subclass must implement _get_sample_objects()"
+        )

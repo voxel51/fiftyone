@@ -87,23 +87,6 @@ class Dataset(foc.SampleCollection):
         if not create_empty and not self:
             raise ValueError("Dataset '%s' not found" % name)
 
-    def __bool__(self):
-        return len(self) > 0
-
-    def __len__(self):
-        return self._get_sample_objects().count()
-
-    def __contains__(self, sample_id):
-        samples = self._get_sample_objects(id=sample_id)
-        return bool(samples)
-
-    def __getitem__(self, sample_id):
-        samples = self._get_sample_objects(id=sample_id)
-        if not samples:
-            raise ValueError("No sample found with ID '%s'" % sample_id)
-
-        return self._SAMPLE_CLS(samples[0])
-
     def __delitem__(self, sample_id):
         return self[sample_id]._delete()
 
@@ -111,41 +94,6 @@ class Dataset(foc.SampleCollection):
     def name(self):
         """The name of the dataset."""
         return self._name
-
-    def get_tags(self):
-        """Returns the list of tags for this dataset.
-
-        Returns:
-            a list of tags
-        """
-        return self._get_sample_objects().distinct("tags")
-
-    def get_label_groups(self):
-        """Returns the list of label groups attached to at least one sample
-        in the dataset.
-
-        Returns:
-            a list of groups
-        """
-        return self._get_sample_objects().distinct("labels.group")
-
-    def get_insight_groups(self):
-        """Returns the list of insight groups attached to at least one sample
-        in the dataset.
-
-        Returns:
-            a list of groups
-        """
-        return self._get_sample_objects().distinct("insights.group")
-
-    def iter_samples(self):
-        """Returns an iterator over the samples in the dataset.
-
-        Returns:
-            an iterator over :class:`fiftyone.core.sample.Sample` instances
-        """
-        for doc in self._get_sample_objects():
-            yield self._SAMPLE_CLS(doc)
 
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
@@ -175,7 +123,7 @@ class Dataset(foc.SampleCollection):
             self._validate_sample(sample)
             sample._set_dataset(self)
 
-        sample_docs = self._get_sample_objects().insert(
+        sample_docs = self._get_query_set().insert(
             [s._backing_doc for s in samples]
         )
         return [str(s.id) for s in sample_docs]
@@ -191,7 +139,11 @@ class Dataset(foc.SampleCollection):
         raise NotImplementedError("TODO TYLER: Review this")
         return fov.DatasetView(self)
 
-    def _get_sample_objects(self, **kwargs):
+    @property
+    def _sample_class(self):
+        return self._SAMPLE_CLS
+
+    def _get_query_set(self, **kwargs):
         return foo.ODMSample.objects(dataset=self.name, **kwargs)
 
     def _validate_sample(self, sample):
@@ -211,8 +163,8 @@ class Dataset(foc.SampleCollection):
             label_cls = self._label_types[label.group]
             if not isinstance(label, label_cls):
                 raise ValueError(
-                    "Expected label to be an instance of '%s'; found '%s'" %
-                    (
+                    "Expected label to be an instance of '%s'; found '%s'"
+                    % (
                         etau.get_class_name(label_cls),
                         etau.get_class_name(label),
                     )
