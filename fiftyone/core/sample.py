@@ -146,16 +146,16 @@ class Sample(fod.BackedByDocument):
     #     """
     #     # @todo(Tyler) this needs to write to the DB
     #     self._insights[group] = insight
-    #
-    # def add_label(self, group, label):
-    #     """Adds the given label to the sample.
-    #
-    #     Args:
-    #         label: a :class:`fiftyone.core.label.Label` instance
-    #     """
-    #     # @todo(Tyler) this needs to write to the DB
-    #     self._dataset._validate_label(group, label)
-    #     self._labels[group] = label
+
+    def add_label(self, label):
+        """Adds the given label to the sample.
+
+        Args:
+            label: a :class:`fiftyone.core.labels.Label`
+        """
+        self._dataset._validate_label(label)
+        self.labels.append(label._backing_doc)
+        self._save()
 
     def _set_dataset(self, dataset):
         self._backing_doc.dataset = dataset.name
