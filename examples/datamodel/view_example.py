@@ -62,7 +62,7 @@ print()
 view = fov.DatasetView(dataset=dataset).sort_by("metadata.size_bytes")
 print("Num samples in view: %d" % len(view))
 for sample in view.iter_samples(offset=2, limit=10):
-    print(sample.metadata.size_bytes)
+    print("sample.metadata.size_bytes: %d" % sample.metadata.size_bytes)
 print()
 
 ###############################################################################
@@ -89,5 +89,5 @@ view = (
 )
 
 for sample in view.iter_samples(limit=1):
-    print(sample.metadata.size_bytes)
+    print("sample.metadata.size_bytes: %d" % sample.metadata.size_bytes)
     print()
