@@ -172,7 +172,7 @@ class Dataset(foc.SampleCollection):
             sample._set_dataset(self)
 
         sample_docs = self._get_sample_objects().insert(
-            [s._doc for s in samples]
+            [s._backing_doc for s in samples]
         )
         return [str(s.id) for s in sample_docs]
 
