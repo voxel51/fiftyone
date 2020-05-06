@@ -1,6 +1,9 @@
 """
-Core Module for `fiftyone` Sample class
+Object document mappers for the FiftyOne backend.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -14,18 +17,23 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
+# pylint: disable=wildcard-import,unused-wildcard-import
 from mongoengine import *
+
 
 DEFAULT_DATABASE = "fiftyone"
 
+
 _db = connect(DEFAULT_DATABASE)
 
-class ODMDocument(Document):
-    """Renaming Document"""
-    meta = {"allow_inheritance": True}
 
 def drop_database():
     _db.drop_database(DEFAULT_DATABASE)
+
+
+class ODMDocument(Document):
+    meta = {"allow_inheritance": True}
 
 
 class ODMMetadata(EmbeddedDocument):
