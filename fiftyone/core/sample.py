@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -24,47 +23,40 @@ import os
 from mongoengine.errors import InvalidDocumentError
 
 import eta.core.image as etai
-import eta.core.utils as etau
 
-import fiftyone.core.backed_by_doc as fob
-import fiftyone.core.labels as fol
-import fiftyone.core.insights as foi
+import fiftyone.core.document as fod
 import fiftyone.core.odm as foo
 
 
-class Sample(fob.BackedByDocument):
+class Sample(fod.BackedByDocument):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
     a dataset, including basic metadata about the data, one or more sets of
     labels (ground truth, user-provided, or FiftyOne-generated), and additional
     features associated with subsets of the data and/or label sets.
-
-    Args:
-        filepath: the path to the data on disk
-        tags (None): the set of tags associated with the sample
-        insights (None): a list of :class:`fiftyone.core.insights.Insight`
-            instances associated with the sample
-        labels (None): a list of :class:`fiftyone.core.labels.Label` instances
-            associated with the sample
     """
 
-    _ODM_DOCUMENT_TYPE = foo.ODMSample
+    _ODM_DOCUMENT_CLS = foo.ODMSample
 
-    @staticmethod
-    def get_odm_kwargs(filepath, tags=None, insights=None, labels=None):
-        kwargs = {"filepath": os.path.abspath(os.path.expanduser(filepath))}
+    @classmethod
+    def create_new(cls, filepath, tags=None, insights=None, labels=None):
+        """Creates a new :class:`Sample`.
 
-        if tags:
-            kwargs["tags"] = tags
-
-        if insights:
-            kwargs["insights"] = insights
-
-        if labels:
-            kwargs["labels"] = labels
-
-        return kwargs
+        Args:
+            filepath: the path to the data on disk
+            tags (None): the set of tags associated with the sample
+            insights (None): a list of :class:`fiftyone.core.insights.Insight`
+                instances associated with the sample
+            labels (None): a list of :class:`fiftyone.core.labels.Label`
+                instances associated with the sample
+        """
+        return cls._create_new(
+            filepath=os.path.abspath(filepath),
+            tags=tags,
+            insights=insights,
+            labels=labels,
+        )
 
     @property
     def dataset(self):
@@ -163,36 +155,41 @@ class ImageSample(Sample):
     """An image sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     The data associated with ``ImageSample`` instances are images.
-
-    Args:
-        metadata (None): an ``eta.core.image.ImageMetadata`` instance for the
-            image
-        **kwargs: keyword arguments for :func:`Sample.__init__`
     """
 
-    _ODM_DOCUMENT_TYPE = foo.ODMImageSample
+    _ODM_DOCUMENT_CLS = foo.ODMImageSample
 
-    @staticmethod
-    def get_odm_kwargs(
-        filepath, tags=None, metadata=None, insights=None, labels=None
+    @classmethod
+    def create_new(
+        cls, filepath, tags=None, insights=None, labels=None, metadata=None
     ):
-        kwargs = super(ImageSample).get_odm_kwargs(
-            filepath=filepath, tags=tags, insights=insights, labels=labels
-        )
+        """Creates a new :class:`ImageSample`.
 
-        if not isinstance(metadata, etai.ImageMetadata):
+        Args:
+            filepath: the path to the image on disk
+            tags (None): the set of tags associated with the sample
+            insights (None): a list of :class:`fiftyone.core.insights.Insight`
+                instances associated with the sample
+            labels (None): a list of :class:`fiftyone.core.labels.Label`
+                instances associated with the sample
+            metadata (None): an ``eta.core.image.ImageMetadata`` instance for
+                the image
+        """
+        if metadata is None:
             # WARNING: this reads the image from disk, so will be slow...
-            metadata = etai.ImageMetadata.build_for(kwargs["filepath"])
+            metadata = etai.ImageMetadata.build_for(filepath)
 
-        kwargs["metadata"] = foo.ODMImageMetadata(
+        return cls._create_new(
+            filepath=os.path.abspath(filepath),
+            tags=tags,
+            insights=insights,
+            labels=labels,
             size_bytes=metadata.size_bytes,
             mime_type=metadata.mime_type,
             width=metadata.frame_size[0],
             height=metadata.frame_size[1],
             num_channels=metadata.num_channels,
         )
-
-        return kwargs
 
     def load_image(self):
         """Loads the image for the sample.
