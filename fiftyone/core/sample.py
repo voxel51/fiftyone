@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -51,14 +52,11 @@ class Sample(fod.BackedByDocument):
         Args:
             filepath: the path to the data on disk
             tags (None): the set of tags associated with the sample
-            labels (None): a list of :class:`fiftyone.core.labels.Label`
-                instances associated with the sample
+            labels (None): a dict mapping group names to
+                :class:`fiftyone.core.labels.Label` instances
         """
         if labels is not None:
-            _labels = []
-            for group, ldoc in iteritems(labels):
-                ldoc.group = group
-                _labels.append(ldoc)
+            _labels = {g: l._backing_doc for g, l in iteritems(labels)}
         else:
             _labels = None
 
@@ -96,20 +94,9 @@ class Sample(fod.BackedByDocument):
         """The name of the raw data file on disk."""
         return os.path.basename(self.filepath)
 
-    @property
-    def tags(self):
-        """The set of tags attached to the sample."""
+    def get_tags(self):
+        """Returns the set of tags attached to the sample."""
         return set(self._backing_doc.tags)
-
-    @property
-    def labels(self):
-        """A dict mapping groups to :class:`fiftyone.core.labels.Label`
-        instances attached to the sample.
-        """
-        return {
-            ld.group: fol.Label.from_doc(ld)
-            for ld in self._backing_doc.labels
-        }
 
     def add_tag(self, tag):
         """Adds the given tag to the sample, if it does not already exist.
@@ -142,6 +129,29 @@ class Sample(fod.BackedByDocument):
             # Sample is not yet in the database
             self._backing_doc.tags.remove(tag)
 
+    def get_label(self, group):
+        """Gets the label with the given group for the sample.
+
+        Args:
+            group: the group name
+
+        Returns:
+            a :class:`fiftyone.core.labels.Label` instance
+        """
+        return fol.Label.from_doc(self._backing_doc.labels[group])
+
+    def get_labels(self):
+        """Returns the labels for the sample.
+
+        Returns:
+            a dict mapping group names to :class:`fiftyone.core.labels.Label`
+            instances
+        """
+        return {
+            g: fol.Label.from_doc(ld)
+            for g, ld in iteritems(self._backing_doc.labels)
+        }
+
     def add_label(self, group, label):
         """Adds the given label to the sample.
 
@@ -152,9 +162,7 @@ class Sample(fod.BackedByDocument):
         if self._dataset is not None:
             self._dataset._validate_label(group, label)
 
-        # @todo optimize this?
-        label._backing_doc.group = group
-        self._backing_doc.labels.append(label._backing_doc)
+        self._backing_doc.labels[group] = label._backing_doc
         self._save()
 
     def _set_dataset(self, dataset):
@@ -182,10 +190,7 @@ class ImageSample(Sample):
             metadata (None): an ``eta.core.image.ImageMetadata`` instance
         """
         if labels is not None:
-            _labels = []
-            for group, ldoc in iteritems(labels):
-                ldoc.group = group
-                _labels.append(ldoc)
+            _labels = {g: l._backing_doc for g, l in iteritems(labels)}
         else:
             _labels = None
 

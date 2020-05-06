@@ -36,7 +36,7 @@ sample.add_label("ground_truth", label)
 
 print(sample.filepath)
 print(sample.filename)
-print(sample.labels["ground_truth"].label)
+print(sample.get_label("ground_truth").label)
 
 ###############################################################################
 # Add to Dataset

@@ -131,8 +131,8 @@ class ODMSample(ODMDocument):
     filepath = StringField(unique=True)
     metadata = EmbeddedDocumentField(ODMMetadata, null=True)
     tags = ListField(StringField())
-    insights = ListField(EmbeddedDocumentField(ODMInsight))
-    labels = ListField(EmbeddedDocumentField(ODMLabel))
+    insights = DictField(EmbeddedDocumentField(ODMInsight))
+    labels = DictField(EmbeddedDocumentField(ODMLabel))
     meta = {"allow_inheritance": True, "indexes": ["dataset", "filepath"]}
 
 
