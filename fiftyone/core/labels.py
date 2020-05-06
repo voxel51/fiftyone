@@ -44,7 +44,7 @@ class Label(fod.BackedByDocument):
     @classmethod
     def create(cls):
         """Creates a :class:`Label` instance."""
-        return cls._create_new()
+        return cls._create()
 
     @classmethod
     def from_doc(cls, document):
@@ -114,7 +114,7 @@ class ClassificationLabel(ImageLabel):
         Returns:
             a :class:`ClassificationLabel`
         """
-        return cls._create_new(
+        return cls._create(
             label=label, confidence=confidence, logits=logits,
         )
 
@@ -180,7 +180,7 @@ class DetectionLabels(ImageLabel):
         Returns:
             a :class:`DetectionLabels`
         """
-        return cls._create_new(detections=detections)
+        return cls._create(detections=detections)
 
     def to_image_labels(self):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -238,7 +238,7 @@ class ImageLabels(ImageLabel):
         if isinstance(labels, etai.ImageLabels):
             labels = labels.serialize()
 
-        return cls._create_new(labels=labels)
+        return cls._create(labels=labels)
 
     def to_image_labels(self):
         """Returns an ``eta.core.image.ImageLabels`` representation of this

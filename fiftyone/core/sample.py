@@ -62,7 +62,7 @@ class Sample(fod.BackedByDocument):
         else:
             _labels = None
 
-        return cls._create_new(
+        return cls._create(
             filepath=os.path.abspath(os.path.expanduser(filepath)),
             tags=tags,
             labels=_labels,
@@ -200,7 +200,7 @@ class ImageSample(Sample):
         else:
             _metadata = None
 
-        return cls._create_new(
+        return cls._create(
             filepath=os.path.abspath(os.path.expanduser(filepath)),
             tags=tags,
             labels=_labels,
