@@ -13,9 +13,7 @@ from wheel.bdist_wheel import bdist_wheel
 
 class BdistWheelCustom(bdist_wheel):
     def write_wheelfile(self, wheelfile_base, *args, **kwargs):
-        super(BdistWheelCustom, self).write_wheelfile(
-            wheelfile_base, *args, **kwargs
-        )
+        bdist_wheel.write_wheelfile(self, wheelfile_base, *args, **kwargs)
         # ETA's constants.py looks up ETA's version information dynamically from
         # site-packages/ETA-x.y.z.dist-info, which is not created when we bundle
         # ETA with fiftyone. This is a workaround to make ETA use fiftyone's
