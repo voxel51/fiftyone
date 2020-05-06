@@ -45,7 +45,7 @@ class Sample(fod.BackedByDocument):
         self._dataset = None
 
     @classmethod
-    def create_new(cls, filepath, tags=None, labels=None, insights=None):
+    def create_new(cls, filepath, tags=None, labels=None):
         """Creates a new :class:`Sample`.
 
         Args:
@@ -53,24 +53,19 @@ class Sample(fod.BackedByDocument):
             tags (None): the set of tags associated with the sample
             labels (None): a list of :class:`fiftyone.core.labels.Label`
                 instances associated with the sample
-            insights (None): a list of :class:`fiftyone.core.insights.Insight`
-                instances associated with the sample
         """
         if labels is not None:
-            _labels = [l._backing_doc for l in labels]
+            _labels = []
+            for group, ldoc in iteritems(labels):
+                ldoc.group = group
+                _labels.append(ldoc)
         else:
             _labels = None
-
-        if insights is not None:
-            _insights = [i._backing_doc for i in insights]
-        else:
-            _insights = None
 
         return cls._create_new(
             filepath=os.path.abspath(os.path.expanduser(filepath)),
             tags=tags,
             labels=_labels,
-            insights=_insights,
         )
 
     @classmethod
@@ -107,81 +102,59 @@ class Sample(fod.BackedByDocument):
         return set(self._backing_doc.tags)
 
     @property
-    def insights(self):
-        """A dict mapping groups to :class:`fiftyone.core.insights.Insight`
-        instances attached to the sample.
-        """
-        raise NotImplementedError("Not yet implemented")
-
-    @property
     def labels(self):
         """A dict mapping groups to :class:`fiftyone.core.labels.Label`
         instances attached to the sample.
         """
-        _labels = [fol.Label.from_doc(l) for l in self._backing_doc.labels]
-        return {l.group: l for l in _labels}
+        return {
+            ld.group: fol.Label.from_doc(ld)
+            for ld in self._backing_doc.labels
+        }
 
     def add_tag(self, tag):
-        """Adds the given tag to the sample only if it is not already there.
+        """Adds the given tag to the sample, if it does not already exist.
 
         Args:
             tag: the tag
-
-        Returns:
-            True on success (even if tag is not added)
-
-        Raises:
-            fiftyone.core.odm.DoesNotExist if the sample has been deleted
         """
         try:
             if not self._backing_doc.modify(add_to_set__tags=tag):
-                self._backing_doc.reload()  # this will raise a DoesNotExist error
+                # This will raise an error if the sample does not exist
+                self._backing_doc.reload()
         except InvalidDocumentError:
-            # document not in the database, add tag locally
-            if tag not in self.tags:
-                self._backing_doc.tags.append("train")
+            # Sample is not yet in the database
+            if tag not in self._backing_doc.tags:
+                self._backing_doc.tags.append(tag)
 
         return True
 
     def remove_tag(self, tag):
-        """Adds the given tag to the sample.
+        """Removes the given tag from the sample.
 
         Args:
             tag: the tag
-
-        Returns:
-            True on success (even if tag is not removed)
-
-        Raises:
-            fiftyone.core.odm.DoesNotExist if the sample has been deleted
         """
         try:
             if not self._backing_doc.modify(pull__tags=tag):
-                self._backing_doc.reload()  # this will raise a DoesNotExist error
+                # This will raise an error if the sample does not exist
+                self._backing_doc.reload()
         except InvalidDocumentError:
-            # document not in the database, remove tag locally
-            if tag in self.tags:
-                self.tags.pop(self.tags.index(tag))
+            # Sample is not yet in the database
+            self._backing_doc.tags.remove(tag)
 
-        return True
-
-    # def add_insight(self, group, insight):
-    #     """Adds the given insight to the sample.
-    #
-    #     Args:
-    #         insight: a :class:`fiftyone.core.insights.Insight` instance
-    #     """
-    #     # @todo(Tyler) this needs to write to the DB
-    #     self._insights[group] = insight
-
-    def add_label(self, label):
+    def add_label(self, group, label):
         """Adds the given label to the sample.
 
         Args:
+            group: the group name for the label
             label: a :class:`fiftyone.core.labels.Label`
         """
-        self._dataset._validate_label(label)
-        self.labels.append(label._backing_doc)
+        if self._dataset is not None:
+            self._dataset._validate_label(group, label)
+
+        # @todo optimize this?
+        label._backing_doc.group = group
+        self._backing_doc.labels.append(label._backing_doc)
         self._save()
 
     def _set_dataset(self, dataset):
@@ -199,29 +172,24 @@ class ImageSample(Sample):
 
     @classmethod
     def create_new(
-        cls, filepath, tags=None, labels=None, insights=None, metadata=None
+        cls, filepath, tags=None, labels=None, metadata=None
     ):
         """Creates a new :class:`ImageSample`.
 
         Args:
             filepath: the path to the image on disk
-            tags (None): the set of tags associated with the sample
-            labels (None): a list of :class:`fiftyone.core.labels.Label`
-                instances associated with the sample
-            insights (None): a list of :class:`fiftyone.core.insights.Insight`
-                instances associated with the sample
-            metadata (None): an ``eta.core.image.ImageMetadata`` instance for
-                the image
+            tags (None): a set of tags
+            labels (None): a dict mapping group names to
+                :class:`fiftyone.core.labels.Label` instances
+            metadata (None): an ``eta.core.image.ImageMetadata`` instance
         """
         if labels is not None:
-            _labels = [l._backing_doc for l in labels]
+            _labels = []
+            for group, ldoc in iteritems(labels):
+                ldoc.group = group
+                _labels.append(ldoc)
         else:
             _labels = None
-
-        if insights is not None:
-            _insights = [i._backing_doc for i in insights]
-        else:
-            _insights = None
 
         if metadata is not None:
             _metadata = foo.ODMImageMetadata(
@@ -238,7 +206,6 @@ class ImageSample(Sample):
             filepath=os.path.abspath(os.path.expanduser(filepath)),
             tags=tags,
             labels=_labels,
-            insights=_insights,
             metadata=_metadata,
         )
 
