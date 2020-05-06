@@ -1,17 +1,6 @@
 """
 Core module for serializable database documents.
 
-This is an extension of `eta.core.serial.Serializable` class that provides
-additional functionality centered around `Document` objects, which are
-serializables that can be inserted and read from the MongoDB database.
-
-Important functionality includes:
-- access to the ID which is automatically generated when the Document is
-    inserted in the database
-- access to the dataset (collection) name which is similarly populated when
-    the sample is inserted into a dataset (collection)
-- default reflective serialization when storing to the database
-
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
