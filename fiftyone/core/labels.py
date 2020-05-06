@@ -42,8 +42,8 @@ class Label(fod.BackedByDocument):
     _ODM_DOCUMENT_CLS = foo.ODMLabel
 
     @classmethod
-    def create_new(cls):
-        """Creates a new :class:`Label`."""
+    def create(cls):
+        """Creates a :class:`Label` instance."""
         return cls._create_new()
 
     @classmethod
@@ -103,8 +103,8 @@ class ClassificationLabel(ImageLabel):
         return self._backing_doc.logits
 
     @classmethod
-    def create_new(cls, label, confidence=None, logits=None):
-        """Creates a new :class:`ClassificationLabel`.
+    def create(cls, label, confidence=None, logits=None):
+        """Creates a :class:`ClassificationLabel` instance.
 
         Args:
             label: the label string
@@ -154,8 +154,8 @@ class DetectionLabels(ImageLabel):
         return self._backing_doc.detections
 
     @classmethod
-    def create_new(cls, detections):
-        """Creates a new :class:`DetectionLabels`.
+    def create(cls, detections):
+        """Creates a :class:`DetectionLabels` instance.
 
         Args:
             detections: a list of detection dicts of the following form::
@@ -225,8 +225,8 @@ class ImageLabels(ImageLabel):
         return etai.ImageLabels.from_dict(self._backing_doc.labels)
 
     @classmethod
-    def create_new(cls, labels):
-        """Creates a new :class:`ImageLabels`.
+    def create(cls, labels):
+        """Creates an :class:`ImageLabels` instance.
 
         Args:
             labels: an ``eta.core.image.ImageLabels`` or a serialized dict

@@ -12,6 +12,7 @@
 """
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.labels as fol
 import fiftyone.core.view as fov
 
 dataset = fod.Dataset(name="cifar100")
@@ -82,12 +83,10 @@ print(type(sample.insights))
 print(dataset.get_tags())
 # ["train", "test"]
 
-# @todo(Tyler)
-# dataset.get_label_groups()
+dataset.get_label_groups()
 # ["ground_truth_fine", "ground_truth_coarse", "model_1_pred", "model_2_pred"]
 
-# @todo(Tyler)
-# dataset.get_insight_groups()
+dataset.get_insight_groups()
 # ["file_hash", "model_1_hardness", "model_2_hardness"]
 
 ###############################################################################
@@ -118,3 +117,9 @@ print(dataset.get_tags())
 # @todo(Tyler)
 # browse the images
 # session = fo.launch_dashboard(view=view)
+
+###############################################################################
+# INSERT LABELS
+###############################################################################
+
+sample.labels["ground_truth"] = fol.ClassificationLabel.create(label="cow")

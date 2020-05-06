@@ -24,7 +24,7 @@ if not os.path.exists(img_path):
     img = np.random.randint(0, 255, (32, 32, 3))
     etai.write(img, img_path)
 
-sample = fos.Sample.create_new(img_path, tags=["train", "rand"])
+sample = fos.Sample.create(img_path, tags=["train", "rand"])
 
 sample_id = dataset.add_sample(sample)
 
@@ -45,6 +45,6 @@ print()
 # Synchronization test
 ###############################################################################
 
-labels = fol.ClassificationLabel.create_new(group="ground_truth", label="cow")
+labels = fol.ClassificationLabel.create(group="ground_truth", label="cow")
 
 asdf = 0

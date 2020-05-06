@@ -476,7 +476,7 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
         else:
             label = target
 
-        return fol.ClassificationLabel.create_new(self.group, label)
+        return fol.ClassificationLabel.create(self.group, label)
 
 
 class ImageDetectionSampleParser(LabeledImageSampleParser):
@@ -647,7 +647,7 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
             a :class:`fiftyone.core.labels.ImageLabels` instance
         """
         labels = sample[1]
-        return fol.ImageLabels.create_new(self.group, labels)
+        return fol.ImageLabels.create(self.group, labels)
 
 
 def _to_rel_bounding_box(tlx, tly, w, h, img):
