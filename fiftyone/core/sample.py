@@ -56,7 +56,7 @@ class Sample(fod.BackedByDocument):
                 instances associated with the sample
         """
         return cls._create_new(
-            filepath=os.path.abspath(filepath),
+            filepath=os.path.abspath(os.path.expanduser(filepath)),
             tags=tags,
             insights=insights,
             labels=labels,
