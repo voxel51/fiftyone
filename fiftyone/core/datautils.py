@@ -24,19 +24,153 @@ import os
 
 import numpy as np
 
-import eta.core.data as etad
 import eta.core.datasets as etads
-import eta.core.geometry as etag
 import eta.core.image as etai
-import eta.core.learning as etal
-import eta.core.objects as etao
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.utils as fou
+import fiftyone.core.labels as fol
 
 
 logger = logging.getLogger(__name__)
+
+
+#
+# @todo support storing labels in `target` format with an accompanying
+# `labels_map` file
+#
+def to_image_classification_dataset(
+    samples,
+    sample_parser,
+    dataset_dir,
+    num_samples=None,
+    image_format=fo.config.default_image_ext,
+):
+    """Converts the given samples to an image classification dataset in the
+    following format on disk::
+
+        dataset_dir/
+            images/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+
+            labels.json
+
+    where ``labels.json`` is a JSON file in the following format::
+
+        {
+            <image1>: <label1>,
+            <image2>: <label2>,
+            ...
+        }
+
+    Args:
+        samples: an iterable of samples
+        sample_parser: a :class:`ImageClassificationSampleParser` instance
+            whose :func:`ImageClassificationSampleParser.parse` method will be
+            used to parse the samples
+        dataset_dir: the directory to which to write the dataset
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            it is assumed that this can be computed via ``len(samples)``
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk
+    """
+    if sample_parser is None:
+        sample_parser = ImageClassificationSampleParser(None)
+
+    if num_samples is None:
+        num_samples = len(samples)
+
+    images_dir = os.path.join(dataset_dir, "images")
+    int_patt = etau.get_int_pattern_with_capacity(num_samples)
+    images_patt = os.path.join(images_dir, int_patt + image_format)
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    etau.ensure_dir(images_dir)
+    labels = {}
+    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
+        for idx, sample in enumerate(samples, 1):
+            img, label = sample_parser.parse(sample)
+            etai.write(img, images_patt % idx)
+            labels[idx] = label.label
+            bar.update()
+
+    etas.write_json(labels, labels_path, pretty_print=True)
+    logger.info("Dataset created")
+
+
+def to_image_detection_dataset(
+    samples,
+    sample_parser,
+    dataset_dir,
+    num_samples=None,
+    image_format=fo.config.default_image_ext,
+):
+    """Converts the given samples to an image detection dataset in the
+    following format on disk::
+
+        dataset_dir/
+            images/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+
+            labels.json
+
+    where ``labels.json`` is a JSON file in the following format::
+
+        {
+            <image1>: [
+                {
+                    "label": <label>,
+                    "bounding_box": [
+                        <top-left-x>, <top-left-y>, <width>, <height>
+                    ],
+                    "confidence": <optional-confidence>,
+                },
+                ...
+            ],
+            <image2>: [...],
+            ...
+        }
+
+    Args:
+        samples: an iterable of samples
+        sample_parser: a :class:`ImageDetectionSampleParser` instance
+            whose :func:`ImageDetectionSampleParser.parse` method will be
+            used to parse the samples
+        dataset_dir: the directory to which to write the dataset
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            it is assumed that this can be computed via ``len(samples)``
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk
+    """
+    if sample_parser is None:
+        sample_parser = ImageDetectionSampleParser(None)
+
+    if num_samples is None:
+        num_samples = len(samples)
+
+    images_dir = os.path.join(dataset_dir, "images")
+    int_patt = etau.get_int_pattern_with_capacity(num_samples)
+    images_patt = os.path.join(images_dir, int_patt + image_format)
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    etau.ensure_dir(images_dir)
+    labels = {}
+    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
+        for idx, sample in enumerate(samples, 1):
+            img, label = sample_parser.parse(sample)
+            etai.write(img, images_patt % idx)
+            labels[idx] = label.detections
+            bar.update()
+
+    etas.write_json(labels, labels_path, pretty_print=True)
+    logger.info("Dataset created")
 
 
 def to_labeled_image_dataset(
@@ -49,22 +183,10 @@ def to_labeled_image_dataset(
     """Converts the given samples to ``eta.core.datasets.LabeledImageDataset``
     format.
 
-    FiftyOne provides a number of sample parsers out-of-the-box to ingest
-    samples for common tasks:
-
-        - Image classification: :class:`ImageClassificationSampleParser`
-
-        - Image object detection: :class:`ImageDetectionSampleParser`
-
-        - Multitask image labels: :class:`LabeledImageSampleParser`
-
-    If your samples to do meet one of the above schemas, you can implement your
-    own :class:`LabeledImageSampleParser` subclass.
-
     Args:
         samples: an iterable of samples
-        sample_parser: a :class:`LabeledImageSampleParser` instance whose
-            :func:`LabeledImageSampleParser.parse` method will be used to parse
+        sample_parser: a :class:`ImageLabelsSampleParser` instance whose
+            :func:`ImageLabelsSampleParser.parse` method will be used to parse
             the samples
         dataset_dir: the directory to which to write the
             ``eta.core.datasets.LabeledImageDataset``
@@ -72,33 +194,29 @@ def to_labeled_image_dataset(
             it is assumed that this can be computed via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
-
-    Returns:
-        a ``eta.core.datasets.LabeledImageDataset`` backed by the specified
-        ``dataset_dir``
     """
     if sample_parser is None:
-        sample_parser = LabeledImageSampleParser()
+        sample_parser = LabeledImageSampleParser(None)
 
     if num_samples is None:
         num_samples = len(samples)
 
     int_patt = etau.get_int_pattern_with_capacity(num_samples)
-    data_patt = int_patt + image_format
+    images_patt = int_patt + image_format
     labels_patt = int_patt + ".json"
 
     logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
         for idx, sample in enumerate(samples, 1):
-            img, image_labels = sample_parser.parse(sample)
-            lid.add_data(img, image_labels, data_patt % idx, labels_patt % idx)
+            img, label = sample_parser.parse(sample)
+            lid.add_data(
+                img, label.labels, images_patt % idx, labels_patt % idx
+            )
             bar.update()
 
     lid.write_manifest()
     logger.info("Dataset created")
-
-    return lid
 
 
 def write_labeled_image_dataset(image_paths, labels, dataset_dir):
