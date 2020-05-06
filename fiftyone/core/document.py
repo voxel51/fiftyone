@@ -76,6 +76,12 @@ class BackedByDocument(object):
         return self._doc.id.generation_time if self._in_db else None
 
     @property
+    def _backing_doc(self):
+        """The backing :class:`fiftyone.core.odm.ODMDocument` for the object.
+        """
+        return self._doc
+
+    @property
     def _in_db(self):
         """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
         been inserted into the database.

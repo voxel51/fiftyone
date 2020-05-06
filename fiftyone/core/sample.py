@@ -72,7 +72,7 @@ class Sample(fod.BackedByDocument):
     @property
     def filepath(self):
         """The path to the raw data on disk."""
-        return self._doc.filepath
+        return self._backing_doc.filepath
 
     @property
     def filename(self):
@@ -82,17 +82,17 @@ class Sample(fod.BackedByDocument):
     @property
     def tags(self):
         """The list of tags attached to the sample."""
-        return self._doc.tags
+        return self._backing_doc.tags
 
     @property
     def insights(self):
         """The list of insights attached to the sample."""
-        return self._doc.insights
+        return self._backing_doc.insights
 
     @property
     def labels(self):
         """The list of labels attached to the sample."""
-        return self._doc.labels
+        return self._backing_doc.labels
 
     def add_tag(self, tag):
         """Adds the given tag to the sample only if it is not already there.
@@ -107,12 +107,12 @@ class Sample(fod.BackedByDocument):
             fiftyone.core.odm.DoesNotExist if the sample has been deleted
         """
         try:
-            if not self._doc.modify(add_to_set__tags=tag):
-                self._doc.reload()  # this will raise a DoesNotExist error
+            if not self._backing_doc.modify(add_to_set__tags=tag):
+                self._backing_doc.reload()  # this will raise a DoesNotExist error
         except InvalidDocumentError:
             # document not in the database, add tag locally
             if tag not in self.tags:
-                self._doc.tags.append("train")
+                self._backing_doc.tags.append("train")
 
         return True
 
@@ -129,8 +129,8 @@ class Sample(fod.BackedByDocument):
             fiftyone.core.odm.DoesNotExist if the sample has been deleted
         """
         try:
-            if not self._doc.modify(pull__tags=tag):
-                self._doc.reload()  # this will raise a DoesNotExist error
+            if not self._backing_doc.modify(pull__tags=tag):
+                self._backing_doc.reload()  # this will raise a DoesNotExist error
         except InvalidDocumentError:
             # document not in the database, remove tag locally
             if tag in self.tags:
@@ -158,7 +158,7 @@ class Sample(fod.BackedByDocument):
     #     self._labels[group] = label
 
     def _set_dataset(self, dataset):
-        self._doc.dataset = dataset.name
+        self._backing_doc.dataset = dataset.name
         self._dataset = dataset
 
 
