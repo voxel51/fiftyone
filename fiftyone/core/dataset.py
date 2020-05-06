@@ -171,32 +171,6 @@ class Dataset(foc.SampleCollection):
         )
         return [str(s.id) for s in sample_docs]
 
-    def add_labels(self, group, labels_dict):
-        """Adds the given labels to the dataset.
-
-        Args:
-            labels_dict: a dictionary mapping label group names to
-                :class:`fiftyone.core.labels.Label` instances
-        """
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
-        self._register_label_cls(group, labels_dict)
-
-        for sample_id, label in iteritems(labels_dict):
-            self._validate_label(group, label)
-
-            # @todo(Tyler) this could be done better...
-            sample = self[sample_id]
-            sample.add_label(label)
-
-            # self._c.find_one_and_update(
-            #     {"_id": ObjectId(sample_id)},
-            #     {"$set": {"labels": label.serialize()}}
-            # )
-            self._c.find_one_and_replace(
-                {"_id": ObjectId(sample_id)}, sample.serialize()
-            )
-
     def default_view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
         entire dataset.
@@ -221,21 +195,19 @@ class Dataset(foc.SampleCollection):
                 )
             )
 
-    def _validate_label(self, group, label):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
-        label_cls = self._label_types[group]
-        if not isinstance(label, label_cls):
-            raise ValueError(
-                "Expected label to be an instance of '%s'; found '%s'"
-                % (etau.get_class_name(label_cls), etau.get_class_name(label),)
-            )
-
-    def _register_label_cls(self, group, labels_dict):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
-        if group not in self._label_types:
-            self._label_types[group] = next(itervalues(labels_dict)).__class__
+    def _validate_label(self, label):
+        if labels.group not in self._label_types:
+            self._label_types[labels.group] = labels.__class__
+        else:
+            label_cls = self._label_types[label.group]
+            if not isinstance(label, label_cls):
+                raise ValueError(
+                    "Expected label to be an instance of '%s'; found '%s'" %
+                    (
+                        etau.get_class_name(label_cls),
+                        etau.get_class_name(label),
+                    )
+                )
 
 
 class ImageDataset(Dataset):
