@@ -55,14 +55,13 @@ const Charts = (props) => {
   const socket = getSocket("state");
   const [initialLoad, setInitialLoad] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({});
+  const [data, setData] = useState([]);
 
   const getData = () => {
     socket.emit("get_class_distributions", "", (data) => {
       setInitialLoad(false);
       setLoading(false);
       setData(data);
-      console.log(data);
     });
   };
 
