@@ -25,6 +25,7 @@ from mongoengine.errors import InvalidDocumentError
 import eta.core.image as etai
 
 import fiftyone.core.document as fod
+import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 
 
@@ -44,23 +45,44 @@ class Sample(fod.BackedByDocument):
         self._dataset = None
 
     @classmethod
-    def create_new(cls, filepath, tags=None, insights=None, labels=None):
+    def create_new(cls, filepath, tags=None, labels=None, insights=None):
         """Creates a new :class:`Sample`.
 
         Args:
             filepath: the path to the data on disk
             tags (None): the set of tags associated with the sample
-            insights (None): a list of :class:`fiftyone.core.insights.Insight`
-                instances associated with the sample
             labels (None): a list of :class:`fiftyone.core.labels.Label`
                 instances associated with the sample
+            insights (None): a list of :class:`fiftyone.core.insights.Insight`
+                instances associated with the sample
         """
+        if labels is not None:
+            _labels = [l._backing_doc for l in labels]
+        else:
+            _labels = None
+
+        if insights is not None:
+            _insights = [i._backing_doc for i in insights]
+        else:
+            _insights = None
+
         return cls._create_new(
             filepath=os.path.abspath(os.path.expanduser(filepath)),
             tags=tags,
-            insights=insights,
-            labels=labels,
+            labels=_labels,
+            insights=_insights,
         )
+
+    @classmethod
+    def from_doc(cls, document):
+        """Creates an instance of the :class:`fiftyone.core.sample.Sample`
+        class backed by the given document.
+
+        Args:
+            document: an :class:`fiftyone.core.odm.ODMSample` instance
+        """
+        sample_cls = _SAMPLE_CLS_MAP[document.__class__]
+        return sample_cls(document)
 
     @property
     def dataset_name(self):
@@ -81,18 +103,23 @@ class Sample(fod.BackedByDocument):
 
     @property
     def tags(self):
-        """The list of tags attached to the sample."""
-        return self._backing_doc.tags
+        """The set of tags attached to the sample."""
+        return set(self._backing_doc.tags)
 
     @property
     def insights(self):
-        """The list of insights attached to the sample."""
-        return self._backing_doc.insights
+        """A dict mapping groups to :class:`fiftyone.core.insights.Insight`
+        instances attached to the sample.
+        """
+        raise NotImplementedError("Not yet implemented")
 
     @property
     def labels(self):
-        """The list of labels attached to the sample."""
-        return self._backing_doc.labels
+        """A dict mapping groups to :class:`fiftyone.core.labels.Label`
+        instances attached to the sample.
+        """
+        _labels = [fol.Label.from_doc(l) for l in self._backing_doc.labels]
+        return {l.group: l for l in _labels}
 
     def add_tag(self, tag):
         """Adds the given tag to the sample only if it is not already there.
@@ -172,38 +199,47 @@ class ImageSample(Sample):
 
     @classmethod
     def create_new(
-        cls, filepath, tags=None, insights=None, labels=None, metadata=None
+        cls, filepath, tags=None, labels=None, insights=None, metadata=None
     ):
         """Creates a new :class:`ImageSample`.
 
         Args:
             filepath: the path to the image on disk
             tags (None): the set of tags associated with the sample
-            insights (None): a list of :class:`fiftyone.core.insights.Insight`
-                instances associated with the sample
             labels (None): a list of :class:`fiftyone.core.labels.Label`
+                instances associated with the sample
+            insights (None): a list of :class:`fiftyone.core.insights.Insight`
                 instances associated with the sample
             metadata (None): an ``eta.core.image.ImageMetadata`` instance for
                 the image
         """
-        if metadata is None:
-            # WARNING: this reads the image from disk, so will be slow...
-            metadata = etai.ImageMetadata.build_for(filepath)
+        if labels is not None:
+            _labels = [l._backing_doc for l in labels]
+        else:
+            _labels = None
 
-        odm_metadata = foo.ODMImageMetadata(
-            size_bytes=metadata.size_bytes,
-            mime_type=metadata.mime_type,
-            width=metadata.frame_size[0],
-            height=metadata.frame_size[1],
-            num_channels=metadata.num_channels,
-        )
+        if insights is not None:
+            _insights = [i._backing_doc for i in insights]
+        else:
+            _insights = None
+
+        if metadata is not None:
+            _metadata = foo.ODMImageMetadata(
+                size_bytes=metadata.size_bytes,
+                mime_type=metadata.mime_type,
+                width=metadata.frame_size[0],
+                height=metadata.frame_size[1],
+                num_channels=metadata.num_channels,
+            )
+        else:
+            _metadata = None
 
         return cls._create_new(
             filepath=os.path.abspath(os.path.expanduser(filepath)),
             tags=tags,
-            insights=insights,
-            labels=labels,
-            metadata=odm_metadata
+            labels=_labels,
+            insights=_insights,
+            metadata=_metadata,
         )
 
     def load_image(self):
@@ -213,3 +249,9 @@ class ImageSample(Sample):
             a numpy image
         """
         return etai.read(self.filepath)
+
+
+_SAMPLE_CLS_MAP = {
+    foo.ODMSample: Sample,
+    foo.ODMImageSample: ImageSample,
+}
