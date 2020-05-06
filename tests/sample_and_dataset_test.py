@@ -1,10 +1,5 @@
 """
 
-Samples:
-    read operations are not guaranteed to be in sync
-    write operations will update the object the call is made from or raise an
-        error if the sample was deleted.
-
 """
 
 import os
