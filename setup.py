@@ -6,7 +6,34 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
 from setuptools import setup, find_packages
+from wheel.bdist_wheel import bdist_wheel
+
+
+class BdistWheelCustom(bdist_wheel):
+    def write_wheelfile(self, wheelfile_base, *args, **kwargs):
+        # ETA's constants.py looks up ETA's version information dynamically from
+        # site-packages/ETA-x.y.z.dist-info, which is not created when we bundle
+        # ETA with fiftyone. This is a workaround to make ETA use fiftyone's
+        # version information instead.
+        constants_path = os.path.join(self.bdist_dir, "eta", "constants.py")
+        with open(constants_path, "r") as constants_file:
+            contents = constants_file.read()
+        if 'metadata("ETA")' not in contents:
+            raise ValueError("Could not rewrite %r" % constants_path)
+        contents = contents.replace('metadata("ETA")', 'metadata("fiftyone")')
+        with open(constants_path, "w") as constants_file:
+            constants_file.write(contents)
+        super(BdistWheelCustom, self).write_wheelfile(
+            wheelfile_base, *args, **kwargs
+        )
+
+
+cmdclass = {
+    "bdist_wheel": BdistWheelCustom,
+}
+
 
 with open("requirements/common.txt") as reqs, open(
     "eta/requirements/common.txt"
@@ -22,6 +49,7 @@ setup(
     url="https://github.com/voxel51/fiftyone",
     license="",
     packages=find_packages(),
+    package_dir={"eta": "eta/eta"},
     include_package_data=True,
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
@@ -32,4 +60,5 @@ setup(
     scripts=["fiftyone/fiftyone"],
     python_requires=">=2.7",
     install_requires=requirements,
+    cmdclass=cmdclass,
 )
