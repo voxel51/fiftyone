@@ -135,8 +135,6 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
         return fov.DatasetView(self)
 
     @property
