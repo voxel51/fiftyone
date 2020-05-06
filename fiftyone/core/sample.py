@@ -163,7 +163,9 @@ class Sample(fod.BackedByDocument):
             self._dataset._validate_label(group, label)
 
         self._backing_doc.labels[group] = label._backing_doc
-        self._save()
+
+        if self._dataset is not None:
+            self._save()
 
     def _set_dataset(self, dataset):
         self._backing_doc.dataset = dataset.name
