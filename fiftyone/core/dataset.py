@@ -23,14 +23,10 @@ from bson.objectid import ObjectId
 
 import eta.core.utils as etau
 
+import fiftyone.collections foc
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
-
-
-_DATABASE = "fiftyone"
-_META_COLLECTION = "_meta"
-_DATASET_COLLECTION_TYPE = "DATASET"
 
 
 def list_dataset_names():
@@ -52,10 +48,10 @@ def load_dataset(name):
         a :class:`Dataset`
     """
     # @todo reflectively load the right `Dataset` subclass
-    return Dataset(name=name)
+    return Dataset(name, create_empty=False)
 
 
-class Dataset(object):
+class Dataset(foc.SampleCollection):
     """A FiftyOne dataset.
 
     Datasets represent a homogenous collection of
@@ -77,11 +73,17 @@ class Dataset(object):
     # The `Sample` class that this dataset can contain
     _SAMPLE_CLS = fos.Sample
 
-    def __init__(self, name):
+    def __init__(self, name, create_empty=True):
         self._name = name
 
         # @todo populate this when reading an existing collection from the DB
         self._label_types = {}
+
+        if not create_empty and not self:
+            raise ValueError("Dataset '%s' not found" % name)
+
+    def __bool__(self):
+        return len(self) > 0
 
     def __len__(self):
         return self._get_sample_objects().count()
