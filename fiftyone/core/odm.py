@@ -70,7 +70,9 @@ class ODMClassificationLabel(ODMLabels):
     """
 
     label = StringField()
-    confidence = FloatField()
+    confidence = FloatField(null=True)
+    # @todo convert to a numeric array representation somehow?
+    logits = ListField(FloatField(), null=True)
 
 
 class ODMDetectionLabel(EmbeddedDocument):
@@ -79,8 +81,8 @@ class ODMDetectionLabel(EmbeddedDocument):
     """
 
     label = StringField()
-    confidence = FloatField()
     bounding_box = ListField(FloatField())
+    confidence = FloatField(null=True)
 
 
 class ODMDetectionLabels(ODMLabels):
