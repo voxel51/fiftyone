@@ -133,6 +133,8 @@ class ODMSample(ODMDocument):
     tags = ListField(StringField())
     insights = DictField(EmbeddedDocumentField(ODMInsight))
     labels = DictField(EmbeddedDocumentField(ODMLabel))
+    # @todo(Tyler) replace the unique index on "filepath" with a unique on
+    # "filepath" + "dataset"
     meta = {"allow_inheritance": True, "indexes": ["dataset", "filepath"]}
 
 

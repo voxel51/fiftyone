@@ -10,6 +10,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -113,7 +114,7 @@ class Session(foc.HasClient):
 
     @update_state
     def clear_limit(self):
-        self._limit = self.clear_limit
+        self._limit = self.DEFAULT_LIMIT
 
     @update_state
     def clear_dataset(self):
@@ -129,7 +130,8 @@ class Session(foc.HasClient):
     def _update_state(self):
         self.state = {
             "dataset_name": self.dataset.name if self.dataset else None,
-            "transform_pipeline": self.view._pipeline if self.view else None,
+            "query_kwargs": self.view._query_kwargs if self.view else None,
+            "sort_by_arg": self.view._sort_by_arg if self.view else None,
             "page": {
                 "offset": self.offset,
                 "limit": self.limit,
@@ -138,12 +140,8 @@ class Session(foc.HasClient):
             "samples": self._compute_samples(),
         }
 
-    def _get_dataset_or_view(self):
-        # view takes precedence over dataset if set
-        return self.view if self.view else self.dataset
-
     def _compute_count(self):
-        dataset_or_view = self._get_dataset_or_view()
+        dataset_or_view = self.view if self.view else self.dataset
         if dataset_or_view:
             return len(dataset_or_view)
         return 0
@@ -158,10 +156,10 @@ class Session(foc.HasClient):
             view = fov.DatasetView(dataset=self.dataset)
 
         return {
-            view_idx: sample.serialize()
-            for view_idx, sample in (
-                view.offset(self.offset)
-                .limit(self.limit)
-                .iter_samples_with_view_index()
+            idx: sample._backing_doc_dict()
+            for idx, sample in (
+                view.iter_samples_with_index(
+                    offset=self.offset, limit=self.limit
+                )
             )
         }

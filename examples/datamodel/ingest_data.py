@@ -7,6 +7,7 @@ import os
 import random
 import time
 
+import eta.core.image as etai
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
@@ -51,6 +52,10 @@ for partition in partitions:
 
     samples = []
     for rel_img_path in fine_labels:
+        filepath = os.path.join(data_dir, rel_img_path)
+
+        metadata = etai.ImageMetadata.build_for(filepath)
+
         # this gives a second tag to a random 30% of the data
         tags = [partition] + (["rand"] if random.random() > 0.7 else [])
 
@@ -68,8 +73,9 @@ for partition in partitions:
 
         # create sample
         sample = fos.ImageSample.create(
-            filepath=os.path.join(data_dir, rel_img_path),
+            filepath=filepath,
             tags=tags,
+            metadata=metadata,
             labels=labels,
         )
 
