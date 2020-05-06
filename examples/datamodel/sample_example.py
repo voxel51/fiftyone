@@ -122,4 +122,4 @@ dataset.get_insight_groups()
 # INSERT LABELS
 ###############################################################################
 
-sample.labels["ground_truth"] = fol.ClassificationLabel.create_new(label="cow")
+sample.labels["ground_truth"] = fol.ClassificationLabel.create(label="cow")

@@ -45,7 +45,7 @@ class Sample(fod.BackedByDocument):
         self._dataset = None
 
     @classmethod
-    def create_new(cls, filepath, tags=None, labels=None, insights=None):
+    def create(cls, filepath, tags=None, labels=None, insights=None):
         """Creates a new :class:`Sample`.
 
         Args:
@@ -198,7 +198,7 @@ class ImageSample(Sample):
     _ODM_DOCUMENT_CLS = foo.ODMImageSample
 
     @classmethod
-    def create_new(
+    def create(
         cls, filepath, tags=None, labels=None, insights=None, metadata=None
     ):
         """Creates a new :class:`ImageSample`.

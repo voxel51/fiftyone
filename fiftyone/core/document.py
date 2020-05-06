@@ -90,7 +90,7 @@ class BackedByDocument(object):
         return self._doc.id is not None
 
     @classmethod
-    def create_new(cls, *args, **kwargs):
+    def create(cls, *args, **kwargs):
         """Creates a new :class:`BackedByDocument` instance.
 
         Args:

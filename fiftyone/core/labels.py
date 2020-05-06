@@ -50,7 +50,7 @@ class Label(fod.BackedByDocument):
         return self._backing_doc.group
 
     @classmethod
-    def create_new(cls, group):
+    def create(cls, group):
         """Creates a new :class:`Label`.
 
         Args:
@@ -115,7 +115,7 @@ class ClassificationLabel(ImageLabel):
         return self._backing_doc.logits
 
     @classmethod
-    def create_new(cls, group, label, confidence=None, logits=None):
+    def create(cls, group, label, confidence=None, logits=None):
         """Creates a new :class:`ClassificationLabel`.
 
         Args:
@@ -167,7 +167,7 @@ class DetectionLabels(ImageLabel):
         return self._backing_doc.detections
 
     @classmethod
-    def create_new(cls, group, detections):
+    def create(cls, group, detections):
         """Creates a new :class:`DetectionLabels`.
 
         Args:
@@ -239,7 +239,7 @@ class ImageLabels(ImageLabel):
         return etai.ImageLabels.from_dict(self._backing_doc.labels)
 
     @classmethod
-    def create_new(cls, group, labels):
+    def create(cls, group, labels):
         """Creates a new :class:`ImageLabels`.
 
         Args:

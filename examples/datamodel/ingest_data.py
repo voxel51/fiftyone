@@ -67,7 +67,7 @@ for partition in partitions:
         labels=None
 
         # create sample
-        sample = fos.ImageSample.create_new(
+        sample = fos.ImageSample.create(
             filepath=os.path.join(data_dir, rel_img_path),
             tags=tags,
             labels=labels,
