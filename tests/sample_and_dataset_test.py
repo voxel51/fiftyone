@@ -15,7 +15,7 @@ import fiftyone.core.sample as fos
 
 foo.drop_database()
 
-dataset = fod.Dataset(name="test_dataset")
+dataset = fod.Dataset("test_dataset")
 
 img_path = "/tmp/my_image.jpg"
 
