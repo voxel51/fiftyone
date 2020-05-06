@@ -1,22 +1,16 @@
-"""
-
-"""
-
 import os
 
 import numpy as np
 
 import eta.core.image as etai
 
-import fiftyone.core.dataset as fod
+import fiftyone as fo
 import fiftyone.core.odm as foo
-import fiftyone.core.labels as fol
-import fiftyone.core.sample as fos
 
 
 foo.drop_database()
 
-dataset = fod.Dataset("test_dataset")
+dataset = fo.Dataset("test_dataset")
 
 img_path = "/tmp/my_image.jpg"
 
@@ -29,9 +23,9 @@ if not os.path.exists(img_path):
 # Create a Sample
 ###############################################################################
 
-sample = fos.Sample.create(img_path, tags=["train"])
+sample = fo.Sample.create(img_path, tags=["train"])
 
-label = fol.ClassificationLabel.create("cat")
+label = fo.ClassificationLabel.create("cat")
 sample.add_label("ground_truth", label)
 
 print(sample.filepath)
@@ -49,7 +43,7 @@ sample_id = dataset.add_sample(sample)
 # Explore
 ###############################################################################
 
-print("Datasets: %s" % fod.list_dataset_names())
+print("Datasets: %s" % fo.list_dataset_names())
 print()
 
 print("Num samples: %d" % len(dataset))
