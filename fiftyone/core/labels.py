@@ -80,11 +80,10 @@ class ClassificationLabel(Label):
         return self._backing_doc.logits
 
     @classmethod
-    def create_new(cls, group, label, confidence=None, logits=None):
+    def create_new(cls, label, confidence=None, logits=None):
         """Creates a new :class:`ClassificationLabel`.
 
         Args:
-            group: the group name of the label
             label: the label string
             confidence (None): a confidence in [0, 1] for the label
             logits (None): logits associated with the labels
@@ -93,7 +92,7 @@ class ClassificationLabel(Label):
             a :class:`ClassificationLabel`
         """
         return cls._create_new(
-            group=group, label=label, confidence=confidence, logits=logits,
+            label=label, confidence=confidence, logits=logits,
         )
 
 

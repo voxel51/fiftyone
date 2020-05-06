@@ -52,7 +52,7 @@ class Sample(fod.BackedByDocument):
             tags (None): the set of tags associated with the sample
             insights (None): a list of :class:`fiftyone.core.insights.Insight`
                 instances associated with the sample
-            labels (None): a list of :class:`fiftyone.core.labels.Label`
+            labels (None): a dictionary of :class:`fiftyone.core.labels.Label`
                 instances associated with the sample
         """
         return cls._create_new(
@@ -91,7 +91,7 @@ class Sample(fod.BackedByDocument):
 
     @property
     def labels(self):
-        """The list of labels attached to the sample."""
+        """The dict of labels attached to the sample."""
         return self._backing_doc.labels
 
     def add_tag(self, tag):
@@ -147,14 +147,18 @@ class Sample(fod.BackedByDocument):
     #     # @todo(Tyler) this needs to write to the DB
     #     self._insights[group] = insight
 
-    def add_label(self, label):
-        """Adds the given label to the sample.
+    def add_label(self, group, label):
+        """Adds the given label to the sample associated with group.
 
         Args:
+            group: a string indicating the group to add the label to.
             label: a :class:`fiftyone.core.labels.Label`
         """
-        self._dataset._validate_label(label)
-        self.labels.append(label._backing_doc)
+        # necessary because I may call sample.add_label before adding the
+        # sample to a dataset
+        if self._dataset:
+            self._dataset._validate_label(label)
+        self.labels[group] = label._backing_doc
         self._save()
 
     def _set_dataset(self, dataset):
