@@ -17,6 +17,7 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
 import eta.core.utils as etau
 
 import fiftyone.core.odm as foo
@@ -25,16 +26,22 @@ import fiftyone.core.odm as foo
 class BackedByDocument(object):
     """Base class for objects that are serialized to the database.
 
-    This class adds functionality to ``eta.core.serial.Serializable`` to
-    provide `_id` and `_collection` fields which are populated when a document
-    is added to the database.
+    The constructor of all subclasses must take a single argument as input
+    which is the :class:`fiftyone.core.odm.ODMDocument` describing the
+    serialized content of the instance.
+
+    New instances of this class that have not yet been serialized to the
+    database can be created by
+
+    Args:
+        document: an instance of the :class:`fiftyone.core.odm.ODMDocument`
+            class specified by the class's ``_ODM_DOCUMENT_CLS`` constant
     """
 
-    # MongoEngine Document Type
-    _ODM_DOCUMENT_TYPE = foo.ODMDocument
+    _ODM_DOCUMENT_CLS = foo.ODMDocument
 
     def __init__(self, document):
-        etau.validate_type(document, self._ODM_DOCUMENT_TYPE)
+        etau.validate_type(document, self._ODM_DOCUMENT_CLS)
         self._doc = document
 
     @property
@@ -61,6 +68,7 @@ class BackedByDocument(object):
         """
         if self._is_in_db():
             return str(self._doc.id)
+
         return None
 
     @property
@@ -70,24 +78,48 @@ class BackedByDocument(object):
         """
         if self._is_in_db():
             return self._doc.id.generation_time
+
         return None
 
     @classmethod
     def create_new(cls, *args, **kwargs):
-        """Creates a new instance of `BackedByDocument` that does not already
-        have an existing _ODM_DOCUMENT_TYPE instance.
-        """
-        odm_kwargs = cls.get_odm_kwargs(*args, **kwargs)
-        return cls(document=cls._ODM_DOCUMENT_TYPE(**odm_kwargs))
+        """Creates a new :class:`BackedByDocument` instance.
 
-    @staticmethod
-    def get_odm_kwargs(*args, **kwargs):
-        raise NotImplementedError("Subclass must implement get_kwargs()")
+        Args:
+            *args: subclass-specific positional arguments
+            **kwargs: subclass-specific keyword arguments
+
+        Returns:
+            a :class:`BackedByDocument`
+        """
+        raise NotImplementedError("Subclass must implement create_new()")
+
+    @classmethod
+    def _create_new(cls, **kwargs):
+        """Internal method that creates a :class:`BackedByDocument` instance
+        from keyword arguments for its underlying
+        :class:`fiftyone.core.odm.ODMDocument`.
+
+        Args:
+            **kwargs: keyword arguments for
+                ``cls._ODM_DOCUMENT_CLS.__init__(**kwargs)``
+
+        Returns:
+            a :class:`BackedByDocument`
+        """
+        return cls(cls._ODM_DOCUMENT_CLS(**kwargs))
 
     def _save(self):
+        """Saves the underlying :class:`fiftyone.core.odm.ODMDocument` to the
+        database.
+        """
         self._doc.save()
 
     def _is_in_db(self):
-        """Returns True if the ODMDocument has been inserted into the database
+        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
+        been inserted into the database.
+
+        Returns:
+            True/False
         """
         return self._doc.id is not None
