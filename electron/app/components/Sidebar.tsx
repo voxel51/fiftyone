@@ -1,9 +1,12 @@
 import PropTypes from "prop-types";
 import React, { Component } from "react";
-import { Grid, Image, Menu, Sidebar } from "semantic-ui-react";
+import { Grid, Image, Menu, Sidebar, Statistic } from "semantic-ui-react";
 
-export default (props) => {
-  const hasDataset = Boolean(props.update.state && props.update.state.dataset);
+import connect from "../utils/connect";
+
+const _Sidebar = (props) => {
+  const { state } = props;
+  const hasDataset = Boolean(state && state.dataset);
   return (
     <Sidebar
       as={Menu}
@@ -15,18 +18,32 @@ export default (props) => {
     >
       <Menu.Item as="h2">FiftyOne</Menu.Item>
       <Menu.Item as="h3">
-        {hasDataset
-          ? `Dataset: ${props.update.state.dataset.name}`
-          : "No dataset loaded"}
+        {hasDataset ? `Dataset: ${state.dataset.name}` : "No dataset loaded"}
+        {hasDataset ? (
+          <Menu inverted vertical>
+            <Menu.Item as="span">
+              Type &middot; <code>image</code>
+            </Menu.Item>
+            <Menu.Item as="span">
+              Samples &middot; <code>{state.count}</code>
+            </Menu.Item>
+            <Menu.Item as="span">
+              Selected &middot; <code>{state.selected.length}</code>
+            </Menu.Item>
+            <Menu.Item as="span">
+              Shape &middot; <code>({state.count},)</code>
+            </Menu.Item>
+          </Menu>
+        ) : null}
       </Menu.Item>
       {hasDataset ? (
         <>
           <Menu.Item as="h4">
-            Page Info:
+            Page
             <Menu inverted vertical>
-              {props.update.state && props.update.state.page
-                ? Object.keys(props.update.state.page).map((k) => {
-                    const v = props.update.state.page[k];
+              {state && state.page
+                ? Object.keys(state.page).map((k) => {
+                    const v = state.page[k];
                     return (
                       <Menu.Item as="span">
                         {k}: {v}
@@ -37,23 +54,21 @@ export default (props) => {
             </Menu>
           </Menu.Item>
           <Menu.Item as="h4">
-            View Info:
+            View
             <Menu inverted vertical>
               <Menu.Item as="span">
-                {props.update.state && props.update.state.view_tag
-                  ? props.update.state.view_tag
-                  : "No view"}
+                {state && state.view_tag ? state.view_tag : "No view"}
               </Menu.Item>
             </Menu>
           </Menu.Item>
           <Menu.Item as="h4">
-            Query Info:
+            Query
             <Menu inverted vertical>
-              {props.update.state && props.update.state.query ? (
-                Object.keys(props.update.state.query).map((k) => {
+              {state && state.query ? (
+                Object.keys(state.query).map((k) => {
                   return (
                     <Menu.Item as="span">
-                      {String(Object.keys(props.update.state.query[k])[0])}
+                      {String(Object.keys(state.query[k])[0])}
                     </Menu.Item>
                   );
                 })
@@ -62,8 +77,26 @@ export default (props) => {
               )}
             </Menu>
           </Menu.Item>
+          <Menu.Item as="h4">
+            Classes
+            <Menu inverted vertical>
+              {state && state.query ? (
+                Object.keys(state.query).map((k) => {
+                  return (
+                    <Menu.Item as="span">
+                      {String(Object.keys(state.query[k])[0])}
+                    </Menu.Item>
+                  );
+                })
+              ) : (
+                <Menu.Item as="span">No classes</Menu.Item>
+              )}
+            </Menu>
+          </Menu.Item>
         </>
       ) : null}
     </Sidebar>
   );
 };
+
+export default connect(_Sidebar);

@@ -9,18 +9,18 @@ import {
 } from "semantic-ui-react";
 import Gallery from "react-grid-gallery";
 import InfiniteScroll from "react-infinite-scroller";
-import { uuid } from "uuidv4";
-import { connect } from "react-redux";
-import { updateState } from "../actions/update";
-import Histogram from "./Histogram";
-import { getSocket, useSubscribe } from "../utils/socket";
+import { Dimmer, Image, Loader } from "semantic-ui-react";
 
-const mapStateToProps = (state = {}) => {
-  return { ...state };
+import { updateState } from "../actions/update";
+import { getSocket, useSubscribe } from "../utils/socket";
+import connect from "../utils/connect";
+
+const GalleryImage = (props) => {
+  return <img {...props.imageProps} />;
 };
 
-const _GalleryWrapper = (props) => {
-  const { images, dispatch, update } = props;
+const GalleryWrapper = connect((props) => {
+  const { images, dispatch, state } = props;
   const socket = getSocket("state");
   return (
     <div style={{ overflowY: "auto" }}>
@@ -33,17 +33,17 @@ const _GalleryWrapper = (props) => {
             dispatch(updateState(data));
           });
         }}
+        thumbnailImageComponent={GalleryImage}
+        tagStyle={{ display: "none" }}
         {...props}
       />
     </div>
   );
-};
-const GalleryWrapper = connect(mapStateToProps)(_GalleryWrapper);
+});
 
-export default function Overview(props) {
-  const state = props.state;
+function SampleList(props) {
+  const { state } = props;
   const hasDataset = Boolean(state && state.dataset);
-  const [tab, setTab] = useState("overview");
   const socket = getSocket("state");
   const [scrollState, setScrollState] = useState({
     initialLoad: true,
@@ -64,7 +64,7 @@ export default function Overview(props) {
             thumbnail: src,
             thumbnailWidth: samples[k].metadata.frame_size[0],
             thumbnailHeight: samples[k].metadata.frame_size[1],
-            tags: [{ value: "cifar", title: "title" }],
+            tags: [{ value: null, title: "title" }],
             sample: sample,
           };
         })
@@ -107,17 +107,20 @@ export default function Overview(props) {
   }
   const content = <GalleryWrapper images={scrollState.images} />;
   return (
-    <Segment>
+    <>
       <InfiniteScroll
         pageStart={1}
         initialLoad={true}
         loadMore={() => loadMore()}
         hasMore={scrollState.hasMore}
-        loader={"loading"}
+        loader={<Loader />}
         useWindow={true}
       >
         {content}
       </InfiniteScroll>
-    </Segment>
+      {scrollState.hasMore ? <Loader /> : "End of list"}
+    </>
   );
 }
+
+export default connect(SampleList);

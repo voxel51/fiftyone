@@ -36,7 +36,7 @@ def load_state(func):
     """Load state descorator.
 
     Args:
-        func: the Session method to decorate
+        func: the StateController method to decorate
 
     Returns:
         the wrapped function
@@ -134,6 +134,26 @@ class StateController(Namespace):
         view = view.offset((page - 1) * page_length).limit(page_length)
         res = [s.serialize() for s in view.iter_samples()]
         return res
+
+    def on_get_class_distributions(self, _):
+        state = fos.StateDescription.from_dict(self.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.default_view()
+        else:
+            return []
+        return view._class_distribution()
+
+    def on_get_facets(self, _):
+        state = fos.StateDescription.from_dict(self.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.default_view()
+        else:
+            return []
+        return view._facets()
 
 
 socketio.on_namespace(StateController("/state"))

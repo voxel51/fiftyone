@@ -205,6 +205,75 @@ class DatasetView(SampleCollection):
         """
         return self._create_new_view(stage={"$sample": {"size": size}})
 
+    def _class_distribution(self):
+        pipeline = self._pipeline + [
+            {"$project": {"label": {"$objectToArray": "$labels"}}},
+            {"$unwind": "$label"},
+            {"$project": {"label": "$label.k", "class": "$label.v.label"}},
+            {
+                "$group": {
+                    "_id": {"label": "$label", "class": "$class"},
+                    "count": {"$sum": 1},
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id.label",
+                    "classes": {
+                        "$push": {"class": "$_id.class", "count": "$count"}
+                    },
+                }
+            },
+        ]
+        return [group for group in self.dataset._c.aggregate(pipeline)]
+
+    def _facets(self):
+        pipeline = self._pipeline + [
+            {
+                "$facet": {
+                    "tags": [
+                        {"$project": {"tag": "$tags"}},
+                        {
+                            "$unwind": {
+                                "path": "$tag",
+                                "preserveNullAndEmptyArrays": True,
+                            }
+                        },
+                        {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
+                        {"$sort": {"_id": 1}},
+                    ],
+                    "labels": [
+                        {"$project": {"label": {"$objectToArray": "$labels"}}},
+                        {"$unwind": "$label"},
+                        {
+                            "$project": {
+                                "label": "$label.k",
+                                "class": "$label.v.label",
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": {"label": "$label", "class": "$class"},
+                                "count": {"$sum": 1},
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": "$_id.label",
+                                "classes": {
+                                    "$push": {
+                                        "class": "$_id.class",
+                                        "count": "$count",
+                                    }
+                                },
+                            }
+                        },
+                    ],
+                }
+            }
+        ]
+        return self.dataset._c.aggregate(pipeline)
+
     # PRIVATE #################################################################
 
     def _create_new_view(self, stage=None):
