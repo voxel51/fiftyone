@@ -8,8 +8,10 @@ Installs FiftyOne.
 """
 from setuptools import setup, find_packages
 
-with open("requirements/common.txt") as f:
-    requirements = f.readlines()
+with open("requirements/common.txt") as reqs, open(
+    "eta/requirements/common.txt"
+) as eta_reqs:
+    requirements = eta_reqs.readlines() + reqs.readlines()
 
 setup(
     name="fiftyone",
