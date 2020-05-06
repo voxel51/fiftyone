@@ -135,6 +135,16 @@ class StateController(Namespace):
         res = [s.serialize() for s in view.iter_samples()]
         return res
 
+    def on_get_class_distributions(self, _):
+        state = fos.StateDescription.from_dict(self.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.default_view()
+        else:
+            return []
+        return view._class_distribution()
+
 
 socketio.on_namespace(StateController("/state"))
 

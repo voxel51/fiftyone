@@ -1,3 +1,5 @@
 {
-  "OVERVIEW": "/"
+  "DATASET": "/",
+  "LIST": "/list",
+  "CHARTS": "/charts"
 }

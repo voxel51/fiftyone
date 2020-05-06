@@ -12,7 +12,6 @@ import InfiniteScroll from "react-infinite-scroller";
 import { Dimmer, Image, Loader } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
-import Histogram from "./Histogram";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
@@ -20,7 +19,7 @@ const GalleryImage = (props) => {
   return <img {...props.imageProps} />;
 };
 
-const _GalleryWrapper = (props) => {
+const GalleryWrapper = connect((props) => {
   const { images, dispatch, state } = props;
   const socket = getSocket("state");
   return (
@@ -40,14 +39,11 @@ const _GalleryWrapper = (props) => {
       />
     </div>
   );
-};
-const GalleryWrapper = connect(_GalleryWrapper);
+});
 
-function Overview(props) {
+function SampleList(props) {
   const { state } = props;
-  console.log("asgsfagas", state);
   const hasDataset = Boolean(state && state.dataset);
-  const [tab, setTab] = useState("overview");
   const socket = getSocket("state");
   const [scrollState, setScrollState] = useState({
     initialLoad: true,
@@ -111,7 +107,7 @@ function Overview(props) {
   }
   const content = <GalleryWrapper images={scrollState.images} />;
   return (
-    <Segment>
+    <>
       <InfiniteScroll
         pageStart={1}
         initialLoad={true}
@@ -123,8 +119,8 @@ function Overview(props) {
         {content}
       </InfiniteScroll>
       {scrollState.hasMore ? <Loader /> : "End of list"}
-    </Segment>
+    </>
   );
 }
 
-export default connect(Overview);
+export default connect(SampleList);

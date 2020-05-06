@@ -205,6 +205,28 @@ class DatasetView(SampleCollection):
         """
         return self._create_new_view(stage={"$sample": {"size": size}})
 
+    def _class_distribution(self, label=None):
+        pipeline = self._pipeline + [
+            {"$project": {"label": {"$objectToArray": "$labels"}}},
+            {"$unwind": "$label"},
+            {"$project": {"label": "$label.k", "class": "$label.v.label"}},
+            {
+                "$group": {
+                    "_id": {"label": "$label", "class": "$class"},
+                    "count": {"$sum": 1},
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id.label",
+                    "classes": {
+                        "$push": {"class": "$_id.class", "count": "$count"}
+                    },
+                }
+            },
+        ]
+        return [group for group in self.dataset._c.aggregate(pipeline)]
+
     # PRIVATE #################################################################
 
     def _create_new_view(self, stage=None):

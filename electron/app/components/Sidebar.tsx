@@ -19,6 +19,14 @@ const _Sidebar = (props) => {
       <Menu.Item as="h2">FiftyOne</Menu.Item>
       <Menu.Item as="h3">
         {hasDataset ? `Dataset: ${state.dataset.name}` : "No dataset loaded"}
+        {hasDataset ? (
+          <Menu inverted vertical>
+            <Menu.Item as="span">{state.count} images</Menu.Item>
+            <Menu.Item as="span">
+              {state.selected.length} selected images
+            </Menu.Item>
+          </Menu>
+        ) : null}
       </Menu.Item>
       {hasDataset ? (
         <>
