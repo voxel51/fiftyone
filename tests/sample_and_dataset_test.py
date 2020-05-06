@@ -10,6 +10,7 @@ import eta.core.image as etai
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+import fiftyone.core.labels as fol
 import fiftyone.core.sample as fos
 
 
@@ -28,10 +29,15 @@ if not os.path.exists(img_path):
 # Create a Sample
 ###############################################################################
 
-sample = fos.Sample.create_new(img_path, tags=["train", "rand"])
+label = fol.ClassificationLabel.create_new("ground_truth", "cat")
+
+sample = fos.Sample.create_new(
+    img_path, tags=["train", "rand"], labels=[label]
+)
 
 print(sample.filepath)
 print(sample.filename)
+print(sample.labels["ground_truth"].label)
 
 ###############################################################################
 # Add to Dataset

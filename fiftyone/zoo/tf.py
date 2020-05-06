@@ -63,7 +63,7 @@ class MNISTDataset(foz.ZooDataset):
 
     def _download_and_prepare(self, dataset_dir, split):
         get_class_labels_fcn = lambda info: info.features["label"].names
-        sample_parser = _TFDSImageClassificationSampleParser()
+        sample_parser = _TFDSImageClassificationSampleParser("ground_truth")
         return _download_and_prepare(
             self,
             split,
@@ -101,7 +101,7 @@ class CIFAR10Dataset(foz.ZooDataset):
 
     def _download_and_prepare(self, dataset_dir, split):
         get_class_labels_fcn = lambda info: info.features["label"].names
-        sample_parser = _TFDSImageClassificationSampleParser()
+        sample_parser = _TFDSImageClassificationSampleParser("ground_truth")
         return _download_and_prepare(
             self,
             split,
@@ -162,7 +162,7 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
     def _download_and_prepare(self, dataset_dir, split):
         get_class_labels_fcn = lambda info: info.features["label"].names
-        sample_parser = _TFDSImageClassificationSampleParser()
+        sample_parser = _TFDSImageClassificationSampleParser("ground_truth")
         return _download_and_prepare(
             self,
             split,
@@ -212,7 +212,7 @@ class COCO2014Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser("ground_truth")
         return _download_and_prepare(
             self,
             split,
@@ -260,7 +260,7 @@ class COCO2017Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser("ground_truth")
         return _download_and_prepare(
             self,
             split,
@@ -305,7 +305,9 @@ class KITTIDataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "type"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser(label_field="type")
+        sample_parser = _TFDSImageDetectionSampleParser(
+            "ground_truth", label_field="type"
+        )
         return _download_and_prepare(
             self,
             split,
@@ -353,7 +355,7 @@ class VOC2007Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser("ground_truth")
         return _download_and_prepare(
             self,
             split,
@@ -401,7 +403,7 @@ class VOC2012Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser("ground_truth")
         return _download_and_prepare(
             self,
             split,
@@ -433,10 +435,15 @@ foz.AVAILABLE_DATASETS.update(
 class _TFDSImageClassificationSampleParser(
     fodu.ImageClassificationSampleParser
 ):
-    def __init__(self, image_field="image", label_field="label", **kwargs):
+
+    def __init__(
+        self, group, image_field="image", label_field="label", **kwargs
+    ):
+        super(_TFDSImageClassificationSampleParser, self).__init__(
+            group, **kwargs
+        )
         self.image_field = image_field
         self.label_field = label_field
-        super(_TFDSImageClassificationSampleParser, self).__init__(**kwargs)
 
     def parse_image(self, sample):
         img = sample[self.image_field]
@@ -452,10 +459,13 @@ class _TFDSImageClassificationSampleParser(
 
 
 class _TFDSImageDetectionSampleParser(fodu.ImageDetectionSampleParser):
-    def __init__(self, image_field="image", objects_field="objects", **kwargs):
+
+    def __init__(
+        self, group, image_field="image", objects_field="objects", **kwargs
+    ):
+        super(_TFDSImageDetectionSampleParser, self).__init__(group, **kwargs)
         self.image_field = image_field
         self.objects_field = objects_field
-        super(_TFDSImageDetectionSampleParser, self).__init__(**kwargs)
 
     def parse_image(self, sample):
         img = sample[self.image_field]
@@ -464,12 +474,12 @@ class _TFDSImageDetectionSampleParser(fodu.ImageDetectionSampleParser):
     def parse_label(self, sample):
         target = sample[self.objects_field]
 
-        if self.normalized:
-            img = None
-        else:
-            # Absolute bbox coordinates were provided, so we must have the
-            # image to convert to relative coordinates
+        if not self.normalized:
+            # Absolute bounding box coordinates were provided, so we must have
+            # the image to convert to relative coordinates
             img = self._parse_image(sample[self.image_field])
+        else:
+            img = None
 
         return self._parse_label(target, img=img)
 
@@ -477,11 +487,11 @@ class _TFDSImageDetectionSampleParser(fodu.ImageDetectionSampleParser):
         img = sample[self.image_field]
         img = self._parse_image(img)
         target = sample[self.objects_field]
-        image_labels = self._parse_label(target, img=img)
-        return img, image_labels
+        label = self._parse_label(target, img=img)
+        return img, label
 
     def _parse_label(self, target, img=None):
-        # Convert target from a dict of lists to a list of dicts
+        # Convert from dict-of-lists to list-of-dicts
         target = [
             {self.bounding_box_field: bbox, self.label_field: label}
             for bbox, label in zip(
@@ -530,8 +540,21 @@ def _download_and_prepare(
     sample_parser.labels_map = labels_map
     num_samples = info.splits[split].num_examples
 
-    # Consturct the LabeledDataset in `dataset_dir`
-    labeled_dataset = fodu.to_labeled_image_dataset(
+    # @todo convert `format` to a proper type system
+    if isinstance(sample_parser, fodu.ImageClassificationSampleParser):
+        write_dataset_fcn = fodu.to_image_classification_dataset
+        format = "fiftyone.types.ImageClassificationDataset"
+    elif isinstance(sample_parser, fodu.ImageDetectionSampleParser):
+        write_dataset_fcn = fodu.to_image_detection_dataset
+        format = "fiftyone.types.ImageDetectionDataset"
+    elif isinstance(sample_parser, fodu.ImageLabelsSampleParser):
+        write_dataset_fcn = fodu.to_labeled_image_dataset
+        format = "fiftyone.types.LabeledImageDataset"
+    else:
+        raise ValueError("Unsupported sample parser: %s" % sample_parser)
+
+    # Write the formatted dataset to `dataset_dir`
+    write_dataset_fcn(
         dataset.as_numpy_iterator(),
         sample_parser,
         dataset_dir,
@@ -543,7 +566,7 @@ def _download_and_prepare(
         type(zoo_dataset),
         split,
         num_samples,
-        type(labeled_dataset),
+        format,
         labels_map=labels_map,
     )
 

@@ -57,14 +57,24 @@ class ODMImageMetadata(ODMMetadata):
     num_channels = IntField()
 
 
-class ODMLabels(EmbeddedDocument):
-    """Base class for documents that back sample labels."""
+class ODMLabel(EmbeddedDocument):
+    """Base class for documents that back :class:`fiftyone.core.labels.Label`
+    instances.
+    """
 
     group = StringField()
     meta = {"allow_inheritance": True}
 
 
-class ODMClassificationLabel(ODMLabels):
+class ODMImageLabel(ODMLabel):
+    """Base class for documents that back
+    :class:`fiftyone.core.labels.ImageLabel` instances.
+    """
+
+    meta = {"allow_inheritance": True}
+
+
+class ODMClassificationLabel(ODMImageLabel):
     """Backing document for :class:`fiftyone.core.labels.ClassificationLabel`
     instances.
     """
@@ -85,7 +95,7 @@ class ODMDetectionLabel(EmbeddedDocument):
     confidence = FloatField(null=True)
 
 
-class ODMDetectionLabels(ODMLabels):
+class ODMDetectionLabels(ODMImageLabel):
     """Backing document for :class:`fiftyone.core.labels.DetectionLabels`
     instances.
     """
@@ -93,7 +103,7 @@ class ODMDetectionLabels(ODMLabels):
     detections = ListField(EmbeddedDocumentField(ODMDetectionLabel))
 
 
-class ODMImageLabels(ODMLabels):
+class ODMImageLabels(ODMImageLabel):
     """Backing document for :class:`fiftyone.core.labels.ImageLabels`
     instances.
     """
@@ -119,10 +129,10 @@ class ODMSample(ODMDocument):
 
     dataset = StringField()
     filepath = StringField(unique=True)
-    metadata = EmbeddedDocumentField(ODMMetadata)
+    metadata = EmbeddedDocumentField(ODMMetadata, null=True)
     tags = ListField(StringField())
     insights = ListField(EmbeddedDocumentField(ODMInsight))
-    labels = ListField(EmbeddedDocumentField(ODMLabels))
+    labels = ListField(EmbeddedDocumentField(ODMLabel))
     meta = {"allow_inheritance": True, "indexes": ["dataset", "filepath"]}
 
 
@@ -131,4 +141,4 @@ class ODMImageSample(ODMSample):
     instances.
     """
 
-    metadata = EmbeddedDocumentField(ODMImageMetadata)
+    metadata = EmbeddedDocumentField(ODMImageMetadata, null=True)
