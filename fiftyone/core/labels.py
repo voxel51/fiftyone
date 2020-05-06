@@ -58,6 +58,17 @@ class Label(fod.BackedByDocument):
         """
         return cls._create_new(group=group)
 
+    @classmethod
+    def from_doc(cls, document):
+        """Creates an instance of the :class:`fiftyone.core.label.Label` class
+        backed by the given document.
+
+        Args:
+            document: an :class:`fiftyone.core.odm.ODMLabel` instance
+        """
+        label_cls = _LABEL_CLS_MAP[document.__class__]
+        return label_cls(document)
+
 
 class ImageLabel(Label):
     """A label for an :class:`fiftyone.core.sample.ImageSample` in a
@@ -148,6 +159,8 @@ class DetectionLabels(ImageLabel):
     convenient way to build labels of this type for your existing datasets.
     """
 
+    _ODM_DOCUMENT_CLS = foo.ODMDetectionLabel
+
     @property
     def detections(self):
         """The object detections."""
@@ -218,6 +231,8 @@ class ImageLabels(ImageLabel):
     convenient way to build labels of this type for your existing datasets.
     """
 
+    _ODM_DOCUMENT_CLS = foo.ODMImageLabel
+
     @property
     def labels(self):
         """The ``eta.core.image.ImageLabels``."""
@@ -248,3 +263,11 @@ class ImageLabels(ImageLabel):
             an ``eta.core.image.ImageLabels`` instance
         """
         return self.labels.copy()
+
+
+_LABEL_CLS_MAP = {
+    foo.ODMLabel: Label,
+    foo.ODMClassificationLabel: ClassificationLabel,
+    foo.ODMDetectionLabel: DetectionLabels,
+    foo.ODMImageLabel: ImageLabels,
+}
