@@ -135,7 +135,7 @@ class DatasetView(foc.SampleCollection):
         raise NotImplementedError("Not yet implemented")
 
     def remove_samples(self, sample_ids):
-        """Removes the samples with the given IDS from the view.
+        """Removes the samples with the given IDs from the view.
 
         Args:
             sample_ids: an iterable of sample IDs
