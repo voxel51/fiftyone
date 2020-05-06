@@ -1,3 +1,12 @@
+"""
+
+Samples:
+    read operations are not guaranteed to be in sync
+    write operations will update the object the call is made from or raise an
+        error if the sample was deleted.
+
+"""
+
 import os
 
 import numpy as np
@@ -53,5 +62,15 @@ print("Insight Groups: %s" % dataset.get_insight_groups())
 print()
 
 asdf = 0
+
+###############################################################################
+# Synchronization test
+###############################################################################
+
+print(sample.id)
+s2 = dataset[sample.id]
+print(s2.id)
+
+sample.add_tag("new_tag")
 
 # os.remove(img_path)

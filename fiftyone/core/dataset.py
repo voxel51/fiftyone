@@ -92,10 +92,10 @@ class Dataset(object):
 
     def __getitem__(self, sample_id):
         samples = self._objects(id=sample_id)
-        return samples[0] if samples else None
+        return self._SAMPLE_CLS(document=samples[0]) if samples else None
 
     def __delitem__(self, sample_id):
-        return self[sample_id].delete()
+        return self[sample_id]._doc.delete()
 
     def get_tags(self):
         """Returns the set of tags for this dataset.
@@ -129,6 +129,7 @@ class Dataset(object):
         etau.validate_type(sample, self._SAMPLE_CLS)
         sample._set_dataset(self)
         sample._save()
+        return sample.id
 
     def add_samples(self, samples):
         """Adds the given samples to the dataset.

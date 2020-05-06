@@ -21,6 +21,8 @@ from future.utils import iteritems
 
 import os
 
+from mongoengine.errors import InvalidDocumentError
+
 import eta.core.image as etai
 import eta.core.utils as etau
 
@@ -88,55 +90,48 @@ class Sample(fob.BackedByDocument):
     def labels(self):
         return self._doc.labels
 
-    # def add_tag(self, tag):
-    #     """Adds the given tag to the sample.
-    #
-    #     Args:
-    #         tag: the tag
-    #
-    #     Returns:
-    #         True/False whether the tag was added
-    #     """
-    #     # @todo(Tyler) this first check assumes that the Sample is in sync with
-    #     # the DB
-    #     if tag in self._tags:
-    #         return False
-    #
-    #     self._tags.add(tag)
-    #
-    #     if self._dataset is None:
-    #         return True
-    #
-    #     return fod.update_one(
-    #         collection=self._dataset._c,
-    #         document=self,
-    #         update={"$push": {"tags": tag}},
-    #     )
+    def add_tag(self, tag):
+        """Adds the given tag to the sample only if it is not already there.
 
-    # def remove_tag(self, tag):
-    #     """Adds the given tag to the sample.
-    #
-    #     Args:
-    #         tag: the tag
-    #
-    #     Returns:
-    #         True/False whether the tag was removed
-    #     """
-    #     # @todo(Tyler) this first check assumes that the Sample is in sync with
-    #     # the DB
-    #     if tag not in self.tags:
-    #         return False
-    #
-    #     self._tags.remove(tag)
-    #
-    #     if self._dataset is None:
-    #         return True
-    #
-    #     return fod.update_one(
-    #         collection=self._dataset._c,
-    #         document=self,
-    #         update={"$pull": {"tags": tag}},
-    #     )
+        Args:
+            tag: the tag
+
+        Returns:
+            True on success (even if tag is not added)
+
+        Raises:
+            fiftyone.core.odm.DoesNotExist if the sample has been deleted
+        """
+        try:
+            if not self._doc.modify(add_to_set__tags=tag):
+                self._doc.reload()  # this will raise a DoesNotExist error
+        except InvalidDocumentError:
+            # document not in the database, add tag locally
+            if tag not in self.tags:
+                self._doc.tags.append("train")
+            pass
+        return True
+
+    def remove_tag(self, tag):
+        """Adds the given tag to the sample.
+
+        Args:
+            tag: the tag
+
+        Returns:
+            True on success (even if tag is not removed)
+
+        Raises:
+            fiftyone.core.odm.DoesNotExist if the sample has been deleted
+        """
+        try:
+            if not self._doc.modify(pull__tags=tag):
+                self._doc.reload()  # this will raise a DoesNotExist error
+        except InvalidDocumentError:
+            # document not in the database, remove tag locally
+            if tag in self.tags:
+                self.tags.pop(self.tags.index(tag))
+        return True
 
     # def add_insight(self, group, insight):
     #     """Adds the given insight to the sample.
