@@ -163,9 +163,11 @@ class DetectionLabels(ImageLabel):
 
                 [
                     {
-                        "label": label,
-                        "bounding_box": [top-left-x, top-right-y, width, height],
-                        "confidence": confidence,
+                        "label": <label>,
+                        "bounding_box": [
+                            <top-left-x>, <top-right-y>, <width>, <height>
+                        ],
+                        "confidence": <optional-confidence>,
                         ...
                     },
                     ...
