@@ -74,47 +74,22 @@ class DatasetView(foc.SampleCollection):
         self._sort_by_arg = field
         return self
 
-    def shuffle(self):
-        """Randomly shuffles the samples in the view.
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        raise NotImplementedError("Not yet implemented")
-
-    def select_samples(self, sample_ids):
-        """Selects only the samples with the given IDs from the view.
-
-        Args:
-            sample_ids: an iterable of sample IDs
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        raise NotImplementedError("Not yet implemented")
-
-    def remove_samples(self, sample_ids):
-        """Removes the samples with the given IDS from the view.
-
-        Args:
-            sample_ids: an iterable of sample IDs
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        raise NotImplementedError("Not yet implemented")
-
-    def take(self, size):
-        """Selects the given number of samples from the head of the view.
+    def take(self, size, random=False):
+        """Takes the given number of samples from the view.
 
         Args:
             size: the number of samples to return
+            random (False): whether to randomly select the samples
 
         Returns:
             a :class:`DatasetView`
         """
-        raise NotImplementedError("Not yet implemented")
-        # filter={"$sample": {"size": size}}
+        if random:
+            stage = {"$sample": {"size": size}}
+
+        stage = {"$limit": size}
+
+        raise NotImplementedError("TODO")
 
     def filter(
         self, tag=None, insight_group=None, labels_group=None, filter=None
@@ -147,6 +122,28 @@ class DatasetView(foc.SampleCollection):
             self._query_kwargs["__raw__"] = filter
 
         return self
+
+    def select_samples(self, sample_ids):
+        """Selects only the samples with the given IDs from the view.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        raise NotImplementedError("Not yet implemented")
+
+    def remove_samples(self, sample_ids):
+        """Removes the samples with the given IDS from the view.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        raise NotImplementedError("Not yet implemented")
 
     @property
     def _sample_class(self):
