@@ -29,11 +29,10 @@ if not os.path.exists(img_path):
 # Create a Sample
 ###############################################################################
 
-label = fol.ClassificationLabel.create("ground_truth", "cat")
+sample = fos.Sample.create(img_path, tags=["train"])
 
-sample = fos.Sample.create(
-    img_path, tags=["train", "rand"], labels=[label]
-)
+label = fol.ClassificationLabel.create("cat")
+sample.add_label("ground_truth", label)
 
 print(sample.filepath)
 print(sample.filename)

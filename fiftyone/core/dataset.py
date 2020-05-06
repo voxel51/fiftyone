@@ -154,11 +154,11 @@ class Dataset(foc.SampleCollection):
                 )
             )
 
-    def _validate_label(self, label):
-        if labels.group not in self._label_types:
-            self._label_types[labels.group] = labels.__class__
+    def _validate_label(self, group, label):
+        if group not in self._label_types:
+            self._label_types[group] = label.__class__
         else:
-            label_cls = self._label_types[label.group]
+            label_cls = self._label_types[group]
             if not isinstance(label, label_cls):
                 raise ValueError(
                     "Expected label to be an instance of '%s'; found '%s'"

@@ -91,7 +91,7 @@ class BackedByDocument(object):
 
     @classmethod
     def create(cls, *args, **kwargs):
-        """Creates a new :class:`BackedByDocument` instance.
+        """Creates a :class:`BackedByDocument` instance.
 
         Args:
             *args: subclass-specific positional arguments
@@ -100,10 +100,10 @@ class BackedByDocument(object):
         Returns:
             a :class:`BackedByDocument`
         """
-        raise NotImplementedError("Subclass must implement create_new()")
+        raise NotImplementedError("Subclass must implement create()")
 
     @classmethod
-    def _create_new(cls, **kwargs):
+    def _create(cls, **kwargs):
         """Internal method that creates a :class:`BackedByDocument` instance
         from keyword arguments for its underlying
         :class:`fiftyone.core.odm.ODMDocument`.

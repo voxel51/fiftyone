@@ -37,26 +37,14 @@ class Label(fod.BackedByDocument):
     detection (:class:`DetectionLabels`), or they may represent higher-level
     constructs such as a collection of labels for a particular sample
     (:class:`ImageLabels`).
-
-    Args:
-        group: the group name of the label
     """
 
     _ODM_DOCUMENT_CLS = foo.ODMLabel
 
-    @property
-    def group(self):
-        """The group name of the label."""
-        return self._backing_doc.group
-
     @classmethod
-    def create(cls, group):
-        """Creates a new :class:`Label`.
-
-        Args:
-            group: the group name of the label
-        """
-        return cls._create_new(group=group)
+    def create(cls):
+        """Creates a :class:`Label` instance."""
+        return cls._create()
 
     @classmethod
     def from_doc(cls, document):
@@ -115,11 +103,10 @@ class ClassificationLabel(ImageLabel):
         return self._backing_doc.logits
 
     @classmethod
-    def create(cls, group, label, confidence=None, logits=None):
-        """Creates a new :class:`ClassificationLabel`.
+    def create(cls, label, confidence=None, logits=None):
+        """Creates a :class:`ClassificationLabel` instance.
 
         Args:
-            group: the group name of the label
             label: the label string
             confidence (None): a confidence in ``[0, 1]`` for the label
             logits (None): logits associated with the labels
@@ -127,8 +114,8 @@ class ClassificationLabel(ImageLabel):
         Returns:
             a :class:`ClassificationLabel`
         """
-        return cls._create_new(
-            group=group, label=label, confidence=confidence, logits=logits,
+        return cls._create(
+            label=label, confidence=confidence, logits=logits,
         )
 
     def to_image_labels(self, attr_name="label"):
@@ -167,11 +154,10 @@ class DetectionLabels(ImageLabel):
         return self._backing_doc.detections
 
     @classmethod
-    def create(cls, group, detections):
-        """Creates a new :class:`DetectionLabels`.
+    def create(cls, detections):
+        """Creates a :class:`DetectionLabels` instance.
 
         Args:
-            group: the group name of the label
             detections: a list of detection dicts of the following form::
 
                 [
@@ -194,7 +180,7 @@ class DetectionLabels(ImageLabel):
         Returns:
             a :class:`DetectionLabels`
         """
-        return cls._create_new(group=group, detections=detections)
+        return cls._create(detections=detections)
 
     def to_image_labels(self):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -239,11 +225,10 @@ class ImageLabels(ImageLabel):
         return etai.ImageLabels.from_dict(self._backing_doc.labels)
 
     @classmethod
-    def create(cls, group, labels):
-        """Creates a new :class:`ImageLabels`.
+    def create(cls, labels):
+        """Creates an :class:`ImageLabels` instance.
 
         Args:
-            group: the group name of the label
             labels: an ``eta.core.image.ImageLabels`` or a serialized dict
                 representation of one
 
@@ -253,7 +238,7 @@ class ImageLabels(ImageLabel):
         if isinstance(labels, etai.ImageLabels):
             labels = labels.serialize()
 
-        return cls._create_new(group=group, labels=labels)
+        return cls._create(labels=labels)
 
     def to_image_labels(self):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
