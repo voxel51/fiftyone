@@ -134,7 +134,7 @@ class Dataset(object):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for doc in self._get_sample_objects():
-            yield self._SAMPLE_CLS(document=doc)
+            yield self._SAMPLE_CLS(doc)
 
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
