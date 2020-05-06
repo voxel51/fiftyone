@@ -19,12 +19,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import eta.core.image as etai
-import eta.core.serial as etas
-import eta.core.utils as etau
+
+import fiftyone.core.document as fod
+import fiftyone.core.odm as foo
 
 
-class Label(etas.Serializable):
-    """A sample label in a :class:`fiftyone.core.dataset.Dataset`.
+class Label(fod.BackedByDocument):
+    """A label for a sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Label instances represent an atomic group of labels associated with a
     sample in a dataset. Label instances may represent concrete tasks such as
@@ -37,137 +38,127 @@ class Label(etas.Serializable):
         group: the group name of the label
     """
 
-    def __init__(self, group):
-        self._group = group
-
-    @property
-    def type(self):
-        """The fully-qualified class name of the label."""
-        return etau.get_class_name(self)
+    _ODM_DOCUMENT_CLS = foo.ODMLabels
 
     @property
     def group(self):
         """The group name of the label."""
-        return self._group
-
-    def attributes(self):
-        """Returns the list of class attributes to be serialized.
-
-        Returns:
-            a list of class attributes
-        """
-        return ["type", "group"]
+        return self._backing_doc.group
 
     @classmethod
-    def from_dict(cls, d):
-        """Constructs a `class`:Label` from a JSON dictionary.
+    def create_new(cls, group):
+        """Creates a new :class:`Label`.
 
         Args:
-            d: a JSON dictionary
-
-        Returns:
-            a `class`:Label`
+            group: the group name of the label
         """
-        label_cls = etau.get_class(d["type"])
-        return label_cls._from_dict(d, group=d["group"])
-
-    @classmethod
-    def _from_dict(cls, d, **kwargs):
-        """Internal implementation of :func:`Label.from_dict`.
-
-        Subclasses should implement this method, not :func:`Label.from_dict`.
-
-        Args:
-            d: a JSON dictionary
-            **kwargs: keyword arguments for :class:`Label` that have already
-                been parsed by :func:`Label.from_dict`
-
-        Returns:
-            a `class`:Label`
-        """
-        raise NotImplementedError("Subclass must implement _from_dict()")
+        return cls._create_new(group=group)
 
 
 class ClassificationLabel(Label):
-    """A classification label for an image sample in a dataset.
-
-    Args:
-        label: the label string
-        confidence: an optional confidence in [0, 1] associated with the label
-        **kwargs: keyword arguments for :class:`Label`
+    """A classification label for an image sample in a
+    :class:`fiftyone.core.dataset.Dataset`.
     """
 
-    def __init__(self, label, confidence=None, **kwargs):
-        super(ClassificationLabel, self).__init__(**kwargs)
-        self.label = label
-        self.confidence = confidence
+    @property
+    def label(self):
+        """The label string."""
+        return self._backing_doc.label
 
-    def attributes(self):
-        """Returns the list of class attributes to be serialized.
+    @property
+    def confidence(self):
+        """The classification confidence, or ``None`` if it does not exist."""
+        return self._backing_doc.confidence
 
-        Returns:
-            a list of class attributes
+    @property
+    def logits(self):
+        """The logits associated with the prediction, or ``None`` if they do
+        not exist.
         """
-        _attrs = super(ClassificationLabel, self).attributes()
-        _attrs.append("label")
-        if self.confidence is not None:
-            _attrs.append("confidence")
-
-        return _attrs
+        return self._backing_doc.logits
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
-        confidence = d.get("confidence", None)
-        return cls(d["label"], confidence=confidence, **kwargs)
+    def create_new(cls, group, label, confidence=None, logits=None):
+        """Creates a new :class:`ClassificationLabel`.
+
+        Args:
+            group: the group name of the label
+            label: the label string
+            confidence (None): a confidence in [0, 1] for the label
+            logits (None): logits associated with the labels
+
+        Returns:
+            a :class:`ClassificationLabel`
+        """
+        return cls._create_new(
+            group=group,
+            label=label,
+            confidence=confidence,
+            logits=logits,
+        )
 
 
 class DetectionLabels(Label):
-    """A set of object detection labels for an image sample in a dataset.
+    """A set of object detections for an image sample in a
+    :class:`fiftyone.core.dataset.Dataset`.
 
     Args:
         detections: a list of detection dicts
         **kwargs: keyword arguments for :class:`Label`
     """
 
-    def __init__(self, detections, **kwargs):
-        super(DetectionLabels, self).__init__(**kwargs)
-        self.detections = detections
-
-    def attributes(self):
-        """Returns the list of class attributes to be serialized.
-
-        Returns:
-            a list of class attributes
-        """
-        return super(DetectionLabels, self).attributes() + ["detections"]
+    @property
+    def detections(self):
+        """The object detections."""
+        return self._backing_doc.detections
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
-        detections = d.get("detections", [])
-        return cls(detections, **kwargs)
+    def create_new(cls, group, detections):
+        """Creates a new :class:`DetectionLabels`.
+
+        Args:
+            group: the group name of the label
+            detections: a list of detection dicts of the following form::
+
+                [
+                    {
+                        "label": label,
+                        "bounding_box": [top-left-x, top-right-y, width, height],
+                        "confidence": confidence,
+                        ...
+                    },
+                    ...
+                ]
+
+        Returns:
+            a :class:`DetectionLabels`
+        """
+        return cls._create_new(group=group, detections=detections)
 
 
 class ImageLabels(Label):
-    """A high-level collection of labels for an image sample in a dataset.
-
-    Args:
-        labels: an ``eta.core.image.ImageLabels`` instance
-        **kwargs: keyword arguments for :class:`Label`
+    """A high-level collection of labels for an image sample in a
+    :class:`fiftyone.core.dataset.Dataset`.
     """
 
-    def __init__(self, labels, **kwargs):
-        super(ImageLabels, self).__init__(**kwargs)
-        self.labels = labels
-
-    def attributes(self):
-        """Returns the list of class attributes to be serialized.
-
-        Returns:
-            a list of class attributes
-        """
-        return super(ImageLabels, self).attributes() + ["labels"]
+    @property
+    def labels(self):
+        """The ``eta.core.image.ImageLabels``."""
+        return etai.ImageLabels.from_dict(self._backing_doc.labels)
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
-        labels = etai.ImageLabels.from_dict(d["labels"])
-        return cls(labels, **kwargs)
+    def create_new(cls, group, labels):
+        """Creates a new :class:`DetectionLabels`.
+
+        Args:
+            group: the group name of the label
+            labels: an ``eta.core.image.ImageLabels`` or a serialized dict
+                representation of one
+
+        Returns:
+            a :class:`DetectionLabels`
+        """
+        if isinstance(labels, etai.ImageLabels):
+            labels = labels.serialize()
+
+        return cls._create_new(group=group, labels=labels)
