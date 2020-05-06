@@ -63,7 +63,7 @@ class Sample(fod.BackedByDocument):
         )
 
     @property
-    def dataset(self):
+    def dataset_name(self):
         """The name of the dataset to which this sample belongs, or ``None`` if
         it has not been added to a dataset.
         """
