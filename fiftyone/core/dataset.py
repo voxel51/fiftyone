@@ -83,33 +83,49 @@ class Dataset(object):
         # @todo populate this when reading an existing collection from the DB
         self._label_types = {}
 
-    @property
-    def name(self):
-        return self._name
-
     def __len__(self):
-        return self._objects().count()
+        return self._get_sample_objects().count()
 
     def __getitem__(self, sample_id):
-        samples = self._objects(id=sample_id)
-        return self._SAMPLE_CLS(document=samples[0]) if samples else None
+        samples = self._get_sample_objects(id=sample_id)
+        if not samples:
+            raise ValueError("No sample found with ID '%s'" % sample_id)
+
+        return self._SAMPLE_CLS(samples[0])
 
     def __delitem__(self, sample_id):
-        return self[sample_id]._doc.delete()
+        return self[sample_id]._delete()
+
+    @property
+    def name(self):
+        """The name of the dataset."""
+        return self._name
 
     def get_tags(self):
-        """Returns the set of tags for this dataset.
+        """Returns the list of tags for this dataset.
 
         Returns:
-            a set of tags
+            a list of tags
         """
-        return self._objects().distinct("tags")
-
-    def get_insight_groups(self):
-        return self._objects().distinct("insights.group")
+        return self._get_sample_objects().distinct("tags")
 
     def get_label_groups(self):
-        return self._objects().distinct("labels.group")
+        """Returns the list of label groups attached to at least one sample
+        in the dataset.
+
+        Returns:
+            a list of groups
+        """
+        return self._get_sample_objects().distinct("labels.group")
+
+    def get_insight_groups(self):
+        """Returns the list of insight groups attached to at least one sample
+        in the dataset.
+
+        Returns:
+            a list of groups
+        """
+        return self._get_sample_objects().distinct("insights.group")
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -117,7 +133,7 @@ class Dataset(object):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for doc in foo.ODMSample.objects(dataset=self.name):
+        for doc in self._get_sample_objects():
             yield self._SAMPLE_CLS(document=doc)
 
     def add_sample(self, sample):
@@ -125,8 +141,11 @@ class Dataset(object):
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
+
+        Returns:
+            the ID of the sample
         """
-        etau.validate_type(sample, self._SAMPLE_CLS)
+        self._validate_sample(sample)
         sample._set_dataset(self)
         sample._save()
         return sample.id
@@ -135,16 +154,20 @@ class Dataset(object):
         """Adds the given samples to the dataset.
 
         Args:
-            sample: an iterable of :class:`fiftyone.core.sample.Sample`
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
                 instances
+
+        Returns:
+            a list of sample IDs
         """
         for sample in samples:
-            etau.validate_type(sample, self._SAMPLE_CLS)
+            self._validate_sample(sample)
             sample._set_dataset(self)
-        self._objects().insert(samples)
 
-    def _objects(self, **kwargs):
-        return foo.ODMSample.objects(dataset=self.name, **kwargs)
+        sample_docs = self._get_sample_objects().insert(
+            [s._doc for s in samples]
+        )
+        return [str(s.id) for s in sample_docs]
 
     def add_labels(self, group, labels_dict):
         """Adds the given labels to the dataset.
@@ -183,9 +206,10 @@ class Dataset(object):
         raise NotImplementedError("TODO TYLER: Review this")
         return fov.DatasetView(self)
 
+    def _get_sample_objects(self, **kwargs):
+        return foo.ODMSample.objects(dataset=self.name, **kwargs)
+
     def _validate_sample(self, sample):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO TYLER: Review this")
         if not isinstance(sample, self._SAMPLE_CLS):
             raise ValueError(
                 "Expected sample to be an instance of '%s'; found '%s'"
