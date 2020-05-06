@@ -483,9 +483,9 @@ class _TFDSImageDetectionSampleParser(fodu.ImageDetectionSampleParser):
     def _parse_label(self, target, img=None):
         # Convert target from a dict of lists to a list of dicts
         target = [
-            {self.bbox_field: bbox, self.label_field: label}
+            {self.bounding_box_field: bbox, self.label_field: label}
             for bbox, label in zip(
-                target[self.bbox_field], target[self.label_field]
+                target[self.bounding_box_field], target[self.label_field]
             )
         ]
 
