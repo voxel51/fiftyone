@@ -11,7 +11,7 @@ import fiftyone.core.view as fov
 logger = logging.getLogger(__name__)
 
 
-dataset = fod.Dataset(name="cifar100")
+dataset = fod.ImageDataset(name="cifar100")
 
 ###############################################################################
 # Action 0: Create an "empty" view
@@ -59,15 +59,10 @@ print()
 # object with the additional transform appended to the view pipeline.
 ###############################################################################
 
-view = (
-    fov.DatasetView(dataset=dataset)
-    .sort("metadata.size_bytes")
-    .offset(5)
-    .limit(2)
-)
+view = fov.DatasetView(dataset=dataset).sort_by("metadata.size_bytes")
 print("Num samples in view: %d" % len(view))
-for sample in view.iter_samples():
-    print(sample)
+for sample in view.iter_samples(offset=2, limit=10):
+    print(sample.metadata.size_bytes)
 print()
 
 ###############################################################################
@@ -90,11 +85,9 @@ view = (
             "metadata.size_bytes": {"$gt": 1000},
         }
     )
-    .sort("metadata.size_bytes")
-    .offset(0)
-    .limit(1)
+    .sort_by("metadata.size_bytes")
 )
 
-for sample in view.iter_samples():
-    print(sample)
+for sample in view.iter_samples(limit=1):
+    print(sample.metadata.size_bytes)
     print()

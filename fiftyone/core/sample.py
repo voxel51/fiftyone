@@ -242,6 +242,12 @@ class ImageSample(Sample):
             metadata=_metadata,
         )
 
+    @property
+    def metadata(self):
+        """The image metadata."""
+        # @todo(Tyler) this should NOT return the ODMDocument
+        return self._backing_doc.metadata
+
     def load_image(self):
         """Loads the image for the sample.
 
