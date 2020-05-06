@@ -62,7 +62,6 @@ class ODMLabel(EmbeddedDocument):
     instances.
     """
 
-    group = StringField()
     meta = {"allow_inheritance": True}
 
 
@@ -71,7 +70,7 @@ class ODMImageLabel(ODMLabel):
     :class:`fiftyone.core.labels.ImageLabel` instances.
     """
 
-    meta = {"allow_inheritance": True}
+    pass
 
 
 class ODMClassificationLabel(ODMImageLabel):
@@ -114,7 +113,6 @@ class ODMImageLabels(ODMImageLabel):
 class ODMInsight(EmbeddedDocument):
     """Base class for documents that back sample insights."""
 
-    group = StringField()
     meta = {"allow_inheritance": True}
 
 
