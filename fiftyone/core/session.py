@@ -113,7 +113,7 @@ class Session(foc.HasClient):
 
     @update_state
     def clear_limit(self):
-        self._limit = self.clear_limit
+        self._limit = self.DEFAULT_LIMIT
 
     @update_state
     def clear_dataset(self):
@@ -138,12 +138,8 @@ class Session(foc.HasClient):
             "samples": self._compute_samples(),
         }
 
-    def _get_dataset_or_view(self):
-        # view takes precedence over dataset if set
-        return self.view if self.view else self.dataset
-
     def _compute_count(self):
-        dataset_or_view = self._get_dataset_or_view()
+        dataset_or_view = self.view if self.view else self.dataset
         if dataset_or_view:
             return len(dataset_or_view)
         return 0
@@ -158,10 +154,10 @@ class Session(foc.HasClient):
             view = fov.DatasetView(dataset=self.dataset)
 
         return {
-            view_idx: sample.serialize()
-            for view_idx, sample in (
-                view.offset(self.offset)
-                .limit(self.limit)
-                .iter_samples_with_view_index()
+            idx: sample.serialize()
+            for idx, sample in (
+                view.iter_samples_with_index(
+                    offset=self.offset, limit=self.limit
+                )
             )
         }
