@@ -13,6 +13,9 @@ from wheel.bdist_wheel import bdist_wheel
 
 class BdistWheelCustom(bdist_wheel):
     def write_wheelfile(self, wheelfile_base, *args, **kwargs):
+        super(BdistWheelCustom, self).write_wheelfile(
+            wheelfile_base, *args, **kwargs
+        )
         # ETA's constants.py looks up ETA's version information dynamically from
         # site-packages/ETA-x.y.z.dist-info, which is not created when we bundle
         # ETA with fiftyone. This is a workaround to make ETA use fiftyone's
@@ -25,9 +28,6 @@ class BdistWheelCustom(bdist_wheel):
         contents = contents.replace('metadata("ETA")', 'metadata("fiftyone")')
         with open(constants_path, "w") as constants_file:
             constants_file.write(contents)
-        super(BdistWheelCustom, self).write_wheelfile(
-            wheelfile_base, *args, **kwargs
-        )
 
 
 cmdclass = {
@@ -48,7 +48,7 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages(),
+    packages=find_packages() + ["eta"],
     package_dir={"eta": "eta/eta"},
     include_package_data=True,
     classifiers=[
