@@ -91,7 +91,7 @@ class BackedByDocument(object):
 
     @classmethod
     def create(cls, *args, **kwargs):
-        """Creates a new :class:`BackedByDocument` instance.
+        """Creates a :class:`BackedByDocument` instance.
 
         Args:
             *args: subclass-specific positional arguments
