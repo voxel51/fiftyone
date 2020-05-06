@@ -1,51 +1,60 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, PureComponent } from "react";
 import { Bar, BarChart, LabelList, XAxis, YAxis } from "recharts";
-import { Loader } from "semantic-ui-react";
+import { Header, Loader, Segment } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
-const Histogram = connect(({ data }) => {
-  const barHeight = 30;
+class CustomizedAxisTick extends PureComponent {
+  render() {
+    const { x, y, stroke, payload } = this.props;
+
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text
+          x={0}
+          y={0}
+          dy={16}
+          textAnchor="end"
+          fill="#666"
+          transform="rotate(-80)"
+        >
+          {payload.value}
+        </text>
+      </g>
+    );
+  }
+}
+
+const Histogram = connect(({ data, name }) => {
+  const barWidth = 30;
   const [rightMargin, setRightMargin] = useState(0);
   const container = useRef(null);
 
-  useEffect(() => {
-    if (container.current && container.current.container) {
-      const nodes = container.current.container.querySelectorAll(
-        "text.recharts-label"
-      );
-      if (nodes.length) {
-        const rects = Array.from(nodes).map((node) =>
-          node.getBoundingClientRect()
-        );
-        const rightmost = rects.sort((n1, n2) => n2.right - n1.right)[0];
-        setRightMargin(rightmost.width);
-      }
-    }
-  }, [container.current, data]);
-
   return (
-    <BarChart
-      ref={container}
-      width={350}
-      height={data.length * barHeight}
-      data={data}
-      layout="vertical"
-      margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
-    >
-      <XAxis type="number" hide />
-      <YAxis
-        type="category"
-        dataKey="class"
-        axisLine={false}
-        tickLine={false}
-      />
-      <Bar dataKey="count" fill="#8884d8" barSize={barHeight}>
-        <LabelList dataKey="count" position="right" />
-      </Bar>
-    </BarChart>
+    <Segment style={{ overflowY: "auto" }}>
+      <Header as="h3">{name}</Header>
+      <BarChart
+        ref={container}
+        height={500}
+        width={data.length * (barWidth + 20)}
+        barCategoryGap={"20px"}
+        data={data}
+        margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
+      >
+        <XAxis
+          dataKey="class"
+          type="category"
+          interval={0}
+          height={150}
+          axisLine={false}
+          tick={<CustomizedAxisTick />}
+        />
+        <YAxis dataKey="count" axisLine={false} />
+        <Bar dataKey="count" fill="rgb(255, 109, 4)" barSize={barWidth} />
+      </BarChart>
+    </Segment>
   );
 });
 
