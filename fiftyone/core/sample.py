@@ -190,16 +190,20 @@ class ImageSample(Sample):
             # WARNING: this reads the image from disk, so will be slow...
             metadata = etai.ImageMetadata.build_for(filepath)
 
-        return cls._create_new(
-            filepath=os.path.abspath(os.path.expanduser(filepath)),
-            tags=tags,
-            insights=insights,
-            labels=labels,
+        odm_metadata = foo.ODMImageMetadata(
             size_bytes=metadata.size_bytes,
             mime_type=metadata.mime_type,
             width=metadata.frame_size[0],
             height=metadata.frame_size[1],
             num_channels=metadata.num_channels,
+        )
+
+        return cls._create_new(
+            filepath=os.path.abspath(os.path.expanduser(filepath)),
+            tags=tags,
+            insights=insights,
+            labels=labels,
+            metadata=odm_metadata
         )
 
     def load_image(self):

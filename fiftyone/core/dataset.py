@@ -93,6 +93,10 @@ class Dataset(foc.SampleCollection):
     def __len__(self):
         return self._get_sample_objects().count()
 
+    def __contains__(self, sample_id):
+        samples = self._get_sample_objects(id=sample_id)
+        return bool(samples)
+
     def __getitem__(self, sample_id):
         samples = self._get_sample_objects(id=sample_id)
         if not samples:
