@@ -64,26 +64,34 @@ class Sample(fod.BackedByDocument):
 
     @property
     def dataset(self):
-        raise NotImplementedError("TODO TYLER")
+        """The name of the dataset to which this sample belongs, or ``None`` if
+        it has not been added to a dataset.
+        """
+        return self._dataset.name if self._dataset is not None else None
 
     @property
     def filepath(self):
+        """The path to the raw data on disk."""
         return self._doc.filepath
 
     @property
     def filename(self):
+        """The name of the raw data file on disk."""
         return os.path.basename(self.filepath)
 
     @property
     def tags(self):
+        """The list of tags attached to the sample."""
         return self._doc.tags
 
     @property
     def insights(self):
+        """The list of insights attached to the sample."""
         return self._doc.insights
 
     @property
     def labels(self):
+        """The list of labels attached to the sample."""
         return self._doc.labels
 
     def add_tag(self, tag):
@@ -105,7 +113,7 @@ class Sample(fod.BackedByDocument):
             # document not in the database, add tag locally
             if tag not in self.tags:
                 self._doc.tags.append("train")
-            pass
+
         return True
 
     def remove_tag(self, tag):
@@ -127,6 +135,7 @@ class Sample(fod.BackedByDocument):
             # document not in the database, remove tag locally
             if tag in self.tags:
                 self.tags.pop(self.tags.index(tag))
+
         return True
 
     # def add_insight(self, group, insight):
