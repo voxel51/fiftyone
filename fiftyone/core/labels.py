@@ -60,6 +60,8 @@ class ClassificationLabel(Label):
     :class:`fiftyone.core.dataset.Dataset`.
     """
 
+    _ODM_DOCUMENT_CLS = foo.ODMClassificationLabel
+
     @property
     def label(self):
         """The label string."""
@@ -91,10 +93,7 @@ class ClassificationLabel(Label):
             a :class:`ClassificationLabel`
         """
         return cls._create_new(
-            group=group,
-            label=label,
-            confidence=confidence,
-            logits=logits,
+            group=group, label=label, confidence=confidence, logits=logits,
         )
 
 

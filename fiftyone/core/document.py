@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.odm as foo
@@ -123,3 +124,6 @@ class BackedByDocument(object):
     def _delete(self):
         """Deletes the document from the dataset."""
         self._doc.delete()
+
+    def _backing_doc_dict(self):
+        return etas.load_json(self._doc.to_json())
