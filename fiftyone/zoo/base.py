@@ -120,7 +120,7 @@ class ZooDatasetInfo(etas.Serializable):
             zoo_dataset: the :class:`ZooDataset` class
             split: the dataset split
             num_samples: the number of samples in the dataset
-            format: the class of the dataset on disk
+            format: the format of the dataset on disk
             labels_map (None): an optional dict mapping class IDs to class
                 labels
         """
@@ -128,7 +128,7 @@ class ZooDatasetInfo(etas.Serializable):
         self.zoo_dataset = etau.get_class_name(zoo_dataset)
         self.split = split
         self.num_samples = num_samples
-        self.format = etau.get_class_name(format)
+        self.format = format
         self.labels_map = labels_map
 
     def attributes(self):
@@ -159,7 +159,7 @@ class ZooDatasetInfo(etas.Serializable):
             etau.get_class(d["zoo_dataset"]),
             d["split"],
             d["num_samples"],
-            etau.get_class(d["format"]),
+            d["format"],
             labels_map=labels_map,
         )
 
