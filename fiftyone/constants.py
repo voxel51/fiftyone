@@ -70,7 +70,7 @@ STOP_DB = " ".join(
     ]
 )
 
-if sys.platform == "linux":
+if sys.platform.startswith("linux"):
     STOP_SERVICE = "fuser -k %d/tcp >/dev/null 2>&1"
 elif sys.platform == "darwin":
     STOP_SERVICE = (
