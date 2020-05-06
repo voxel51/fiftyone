@@ -39,6 +39,10 @@ class Sample(fod.BackedByDocument):
 
     _ODM_DOCUMENT_CLS = foo.ODMSample
 
+    def __init__(self, document):
+        super(Sample, self).__init__(document)
+        self._dataset = None
+
     @classmethod
     def create_new(cls, filepath, tags=None, insights=None, labels=None):
         """Creates a new :class:`Sample`.
@@ -145,10 +149,8 @@ class Sample(fod.BackedByDocument):
     #     self._labels[group] = label
 
     def _set_dataset(self, dataset):
-        assert (
-            not self._is_in_db()
-        ), "This should never be called on a document in the database!"
         self._doc.dataset = dataset.name
+        self._dataset = dataset
 
 
 class ImageSample(Sample):
