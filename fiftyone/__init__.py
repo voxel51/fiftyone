@@ -22,6 +22,9 @@ import fiftyone.core.config as foc
 from fiftyone.core.dashboard import launch_dashboard
 import fiftyone.core.service as fos
 
+# import common children into one namespace for user-friendliness
+from .core.dataset import Dataset, list_dataset_names, load_dataset
+from .core.sample import Sample
 
 config = foc.load_config()
 dataset_service = fos.DatabaseService()
