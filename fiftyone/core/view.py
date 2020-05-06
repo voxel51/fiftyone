@@ -35,8 +35,8 @@ class DatasetView(foc.SampleCollection):
 
         # Print the metadata of the five largest samples in the dataset
         view = (dataset.view()
-            sort_by("metadata.size_bytes")
-            take(5)
+            .sort_by("metadata.size_bytes")
+            .take(5)
         )
         for sample in view:
             print(sample.metadata)
