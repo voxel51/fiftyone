@@ -305,14 +305,7 @@ def parse_image_classification_dataset_directory(dataset_dir):
 
 
 class SampleParser(object):
-    """Abstract interface for parsing samples emitted by dataset iterators.
-
-    Args:
-        group: the group name for the labels
-    """
-
-    def __init__(self, group):
-        self.group = group
+    """Abstract interface for parsing samples emitted by dataset iterators."""
 
     def parse(self, sample):
         """Parses the given sample.
@@ -338,9 +331,6 @@ class UnlabeledImageSampleParser(SampleParser):
     implementation here assumes that the provided sample is either an image
     that can be converted to numpy format via ``np.asarray()`` or the path
     to an image on disk.
-
-    Args:
-        group: the group name for the labels
     """
 
     def parse(self, sample):
@@ -387,9 +377,6 @@ class LabeledImageSampleParser(SampleParser):
         - Object detection: :class:`ImageDetectionSampleParser`
 
         - Multitask image prediction: :class:`ImageLabelsSampleParser`
-
-    Args:
-        group: the group name for the labels
     """
 
     def parse_image(self, sample):
@@ -450,14 +437,12 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
     Subclasses can support other input sample formats as necessary.
 
     Args:
-        group: the group name for the labels
         labels_map (None): an optional dict mapping class IDs to label strings.
             If provided, it is assumed that ``target`` is a class ID that
             should be mapped to a label string via ``labels_map[target]``
     """
 
-    def __init__(self, group, labels_map=None):
-        super(ImageClassificationSampleParser, self).__init__(group)
+    def __init__(self, labels_map=None):
         self.labels_map = labels_map
 
     def parse_label(self, sample):
@@ -476,7 +461,7 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
         else:
             label = target
 
-        return fol.ClassificationLabel.create(self.group, label)
+        return fol.ClassificationLabel.create(label)
 
 
 class ImageDetectionSampleParser(LabeledImageSampleParser):
@@ -515,7 +500,6 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
     Subclasses can support other input sample formats as necessary.
 
     Args:
-        group: the group name for the labels
         label_field ("label"): the name of the object label field in the
             target dicts
         bounding_box_field ("bounding_box"): the name of the bounding box field
@@ -534,14 +518,12 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
 
     def __init__(
         self,
-        group,
         label_field="label",
         bounding_box_field="bounding_box",
         confidence_field="confidence",
         labels_map=None,
         normalized=False,
     ):
-        super(ImageDetectionSampleParser, self).__init__(group)
         self.label_field = label_field
         self.bounding_box_field = bounding_box_field
         self.confidence_field = confidence_field
@@ -608,13 +590,15 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
             if not self.normalized:
                 tlx, tly, w, h = _to_rel_bounding_box(tlx, tly, w, h, img)
 
-            detections.append({
-                "label": obj[self.label_field],
-                "bounding_box": [tlx, tly, w, h],
-                "confidence": obj.get(self.confidence_field, None),
-            })
+            detections.append(
+                {
+                    "label": obj[self.label_field],
+                    "bounding_box": [tlx, tly, w, h],
+                    "confidence": obj.get(self.confidence_field, None),
+                }
+            )
 
-        return detections
+        return fol.DetectionLabels.create(detections)
 
 
 class ImageLabelsSampleParser(LabeledImageSampleParser):
@@ -632,9 +616,6 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
           serialized dict representation of one
 
     Subclasses can support other input sample formats as necessary.
-
-    Args:
-        group: the group name for the labels
     """
 
     def parse_label(self, sample):
@@ -647,7 +628,7 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
             a :class:`fiftyone.core.labels.ImageLabels` instance
         """
         labels = sample[1]
-        return fol.ImageLabels.create(self.group, labels)
+        return fol.ImageLabels.create(labels)
 
 
 def _to_rel_bounding_box(tlx, tly, w, h, img):

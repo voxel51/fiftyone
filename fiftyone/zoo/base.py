@@ -92,8 +92,11 @@ def load_zoo_dataset(
         logger.info("Using default dataset directory '%s'", dataset_dir)
 
     if download_if_necessary:
-        zoo_dataset.download_and_prepare(dataset_dir, split=split)
+        info = zoo_dataset.download_and_prepare(dataset_dir, split=split)
+    else:
+        info = zoo_dataset.load_dataset_info(dataset_dir)
 
+    # @todo load dataset depending on `info.format`
     return fed.from_labeled_image_dataset(dataset_dir, name=name)
 
 
@@ -186,6 +189,18 @@ class ZooDataset(object):
         """
         raise NotImplementedError("subclasses must implement default_split")
 
+    def load_dataset_info(self, dataset_dir):
+        """Loads the :class:`ZooDatasetInfo` from the given dataset directory.
+
+        Args:
+            dataset_dir: the directory in which to construct the dataset
+
+        Returns:
+            the :class:`ZooDatasetInfo` for the dataset
+        """
+        info_path = self._get_info_path(dataset_dir)
+        return ZooDatasetInfo.from_json(info_path)
+
     def download_and_prepare(self, dataset_dir, split=None):
         """Downloads the dataset and prepares it for use in the given directory
         as an ``eta.core.datasets.LabeledDataset``.
@@ -198,13 +213,16 @@ class ZooDataset(object):
             dataset_dir: the directory in which to construct the dataset
             split (None): the dataset split to download, if applicable. If
                 omitted, the default split is downloaded
+
+        Returns:
+            the :class:`ZooDatasetInfo` for the dataset
         """
-        info_path = os.path.join(dataset_dir, "info.json")
+        info_path = self._get_info_path(dataset_dir)
 
         if os.path.isfile(info_path):
             logger.debug("ZooDatasetInfo file '%s' already exists", info_path)
             logger.info("Dataset already downloaded")
-            return
+            return self.load_dataset_info(dataset_dir)
 
         if split is None:
             split = self.default_split
@@ -222,6 +240,8 @@ class ZooDataset(object):
         info.write_json(info_path, pretty_print=True)
         logger.info("Dataset info written to '%s'", info_path)
 
+        return info
+
     def _download_and_prepare(self, dataset_dir, split):
         """Internal implementation of downloading the dataset and preparing it
         for use in the given directory as an
@@ -237,3 +257,7 @@ class ZooDataset(object):
         raise NotImplementedError(
             "subclasses must implement download_and_prepare()"
         )
+
+    @staticmethod
+    def _get_info_path(dataset_dir):
+        return os.path.join(dataset_dir, "info.json")

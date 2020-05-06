@@ -63,7 +63,7 @@ class MNISTDataset(foz.ZooDataset):
 
     def _download_and_prepare(self, dataset_dir, split):
         get_class_labels_fcn = lambda info: info.features["label"].names
-        sample_parser = _TFDSImageClassificationSampleParser("ground_truth")
+        sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -101,7 +101,7 @@ class CIFAR10Dataset(foz.ZooDataset):
 
     def _download_and_prepare(self, dataset_dir, split):
         get_class_labels_fcn = lambda info: info.features["label"].names
-        sample_parser = _TFDSImageClassificationSampleParser("ground_truth")
+        sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -162,7 +162,7 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
     def _download_and_prepare(self, dataset_dir, split):
         get_class_labels_fcn = lambda info: info.features["label"].names
-        sample_parser = _TFDSImageClassificationSampleParser("ground_truth")
+        sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -212,7 +212,7 @@ class COCO2014Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser("ground_truth")
+        sample_parser = _TFDSImageDetectionSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -260,7 +260,7 @@ class COCO2017Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser("ground_truth")
+        sample_parser = _TFDSImageDetectionSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -305,9 +305,7 @@ class KITTIDataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "type"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser(
-            "ground_truth", label_field="type"
-        )
+        sample_parser = _TFDSImageDetectionSampleParser(label_field="type")
         return _download_and_prepare(
             self,
             split,
@@ -355,7 +353,7 @@ class VOC2007Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser("ground_truth")
+        sample_parser = _TFDSImageDetectionSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -403,7 +401,7 @@ class VOC2012Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser("ground_truth")
+        sample_parser = _TFDSImageDetectionSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -435,13 +433,8 @@ foz.AVAILABLE_DATASETS.update(
 class _TFDSImageClassificationSampleParser(
     fodu.ImageClassificationSampleParser
 ):
-
-    def __init__(
-        self, group, image_field="image", label_field="label", **kwargs
-    ):
-        super(_TFDSImageClassificationSampleParser, self).__init__(
-            group, **kwargs
-        )
+    def __init__(self, image_field="image", label_field="label", **kwargs):
+        super(_TFDSImageClassificationSampleParser, self).__init__(**kwargs)
         self.image_field = image_field
         self.label_field = label_field
 
@@ -459,11 +452,8 @@ class _TFDSImageClassificationSampleParser(
 
 
 class _TFDSImageDetectionSampleParser(fodu.ImageDetectionSampleParser):
-
-    def __init__(
-        self, group, image_field="image", objects_field="objects", **kwargs
-    ):
-        super(_TFDSImageDetectionSampleParser, self).__init__(group, **kwargs)
+    def __init__(self, image_field="image", objects_field="objects", **kwargs):
+        super(_TFDSImageDetectionSampleParser, self).__init__(**kwargs)
         self.image_field = image_field
         self.objects_field = objects_field
 
