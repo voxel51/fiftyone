@@ -633,7 +633,7 @@ class LabeledImageSampleParser(SampleParser):
             sample: the sample
 
         Returns:
-            an ``eta.core.image.ImageLabels`` instance
+            a :class:`fiftyone.core.labels.Label` instance
         """
         raise NotImplementedError("Subclass must implement parse_label()")
 
