@@ -38,6 +38,7 @@ dataset = foz.load_zoo_dataset("cifar10")
 
 print_random(dataset)
 
+
 ###############################################################################
 # Load an image classification dataset manually
 ###############################################################################
