@@ -26,7 +26,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.experimental.data as fed
+import fiftyone.core.dataset as fod
+import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ def load_zoo_dataset(
     name, split=None, dataset_dir=None, download_if_necessary=True,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
-    a :class:`fiftyone.core.data.Dataset`.
+    a :class:`fiftyone.core.dataset.Dataset`.
 
     Args:
         name: the name of the zoo dataset to load. Call
@@ -73,11 +74,11 @@ def load_zoo_dataset(
         dataset_dir (None): the directory in which the dataset is stored or
             will be downloaded. By default,
             :func:`fiftyone.core.data.get_default_dataset_dir` is used
-        download_if_necessary (True): whether to download the dataset if it is
-            not found in the specified dataset directory
+        download_if_necessary (True): whether to download and prepare the
+            dataset if it is not found in the specified dataset directory
 
     Returns:
-        a :class:`fiftyone.core.data.Dataset`
+        a :class:`fiftyone.core.dataset.Dataset`
     """
     zoo_dataset = _get_zoo_dataset(name)
     name = zoo_dataset.name  # get the official name
@@ -88,7 +89,7 @@ def load_zoo_dataset(
             logger.info("Using default split '%s'", split)
 
     if dataset_dir is None:
-        dataset_dir = fed.get_default_dataset_dir(name, split=split)
+        dataset_dir = fod.get_default_dataset_dir(name, split=split)
         logger.info("Using default dataset directory '%s'", dataset_dir)
 
     if download_if_necessary:
@@ -96,8 +97,20 @@ def load_zoo_dataset(
     else:
         info = zoo_dataset.load_dataset_info(dataset_dir)
 
-    # @todo load dataset depending on `info.format`
-    return fed.from_labeled_image_dataset(dataset_dir, name=name)
+    if isinstance(info.format, fot.ImageClassificationDataset):
+        return fo.Dataset.from_image_classification_dataset(
+            dataset_dir, name=name
+        )
+
+    if isinstance(info.format, fot.ImageDetectionDataset):
+        return fo.Dataset.from_image_detection_dataset(dataset_dir, name=name)
+
+    if isinstance(info.format, fot.ImageLabelsDataset):
+        return fo.Dataset.from_image_labels_dataset(dataset_dir, name=name)
+
+    raise ValueError(
+        "Unsupported dataset type '%s'" % etau.get_class_name(info.format)
+    )
 
 
 def _get_zoo_dataset(name):
@@ -123,7 +136,7 @@ class ZooDatasetInfo(etas.Serializable):
             zoo_dataset: the :class:`ZooDataset` class
             split: the dataset split
             num_samples: the number of samples in the dataset
-            format: the format of the dataset on disk
+            format: the :class:`fiftyone.types.DatasetType` of the dataset
             labels_map (None): an optional dict mapping class IDs to label
                 strings
         """
@@ -131,7 +144,7 @@ class ZooDatasetInfo(etas.Serializable):
         self.zoo_dataset = etau.get_class_name(zoo_dataset)
         self.split = split
         self.num_samples = num_samples
-        self.format = format
+        self.format = etau.get_class_name(format)
         self.labels_map = labels_map
 
     def attributes(self):
@@ -162,7 +175,7 @@ class ZooDatasetInfo(etas.Serializable):
             etau.get_class(d["zoo_dataset"]),
             d["split"],
             d["num_samples"],
-            d["format"],
+            etau.get_class(d["format"]),
             labels_map=labels_map,
         )
 

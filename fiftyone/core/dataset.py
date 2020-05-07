@@ -173,7 +173,8 @@ class Dataset(foc.SampleCollection):
         """
         return fov.DatasetView(self)
 
-    def from_image_classification_dataset(self, dataset_dir, name=None):
+    @classmethod
+    def from_image_classification_dataset(cls, dataset_dir, name=None):
         """Creates a :class:`Dataset` from the given image classification
         dataset on disk.
 
@@ -191,9 +192,8 @@ class Dataset(foc.SampleCollection):
         if name is None:
             name = get_default_dataset_name()
 
-        pass
-
-    def from_image_detection_dataset(self, dataset_dir, name=None):
+    @classmethod
+    def from_image_detection_dataset(cls, dataset_dir, name=None):
         """Creates a :class:`Dataset` from the given image detection dataset on
         disk.
 
@@ -210,9 +210,8 @@ class Dataset(foc.SampleCollection):
         if name is None:
             name = get_default_dataset_name()
 
-        pass
-
-    def from_image_labels_dataset(self, dataset_dir, name=None):
+    @classmethod
+    def from_image_labels_dataset(cls, dataset_dir, name=None):
         """Creates a :class:`Dataset` from the given image labels dataset on
         disk.
 
@@ -228,8 +227,6 @@ class Dataset(foc.SampleCollection):
         """
         if name is None:
             name = get_default_dataset_name()
-
-        pass
 
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
