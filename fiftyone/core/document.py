@@ -44,6 +44,9 @@ class BackedByDocument(object):
         etau.validate_type(document, self._ODM_DOCUMENT_CLS)
         self._doc = document
 
+    def __str__(self):
+        return str(self._doc)
+
     @property
     def id(self):
         """The ID of the document.
