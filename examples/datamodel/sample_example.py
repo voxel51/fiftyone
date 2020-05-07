@@ -33,10 +33,12 @@ print(sample.tags)
 print(type(sample.labels))
 # <class 'dict'>
 
-print(type(sample.labels["ground_truth_fine"]))
+# @todo(Tyler)
+# print(type(sample.labels["ground_truth_fine"]))
 # <fiftyone.core.label.ClassificationLabel>
 
-print(sample.labels["ground_truth_fine"])
+# @todo(Tyler)
+# print(sample.labels["ground_truth_fine"])
 # {
 #     "label": "mountain",
 #     "confidence": null
@@ -122,4 +124,5 @@ dataset.get_insight_groups()
 # INSERT LABELS
 ###############################################################################
 
-sample.labels["ground_truth"] = fol.ClassificationLabel.create(label="cow")
+# @todo(Tyler)
+# sample.labels["ground_truth"] = fol.ClassificationLabel.create(label="cow")
