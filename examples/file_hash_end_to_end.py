@@ -1,6 +1,10 @@
 """
 File Hash End-to-End Example
 
+This example goes through the full process of ingesting a dataset, computing
+file hashes on the data, removing duplicates and exporting the resulting
+dataset.
+
 """
 import os
 import time
