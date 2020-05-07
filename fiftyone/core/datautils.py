@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -388,9 +389,102 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
     logger.info("Dataset created")
 
 
-def parse_image_classification_dataset_directory(dataset_dir):
-    """Parses the contents of the given image classification dataset directory,
-    which should have the following format::
+def parse_image_classification_dataset(dataset_dir):
+    """Parses the contents of the image classification dataset backed by the
+    given directory.
+
+    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        samples: a list of ``(image_path, label)`` pairs
+        labels_map: a dict mapping class IDs to label strings, or ``None`` if
+            not available
+    """
+    data_dir = os.path.join(dataset_dir, "data")
+    image_paths_map = {
+        os.path.splitext(os.path.basename(p))[0]: p
+        for p in etau.list_files(data_dir, abs_paths=True)
+    }
+
+    labels_path = os.path.join(dataset_dir, "labels.json")
+    labels = etas.load_json(labels_path)
+    labels_map = labels["labels_map"]
+
+    samples = []
+    for uuid, target in iteritems(labels["labels"]):
+        image_path = image_paths_map[uuid]
+
+        if labels_map is not None:
+            label = labels_map[target]
+        else:
+            label = target
+
+        samples.append((image_path, label))
+
+    return samples, labels_map
+
+
+def parse_image_detection_dataset(dataset_dir):
+    """Parses the contents of the image detection dataset backed by the given
+    directory.
+
+    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        samples: a list of ``(image_path, detections)`` pairs
+        labels_map: a dict mapping class IDs to label strings, or ``None`` if
+            not available
+    """
+    data_dir = os.path.join(dataset_dir, "data")
+    image_paths_map = {
+        os.path.splitext(os.path.basename(p))[0]: p
+        for p in etau.list_files(data_dir, abs_paths=True)
+    }
+
+    labels_path = os.path.join(dataset_dir, "labels.json")
+    labels = etas.load_json(labels_path)
+    labels_map = labels["labels_map"]
+
+    samples = []
+    for uuid, detections in iteritems(labels["labels"]):
+        image_path = image_paths_map[uuid]
+
+        if labels_map is not None:
+            for detection in detections:
+                detection["label"] = labels_map[detection["label"]]
+
+        samples.append((image_path, detections))
+
+    return samples, labels_map
+
+
+def parse_image_labels_dataset(dataset_dir):
+    """Parses the contents of the image labels dataset backed by the given
+    directory.
+
+    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        an iterable of ``(image_path, image_labels)`` pairs
+    """
+    labeled_dataset = etads.load_dataset(dataset_dir)
+    return zip(
+        labeled_dataset.iter_data_paths(), labeled_dataset.iter_labels(),
+    )
+
+
+def parse_image_classification_dir_tree(dataset_dir):
+    """Parses the contents of the given image classification dataset directory
+    tree, which should have the following format::
 
         dataset_dir/
             <classA>/
@@ -407,7 +501,7 @@ def parse_image_classification_dataset_directory(dataset_dir):
 
     Returns:
         samples: a list of ``(image path, label)`` pairs
-        labels_map: a dict mapping class IDs to class strings
+        labels_map: a dict mapping class IDs to label strings
     """
     # Get labels map
     class_labels = etau.list_subdirs(dataset_dir)
@@ -630,7 +724,7 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
             the target dicts
         labels_map (None): an optional dict mapping class IDs to class
             strings. If provided, it is assumed that the ``label``s in
-            ``target`` are class IDs that should be mapped to class strings
+            ``target`` are class IDs that should be mapped to label strings
             via ``labels_map[target]``
         normalized (False): whether the bounding box coordinates provided
             in ``target`` are absolute pixel coordinates (False) or
