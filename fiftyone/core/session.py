@@ -130,8 +130,7 @@ class Session(foc.HasClient):
     def _update_state(self):
         self.state = {
             "dataset_name": self.dataset.name if self.dataset else None,
-            "query_kwargs": self.view._query_kwargs if self.view else None,
-            "sort_by_arg": self.view._sort_by_arg if self.view else None,
+            "transform_pipeline": self.view._pipeline if self.view else None,
             "page": {
                 "offset": self.offset,
                 "limit": self.limit,
@@ -150,16 +149,13 @@ class Session(foc.HasClient):
         if not self.dataset:
             return {}
 
-        if self.view:
-            view = self.view
-        else:
-            view = fov.DatasetView(dataset=self.dataset)
+        view = (
+            self.view if self.view else fov.DatasetView(dataset=self.dataset)
+        )
+
+        view = view.offset(self.offset).take(self.limit)
 
         return {
             idx: sample.get_backing_doc_dict(extended=True)
-            for idx, sample in (
-                view.iter_samples_with_index(
-                    offset=self.offset, limit=self.limit
-                )
-            )
+            for idx, sample in view.iter_samples_with_index()
         }
