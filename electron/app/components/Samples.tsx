@@ -1,26 +1,48 @@
 import React, { useState } from "react";
 import {
+  Card,
+  Image,
+  Label,
   Header,
   Icon,
   Menu,
   Message,
   Segment,
   Sidebar,
+  Divider,
 } from "semantic-ui-react";
 import Gallery from "react-grid-gallery";
 import InfiniteScroll from "react-infinite-scroller";
-import { Dimmer, Image, Loader } from "semantic-ui-react";
+import { Dimmer, Loader } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
+function Caption(props) {
+  const { labels } = props;
+  return (
+    <div
+      style={{ zIndex: 1000, width: "100%", position: "absolute", bottom: 0 }}
+    >
+      <div style={{ overflowX: "auto" }}>
+        {Object.keys(labels).map((g) => {
+          return (
+            <Label as="span" style={{ fontSize: "0.6rem" }}>
+              {g}.{labels[g].label}
+            </Label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 const GalleryImage = (props) => {
   return <img {...props.imageProps} />;
 };
 
 const GalleryWrapper = connect((props) => {
-  const { images, dispatch, state } = props;
+  const { images, dispatch, state, setView } = props;
   const socket = getSocket("state");
   return (
     <div style={{ overflowY: "auto" }}>
@@ -33,8 +55,10 @@ const GalleryWrapper = connect((props) => {
             dispatch(updateState(data));
           });
         }}
-        thumbnailImageComponent={GalleryImage}
-        tagStyle={{ display: "none" }}
+        enableLightbox={false}
+        onClickThumbnail={(o) => {
+          setView({ visible: true, sample: images[0].sample });
+        }}
         {...props}
       />
     </div>
@@ -42,7 +66,7 @@ const GalleryWrapper = connect((props) => {
 });
 
 function SampleList(props) {
-  const { state } = props;
+  const { state, setView } = props;
   const hasDataset = Boolean(state && state.dataset);
   const socket = getSocket("state");
   const [scrollState, setScrollState] = useState({
@@ -55,6 +79,7 @@ function SampleList(props) {
     return samples
       ? Object.keys(samples).map((k) => {
           const sample = samples[k];
+          const labels = sample.labels;
           const path = sample.filepath;
           const mimeType = sample.metadata.mime_type;
           const host = "http://127.0.0.1:5151/";
@@ -64,8 +89,8 @@ function SampleList(props) {
             thumbnail: src,
             thumbnailWidth: samples[k].metadata.width,
             thumbnailHeight: samples[k].metadata.height,
-            tags: [{ value: null, title: "title" }],
             sample: sample,
+            customOverlay: <Caption labels={labels} />,
           };
         })
       : [];
@@ -105,7 +130,9 @@ function SampleList(props) {
       </Segment>
     );
   }
-  const content = <GalleryWrapper images={scrollState.images} />;
+  const content = (
+    <GalleryWrapper images={scrollState.images} setView={setView} />
+  );
   return (
     <>
       <InfiniteScroll
@@ -118,7 +145,7 @@ function SampleList(props) {
       >
         {content}
       </InfiniteScroll>
-      {scrollState.hasMore ? <Loader /> : "End of list"}
+      {scrollState.hasMore ? <Loader /> : "End of samples"}
     </>
   );
 }

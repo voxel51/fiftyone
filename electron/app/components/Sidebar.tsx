@@ -39,21 +39,6 @@ const _Sidebar = (props) => {
       {hasDataset ? (
         <>
           <Menu.Item as="h4">
-            Page
-            <Menu inverted vertical>
-              {state && state.page
-                ? Object.keys(state.page).map((k) => {
-                    const v = state.page[k];
-                    return (
-                      <Menu.Item as="span">
-                        {k}: {v}
-                      </Menu.Item>
-                    );
-                  })
-                : null}
-            </Menu>
-          </Menu.Item>
-          <Menu.Item as="h4">
             View
             <Menu inverted vertical>
               <Menu.Item as="span">
