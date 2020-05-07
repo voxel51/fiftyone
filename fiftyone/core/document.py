@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.odm as foo
@@ -76,19 +75,6 @@ class BackedByDocument(object):
         """
         return self._doc.id.generation_time if self._in_db else None
 
-    @property
-    def _backing_doc(self):
-        """The backing :class:`fiftyone.core.odm.ODMDocument` for the object.
-        """
-        return self._doc
-
-    @property
-    def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
-        been inserted into the database.
-        """
-        return self._doc.id is not None
-
     @classmethod
     def create(cls, *args, **kwargs):
         """Creates a :class:`BackedByDocument` instance.
@@ -101,6 +87,28 @@ class BackedByDocument(object):
             a :class:`BackedByDocument`
         """
         raise NotImplementedError("Subclass must implement create()")
+
+    def get_backing_doc_dict(self, extended=False):
+        """Returns the backing document as a JSON dict.
+
+        Args:
+            extended: If True, return extended JSON (ObjectIDs, Datetimes, ...
+                are serialized to dicts/strings/etc.)
+        """
+        return self._doc.to_dict(extended=extended)
+
+    @property
+    def _backing_doc(self):
+        """The backing :class:`fiftyone.core.odm.ODMDocument` for the object.
+        """
+        return self._doc
+
+    @property
+    def _in_db(self):
+        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
+        been inserted into the database.
+        """
+        return self._doc.id is not None
 
     @classmethod
     def _create(cls, **kwargs):
@@ -124,6 +132,3 @@ class BackedByDocument(object):
     def _delete(self):
         """Deletes the document from the dataset."""
         self._doc.delete()
-
-    def _backing_doc_dict(self):
-        return etas.load_json(self._doc.to_json())

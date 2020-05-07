@@ -159,12 +159,12 @@ class Sample(fod.BackedByDocument):
             group: the group name for the label
             label: a :class:`fiftyone.core.labels.Label`
         """
-        if self._dataset is not None:
+        if self._in_db:
             self._dataset._validate_label(group, label)
 
         self._backing_doc.labels[group] = label._backing_doc
 
-        if self._dataset is not None:
+        if self._in_db:
             self._save()
 
     def _set_dataset(self, dataset):

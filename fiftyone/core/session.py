@@ -156,7 +156,7 @@ class Session(foc.HasClient):
             view = fov.DatasetView(dataset=self.dataset)
 
         return {
-            idx: sample._backing_doc_dict()
+            idx: sample.get_backing_doc_dict(extended=True)
             for idx, sample in (
                 view.iter_samples_with_index(
                     offset=self.offset, limit=self.limit
