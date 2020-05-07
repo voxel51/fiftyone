@@ -107,7 +107,7 @@ class DatasetView(foc.SampleCollection):
         """Calls a MongoDB aggregation pipeline on the view
 
         Args:
-            pipeline: an optional aggregation pipeline (list of dicts)
+            pipeline (None): an optional aggregation pipeline (list of dicts)
                 to aggregate on
 
         Returns:

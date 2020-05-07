@@ -151,7 +151,7 @@ class Dataset(foc.SampleCollection):
         """Calls a MongoDB aggregation pipeline on the dataset
 
         Args:
-            pipeline: an optional aggregation pipeline (list of dicts)
+            pipeline (None): an optional aggregation pipeline (list of dicts)
                 to aggregate on
 
         Returns:
