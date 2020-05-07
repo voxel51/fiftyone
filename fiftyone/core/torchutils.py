@@ -37,15 +37,19 @@ logger = logging.getLogger(__name__)
 class TorchImageDataset(Dataset):
     """A ``torch.utils.data.Dataset`` of unlabeled images.
 
-    Instances of this class emit images with no associated labels.
+    Instances of this class emit PIL images with no associated targets, either
+    directly or as ``(image, sample_id)`` pairs if ``sample_ids`` are provided.
 
     Args:
         image_paths: an iterable of image paths
+        sample_ids (None): an iterable of
+            :attribute:`fiftyone.core.sample.Sample.id` IDs
         transform (None): an optional transform to apply to the images
     """
 
-    def __init__(self, image_paths, transform=None):
+    def __init__(self, image_paths, sample_ids=None, transform=None):
         self.image_paths = list(image_paths)
+        self.sample_ids = list(sample_ids) if sample_ids else None
         self.transform = transform
 
     def __len__(self):
@@ -57,64 +61,37 @@ class TorchImageDataset(Dataset):
         if self.transform:
             img = self.transform(img)
 
+        if self.has_sample_ids:
+            # pylint: disable=unsubscriptable-object
+            return img, self.sample_ids[idx]
+
         return img
 
-    @classmethod
-    def from_images_dir(cls, images_dir, recursive=False):
-        """Creates a TorchImageDataset for the given directory of images.
-
-        Args:
-            images_dir: a directory of images
-            recursive (False): whether to recursively traverse subdirectories
-
-        Returns:
-            a TorchImageDataset
-        """
-        image_paths = etau.list_files(
-            images_dir, abs_paths=True, recursive=recursive
-        )
-        return cls(image_paths)
-
-    @classmethod
-    def from_image_patt(cls, image_patt):
-        """Creates a TorchImageDataset for a pattern of images on disk.
-
-        Args:
-            image_patt: a glob pattern of images like ``/path/to/images/*.jpg``
-
-        Returns:
-            a TorchImageDataset
-        """
-        image_paths = etau.parse_glob_pattern(image_patt)
-        return cls(image_paths)
-
-    @classmethod
-    def from_images(cls, image_paths):
-        """Creates a TorchImageDataset for the given list of images.
-
-        Args:
-            image_paths: an iterable of image paths
-
-        Returns:
-            a TorchImageDataset
-        """
-        return cls(image_paths)
+    @property
+    def has_sample_ids(self):
+        """Whether this dataset has sample IDs."""
+        return self.sample_ids is not None
 
 
 class TorchImageClassificationDataset(Dataset):
     """A ``torch.utils.data.Dataset`` for image classification.
 
-    Instances of this dataset emit ``(image, target)`` pairs.
+    Instances of this dataset emit PIL images and their associated targets,
+    either directly as ``(image, target)`` pairs or as
+    ``(image, target, sample_id)`` pairs if ``sample_ids`` are provided.
 
     Args:
         image_paths: an iterable of image paths
-        targets: a list of targets
+        targets: an iterable of targets
+        sample_ids (None): an iterable of
+            :attribute:`fiftyone.core.sample.Sample.id` IDs
         transform (None): an optional transform to apply to the images
     """
 
-    def __init__(self, image_paths, targets, transform=None):
+    def __init__(self, image_paths, targets, sample_ids=None, transform=None):
         self.image_paths = list(image_paths)
-        self.targets = targets
+        self.targets = list(targets)
+        self.sample_ids = list(sample_ids) if sample_ids else None
         self.transform = transform
 
     def __len__(self):
@@ -127,7 +104,16 @@ class TorchImageClassificationDataset(Dataset):
         if self.transform:
             img = self.transform(img)
 
+        if self.has_sample_ids:
+            # pylint: disable=unsubscriptable-object
+            return img, target, self.sample_ids[idx]
+
         return img, target
+
+    @property
+    def has_sample_ids(self):
+        """Whether this dataset has sample IDs."""
+        return self.sample_ids is not None
 
 
 def from_image_classification_dir_tree(dataset_dir):
@@ -164,7 +150,7 @@ def from_labeled_image_dataset(labeled_dataset, attr_name):
         attr_name: the name of the frame attribute to extract as label
 
     Returns:
-        a TorchImageClassificationDataset that emits ``(img, label)`` pairs
+        a :class:`TorchImageClassificationDataset`
     """
     image_paths = list(labeled_dataset.iter_data_paths)
     labels = []
