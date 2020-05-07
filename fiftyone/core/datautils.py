@@ -36,10 +36,6 @@ import fiftyone.core.labels as fol
 logger = logging.getLogger(__name__)
 
 
-#
-# @todo support storing labels in `target` format with an accompanying
-# `labels_map` file
-#
 def to_image_classification_dataset(
     samples,
     sample_parser,
@@ -47,23 +43,29 @@ def to_image_classification_dataset(
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
-    """Converts the given samples to an image classification dataset in the
-    following format on disk::
+    """Writes the given samples to disk as an image classification dataset
+    in the following format::
 
         dataset_dir/
-            images/
-                <image1>.<ext>
-                <image2>.<ext>
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
                 ...
-
             labels.json
 
     where ``labels.json`` is a JSON file in the following format::
 
         {
-            <image1>: <label1>,
-            <image2>: <label2>,
-            ...
+            "labels_map": {
+                <targetA>: <labelA>,
+                <targetB>: <labelB>,
+                ...
+            },
+            "labels": {
+                <uuid1>: <target1>,
+                <uuid2>: <target2>,
+                ...
+            }
         }
 
     Args:
@@ -78,27 +80,37 @@ def to_image_classification_dataset(
             to use to write the images to disk
     """
     if sample_parser is None:
-        sample_parser = ImageClassificationSampleParser(None)
+        sample_parser = ImageClassificationSampleParser()
+
+    # Store labels map separately, if provided
+    labels_map = sample_parser.labels_map
+    sample_parser.labels_map = None
 
     if num_samples is None:
         num_samples = len(samples)
 
-    images_dir = os.path.join(dataset_dir, "images")
-    int_patt = etau.get_int_pattern_with_capacity(num_samples)
-    images_patt = os.path.join(images_dir, int_patt + image_format)
+    data_dir = os.path.join(dataset_dir, "data")
+    uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
+    images_patt = os.path.join(data_dir, uuid_patt + image_format)
     labels_path = os.path.join(dataset_dir, "labels.json")
 
     logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
-    etau.ensure_dir(images_dir)
-    labels = {}
+    etau.ensure_dir(data_dir)
+    labels_dict = {}
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
         for idx, sample in enumerate(samples, 1):
             img, label = sample_parser.parse(sample)
             etai.write(img, images_patt % idx)
-            labels[idx] = label.label
+            labels_dict[uuid_patt % idx] = label.label
             bar.update()
 
+    logger.info("Writing labels to '%s'" % labels_path)
+    labels = {
+        "labels_map": labels_map,
+        "labels": labels_dict,
+    }
     etas.write_json(labels, labels_path, pretty_print=True)
+
     logger.info("Dataset created")
 
 
@@ -109,23 +121,27 @@ def to_image_detection_dataset(
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
-    """Converts the given samples to an image detection dataset in the
-    following format on disk::
+    """Writes the given samples to disk as an image detection dataset in the
+    following format::
 
         dataset_dir/
-            images/
-                <image1>.<ext>
-                <image2>.<ext>
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
                 ...
-
             labels.json
 
     where ``labels.json`` is a JSON file in the following format::
 
         {
-            <image1>: [
+            "labels_map": {
+                <targetA>: <labelA>,
+                <targetB>: <labelB>,
+                ...
+            },
+            <uuid1>: [
                 {
-                    "label": <label>,
+                    "label": <target>,
                     "bounding_box": [
                         <top-left-x>, <top-left-y>, <width>, <height>
                     ],
@@ -133,9 +149,14 @@ def to_image_detection_dataset(
                 },
                 ...
             ],
-            <image2>: [...],
+            <uuid2>: [
+                ...
+            ],
             ...
         }
+
+    where the bounding box coordinates are expressed as relative values in
+    ``[0, 1]``.
 
     Args:
         samples: an iterable of samples
@@ -149,27 +170,36 @@ def to_image_detection_dataset(
             to use to write the images to disk
     """
     if sample_parser is None:
-        sample_parser = ImageDetectionSampleParser(None)
+        sample_parser = ImageDetectionSampleParser()
+
+    # Store labels map separately, if provided
+    labels_map = sample_parser.labels_map
+    sample_parser.labels_map = None
 
     if num_samples is None:
         num_samples = len(samples)
 
-    images_dir = os.path.join(dataset_dir, "images")
-    int_patt = etau.get_int_pattern_with_capacity(num_samples)
-    images_patt = os.path.join(images_dir, int_patt + image_format)
+    data_dir = os.path.join(dataset_dir, "data")
+    uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
+    images_patt = os.path.join(data_dir, uuid_patt + image_format)
     labels_path = os.path.join(dataset_dir, "labels.json")
 
     logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
-    etau.ensure_dir(images_dir)
-    labels = {}
+    etau.ensure_dir(data_dir)
+    labels_dict = {}
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
         for idx, sample in enumerate(samples, 1):
             img, label = sample_parser.parse(sample)
             etai.write(img, images_patt % idx)
-            labels[idx] = label.detections
+            labels_dict[uuid_patt % idx] = label.detections
             bar.update()
 
-    etas.write_json(labels, labels_path, pretty_print=True)
+    logger.info("Writing labels to '%s'" % labels_path)
+    labels = {
+        "labels_map": labels_map,
+        "labels": labels_dict,
+    }
+
     logger.info("Dataset created")
 
 
@@ -180,7 +210,35 @@ def to_labeled_image_dataset(
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
-    """Converts the given samples to ``eta.core.datasets.LabeledImageDataset``
+    """Writes the given samples to disk in
+    ``eta.core.datasets.LabeledImageDataset`` format::
+
+        dataset_dir/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.json
+                <uuid2>.json
+                ...
+            manifest.json
+
+    where ``manifest.json`` is a JSON file in the following format::
+
+        {
+            "type": "eta.core.datasets.LabeledImageDataset",
+            "description": "",
+            "index": [
+                {
+                    "data": "data/<uuid1>.<ext>",
+                    "labels": "labels/<uuid1>.json"
+                },
+                ...
+            ]
+        }
+
+    and the each labels JSON file is stored in ``eta.core.image.ImageLabels``
     format.
 
     Args:
@@ -196,7 +254,7 @@ def to_labeled_image_dataset(
             to use to write the images to disk
     """
     if sample_parser is None:
-        sample_parser = LabeledImageSampleParser(None)
+        sample_parser = ImageLabelsSampleParser()
 
     if num_samples is None:
         num_samples = len(samples)
@@ -215,22 +273,210 @@ def to_labeled_image_dataset(
             )
             bar.update()
 
+    logger.info("Writing manifest to '%s'", lid.manifest_path)
     lid.write_manifest()
+
     logger.info("Dataset created")
 
 
-def write_labeled_image_dataset(image_paths, labels, dataset_dir):
-    """Writes the given data to disk in
-    ``eta.core.datasets.LabeledImageDataset`` format.
+def export_image_classification_dataset(image_paths, labels, dataset_dir):
+    """Exports the given data to disk as an image classification dataset in the
+    following format::
+
+        dataset_dir/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels.json
+
+    where ``labels.json`` is a JSON file in the following format::
+
+        {
+            "labels_map": {
+                <targetA>: <labelA>,
+                <targetB>: <labelB>,
+                ...
+            },
+            "labels": {
+                <uuid1>: <target1>,
+                <uuid2>: <target2>,
+                ...
+            }
+        }
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appened to the base
+    filename.
 
     Args:
         image_paths: an iterable of image paths
-        labels: an iterable of ``eta.core.image.ImageLabels``
+        labels: an iterable of
+            :class:`fiftyone.core.labels.ClassificationLabel` instances
         dataset_dir: the directory to which to write the dataset
+    """
+    num_samples = len(image_paths)
+    data_filename_counts = defaultdict(int)
 
-    Returns:
-        a ``eta.core.datasets.LabeledImageDataset`` backed by the specified
-        ``dataset_dir``
+    data_dir = os.path.join(dataset_dir, "data")
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    etau.ensure_dir(data_dir)
+    labels_dict = {}
+    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
+        for img_path, label in zip(image_paths, labels):
+            name, ext = os.path.splitext(os.path.basename(img_path))
+            data_filename_counts[name] += 1
+
+            count = data_filename_counts[name]
+            if count > 1:
+                name += "-%d" + count
+
+            out_img_path = os.path.join(data_dir, name + ext)
+            etau.copy_file(img_path, out_img_path)
+
+            labels_dict[name] = label.label
+
+            bar.update()
+
+    logger.info("Writing labels to '%s'" % labels_path)
+    labels = {
+        "labels_map": None,  # @todo get this somehow?
+        "labels": labels_dict,
+    }
+    etas.write_json(labels, labels_path, pretty_print=True)
+
+    logger.info("Dataset created")
+
+
+def export_image_detection_dataset(image_paths, labels, dataset_dir):
+    """Exports the given data to disk as an image detection dataset in the
+    following format::
+
+        dataset_dir/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels.json
+
+    where ``labels.json`` is a JSON file in the following format::
+
+        {
+            "labels_map": {
+                <targetA>: <labelA>,
+                <targetB>: <labelB>,
+                ...
+            },
+            <uuid1>: [
+                {
+                    "label": <target>,
+                    "bounding_box": [
+                        <top-left-x>, <top-left-y>, <width>, <height>
+                    ],
+                    "confidence": <optional-confidence>,
+                },
+                ...
+            ],
+            <uuid2>: [
+                ...
+            ],
+            ...
+        }
+
+    where the bounding box coordinates are expressed as relative values in
+    ``[0, 1]``.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appened to the base
+    filename.
+
+    Args:
+        image_paths: an iterable of image paths
+        labels: an iterable of :class:`fiftyone.core.labels.DetectionLabels`
+            instances
+        dataset_dir: the directory to which to write the dataset
+    """
+    num_samples = len(image_paths)
+    data_filename_counts = defaultdict(int)
+
+    data_dir = os.path.join(dataset_dir, "data")
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    etau.ensure_dir(data_dir)
+    labels_dict = {}
+    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
+        for img_path, label in zip(image_paths, labels):
+            name, ext = os.path.splitext(os.path.basename(img_path))
+            data_filename_counts[name] += 1
+
+            count = data_filename_counts[name]
+            if count > 1:
+                name += "-%d" + count
+
+            out_img_path = os.path.join(data_dir, name + ext)
+            etau.copy_file(img_path, out_img_path)
+
+            labels_dict[name] = label.detections
+
+            bar.update()
+
+    logger.info("Writing labels to '%s'" % labels_path)
+    labels = {
+        "labels_map": None,  # @todo get this somehow?
+        "labels": labels_dict,
+    }
+    etas.write_json(labels, labels_path, pretty_print=True)
+
+    logger.info("Dataset created")
+
+
+def export_labeled_image_dataset(image_paths, labels, dataset_dir):
+    """Exports the given data to disk as a dataset in
+    ``eta.core.datasets.LabeledImageDataset`` formatt::
+
+        dataset_dir/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.json
+                <uuid2>.json
+                ...
+            manifest.json
+
+    where ``manifest.json`` is a JSON file in the following format::
+
+        {
+            "type": "eta.core.datasets.LabeledImageDataset",
+            "description": "",
+            "index": [
+                {
+                    "data": "data/<uuid1>.<ext>",
+                    "labels": "labels/<uuid1>.json"
+                },
+                ...
+            ]
+        }
+
+    and the each labels JSON file is stored in ``eta.core.image.ImageLabels``
+    format.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appened to the base
+    filename.
+
+    Args:
+        image_paths: an iterable of image paths
+        labels: an iterable of :class:`fiftyone.core.labels.ImageLabels`
+            instances
+        dataset_dir: the directory to which to write the dataset
     """
     num_samples = len(image_paths)
     data_filename_counts = defaultdict(int)
@@ -238,7 +484,7 @@ def write_labeled_image_dataset(image_paths, labels, dataset_dir):
     logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for img_path, image_labels in zip(image_paths, labels):
+        for img_path, label in zip(image_paths, labels):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -250,7 +496,7 @@ def write_labeled_image_dataset(image_paths, labels, dataset_dir):
             new_labels_filename = name + ".json"
 
             image_labels_path = os.path.join(lid.labels_dir, name + ".json")
-            image_labels.write_json(image_labels_path)
+            label.labels.write_json(image_labels_path)
 
             lid.add_file(
                 img_path,
@@ -260,10 +506,10 @@ def write_labeled_image_dataset(image_paths, labels, dataset_dir):
             )
             bar.update()
 
+    logger.info("Writing manifest to '%s'", lid.manifest_path)
     lid.write_manifest()
-    logger.info("Dataset created")
 
-    return lid
+    logger.info("Dataset created")
 
 
 def parse_image_classification_dataset_directory(dataset_dir):
