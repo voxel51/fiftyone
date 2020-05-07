@@ -61,6 +61,8 @@ class SampleCollection(object):
         Returns:
             a list of groups
         """
+        # @todo(Tyler) This does not work with DictField
+        raise NotImplementedError("TODO TYLER")
         return self._get_query_set().distinct("labels.group")
 
     def get_insight_groups(self):
@@ -70,6 +72,8 @@ class SampleCollection(object):
         Returns:
             a list of groups
         """
+        # @todo(Tyler) This does not work with DictField
+        raise NotImplementedError("TODO TYLER")
         return self._get_query_set().distinct("insights.group")
 
     def iter_samples(self, offset=None, limit=None):

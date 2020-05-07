@@ -59,24 +59,18 @@ for partition in partitions:
         # this gives a second tag to a random 30% of the data
         tags = [partition] + (["rand"] if random.random() > 0.7 else [])
 
-        # @todo(Tyler)
-        # # create labels dict (with both coarse and fine labels)
-        # labels = [
-        #     fol.ClassificationLabel(
-        #         group="ground_truth_fine",
-        #         label=fine_labels[rel_img_path]),
-        #     fol.ClassificationLabel(
-        #         group="ground_truth_coarse",
-        #         label=coarse_labels[rel_img_path]),
-        # ]
-        labels=None
+        labels = {
+            "ground_truth_fine": fol.ClassificationLabel.create(
+                label=fine_labels[rel_img_path]
+            ),
+            "ground_truth_coarse": fol.ClassificationLabel.create(
+                label=coarse_labels[rel_img_path]
+            ),
+        }
 
         # create sample
         sample = fos.ImageSample.create(
-            filepath=filepath,
-            tags=tags,
-            metadata=metadata,
-            labels=labels,
+            filepath=filepath, tags=tags, metadata=metadata, labels=labels,
         )
 
         samples.append(sample)
