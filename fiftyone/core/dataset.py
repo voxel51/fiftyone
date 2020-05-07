@@ -22,7 +22,6 @@ import datetime
 import logging
 import os
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
