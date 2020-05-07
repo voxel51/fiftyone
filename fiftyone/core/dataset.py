@@ -134,7 +134,7 @@ class Dataset(foc.SampleCollection):
         return self._load_sample(samples[0])
 
     def __delitem__(self, sample_id):
-        return self[sample_id]._delete()
+        self[sample_id]._delete()
 
     def get_tags(self):
         """Returns the list of tags for this SampleCollection.
