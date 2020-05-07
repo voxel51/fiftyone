@@ -230,7 +230,7 @@ class COCO2017Dataset(foz.ZooDataset):
         download_fcn = _download_coco_train_dataset
         get_class_labels_fcn = _parse_coco_detection_labels_map
         sample_parser = fodu.ImageDetectionSampleParser(
-            label_field="category_id"
+            label_field="category_id", normalized=False
         )
 
         return _download_and_prepare(
@@ -318,7 +318,10 @@ def _download_and_prepare(
 
     # Write the formatted dataset to `dataset_dir`
     write_dataset_fcn(
-        dataset, sample_parser, dataset_dir, num_samples=num_samples,
+        dataset,
+        dataset_dir,
+        sample_parser=sample_parser,
+        num_samples=num_samples,
     )
 
     info = foz.ZooDatasetInfo(

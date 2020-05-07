@@ -213,7 +213,7 @@ class COCO2014Dataset(foz.ZooDataset):
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser(normalized=False)
         return _download_and_prepare(
             self,
             split,
@@ -546,8 +546,8 @@ def _download_and_prepare(
     # Write the formatted dataset to `dataset_dir`
     write_dataset_fcn(
         dataset.as_numpy_iterator(),
-        sample_parser,
         dataset_dir,
+        sample_parser=sample_parser,
         num_samples=num_samples,
     )
 
