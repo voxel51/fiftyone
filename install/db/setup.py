@@ -29,7 +29,7 @@ cmdclass = {
 }
 
 setup(
-    name="fiftyone-db",
+    name="fiftyone_db",
     version="0.1.0",
     description="Project FiftyOne database",
     author="Voxel51, Inc.",
@@ -38,7 +38,7 @@ setup(
     license="",
     packages=find_packages(),
     include_package_data=True,
-    package_data={"fiftyone-db": ["bin/*"]},
+    package_data={"fiftyone_db": ["bin/*"]},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
