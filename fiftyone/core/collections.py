@@ -43,6 +43,7 @@ class SampleCollection(object):
     def __contains__(self, sample_id):
         try:
             self[sample_id]
+        # @todo should this be KeyError?
         except ValueError:
             return False
 
