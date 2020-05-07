@@ -277,6 +277,69 @@ class Dataset(foc.SampleCollection):
         if name is None:
             name = get_default_dataset_name()
 
+    @classmethod
+    def from_images_dir(cls, images_dir, recursive=False, name=None):
+        """Creates a :class:`Dataset` for the given directory of images.
+
+        This operation does not read the images.
+
+        Args:
+            images_dir: a directory of images
+            recursive (False): whether to recursively traverse subdirectories
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        image_paths = etau.list_files(
+            images_dir, abs_paths=True, recursive=recursive
+        )
+        return cls.from_images(image_paths, name=name)
+
+    @classmethod
+    def from_images_patt(cls, image_patt, name=None):
+        """Creates a :class:`Dataset` for the given glob pattern of images.
+
+        This operation does not read the images.
+
+        Args:
+            image_patt: a glob pattern of images like ``/path/to/images/*.jpg``
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        image_paths = etau.parse_glob_pattern(image_patt)
+        return cls.from_images(image_paths, name=name)
+
+    @classmethod
+    def from_images(cls, image_paths, name=None):
+        """Creates a :class:`Dataset` for the given list of images.
+
+        This operation does not read the images.
+
+        Args:
+            image_paths: a list of image paths
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        samples = []
+        for image_path in image_paths:
+            filepath = os.path.abspath(os.path.expanduser(image_path))
+            samples.append(fos.Sample.create(filepath))
+
+        dataset = cls(name)
+        dataset.add_samples(samples)
+        return dataset
+
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
         return foo.ODMSample.objects(dataset=self.name, **kwargs)
