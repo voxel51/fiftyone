@@ -18,9 +18,11 @@ export default connect(function (props) {
 
   const getFacets = () => {
     socket.emit("get_facets", "", (data) => {
-      const tags = Object.keys(data[0].tags).map((k) => {
-        return { title: `tags.${data[0].tags[k]._id}` };
-      });
+      const tags = data.length
+        ? Object.keys(data[0].tags).map((k) => {
+            return { title: `tags.${data[0].tags[k]._id}` };
+          })
+        : [];
       setFacets(tags);
       setFacetsLoading(false);
       setInitialLoad(true);
