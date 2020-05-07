@@ -34,6 +34,9 @@ class SampleCollection(object):
     :class:`fiftyone.core.sample.Sample` instances.
     """
 
+    def __str__(self):
+        return "\n".join(str(s) for s in self)
+
     def __bool__(self):
         return len(self) > 0
 
