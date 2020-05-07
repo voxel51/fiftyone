@@ -173,6 +173,64 @@ class Dataset(foc.SampleCollection):
         """
         return fov.DatasetView(self)
 
+    def from_image_classification_dataset(self, dataset_dir, name=None):
+        """Creates a :class:`Dataset` from the given image classification
+        dataset on disk.
+
+        See :class:`fiftyone.types.ImageClassificationDataset` for format
+        details.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        pass
+
+    def from_image_detection_dataset(self, dataset_dir, name=None):
+        """Creates a :class:`Dataset` from the given image detection dataset on
+        disk.
+
+        See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        pass
+
+    def from_image_labels_dataset(self, dataset_dir, name=None):
+        """Creates a :class:`Dataset` from the given image labels dataset on
+        disk.
+
+        See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        pass
+
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
         return foo.ODMSample.objects(dataset=self.name, **kwargs)
