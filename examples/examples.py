@@ -35,6 +35,7 @@ print(foz.list_zoo_datasets())
 # Load a Zoo dataset
 dataset = foz.load_zoo_dataset("cifar10")
 
+# Print a few random samples
 print_random(dataset)
 
 
@@ -98,6 +99,7 @@ dataset = fo.Dataset.from_image_classification_samples(
     samples, name="my-dataset"
 )
 
+# Print a few random samples
 print_random(dataset)
 
 
@@ -105,22 +107,21 @@ print_random(dataset)
 # Add predictions to a dataset
 ###############################################################################
 
+#
+# In order to run this code, you must download the pretrained models as
+# described in `inference/README.md`
+#
+
 import sys
 
 import torch
 import torchvision
 from torch.utils.data import DataLoader
 
-import fiftyone.core.labels as fol
 import fiftyone.core.torchutils as fotu
-
 
 sys.path.insert(1, "inference/PyTorch_CIFAR10")
 from cifar10_models import *
-
-
-LABEL_GROUP = "my-model"
-NUM_PREDICTIONS = 25
 
 
 def make_cifar10_data_loader(image_paths, sample_ids):
@@ -135,7 +136,7 @@ def make_cifar10_data_loader(image_paths, sample_ids):
     dataset = fotu.TorchImageClassificationDataset(
         image_paths, sample_ids, transform=transforms
     )
-    return DataLoader(dataset, batch_size=10, num_workers=4, pin_memory=True)
+    return DataLoader(dataset, batch_size=5, num_workers=4, pin_memory=True)
 
 
 def predict(model, imgs):
@@ -160,7 +161,8 @@ model = inception_v3(pretrained=True)
 #
 # Extract a few images to process
 #
-view = dataset.default_view().take(NUM_PREDICTIONS, random=True)
+num_samples = 25
+view = dataset.default_view().take(num_samples, random=True)
 image_paths, sample_ids = zip(
     *[(s.filepath, s.id) for s in view.iter_samples()]
 )
@@ -172,5 +174,8 @@ data_loader = make_cifar10_data_loader(image_paths, sample_ids)
 for imgs, sample_ids in data_loader:
     predictions = predict(model, imgs)
     for prediction, sample_id in zip(predictions, sample_ids):
-        label = fol.ClassificationLabel.create(labels_map[prediction])
-        dataset[sample_id].add_label(LABEL_GROUP, label)
+        label = fo.ClassificationLabel.create(labels_map[prediction])
+        dataset[sample_id].add_label("my-model", label)
+
+# Print a sample with a prediction
+print(dataset[sample_id])
