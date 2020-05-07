@@ -90,7 +90,6 @@ def load_zoo_dataset(
 
     if dataset_dir is None:
         dataset_dir = fod.get_default_dataset_dir(name, split=split)
-        logger.info("Using default dataset directory '%s'", dataset_dir)
 
     if download_if_necessary:
         info = zoo_dataset.download_and_prepare(dataset_dir, split=split)
