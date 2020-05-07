@@ -29,7 +29,7 @@ const GalleryWrapper = connect((props) => {
         onSelectImage={function (idx, item) {
           item.isSelected = !item.isSelected;
           const event = item.isSelected ? "add_selection" : "remove_selection";
-          socket.emit(event, item.sample._id, (data) => {
+          socket.emit(event, item.sample._id.$oid, (data) => {
             dispatch(updateState(data));
           });
         }}
@@ -62,8 +62,8 @@ function SampleList(props) {
           return {
             src: src,
             thumbnail: src,
-            thumbnailWidth: samples[k].metadata.frame_size[0],
-            thumbnailHeight: samples[k].metadata.frame_size[1],
+            thumbnailWidth: samples[k].metadata.width,
+            thumbnailHeight: samples[k].metadata.height,
             tags: [{ value: null, title: "title" }],
             sample: sample,
           };
@@ -73,6 +73,7 @@ function SampleList(props) {
   const loadMore = () => {
     if (hasDataset) {
       socket.emit("page", scrollState.pageToLoad, (data) => {
+        console.log(data);
         const more = createImages(data);
         setScrollState({
           initialLoad: false,

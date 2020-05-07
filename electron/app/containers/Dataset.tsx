@@ -17,22 +17,27 @@ function Dataset(props) {
   };
   return (
     <Ref innerRef={stickyRef}>
-      <Container fluid={true} style={{ padding: "2rem" }}>
+      <Container fluid={true} style={{ padding: "0 2rem" }}>
         <Sticky context={stickyRef}>
-          <FacetBuilder />
-          <Menu pointing secondary style={{ background: "white" }}>
-            {Object.keys(tabs).map((k) => {
-              return (
-                <Link to={`${url}${k}`}>
-                  <Menu.Item
-                    key={k}
-                    name={tabs[k]}
-                    active={`/${k}` === props.location.pathname}
-                  />
-                </Link>
-              );
-            })}
-          </Menu>
+          <Container
+            fluid={true}
+            style={{ background: "white", paddingTop: "2rem" }}
+          >
+            <FacetBuilder />
+            <Menu pointing secondary>
+              {Object.keys(tabs).map((k) => {
+                return (
+                  <Link to={`${url}${k}`}>
+                    <Menu.Item
+                      key={k}
+                      name={tabs[k]}
+                      active={`/${k}` === props.location.pathname}
+                    />
+                  </Link>
+                );
+              })}
+            </Menu>
+          </Container>
         </Sticky>
         <Switch>
           <Route exact path={path}>
