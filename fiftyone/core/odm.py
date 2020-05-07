@@ -18,10 +18,11 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-# pylint: disable=wildcard-import,unused-wildcard-import
 import json
 
 from bson import json_util
+
+# pylint: disable=wildcard-import,unused-wildcard-import
 from mongoengine import *
 
 
@@ -44,42 +45,55 @@ class ODMDocument(Document):
     meta = {"allow_inheritance": True}
 
     def to_dict(self, extended=False):
-        """Convert this document to a JSON dict.
+        """Serializes this document to a JSON dictionary.
 
         Args:
-            extended: If True, return extended JSON (ObjectIDs, Datetimes, ...
-                are serialized to dicts/strings/etc.)
+            extended (False): whether to return extended JSON, i.e.,
+                ObjectIDs, Datetimes, etc. are serialized
+
+        Returns:
+            a JSON dict
         """
         if extended:
             return json.loads(self.to_json())
+
         return json_util.loads(self.to_json())
 
     @classmethod
     def from_dict(cls, d, created=False, extended=False):
-        """Converts json dict to a Document instance
+        """Loads the document from a JSON dictionary.
 
         Args:
-            d: The json dict to load into the Document
-            created: Boolean defining whether to consider the newly
-                instantiated document as brand new or as persisted already:
-                * If True, consider the document as brand new, no matter what
-                  data it's loaded with (i.e. even if an ID is loaded).
-                * If False and an ID is NOT provided, consider the document as
-                  brand new.
-                * If False and an ID is provided, assume that the object has
-                  already been persisted (this has an impact on the subsequent
-                  call to .save()).
-                * Defaults to ``False``.
-            extended: If False, ObjectIDs, Datetimes, ... are expected
-                to already be loaded.
+            d: a JSON dictionary
+            created (False): whether to consider the newly instantiated
+                document as brand new or as persisted already. The following
+                cases exist:
+
+                    * If ``True``, consider the document as brand new, no
+                      matter what data it is loaded with (i.e., even if an ID
+                      is loaded)
+
+                    * If ``False`` and an ID is NOT provided, consider the
+                      document as brand new
+
+                    * If ``False`` and an ID is provided, assume that the
+                      object has already been persisted (this has an impact on
+                      the subsequent call to ``.save()``)
+
+            extended (False): if ``False``, ObjectIDs, Datetimes, etc. are
+                expected to already be loaded
+
+        Returns:
+            a :class:`ODMDocument`
         """
         if not extended:
             try:
-                # attempt to load the document directly (assumes it is in
-                # extended form)
+                # Attempt to load the document directly, assuming it is in
+                # extended form
                 return cls._from_son(d, created=created)
             except Exception:
                 pass
+
         return cls.from_json(json_util.dumps(d), created=created)
 
 
