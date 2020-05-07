@@ -436,6 +436,70 @@ class Dataset(foc.SampleCollection):
         return dataset
 
     @classmethod
+    def ingest_labeled_image_samples(
+        cls,
+        samples,
+        name=None,
+        group="ground_truth",
+        dataset_dir=None,
+        sample_parser=None,
+        image_format=fo.config.default_image_ext,
+    ):
+        """Creates a :class:`Dataset` for the given iterable of samples, which
+        contains images and their associated labels.
+
+        The images are read in-memory and written to the given dataset
+        directory. The labels are ingested by FiftyOne.
+
+        The input ``samples`` can be any iterable that emits
+        ``(image_or_path, label)`` tuples, where:
+
+            - ``image_or_path`` is either an image that can be converted to
+              numpy format via ``np.asarray()`` or the path to an image on disk
+
+            - ``label`` is a :class:`fiftyone.core.labels.Label` instance
+
+        If your samples require preprocessing to convert to the above format,
+        you can provide a custom
+        :class:`fiftyone.core.datautils.LabeledImageSampleParser` instance via
+        the ``sample_parser`` argument whose
+        :func:`fiftyone.core.datautils.LabeledImageSampleParser.parse` method
+        will be used to parse the input samples.
+
+        Args:
+            samples: an iterable of images
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+            dataset_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            sample_parser (None): a
+                :class:`fiftyone.core.datautils.LabeledImageSampleParser`
+                instance whose
+                :func:`fiftyone.core.datautils.LabeledImageSampleParser.parse`
+                method will be used to parse the images
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        if dataset_dir is None:
+            dataset_dir = get_default_dataset_dir(name)
+
+        _samples = fodu.parse_labeled_images(
+            samples,
+            dataset_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+        return cls.from_labeled_image_samples(_samples, name=name, group=group)
+
+    @classmethod
     def from_image_classification_dataset(
         cls, dataset_dir, name=None, group="ground_truth"
     ):
@@ -565,6 +629,62 @@ class Dataset(foc.SampleCollection):
         dataset = cls(name)
         dataset.add_samples(samples)
         return dataset
+
+    @classmethod
+    def ingest_images(
+        cls,
+        samples,
+        name=None,
+        dataset_dir=None,
+        sample_parser=None,
+        image_format=fo.config.default_image_ext,
+    ):
+        """Creates a :class:`Dataset` for the given iterable of samples, which
+        contains images that are read in-memory and written to the given
+        dataset directory.
+
+        The input ``samples`` can be any iterable that emits images (or paths
+        to images on disk) that can be converted to numpy format via
+        ``np.asarray()``.
+
+        If your samples require preprocessing to convert to the above format,
+        you can provide a custom
+        :class:`fiftyone.core.datautils.UnlabeledImageSampleParser` instance
+        via the ``sample_parser`` argument whose
+        :func:`fiftyone.core.datautils.UnlabeledImageSampleParser.parse` method
+        will be used to parse the images in the input iterable.
+
+        Args:
+            samples: an iterable of images
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            dataset_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            sample_parser (None): a
+                :class:`fiftyone.core.datautils.UnlabeledImageSampleParser`
+                instance whose
+                :func:`fiftyone.core.datautils.UnlabeledImageSampleParser.parse`
+                method will be used to parse the images
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        if dataset_dir is None:
+            dataset_dir = get_default_dataset_dir(name)
+
+        image_paths = fodu.to_images_dir(
+            samples,
+            dataset_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+        return cls.from_images(image_paths, name=name)
 
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
