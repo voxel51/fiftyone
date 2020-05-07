@@ -27,6 +27,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.datautils as fodu
 import fiftyone.core.utils as fou
+import fiftyone.types as fot
 import fiftyone.zoo as foz
 
 fou.ensure_tensorflow_datasets()
@@ -530,16 +531,15 @@ def _download_and_prepare(
     sample_parser.labels_map = labels_map
     num_samples = info.splits[split].num_examples
 
-    # @todo convert `format` to a proper type system
     if isinstance(sample_parser, fodu.ImageClassificationSampleParser):
         write_dataset_fcn = fodu.to_image_classification_dataset
-        format = "fiftyone.types.ImageClassificationDataset"
+        format = fot.ImageClassificationDataset
     elif isinstance(sample_parser, fodu.ImageDetectionSampleParser):
         write_dataset_fcn = fodu.to_image_detection_dataset
-        format = "fiftyone.types.ImageDetectionDataset"
+        format = fot.ImageDetectionDataset
     elif isinstance(sample_parser, fodu.ImageLabelsSampleParser):
         write_dataset_fcn = fodu.to_labeled_image_dataset
-        format = "fiftyone.types.LabeledImageDataset"
+        format = fot.ImageLabelsDataset
     else:
         raise ValueError("Unsupported sample parser: %s" % sample_parser)
 
