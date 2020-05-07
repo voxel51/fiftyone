@@ -18,7 +18,13 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from copy import copy, deepcopy
+
+from pymongo import ASCENDING, DESCENDING
+
 import fiftyone.core.collections as foc
+import fiftyone.core.odm as foo
+import fiftyone.core.sample as fos
 
 
 class DatasetView(foc.SampleCollection):
@@ -47,14 +53,99 @@ class DatasetView(foc.SampleCollection):
 
     def __init__(self, dataset):
         self._dataset = dataset
-        self._query_kwargs = {}
-        self._sort_by_arg = None
+        self._pipeline = []
+
+    def __len__(self):
+        return next(
+            self._get_ds_qs().aggregate(self._pipeline + [{"$count": "count"}])
+        )["count"]
+
+    def __getitem__(self, sample_id):
+        samples = self._get_ds_qs(id=sample_id)
+        if not samples:
+            raise ValueError("No sample found with ID '%s'" % sample_id)
+
+        # @todo(Tyler) this should fail if the sample is not in the view
+        # return self._dataset[sample_id]
+
+        return fos.Sample.from_doc(samples[0])
+
+    def __copy__(self):
+        view = self.__class__(dataset=self._dataset)
+        view._pipeline = deepcopy(self._pipeline)
+        return view
 
     @property
     def dataset(self):
         return self._dataset
 
+    def iter_samples(self):
+        """Returns an iterator over the :class:`fiftyone.core.sample.Sample`
+        instances in the view.
+
+        Returns:
+            an iterator over :class:`fiftyone.core.sample.Sample` instances
+        """
+        for d in self._get_ds_qs().aggregate(self._pipeline):
+            yield self._deserialize(d)
+
+    def iter_samples_with_index(self):
+        """Returns an iterator over the samples in the SampleCollection with
+        integer indices.
+
+        Args:
+            offset: the integer offset to start iterating at
+            limit: the maximum number of samples to iterate over
+
+        Returns:
+            an iterator over tuples of:
+                - integer index relative to the offset
+                        offset <= view_idx < offset + limit
+                - :class:`fiftyone.core.sample.Sample` instances
+        """
+        offset = self._get_latest_offset()
+        iterator = self.iter_samples()
+        for idx, sample in enumerate(iterator, start=offset):
+            yield idx, sample
+
     # VIEW OPERATIONS #########################################################
+
+    def filter(
+        self, tag=None, insight_group=None, label_group=None, filter=None
+    ):
+        """Filters the samples in the view by the given filter.
+
+        Args:
+            tag: a sample tag string
+            insight_group: an insight group string
+            label_group: a label group string
+            filter: a MongoDB query dict
+                ref: https://docs.mongodb.com/manual/tutorial/query-documents/
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        view = self
+
+        if tag is not None:
+            view = view._copy_with_new_stage(stage={"$match": {"tags": tag}})
+
+        if insight_group is not None:
+            # @todo(Tyler) should this filter the insights as well? or just
+            # filter the samples based on whether or not the insight is
+            # present?
+            raise NotImplementedError("TODO")
+
+        if label_group is not None:
+            # @todo(Tyler) should this filter the labels as well? or just
+            # filter the samples based on whether or not the label is
+            # present?
+            raise NotImplementedError("TODO")
+
+        if filter is not None:
+            view = view._copy_with_new_stage(stage={"$match": filter})
+
+        return view
 
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
@@ -67,12 +158,12 @@ class DatasetView(foc.SampleCollection):
                 metadata.frame_size[0]
 
             reverse (False): whether to return the results in descending order
+
+        Returns:
+            a :class:`DatasetView`
         """
-        if reverse:
-            # descending
-            field = "-" + field
-        self._sort_by_arg = field
-        return self
+        order = DESCENDING if reverse else ASCENDING
+        return self._copy_with_new_stage({"$sort": {field: order}})
 
     def take(self, size, random=False):
         """Takes the given number of samples from the view.
@@ -86,42 +177,21 @@ class DatasetView(foc.SampleCollection):
         """
         if random:
             stage = {"$sample": {"size": size}}
+        else:
+            stage = {"$limit": size}
 
-        stage = {"$limit": size}
+        return self._copy_with_new_stage(stage)
 
-        raise NotImplementedError("TODO")
-
-    def filter(
-        self, tag=None, insight_group=None, labels_group=None, filter=None
-    ):
-        """Filters the samples in the view by the given filter.
+    def offset(self, offset):
+        """Omits the given number of samples from the head of the view.
 
         Args:
-            tag: a sample tag string
-            insight_group: an insight group string
-            labels_group: a labels group string
-            filter: a MongoDB query dict
-                ref: https://docs.mongodb.com/manual/tutorial/query-documents/
+            offset: the offset
+
+        Returns:
+            a :class:`DatasetView`
         """
-        if tag is not None:
-            self._query_kwargs["tags"] = tag
-
-        if insight_group is not None:
-            # @todo(Tyler) should this filter the insights as well? or just
-            # filter the samples based on whether or not the insight is
-            # present?
-            self._query_kwargs["insights__group"] = insight_group
-
-        if labels_group is not None:
-            # @todo(Tyler) should this filter the labels as well? or just
-            # filter the samples based on whether or not the label is
-            # present?
-            self._query_kwargs["labels__group"] = insight_group
-
-        if filter is not None:
-            self._query_kwargs["__raw__"] = filter
-
-        return self
+        return self._copy_with_new_stage({"$skip": offset})
 
     def select_samples(self, sample_ids):
         """Selects only the samples with the given IDs from the view.
@@ -145,18 +215,22 @@ class DatasetView(foc.SampleCollection):
         """
         raise NotImplementedError("Not yet implemented")
 
-    @property
-    def _sample_class(self):
-        return self.dataset._sample_class
+    def _get_ds_qs(self, **kwargs):
+        """Get Dataset QuerySet"""
+        return self.dataset._get_query_set(**kwargs)
 
-    def _get_query_set(self, **kwargs):
-        # apply query kwargs
-        kwargs = kwargs.copy()
-        kwargs.update(self._query_kwargs)
-        query_set = self.dataset._get_query_set(**kwargs)
+    @staticmethod
+    def _deserialize(d):
+        return fos.Sample.from_doc(foo.ODMSample.from_dict(d, extended=False))
 
-        # sort
-        if self._sort_by_arg:
-            query_set = query_set.order_by(self._sort_by_arg)
+    def _copy_with_new_stage(self, stage):
+        view = copy(self)
+        view._pipeline.append(stage)
+        return view
 
-        return query_set
+    def _get_latest_offset(self):
+        """Returns the offset of the last $skip stage."""
+        for stage in self._pipeline[::-1]:
+            if "$skip" in stage:
+                return stage["$skip"]
+        return 0
