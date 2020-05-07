@@ -610,7 +610,7 @@ def parse_image_classification_dir_tree(dataset_dir):
     """Parses the contents of the given image classification dataset directory
     tree, which should have the following format::
 
-        dataset_dir/
+        <dataset_dir>/
             <classA>/
                 <image1>.<ext>
                 <image2>.<ext>
