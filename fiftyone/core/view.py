@@ -108,7 +108,7 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             pipeline (None): an optional aggregation pipeline (list of dicts)
-                to aggregate on
+                to append to the view's pipeline before aggregation.
 
         Returns:
             an iterable over the aggregation result

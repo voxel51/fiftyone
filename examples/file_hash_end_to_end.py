@@ -10,18 +10,11 @@ import os
 import time
 from pprint import pprint
 
-import fiftyone.core.dataset as fod
+import fiftyone as fo
 from fiftyone.core.datautils import parse_image_classification_dir_tree
 import fiftyone.core.features as fof
 import fiftyone.core.insights as foi
-import fiftyone.core.odm as foo
 
-
-###############################################################################
-# 0. Clear the database state
-###############################################################################
-
-foo.drop_database()
 
 ###############################################################################
 # 1. Ingest the dataset
@@ -33,7 +26,7 @@ src_data_dir = os.path.join("data", dataset_name)
 
 start = time.time()
 samples, _ = parse_image_classification_dir_tree(src_data_dir)
-dataset = fod.Dataset.from_image_classification_samples(
+dataset = fo.Dataset.from_image_classification_samples(
     samples, name=dataset_name
 )
 print("'%s' ingest time: %.2fs" % (dataset_name, time.time() - start))
@@ -59,7 +52,7 @@ for idx, sample in enumerate(dataset):
 # 3. Explore
 ###############################################################################
 
-dataset = fod.Dataset(name="cifar_fh_e2e")
+dataset = fo.Dataset(name="cifar_fh_e2e")
 
 sample = next(dataset.iter_samples())
 pprint(sample.get_backing_doc_dict())

@@ -42,7 +42,7 @@ class Insight(fod.BackedByDocument):
 
     @classmethod
     def from_doc(cls, document):
-        """Creates an instance of the :class:`fiftyone.core.insight.Insight`
+        """Creates an instance of the :class:`Insight`
         class backed by the given document.
 
         Args:
