@@ -53,7 +53,7 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _get_sample_cls()")
 
     def get_tags(self):
-        """Returns the list of tags for this SampleCollection.
+        """Returns the list of tags in the collection.
 
         Returns:
             a list of tags
@@ -62,7 +62,7 @@ class SampleCollection(object):
 
     def get_label_groups(self):
         """Returns the list of label groups attached to at least one sample
-        in the SampleCollection.
+        in the collection.
 
         Returns:
             a list of groups
@@ -71,7 +71,7 @@ class SampleCollection(object):
 
     def get_insight_groups(self):
         """Returns the list of insight groups attached to at least one sample
-        in the SampleCollection.
+        in the collection.
 
         Returns:
             a list of groups
@@ -81,7 +81,7 @@ class SampleCollection(object):
         )
 
     def iter_samples(self):
-        """Returns an iterator over the samples in the SampleCollection.
+        """Returns an iterator over the samples in the collection.
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
