@@ -215,7 +215,9 @@ class DatasetView(foc.SampleCollection):
 
     @staticmethod
     def _deserialize_sample(d):
-        return fos.Sample.from_doc(foo.ODMSample.from_dict(d, extended=False))
+        return fos.Sample.from_doc(
+            foo.ODMSample.from_dict(d, created=False, extended=False)
+        )
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)
