@@ -126,16 +126,16 @@ NUM_PREDICTIONS = 25
 def make_cifar10_data_loader(image_paths, sample_ids):
     mean = [0.4914, 0.4822, 0.4465]
     std = [0.2023, 0.1994, 0.2010]
-    transforms = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(mean, std),
-    ])
+    transforms = torchvision.transforms.Compose(
+        [
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize(mean, std),
+        ]
+    )
     dataset = fotu.TorchImageClassificationDataset(
         image_paths, sample_ids, transform=transforms
     )
-    return DataLoader(
-        dataset, batch_size=10, num_workers=4, pin_memory=True
-    )
+    return DataLoader(dataset, batch_size=10, num_workers=4, pin_memory=True)
 
 
 def predict(model, imgs):
@@ -174,4 +174,3 @@ for imgs, sample_ids in data_loader:
     for prediction, sample_id in zip(predictions, sample_ids):
         label = fol.ClassificationLabel.create(labels_map[prediction])
         dataset[sample_id].add_label(LABEL_GROUP, label)
-
