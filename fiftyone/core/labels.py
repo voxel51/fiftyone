@@ -32,7 +32,7 @@ class Label(fod.BackedByDocument):
     """A label for a :class:`fiftyone.core.sample.Sample` in a
     :class:`fiftyone.core.dataset.Dataset`.
 
-    Label instances represent an atomic group of labels associated with a
+    Label instances represent an atomic collection of labels associated with a
     sample in a dataset. Label instances may represent concrete tasks such as
     image classification (:class:`ClassificationLabel`) or image object
     detection (:class:`DetectionLabels`), or they may represent higher-level
@@ -115,9 +115,7 @@ class ClassificationLabel(ImageLabel):
         Returns:
             a :class:`ClassificationLabel`
         """
-        return cls._create(
-            label=label, confidence=confidence, logits=logits,
-        )
+        return cls._create(label=label, confidence=confidence, logits=logits,)
 
     def to_image_labels(self, attr_name="label"):
         """Returns an ``eta.core.image.ImageLabels`` representation of this

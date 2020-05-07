@@ -18,71 +18,38 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import eta.core.serial as etas
-import eta.core.utils as etau
+import fiftyone.core.document as fod
+import fiftyone.core.odm as foo
 
 
-class Insight(etas.Serializable):
-    """An insight in a :class:`fiftyone.core.dataset.Dataset`.
+class Insight(fod.BackedByDocument):
+    """An insight for a :class:`fiftyone.core.sample.Sample` in a
+    :class:`fiftyone.core.dataset.Dataset`.
 
-    Insight instances represent features of the elements of a sample, such as
-    metadata about the raw data sample or attributes of the sample's labels.
-
-    Args:
-        group (None): the group name of the insight
+    Insight instances may represent simple features on the sample such as
+    the file hash or the image brightness, or more complex concepts like
+    "difficulty of classification" or "mislabel probability". They can be
+    anything from a single scalar, string or vector to a much more complicated
+    data structure.
     """
 
-    def __init__(self, group=None):
-        self._group = group
-
-    @property
-    def type(self):
-        """The fully-qualified class name of the label."""
-        return etau.get_class_name(self)
-
-    @property
-    def group(self):
-        """The group name of the insight, or ``None`` if it is not associated
-        with a label group.
-        """
-        return self._group
-
-    def attributes(self):
-        """Returns the list of class attributes to be serialized.
-
-        Returns:
-            a list of class attributes
-        """
-        return ["type", "group"]
+    _ODM_DOCUMENT_CLS = foo.ODMInsight
 
     @classmethod
-    def from_dict(cls, d):
-        """Constructs an `class`:Insight` from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-
-        Returns:
-            an `class`:Insight`
-        """
-        insight_cls = etau.get_class(d["type"])
-        return insight_cls._from_dict(d, group=d["group"])
+    def create(cls):
+        """Creates a :class:`Insight` instance."""
+        return cls._create()
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
-        """Internal implementation of :func:`Insight.from_dict`.
-
-        Subclasses should implement this method, not :func:`Insight.from_dict`.
+    def from_doc(cls, document):
+        """Creates an instance of the :class:`fiftyone.core.insight.Insight`
+        class backed by the given document.
 
         Args:
-            d: a JSON dictionary
-            **kwargs: keyword arguments for :class:`Insight` that have already
-                been parsed by :func:`Insight.from_dict`
-
-        Returns:
-            an `class`:Insight`
+            document: an :class:`fiftyone.core.odm.ODMInsight` instance
         """
-        raise NotImplementedError("Subclass must implement _from_dict()")
+        insight_cls = _INSIGHT_CLS_MAP[document.__class__]
+        return insight_cls(document)
 
 
 class FileHashInsight(Insight):
@@ -90,22 +57,31 @@ class FileHashInsight(Insight):
     sample in a dataset.
 
     Args:
-        file_hash: the file hash of the raw data
+        file_hash: the integer file hash of the raw data
         **kwargs: keyword arguments for :class:`Insight`
     """
 
-    def __init__(self, file_hash, **kwargs):
-        super(FileHashInsight, self).__init__(**kwargs)
-        self.file_hash = file_hash
+    _ODM_DOCUMENT_CLS = foo.ODMFileHashInsight
 
-    def attributes(self):
-        """Returns the list of class attributes to be serialized.
-
-        Returns:
-            a list of class attributes
-        """
-        return super(FileHashInsight, self).attributes() + ["file_hash"]
+    @property
+    def file_hash(self):
+        """The integer file hash."""
+        return self._backing_doc.file_hash
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
-        return cls(d["file_hash"], **kwargs)
+    def create(cls, file_hash):
+        """Creates a :class:`FileHashInsight` instance.
+
+        Args:
+            file_hash: the integer file hash
+
+        Returns:
+            a :class:`FileHashInsight`
+        """
+        return cls._create(file_hash=file_hash)
+
+
+_INSIGHT_CLS_MAP = {
+    foo.ODMInsight: Insight,
+    foo.ODMFileHashInsight: FileHashInsight,
+}

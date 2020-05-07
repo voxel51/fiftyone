@@ -589,3 +589,8 @@ class Dataset(foc.SampleCollection):
                         etau.get_class_name(label),
                     )
                 )
+
+    def _validate_insight(self, group, insight):
+        # @todo(Tyler)
+        pass
+        # raise NotImplementedError("TODO")
