@@ -12,6 +12,7 @@
 """
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.labels as fol
 import fiftyone.core.view as fov
 
 dataset = fod.Dataset(name="cifar100")
@@ -22,27 +23,27 @@ sample = next(dataset.iter_samples())
 ###############################################################################
 
 # samples can have arbitrary tags
-print(sample.tags)
+print(sample.get_tags())
 # ['train']
 
 ###############################################################################
 # LABELS
 ###############################################################################
 
-print(type(sample.labels))
+print(type(sample.get_labels()))
 # <class 'dict'>
 
-print(type(sample.labels["ground_truth_fine"]))
+print(type(sample.get_label("ground_truth_fine")))
 # <fiftyone.core.label.ClassificationLabel>
 
-print(sample.labels["ground_truth_fine"])
+print(sample.get_label("ground_truth_fine"))
 # {
 #     "label": "mountain",
 #     "confidence": null
 # }
 
 # @todo(Tyler)
-# print(sample.labels["ground_truth_fine"].group)
+# print(sample.get_label("ground_truth_fine").group)
 # "ground_truth_fine"
 
 # @todo(Tyler)
@@ -56,7 +57,8 @@ print(sample.labels["ground_truth_fine"])
 # INSIGHTS
 ###############################################################################
 
-print(type(sample.insights))
+# @todo(Tyler)
+# print(type(sample.insights))
 # <class 'dict'>
 
 # @todo(Tyler)

@@ -24,3 +24,16 @@ import fiftyone.core.service as fos
 
 config = foc.load_config()
 dataset_service = fos.DatabaseService()
+
+from .core.dataset import (
+    Dataset,
+    list_dataset_names,
+    load_dataset,
+)
+from .core.labels import (
+    ClassificationLabel,
+    DetectionLabels,
+    ImageLabels,
+    Label,
+)
+from .core.sample import ImageSample, Sample

@@ -2,6 +2,6 @@
 Drop the FiftyOne database from server
 
 """
-import fiftyone.core.dataset as voxd
+import fiftyone.core.odm as foo
 
-voxd.drop_database()
+foo.drop_database()

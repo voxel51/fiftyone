@@ -105,7 +105,7 @@ print_gt_detection_head(dataset2, num_samples=1, shuffle=True)
 #
 
 class_dir = "/Users/Brian/Desktop/class-dir"
-samples, _ = fodu.parse_image_classification_dataset_directory(class_dir)
+samples, _ = fodu.parse_image_classification_dir_tree(class_dir)
 dataset3 = fed.from_image_classification_samples(samples)
 
 print_gt_classification_head(dataset3)
@@ -116,7 +116,7 @@ print_gt_classification_head(dataset3)
 #
 
 class_dir = "/Users/Brian/Desktop/class-dir"
-dataset4 = fed.from_images_from_dir(class_dir, recursive=True)
+dataset4 = fed.from_images_dir(class_dir, recursive=True)
 
 print_images_head(dataset4)
 

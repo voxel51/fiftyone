@@ -31,13 +31,7 @@ Data is downloaded as:
 
 ## Scripts
 
-- `test_db_conn.py`: test that you have the `fiftyone` MongoDB server
-  properly installed
-
 - `drop_database.py`: clear the database at anytime
-
-- `document_test.py`: test the functionality of the `fiftyone.core.document`
-  module which extends `eta.core.serial` for database read/write
 
 - `ingest_data.py`: read CIFAR100 data into the database
 

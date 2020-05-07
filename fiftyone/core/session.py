@@ -10,6 +10,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -17,7 +18,7 @@ from builtins import *
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
-
+import fiftyone.core.view as fov
 
 # global session singleton
 session = None
@@ -157,7 +158,7 @@ class Session(foc.HasClient):
 
     @update_state
     def clear_limit(self):
-        self._limit = self.clear_limit
+        self._limit = self.DEFAULT_LIMIT
 
     @update_state
     def clear_dataset(self):
@@ -176,12 +177,23 @@ class Session(foc.HasClient):
             selected=self.state.selected,
         )
 
-    def _get_dataset_or_view(self):
-        # view takes precedence over dataset if set
-        return self.view if self.view else self.dataset
-
     def _compute_count(self):
-        dataset_or_view = self._get_dataset_or_view()
+        dataset_or_view = self.view if self.view else self.dataset
         if dataset_or_view:
             return len(dataset_or_view)
         return 0
+
+    def _compute_samples(self):
+        if not self.dataset:
+            return {}
+
+        view = (
+            self.view if self.view else fov.DatasetView(dataset=self.dataset)
+        )
+
+        view = view.offset(self.offset).take(self.limit)
+
+        return {
+            idx: sample.get_backing_doc_dict(extended=True)
+            for idx, sample in view.iter_samples_with_index()
+        }

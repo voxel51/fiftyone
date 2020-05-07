@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -24,103 +25,346 @@ import os
 
 import numpy as np
 
-import eta.core.data as etad
 import eta.core.datasets as etads
-import eta.core.geometry as etag
 import eta.core.image as etai
-import eta.core.learning as etal
-import eta.core.objects as etao
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.utils as fou
+import fiftyone.core.labels as fol
+import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
 
 
-def to_labeled_image_dataset(
+def to_image_classification_dataset(
     samples,
-    sample_parser,
     dataset_dir,
+    sample_parser=None,
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
-    """Converts the given samples to ``eta.core.datasets.LabeledImageDataset``
-    format.
+    """Writes the given samples to disk as an image classification dataset.
 
-    FiftyOne provides a number of sample parsers out-of-the-box to ingest
-    samples for common tasks:
-
-        - Image classification: :class:`ImageClassificationSampleParser`
-
-        - Image object detection: :class:`ImageDetectionSampleParser`
-
-        - Multitask image labels: :class:`LabeledImageSampleParser`
-
-    If your samples to do meet one of the above schemas, you can implement your
-    own :class:`LabeledImageSampleParser` subclass.
+    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
 
     Args:
         samples: an iterable of samples
-        sample_parser: a :class:`LabeledImageSampleParser` instance whose
-            :func:`LabeledImageSampleParser.parse` method will be used to parse
-            the samples
-        dataset_dir: the directory to which to write the
-            ``eta.core.datasets.LabeledImageDataset``
+        dataset_dir: the directory to which to write the dataset
+        sample_parser (None): a :class:`ImageClassificationSampleParser`
+            instance whose :func:`ImageClassificationSampleParser.parse` method
+            will be used to parse the samples. If not provided, the default
+            :class:`ImageClassificationSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
             it is assumed that this can be computed via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
-
-    Returns:
-        a ``eta.core.datasets.LabeledImageDataset`` backed by the specified
-        ``dataset_dir``
     """
     if sample_parser is None:
-        sample_parser = LabeledImageSampleParser()
+        sample_parser = ImageClassificationSampleParser()
+
+    # Store labels map separately, if provided
+    labels_map = sample_parser.labels_map
+    sample_parser.labels_map = None
+
+    if num_samples is None:
+        num_samples = len(samples)
+
+    data_dir = os.path.join(dataset_dir, "data")
+    uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
+    images_patt = os.path.join(data_dir, uuid_patt + image_format)
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageClassificationDataset),
+    )
+
+    etau.ensure_dir(data_dir)
+    labels_dict = {}
+    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
+        for idx, sample in enumerate(samples, 1):
+            img, label = sample_parser.parse(sample)
+            etai.write(img, images_patt % idx)
+            labels_dict[uuid_patt % idx] = label.label
+            bar.update()
+
+    logger.info("Writing labels to '%s'", labels_path)
+    labels = {
+        "labels_map": labels_map,
+        "labels": labels_dict,
+    }
+    etas.write_json(labels, labels_path, pretty_print=True)
+
+    logger.info("Dataset created")
+
+
+def to_image_detection_dataset(
+    samples,
+    dataset_dir,
+    sample_parser=None,
+    num_samples=None,
+    image_format=fo.config.default_image_ext,
+):
+    """Writes the given samples to disk as an image detection dataset.
+
+    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+
+    Args:
+        samples: an iterable of samples
+        dataset_dir: the directory to which to write the dataset
+        sample_parser (None): a :class:`ImageDetectionSampleParser` instance
+            whose :func:`ImageDetectionSampleParser.parse` method will be
+            used to parse the samples. If not provided, the default
+            :class:`ImageDetectionSampleParser` instance is used
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            it is assumed that this can be computed via ``len(samples)``
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk
+    """
+    if sample_parser is None:
+        sample_parser = ImageDetectionSampleParser()
+
+    # Store labels map separately, if provided
+    labels_map = sample_parser.labels_map
+    sample_parser.labels_map = None
+
+    if num_samples is None:
+        num_samples = len(samples)
+
+    data_dir = os.path.join(dataset_dir, "data")
+    uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
+    images_patt = os.path.join(data_dir, uuid_patt + image_format)
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageDetectionDataset),
+    )
+
+    etau.ensure_dir(data_dir)
+    labels_dict = {}
+    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
+        for idx, sample in enumerate(samples, 1):
+            img, label = sample_parser.parse(sample)
+            etai.write(img, images_patt % idx)
+            labels_dict[uuid_patt % idx] = label.detections
+            bar.update()
+
+    logger.info("Writing labels to '%s'", labels_path)
+    labels = {
+        "labels_map": labels_map,
+        "labels": labels_dict,
+    }
+    etas.write_json(labels, labels_path, pretty_print=True)
+
+    logger.info("Dataset created")
+
+
+def to_image_labels_dataset(
+    samples,
+    dataset_dir,
+    sample_parser=None,
+    num_samples=None,
+    image_format=fo.config.default_image_ext,
+):
+    """Writes the given samples to disk as a multitask image labels dataset.
+
+    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+    Args:
+        samples: an iterable of samples
+        dataset_dir: the directory to which to write the
+            ``eta.core.datasets.LabeledImageDataset``
+        sample_parser (None): a :class:`ImageLabelsSampleParser` instance whose
+            :func:`ImageLabelsSampleParser.parse` method will be used to parse
+            the samples. If not provided, the default
+            :class:`ImageLabelsSampleParser` instance is used
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            it is assumed that this can be computed via ``len(samples)``
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk
+    """
+    if sample_parser is None:
+        sample_parser = ImageLabelsSampleParser()
 
     if num_samples is None:
         num_samples = len(samples)
 
     int_patt = etau.get_int_pattern_with_capacity(num_samples)
-    data_patt = int_patt + image_format
+    images_patt = int_patt + image_format
     labels_patt = int_patt + ".json"
 
-    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageLabelsDataset),
+    )
+
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
         for idx, sample in enumerate(samples, 1):
-            img, image_labels = sample_parser.parse(sample)
-            lid.add_data(img, image_labels, data_patt % idx, labels_patt % idx)
+            img, label = sample_parser.parse(sample)
+            lid.add_data(
+                img, label.labels, images_patt % idx, labels_patt % idx
+            )
             bar.update()
 
+    logger.info("Writing manifest to '%s'", lid.manifest_path)
     lid.write_manifest()
+
     logger.info("Dataset created")
 
-    return lid
 
+def export_image_classification_dataset(image_paths, labels, dataset_dir):
+    """Exports the given data to disk as an image classification dataset.
 
-def write_labeled_image_dataset(image_paths, labels, dataset_dir):
-    """Writes the given data to disk in
-    ``eta.core.datasets.LabeledImageDataset`` format.
+    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appened to the base
+    filename.
 
     Args:
         image_paths: an iterable of image paths
-        labels: an iterable of ``eta.core.image.ImageLabels``
+        labels: an iterable of
+            :class:`fiftyone.core.labels.ClassificationLabel` instances
         dataset_dir: the directory to which to write the dataset
-
-    Returns:
-        a ``eta.core.datasets.LabeledImageDataset`` backed by the specified
-        ``dataset_dir``
     """
     num_samples = len(image_paths)
     data_filename_counts = defaultdict(int)
 
-    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    data_dir = os.path.join(dataset_dir, "data")
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageClassificationDataset),
+    )
+
+    etau.ensure_dir(data_dir)
+    labels_dict = {}
+    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
+        for img_path, label in zip(image_paths, labels):
+            name, ext = os.path.splitext(os.path.basename(img_path))
+            data_filename_counts[name] += 1
+
+            count = data_filename_counts[name]
+            if count > 1:
+                name += "-%d" + count
+
+            out_img_path = os.path.join(data_dir, name + ext)
+            etau.copy_file(img_path, out_img_path)
+
+            labels_dict[name] = label.label
+
+            bar.update()
+
+    logger.info("Writing labels to '%s'", labels_path)
+    labels = {
+        "labels_map": None,  # @todo get this somehow?
+        "labels": labels_dict,
+    }
+    etas.write_json(labels, labels_path, pretty_print=True)
+
+    logger.info("Dataset created")
+
+
+def export_image_detection_dataset(image_paths, labels, dataset_dir):
+    """Exports the given data to disk as an image detection dataset.
+
+    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appened to the base
+    filename.
+
+    Args:
+        image_paths: an iterable of image paths
+        labels: an iterable of :class:`fiftyone.core.labels.DetectionLabels`
+            instances
+        dataset_dir: the directory to which to write the dataset
+    """
+    num_samples = len(image_paths)
+    data_filename_counts = defaultdict(int)
+
+    data_dir = os.path.join(dataset_dir, "data")
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageDetectionDataset),
+    )
+
+    etau.ensure_dir(data_dir)
+    labels_dict = {}
+    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
+        for img_path, label in zip(image_paths, labels):
+            name, ext = os.path.splitext(os.path.basename(img_path))
+            data_filename_counts[name] += 1
+
+            count = data_filename_counts[name]
+            if count > 1:
+                name += "-%d" + count
+
+            out_img_path = os.path.join(data_dir, name + ext)
+            etau.copy_file(img_path, out_img_path)
+
+            labels_dict[name] = label.detections
+
+            bar.update()
+
+    logger.info("Writing labels to '%s'", labels_path)
+    labels = {
+        "labels_map": None,  # @todo get this somehow?
+        "labels": labels_dict,
+    }
+    etas.write_json(labels, labels_path, pretty_print=True)
+
+    logger.info("Dataset created")
+
+
+def export_image_labels_dataset(image_paths, labels, dataset_dir):
+    """Exports the given data to disk as a multitask image labels dataset.
+
+    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appened to the base
+    filename.
+
+    Args:
+        image_paths: an iterable of image paths
+        labels: an iterable of :class:`fiftyone.core.labels.ImageLabels`
+            instances
+        dataset_dir: the directory to which to write the dataset
+    """
+    num_samples = len(image_paths)
+    data_filename_counts = defaultdict(int)
+
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageLabelsDataset),
+    )
+
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for img_path, image_labels in zip(image_paths, labels):
+        for img_path, label in zip(image_paths, labels):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -132,7 +376,7 @@ def write_labeled_image_dataset(image_paths, labels, dataset_dir):
             new_labels_filename = name + ".json"
 
             image_labels_path = os.path.join(lid.labels_dir, name + ".json")
-            image_labels.write_json(image_labels_path)
+            label.labels.write_json(image_labels_path)
 
             lid.add_file(
                 img_path,
@@ -142,15 +386,125 @@ def write_labeled_image_dataset(image_paths, labels, dataset_dir):
             )
             bar.update()
 
+    logger.info("Writing manifest to '%s'", lid.manifest_path)
     lid.write_manifest()
+
     logger.info("Dataset created")
 
-    return lid
+
+def parse_image_classification_dataset(dataset_dir, sample_parser=None):
+    """Parses the contents of the image classification dataset backed by the
+    given directory.
+
+    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        sample_parser (None): a :class:`ImageClassificationSampleParser`
+            instance whose :func:`ImageClassificationSampleParser.parse_label`
+            method will be used to parse the sample labels. If not provided,
+            the default :class:`ImageClassificationSampleParser` instance is
+            used
+
+    Returns:
+        an iterable of ``(image_path, label)`` pairs, where ``label`` is an
+        instance of :class:`fiftyone.core.labels.ClassificationLabel`
+    """
+    if sample_parser is None:
+        sample_parser = ImageClassificationSampleParser()
+
+    data_dir = os.path.join(dataset_dir, "data")
+    image_paths_map = {
+        os.path.splitext(os.path.basename(p))[0]: p
+        for p in etau.list_files(data_dir, abs_paths=True)
+    }
+
+    labels_path = os.path.join(dataset_dir, "labels.json")
+    labels = etas.load_json(labels_path)
+    labels_map = labels.get("labels_map", None)
+    if labels_map is not None:
+        # @todo avoid the need to cast here
+        labels_map = {int(k): v for k, v in iteritems(labels_map)}
+        sample_parser.labels_map = labels_map
+
+    for uuid, target in iteritems(labels["labels"]):
+        image_path = image_paths_map[uuid]
+        label = sample_parser.parse_label((image_path, target))
+        yield image_path, label
 
 
-def parse_image_classification_dataset_directory(dataset_dir):
-    """Parses the contents of the given image classification dataset directory,
-    which should have the following format::
+def parse_image_detection_dataset(dataset_dir, sample_parser=None):
+    """Parses the contents of the image detection dataset backed by the given
+    directory.
+
+    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        sample_parser (None): a :class:`ImageDetectionSampleParser` instance
+            whose :func:`ImageDetectionSampleParser.parse_label` method will be
+            used to parse the sample labels. If not provided, the default
+            :class:`ImageDetectionSampleParser` instance is used
+
+    Returns:
+        an iterable of ``(image_path, label)`` pairs, where ``label`` is an
+        instance of :class:`fiftyone.core.labels.DetectionLabels`
+    """
+    if sample_parser is None:
+        sample_parser = ImageDetectionSampleParser()
+
+    data_dir = os.path.join(dataset_dir, "data")
+    image_paths_map = {
+        os.path.splitext(os.path.basename(p))[0]: p
+        for p in etau.list_files(data_dir, abs_paths=True)
+    }
+
+    labels_path = os.path.join(dataset_dir, "labels.json")
+    labels = etas.load_json(labels_path)
+    labels_map = labels.get("labels_map", None)
+    if labels_map is not None:
+        # @todo avoid the need to cast here
+        labels_map = {int(k): v for k, v in iteritems(labels_map)}
+        sample_parser.labels_map = labels_map
+
+    for uuid, target in iteritems(labels["labels"]):
+        image_path = image_paths_map[uuid]
+        label = sample_parser.parse_label((image_path, target))
+        yield image_path, label
+
+
+def parse_image_labels_dataset(dataset_dir, sample_parser=None):
+    """Parses the contents of the image labels dataset backed by the given
+    directory.
+
+    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        sample_parser (None): a :class:`ImageLabelsSampleParser` instance whose
+            :func:`ImageLabelsSampleParser.parse_label` method will be used to
+            parse the sample labels. If not provided, the default
+            :class:`ImageLabelsSampleParser` instance is used
+
+    Returns:
+        an iterable of ``(image_path, image_labels)`` pairs, where ``label`` is
+        an instance of :class:`fiftyone.core.labels.ImageLabels`
+    """
+    if sample_parser is None:
+        sample_parser = ImageLabelsSampleParser()
+
+    labeled_dataset = etads.load_dataset(dataset_dir)
+
+    for image_path, image_labels in zip(
+        labeled_dataset.iter_data_paths(), labeled_dataset.iter_labels(),
+    ):
+        label = sample_parser.parse_label((image_path, image_labels))
+        yield image_path, label
+
+
+def parse_image_classification_dir_tree(dataset_dir):
+    """Parses the contents of the given image classification dataset directory
+    tree, which should have the following format::
 
         dataset_dir/
             <classA>/
@@ -167,7 +521,7 @@ def parse_image_classification_dataset_directory(dataset_dir):
 
     Returns:
         samples: a list of ``(image path, label)`` pairs
-        labels_map: a dict mapping class IDs to class strings
+        labels_map: a dict mapping class IDs to label strings
     """
     # Get labels map
     class_labels = etau.list_subdirs(dataset_dir)
@@ -232,38 +586,33 @@ class UnlabeledImageSampleParser(SampleParser):
 
 class LabeledImageSampleParser(SampleParser):
     """Interface for parsing labeled image samples emitted by dataset
-    iterators.
+    iterators whose labels are to be stored as
+    :class:`fiftyone.core.labels.Label` instances.
 
     This interface enforces the contract that the `sample` passed to
-    :func:`parse` must contain the following two items:
+    :func:`LabeledImageSampleParser.parse` must contain the following two
+    items:
 
         - an image (or path to one) that will be parsed/decoded/loaded and
           outputted as a numpy array
 
-        - labels that will be outputted in ``eta.core.image.ImageLabels``
-          format, either directly as an ``eta.core.image.ImageLabels``
-          instance, or a serialized dict or string representation of one
+        - labels that will be outputted in :class:`fiftyone.core.labels.Label`
+          format
 
     To support situations where either the image or label, but not both, are
-    desired, this interface provides individual :func:`parse_image` and
-    :func:`parse_label` methods that can parse each respective component of
-    the sample in isolation.
+    desired, this interface provides individual
+    :func:`LabeledImageSampleParser.parse_image` and
+    :func:`LabeledImageSampleParser.parse_label` methods that can parse each
+    respective component of the sample in isolation.
 
-    The default implementation provided by this class supports samples that are
-    ``(image_or_path, image_labels)`` tuples, where:
+    See the subclasses of this method for implementations that store labels for
+    common tasks:
 
-        - ``image_or_path`` is either an image that can be converted to numpy
-          format via ``np.asarray()`` or the path to an image on disk
+        - Image classification: :class:`ImageClassificationSampleParser`
 
-        - ``image_labels`` is an ``eta.core.image.ImageLabels`` instance or a
-          serialized dict or string representation of one
+        - Object detection: :class:`ImageDetectionSampleParser`
 
-    See the subclasses of this method for implementations that parse labels for
-    common tasks such as image classification
-    (:class:`ImageClassificationSampleParser`) and object detection
-    (:class:`ImageDetectionSampleParser`).
-
-    Subclasses can support other input sample formats as necessary.
+        - Multitask image prediction: :class:`ImageLabelsSampleParser`
     """
 
     def parse_image(self, sample):
@@ -288,10 +637,9 @@ class LabeledImageSampleParser(SampleParser):
             sample: the sample
 
         Returns:
-            an ``eta.core.image.ImageLabels`` instance
+            a :class:`fiftyone.core.labels.Label` instance
         """
-        image_labels = sample[1]
-        return fou.parse_serializable(image_labels, etai.ImageLabels)
+        raise NotImplementedError("Subclass must implement parse_label()")
 
     def parse(self, sample):
         """Parses the given sample.
@@ -301,32 +649,33 @@ class LabeledImageSampleParser(SampleParser):
 
         Returns:
             img: a numpy image
-            image_labels: an ``eta.core.image.ImageLabels`` instance
+            label: a :class:`fiftyone.core.labels.Label` instance
         """
         img = self.parse_image(sample)
-        image_labels = self.parse_label(sample)
-        return img, image_labels
+        label = self.parse_label(sample)
+        return img, label
 
 
 class ImageClassificationSampleParser(LabeledImageSampleParser):
     """Interface for parsing image classification samples emitted by dataset
-    iterators.
+    iterators whose labels are to be stored as
+    :class:`fiftyone.core.labels.ClassificationLabel` instances.
 
-    This class supports samples that are  ``(image_or_path, target)`` tuples,
-    where:
+    The default implementation provided by this class supports samples that are
+    ``(image_or_path, target)`` tuples, where:
 
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
         - ``target`` is either a class ID (if a ``labels_map`` is provided) or
-          a class string
+          a label string
 
     Subclasses can support other input sample formats as necessary.
 
     Args:
-        labels_map (None): an optional dict mapping class IDs to class strings.
+        labels_map (None): an optional dict mapping class IDs to label strings.
             If provided, it is assumed that ``target`` is a class ID that
-            should be mapped to a class string via ``labels_map[target]``
+            should be mapped to a label string via ``labels_map[target]``
     """
 
     def __init__(self, labels_map=None):
@@ -339,72 +688,80 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
             sample: the sample
 
         Returns:
-            an ``eta.core.image.ImageLabels`` instance
+            a :class:`fiftyone.core.labels.ClassificationLabel` instance
         """
         target = sample[1]
 
         if self.labels_map is not None:
-            target = self.labels_map[target]
+            label = self.labels_map[target]
+        else:
+            label = target
 
-        image_labels = etai.ImageLabels()
-        image_labels.add_attribute(etad.CategoricalAttribute("label", target))
-        return image_labels
+        return fol.ClassificationLabel.create(label)
 
 
 class ImageDetectionSampleParser(LabeledImageSampleParser):
     """Interface for parsing image detection samples emitted by dataset
-    iterators.
+    iterators whose labels are to be stored as
+    :class:`fiftyone.core.labels.DetectionLabels` instances.
 
-    This class supports samples that are  ``(image_or_path, target)`` tuples,
-    where:
+    The default implementation provided by this class supports samples that are
+    ``(image_or_path, detections)`` tuples, where:
 
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``target`` is a list of detections in the following format::
+        - ``detections`` is a list of detections in the following format::
 
             [
                 {
-                    "bbox": [top-left-x, top-left-y, width, height],
-                    "label": label,
-                    ...
+                    "label": <label>,
+                    "bounding_box": [
+                        <top-left-x>, <top-left-y>, <width>, <height>
+                    ],
+                    "confidence": <optional-confidence>,
                 },
                 ...
             ]
 
           where ``label`` is either a class ID (if a ``labels_map`` is
-          provided) or a class string, and the bounding box coordinates can
+          provided) or a label string, and the bounding box coordinates can
           either be relative coordinates in ``[0, 1]``
           (if ``normalized == True``) or absolute pixels coordinates
-          (if ``normalized == False``). The ``bbox`` and ``label`` field names
-          can also be customized.
+          (if ``normalized == False``).
+
+          The input field names can be configured as necessary when
+          instantiating the parser.
 
     Subclasses can support other input sample formats as necessary.
 
     Args:
-        bbox_field ("bbox"): the name of the bounding box field in the
-            target dicts
         label_field ("label"): the name of the object label field in the
             target dicts
+        bounding_box_field ("bounding_box"): the name of the bounding box field
+            in the target dicts
+        confidence_field ("confidence"): the name of the confidence field in
+            the target dicts
         labels_map (None): an optional dict mapping class IDs to class
             strings. If provided, it is assumed that the ``label``s in
-            ``target`` are class IDs that should be mapped to class strings
+            ``target`` are class IDs that should be mapped to label strings
             via ``labels_map[target]``
-        normalized (False): whether the bounding box coordinates provided
-            in ``target`` are absolute pixel coordinates (False) or
-            relative coordinates in [0, 1] (True). By default, absolute
-            pixel coordinates are assumed
+        normalized (True): whether the bounding box coordinates provided in
+            ``target`` are absolute pixel coordinates (``False``) or relative
+            coordinates in [0, 1] (``True``)
     """
 
     def __init__(
         self,
-        bbox_field="bbox",
         label_field="label",
+        bounding_box_field="bounding_box",
+        confidence_field="confidence",
         labels_map=None,
-        normalized=False,
+        normalized=True,
     ):
-        self.bbox_field = bbox_field
         self.label_field = label_field
+        self.bounding_box_field = bounding_box_field
+        self.confidence_field = confidence_field
         self.labels_map = labels_map
         self.normalized = normalized
 
@@ -427,13 +784,13 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
             sample: the sample
 
         Returns:
-            an :class:`eta.core.image.ImageLabels` instance
+            a :class:`fiftyone.core.labels.DetectionLabels` instance
         """
         target = sample[1]
 
         if not self.normalized:
-            # Absolute bbox coordinates were provided, so we must have the
-            # image to convert to relative coordinates
+            # Absolute bounding box coordinates were provided, so we must have
+            # the image to convert to relative coordinates
             img = self._parse_image(sample[0])
         else:
             img = None
@@ -448,12 +805,12 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
 
         Returns:
             img: a numpy image
-            image_labels: an ``eta.core.image.ImageLabels`` instance
+            label: a :class:`fiftyone.core.labels.DetectionLabels` instance
         """
         img, target = sample
         img = self._parse_image(img)
-        image_labels = self._parse_label(target, img=img)
-        return img, image_labels
+        label = self._parse_label(target, img=img)
+        return img, label
 
     def _parse_image(self, image_or_path):
         if etau.is_str(image_or_path):
@@ -462,24 +819,66 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
         return np.asarray(image_or_path)
 
     def _parse_label(self, target, img=None):
-        image_labels = etai.ImageLabels()
+        detections = []
         for obj in target:
-            tlx, tly, w, h = obj[self.bbox_field]
-            brx = tlx + w
-            bry = tly + h
-            if self.normalized:
-                bbox = etag.BoundingBox.from_coords(tlx, tly, brx, bry)
-            else:
-                bbox = etag.BoundingBox.from_abs_coords(
-                    tlx, tly, brx, bry, img=img
-                )
-
             label = obj[self.label_field]
             if self.labels_map is not None:
                 label = self.labels_map[label]
 
-            image_labels.add_object(
-                etao.DetectedObject(label=label, bounding_box=bbox)
+            tlx, tly, w, h = obj[self.bounding_box_field]
+            if not self.normalized:
+                tlx, tly, w, h = _to_rel_bounding_box(tlx, tly, w, h, img)
+
+            bounding_box = [tlx, tly, w, h]
+
+            confidence = obj.get(self.confidence_field, None)
+
+            detections.append(
+                {
+                    "label": label,
+                    "bounding_box": bounding_box,
+                    "confidence": confidence,
+                }
             )
 
-        return image_labels
+        return fol.DetectionLabels.create(detections)
+
+
+class ImageLabelsSampleParser(LabeledImageSampleParser):
+    """Interface for parsing labeled image samples emitted by dataset
+    iterators whose labels are to be stored as
+    :class:`fiftyone.core.labels.ImageLabels` instances.
+
+    The default implementation provided by this class supports samples that are
+    ``(image_or_path, image_labels)`` tuples, where:
+
+        - ``image_or_path`` is either an image that can be converted to numpy
+          format via ``np.asarray()`` or the path to an image on disk
+
+        - ``image_labels`` is an ``eta.core.image.ImageLabels`` instance or a
+          serialized dict representation of one
+
+    Subclasses can support other input sample formats as necessary.
+    """
+
+    def parse_label(self, sample):
+        """Parses the labels from the given sample.
+
+        Args:
+            sample: the sample
+
+        Returns:
+            a :class:`fiftyone.core.labels.ImageLabels` instance
+        """
+        labels = sample[1]
+        return fol.ImageLabels.create(labels)
+
+
+def _to_rel_bounding_box(tlx, tly, w, h, img):
+    height, width = img.shape[:2]
+    return (
+        tlx / width,
+        tly / height,
+        w / width,
+        h / height,
+    )

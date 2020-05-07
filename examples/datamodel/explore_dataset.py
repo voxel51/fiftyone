@@ -86,11 +86,16 @@ print()
 # ID not in dataset
 sample_id = "F" * 24
 print("Accessing invalid ID: %s" % sample_id)
-print(dataset[sample_id])
+print("ID in dataset? %s" % (sample_id in dataset))
+try:
+    print(dataset[sample_id])
+except Exception as e:
+    print(type(e), e)
 print()
 
 # ID in dataset
 sample_id = next(dataset.iter_samples()).id
 print("Accessing valid ID: %s" % sample_id)
+print("ID in dataset? %s" % (sample_id in dataset))
 print(dataset[sample_id])
 print()

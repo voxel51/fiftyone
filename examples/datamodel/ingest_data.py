@@ -7,6 +7,7 @@ import os
 import random
 import time
 
+import eta.core.image as etai
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
@@ -51,20 +52,25 @@ for partition in partitions:
 
     samples = []
     for rel_img_path in fine_labels:
-        # create labels dict (with both coarse and fine labels)
+        filepath = os.path.join(data_dir, rel_img_path)
+
+        metadata = etai.ImageMetadata.build_for(filepath)
+
+        # this gives a second tag to a random 30% of the data
+        tags = [partition] + (["rand"] if random.random() > 0.7 else [])
+
         labels = {
-            "ground_truth_fine": fol.ClassificationLabel(
-                label=fine_labels[rel_img_path]),
-            "ground_truth_coarse": fol.ClassificationLabel(
-                label=coarse_labels[rel_img_path]),
+            "ground_truth_fine": fol.ClassificationLabel.create(
+                label=fine_labels[rel_img_path]
+            ),
+            "ground_truth_coarse": fol.ClassificationLabel.create(
+                label=coarse_labels[rel_img_path]
+            ),
         }
 
         # create sample
-        sample = fos.ImageSample(
-            filepath=os.path.join(data_dir, rel_img_path),
-            # this gives a second tag to a random 30% of the data
-            tags=[partition] + (["rand"] if random.random() > 0.7 else []),
-            labels=labels,
+        sample = fos.ImageSample.create(
+            filepath=filepath, tags=tags, metadata=metadata, labels=labels,
         )
 
         samples.append(sample)

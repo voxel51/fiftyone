@@ -163,13 +163,11 @@ def from_labeled_image_dataset(
     )
 
 
-def from_image_classification_dataset_directory(
-    dataset_dir, num_parallel_calls=None
-):
+def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given image classification dataset
-    directory.
+    directory tree.
 
-    The dataset directory should have the following format::
+    The directory should have the following format::
 
         dataset_dir/
             <classA>/
@@ -191,9 +189,7 @@ def from_image_classification_dataset_directory(
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
     """
-    samples, labels_map = fodu.parse_image_classification_dataset_directory(
-        dataset_dir
-    )
+    samples, labels_map = fodu.parse_image_classification_dir_tree(dataset_dir)
 
     def parse_sample(sample):
         img_path, label = sample
