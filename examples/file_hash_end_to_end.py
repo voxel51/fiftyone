@@ -4,6 +4,7 @@ File Hash End-to-End Example
 """
 import os
 import time
+from pprint import pprint
 
 import fiftyone.core.dataset as fod
 from fiftyone.core.datautils import parse_image_classification_dir_tree
@@ -28,21 +29,14 @@ src_data_dir = os.path.join("data", dataset_name)
 
 start = time.time()
 samples, _ = parse_image_classification_dir_tree(src_data_dir)
-print("'%s' parse time: %.2fs" % (dataset_name, time.time() - start))
-
-start = time.time()
 dataset = fod.Dataset.from_image_classification_samples(
     samples, name=dataset_name
 )
 print("'%s' ingest time: %.2fs" % (dataset_name, time.time() - start))
 
-
-import sys
-
-sys.exit("SUCCESS")
-
-
-dataset = fod.Dataset(name="cifar100")
+###############################################################################
+# 2. Compute file hashes
+###############################################################################
 
 for idx, sample in enumerate(dataset):
     if idx % 1000 == 0:
@@ -55,3 +49,70 @@ for idx, sample in enumerate(dataset):
     sample.add_insight(
         "file_hash", foi.FileHashInsight.create(file_hash=file_hash)
     )
+
+###############################################################################
+# 3. Explore
+###############################################################################
+
+dataset = fod.Dataset(name="cifar_fh_e2e")
+
+sample = next(dataset.iter_samples())
+pprint(sample.get_backing_doc_dict())
+print()
+
+print(len(dataset))
+unique_filehashes = dataset._get_query_set().distinct(
+    "insights.file_hash.file_hash"
+)
+print(len(unique_filehashes))
+
+###############################################################################
+# 4. Find and visualize duplicates
+###############################################################################
+
+pipeline = [
+    {"$group": {"_id": "$insights.file_hash.file_hash", "count": {"$sum": 1}}},
+    {"$match": {"count": {"$gt": 1}}},
+]
+
+dup_filehashes = [d["_id"] for d in dataset.aggregate(pipeline)]
+
+print("Number of unique images that are duplicated: %d" % len(dup_filehashes))
+
+view = dataset.default_view().filter(
+    filter={"insights.file_hash.file_hash": {"$in": dup_filehashes}}
+)
+
+print("Number of images that have a duplicate: %d" % len(dup_filehashes))
+
+###############################################################################
+# 5. Delete the duplicates
+###############################################################################
+
+print("Length of dataset before: %d" % len(dataset))
+
+for d in dataset.aggregate(pipeline):
+    file_hash = d["_id"]
+    count = d["count"]
+
+    view = (
+        dataset.default_view()
+        .filter(filter={"insights.file_hash.file_hash": file_hash})
+        .take(count - 1)
+    )
+
+    for sample in view:
+        del dataset[sample.id]
+
+print("Length of dataset after: %d" % len(dataset))
+
+
+###############################################################################
+# 6. Export the dataset
+###############################################################################
+
+view = dataset.default_view().take(100, random=True)
+
+view.export(
+    group="ground_truth", export_dir=os.path.join("/tmp", dataset.name)
+)

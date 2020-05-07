@@ -87,6 +87,12 @@ class DatasetView(foc.SampleCollection):
         for d in self._get_ds_qs().aggregate(self._pipeline):
             yield self._deserialize_sample(d)
 
+    def aggregate(self, pipeline=None):
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_ds_qs().aggregate(self._pipeline + pipeline)
+
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
         their integer index in the collection.

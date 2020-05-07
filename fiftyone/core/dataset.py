@@ -169,6 +169,12 @@ class Dataset(foc.SampleCollection):
         for doc in self._get_query_set():
             yield fos.Sample.from_doc(doc)
 
+    def aggregate(self, pipeline=None):
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_query_set().aggregate(pipeline)
+
     @property
     def _sample_cls(self):
         """The :class:`fiftyone.core.sample.Sample` class that this dataset

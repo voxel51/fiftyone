@@ -94,6 +94,14 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
+    def aggregate(self, pipeline=None):
+        """TODO Tyler
+
+        :param pipeline:
+        :return:
+        """
+        raise NotImplementedError("Subclass must implement aggregate()")
+
     def export(self, group, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,
         using the given label group as labels.
