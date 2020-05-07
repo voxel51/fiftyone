@@ -58,10 +58,6 @@ class SampleCollection(object):
     def __iter__(self):
         return self.iter_samples()
 
-    @property
-    def _sample_cls(self):
-        raise NotImplementedError("Subclass must implement _get_sample_cls()")
-
     def get_tags(self):
         """Returns the list of tags in the collection.
 

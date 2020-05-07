@@ -136,6 +136,18 @@ class Dataset(foc.SampleCollection):
     def __delitem__(self, sample_id):
         self[sample_id]._delete()
 
+    @property
+    def name(self):
+        """The name of the dataset."""
+        return self._name
+
+    @property
+    def _sample_cls(self):
+        """The :class:`fiftyone.core.sample.Sample` class that this dataset
+        can contain.
+        """
+        return fos.Sample
+
     def get_tags(self):
         """Returns the list of tags for this SampleCollection.
 
@@ -174,18 +186,6 @@ class Dataset(foc.SampleCollection):
         """
         for doc in self._get_query_set():
             yield self._load_sample(doc)
-
-    @property
-    def _sample_cls(self):
-        """The :class:`fiftyone.core.sample.Sample` class that this dataset
-        can contain.
-        """
-        return fos.Sample
-
-    @property
-    def name(self):
-        """The name of the dataset."""
-        return self._name
 
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
