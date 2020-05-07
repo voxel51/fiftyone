@@ -22,6 +22,7 @@ import datetime
 import logging
 import os
 
+import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -63,7 +64,9 @@ def get_default_dataset_name():
     Returns:
         a dataset name
     """
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    name = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("Using default dataset name '%s'", name)
+    return name
 
 
 def get_default_dataset_dir(name, split=None):
@@ -81,6 +84,7 @@ def get_default_dataset_dir(name, split=None):
     if split is not None:
         dataset_dir = os.path.join(dataset_dir, split)
 
+    logger.info("Using default dataset directory '%s'", dataset_dir)
     return dataset_dir
 
 
