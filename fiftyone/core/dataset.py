@@ -131,7 +131,7 @@ class Dataset(foc.SampleCollection):
         return self[sample_id]._delete()
 
     def get_tags(self):
-        """Returns the list of tags for this SampleCollection.
+        """Returns the list of tags in the dataset.
 
         Returns:
             a list of tags
@@ -139,7 +139,7 @@ class Dataset(foc.SampleCollection):
         return self._get_query_set().distinct("tags")
 
     def iter_samples(self):
-        """Returns an iterator over the samples in the SampleCollection.
+        """Returns an iterator over the samples in the dataset.
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
