@@ -132,9 +132,8 @@ class StateController(Namespace):
             view = state.dataset.default_view()
         else:
             return []
-        print(view._pipeline)
         view = view.offset((page - 1) * page_length).take(page_length)
-        res = [s.serialize() for s in view.iter_samples()]
+        res = [s.get_backing_json() for s in view.iter_samples()]
         return res
 
     def on_get_class_distributions(self, _):
