@@ -97,19 +97,21 @@ def load_zoo_dataset(
     else:
         info = zoo_dataset.load_dataset_info(dataset_dir)
 
-    if isinstance(info.format, fot.ImageClassificationDataset):
+    dataset_type = info.dataset_type
+
+    if isinstance(dataset_type, fot.ImageClassificationDataset):
         return fo.Dataset.from_image_classification_dataset(
             dataset_dir, name=name
         )
 
-    if isinstance(info.format, fot.ImageDetectionDataset):
+    if isinstance(dataset_type, fot.ImageDetectionDataset):
         return fo.Dataset.from_image_detection_dataset(dataset_dir, name=name)
 
-    if isinstance(info.format, fot.ImageLabelsDataset):
+    if isinstance(dataset_type, fot.ImageLabelsDataset):
         return fo.Dataset.from_image_labels_dataset(dataset_dir, name=name)
 
     raise ValueError(
-        "Unsupported dataset type '%s'" % etau.get_class_name(info.format)
+        "Unsupported dataset type '%s'" % etau.get_class_name(dataset_type)
     )
 
 
@@ -146,6 +148,13 @@ class ZooDatasetInfo(etas.Serializable):
         self.num_samples = num_samples
         self.format = etau.get_class_name(format)
         self.labels_map = labels_map
+
+        self._dataset_type = format
+
+    @property
+    def dataset_type(self):
+        """The :class:`fiftyone.types.DatasetType` of the dataset."""
+        return self._dataset_type
 
     def attributes(self):
         """Returns a list of class attributes to be serialized.
