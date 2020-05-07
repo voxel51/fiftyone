@@ -106,20 +106,22 @@ class ImageDetectionDataset(LabeledImageDataset):
                 <targetB>: <labelB>,
                 ...
             },
-            <uuid1>: [
-                {
-                    "label": <target>,
-                    "bounding_box": [
-                        <top-left-x>, <top-left-y>, <width>, <height>
-                    ],
-                    "confidence": <optional-confidence>,
-                },
+            "labels": {
+                <uuid1>: [
+                    {
+                        "label": <target>,
+                        "bounding_box": [
+                            <top-left-x>, <top-left-y>, <width>, <height>
+                        ],
+                        "confidence": <optional-confidence>,
+                    },
+                    ...
+                ],
+                <uuid2>: [
+                    ...
+                ],
                 ...
-            ],
-            <uuid2>: [
-                ...
-            ],
-            ...
+            }
         }
 
     where the bounding box coordinates are expressed as relative values in
