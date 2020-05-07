@@ -133,8 +133,8 @@ def make_cifar10_data_loader(image_paths, sample_ids):
             torchvision.transforms.Normalize(mean, std),
         ]
     )
-    dataset = fotu.TorchImageClassificationDataset(
-        image_paths, sample_ids, transform=transforms
+    dataset = fotu.TorchImageDataset(
+        image_paths, sample_ids=sample_ids, transform=transforms
     )
     return DataLoader(dataset, batch_size=5, num_workers=4, pin_memory=True)
 
