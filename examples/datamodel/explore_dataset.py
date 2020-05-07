@@ -48,8 +48,8 @@ print()
 ###############################################################################
 
 # @todo(Tyler)
-print("Label Groups: %s" % dataset.get_label_groups())
-print()
+# print("Label Groups: %s" % dataset.get_label_groups())
+# print()
 
 ###############################################################################
 # Action 4: Check for insight groups on the dataset
@@ -60,8 +60,8 @@ print()
 ###############################################################################
 
 # @todo(Tyler)
-print("Insight Groups: %s" % dataset.get_insight_groups())
-print()
+# print("Insight Groups: %s" % dataset.get_insight_groups())
+# print()
 
 ###############################################################################
 # Action 5: Iterate samples of the dataset
@@ -86,11 +86,16 @@ print()
 # ID not in dataset
 sample_id = "F" * 24
 print("Accessing invalid ID: %s" % sample_id)
-print(dataset[sample_id])
+print("ID in dataset? %s" % (sample_id in dataset))
+try:
+    print(dataset[sample_id])
+except Exception as e:
+    print(type(e), e)
 print()
 
 # ID in dataset
 sample_id = next(dataset.iter_samples()).id
 print("Accessing valid ID: %s" % sample_id)
+print("ID in dataset? %s" % (sample_id in dataset))
 print(dataset[sample_id])
 print()

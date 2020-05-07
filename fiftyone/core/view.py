@@ -18,11 +18,13 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from copy import deepcopy
+from copy import copy, deepcopy
 
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
+import fiftyone.core.odm as foo
+import fiftyone.core.sample as fos
 
 
 class DatasetView(foc.SampleCollection):
@@ -37,13 +39,13 @@ class DatasetView(foc.SampleCollection):
 
     Example use::
 
-        # Print the metadata of the five largest samples in the dataset
-        view = (dataset.view()
-            sort_by("metadata.size_bytes")
-            take(5)
+        # Print the paths to 5 random data samples in the dataset
+        view =
+            .sort_by("metadata.size_bytes")
+            .take(5)
         )
-        for sample in view:
-            print(sample.metadata)
+        for sample in dataset.default_view().take(5, random=True):
+            print(sample.filepath)
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -53,53 +55,54 @@ class DatasetView(foc.SampleCollection):
         self._dataset = dataset
         self._pipeline = []
 
+    @property
+    def _sample_cls(self):
+        return self._dataset._sample_cls
+
     def __len__(self):
-        return next(
-            self._dataset._c.aggregate(self._pipeline + [{"$count": "count"}])
-        )["count"]
+        result = self._get_ds_qs().aggregate(
+            self._pipeline + [{"$count": "count"}]
+        )
+        return next(result)["count"]
 
     def __getitem__(self, sample_id):
-        # @todo(Tyler) maybe this should fail if the sample is not in the view?
-        return self._dataset[sample_id]
+        samples = self._get_ds_qs(id=sample_id)
+        if not samples:
+            raise ValueError("No sample found with ID '%s'" % sample_id)
+
+        # @todo(Tyler) this should fail if the sample is not in the view
+        return fos.Sample.from_doc(samples[0])
+
+    def __copy__(self):
+        view = self.__class__(self._dataset)
+        view._pipeline = deepcopy(self._pipeline)
+        return view
 
     def iter_samples(self):
-        """Returns an iterator over the :class:`fiftyone.core.sample.Sample`
-        instances in the view.
+        """Returns an iterator over the samples in the view.
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for s in self._dataset._c.aggregate(self._pipeline):
-            yield self._dataset._deserialize_sample(s)
+        for d in self._get_ds_qs().aggregate(self._pipeline):
+            yield self._deserialize_sample(d)
 
     def iter_samples_with_index(self):
-        """Returns an iterator over the  a dataset
+        """Returns an iterator over the samples in the view together with
+        their integer index in the collection.
 
         Returns:
-            an iterator of ``(view_idx, sample)`` tuples, where:
+            an iterator that emits ``(index, sample)`` tuples, where:
 
-                view_idx: the index relative to the last ``offset``::
+                - ``index`` is an integer index relative to the offset, where
+                  ``offset <= view_idx < offset + limit``
 
-                    offset <= view_idx < offset + limit
-
-                sample: a :class:`fiftyone.core.sample.Sample` instance
+                - ``sample`` is a :class:`fiftyone.core.sample.Sample`
         """
-        view_idx = self._get_latest_offset() - 1
-        for s in self._dataset._c.aggregate(self._pipeline):
-            view_idx += 1
-            yield view_idx, self._dataset._deserialize_sample(s)
-
-    #
-    # @todo(brian) I think this should be deleted. Views should be inherently
-    # tied to a single dataset from the start
-    #
-    @classmethod
-    def from_view(cls, view, dataset):
-        new_view = cls(dataset)
-        new_view._pipeline = deepcopy(view._pipeline)
-        return new_view
-
-    # VIEW OPERATIONS #########################################################
+        offset = self._get_latest_offset()
+        iterator = self.iter_samples()
+        for idx, sample in enumerate(iterator, start=offset):
+            yield idx, sample
 
     def filter(
         self, tag=None, insight_group=None, label_group=None, filter=None
@@ -107,10 +110,12 @@ class DatasetView(foc.SampleCollection):
         """Filters the samples in the view by the given filter.
 
         Args:
-            tag: a sample tag string
-            insight_group: an insight group string
-            label_group: a label group string
-            filter: a MongoDB query dict
+            tag (None): a sample tag string
+            insight_group (None): an insight group string
+            label_group (None): a label group string
+            filter (None): a MongoDB query dict. See
+                https://docs.mongodb.com/manual/tutorial/query-documents
+                for details
 
         Returns:
             a :class:`DatasetView`
@@ -118,22 +123,22 @@ class DatasetView(foc.SampleCollection):
         view = self
 
         if tag is not None:
-            view = view._add_stage_to_pipeline(stage={"$match": {"tags": tag}})
+            view = view._copy_with_new_stage(stage={"$match": {"tags": tag}})
 
         if insight_group is not None:
             # @todo(Tyler) should this filter the insights as well? or just
             # filter the samples based on whether or not the insight is
             # present?
-            raise NotImplementedError("TODO")
+            raise NotImplementedError("Not yet implemented")
 
         if label_group is not None:
             # @todo(Tyler) should this filter the labels as well? or just
             # filter the samples based on whether or not the label is
             # present?
-            raise NotImplementedError("TODO")
+            raise NotImplementedError("Not yet implemented")
 
         if filter is not None:
-            view = view._add_stage_to_pipeline(stage={"$match": filter})
+            view = view._copy_with_new_stage(stage={"$match": filter})
 
         return view
 
@@ -153,15 +158,35 @@ class DatasetView(foc.SampleCollection):
             a :class:`DatasetView`
         """
         order = DESCENDING if reverse else ASCENDING
-        return self._add_stage_to_pipeline({"$sort": {field: order}})
+        return self._copy_with_new_stage({"$sort": {field: order}})
 
-    def shuffle(self):
-        """Randomly shuffles the samples in the view.
+    def take(self, size, random=False):
+        """Takes the given number of samples from the view.
+
+        Args:
+            size: the number of samples to return
+            random (False): whether to randomly select the samples
 
         Returns:
             a :class:`DatasetView`
         """
-        raise NotImplementedError("Not yet implemented")
+        if random:
+            stage = {"$sample": {"size": size}}
+        else:
+            stage = {"$limit": size}
+
+        return self._copy_with_new_stage(stage)
+
+    def offset(self, offset):
+        """Omits the given number of samples from the head of the view.
+
+        Args:
+            offset: the offset
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage({"$skip": offset})
 
     def select_samples(self, sample_ids):
         """Selects only the samples with the given IDs from the view.
@@ -175,7 +200,7 @@ class DatasetView(foc.SampleCollection):
         raise NotImplementedError("Not yet implemented")
 
     def remove_samples(self, sample_ids):
-        """Removes the samples with the given IDS from the view.
+        """Removes the samples with the given IDs from the view.
 
         Args:
             sample_ids: an iterable of sample IDs
@@ -185,52 +210,21 @@ class DatasetView(foc.SampleCollection):
         """
         raise NotImplementedError("Not yet implemented")
 
-    def take(self, size):
-        """Selects the given number of samples from the head of the view.
+    def _get_ds_qs(self, **kwargs):
+        return self._dataset._get_query_set(**kwargs)
 
-        Args:
-            size: the number of samples to return
+    @staticmethod
+    def _deserialize_sample(d):
+        return fos.Sample.from_doc(foo.ODMSample.from_dict(d, extended=False))
 
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self._add_stage_to_pipeline({"$sample": {"size": size}})
-
-    def offset(self, offset):
-        """Omits the given number of samples from the head of the view.
-
-        Args:
-            offset: the offset
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self._add_stage_to_pipeline({"$skip": offset})
-
-    # @todo remove? redundant with `take()`?
-    def limit(self, limit):
-        """Limits the view to the given number of samples.
-
-        Args:
-            limit: the limit
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self._add_stage_to_pipeline({"$limit": limit})
-
-    # PRIVATE #################################################################
-
-    def _add_stage_to_pipeline(self, stage):
-        new_view = self.__class__(dataset=self._dataset)
-        new_view._pipeline = deepcopy(self._pipeline)
-        new_view._pipeline.append(stage)
-        return new_view
+    def _copy_with_new_stage(self, stage):
+        view = copy(self)
+        view._pipeline.append(stage)
+        return view
 
     def _get_latest_offset(self):
         """Returns the offset of the last $skip stage."""
         for stage in self._pipeline[::-1]:
             if "$skip" in stage:
                 return stage["$skip"]
-
         return 0

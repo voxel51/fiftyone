@@ -17,7 +17,7 @@ def print_state(session):
     """Replace the sample dicts with strings to condense the output"""
     state = session.state
     state["samples"] = {
-        k: v["filename"] + ", ..." for k, v in state["samples"].items()
+        k: v["filepath"] + ", ..." for k, v in state["samples"].items()
     }
     print(etas.pretty_str(session.state))
 
@@ -63,7 +63,7 @@ print()
 
 session.view = session.view.filter(
     filter={"metadata.size_bytes": {"$gt": 1000}}
-).sort("metadata.size_bytes")
+).sort_by("metadata.size_bytes")
 print("'metadata.size_bytes > 1000' transform added:")
 print_state(session)
 print()

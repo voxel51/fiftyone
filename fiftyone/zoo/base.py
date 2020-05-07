@@ -26,7 +26,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.experimental.data as fed
+import fiftyone.core.dataset as fod
+import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,7 @@ def load_zoo_dataset(
     name, split=None, dataset_dir=None, download_if_necessary=True,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
-    a :class:`fiftyone.core.data.Dataset`.
+    a :class:`fiftyone.core.dataset.Dataset`.
 
     Args:
         name: the name of the zoo dataset to load. Call
@@ -73,11 +74,11 @@ def load_zoo_dataset(
         dataset_dir (None): the directory in which the dataset is stored or
             will be downloaded. By default,
             :func:`fiftyone.core.data.get_default_dataset_dir` is used
-        download_if_necessary (True): whether to download the dataset if it is
-            not found in the specified dataset directory
+        download_if_necessary (True): whether to download and prepare the
+            dataset if it is not found in the specified dataset directory
 
     Returns:
-        a :class:`fiftyone.core.data.Dataset`
+        a :class:`fiftyone.core.dataset.Dataset`
     """
     zoo_dataset = _get_zoo_dataset(name)
     name = zoo_dataset.name  # get the official name
@@ -88,13 +89,30 @@ def load_zoo_dataset(
             logger.info("Using default split '%s'", split)
 
     if dataset_dir is None:
-        dataset_dir = fed.get_default_dataset_dir(name, split=split)
+        dataset_dir = fod.get_default_dataset_dir(name, split=split)
         logger.info("Using default dataset directory '%s'", dataset_dir)
 
     if download_if_necessary:
-        zoo_dataset.download_and_prepare(dataset_dir, split=split)
+        info = zoo_dataset.download_and_prepare(dataset_dir, split=split)
+    else:
+        info = zoo_dataset.load_dataset_info(dataset_dir)
 
-    return fed.from_labeled_image_dataset(dataset_dir, name=name)
+    dataset_type = info.dataset_type
+
+    if issubclass(dataset_type, fot.ImageClassificationDataset):
+        return fo.Dataset.from_image_classification_dataset(
+            dataset_dir, name=name
+        )
+
+    if issubclass(dataset_type, fot.ImageDetectionDataset):
+        return fo.Dataset.from_image_detection_dataset(dataset_dir, name=name)
+
+    if issubclass(dataset_type, fot.ImageLabelsDataset):
+        return fo.Dataset.from_image_labels_dataset(dataset_dir, name=name)
+
+    raise ValueError(
+        "Unsupported dataset type '%s'" % etau.get_class_name(dataset_type)
+    )
 
 
 def _get_zoo_dataset(name):
@@ -120,9 +138,9 @@ class ZooDatasetInfo(etas.Serializable):
             zoo_dataset: the :class:`ZooDataset` class
             split: the dataset split
             num_samples: the number of samples in the dataset
-            format: the class of the dataset on disk
-            labels_map (None): an optional dict mapping class IDs to class
-                labels
+            format: the :class:`fiftyone.types.DatasetType` of the dataset
+            labels_map (None): an optional dict mapping class IDs to label
+                strings
         """
         self.name = name
         self.zoo_dataset = etau.get_class_name(zoo_dataset)
@@ -130,6 +148,13 @@ class ZooDatasetInfo(etas.Serializable):
         self.num_samples = num_samples
         self.format = etau.get_class_name(format)
         self.labels_map = labels_map
+
+        self._dataset_type = format
+
+    @property
+    def dataset_type(self):
+        """The :class:`fiftyone.types.DatasetType` of the dataset."""
+        return self._dataset_type
 
     def attributes(self):
         """Returns a list of class attributes to be serialized.
@@ -186,6 +211,18 @@ class ZooDataset(object):
         """
         raise NotImplementedError("subclasses must implement default_split")
 
+    def load_dataset_info(self, dataset_dir):
+        """Loads the :class:`ZooDatasetInfo` from the given dataset directory.
+
+        Args:
+            dataset_dir: the directory in which to construct the dataset
+
+        Returns:
+            the :class:`ZooDatasetInfo` for the dataset
+        """
+        info_path = self._get_info_path(dataset_dir)
+        return ZooDatasetInfo.from_json(info_path)
+
     def download_and_prepare(self, dataset_dir, split=None):
         """Downloads the dataset and prepares it for use in the given directory
         as an ``eta.core.datasets.LabeledDataset``.
@@ -198,13 +235,16 @@ class ZooDataset(object):
             dataset_dir: the directory in which to construct the dataset
             split (None): the dataset split to download, if applicable. If
                 omitted, the default split is downloaded
+
+        Returns:
+            the :class:`ZooDatasetInfo` for the dataset
         """
-        info_path = os.path.join(dataset_dir, "info.json")
+        info_path = self._get_info_path(dataset_dir)
 
         if os.path.isfile(info_path):
             logger.debug("ZooDatasetInfo file '%s' already exists", info_path)
             logger.info("Dataset already downloaded")
-            return
+            return self.load_dataset_info(dataset_dir)
 
         if split is None:
             split = self.default_split
@@ -222,6 +262,8 @@ class ZooDataset(object):
         info.write_json(info_path, pretty_print=True)
         logger.info("Dataset info written to '%s'", info_path)
 
+        return info
+
     def _download_and_prepare(self, dataset_dir, split):
         """Internal implementation of downloading the dataset and preparing it
         for use in the given directory as an
@@ -237,3 +279,7 @@ class ZooDataset(object):
         raise NotImplementedError(
             "subclasses must implement download_and_prepare()"
         )
+
+    @staticmethod
+    def _get_info_path(dataset_dir):
+        return os.path.join(dataset_dir, "info.json")
