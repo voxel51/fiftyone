@@ -38,7 +38,7 @@ setup(
     license="",
     packages=find_packages(),
     include_package_data=True,
-    package_data={"fiftyone_db": ["bin/*"]},
+    package_data={"fiftyone_db": ["bin/mongo", "bin/mongod"]},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
