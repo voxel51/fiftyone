@@ -44,7 +44,11 @@ class SampleCollection(object):
         if not samples:
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
-        return self._sample_class(samples[0])
+        return self._sample_cls(samples[0])
+
+    @property
+    def _sample_cls(self):
+        raise NotImplementedError("Subclass must implement _get_sample_cls()")
 
     def get_tags(self):
         """Returns the list of tags for this SampleCollection.
@@ -95,7 +99,7 @@ class SampleCollection(object):
             query_set = query_set.limit(limit)
 
         for doc in query_set:
-            yield self._sample_class(doc)
+            yield self._sample_cls(doc)
 
     def iter_samples_with_index(self, offset=None, limit=None):
         """Returns an iterator over the samples in the SampleCollection with
@@ -160,12 +164,6 @@ class SampleCollection(object):
                 "Cannot export labels of type '%s'"
                 % etau.get_class_name(labels[0])
             )
-
-    @property
-    def _sample_class(self):
-        raise NotImplementedError(
-            "Subclass must implement _get_sample_class()"
-        )
 
     def _get_query_set(self, **kwargs):
         raise NotImplementedError(

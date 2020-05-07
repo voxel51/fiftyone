@@ -51,10 +51,8 @@ class DatasetView(foc.SampleCollection):
         self._sort_by_arg = None
 
     @property
-    def dataset(self):
-        return self._dataset
-
-    # VIEW OPERATIONS #########################################################
+    def _sample_cls(self):
+        return self._dataset._sample_cls
 
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
@@ -69,8 +67,8 @@ class DatasetView(foc.SampleCollection):
             reverse (False): whether to return the results in descending order
         """
         if reverse:
-            # descending
             field = "-" + field
+
         self._sort_by_arg = field
         return self
 
@@ -145,15 +143,11 @@ class DatasetView(foc.SampleCollection):
         """
         raise NotImplementedError("Not yet implemented")
 
-    @property
-    def _sample_class(self):
-        return self.dataset._sample_class
-
     def _get_query_set(self, **kwargs):
         # apply query kwargs
         kwargs = kwargs.copy()
         kwargs.update(self._query_kwargs)
-        query_set = self.dataset._get_query_set(**kwargs)
+        query_set = self._dataset._get_query_set(**kwargs)
 
         # sort
         if self._sort_by_arg:
