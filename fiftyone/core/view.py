@@ -104,7 +104,7 @@ class DatasetView(foc.SampleCollection):
             yield self._deserialize_sample(d)
 
     def aggregate(self, pipeline=None):
-        """Call a MongoDB aggregation pipeline on the DatasetView
+        """Calls a MongoDB aggregation pipeline on the view
 
         Args:
             pipeline: an optional aggregation pipeline (list of dicts)

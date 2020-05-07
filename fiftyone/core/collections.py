@@ -71,7 +71,7 @@ class SampleCollection(object):
 
     def get_label_groups(self):
         """Returns the list of label groups attached to at least one sample
-        in the SampleCollection.
+        in the collection.
 
         Returns:
             a list of groups
@@ -94,7 +94,7 @@ class SampleCollection(object):
 
     def get_insight_groups(self):
         """Returns the list of insight groups attached to at least one sample
-        in the SampleCollection.
+        in the collection.
 
         Returns:
             a list of groups
@@ -124,10 +124,10 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement iter_samples()")
 
     def aggregate(self, pipeline=None):
-        """Call a MongoDB aggregation pipeline on the SampleCollection
+        """Calls a MongoDB aggregation pipeline on the collection.
 
         Args:
-            pipeline: an optional aggregation pipeline (list of dicts)
+            pipeline (None): an optional aggregation pipeline (list of dicts)
                 to aggregate on
 
         Returns:
