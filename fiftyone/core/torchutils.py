@@ -104,17 +104,17 @@ class TorchImageDataset(Dataset):
 class TorchImageClassificationDataset(Dataset):
     """A ``torch.utils.data.Dataset`` for image classification.
 
-    Instances of this dataset emit ``(img, label)`` pairs.
+    Instances of this dataset emit ``(image, target)`` pairs.
 
     Args:
         image_paths: an iterable of image paths
-        labels: a list of labels
+        targets: a list of targets
         transform (None): an optional transform to apply to the images
     """
 
-    def __init__(self, image_paths, labels, transform=None):
+    def __init__(self, image_paths, targets, transform=None):
         self.image_paths = list(image_paths)
-        self.labels = labels
+        self.targets = targets
         self.transform = transform
 
     def __len__(self):
@@ -122,12 +122,12 @@ class TorchImageClassificationDataset(Dataset):
 
     def __getitem__(self, idx):
         img = PIL.Image.open(self.image_paths[idx])
-        label = self.labels[idx]
+        target = self.targets[idx]
 
         if self.transform:
             img = self.transform(img)
 
-        return img, label
+        return img, target
 
 
 def from_image_classification_dir_tree(dataset_dir):
