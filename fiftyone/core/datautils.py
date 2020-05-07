@@ -43,30 +43,9 @@ def to_image_classification_dataset(
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
-    """Writes the given samples to disk as an image classification dataset
-    in the following format::
+    """Writes the given samples to disk as an image classification dataset.
 
-        dataset_dir/
-            data/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            labels.json
-
-    where ``labels.json`` is a JSON file in the following format::
-
-        {
-            "labels_map": {
-                <targetA>: <labelA>,
-                <targetB>: <labelB>,
-                ...
-            },
-            "labels": {
-                <uuid1>: <target1>,
-                <uuid2>: <target2>,
-                ...
-            }
-        }
+    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
 
     Args:
         samples: an iterable of samples
@@ -121,42 +100,9 @@ def to_image_detection_dataset(
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
-    """Writes the given samples to disk as an image detection dataset in the
-    following format::
+    """Writes the given samples to disk as an image detection dataset.
 
-        dataset_dir/
-            data/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            labels.json
-
-    where ``labels.json`` is a JSON file in the following format::
-
-        {
-            "labels_map": {
-                <targetA>: <labelA>,
-                <targetB>: <labelB>,
-                ...
-            },
-            <uuid1>: [
-                {
-                    "label": <target>,
-                    "bounding_box": [
-                        <top-left-x>, <top-left-y>, <width>, <height>
-                    ],
-                    "confidence": <optional-confidence>,
-                },
-                ...
-            ],
-            <uuid2>: [
-                ...
-            ],
-            ...
-        }
-
-    where the bounding box coordinates are expressed as relative values in
-    ``[0, 1]``.
+    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
 
     Args:
         samples: an iterable of samples
@@ -210,36 +156,9 @@ def to_labeled_image_dataset(
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
-    """Writes the given samples to disk in
-    ``eta.core.datasets.LabeledImageDataset`` format::
+    """Writes the given samples to disk as a multitask labeled image dataset.
 
-        dataset_dir/
-            data/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            labels/
-                <uuid1>.json
-                <uuid2>.json
-                ...
-            manifest.json
-
-    where ``manifest.json`` is a JSON file in the following format::
-
-        {
-            "type": "eta.core.datasets.LabeledImageDataset",
-            "description": "",
-            "index": [
-                {
-                    "data": "data/<uuid1>.<ext>",
-                    "labels": "labels/<uuid1>.json"
-                },
-                ...
-            ]
-        }
-
-    and the each labels JSON file is stored in ``eta.core.image.ImageLabels``
-    format.
+    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
 
     Args:
         samples: an iterable of samples
@@ -280,30 +199,9 @@ def to_labeled_image_dataset(
 
 
 def export_image_classification_dataset(image_paths, labels, dataset_dir):
-    """Exports the given data to disk as an image classification dataset in the
-    following format::
+    """Exports the given data to disk as an image classification dataset.
 
-        dataset_dir/
-            data/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            labels.json
-
-    where ``labels.json`` is a JSON file in the following format::
-
-        {
-            "labels_map": {
-                <targetA>: <labelA>,
-                <targetB>: <labelB>,
-                ...
-            },
-            "labels": {
-                <uuid1>: <target1>,
-                <uuid2>: <target2>,
-                ...
-            }
-        }
+    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
 
     The raw images are directly copied to their destinations, maintaining their
     original formats and names, unless a name conflict would occur, in which
@@ -352,42 +250,9 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
 
 
 def export_image_detection_dataset(image_paths, labels, dataset_dir):
-    """Exports the given data to disk as an image detection dataset in the
-    following format::
+    """Exports the given data to disk as an image detection dataset.
 
-        dataset_dir/
-            data/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            labels.json
-
-    where ``labels.json`` is a JSON file in the following format::
-
-        {
-            "labels_map": {
-                <targetA>: <labelA>,
-                <targetB>: <labelB>,
-                ...
-            },
-            <uuid1>: [
-                {
-                    "label": <target>,
-                    "bounding_box": [
-                        <top-left-x>, <top-left-y>, <width>, <height>
-                    ],
-                    "confidence": <optional-confidence>,
-                },
-                ...
-            ],
-            <uuid2>: [
-                ...
-            ],
-            ...
-        }
-
-    where the bounding box coordinates are expressed as relative values in
-    ``[0, 1]``.
+    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
 
     The raw images are directly copied to their destinations, maintaining their
     original formats and names, unless a name conflict would occur, in which
@@ -436,36 +301,9 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
 
 
 def export_labeled_image_dataset(image_paths, labels, dataset_dir):
-    """Exports the given data to disk as a dataset in
-    ``eta.core.datasets.LabeledImageDataset`` formatt::
+    """Exports the given data to disk as a multitask labeled image dataset.
 
-        dataset_dir/
-            data/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            labels/
-                <uuid1>.json
-                <uuid2>.json
-                ...
-            manifest.json
-
-    where ``manifest.json`` is a JSON file in the following format::
-
-        {
-            "type": "eta.core.datasets.LabeledImageDataset",
-            "description": "",
-            "index": [
-                {
-                    "data": "data/<uuid1>.<ext>",
-                    "labels": "labels/<uuid1>.json"
-                },
-                ...
-            ]
-        }
-
-    and the each labels JSON file is stored in ``eta.core.image.ImageLabels``
-    format.
+    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
 
     The raw images are directly copied to their destinations, maintaining their
     original formats and names, unless a name conflict would occur, in which
