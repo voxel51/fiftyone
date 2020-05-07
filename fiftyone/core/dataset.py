@@ -92,9 +92,9 @@ def get_default_dataset_dir(name, split=None):
 class Dataset(foc.SampleCollection):
     """A FiftyOne dataset.
 
-    Datasets represent a homogenous collection of
+    Datasets represent a homogeneous collection of
     :class:`fiftyone.core.sample.Sample` instances that describe a particular
-    type of raw media (e.g., images) toegether with one or more sets of
+    type of raw media (e.g., images) together with one or more sets of
     :class:`fiftyone.core.labels.Label` instances (e.g., ground truth
     annotations or model predictions) and metadata associated with those
     labels.
