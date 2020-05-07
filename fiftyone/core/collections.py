@@ -68,23 +68,49 @@ class SampleCollection(object):
 
     def get_label_groups(self):
         """Returns the list of label groups attached to at least one sample
-        in the collection.
+        in the SampleCollection.
 
         Returns:
             a list of groups
         """
-        raise NotImplementedError("Subclass must implement get_label_groups()")
+        pipeline = [
+            {"$project": {"arrayofkeyvalue": {"$objectToArray": "$labels"}}},
+            {"$unwind": "$arrayofkeyvalue"},
+            {
+                "$group": {
+                    "_id": None,
+                    "allgroups": {"$addToSet": "$arrayofkeyvalue.k"},
+                }
+            },
+        ]
+        try:
+            return next(self.aggregate(pipeline))["allgroups"]
+        except StopIteration:
+            pass
+        return []
 
     def get_insight_groups(self):
         """Returns the list of insight groups attached to at least one sample
-        in the collection.
+        in the SampleCollection.
 
         Returns:
             a list of groups
         """
-        raise NotImplementedError(
-            "Subclass must implement get_insight_groups()"
-        )
+        pipeline = [
+            {"$project": {"arrayofkeyvalue": {"$objectToArray": "$insights"}}},
+            {"$unwind": "$arrayofkeyvalue"},
+            {
+                "$group": {
+                    "_id": None,
+                    "allgroups": {"$addToSet": "$arrayofkeyvalue.k"},
+                }
+            },
+        ]
+        try:
+            return next(self.aggregate(pipeline))["allgroups"]
+        except StopIteration:
+            pass
+        return []
 
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.

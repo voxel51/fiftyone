@@ -138,28 +138,6 @@ class Dataset(foc.SampleCollection):
         """
         return self._get_query_set().distinct("tags")
 
-    def get_label_groups(self):
-        """Returns the list of label groups attached to at least one sample
-        in the SampleCollection.
-
-        Returns:
-            a list of groups
-        """
-        # @todo(Tyler) This does not work with DictField
-        # return self._get_query_set().distinct("labels.group")
-        raise NotImplementedError("Not yet implemented")
-
-    def get_insight_groups(self):
-        """Returns the list of insight groups attached to at least one sample
-        in the SampleCollection.
-
-        Returns:
-            a list of groups
-        """
-        # @todo(Tyler) This does not work with DictField
-        # return self._get_query_set().distinct("insights.group")
-        raise NotImplementedError("Not yet implemented")
-
     def iter_samples(self):
         """Returns an iterator over the samples in the SampleCollection.
 
