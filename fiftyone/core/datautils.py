@@ -423,6 +423,8 @@ def parse_image_classification_dataset(dataset_dir, sample_parser=None):
     labels = etas.load_json(labels_path)
     labels_map = labels.get("labels_map", None)
     if labels_map is not None:
+        # @todo avoid the need to cast here
+        labels_map = {int(k): v for k, v in iteritems(labels_map)}
         sample_parser.labels_map = labels_map
 
     for uuid, target in iteritems(labels["labels"]):
@@ -461,6 +463,8 @@ def parse_image_detection_dataset(dataset_dir, sample_parser=None):
     labels = etas.load_json(labels_path)
     labels_map = labels.get("labels_map", None)
     if labels_map is not None:
+        # @todo avoid the need to cast here
+        labels_map = {int(k): v for k, v in iteritems(labels_map)}
         sample_parser.labels_map = labels_map
 
     for uuid, target in iteritems(labels["labels"]):

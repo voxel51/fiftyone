@@ -99,15 +99,15 @@ def load_zoo_dataset(
 
     dataset_type = info.dataset_type
 
-    if isinstance(dataset_type, fot.ImageClassificationDataset):
+    if issubclass(dataset_type, fot.ImageClassificationDataset):
         return fo.Dataset.from_image_classification_dataset(
             dataset_dir, name=name
         )
 
-    if isinstance(dataset_type, fot.ImageDetectionDataset):
+    if issubclass(dataset_type, fot.ImageDetectionDataset):
         return fo.Dataset.from_image_detection_dataset(dataset_dir, name=name)
 
-    if isinstance(dataset_type, fot.ImageLabelsDataset):
+    if issubclass(dataset_type, fot.ImageLabelsDataset):
         return fo.Dataset.from_image_labels_dataset(dataset_dir, name=name)
 
     raise ValueError(
