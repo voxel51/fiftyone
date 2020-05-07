@@ -54,7 +54,6 @@ def load_dataset(name):
     Returns:
         a :class:`Dataset`
     """
-    # @todo reflectively load the right `Dataset` subclass
     return Dataset(name, create_empty=False)
 
 
