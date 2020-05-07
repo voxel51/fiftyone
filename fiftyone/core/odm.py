@@ -44,6 +44,16 @@ class ODMDocument(Document):
 
     meta = {"allow_inheritance": True}
 
+    def __str__(self):
+        return str(
+            json.dumps(
+                self.to_dict(extended=True),
+                separators=(",", ": "),
+                ensure_ascii=False,
+                indent=4,
+            )
+        )
+
     def to_dict(self, extended=False):
         """Serializes this document to a JSON dictionary.
 
