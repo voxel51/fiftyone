@@ -95,10 +95,14 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement iter_samples()")
 
     def aggregate(self, pipeline=None):
-        """TODO Tyler
+        """Call a MongoDB aggregation pipeline on the SampleCollection
 
-        :param pipeline:
-        :return:
+        Args:
+            pipeline: an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
         """
         raise NotImplementedError("Subclass must implement aggregate()")
 

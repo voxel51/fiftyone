@@ -89,6 +89,15 @@ class DatasetView(foc.SampleCollection):
             yield self._deserialize_sample(d)
 
     def aggregate(self, pipeline=None):
+        """Call a MongoDB aggregation pipeline on the DatasetView
+
+        Args:
+            pipeline: an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
         if pipeline is None:
             pipeline = []
 
@@ -195,7 +204,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self._copy_with_new_stage({"$skip": offset})
 
-    def select_samples(self, sample_ids):
+    def select(self, sample_ids):
         """Selects only the samples with the given IDs from the view.
 
         Args:
@@ -209,7 +218,7 @@ class DatasetView(foc.SampleCollection):
             {"$match": {"_id": {"$in": sample_ids}}}
         )
 
-    def exclude_samples(self, sample_ids):
+    def exclude(self, sample_ids):
         """Exclude the samples with the given IDs from the view.
 
         Args:

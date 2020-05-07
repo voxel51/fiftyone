@@ -170,6 +170,15 @@ class Dataset(foc.SampleCollection):
             yield fos.Sample.from_doc(doc)
 
     def aggregate(self, pipeline=None):
+        """Call a MongoDB aggregation pipeline on the Dataset
+
+        Args:
+            pipeline: an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
         if pipeline is None:
             pipeline = []
 
