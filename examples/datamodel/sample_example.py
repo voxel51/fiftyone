@@ -23,29 +23,27 @@ sample = next(dataset.iter_samples())
 ###############################################################################
 
 # samples can have arbitrary tags
-print(sample.tags)
+print(sample.get_tags())
 # ['train']
 
 ###############################################################################
 # LABELS
 ###############################################################################
 
-print(type(sample.labels))
+print(type(sample.get_labels()))
 # <class 'dict'>
 
-# @todo(Tyler)
-# print(type(sample.labels["ground_truth_fine"]))
+print(type(sample.get_label("ground_truth_fine")))
 # <fiftyone.core.label.ClassificationLabel>
 
-# @todo(Tyler)
-# print(sample.labels["ground_truth_fine"])
+print(sample.get_label("ground_truth_fine"))
 # {
 #     "label": "mountain",
 #     "confidence": null
 # }
 
 # @todo(Tyler)
-# print(sample.labels["ground_truth_fine"].group)
+# print(sample.get_label("ground_truth_fine").group)
 # "ground_truth_fine"
 
 # @todo(Tyler)
@@ -59,7 +57,8 @@ print(type(sample.labels))
 # INSIGHTS
 ###############################################################################
 
-print(type(sample.insights))
+# @todo(Tyler)
+# print(type(sample.insights))
 # <class 'dict'>
 
 # @todo(Tyler)
@@ -85,10 +84,12 @@ print(type(sample.insights))
 print(dataset.get_tags())
 # ["train", "test"]
 
-dataset.get_label_groups()
+# @todo(Tyler)
+# dataset.get_label_groups()
 # ["ground_truth_fine", "ground_truth_coarse", "model_1_pred", "model_2_pred"]
 
-dataset.get_insight_groups()
+# @todo(Tyler)
+# dataset.get_insight_groups()
 # ["file_hash", "model_1_hardness", "model_2_hardness"]
 
 ###############################################################################
@@ -119,10 +120,3 @@ dataset.get_insight_groups()
 # @todo(Tyler)
 # browse the images
 # session = fo.launch_dashboard(view=view)
-
-###############################################################################
-# INSERT LABELS
-###############################################################################
-
-# @todo(Tyler)
-# sample.labels["ground_truth"] = fol.ClassificationLabel.create(label="cow")

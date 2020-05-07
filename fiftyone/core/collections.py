@@ -21,7 +21,6 @@ from builtins import *
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.odm as foo
 
 
 class SampleCollection(object):
@@ -33,18 +32,21 @@ class SampleCollection(object):
         return len(self) > 0
 
     def __len__(self):
-        return self._get_query_set().count()
+        raise NotImplementedError("Subclass must implement __len__()")
 
     def __contains__(self, sample_id):
-        samples = self._get_query_set(id=sample_id)
-        return bool(samples)
+        try:
+            self[sample_id]
+        except ValueError:
+            return False
+
+        return True
 
     def __getitem__(self, sample_id):
-        samples = self._get_query_set(id=sample_id)
-        if not samples:
-            raise ValueError("No sample found with ID '%s'" % sample_id)
+        raise NotImplementedError("Subclass must implement __getitem__()")
 
-        return self._sample_cls(samples[0])
+    def __iter__(self):
+        return self.iter_samples()
 
     @property
     def _sample_cls(self):
@@ -56,7 +58,7 @@ class SampleCollection(object):
         Returns:
             a list of tags
         """
-        return self._get_query_set().distinct("tags")
+        raise NotImplementedError("Subclass must implement get_tags()")
 
     def get_label_groups(self):
         """Returns the list of label groups attached to at least one sample
@@ -65,9 +67,7 @@ class SampleCollection(object):
         Returns:
             a list of groups
         """
-        # @todo(Tyler) This does not work with DictField
-        raise NotImplementedError("TODO TYLER")
-        return self._get_query_set().distinct("labels.group")
+        raise NotImplementedError("Subclass must implement get_label_groups()")
 
     def get_insight_groups(self):
         """Returns the list of insight groups attached to at least one sample
@@ -76,48 +76,17 @@ class SampleCollection(object):
         Returns:
             a list of groups
         """
-        # @todo(Tyler) This does not work with DictField
-        raise NotImplementedError("TODO TYLER")
-        return self._get_query_set().distinct("insights.group")
+        raise NotImplementedError(
+            "Subclass must implement get_insight_groups()"
+        )
 
-    def iter_samples(self, offset=None, limit=None):
+    def iter_samples(self):
         """Returns an iterator over the samples in the SampleCollection.
-
-        Args:
-            offset: the integer offset to start iterating at
-            limit: the maximum number of samples to iterate over
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        query_set = self._get_query_set()
-
-        if offset is not None:
-            query_set = query_set.skip(offset)
-
-        if limit is not None:
-            query_set = query_set.limit(limit)
-
-        for doc in query_set:
-            yield self._sample_cls(doc)
-
-    def iter_samples_with_index(self, offset=None, limit=None):
-        """Returns an iterator over the samples in the SampleCollection with
-        integer indices.
-
-        Args:
-            offset: the integer offset to start iterating at
-            limit: the maximum number of samples to iterate over
-
-        Returns:
-            an iterator over tuples of:
-                - integer index relative to the offset
-                        offset <= view_idx < offset + limit
-                - :class:`fiftyone.core.sample.Sample` instances
-        """
-        iterator = self.iter_samples(offset=offset, limit=limit)
-        for idx, sample in enumerate(iterator, start=offset):
-            yield idx, sample
+        raise NotImplementedError("Subclass must implement iter_samples()")
 
     def export(self, group, export_dir):
         """Exports the labeled samples in the collection for the given label
@@ -164,8 +133,3 @@ class SampleCollection(object):
                 "Cannot export labels of type '%s'"
                 % etau.get_class_name(labels[0])
             )
-
-    def _get_query_set(self, **kwargs):
-        raise NotImplementedError(
-            "Subclass must implement _get_sample_objects()"
-        )

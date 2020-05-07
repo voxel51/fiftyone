@@ -116,8 +116,57 @@ class Dataset(foc.SampleCollection):
         if not create_empty and not self:
             raise ValueError("Dataset '%s' not found" % name)
 
+    def __len__(self):
+        return self._get_query_set().count()
+
+    def __getitem__(self, sample_id):
+        samples = self._get_query_set(id=sample_id)
+        if not samples:
+            raise ValueError("No sample found with ID '%s'" % sample_id)
+
+        return fos.Sample.from_doc(samples[0])
+
     def __delitem__(self, sample_id):
         return self[sample_id]._delete()
+
+    def get_tags(self):
+        """Returns the list of tags for this SampleCollection.
+
+        Returns:
+            a list of tags
+        """
+        return self._get_query_set().distinct("tags")
+
+    def get_label_groups(self):
+        """Returns the list of label groups attached to at least one sample
+        in the SampleCollection.
+
+        Returns:
+            a list of groups
+        """
+        # @todo(Tyler) This does not work with DictField
+        raise NotImplementedError("TODO TYLER")
+        return self._get_query_set().distinct("labels.group")
+
+    def get_insight_groups(self):
+        """Returns the list of insight groups attached to at least one sample
+        in the SampleCollection.
+
+        Returns:
+            a list of groups
+        """
+        # @todo(Tyler) This does not work with DictField
+        raise NotImplementedError("TODO TYLER")
+        return self._get_query_set().distinct("insights.group")
+
+    def iter_samples(self):
+        """Returns an iterator over the samples in the SampleCollection.
+
+        Returns:
+            an iterator over :class:`fiftyone.core.sample.Sample` instances
+        """
+        for doc in self._get_query_set():
+            yield fos.Sample.from_doc(doc)
 
     @property
     def _sample_cls(self):

@@ -59,9 +59,14 @@ print()
 # object with the additional transform appended to the view pipeline.
 ###############################################################################
 
-view = fov.DatasetView(dataset=dataset).sort_by("metadata.size_bytes")
+view = (
+    fov.DatasetView(dataset=dataset)
+    .sort_by("metadata.size_bytes")
+    .offset(2)
+    .take(10)
+)
 print("Num samples in view: %d" % len(view))
-for sample in view.iter_samples(offset=2, limit=10):
+for sample in view.iter_samples():
     print("sample.metadata.size_bytes: %d" % sample.metadata.size_bytes)
 print()
 
@@ -72,7 +77,9 @@ print()
 # the functionality here for the purpose of softening the learning curve, but
 # for now this is a simple wrapper on the MongoDB `$match` stage.
 #
-# This query matches num_channels == 3 AND size_bytes > 1000
+# This query:
+#   1) matches num_channels == 3 AND size_bytes > 1200
+#   2) takes 5 random samples
 #
 # ref: https://docs.mongodb.com/manual/tutorial/query-documents
 ###############################################################################
@@ -82,12 +89,12 @@ view = (
     .filter(
         filter={
             "metadata.num_channels": 3,
-            "metadata.size_bytes": {"$gt": 1000},
+            "metadata.size_bytes": {"$gt": 1200},
         }
     )
-    .sort_by("metadata.size_bytes")
+    .take(5, random=True)
 )
-
-for sample in view.iter_samples(limit=1):
+print("Num samples in view: %d" % len(view))
+for sample in view.iter_samples():
     print("sample.metadata.size_bytes: %d" % sample.metadata.size_bytes)
-    print()
+print()
