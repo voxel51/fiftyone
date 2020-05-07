@@ -39,13 +39,13 @@ class DatasetView(foc.SampleCollection):
 
     Example use::
 
-        # Print the metadata of the five largest samples in the dataset
-        view = (dataset.view()
+        # Print the paths to 5 random data samples in the dataset
+        view =
             .sort_by("metadata.size_bytes")
             .take(5)
         )
-        for sample in view:
-            print(sample.metadata)
+        for sample in dataset.default_view().take(5, random=True):
+            print(sample.filepath)
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -71,8 +71,6 @@ class DatasetView(foc.SampleCollection):
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
         # @todo(Tyler) this should fail if the sample is not in the view
-        # return self._dataset[sample_id]
-
         return fos.Sample.from_doc(samples[0])
 
     def __copy__(self):
@@ -81,28 +79,25 @@ class DatasetView(foc.SampleCollection):
         return view
 
     def iter_samples(self):
-        """Returns an iterator over the :class:`fiftyone.core.sample.Sample`
-        instances in the view.
+        """Returns an iterator over the samples in the view.
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self._get_ds_qs().aggregate(self._pipeline):
-            yield self._deserialize(d)
+            yield self._deserialize_sample(d)
 
     def iter_samples_with_index(self):
-        """Returns an iterator over the samples in the SampleCollection with
-        integer indices.
-
-        Args:
-            offset: the integer offset to start iterating at
-            limit: the maximum number of samples to iterate over
+        """Returns an iterator over the samples in the view together with
+        their integer index in the collection.
 
         Returns:
-            an iterator over tuples of:
-                - integer index relative to the offset
-                        offset <= view_idx < offset + limit
-                - :class:`fiftyone.core.sample.Sample` instances
+            an iterator that emits ``(index, sample)`` tuples, where:
+
+                - ``index`` is an integer index relative to the offset, where
+                  ``offset <= view_idx < offset + limit``
+
+                - ``sample`` is a :class:`fiftyone.core.sample.Sample`
         """
         offset = self._get_latest_offset()
         iterator = self.iter_samples()
@@ -115,11 +110,12 @@ class DatasetView(foc.SampleCollection):
         """Filters the samples in the view by the given filter.
 
         Args:
-            tag: a sample tag string
-            insight_group: an insight group string
-            label_group: a label group string
-            filter: a MongoDB query dict
-                ref: https://docs.mongodb.com/manual/tutorial/query-documents/
+            tag (None): a sample tag string
+            insight_group (None): an insight group string
+            label_group (None): a label group string
+            filter (None): a MongoDB query dict. See
+                https://docs.mongodb.com/manual/tutorial/query-documents
+                for details
 
         Returns:
             a :class:`DatasetView`
@@ -133,13 +129,13 @@ class DatasetView(foc.SampleCollection):
             # @todo(Tyler) should this filter the insights as well? or just
             # filter the samples based on whether or not the insight is
             # present?
-            raise NotImplementedError("TODO")
+            raise NotImplementedError("Not yet implemented")
 
         if label_group is not None:
             # @todo(Tyler) should this filter the labels as well? or just
             # filter the samples based on whether or not the label is
             # present?
-            raise NotImplementedError("TODO")
+            raise NotImplementedError("Not yet implemented")
 
         if filter is not None:
             view = view._copy_with_new_stage(stage={"$match": filter})
@@ -215,11 +211,10 @@ class DatasetView(foc.SampleCollection):
         raise NotImplementedError("Not yet implemented")
 
     def _get_ds_qs(self, **kwargs):
-        """Get Dataset QuerySet"""
         return self._dataset._get_query_set(**kwargs)
 
     @staticmethod
-    def _deserialize(d):
+    def _deserialize_sample(d):
         return fos.Sample.from_doc(foo.ODMSample.from_dict(d, extended=False))
 
     def _copy_with_new_stage(self, stage):
