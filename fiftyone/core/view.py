@@ -232,7 +232,7 @@ class DatasetView(foc.SampleCollection):
                 }
             },
         ]
-        return list(self._dataset._c.aggregate(pipeline))
+        return list(self._get_ds_qs().aggregate(pipeline))
 
     def _facets(self):
         pipeline = self._pipeline + [
@@ -279,7 +279,7 @@ class DatasetView(foc.SampleCollection):
                 }
             }
         ]
-        return list(self._dataset._c.aggregate(pipeline))
+        return list(self._get_ds_qs().aggregate(pipeline))
 
     # PRIVATE #################################################################
 
