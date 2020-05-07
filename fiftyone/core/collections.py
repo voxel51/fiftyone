@@ -79,12 +79,12 @@ class SampleCollection(object):
             {
                 "$group": {
                     "_id": None,
-                    "allgroups": {"$addToSet": "$arrayofkeyvalue.k"},
+                    "all_groups": {"$addToSet": "$arrayofkeyvalue.k"},
                 }
             },
         ]
         try:
-            return next(self.aggregate(pipeline))["allgroups"]
+            return next(self.aggregate(pipeline))["all_groups"]
         except StopIteration:
             pass
         return []
@@ -102,12 +102,12 @@ class SampleCollection(object):
             {
                 "$group": {
                     "_id": None,
-                    "allgroups": {"$addToSet": "$arrayofkeyvalue.k"},
+                    "all_groups": {"$addToSet": "$arrayofkeyvalue.k"},
                 }
             },
         ]
         try:
-            return next(self.aggregate(pipeline))["allgroups"]
+            return next(self.aggregate(pipeline))["all_groups"]
         except StopIteration:
             pass
         return []

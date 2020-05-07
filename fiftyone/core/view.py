@@ -61,15 +61,13 @@ class DatasetView(foc.SampleCollection):
         return self._dataset._sample_cls
 
     def __len__(self):
-        result = self._get_ds_qs().aggregate(
-            self._pipeline + [{"$count": "count"}]
-        )
+        result = self.aggregate(self._pipeline + [{"$count": "count"}])
         return next(result)["count"]
 
     def __getitem__(self, sample_id):
         samples = self._get_ds_qs(id=sample_id)
         if not samples:
-            raise ValueError("No sample found with ID '%s'" % sample_id)
+            raise KeyError("No sample found with ID '%s'" % sample_id)
 
         # @todo(Tyler) this should fail if the sample is not in the view
         return fos.Sample.from_doc(samples[0])
@@ -79,13 +77,30 @@ class DatasetView(foc.SampleCollection):
         view._pipeline = deepcopy(self._pipeline)
         return view
 
+    def get_tags(self):
+        """Returns the list of tags in the collection.
+
+        Returns:
+            a list of tags
+        """
+        pipeline = [
+            {"$project": {"tags": "$tags"}},
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "None", "all_tags": {"$addToSet": "$tags"}}},
+        ]
+        try:
+            return next(self.aggregate(pipeline))["all_tags"]
+        except StopIteration:
+            pass
+        return []
+
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._get_ds_qs().aggregate(self._pipeline):
+        for d in self.aggregate():
             yield self._deserialize_sample(d)
 
     def aggregate(self, pipeline=None):

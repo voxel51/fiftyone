@@ -49,6 +49,7 @@ print()
 
 tag = "rand"
 view = fov.DatasetView(dataset=dataset).filter(tag=tag)
+print("Tags: %s" % view.get_tags())
 print("Num samples with '%s' tag: %d" % (tag, len(view)))
 print()
 
