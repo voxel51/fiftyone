@@ -4,6 +4,7 @@ Examples:
 
 - `walkthrough.py`: walkthrough of common FiftyOne workflows
 
+
 ## Miscellaneous
 
 | Directory          | Description                                                                     |
