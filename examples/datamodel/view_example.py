@@ -11,7 +11,7 @@ import fiftyone.core.view as fov
 logger = logging.getLogger(__name__)
 
 
-dataset = fod.ImageDataset(name="cifar100")
+dataset = fod.Dataset(name="cifar100")
 
 ###############################################################################
 # Action 0: Create an "empty" view
@@ -68,6 +68,19 @@ view = (
 print("Num samples in view: %d" % len(view))
 for sample in view.iter_samples():
     print("sample.metadata.size_bytes: %d" % sample.metadata.size_bytes)
+print()
+
+view = (
+    fov.DatasetView(dataset=dataset)
+    .sort_by("labels.ground_truth_fine.label")
+    .take(10)
+)
+print("Num samples in view: %d" % len(view))
+for sample in view.iter_samples():
+    print(
+        "sample.labels.ground_truth_fine.label: %s"
+        % sample.get_label("ground_truth_fine").label
+    )
 print()
 
 ###############################################################################
