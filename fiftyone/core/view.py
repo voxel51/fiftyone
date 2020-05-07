@@ -20,6 +20,7 @@ from builtins import *
 
 from copy import copy, deepcopy
 
+from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
@@ -129,7 +130,7 @@ class DatasetView(foc.SampleCollection):
         view = self
 
         if tag is not None:
-            view = view._copy_with_new_stage(stage={"$match": {"tags": tag}})
+            view = view._copy_with_new_stage({"$match": {"tags": tag}})
 
         if insight_group is not None:
             # @todo(Tyler) should this filter the insights as well? or just
@@ -144,7 +145,7 @@ class DatasetView(foc.SampleCollection):
             raise NotImplementedError("Not yet implemented")
 
         if filter is not None:
-            view = view._copy_with_new_stage(stage={"$match": filter})
+            view = view._copy_with_new_stage({"$match": filter})
 
         return view
 
@@ -203,10 +204,13 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        raise NotImplementedError("Not yet implemented")
+        sample_ids = [ObjectId(id) for id in sample_ids]
+        return self._copy_with_new_stage(
+            {"$match": {"_id": {"$in": sample_ids}}}
+        )
 
-    def remove_samples(self, sample_ids):
-        """Removes the samples with the given IDs from the view.
+    def exclude_samples(self, sample_ids):
+        """Exclude the samples with the given IDs from the view.
 
         Args:
             sample_ids: an iterable of sample IDs
@@ -214,7 +218,10 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        raise NotImplementedError("Not yet implemented")
+        sample_ids = [ObjectId(id) for id in sample_ids]
+        return self._copy_with_new_stage(
+            {"$match": {"_id": {"$not": {"$in": sample_ids}}}}
+        )
 
     def _get_ds_qs(self, **kwargs):
         return self._dataset._get_query_set(**kwargs)
