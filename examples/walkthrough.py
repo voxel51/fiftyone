@@ -76,7 +76,7 @@ dataset_dir = foz.get_default_zoo_dataset_dir("cifar10")
 images_dir = os.path.join(dataset_dir, "data")
 labels_path = os.path.join(dataset_dir, "labels.json")
 
-# Maps image UUID to image path
+# Maps image UUIDs to image paths
 image_uuids_to_paths = {
     os.path.splitext(n)[0]: os.path.join(images_dir, n)
     for n in os.listdir(images_dir)
@@ -88,7 +88,7 @@ with open(labels_path, "rt") as f:
 # Maps int targets to label strings
 labels_map = {int(k): v for k, v in _labels["labels_map"].items()}
 
-# Maps image UUID to int targets
+# Maps image UUIDs to int targets
 labels = _labels["labels"]
 
 # Make a list of (image_path, label) samples
