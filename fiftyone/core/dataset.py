@@ -109,6 +109,9 @@ class Dataset(foc.SampleCollection):
     """
 
     def __init__(self, name, create_empty=True):
+        # @todo remove when datasets are persistent
+        foo.drop_database()
+
         self._name = name
 
         # @todo populate this when reading an existing collection from the DB
