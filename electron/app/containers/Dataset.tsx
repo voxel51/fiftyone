@@ -3,18 +3,15 @@ import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
 import { Container, Menu, Ref, Sticky } from "semantic-ui-react";
 
 import routes from "../constants/routes.json";
-import SampleList from "../components/SampleList";
-import Histogram from "../components/Histogram";
-import FacetBuilder from "../components/FacetBuilder";
+import Samples from "../components/Samples";
+import Labels from "../components/Labels";
+import Search from "../components/Search";
 import connect from "../utils/connect";
 
 function Dataset(props) {
   const { path, url } = useRouteMatch();
   const stickyRef = createRef();
-  const tabs = {
-    list: "samples",
-    charts: "classes",
-  };
+  const tabs = ["samples", "labels", "insights"];
   return (
     <Ref innerRef={stickyRef}>
       <Container fluid={true} style={{ padding: "0 2rem" }}>
@@ -23,15 +20,15 @@ function Dataset(props) {
             fluid={true}
             style={{ background: "white", paddingTop: "2rem" }}
           >
-            <FacetBuilder />
+            <Search />
             <Menu pointing secondary>
-              {Object.keys(tabs).map((k) => {
+              {tabs.map((v) => {
                 return (
-                  <Link to={`${url}${k}`}>
+                  <Link to={`${url}${v}`}>
                     <Menu.Item
-                      key={k}
-                      name={tabs[k]}
-                      active={`/${k}` === props.location.pathname}
+                      key={v}
+                      name={v}
+                      active={`/${v}` === props.location.pathname}
                     />
                   </Link>
                 );
@@ -41,14 +38,15 @@ function Dataset(props) {
         </Sticky>
         <Switch>
           <Route exact path={path}>
-            <Redirect to={`${path}list`} />
+            <Redirect to={`${path}samples`} />
           </Route>
-          <Route path={`${path}list`}>
-            <SampleList {...props.socket} />
+          <Route path={`${path}samples`}>
+            <Samples {...props.socket} />
           </Route>
-          <Route path={`${path}charts`}>
-            <Histogram data={[]} />
+          <Route path={`${path}labels`}>
+            <Labels data={[]} />
           </Route>
+          <Route path={`${path}insights`}>Hello</Route>
         </Switch>
       </Container>
     </Ref>

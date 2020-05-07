@@ -6,7 +6,7 @@ import { updateState } from "../actions/update";
 import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
 
-function FacetBuilder(props) {
+export default connect(function (props) {
   const { dispatch } = props;
   const [initialLoad, setInitialLoad] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ function FacetBuilder(props) {
   const getFacets = () => {
     socket.emit("get_facets", "", (data) => {
       const tags = Object.keys(data[0].tags).map((k) => {
-        return { title: `tag.${data[0].tags[k]._id}` };
+        return { title: `tags.${data[0].tags[k]._id}` };
       });
       setFacets(tags);
       setFacetsLoading(false);
@@ -63,6 +63,4 @@ function FacetBuilder(props) {
       />
     </>
   );
-}
-
-export default connect(FacetBuilder);
+});

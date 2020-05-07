@@ -73,7 +73,6 @@ function SampleList(props) {
   const loadMore = () => {
     if (hasDataset) {
       socket.emit("page", scrollState.pageToLoad, (data) => {
-        console.log(data);
         const more = createImages(data);
         setScrollState({
           initialLoad: false,

@@ -44,7 +44,7 @@ const Histogram = connect(({ data, name }) => {
         margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
       >
         <XAxis
-          dataKey="class"
+          dataKey="label"
           type="category"
           interval={0}
           height={150}
@@ -67,7 +67,7 @@ const Charts = (props) => {
   const [data, setData] = useState([]);
 
   const getData = () => {
-    socket.emit("get_class_distributions", "", (data) => {
+    socket.emit("get_label_distributions", "", (data) => {
       setInitialLoad(false);
       setLoading(false);
       setData(data);
@@ -86,10 +86,11 @@ const Charts = (props) => {
   if (loading) {
     return <Loader />;
   }
+  console.log(data);
   return (
     <>
       {data.map((chart) => {
-        return <Histogram data={chart.classes} name={chart._id} />;
+        return <Histogram data={chart.labels} name={chart._id} />;
       })}
     </>
   );

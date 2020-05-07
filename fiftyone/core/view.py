@@ -212,22 +212,22 @@ class DatasetView(foc.SampleCollection):
         """
         raise NotImplementedError("Not yet implemented")
 
-    def _class_distribution(self):
+    def _label_distributions(self):
         pipeline = self._pipeline + [
             {"$project": {"label": {"$objectToArray": "$labels"}}},
             {"$unwind": "$label"},
-            {"$project": {"label": "$label.k", "class": "$label.v.label"}},
+            {"$project": {"group": "$label.k", "label": "$label.v.label"}},
             {
                 "$group": {
-                    "_id": {"label": "$label", "class": "$class"},
+                    "_id": {"group": "$group", "label": "$label"},
                     "count": {"$sum": 1},
                 }
             },
             {
                 "$group": {
-                    "_id": "$_id.label",
-                    "classes": {
-                        "$push": {"class": "$_id.class", "count": "$count"}
+                    "_id": "$_id.group",
+                    "labels": {
+                        "$push": {"label": "$_id.label", "count": "$count"}
                     },
                 }
             },
@@ -254,22 +254,22 @@ class DatasetView(foc.SampleCollection):
                         {"$unwind": "$label"},
                         {
                             "$project": {
-                                "label": "$label.k",
-                                "class": "$label.v.label",
+                                "group": "$label.k",
+                                "label": "$label.v.label",
                             }
                         },
                         {
                             "$group": {
-                                "_id": {"label": "$label", "class": "$class"},
+                                "_id": {"group": "$group", "label": "$label"},
                                 "count": {"$sum": 1},
                             }
                         },
                         {
                             "$group": {
-                                "_id": "$_id.label",
-                                "classes": {
+                                "_id": "$_id.group",
+                                "labels": {
                                     "$push": {
-                                        "class": "$_id.class",
+                                        "label": "$_id.label",
                                         "count": "$count",
                                     }
                                 },

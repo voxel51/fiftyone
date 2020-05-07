@@ -138,7 +138,7 @@ class StateController(Namespace):
         ]
         return res
 
-    def on_get_class_distributions(self, _):
+    def on_get_label_distributions(self, _):
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
@@ -146,7 +146,7 @@ class StateController(Namespace):
             view = state.dataset.default_view()
         else:
             return []
-        return view._class_distribution()
+        return view._label_distributions()
 
     def on_get_facets(self, _):
         state = fos.StateDescription.from_dict(self.state)
