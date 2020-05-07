@@ -26,8 +26,9 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.core.datautils as fodu
-import fiftyone.zoo as foz
 import fiftyone.core.utils as fou
+import fiftyone.zoo as foz
+import fiftyone.types as fot
 
 fou.ensure_torch()
 import torchvision  # pylint: disable=wrong-import-order
@@ -70,7 +71,7 @@ class MNISTDataset(foz.ZooDataset):
             )
 
         get_class_labels_fcn = _parse_classification_labels_map
-        sample_parser = fodu.ImageClassificationSampleParser("ground_truth")
+        sample_parser = fodu.ImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -114,7 +115,7 @@ class CIFAR10Dataset(foz.ZooDataset):
             )
 
         get_class_labels_fcn = _parse_classification_labels_map
-        sample_parser = fodu.ImageClassificationSampleParser("ground_truth")
+        sample_parser = fodu.ImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -178,7 +179,7 @@ class ImageNet2012Dataset(foz.ZooDataset):
             return torchvision.datasets.ImageNet(dataset_dir, split=split)
 
         get_class_labels_fcn = _parse_classification_labels_map
-        sample_parser = fodu.ImageClassificationSampleParser("ground_truth")
+        sample_parser = fodu.ImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -229,7 +230,7 @@ class COCO2017Dataset(foz.ZooDataset):
         download_fcn = _download_coco_train_dataset
         get_class_labels_fcn = _parse_coco_detection_labels_map
         sample_parser = fodu.ImageDetectionSampleParser(
-            "ground_truth", label_field="category_id"
+            label_field="category_id"
         )
 
         return _download_and_prepare(
@@ -303,25 +304,21 @@ def _download_and_prepare(
     sample_parser.labels_map = labels_map
     num_samples = len(dataset)
 
-    # @todo convert `format` to a proper type system
     if isinstance(sample_parser, fodu.ImageClassificationSampleParser):
         write_dataset_fcn = fodu.to_image_classification_dataset
-        format = "fiftyone.types.ImageClassificationDataset"
+        format = fot.ImageClassificationDataset
     elif isinstance(sample_parser, fodu.ImageDetectionSampleParser):
         write_dataset_fcn = fodu.to_image_detection_dataset
-        format = "fiftyone.types.ImageDetectionDataset"
+        format = fot.ImageDetectionDataset
     elif isinstance(sample_parser, fodu.ImageLabelsSampleParser):
         write_dataset_fcn = fodu.to_labeled_image_dataset
-        format = "fiftyone.types.LabeledImageDataset"
+        format = fot.ImageLabelsDataset
     else:
         raise ValueError("Unsupported sample parser: %s" % sample_parser)
 
     # Write the formatted dataset to `dataset_dir`
     write_dataset_fcn(
-        dataset,
-        sample_parser,
-        dataset_dir,
-        num_samples=num_samples,
+        dataset, sample_parser, dataset_dir, num_samples=num_samples,
     )
 
     info = foz.ZooDatasetInfo(
