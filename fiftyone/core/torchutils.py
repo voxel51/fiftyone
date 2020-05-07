@@ -130,11 +130,11 @@ class TorchImageClassificationDataset(Dataset):
         return img, label
 
 
-def from_image_classification_dataset_directory(dataset_dir):
-    """Loads the image classification dataset from the given directory as a
-    ``torch.utils.data.Dataset``.
+def from_image_classification_dir_tree(dataset_dir):
+    """Creates a ``torch.utils.data.Dataset`` for the given image
+    classification dataset directory tree.
 
-    The dataset directory should have the following format::
+    The directory should have the following format::
 
         dataset_dir/
             <classA>/
@@ -156,8 +156,8 @@ def from_image_classification_dataset_directory(dataset_dir):
 
 
 def from_labeled_image_dataset(labeled_dataset, attr_name):
-    """Loads an ``eta.core.datasets.LabeledImageDataset`` as a
-    ``torch.utils.data.Dataset``.
+    """Creates a ``torch.utils.data.Dataset`` for the given
+    ``eta.core.datasets.LabeledImageDataset``.
 
     Args:
         labeled_dataset: a ``eta.core.datasets.LabeledImageDataset``

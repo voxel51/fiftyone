@@ -225,7 +225,7 @@ class Dataset(foc.SampleCollection):
     @classmethod
     def from_image_classification_dataset(cls, dataset_dir, name=None):
         """Creates a :class:`Dataset` from the given image classification
-        dataset on disk.
+        dataset stored on disk.
 
         See :class:`fiftyone.types.ImageClassificationDataset` for format
         details.
