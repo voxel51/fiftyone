@@ -19,10 +19,14 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import datetime
+import os
+
 from bson.objectid import ObjectId
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
@@ -35,6 +39,7 @@ def list_dataset_names():
     Returns:
         a list of :class:`Dataset` names
     """
+    # pylint: disable=no-member
     return foo.ODMSample.objects.distinct("dataset")
 
 
@@ -49,6 +54,33 @@ def load_dataset(name):
     """
     # @todo reflectively load the right `Dataset` subclass
     return Dataset(name, create_empty=False)
+
+
+def get_default_dataset_name():
+    """Returns a default dataset name based on the current time.
+
+    Returns:
+        a dataset name
+    """
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def get_default_dataset_dir(name, split=None):
+    """Returns the default dataset directory for the dataset with the given
+    name.
+
+    Args:
+        name: the dataset name
+        split (None): an optional split
+
+    Returns:
+        the default dataset directory
+    """
+    dataset_dir = os.path.join(fo.config.default_dataset_dir, name)
+    if split is not None:
+        dataset_dir = os.path.join(dataset_dir, split)
+
+    return dataset_dir
 
 
 #
@@ -75,9 +107,6 @@ class Dataset(foc.SampleCollection):
             if it does not already exist
     """
 
-    # The `Sample` class that this dataset can contain
-    _SAMPLE_CLS = fos.Sample
-
     def __init__(self, name, create_empty=True):
         self._name = name
 
@@ -89,6 +118,13 @@ class Dataset(foc.SampleCollection):
 
     def __delitem__(self, sample_id):
         return self[sample_id]._delete()
+
+    @property
+    def _sample_cls(self):
+        """The :class:`fiftyone.core.sample.Sample` class that this dataset
+        can contain.
+        """
+        return fos.Sample
 
     @property
     def name(self):
@@ -137,19 +173,16 @@ class Dataset(foc.SampleCollection):
         """
         return fov.DatasetView(self)
 
-    @property
-    def _sample_class(self):
-        return self._SAMPLE_CLS
-
     def _get_query_set(self, **kwargs):
+        # pylint: disable=no-member
         return foo.ODMSample.objects(dataset=self.name, **kwargs)
 
     def _validate_sample(self, sample):
-        if not isinstance(sample, self._SAMPLE_CLS):
+        if not isinstance(sample, self._sample_cls):
             raise ValueError(
                 "Expected sample to be an instance of '%s'; found '%s'"
                 % (
-                    etau.get_class_name(self._SAMPLE_CLS),
+                    etau.get_class_name(self._sample_cls),
                     etau.get_class_name(sample),
                 )
             )
@@ -167,9 +200,3 @@ class Dataset(foc.SampleCollection):
                         etau.get_class_name(label),
                     )
                 )
-
-
-class ImageDataset(Dataset):
-    """A FiftyOne dataset of images."""
-
-    _SAMPLE_CLS = fos.ImageSample
