@@ -59,7 +59,7 @@ class ImageClassificationDataset(LabeledImageDataset):
 
     FiftyOne exports datasets of this type on disk in the following format::
 
-        dataset_dir/
+        <dataset_dir>/
             data/
                 <uuid1>.<ext>
                 <uuid2>.<ext>
@@ -91,7 +91,7 @@ class ImageDetectionDataset(LabeledImageDataset):
 
     FiftyOne exports datasets of this type on disk in the following format::
 
-        dataset_dir/
+        <dataset_dir>/
             data/
                 <uuid1>.<ext>
                 <uuid2>.<ext>
@@ -137,7 +137,7 @@ class ImageLabelsDataset(LabeledImageDataset):
 
     FiftyOne exports datasets of this type on disk in the following format::
 
-        dataset_dir/
+        <dataset_dir>/
             data/
                 <uuid1>.<ext>
                 <uuid2>.<ext>

@@ -169,7 +169,7 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
 
     The directory should have the following format::
 
-        dataset_dir/
+        <dataset_dir>/
             <classA>/
                 <image1>.<ext>
                 <image2>.<ext>
