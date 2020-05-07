@@ -40,12 +40,12 @@ class TorchImageDataset(Dataset):
     Instances of this class emit images with no associated labels.
 
     Args:
-        image_paths: a list of image paths
+        image_paths: an iterable of image paths
         transform (None): an optional transform to apply to the images
     """
 
     def __init__(self, image_paths, transform=None):
-        self.image_paths = image_paths
+        self.image_paths = list(image_paths)
         self.transform = transform
 
     def __len__(self):
@@ -93,7 +93,7 @@ class TorchImageDataset(Dataset):
         """Creates a TorchImageDataset for the given list of images.
 
         Args:
-            image_paths: a list of image paths
+            image_paths: an iterable of image paths
 
         Returns:
             a TorchImageDataset
@@ -107,13 +107,13 @@ class TorchImageClassificationDataset(Dataset):
     Instances of this dataset emit ``(img, label)`` pairs.
 
     Args:
-        image_paths: a list of image paths
+        image_paths: an iterable of image paths
         labels: a list of labels
         transform (None): an optional transform to apply to the images
     """
 
     def __init__(self, image_paths, labels, transform=None):
-        self.image_paths = image_paths
+        self.image_paths = list(image_paths)
         self.labels = labels
         self.transform = transform
 

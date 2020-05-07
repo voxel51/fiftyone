@@ -295,7 +295,7 @@ def load_tf_records(
 
 
 class Features(object):
-    """Interface for reading/writing ``tf.train.Example`` instances in common
+    """Interface for reading/writing ``tf.train.Example`` instances for common
     dataset formats.
     """
 
