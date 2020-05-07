@@ -124,8 +124,8 @@ class ZooDatasetInfo(etas.Serializable):
             split: the dataset split
             num_samples: the number of samples in the dataset
             format: the format of the dataset on disk
-            labels_map (None): an optional dict mapping class IDs to class
-                labels
+            labels_map (None): an optional dict mapping class IDs to label
+                strings
         """
         self.name = name
         self.zoo_dataset = etau.get_class_name(zoo_dataset)
