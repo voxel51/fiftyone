@@ -109,7 +109,7 @@ class ImageDetectionDataset(LabeledImageDataset):
             "labels": {
                 <uuid1>: [
                     {
-                        "label": <target>,
+                        "label": <label>,
                         "bounding_box": [
                             <top-left-x>, <top-left-y>, <width>, <height>
                         ],
@@ -125,7 +125,7 @@ class ImageDetectionDataset(LabeledImageDataset):
         }
 
     where the bounding box coordinates are expressed as relative values in
-    ``[0, 1]``.
+    ``[0, 1] x [0, 1]``.
     """
 
     pass
