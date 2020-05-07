@@ -44,6 +44,7 @@ class Sample(fod.BackedByDocument):
 
     def __init__(self, document):
         super(Sample, self).__init__(document)
+        self._dataset = None
 
     @classmethod
     def create(cls, filepath, tags=None, labels=None):
@@ -82,7 +83,7 @@ class Sample(fod.BackedByDocument):
         """The name of the dataset to which this sample belongs, or ``None`` if
         it has not been added to a dataset.
         """
-        return self._backing_doc.dataset
+        return self._dataset.name if self._dataset is not None else None
 
     @property
     def filepath(self):
@@ -197,27 +198,14 @@ class Sample(fod.BackedByDocument):
             group: the group name for the label
             insight: a :class:`fiftyone.core.insights.Insight`
         """
-        if self._in_db:
-            self._dataset._validate_insight(group, insight)
-
         self._backing_doc.insights[group] = insight._backing_doc
 
         if self._in_db:
             self._save()
 
-    @property
-    def _dataset(self):
-        if not hasattr(self, "__dataset"):
-            if not self.dataset_name:
-                return None
-            from fiftyone.core.dataset import Dataset
-
-            self.__dataset = Dataset(name=self.dataset_name)
-        return self.__dataset
-
     def _set_dataset(self, dataset):
         self._backing_doc.dataset = dataset.name
-        self.__dataset = dataset
+        self._dataset = dataset
 
 
 class ImageSample(Sample):
