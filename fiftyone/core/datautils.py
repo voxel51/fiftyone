@@ -343,7 +343,7 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
 
     The raw images are directly copied to their destinations, maintaining their
     original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appened to the base
+    case an index of the form ``"-%d" % count`` is appended to the base
     filename.
 
     Args:
