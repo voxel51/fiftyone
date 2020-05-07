@@ -207,7 +207,7 @@ class DatasetView(foc.SampleCollection):
         raise NotImplementedError("Not yet implemented")
 
     def _deserialize_sample(self, d):
-        doc = foo.ODMSample.from_dict(d, extended=False)
+        doc = foo.ODMSample.from_dict(d, created=False, extended=False)
         return self._load_sample(doc)
 
     def _load_sample(self, doc):
