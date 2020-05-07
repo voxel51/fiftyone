@@ -31,6 +31,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
+import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,13 @@ def to_image_classification_dataset(
     images_patt = os.path.join(data_dir, uuid_patt + image_format)
     labels_path = os.path.join(dataset_dir, "labels.json")
 
-    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageClassificationDataset),
+    )
+
     etau.ensure_dir(data_dir)
     labels_dict = {}
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
@@ -130,7 +137,13 @@ def to_image_detection_dataset(
     images_patt = os.path.join(data_dir, uuid_patt + image_format)
     labels_path = os.path.join(dataset_dir, "labels.json")
 
-    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageDetectionDataset),
+    )
+
     etau.ensure_dir(data_dir)
     labels_dict = {}
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
@@ -182,7 +195,13 @@ def to_image_labels_dataset(
     images_patt = int_patt + image_format
     labels_patt = int_patt + ".json"
 
-    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageLabelsDataset),
+    )
+
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
         for idx, sample in enumerate(samples, 1):
@@ -220,7 +239,13 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
     data_dir = os.path.join(dataset_dir, "data")
     labels_path = os.path.join(dataset_dir, "labels.json")
 
-    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageClassificationDataset),
+    )
+
     etau.ensure_dir(data_dir)
     labels_dict = {}
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
@@ -271,7 +296,13 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
     data_dir = os.path.join(dataset_dir, "data")
     labels_path = os.path.join(dataset_dir, "labels.json")
 
-    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageDetectionDataset),
+    )
+
     etau.ensure_dir(data_dir)
     labels_dict = {}
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
@@ -319,7 +350,13 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
     num_samples = len(image_paths)
     data_filename_counts = defaultdict(int)
 
-    logger.info("Writing %d samples to '%s'...", num_samples, dataset_dir)
+    logger.info(
+        "Writing %d samples to '%s' in '%s' format...",
+        num_samples,
+        dataset_dir,
+        etau.get_class_name(fot.ImageLabelsDataset),
+    )
+
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
     with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
         for img_path, label in zip(image_paths, labels):
