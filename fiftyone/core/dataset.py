@@ -128,7 +128,7 @@ class Dataset(foc.SampleCollection):
         if not samples:
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
-        return fos.Sample.from_doc(samples[0])
+        return self._load_sample(samples[0])
 
     def __delitem__(self, sample_id):
         return self[sample_id]._delete()
@@ -170,7 +170,7 @@ class Dataset(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for doc in self._get_query_set():
-            yield fos.Sample.from_doc(doc)
+            yield self._load_sample(doc)
 
     @property
     def _sample_cls(self):
@@ -684,6 +684,11 @@ class Dataset(foc.SampleCollection):
         )
 
         return cls.from_images(image_paths, name=name)
+
+    def _load_sample(self, doc):
+        sample = fos.Sample.from_doc(doc)
+        sample._set_dataset(self)
+        return sample
 
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
