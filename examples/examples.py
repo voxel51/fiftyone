@@ -15,7 +15,6 @@ import fiftyone as fo
 # foc.set_config_settings(default_ml_backend="tensorflow")
 
 import fiftyone.zoo as foz
-import fiftyone.core.odm as foo
 
 
 # Prints a few random samples from the dataset
@@ -106,4 +105,73 @@ print_random(dataset)
 # Add predictions to a dataset
 ###############################################################################
 
+import sys
+
+import torch
+import torchvision
+from torch.utils.data import DataLoader
+
+import fiftyone.core.labels as fol
 import fiftyone.core.torchutils as fotu
+
+
+sys.path.insert(1, "inference/PyTorch_CIFAR10")
+from cifar10_models import *
+
+
+LABEL_GROUP = "my-model"
+NUM_PREDICTIONS = 25
+
+
+def make_cifar10_data_loader(image_paths, sample_ids):
+    mean = [0.4914, 0.4822, 0.4465]
+    std = [0.2023, 0.1994, 0.2010]
+    transforms = torchvision.transforms.Compose([
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(mean, std),
+    ])
+    dataset = fotu.TorchImageClassificationDataset(
+        image_paths, sample_ids, transform=transforms
+    )
+    return DataLoader(
+        dataset, batch_size=10, num_workers=4, pin_memory=True
+    )
+
+
+def predict(model, imgs):
+    logits = model(imgs)
+    predictions = torch.argmax(logits, 1)
+    return predictions.numpy()
+
+
+#
+# Load a model
+#
+# Choices here are:
+#   vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn, resnet18, resnet34, resnet50
+#   densenet121, densenet161, densenet169, mobilenet_v2, googlenet
+#   inception_v3
+#
+# Model performance numbers are available at:
+#   https://github.com/huyvnphan/PyTorch_CIFAR10
+#
+model = inception_v3(pretrained=True)
+
+#
+# Extract a few images to process
+#
+view = dataset.default_view().take(NUM_PREDICTIONS, random=True)
+image_paths, sample_ids = zip(
+    *[(s.filepath, s.id) for s in view.iter_samples()]
+)
+data_loader = make_cifar10_data_loader(image_paths, sample_ids)
+
+#
+# Perform prediction and store results in dataset
+#
+for imgs, sample_ids in data_loader:
+    predictions = predict(model, imgs)
+    for prediction, sample_id in zip(predictions, sample_ids):
+        label = fol.ClassificationLabel.create(labels_map[prediction])
+        dataset[sample_id].add_label(LABEL_GROUP, label)
+
