@@ -83,6 +83,7 @@ class StateController(Namespace):
         Args:
             state: a serialized StateDescription
         """
+        print(state)
         self.state = state
         emit("update", state, broadcast=True, include_self=False)
 
@@ -132,7 +133,7 @@ class StateController(Namespace):
         else:
             return []
         print(view._pipeline)
-        view = view.offset((page - 1) * page_length).limit(page_length)
+        view = view.offset((page - 1) * page_length).take(page_length)
         res = [s.serialize() for s in view.iter_samples()]
         return res
 

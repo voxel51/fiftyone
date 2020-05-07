@@ -66,23 +66,13 @@ class Session(foc.HasClient):
     _HC_ATTR_NAME = "state"
     _HC_ATTR_TYPE = StateDescription
 
-    DEFAULT_OFFSET = 0
-    DEFAULT_LIMIT = 10
-
     def __init__(
-        self,
-        offset=DEFAULT_OFFSET,
-        limit=DEFAULT_LIMIT,
-        dataset=None,
-        view=None,
+        self, dataset=None, view=None,
     ):
         if session is not None:
             raise ValueError("Only one session is permitted")
-        self._server_service = fos.ServerService()
         self._app_service = fos.AppService()
         super(Session, self).__init__()
-        self._offset = offset
-        self._limit = limit
         self._dataset = None
         self._view = None
 
@@ -101,14 +91,6 @@ class Session(foc.HasClient):
     # GETTERS #################################################################
 
     @property
-    def offset(self):
-        return self._offset
-
-    @property
-    def limit(self):
-        return self._limit
-
-    @property
     def dataset(self):
         if self.view is not None:
             return self.view.dataset
@@ -123,16 +105,6 @@ class Session(foc.HasClient):
         return self._view
 
     # SETTERS #################################################################
-
-    @offset.setter
-    @update_state
-    def offset(self, offset):
-        self._offset = offset
-
-    @limit.setter
-    @update_state
-    def limit(self, limit):
-        self._limit = limit
 
     @dataset.setter
     @update_state
@@ -151,14 +123,6 @@ class Session(foc.HasClient):
         self.state.selected = []
 
     # CLEAR STATE #############################################################
-
-    @update_state
-    def clear_offset(self):
-        self._offset = self.DEFAULT_OFFSET
-
-    @update_state
-    def clear_limit(self):
-        self._limit = self.DEFAULT_LIMIT
 
     @update_state
     def clear_dataset(self):

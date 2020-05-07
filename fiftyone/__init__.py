@@ -19,11 +19,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import fiftyone.core.config as foc
+
+config = foc.load_config()
 from fiftyone.core.session import launch_dashboard
 import fiftyone.core.service as fos
 
-config = foc.load_config()
 dataset_service = fos.DatabaseService()
+server_service = fos.ServerService()
 
 from .core.dataset import (
     Dataset,
