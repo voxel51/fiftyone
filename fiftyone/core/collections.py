@@ -18,9 +18,15 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
+
 import eta.core.utils as etau
 
+import fiftyone.core.datautils as fod
 import fiftyone.core.labels as fol
+
+
+logger = logging.getLogger(__name__)
 
 
 class SampleCollection(object):
@@ -89,45 +95,35 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement iter_samples()")
 
     def export(self, group, export_dir):
-        """Exports the labeled samples in the collection for the given label
-        group to disk in the specified directory.
+        """Exports the samples in the collection to disk as a labeled dataset,
+        using the given label group as labels.
+
+        The format of the dataset on disk will depend on the
+        :class:`fiftyone.core.labels.Label` class of the labels in the
+        specified group.
 
         Args:
-            group: the label group to export
-            export_dir: the directory to which to write the export
+            group: the label group to use
+            export_dir: the directory to which to export
         """
         data_paths = []
         labels = []
         for sample in self.iter_samples():
             data_paths.append(sample.filepath)
-            labels.append(
-                sample.labels[group]
-            )  # @todo `labels` is not yet a dict...
+            labels.append(sample.get_label[group])
 
         if not labels:
+            logger.warning("No samples to export; returning now")
             return
 
         if isinstance(labels[0], fol.ClassificationLabel):
-            # @todo export as classification dataset
-            #
-            # proposal:
-            #   labels.json
-            #   images/
-            #       <filename>.<ext>
-            #
-            raise ValueError("Not yet implemented")
+            fod.export_image_classification_dataset(
+                data_paths, labels, export_dir
+            )
         if isinstance(labels[0], fol.DetectionLabels):
-            # @todo export as a detection dataset
-            #
-            # proposal:
-            #   labels.json
-            #   images/
-            #       <filename>.<ext>
-            #
-            raise ValueError("Not yet implemented")
+            fod.export_image_detection_dataset(data_paths, labels, export_dir)
         elif isinstance(labels[0], fol.ImageLabels):
-            # @todo Export as ``eta.core.datasets.LabeledImageDataset``
-            raise ValueError("Not yet implemented")
+            fod.export_image_labels_dataset(data_paths, labels, export_dir)
         else:
             raise ValueError(
                 "Cannot export labels of type '%s'"

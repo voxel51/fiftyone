@@ -311,7 +311,7 @@ def _download_and_prepare(
         write_dataset_fcn = fodu.to_image_detection_dataset
         format = fot.ImageDetectionDataset
     elif isinstance(sample_parser, fodu.ImageLabelsSampleParser):
-        write_dataset_fcn = fodu.to_labeled_image_dataset
+        write_dataset_fcn = fodu.to_image_labels_dataset
         format = fot.ImageLabelsDataset
     else:
         raise ValueError("Unsupported sample parser: %s" % sample_parser)

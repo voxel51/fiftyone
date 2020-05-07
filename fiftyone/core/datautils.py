@@ -149,14 +149,14 @@ def to_image_detection_dataset(
     logger.info("Dataset created")
 
 
-def to_labeled_image_dataset(
+def to_image_labels_dataset(
     samples,
     sample_parser,
     dataset_dir,
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
-    """Writes the given samples to disk as a multitask labeled image dataset.
+    """Writes the given samples to disk as a multitask image labels dataset.
 
     See :class:`fiftyone.types.ImageLabelsDataset` for format details.
 
@@ -300,8 +300,8 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
     logger.info("Dataset created")
 
 
-def export_labeled_image_dataset(image_paths, labels, dataset_dir):
-    """Exports the given data to disk as a multitask labeled image dataset.
+def export_image_labels_dataset(image_paths, labels, dataset_dir):
+    """Exports the given data to disk as a multitask image labels dataset.
 
     See :class:`fiftyone.types.ImageLabelsDataset` for format details.
 
