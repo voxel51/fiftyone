@@ -36,9 +36,8 @@ print("'%s' ingest time: %.2fs" % (dataset_name, time.time() - start))
 ###############################################################################
 
 for idx, sample in enumerate(dataset):
-    if idx == 1000:
+    if idx % 1000 == 0:
         print("%d/%d" % (idx, len(dataset)))
-        break
 
     # compute the insight
     file_hash = fof.compute_filehash(sample.filepath)
