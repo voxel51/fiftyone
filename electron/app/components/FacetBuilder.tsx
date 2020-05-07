@@ -1,3 +1,4 @@
+import _ from "lodash";
 import React, { useState } from "react";
 import { Search } from "semantic-ui-react";
 
@@ -6,30 +7,62 @@ import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
 
 function FacetBuilder(props) {
+  const { dispatch } = props;
   const [initialLoad, setInitialLoad] = useState(false);
-  const [loading, isLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sValue, setValue] = useState("");
+  const [results, setResults] = useState([]);
   const [facets, setFacets] = useState({});
   const [facetsLoading, setFacetsLoading] = useState(true);
   const socket = getSocket("state");
+
   const getFacets = () => {
     socket.emit("get_facets", "", (data) => {
-      setFacets(data);
+      const tags = Object.keys(data[0].tags).map((k) => {
+        return { title: `tag.${data[0].tags[k]._id}` };
+      });
+      setFacets(tags);
       setFacetsLoading(false);
       setInitialLoad(true);
     });
   };
+
+  const onSelect = (e, { result }) => {
+    setValue(result.title);
+    socket.emit("set_facets", result.title);
+  };
+
+  const onSearch = (e, { value }) => {
+    setValue(value);
+    setTimeout(() => {
+      if (value.length < 1) {
+        setValue("");
+        setResults([]);
+      }
+      const re = new RegExp(_.escapeRegExp(value), "i");
+      const isMatch = (result) => re.test(result.title);
+      setResults(_.filter(facets, isMatch));
+    }, 300);
+  };
+
   useSubscribe(socket, "update", (data) => {
-    setLoading(true);
+    setFacetsLoading(true);
     getFacets();
   });
 
   if (!initialLoad) {
-    getData();
+    getFacets();
   }
-
-  console.log(facets);
-
-  return <Search loading={loading} style={{ width: "100%" }} />;
+  return (
+    <>
+      <Search
+        results={results}
+        value={sValue}
+        onResultSelect={onSelect}
+        onSearchChange={_.debounce(onSearch, 500, { leading: true })}
+      />
+    </>
+  );
 }
 
 export default connect(FacetBuilder);

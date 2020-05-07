@@ -12,8 +12,8 @@ function Dataset(props) {
   const { path, url } = useRouteMatch();
   const stickyRef = createRef();
   const tabs = {
-    list: "list",
-    charts: "charts",
+    list: "samples",
+    charts: "classes",
   };
   return (
     <Ref innerRef={stickyRef}>
@@ -23,11 +23,11 @@ function Dataset(props) {
           <Menu pointing secondary style={{ background: "white" }}>
             {Object.keys(tabs).map((k) => {
               return (
-                <Link to={`${url}${tabs[k]}`}>
+                <Link to={`${url}${k}`}>
                   <Menu.Item
                     key={k}
-                    name={k}
-                    active={`/${tabs[k]}` === props.location.pathname}
+                    name={tabs[k]}
+                    active={`/${k}` === props.location.pathname}
                   />
                 </Link>
               );

@@ -131,6 +131,7 @@ class StateController(Namespace):
             view = state.dataset.default_view()
         else:
             return []
+        print(view._pipeline)
         view = view.offset((page - 1) * page_length).limit(page_length)
         res = [s.serialize() for s in view.iter_samples()]
         return res
@@ -154,6 +155,19 @@ class StateController(Namespace):
         else:
             return []
         return view._facets()
+
+    def on_set_facets(self, facet):
+        name, value = facet.split(".")
+        state = fos.StateDescription.from_dict(self.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.default_view()
+        else:
+            raise ValueError("No view")
+        state.view = state.dataset.default_view().filter(tag=value)
+        self.state = state.serialize()
+        emit("update", self.state, broadcast=True, include_self=True)
 
 
 socketio.on_namespace(StateController("/state"))

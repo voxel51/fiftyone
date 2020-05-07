@@ -16,6 +16,7 @@
   "license": "MIT",
   "dependencies": {
     "fomantic-ui-less": "^2.8.4",
+    "lodash": "^4.17.15",
     "prettier": "^2.0.5",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",

@@ -31,7 +31,7 @@ const _Sidebar = (props) => {
               Selected &middot; <code>{state.selected.length}</code>
             </Menu.Item>
             <Menu.Item as="span">
-              Shape &middot; <code>({state.count},)</code>
+              Shape &middot; <code>({state.count},32,32,3)</code>
             </Menu.Item>
           </Menu>
         ) : null}
@@ -57,40 +57,12 @@ const _Sidebar = (props) => {
             View
             <Menu inverted vertical>
               <Menu.Item as="span">
-                {state && state.view_tag ? state.view_tag : "No view"}
+                {state && state.view
+                  ? state.view.view.map((v) => {
+                      return <code>Match: tags &middot; test</code>;
+                    })
+                  : "No view"}
               </Menu.Item>
-            </Menu>
-          </Menu.Item>
-          <Menu.Item as="h4">
-            Query
-            <Menu inverted vertical>
-              {state && state.query ? (
-                Object.keys(state.query).map((k) => {
-                  return (
-                    <Menu.Item as="span">
-                      {String(Object.keys(state.query[k])[0])}
-                    </Menu.Item>
-                  );
-                })
-              ) : (
-                <Menu.Item as="span">Empty query</Menu.Item>
-              )}
-            </Menu>
-          </Menu.Item>
-          <Menu.Item as="h4">
-            Classes
-            <Menu inverted vertical>
-              {state && state.query ? (
-                Object.keys(state.query).map((k) => {
-                  return (
-                    <Menu.Item as="span">
-                      {String(Object.keys(state.query[k])[0])}
-                    </Menu.Item>
-                  );
-                })
-              ) : (
-                <Menu.Item as="span">No classes</Menu.Item>
-              )}
             </Menu>
           </Menu.Item>
         </>

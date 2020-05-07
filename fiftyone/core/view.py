@@ -225,7 +225,7 @@ class DatasetView(SampleCollection):
                 }
             },
         ]
-        return [group for group in self.dataset._c.aggregate(pipeline)]
+        return list(self.dataset._c.aggregate(pipeline))
 
     def _facets(self):
         pipeline = self._pipeline + [
@@ -272,7 +272,7 @@ class DatasetView(SampleCollection):
                 }
             }
         ]
-        return self.dataset._c.aggregate(pipeline)
+        return list(self.dataset._c.aggregate(pipeline))
 
     # PRIVATE #################################################################
 

@@ -23,6 +23,7 @@ import logging
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
+import fiftyone.core.view as fov
 
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,12 @@ class StateDescription(etas.Serializable):
         if dataset is not None:
             dataset = fod.Dataset(dataset.get("name"))
 
-        view = d.get("view", None)
+        view_ = d.get("view", None)
+        view = None
+        if dataset is not None:
+            view = fov.DatasetView(dataset)
+            if view_ is not None:
+                view._pipeline = view_["view"]
 
         selected = d.get("selected", [])
 

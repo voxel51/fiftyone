@@ -10,7 +10,6 @@ type Props = {
 };
 
 function App(props: Props) {
-  console.log(props);
   const { children, dispatch, update } = props;
   const [connectionEstablished, setConnectionEstablished] = useState(false);
   const socket = getSocket("state");
