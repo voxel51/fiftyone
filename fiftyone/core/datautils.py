@@ -40,8 +40,8 @@ logger = logging.getLogger(__name__)
 
 def to_image_classification_dataset(
     samples,
-    sample_parser,
     dataset_dir,
+    sample_parser=None,
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
@@ -51,10 +51,11 @@ def to_image_classification_dataset(
 
     Args:
         samples: an iterable of samples
-        sample_parser: a :class:`ImageClassificationSampleParser` instance
-            whose :func:`ImageClassificationSampleParser.parse` method will be
-            used to parse the samples
         dataset_dir: the directory to which to write the dataset
+        sample_parser (None): a :class:`ImageClassificationSampleParser`
+            instance whose :func:`ImageClassificationSampleParser.parse` method
+            will be used to parse the samples. If not provided, the default
+            :class:`ImageClassificationSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
             it is assumed that this can be computed via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
@@ -103,8 +104,8 @@ def to_image_classification_dataset(
 
 def to_image_detection_dataset(
     samples,
-    sample_parser,
     dataset_dir,
+    sample_parser=None,
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
@@ -114,10 +115,11 @@ def to_image_detection_dataset(
 
     Args:
         samples: an iterable of samples
-        sample_parser: a :class:`ImageDetectionSampleParser` instance
-            whose :func:`ImageDetectionSampleParser.parse` method will be
-            used to parse the samples
         dataset_dir: the directory to which to write the dataset
+        sample_parser (None): a :class:`ImageDetectionSampleParser` instance
+            whose :func:`ImageDetectionSampleParser.parse` method will be
+            used to parse the samples. If not provided, the default
+            :class:`ImageDetectionSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
             it is assumed that this can be computed via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
@@ -166,8 +168,8 @@ def to_image_detection_dataset(
 
 def to_image_labels_dataset(
     samples,
-    sample_parser,
     dataset_dir,
+    sample_parser=None,
     num_samples=None,
     image_format=fo.config.default_image_ext,
 ):
@@ -177,11 +179,12 @@ def to_image_labels_dataset(
 
     Args:
         samples: an iterable of samples
-        sample_parser: a :class:`ImageLabelsSampleParser` instance whose
-            :func:`ImageLabelsSampleParser.parse` method will be used to parse
-            the samples
         dataset_dir: the directory to which to write the
             ``eta.core.datasets.LabeledImageDataset``
+        sample_parser (None): a :class:`ImageLabelsSampleParser` instance whose
+            :func:`ImageLabelsSampleParser.parse` method will be used to parse
+            the samples. If not provided, the default
+            :class:`ImageLabelsSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
             it is assumed that this can be computed via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
@@ -389,7 +392,7 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
     logger.info("Dataset created")
 
 
-def parse_image_classification_dataset(dataset_dir):
+def parse_image_classification_dataset(dataset_dir, sample_parser=None):
     """Parses the contents of the image classification dataset backed by the
     given directory.
 
@@ -397,12 +400,19 @@ def parse_image_classification_dataset(dataset_dir):
 
     Args:
         dataset_dir: the dataset directory
+        sample_parser (None): a :class:`ImageClassificationSampleParser`
+            instance whose :func:`ImageClassificationSampleParser.parse_label`
+            method will be used to parse the sample labels. If not provided,
+            the default :class:`ImageClassificationSampleParser` instance is
+            used
 
     Returns:
-        samples: a list of ``(image_path, label)`` pairs
-        labels_map: a dict mapping class IDs to label strings, or ``None`` if
-            not available
+        an iterable of ``(image_path, label)`` pairs, where ``label`` is an
+        instance of :class:`fiftyone.core.labels.ClassificationLabel`
     """
+    if sample_parser is None:
+        sample_parser = ImageClassificationSampleParser()
+
     data_dir = os.path.join(dataset_dir, "data")
     image_paths_map = {
         os.path.splitext(os.path.basename(p))[0]: p
@@ -411,23 +421,17 @@ def parse_image_classification_dataset(dataset_dir):
 
     labels_path = os.path.join(dataset_dir, "labels.json")
     labels = etas.load_json(labels_path)
-    labels_map = labels["labels_map"]
+    labels_map = labels.get("labels_map", None)
+    if labels_map is not None:
+        sample_parser.labels_map = labels_map
 
-    samples = []
     for uuid, target in iteritems(labels["labels"]):
         image_path = image_paths_map[uuid]
-
-        if labels_map is not None:
-            label = labels_map[target]
-        else:
-            label = target
-
-        samples.append((image_path, label))
-
-    return samples, labels_map
+        label = sample_parser.parse_label((image_path, target))
+        yield image_path, label
 
 
-def parse_image_detection_dataset(dataset_dir):
+def parse_image_detection_dataset(dataset_dir, sample_parser=None):
     """Parses the contents of the image detection dataset backed by the given
     directory.
 
@@ -435,12 +439,18 @@ def parse_image_detection_dataset(dataset_dir):
 
     Args:
         dataset_dir: the dataset directory
+        sample_parser (None): a :class:`ImageDetectionSampleParser` instance
+            whose :func:`ImageDetectionSampleParser.parse_label` method will be
+            used to parse the sample labels. If not provided, the default
+            :class:`ImageDetectionSampleParser` instance is used
 
     Returns:
-        samples: a list of ``(image_path, detections)`` pairs
-        labels_map: a dict mapping class IDs to label strings, or ``None`` if
-            not available
+        an iterable of ``(image_path, label)`` pairs, where ``label`` is an
+        instance of :class:`fiftyone.core.labels.DetectionLabels`
     """
+    if sample_parser is None:
+        sample_parser = ImageDetectionSampleParser()
+
     data_dir = os.path.join(dataset_dir, "data")
     image_paths_map = {
         os.path.splitext(os.path.basename(p))[0]: p
@@ -449,22 +459,17 @@ def parse_image_detection_dataset(dataset_dir):
 
     labels_path = os.path.join(dataset_dir, "labels.json")
     labels = etas.load_json(labels_path)
-    labels_map = labels["labels_map"]
+    labels_map = labels.get("labels_map", None)
+    if labels_map is not None:
+        sample_parser.labels_map = labels_map
 
-    samples = []
-    for uuid, detections in iteritems(labels["labels"]):
+    for uuid, target in iteritems(labels["labels"]):
         image_path = image_paths_map[uuid]
-
-        if labels_map is not None:
-            for detection in detections:
-                detection["label"] = labels_map[detection["label"]]
-
-        samples.append((image_path, detections))
-
-    return samples, labels_map
+        label = sample_parser.parse_label((image_path, target))
+        yield image_path, label
 
 
-def parse_image_labels_dataset(dataset_dir):
+def parse_image_labels_dataset(dataset_dir, sample_parser=None):
     """Parses the contents of the image labels dataset backed by the given
     directory.
 
@@ -472,14 +477,25 @@ def parse_image_labels_dataset(dataset_dir):
 
     Args:
         dataset_dir: the dataset directory
+        sample_parser (None): a :class:`ImageLabelsSampleParser` instance whose
+            :func:`ImageLabelsSampleParser.parse_label` method will be used to
+            parse the sample labels. If not provided, the default
+            :class:`ImageLabelsSampleParser` instance is used
 
     Returns:
-        an iterable of ``(image_path, image_labels)`` pairs
+        an iterable of ``(image_path, image_labels)`` pairs, where ``label`` is
+        an instance of :class:`fiftyone.core.labels.ImageLabels`
     """
+    if sample_parser is None:
+        sample_parser = ImageLabelsSampleParser()
+
     labeled_dataset = etads.load_dataset(dataset_dir)
-    return zip(
+
+    for image_path, image_labels in zip(
         labeled_dataset.iter_data_paths(), labeled_dataset.iter_labels(),
-    )
+    ):
+        label = sample_parser.parse_label((image_path, image_labels))
+        yield image_path, label
 
 
 def parse_image_classification_dir_tree(dataset_dir):
@@ -726,10 +742,9 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
             strings. If provided, it is assumed that the ``label``s in
             ``target`` are class IDs that should be mapped to label strings
             via ``labels_map[target]``
-        normalized (False): whether the bounding box coordinates provided
-            in ``target`` are absolute pixel coordinates (False) or
-            relative coordinates in [0, 1] (True). By default, absolute
-            pixel coordinates are assumed
+        normalized (True): whether the bounding box coordinates provided in
+            ``target`` are absolute pixel coordinates (``False``) or relative
+            coordinates in [0, 1] (``True``)
     """
 
     def __init__(
@@ -738,7 +753,7 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
         bounding_box_field="bounding_box",
         confidence_field="confidence",
         labels_map=None,
-        normalized=False,
+        normalized=True,
     ):
         self.label_field = label_field
         self.bounding_box_field = bounding_box_field
@@ -802,15 +817,23 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
     def _parse_label(self, target, img=None):
         detections = []
         for obj in target:
+            label = obj[self.label_field]
+            if self.labels_map is not None:
+                label = self.labels_map[label]
+
             tlx, tly, w, h = obj[self.bounding_box_field]
             if not self.normalized:
                 tlx, tly, w, h = _to_rel_bounding_box(tlx, tly, w, h, img)
 
+            bounding_box = [tlx, tly, w, h]
+
+            confidence = obj.get(self.confidence_field, None)
+
             detections.append(
                 {
-                    "label": obj[self.label_field],
-                    "bounding_box": [tlx, tly, w, h],
-                    "confidence": obj.get(self.confidence_field, None),
+                    "label": label,
+                    "bounding_box": bounding_box,
+                    "confidence": confidence,
                 }
             )
 
