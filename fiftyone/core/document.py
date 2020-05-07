@@ -97,6 +97,10 @@ class BackedByDocument(object):
         """
         return self._doc.to_dict(extended=extended)
 
+    def get_backing_doc_json(self):
+        """Returns the backing document as a JSON string."""
+        return self._doc.to_json()
+
     @property
     def _backing_doc(self):
         """The backing :class:`fiftyone.core.odm.ODMDocument` for the object.
