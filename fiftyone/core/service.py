@@ -74,13 +74,11 @@ class ServerService(Service):
 
     def start(self):
         """Start the `ServerService`."""
-        return
         with etau.WorkingDir(foc.SERVER_DIR):
             etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
         """Stop the `ServerService`."""
-        return
         self._system(foc.STOP_SERVER)
 
 
@@ -89,11 +87,9 @@ class AppService(Service):
 
     def start(self):
         """Start the `AppService`."""
-        return
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             etau.call(foc.START_APP, **self._SUPPRESS)
 
     def stop(self):
         """Stop the `AppService`."""
-        return
         self._system(foc.STOP_APP)

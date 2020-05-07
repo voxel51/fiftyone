@@ -19,24 +19,12 @@ import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
-function Caption(props) {
-  const { labels } = props;
-  return (
-    <div
-      style={{ zIndex: 1000, width: "100%", position: "absolute", bottom: 0 }}
-    >
-      <div style={{ overflowX: "auto" }}>
-        {Object.keys(labels).map((g) => {
-          return (
-            <Label as="span" style={{ fontSize: "0.6rem" }}>
-              {g}.{labels[g].label}
-            </Label>
-          );
-        })}
-      </div>
-    </div>
-  );
+function makeTags(labels, insights) {
+  return Object.keys(labels).map((g) => {
+    return { value: [g, labels[g].label].join(": "), title: "" };
+  });
 }
+
 const GalleryImage = (props) => {
   return <img {...props.imageProps} />;
 };
@@ -90,7 +78,7 @@ function SampleList(props) {
             thumbnailWidth: samples[k].metadata.width,
             thumbnailHeight: samples[k].metadata.height,
             sample: sample,
-            customOverlay: <Caption labels={labels} />,
+            tags: makeTags(labels),
           };
         })
       : [];

@@ -117,7 +117,7 @@ class Session(foc.HasClient):
     def view(self, view):
         self._view = view
         if view is not None:
-            self._dataset = self._view.dataset
+            self._dataset = self._view._dataset
         else:
             self._view = None
         self.state.selected = []

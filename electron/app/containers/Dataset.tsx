@@ -18,7 +18,7 @@ import connect from "../utils/connect";
 function Dataset(props) {
   const { path, url } = useRouteMatch();
   const stickyRef = createRef();
-  const tabs = ["samples", "labels", "insights"];
+  const tabs = ["samples", "labels"];
   const [view, setView] = useState({ visible: false, sample: null });
   console.log(view);
   let src = null;

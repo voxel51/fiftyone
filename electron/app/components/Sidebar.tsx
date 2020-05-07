@@ -41,13 +41,7 @@ const _Sidebar = (props) => {
           <Menu.Item as="h4">
             View
             <Menu inverted vertical>
-              <Menu.Item as="span">
-                {state && state.view
-                  ? state.view.view.map((v) => {
-                      return <code>Match: tags &middot; test</code>;
-                    })
-                  : "No view"}
-              </Menu.Item>
+              <Menu.Item as="span">...</Menu.Item>
             </Menu>
           </Menu.Item>
         </>
