@@ -211,7 +211,7 @@ def from_labeled_image_dataset(dataset_dir, name=None):
     return Dataset.from_ground_truth_labeled_samples(name, labeled_dataset)
 
 
-def from_images_from_dir(images_dir, recursive=False, name=None):
+def from_images_dir(images_dir, recursive=False, name=None):
     """Creates a :class:`fiftyone.experimental.data.Dataset` from the given
     directory of images.
 
@@ -232,7 +232,7 @@ def from_images_from_dir(images_dir, recursive=False, name=None):
     return from_images(image_paths, name=name)
 
 
-def from_images_from_patt(image_patt, name=None):
+def from_images_patt(image_patt, name=None):
     """Creates a :class:`fiftyone.experimental.data.Dataset` from the given
     glob pattern of images.
 

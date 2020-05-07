@@ -116,7 +116,7 @@ print_gt_classification_head(dataset3)
 #
 
 class_dir = "/Users/Brian/Desktop/class-dir"
-dataset4 = fed.from_images_from_dir(class_dir, recursive=True)
+dataset4 = fed.from_images_dir(class_dir, recursive=True)
 
 print_images_head(dataset4)
 
