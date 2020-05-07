@@ -90,7 +90,7 @@ def to_image_classification_dataset(
             labels_dict[uuid_patt % idx] = label.label
             bar.update()
 
-    logger.info("Writing labels to '%s'" % labels_path)
+    logger.info("Writing labels to '%s'", labels_path)
     labels = {
         "labels_map": labels_map,
         "labels": labels_dict,
@@ -153,11 +153,12 @@ def to_image_detection_dataset(
             labels_dict[uuid_patt % idx] = label.detections
             bar.update()
 
-    logger.info("Writing labels to '%s'" % labels_path)
+    logger.info("Writing labels to '%s'", labels_path)
     labels = {
         "labels_map": labels_map,
         "labels": labels_dict,
     }
+    etas.write_json(labels, labels_path, pretty_print=True)
 
     logger.info("Dataset created")
 
@@ -264,7 +265,7 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
 
             bar.update()
 
-    logger.info("Writing labels to '%s'" % labels_path)
+    logger.info("Writing labels to '%s'", labels_path)
     labels = {
         "labels_map": None,  # @todo get this somehow?
         "labels": labels_dict,
@@ -321,7 +322,7 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
 
             bar.update()
 
-    logger.info("Writing labels to '%s'" % labels_path)
+    logger.info("Writing labels to '%s'", labels_path)
     labels = {
         "labels_map": None,  # @todo get this somehow?
         "labels": labels_dict,
