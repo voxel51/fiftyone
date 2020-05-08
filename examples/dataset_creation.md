@@ -71,6 +71,40 @@ foc.set_config_settings(default_ml_backend="torch")
 ```
 
 
+## Building your own dataset from scratch
+
+> Factory method: `fiftyone.Dataset.add_samples()`
+
+FiftyOne provides the ability for you to construct datasets composed of
+customized samples directly.
+
+```py
+import fiftyone as fo
+
+# @todo add a progress bar here? Note that `len(samples)` may not work
+# for some iterables
+logger.info("Parsing samples...")
+_samples = []
+for sample in samples:
+    if sample_parser is not None:
+        label = sample_parser.parse_label(sample)
+    else:
+        label = sample[1]
+
+    filepath = os.path.abspath(os.path.expanduser(sample[0]))
+    _sample = fos.Sample.create(filepath)
+
+    _sample.add_label(group, label)
+    _samples.append(_sample)
+
+dataset = fo.Dataset(name)
+dataset.add_samples(samples)
+
+# Print a few samples from the dataset
+print(dataset.default_view().take(3, random=True))
+```
+
+
 ## Working with image classification samples
 
 > Factory method: `fiftyone.Dataset.from_image_classification_samples()`
