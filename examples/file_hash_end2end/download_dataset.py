@@ -1,6 +1,8 @@
 """
-Download CIFAR100 data and store as images and labels JSON to:
-    {{fiftyone}}/examples/data/cifar100/
+Download subset of CIFAR100 and store to disk:
+    /tmp/fiftyone/cifar100_with_duplicates/
+
+A random 5% of the samples are duplicates, instead of the original samples.
 
 Data is downloaded as:
 /tmp/fiftyone/

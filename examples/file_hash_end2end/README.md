@@ -54,3 +54,13 @@ dataset = fo.Dataset.from_image_classification_samples(
     samples, name=dataset_name
 )
 ```
+
+### 2. Explore the dataset
+
+```python
+dataset.summary()
+
+sample = next(dataset.iter_samples())
+
+print(sample)
+```

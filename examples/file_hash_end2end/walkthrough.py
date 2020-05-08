@@ -32,8 +32,6 @@ dataset = fo.Dataset.from_image_classification_samples(
 # 2. Explore
 ###############################################################################
 
-dataset = fo.Dataset(name=dataset_name)
-
 print(dataset.summary())
 
 sample = next(dataset.iter_samples())
