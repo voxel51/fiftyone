@@ -81,7 +81,44 @@ class FileHashInsight(Insight):
         return cls._create(file_hash=file_hash)
 
 
+class ScalarInsight(Insight):
+    """An insight that stores the any numerical scalar value and a name
+    associated with it.
+
+    Args:
+        name: string describing the insight
+        scalar: the real-value scalar of the insight
+        **kwargs: keyword arguments for :class:`Insight`
+    """
+
+    _ODM_DOCUMENT_CLS = foo.ODMScalarInsight
+
+    @property
+    def name(self):
+        """The name describing the insight."""
+        return self._backing_doc.name
+
+    @property
+    def scalar(self):
+        """The real-value in the insight."""
+        return self._backing_doc.scalar
+
+    @classmethod
+    def create(cls, name, scalar):
+        """Creates a :class:`ScalarInsight` instance.
+
+        Args:
+            name: string describing the insight
+            scalar: the real-value scalar of the insight
+
+        Returns:
+            a :class:`ScalarInsight`
+        """
+        return cls._create(name=name, scalar=scalar)
+
+
 _INSIGHT_CLS_MAP = {
     foo.ODMInsight: Insight,
     foo.ODMFileHashInsight: FileHashInsight,
+    foo.ODMScalarInsight: ScalarInsight,
 }
