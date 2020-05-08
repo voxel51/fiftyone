@@ -45,7 +45,7 @@ const GalleryWrapper = connect((props) => {
         }}
         enableLightbox={false}
         onClickThumbnail={(o) => {
-          setView({ visible: true, sample: images[0].sample });
+          setView({ visible: true, sample: images[o].sample });
         }}
         {...props}
       />
