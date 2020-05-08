@@ -28,8 +28,7 @@ def get_sample_media():
         bytes
     """
     path = request.args.get("path")
-    mime_type = request.args.get("mime_type")
-    return send_file(path, mimetype=mime_type)
+    return send_file(path)
 
 
 def load_state(func):

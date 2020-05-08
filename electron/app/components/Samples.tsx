@@ -69,9 +69,8 @@ function SampleList(props) {
           const sample = samples[k];
           const labels = sample.labels;
           const path = sample.filepath;
-          const mimeType = sample.metadata.mime_type;
           const host = "http://127.0.0.1:5151/";
-          const src = `${host}?path=${path}&mime_type=${mimeType}`;
+          const src = `${host}?path=${path}`;
           return {
             src: src,
             thumbnail: src,
