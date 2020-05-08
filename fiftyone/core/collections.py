@@ -34,9 +34,6 @@ class SampleCollection(object):
     :class:`fiftyone.core.sample.Sample` instances.
     """
 
-    def __str__(self):
-        return "\n".join(str(s) for s in self)
-
     def __bool__(self):
         return len(self) > 0
 
@@ -76,7 +73,21 @@ class SampleCollection(object):
         Returns:
             a list of groups
         """
-        raise NotImplementedError("Subclass must implement get_label_groups()")
+        pipeline = [
+            {"$project": {"arrayofkeyvalue": {"$objectToArray": "$labels"}}},
+            {"$unwind": "$arrayofkeyvalue"},
+            {
+                "$group": {
+                    "_id": None,
+                    "all_groups": {"$addToSet": "$arrayofkeyvalue.k"},
+                }
+            },
+        ]
+        try:
+            return next(self.aggregate(pipeline))["all_groups"]
+        except StopIteration:
+            pass
+        return []
 
     def get_insight_groups(self):
         """Returns the list of insight groups attached to at least one sample
@@ -85,9 +96,21 @@ class SampleCollection(object):
         Returns:
             a list of groups
         """
-        raise NotImplementedError(
-            "Subclass must implement get_insight_groups()"
-        )
+        pipeline = [
+            {"$project": {"arrayofkeyvalue": {"$objectToArray": "$insights"}}},
+            {"$unwind": "$arrayofkeyvalue"},
+            {
+                "$group": {
+                    "_id": None,
+                    "all_groups": {"$addToSet": "$arrayofkeyvalue.k"},
+                }
+            },
+        ]
+        try:
+            return next(self.aggregate(pipeline))["all_groups"]
+        except StopIteration:
+            pass
+        return []
 
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.
@@ -96,6 +119,18 @@ class SampleCollection(object):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
+
+    def aggregate(self, pipeline=None):
+        """Calls a MongoDB aggregation pipeline on the collection.
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        raise NotImplementedError("Subclass must implement aggregate()")
 
     def export(self, group, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,

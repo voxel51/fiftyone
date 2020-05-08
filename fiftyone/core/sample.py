@@ -26,6 +26,7 @@ from mongoengine.errors import InvalidDocumentError
 import eta.core.image as etai
 
 import fiftyone.core.document as fod
+import fiftyone.core.insights as foi
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 
@@ -163,6 +164,41 @@ class Sample(fod.BackedByDocument):
             self._dataset._validate_label(group, label)
 
         self._backing_doc.labels[group] = label._backing_doc
+
+        if self._in_db:
+            self._save()
+
+    def get_insight(self, group):
+        """Gets the insight with the given group for the sample.
+
+        Args:
+            group: the group name
+
+        Returns:
+            a :class:`fiftyone.core.insights.Insight` instance
+        """
+        return foi.Insight.from_doc(self._backing_doc.insights[group])
+
+    def get_insights(self):
+        """Returns the insights for the sample.
+
+        Returns:
+            a dict mapping group names to
+            :class:`fiftyone.core.insights.Insight` instances
+        """
+        return {
+            g: foi.Insight.from_doc(id)
+            for g, id in iteritems(self._backing_doc.insights)
+        }
+
+    def add_insight(self, group, insight):
+        """Adds the given insight to the sample.
+
+        Args:
+            group: the group name for the label
+            insight: a :class:`fiftyone.core.insights.Insight`
+        """
+        self._backing_doc.insights[group] = insight._backing_doc
 
         if self._in_db:
             self._save()
