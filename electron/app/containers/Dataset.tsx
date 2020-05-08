@@ -30,11 +30,11 @@ function Dataset(props) {
   }
 
   return (
-    <Sidebar.Pushable raised>
+    <>
       <Sidebar
         target={stickyRef}
         onHide={() => setView({ visible: false, sample: null })}
-        style={{ background: "black" }}
+        style={{ background: "black", zIndex: 10000 }}
         as={Menu}
         animation="overlay"
         direction="right"
@@ -88,7 +88,7 @@ function Dataset(props) {
           </Switch>
         </Container>
       </Ref>
-    </Sidebar.Pushable>
+    </>
   );
 }
 

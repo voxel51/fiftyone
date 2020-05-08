@@ -30,7 +30,7 @@ function App(props: Props) {
   return (
     <>
       <Sidebar />
-      <div style={{ marginLeft: 260 }}>{children}</div>
+      <div style={{ marginLeft: 260, height: "100%" }}>{children}</div>
     </>
   );
 }
