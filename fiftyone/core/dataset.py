@@ -145,6 +145,22 @@ class Dataset(foc.SampleCollection):
         """
         return fos.Sample
 
+    def summary(self):
+        """Returns a string summary of the dataset.
+
+        Returns:
+            a string summary
+        """
+        return "\n".join(
+            [
+                "Name:           %s" % self.name,
+                "Num samples:    %d" % len(self),
+                "Tags:           %s" % self.get_tags(),
+                "Label groups:   %s" % self.get_label_groups(),
+                "Insight groups: %s" % self.get_insight_groups(),
+            ]
+        )
+
     def get_tags(self):
         """Returns the list of tags in the dataset.
 
