@@ -31,8 +31,21 @@ dataset = fo.Dataset.from_image_classification_samples(
 )
 print("'%s' ingest time: %.2fs" % (dataset_name, time.time() - start))
 
+
 ###############################################################################
-# 2. Compute file hashes
+# 2. Explore
+###############################################################################
+
+dataset = fo.Dataset(name="cifar_fh_e2e")
+
+print(dataset.summary())
+
+sample = next(dataset.iter_samples())
+print(sample)
+print()
+
+###############################################################################
+# 3. Compute file hashes
 ###############################################################################
 
 for idx, sample in enumerate(dataset):
@@ -47,17 +60,6 @@ for idx, sample in enumerate(dataset):
         "file_hash", foi.FileHashInsight.create(file_hash=file_hash)
     )
 
-###############################################################################
-# 3. Explore
-###############################################################################
-
-dataset = fo.Dataset(name="cifar_fh_e2e")
-
-sample = next(dataset.iter_samples())
-pprint(sample.get_backing_doc_dict())
-print()
-
-print(len(dataset))
 unique_filehashes = dataset._get_query_set().distinct(
     "insights.file_hash.file_hash"
 )
