@@ -99,9 +99,11 @@ class DatasetView(foc.SampleCollection):
 
         return "\n".join(
             [
-                super(DatasetView, self).summary(),
-                "Pipeline Stages:",
-                pipeline_str,
+                "Num samples:    %d" % len(self),
+                "Tags:           %s" % self.get_tags(),
+                "Label groups:   %s" % self.get_label_groups(),
+                "Insight groups: %s" % self.get_insight_groups(),
+                "Pipeline stages:\n%s" % pipeline_str,
             ]
         )
 
