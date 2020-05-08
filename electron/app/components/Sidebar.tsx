@@ -7,6 +7,7 @@ import connect from "../utils/connect";
 const _Sidebar = (props) => {
   const { state } = props;
   const hasDataset = Boolean(state && state.dataset);
+  console.log(state);
   return (
     <Sidebar
       as={Menu}
@@ -36,16 +37,18 @@ const _Sidebar = (props) => {
           </Menu>
         ) : null}
       </Menu.Item>
-      {hasDataset ? (
-        <>
-          <Menu.Item as="h4">
-            View
-            <Menu inverted vertical>
-              <Menu.Item as="span">...</Menu.Item>
-            </Menu>
-          </Menu.Item>
-        </>
-      ) : null}
+      <>
+        <Menu.Item as="h4">
+          View
+          <Menu inverted vertical>
+            <Menu.Item as="pre">
+              {state && state.view
+                ? JSON.stringify(state.view.view, null, 2)
+                : "Empty view"}
+            </Menu.Item>
+          </Menu>
+        </Menu.Item>
+      </>
     </Sidebar>
   );
 };
