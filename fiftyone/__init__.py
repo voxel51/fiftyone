@@ -40,4 +40,9 @@ from .core.labels import (
     ImageLabels,
     Label,
 )
+from .core.insights import (
+    Insight,
+    FileHashInsight,
+    ScalarInsight,
+)
 from .core.sample import ImageSample, Sample

@@ -66,7 +66,7 @@ class DatasetView(foc.SampleCollection):
 
     def __getitem__(self, sample_id):
         try:
-            # Try to find `sample_id` in the pipeline
+            # Find `sample_id` in the pipeline
             pipeline = [{"$match": {"_id": ObjectId(sample_id)}}]
             next(self.aggregate(pipeline))
             found = True

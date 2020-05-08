@@ -189,6 +189,13 @@ class ODMFileHashInsight(ODMInsight):
     file_hash = IntField()
 
 
+class ODMScalarInsight(ODMInsight):
+    """Backing document for numerical scalar insights."""
+
+    name = StringField()
+    scalar = FloatField()
+
+
 class ODMSample(ODMDocument):
     """Backing document for :class:`fiftyone.core.sample.Sample` instances."""
 
