@@ -21,63 +21,45 @@ import fiftyone as fo
 
 ## Loading an image classification dataset
 
+Suppose you have an image classification dataset on disk in `dataset_dir`
+in the following format:
 
-"""
-Walkthrough of common FiftyOne workflows.
+```
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels.json
+```
 
-| Copyright 2017-2020, Voxel51, Inc.
-| `voxel51.com <https://voxel51.com/>`_
-|
-"""
+where ``labels.json`` is a JSON file in the following format:
+
+```
+    {
+        "labels_map": {
+            <targetA>: <labelA>,
+            <targetB>: <labelB>,
+            ...
+        },
+        "labels": {
+            <uuid1>: <target1>,
+            <uuid2>: <target2>,
+            ...
+        }
+    }
+```
+
+In your current workflow, you may parse this data into a list of
+`(image_path, label)` tuples as follows:
+
+```py
 import json
 import os
 
-import fiftyone as fo
 
+dataset_dir = "/path/to/your/dataset"
 
-# Prints a few random samples from the dataset
-def print_random(dataset, num_samples=5, group="ground_truth"):
-    view = dataset.default_view().take(num_samples, random=True)
-    for sample in view.iter_samples():
-        label = sample.get_label(group).label
-        print("%s: %s" % (label, sample.filepath))
-
-
-
-###############################################################################
-# Load an image classification dataset manually
-###############################################################################
-
-#
-# `dataset_dir` contains an image classification dataset in the following
-# format::
-#
-#    <dataset_dir>/
-#        data/
-#            <uuid1>.<ext>
-#            <uuid2>.<ext>
-#            ...
-#        labels.json
-#
-# where ``labels.json`` is a JSON file in the following format::
-#
-#    {
-#        "labels_map": {
-#            <targetA>: <labelA>,
-#            <targetB>: <labelB>,
-#            ...
-#        },
-#        "labels": {
-#            <uuid1>: <target1>,
-#            <uuid2>: <target2>,
-#            ...
-#        }
-#    }
-#
-
-# This will be populated after you've run `foz.load_zoo_dataset("cifar10")`
-# from above at least once in the past
-dataset_dir = foz.get_default_zoo_dataset_dir("cifar10")
 images_dir = os.path.join(dataset_dir, "data")
 labels_path = os.path.join(dataset_dir, "labels.json")
 
@@ -98,15 +80,42 @@ labels = _labels["labels"]
 
 # Make a list of (image_path, label) samples
 samples = [(image_uuids_to_paths[u], labels_map[t]) for u, t in labels.items()]
+```
 
-# Build a FiftyOne dataset from the samples
+Building a FiftyOne dataset from your samples is simple:
+
+```py
 dataset = fo.Dataset.from_image_classification_samples(
     samples, name="my-dataset"
 )
 
-# Print a few random samples
-print_random(dataset)
+# Print a few samples
+dataset.head()
+```
 
+
+## Working with views into your dataset
+
+FiftyOne provides a powerful notion of _dataset views_ for you to work with
+subsets of the samples in your dataset.
+
+Here's an example operation:
+
+```py
+view = (dataset.default_view()
+    .filter(tag="foobar")
+    .take()
+)
+
+print(dataset.summary())
+print(view.summary())
+print(view.head())
+```
+
+ slice and
+dice the samples in your dataset
+
+## Adding
 
 ###############################################################################
 # Add predictions to a dataset
