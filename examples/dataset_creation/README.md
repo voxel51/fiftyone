@@ -21,7 +21,7 @@ print(foz.list_zoo_datasets())
 dataset = foz.load_zoo_dataset("cifar10")
 
 # Print a few samples from the dataset
-print(dataset.default_view().take(3, random=True))
+print(dataset.head())
 ```
 
 Behind the scenes, FiftyOne uses the
@@ -94,7 +94,7 @@ samples = ...
 # Construct your dataset manually
 _samples = []
 for image_path, target in samples:
-    _sample = fos.Sample.create(image_path)
+    _sample = fos.Sample.create(image_path, tags={"train"})
     _sample.add_label(
         "ground_truth", fo.ClassificationLabel.create(labels_map[target])
     )
@@ -104,7 +104,7 @@ dataset = fo.Dataset("my-dataset")
 dataset.add_samples(samples)
 
 # Print a few samples from the dataset
-print(dataset.default_view().take(3, random=True))
+print(dataset.head())
 ```
 
 
@@ -382,7 +382,7 @@ import fiftyone as fo
 dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
 
 # Print a few samples from the dataset
-print(dataset.default_view().take(3, random=True))
+print(dataset.head())
 ```
 
 
@@ -445,7 +445,7 @@ import fiftyone as fo
 dataset = fo.Dataset.from_image_detection_dataset(dataset_dir)
 
 # Print a few samples from the dataset
-print(dataset.default_view().take(3, random=True))
+print(dataset.head())
 ```
 
 
@@ -500,7 +500,7 @@ import fiftyone as fo
 dataset = fo.Dataset.from_image_labels_dataset(dataset_dir)
 
 # Print a few samples from the dataset
-print(dataset.default_view().take(3, random=True))
+print(dataset.head())
 ```
 
 
