@@ -82,12 +82,19 @@ class DatasetView(foc.SampleCollection):
         return next(result)["count"]
 
     def __getitem__(self, sample_id):
-        samples = self._get_ds_qs(id=sample_id)
-        if not samples:
+        # try to find the sample_id in the pipeline
+        try:
+            pipeline = [{"$match": {"_id": ObjectId(sample_id)}}]
+            next(self.aggregate(pipeline))
+            found = True
+        except StopIteration:
+            found = False
+
+        # sample_id not in pipeline
+        if not found:
             raise KeyError("No sample found with ID '%s'" % sample_id)
 
-        # @todo(Tyler) this should fail if the sample is not in the view
-        return fos.Sample.from_doc(samples[0])
+        return self._dataset[sample_id]
 
     def __copy__(self):
         view = self.__class__(self._dataset)
