@@ -73,7 +73,9 @@ print(sample)
 Create a view that filters only `mountain`
 
 ```python
-view = dataset.default_view().filter({"labels.ground_truth.label": "mountain"})
+view = dataset.default_view().filter(
+    filter={"labels.ground_truth.label": "mountain"}
+)
 print(view.summary())
 
 sample = next(view.iter_samples())
