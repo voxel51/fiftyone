@@ -1,5 +1,5 @@
 """
-Core TensorFlow utilities.
+TensorFlow utilities.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -24,8 +24,8 @@ import multiprocessing
 import eta.core.image as etai
 import eta.core.utils as etau
 
-import fiftyone.core.datautils as fodu
 import fiftyone.core.utils as fou
+import fiftyone.utils.data as foud
 
 fou.ensure_tensorflow()
 import tensorflow as tf
@@ -189,7 +189,7 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
     """
-    samples, labels_map = fodu.parse_image_classification_dir_tree(dataset_dir)
+    samples, labels_map = foud.parse_image_classification_dir_tree(dataset_dir)
 
     def parse_sample(sample):
         img_path, label = sample
