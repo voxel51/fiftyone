@@ -264,7 +264,7 @@ class DatasetView(foc.SampleCollection):
         )
 
     def exclude(self, sample_ids):
-        """Exclude the samples with the given IDs from the view.
+        """Excludes the samples with the given IDs from the view.
 
         Args:
             sample_ids: an iterable of sample IDs
