@@ -139,16 +139,16 @@ for idx, sample in enumerate(dataset):
 print(dataset.summary())
 ```
 
-We have two ways to look at a sample.
+We have two ways to look at a sample:
 
-In the `ipython` terminal:
+1. In the `ipython` terminal:
 
 ```python
 sample = next(dataset.iter_samples())
 print(sample)
 ```
 
-By refreshing the GUI:
+2. By refreshing the GUI:
 
 ```python
 session.dataset = dataset
