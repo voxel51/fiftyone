@@ -40,6 +40,8 @@ import os
 
 import fiftyone as fo
 from fiftyone.utils.data import parse_image_classification_dir_tree
+import fiftyone.core.features as fof
+import fiftyone.core.insights as foi
 ```
 
 ### 1. Create a `fiftyone.Dataset`
@@ -118,4 +120,36 @@ Create a view on the samples you selected:
 
 ```python
 session.view = dataset.default_view().select(session.selected)
+```
+
+### 4. Compute File Hashes
+
+Iterate over the samples and compute file hash:
+
+```python
+for idx, sample in enumerate(dataset):
+    # compute the insight
+    file_hash = fof.compute_filehash(sample.filepath)
+
+    # add the insight to the sample
+    sample.add_insight(
+        "file_hash", foi.FileHashInsight.create(file_hash=file_hash)
+    )
+
+print(dataset.summary())
+```
+
+We have two ways to look at a sample.
+
+In the `ipython` terminal:
+
+```python
+sample = next(dataset.iter_samples())
+print(sample)
+```
+
+By refreshing the GUI:
+
+```python
+session.dataset = dataset
 ```
