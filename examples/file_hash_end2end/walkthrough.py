@@ -7,7 +7,6 @@ dataset.
 
 """
 import os
-import time
 
 import fiftyone as fo
 from fiftyone.utils.data import parse_image_classification_dir_tree
@@ -16,32 +15,34 @@ import fiftyone.core.insights as foi
 
 
 ###############################################################################
-# 1. Ingest the dataset
+# 1. Create a `fiftyone.Dataset`
 ###############################################################################
 
-dataset_name = "cifar_fh_e2e"
+dataset_name = "cifar100_with_duplicates"
 
-src_data_dir = os.path.join("data", dataset_name)
+src_data_dir = os.path.join("/tmp/fiftyone", dataset_name)
 
-start = time.time()
 samples, _ = parse_image_classification_dir_tree(src_data_dir)
 dataset = fo.Dataset.from_image_classification_samples(
     samples, name=dataset_name
 )
-print("'%s' ingest time: %.2fs" % (dataset_name, time.time() - start))
 
 
 ###############################################################################
 # 2. Explore
 ###############################################################################
 
-dataset = fo.Dataset(name="cifar_fh_e2e")
+dataset = fo.Dataset(name=dataset_name)
 
 print(dataset.summary())
 
 sample = next(dataset.iter_samples())
 print(sample)
 print()
+
+import sys
+
+sys.exit("SUCCESS")
 
 ###############################################################################
 # 3. Compute file hashes
