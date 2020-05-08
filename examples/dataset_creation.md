@@ -94,7 +94,7 @@ samples = ...
 # Construct your dataset manually
 _samples = []
 for image_path, target in samples:
-    _sample = fos.Sample.create(image_path)
+    _sample = fos.Sample.create(image_path, tags={"train"})
     _sample.add_label(
         "ground_truth", fo.ClassificationLabel.create(labels_map[target])
     )
