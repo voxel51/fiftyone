@@ -1,4 +1,8 @@
-# End-to-End Example with Image De-duplication
+# Image Deduplication with FiftyOne
+
+This example demonstrates a simple use case of using FiftyOne to detect and
+remove duplicate images from your dataset.
+
 
 ## Download the data
 
@@ -230,3 +234,9 @@ But we have a very small dataset here, so we could just export a copy:
 ```python
 dataset.export(group="ground_truth", export_dir="/tmp/fiftyone/export")
 ```
+
+
+## Copyright
+
+Copyright 2017-2020, Voxel51, Inc.<br>
+voxel51.com
