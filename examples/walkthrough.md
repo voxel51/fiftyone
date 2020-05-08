@@ -50,6 +50,22 @@ where ``labels.json`` is a JSON file in the following format:
     }
 ```
 
+Let's construct a dataset of this kind on disk:
+
+```py
+import fiftyone.zoo as foz
+import fiftyone.core.odm as foo
+
+#
+# Quick way to download CIFAR-10 in the above format on disk in `dataset_dir`
+# This is safe to run multiple times; the data will not be redownloaded
+#
+
+foz.load_zoo_dataset("cifar10")
+foo.drop_database()
+dataset_dir = foz.get_default_zoo_dataset_dir("cifar10")
+```
+
 In your current workflow, you may parse this data into a list of
 `(image_path, label)` tuples as follows:
 
@@ -58,17 +74,14 @@ import json
 import os
 
 
-dataset_dir = "/path/to/your/dataset"
-
-images_dir = os.path.join(dataset_dir, "data")
-labels_path = os.path.join(dataset_dir, "labels.json")
-
 # Maps image UUIDs to image paths
+images_dir = os.path.join(dataset_dir, "data")
 image_uuids_to_paths = {
     os.path.splitext(n)[0]: os.path.join(images_dir, n)
     for n in os.listdir(images_dir)
 }
 
+labels_path = os.path.join(dataset_dir, "labels.json")
 with open(labels_path, "rt") as f:
     _labels = json.load(f)
 
@@ -96,7 +109,7 @@ dataset.head()
 
 ## Working with views into your dataset
 
-FiftyOne provides a powerful notion of _dataset views_ for you to work with
+FiftyOne provides a powerful notion of _dataset views_ for you to access
 subsets of the samples in your dataset.
 
 Here's an example operation:
@@ -112,20 +125,16 @@ print(view.summary())
 print(view.head())
 ```
 
- slice and
-dice the samples in your dataset
 
-## Adding
+## Adding model predictions to your dataset
 
-###############################################################################
-# Add predictions to a dataset
-###############################################################################
+> In order to run this example, you must
+>
 
-#
-# In order to run this code, you must download the pretrained models as
-# described in `inference/README.md`
-#
+The following code demonstrates how to add predictions from a model to your
+FiftyOne dataset, with minimal changes to your existing ML code:
 
+```py
 import sys
 
 import torch
@@ -170,11 +179,13 @@ def predict(model, imgs):
 # Model performance numbers are available at:
 #   https://github.com/huyvnphan/PyTorch_CIFAR10
 #
+
 model = inception_v3(pretrained=True)
 
 #
 # Extract a few images to process
 #
+
 num_samples = 25
 view = dataset.default_view().take(num_samples, random=True)
 image_paths, sample_ids = zip(
@@ -185,14 +196,18 @@ data_loader = make_cifar10_data_loader(image_paths, sample_ids)
 #
 # Perform prediction and store results in dataset
 #
+
 for imgs, sample_ids in data_loader:
     predictions = predict(model, imgs)
+
+    # Add predictions to your FiftyOne dataset
     for prediction, sample_id in zip(predictions, sample_ids):
         label = fo.ClassificationLabel.create(labels_map[prediction])
         dataset[sample_id].add_label("inception_v3", label)
 
 # Print a sample with a prediction
 print(dataset[sample_id])
+```
 
 
 ## Bonus: loading a dataset from the Dataset Zoo
