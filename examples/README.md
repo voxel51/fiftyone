@@ -2,12 +2,11 @@
 
 Examples of using FiftyOne.
 
-| Directory           | Description |
-| ------------------- | ----------- |
-| `dataset_creation/` | Examples of the many ways of easily creating FiftyOne datasets |
+| Directory           | Description                                                       |
+| ------------------- | ----------------------------------------------------------------- |
+| `dataset_creation/` | Examples of the many ways of easily creating FiftyOne datasets    |
 | `file_hashing/`     | Example of using FiftyOne to detect duplicate images in a dataset |
-| `model_inference/`  | Example of integrating FiftyOne in your model inference loop |
-
+| `model_inference/`  | Example of integrating FiftyOne in your model inference loop      |
 
 ## Copyright
 
