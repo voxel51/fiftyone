@@ -183,17 +183,17 @@ class ODMInsight(EmbeddedDocument):
     meta = {"allow_inheritance": True}
 
 
-class ODMFileHashInsight(ODMInsight):
-    """Backing document for file hash insights."""
-
-    file_hash = IntField()
-
-
 class ODMScalarInsight(ODMInsight):
     """Backing document for numerical scalar insights."""
 
     name = StringField()
     scalar = FloatField()
+
+
+class ODMFileHashInsight(ODMInsight):
+    """Backing document for file hash insights."""
+
+    file_hash = IntField()
 
 
 class ODMSample(ODMDocument):
