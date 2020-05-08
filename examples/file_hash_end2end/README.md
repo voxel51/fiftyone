@@ -153,3 +153,22 @@ print(sample)
 ```python
 session.dataset = dataset
 ```
+
+### 5. Check for duplicates
+
+```python
+pipeline = [
+    {"$group": {"_id": "$insights.file_hash.file_hash", "count": {"$sum": 1}}},
+    {"$match": {"count": {"$gt": 1}}},
+]
+
+dup_filehashes = [d["_id"] for d in dataset.aggregate(pipeline)]
+
+print("Number of unique images that are duplicated: %d" % len(dup_filehashes))
+
+view = dataset.default_view().filter(
+    filter={"insights.file_hash.file_hash": {"$in": dup_filehashes}}
+)
+
+print("Number of images that have a duplicate: %d" % len(view))
+```
