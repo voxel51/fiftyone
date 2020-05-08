@@ -4,15 +4,41 @@ This walkthrough provides a glimpse into the possibilities for integrating
 FiftyOne into your machine learning workflows. It covers the following
 concepts:
 
-- loading your existing dataset in FiftyOne
-- adding predictions from your model to your FiftyOne dataset
-- launching the FiftyOne dashboard to visualize your data
-- integrating the visualizer into your code
+- Loading your existing dataset in FiftyOne
+- Adding predictions from your model to your FiftyOne dataset
+- Launching the FiftyOne dashboard and visualizing exploring your data
+- Integrating the dashboard into your data wrangling workflow
+
+
+## Setup
+
+- Install `torch` and `torchvision`, if necessary:
+
+```
+pip install torch
+pip install torchvision
+```
+
+- Download the test split of the CIFAR-10 dataset to `~/fiftyone/cifar10/test`:
+
+```py
+import fiftyone.zoo as foz
+import fiftyone.core.config as foc
+import fiftyone.core.odm as foo
+
+# It is safe to run this multiple times; the data will not be re-downloaded
+foc.set_config_settings(default_ml_backend="torch")
+foz.load_zoo_dataset("cifar10")
+foo.drop_database()
+```
+
+- Follow the instructions in `inference/README.md` to download some pre-trained
+CIFAR-10 PyTorch models
 
 
 ## Importing FiftyOne
 
-Importing FiftyOne is simple:
+Importing the FiftyOne package is simple:
 
 ```py
 import fiftyone as fo
@@ -21,8 +47,8 @@ import fiftyone as fo
 
 ## Loading an image classification dataset
 
-Suppose you have an image classification dataset on disk in `dataset_dir`
-in the following format:
+Suppose you have an image classification dataset on disk in the following
+format:
 
 ```
     <dataset_dir>/
@@ -50,24 +76,6 @@ where ``labels.json`` is a JSON file in the following format:
 }
 ```
 
-Let's construct a dataset of this kind on disk:
-
-```py
-import fiftyone.zoo as foz
-import fiftyone.core.odm as foo
-
-#
-# This is a quick way to download CIFAR-10 in the above format on disk in
-# `dataset_dir`.
-#
-# It is safe to run multiple times; the data will not be re-downloaded.
-#
-
-foz.load_zoo_dataset("cifar10")
-foo.drop_database()
-dataset_dir = foz.get_default_zoo_dataset_dir("cifar10")
-```
-
 In your current workflow, you may parse this data into a list of
 `(image_path, label)` tuples as follows:
 
@@ -75,6 +83,8 @@ In your current workflow, you may parse this data into a list of
 import json
 import os
 
+# The location of the dataset on disk
+dataset_dir = os.path.expanduser("~/fiftyone/cifar10/test")
 
 # Maps image UUIDs to image paths
 images_dir = os.path.join(dataset_dir, "data")
@@ -117,9 +127,9 @@ subsets of the samples in your dataset.
 Here's an example operation:
 
 ```py
-# Gets five random samples from among the first 100 samples in the dataset
+# Gets five random airplanes from the dataset
 view = (dataset.default_view()
-    .take(100)
+    .filter(filter={"labels.ground_truth.label": "airplane"})
     .take(5, random=True)
 )
 
@@ -143,15 +153,13 @@ for sample in view.iter_samples():
 
 ## Adding model predictions to your dataset
 
-> In order to run this example, you must
->
-
 The following code demonstrates how to add predictions from a model to your
 FiftyOne dataset, with minimal changes to your existing ML code:
 
 ```py
 import sys
 
+import numpy as np
 import torch
 import torchvision
 from torch.utils.data import DataLoader
@@ -178,9 +186,11 @@ def make_cifar10_data_loader(image_paths, sample_ids):
 
 
 def predict(model, imgs):
-    logits = model(imgs)
-    predictions = torch.argmax(logits, 1)
-    return predictions.numpy()
+    logits = model(imgs).detach().cpu().numpy()
+    predictions = np.argmax(logits, axis=1)
+    odds = np.exp(logits)
+    confidences = np.max(odds, axis=1) / np.sum(odds, axis=1)
+    return predictions, confidences
 
 
 #
@@ -196,6 +206,7 @@ def predict(model, imgs):
 #
 
 model = inception_v3(pretrained=True)
+model_name = "inception_v3"
 
 #
 # Extract a few images to process
@@ -213,35 +224,39 @@ data_loader = make_cifar10_data_loader(image_paths, sample_ids)
 #
 
 for imgs, sample_ids in data_loader:
-    predictions = predict(model, imgs)
+    predictions, confidences = predict(model, imgs)
 
     # Add predictions to your FiftyOne dataset
-    for prediction, sample_id in zip(predictions, sample_ids):
-        label = fo.ClassificationLabel.create(labels_map[prediction])
-        dataset[sample_id].add_label("inception_v3", label)
+    for sample_id, prediction, confidence in zip(
+        sample_ids, predictions, confidences
+    ):
+        sample = dataset[sample_id]
+        sample.add_label(
+            model_name, fo.ClassificationLabel.create(labels_map[prediction])
+        )
+        sample.add_insight(
+            model_name, fo.ScalarInsight.create("confidence", confidence)
+        )
 
 # Print a sample with a prediction
 print(dataset[sample_id])
 ```
 
 
-## Bonus: loading a dataset from the Dataset Zoo
+## Launching a dashboard session
 
-The `fiftyone.zoo` package provides a collection of datasets that you can
-download and load into FiftyOne with a single command:
+```
+# Open your dataset in the dashboard
+session = fo.launch_dashboard(dataset=dataset)
 
-```py
-import fiftyone.zoo as foz
+# Show five random samples in the dashboard
+session.view = dataset.default_view().take(5)
 
-# List available datasets
-print(foz.list_zoo_datasets())
+# Get currently selected samples from the dashboard
+sample_ids = session.selected
 
-# Load a zoo dataset
-# The dataset will be downloaded from the web the first time you access it
-dataset = foz.load_zoo_dataset("cifar10")
-
-# Print a few samples from the dataset
-dataset.head()
+# Print details about the selected samples
+view = dataset.default_view().select(sample_ids)
 ```
 
 
