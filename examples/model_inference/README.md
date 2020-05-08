@@ -9,7 +9,6 @@ concepts:
 - Launching the FiftyOne dashboard and visualizing/exploring your data
 - Integrating the dashboard into your data wrangling workflow
 
-
 ## Setup
 
 - Install `torch` and `torchvision`, if necessary:
@@ -47,7 +46,6 @@ unzip cifar10_models/models.zip -d cifar10_models/
 rm cifar10_models/models.zip
 ```
 
-
 ## Importing FiftyOne
 
 Importing the FiftyOne package is simple:
@@ -56,22 +54,21 @@ Importing the FiftyOne package is simple:
 import fiftyone as fo
 ```
 
-
 ## Loading an image classification dataset
 
 Suppose you have an image classification dataset on disk in the following
 format:
 
 ```
-    <dataset_dir>/
-        data/
-            <uuid1>.<ext>
-            <uuid2>.<ext>
-            ...
-        labels.json
+<dataset_dir>/
+    data/
+        <uuid1>.<ext>
+        <uuid2>.<ext>
+        ...
+    labels.json
 ```
 
-where ``labels.json`` is a JSON file in the following format:
+where `labels.json` is a JSON file in the following format:
 
 ```
 {
@@ -117,6 +114,9 @@ labels = _labels["labels"]
 
 # Make a list of (image_path, label) samples
 samples = [(image_uuids_to_paths[u], labels_map[t]) for u, t in labels.items()]
+
+# Print a few samples
+print(samples[:5])
 ```
 
 Building a FiftyOne dataset from your samples is simple:
@@ -129,7 +129,6 @@ dataset = fo.Dataset.from_image_classification_samples(
 # Print a few samples from the dataset
 print(dataset.head())
 ```
-
 
 ## Working with views into your dataset
 
@@ -158,10 +157,9 @@ print(view.head())
 Iterating over the samples in a view is easy:
 
 ```py
-for sample in view.iter_samples():
-    print(sample)
+for sample in view:
+    print(sample.filepath)
 ```
-
 
 ## Adding model predictions to your dataset
 
@@ -178,11 +176,11 @@ from torch.utils.data import DataLoader
 
 import fiftyone.utils.torch as fout
 
-sys.path.insert(1, "inference/PyTorch_CIFAR10")
+sys.path.insert(1, "PyTorch_CIFAR10")
 from cifar10_models import *
 
 
-def make_cifar10_data_loader(image_paths, sample_ids):
+def make_cifar10_data_loader(image_paths, sample_ids, batch_size):
     mean = [0.4914, 0.4822, 0.4465]
     std = [0.2023, 0.1994, 0.2010]
     transforms = torchvision.transforms.Compose(
@@ -194,7 +192,7 @@ def make_cifar10_data_loader(image_paths, sample_ids):
     dataset = fout.TorchImageDataset(
         image_paths, sample_ids=sample_ids, transform=transforms
     )
-    return DataLoader(dataset, batch_size=5, num_workers=4, pin_memory=True)
+    return DataLoader(dataset, batch_size=batch_size, num_workers=4)
 
 
 def predict(model, imgs):
@@ -225,11 +223,12 @@ model_name = "inception_v3"
 #
 
 num_samples = 25
+batch_size = 5
 view = dataset.default_view().take(num_samples, random=True)
 image_paths, sample_ids = zip(
     *[(s.filepath, s.id) for s in view.iter_samples()]
 )
-data_loader = make_cifar10_data_loader(image_paths, sample_ids)
+data_loader = make_cifar10_data_loader(image_paths, sample_ids, batch_size)
 
 #
 # Perform prediction and store results in dataset
@@ -255,22 +254,28 @@ for imgs, sample_ids in data_loader:
 #
 
 view = dataset.default_view().select(sample_ids)
-print(view.head())
+print(view.head(batch_size))
 
 #
 # Get all samples for which we added predictions, in reverse order of
 # confidence
 #
 
-view = (dataset.default_view()
+pred_view = (dataset.default_view()
     .filter(filter={"insights.inception_v3.name": "confidence"})
     .sort_by("insights.inception_v3.scalar", reverse=True)
 )
-print(view.head())
+print(len(pred_view))
+print(pred_view.head())
 ```
 
+## Using the FiftyOne dashboard
 
-## Launching a dashboard session
+FiftyOne provides a powerful dashboard that allows you easily visualize,
+explore, search, filter, your datasets.
+
+You can explore the dashboard interactively through the GUI, and you can even
+interact with it in real-time from your Python interpreter!
 
 ```py
 # Launch the FiftyOne dashboard
@@ -280,15 +285,20 @@ session = fo.launch_dashboard()
 session.dataset = dataset
 
 # Show five random samples in the dashboard
-session.view = dataset.default_view().take(5)
+view = dataset.default_view().take(5)
+session.view = view
+
+# Show the samples for which we previously added pre
+session.view = pred_view
 
 # Show the full dataset again
 session.view = None
 
 # Print details about the selected samples
-print(dataset.default_view().select(session.selected).head())
+selected_view = dataset.default_view().select(session.selected)
+print(selected_view.summary())
+print(selected_view.head())
 ```
-
 
 ## Copyright
 
