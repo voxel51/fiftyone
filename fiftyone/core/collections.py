@@ -54,17 +54,6 @@ class SampleCollection(object):
     def __iter__(self):
         return self.iter_samples()
 
-    def summary(self):
-        """Returns a string summary of the collection"""
-        return "\n".join(
-            [
-                "Num samples:    %d" % len(self),
-                "tags:           %s" % self.get_tags(),
-                "label_roups:    %s" % self.get_label_groups(),
-                "insight_groups: %s" % self.get_insight_groups(),
-            ]
-        )
-
     @property
     def _sample_cls(self):
         raise NotImplementedError("Subclass must implement _get_sample_cls()")
