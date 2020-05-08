@@ -10,14 +10,6 @@ import os
 
 import fiftyone as fo
 
-import fiftyone.core.odm as foo; foo.drop_database()
-
-# import fiftyone.core.config as foc
-# foc.set_config_settings(default_ml_backend="torch")
-# foc.set_config_settings(default_ml_backend="tensorflow")
-
-import fiftyone.zoo as foz
-
 
 # Prints a few random samples from the dataset
 def print_random(dataset, num_samples=5, group="ground_truth"):
@@ -30,6 +22,17 @@ def print_random(dataset, num_samples=5, group="ground_truth"):
 ###############################################################################
 # Load a dataset from the Dataset Zoo
 ###############################################################################
+
+#
+# Use this to customize your ML backend if desired to see what datasets are
+# available using each backend
+#
+# import fiftyone.core.config as foc
+# foc.set_config_settings(default_ml_backend="torch")
+# foc.set_config_settings(default_ml_backend="tensorflow")
+
+import fiftyone.zoo as foz
+
 
 # List available Zoo datasets
 print(foz.list_zoo_datasets())
