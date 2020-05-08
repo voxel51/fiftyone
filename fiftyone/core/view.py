@@ -57,8 +57,12 @@ class DatasetView(foc.SampleCollection):
         self._pipeline = []
 
     def __len__(self):
-        result = self.aggregate(self._pipeline + [{"$count": "count"}])
-        return next(result)["count"]
+        try:
+            result = self.aggregate([{"$count": "count"}])
+            return next(result)["count"]
+        except StopIteration:
+            pass
+        return 0
 
     def __getitem__(self, sample_id):
         # try to find the sample_id in the pipeline
