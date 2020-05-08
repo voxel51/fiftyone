@@ -156,14 +156,24 @@ session.dataset = dataset
 
 ### 5. Check for duplicates
 
+We are using a more powerful query here to search for all file hashes with
+more than sample:
+
 ```python
 pipeline = [
+    # find all unique file hashes
     {"$group": {"_id": "$insights.file_hash.file_hash", "count": {"$sum": 1}}},
+    # filter out file hashes with a count of 1
     {"$match": {"count": {"$gt": 1}}},
 ]
 
 dup_filehashes = [d["_id"] for d in dataset.aggregate(pipeline)]
+```
 
+We can look at the list of file hashes, and we can create a view on the dataset
+that contrains to only samples with these file hashes:
+
+```python
 print("Number of unique images that are duplicated: %d" % len(dup_filehashes))
 
 view = dataset.default_view().filter(
@@ -176,6 +186,9 @@ print("Number of duplicates: %d" % (len(view) - len(dup_filehashes)))
 ```
 
 ### 6. Delete duplicates
+
+This snippet iterates over the duplicate file hashes and deletes `count - 1`
+samples with each file hash.
 
 ```python
 print("Length of dataset before: %d" % len(dataset))
@@ -196,7 +209,17 @@ for d in dataset.aggregate(pipeline):
 print("Length of dataset after: %d" % len(dataset))
 ```
 
+Alternatively, it also would be possible to create a view with all of the
+duplicates "to be deleted" and then iterate over our own non-`fiftyone` code
+to delete these files from the original dataset.
+
 ### 7. Export
+
+In this lightweight workflow none of the work down with `fiftyone` persists.
+As mentioned above we could have used fiftyone to tell us which samples we
+needed to delete.
+
+But we have a very small dataset here, so we could just export a copy:
 
 ```python
 dataset.export(group="ground_truth", export_dir="/tmp/fiftyone/export")
