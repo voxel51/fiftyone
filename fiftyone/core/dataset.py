@@ -295,7 +295,7 @@ class Dataset(foc.SampleCollection):
                         "confidence": <optional-confidence>,
                     },
                     ...
-                ],
+                ]
 
               where ``label`` is either a label string, or, if a ``labels_map``
               is provided, a class ID that can be mapped to a label string via
