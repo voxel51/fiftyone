@@ -2,7 +2,6 @@
 
 Examples of creating datasets with FiftyOne.
 
-
 ## Working with publicly available datasets
 
 > Factory method: `fiftyone.zoo.load_zoo_dataset()`
@@ -70,7 +69,6 @@ import fiftyone.core.config as foc
 foc.set_config_settings(default_ml_backend="torch")
 ```
 
-
 ## Building your own dataset from scratch
 
 > Factory method: `fiftyone.Dataset.add_samples()`
@@ -106,7 +104,6 @@ dataset.add_samples(samples)
 # Print a few samples from the dataset
 print(dataset.head())
 ```
-
 
 ## Working with image classification samples
 
@@ -144,7 +141,6 @@ dataset = fo.Dataset.from_image_classification_samples(
     samples, labels_map=labels_map
 )
 ```
-
 
 ## Working with image detection samples
 
@@ -199,7 +195,6 @@ dataset = fo.Dataset.from_image_detection_samples(
 )
 ```
 
-
 ## Working with multitask image prediction samples
 
 > Factory method: `fiftyone.Dataset.from_image_labels_samples()`
@@ -237,7 +232,6 @@ samples = ...
 
 dataset = fo.Dataset.from_image_labels_samples(samples, labels_map=labels_map)
 ```
-
 
 ## Working with custom labeled image samples
 
@@ -292,7 +286,6 @@ dataset = fo.Dataset.from_labeled_image_samples(
 )
 ```
 
-
 ## Ingesting labeled image samples stored in-memory
 
 > Factory method: `fiftyone.Dataset.ingest_labeled_image_samples()`
@@ -335,7 +328,6 @@ dataset = fo.Dataset.ingest_labeled_image_samples(
     sample_parser=sample_parser,
 )
 ```
-
 
 ## Working with image classification datasets stored on disk
 
@@ -384,7 +376,6 @@ dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
 # Print a few samples from the dataset
 print(dataset.head())
 ```
-
 
 ## Working with image detection datasets stored on disk
 
@@ -448,7 +439,6 @@ dataset = fo.Dataset.from_image_detection_dataset(dataset_dir)
 print(dataset.head())
 ```
 
-
 ## Working with multitask image prediction datasets stored on disk
 
 > Factory method: `fiftyone.Dataset.from_image_labels_dataset()`
@@ -502,7 +492,6 @@ dataset = fo.Dataset.from_image_labels_dataset(dataset_dir)
 # Print a few samples from the dataset
 print(dataset.head())
 ```
-
 
 ## Copyright
 
