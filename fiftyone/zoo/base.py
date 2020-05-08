@@ -57,6 +57,35 @@ def list_zoo_datasets():
     return list(AVAILABLE_DATASETS.keys())
 
 
+def get_default_zoo_dataset_dir(name_or_zoo_dataset, split=None):
+    """Returns the default dataset directory for the given zoo dataset.
+
+    Args:
+        name_or_zoo_dataset: the name of the zoo dataset or its
+            :class:`ZooDataset` instance. Call :func:`list_zoo_datasets` to see
+            the available datasets
+        split (None): an optional split of the dataset, if applicable. Typical
+            values are ``("train", "validation", "test")``. If not specified,
+            the default split is used. Consult the documentation for the
+            :class:`ZooDataset` you specified to see the supported splits
+
+    Returns:
+        the default dataset directory
+    """
+    if etau.is_str(name_or_zoo_dataset):
+        zoo_dataset = _get_zoo_dataset(name_or_zoo_dataset)
+    else:
+        zoo_dataset = name_or_zoo_dataset
+
+    # Get the official name of the dataset, which may differ slightly
+    name = zoo_dataset.name
+
+    if split is None:
+        split = zoo_dataset.default_split
+
+    return fod.get_default_dataset_dir(name, split=split)
+
+
 def load_zoo_dataset(
     name, split=None, dataset_dir=None, download_if_necessary=True,
 ):
@@ -69,8 +98,8 @@ def load_zoo_dataset(
         split (None): an optional split of the dataset to load, if applicable.
             Typical values are ``("train", "validation", "test")``. If not
             specified, the default split is loaded. Consult the documentation
-            for the :class:`fiftyone.zoo.ZooDataset` you specified to see the
-            supported splits
+            for the :class:`ZooDataset` you specified to see the supported
+            splits
         dataset_dir (None): the directory in which the dataset is stored or
             will be downloaded. By default,
             :func:`fiftyone.core.data.get_default_dataset_dir` is used
@@ -81,16 +110,16 @@ def load_zoo_dataset(
         a :class:`fiftyone.core.dataset.Dataset`
     """
     zoo_dataset = _get_zoo_dataset(name)
-    name = zoo_dataset.name  # get the official name
+
+    # Get the official name of the dataset, which may differ slightly
+    name = zoo_dataset.name
 
     if split is None:
         split = zoo_dataset.default_split
         if split is not None:
             logger.info("Using default split '%s'", split)
 
-    if dataset_dir is None:
-        dataset_dir = fod.get_default_dataset_dir(name, split=split)
-        logger.info("Using default dataset directory '%s'", dataset_dir)
+    dataset_dir = get_default_zoo_dataset_dir(zoo_dataset, split=split)
 
     if download_if_necessary:
         info = zoo_dataset.download_and_prepare(dataset_dir, split=split)
@@ -126,22 +155,20 @@ def _get_zoo_dataset(name):
 
 
 class ZooDatasetInfo(etas.Serializable):
-    """Class containing info about a dataset in the FiftyOne Dataset Zoo."""
+    """Class containing info about a dataset in the FiftyOne Dataset Zoo.
+
+    Args:
+        name: the name of the dataset
+        zoo_dataset: the :class:`ZooDataset` class
+        split: the dataset split
+        num_samples: the number of samples in the dataset
+        format: the :class:`fiftyone.types.DatasetType` of the dataset
+        labels_map (None): an optional dict mapping class IDs to label strings
+    """
 
     def __init__(
         self, name, zoo_dataset, split, num_samples, format, labels_map=None
     ):
-        """Creates a ZooDatasetInfo instance.
-
-        Args:
-            name: the name of the dataset
-            zoo_dataset: the :class:`ZooDataset` class
-            split: the dataset split
-            num_samples: the number of samples in the dataset
-            format: the :class:`fiftyone.types.DatasetType` of the dataset
-            labels_map (None): an optional dict mapping class IDs to label
-                strings
-        """
         self.name = name
         self.zoo_dataset = etau.get_class_name(zoo_dataset)
         self.split = split
@@ -170,13 +197,13 @@ class ZooDatasetInfo(etas.Serializable):
 
     @classmethod
     def from_dict(cls, d):
-        """Loads a ZooDatasetInfo from a JSON dictionary.
+        """Loads a :class:`ZooDatasetInfo` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a ZooDatasetInfo
+            a :class:`ZooDatasetInfo`
         """
         labels_map = d.get("labels_map", None)
         return cls(

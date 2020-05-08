@@ -56,26 +56,51 @@ class DatasetView(foc.SampleCollection):
         self._dataset = dataset
         self._pipeline = []
 
-    @property
-    def _sample_cls(self):
-        return self._dataset._sample_cls
-
     def __len__(self):
         result = self.aggregate(self._pipeline + [{"$count": "count"}])
         return next(result)["count"]
 
     def __getitem__(self, sample_id):
-        samples = self._get_ds_qs(id=sample_id)
-        if not samples:
+        try:
+            # Try to find `sample_id` in the pipeline
+            pipeline = [{"$match": {"_id": ObjectId(sample_id)}}]
+            next(self.aggregate(pipeline))
+            found = True
+        except StopIteration:
+            found = False
+
+        if not found:
             raise KeyError("No sample found with ID '%s'" % sample_id)
 
-        # @todo(Tyler) this should fail if the sample is not in the view
-        return fos.Sample.from_doc(samples[0])
+        return self._dataset[sample_id]
 
     def __copy__(self):
         view = self.__class__(self._dataset)
         view._pipeline = deepcopy(self._pipeline)
         return view
+
+    def summary(self):
+        """Returns a string summary of the view.
+
+        Returns:
+            a string summary
+        """
+        pipeline_str = "\t" + "\n\t".join(
+            [
+                "%d. %s" % (idx, str(d))
+                for idx, d in enumerate(self._pipeline, start=1)
+            ]
+        )
+
+        return "\n".join(
+            [
+                "Num samples:    %d" % len(self),
+                "Tags:           %s" % self.get_tags(),
+                "Label groups:   %s" % self.get_label_groups(),
+                "Insight groups: %s" % self.get_insight_groups(),
+                "Pipeline stages:\n%s" % pipeline_str,
+            ]
+        )
 
     def get_tags(self):
         """Returns the list of tags in the collection.
@@ -236,7 +261,7 @@ class DatasetView(foc.SampleCollection):
         )
 
     def exclude(self, sample_ids):
-        """Exclude the samples with the given IDs from the view.
+        """Excludes the samples with the given IDs from the view.
 
         Args:
             sample_ids: an iterable of sample IDs
@@ -323,20 +348,27 @@ class DatasetView(foc.SampleCollection):
     def _get_ds_qs(self, **kwargs):
         return self._dataset._get_query_set(**kwargs)
 
-    @staticmethod
-    def _deserialize_sample(d):
-        return fos.Sample.from_doc(
-            foo.ODMSample.from_dict(d, created=False, extended=False)
-        )
+    def _deserialize_sample(self, d):
+        doc = foo.ODMSample.from_dict(d, created=False, extended=False)
+        return self._load_sample(doc)
+
+    def _load_sample(self, doc):
+        sample = fos.Sample.from_doc(doc)
+        sample._set_dataset(self._dataset)
+        return sample
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)
         view._pipeline.append(stage)
         return view
 
+    def _get_ds_qs(self, **kwargs):
+        return self._dataset._get_query_set(**kwargs)
+
     def _get_latest_offset(self):
         """Returns the offset of the last $skip stage."""
         for stage in self._pipeline[::-1]:
             if "$skip" in stage:
                 return stage["$skip"]
+
         return 0

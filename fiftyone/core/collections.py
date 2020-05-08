@@ -22,8 +22,8 @@ import logging
 
 import eta.core.utils as etau
 
-import fiftyone.core.datautils as fod
 import fiftyone.core.labels as fol
+import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
@@ -34,9 +34,6 @@ class SampleCollection(object):
     :class:`fiftyone.core.sample.Sample` instances.
     """
 
-    def __str__(self):
-        return "\n".join(str(s) for s in self)
-
     def __bool__(self):
         return len(self) > 0
 
@@ -46,7 +43,7 @@ class SampleCollection(object):
     def __contains__(self, sample_id):
         try:
             self[sample_id]
-        except ValueError:
+        except KeyError:
             return False
 
         return True
@@ -56,10 +53,6 @@ class SampleCollection(object):
 
     def __iter__(self):
         return self.iter_samples()
-
-    @property
-    def _sample_cls(self):
-        raise NotImplementedError("Subclass must implement _get_sample_cls()")
 
     def get_tags(self):
         """Returns the list of tags in the collection.
@@ -158,13 +151,13 @@ class SampleCollection(object):
             return
 
         if isinstance(labels[0], fol.ClassificationLabel):
-            fod.export_image_classification_dataset(
+            foud.export_image_classification_dataset(
                 data_paths, labels, export_dir
             )
         elif isinstance(labels[0], fol.DetectionLabels):
-            fod.export_image_detection_dataset(data_paths, labels, export_dir)
+            foud.export_image_detection_dataset(data_paths, labels, export_dir)
         elif isinstance(labels[0], fol.ImageLabels):
-            fod.export_image_labels_dataset(data_paths, labels, export_dir)
+            foud.export_image_labels_dataset(data_paths, labels, export_dir)
         else:
             raise ValueError(
                 "Cannot export labels of type '%s'"

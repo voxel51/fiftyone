@@ -26,10 +26,10 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.datautils as fodu
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
+import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
@@ -145,6 +145,22 @@ class Dataset(foc.SampleCollection):
         """
         return fos.Sample
 
+    def summary(self):
+        """Returns a string summary of the dataset.
+
+        Returns:
+            a string summary
+        """
+        return "\n".join(
+            [
+                "Name:           %s" % self.name,
+                "Num samples:    %d" % len(self),
+                "Tags:           %s" % self.get_tags(),
+                "Label groups:   %s" % self.get_label_groups(),
+                "Insight groups: %s" % self.get_insight_groups(),
+            ]
+        )
+
     def get_tags(self):
         """Returns the list of tags in the dataset.
 
@@ -243,7 +259,7 @@ class Dataset(foc.SampleCollection):
 
         If your samples do not fit this schema, see
         :func:`Dataset.from_labeled_image_samples` for details on how to
-        provide your own :class:`fiftyone.core.datautils.LabeledImageSampleParser`
+        provide your own :class:`fiftyone.utils.data.LabeledImageSampleParser`
         to parse your samples.
 
         This operation will iterate over all provided samples, but the images
@@ -262,7 +278,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`Dataset`
         """
-        sample_parser = fodu.ImageClassificationSampleParser(
+        sample_parser = foud.ImageClassificationSampleParser(
             labels_map=labels_map
         )
         return cls.from_labeled_image_samples(
@@ -291,7 +307,7 @@ class Dataset(foc.SampleCollection):
                         "confidence": <optional-confidence>,
                     },
                     ...
-                ],
+                ]
 
               where ``label`` is either a label string, or, if a ``labels_map``
               is provided, a class ID that can be mapped to a label string via
@@ -303,7 +319,7 @@ class Dataset(foc.SampleCollection):
 
         If your samples do not fit this schema, see
         :func:`Dataset.from_labeled_image_samples` for details on how to
-        provide your own :class:`fiftyone.core.datautils.LabeledImageSampleParser`
+        provide your own :class:`fiftyone.utils.data.LabeledImageSampleParser`
         to parse your samples.
 
         This operation will iterate over all provided samples, but the images
@@ -322,7 +338,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`Dataset`
         """
-        sample_parser = fodu.ImageDetectionSampleParser(labels_map=labels_map)
+        sample_parser = foud.ImageDetectionSampleParser(labels_map=labels_map)
         return cls.from_labeled_image_samples(
             samples, name=name, group=group, sample_parser=sample_parser
         )
@@ -346,7 +362,7 @@ class Dataset(foc.SampleCollection):
 
         If your samples do not fit this schema, see
         :func:`Dataset.from_labeled_image_samples` for details on how to
-        provide your own :class:`fiftyone.core.datautils.LabeledImageSampleParser`
+        provide your own :class:`fiftyone.utils.data.LabeledImageSampleParser`
         to parse your samples.
 
         This operation will iterate over all provided samples, but the images
@@ -361,7 +377,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`Dataset`
         """
-        sample_parser = fodu.ImageLabelsSampleParser()
+        sample_parser = foud.ImageLabelsSampleParser()
         return cls.from_labeled_image_samples(
             samples, name=name, group=group, sample_parser=sample_parser
         )
@@ -382,10 +398,10 @@ class Dataset(foc.SampleCollection):
 
         If your samples require preprocessing to convert to the above format,
         you can provide a custom
-        :class:`fiftyone.core.datautils.LabeledImageSampleParser` instance via
+        :class:`fiftyone.utils.data.LabeledImageSampleParser` instance via
         the ``sample_parser`` argument whose
-        :func:`fiftyone.core.datautils.LabeledImageSampleParser.parse_label`
-        method will be used to parse the sample labels in the input iterable.
+        :func:`fiftyone.utils.data.LabeledImageSampleParser.parse_label` method
+        will be used to parse the sample labels in the input iterable.
 
         This operation will iterate over all provided samples, but the images
         will not be read.
@@ -396,9 +412,8 @@ class Dataset(foc.SampleCollection):
                 :func:`get_default_dataset_name` is used
             group ("ground_truth"): the group name to use for the labels
             sample_parser (None): a
-                :class:`fiftyone.core.datautils.LabeledImageSampleParser`
-                instance whose
-                :func:`fiftyone.core.datautils.LabeledImageSampleParser.parse_label`
+                :class:`fiftyone.utils.data.LabeledImageSampleParser` instance
+                whose :func:`fiftyone.utils.data.LabeledImageSampleParser.parse_label`
                 method will be used to parse the sample labels
 
         Returns:
@@ -456,10 +471,10 @@ class Dataset(foc.SampleCollection):
 
         If your samples require preprocessing to convert to the above format,
         you can provide a custom
-        :class:`fiftyone.core.datautils.LabeledImageSampleParser` instance via
-        the ``sample_parser`` argument whose
-        :func:`fiftyone.core.datautils.LabeledImageSampleParser.parse` method
-        will be used to parse the input samples.
+        :class:`fiftyone.utils.data.LabeledImageSampleParser` instance via the
+        ``sample_parser`` argument whose
+        :func:`fiftyone.utils.data.LabeledImageSampleParser.parse` method will
+        be used to parse the input samples.
 
         Args:
             samples: an iterable of images
@@ -469,9 +484,8 @@ class Dataset(foc.SampleCollection):
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
             sample_parser (None): a
-                :class:`fiftyone.core.datautils.LabeledImageSampleParser`
-                instance whose
-                :func:`fiftyone.core.datautils.LabeledImageSampleParser.parse`
+                :class:`fiftyone.utils.data.LabeledImageSampleParser` instance
+                whose :func:`fiftyone.utils.data.LabeledImageSampleParser.parse`
                 method will be used to parse the images
             image_format (``fiftyone.config.default_image_ext``): the image
                 format to use to write the images to disk
@@ -485,7 +499,7 @@ class Dataset(foc.SampleCollection):
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(name)
 
-        _samples = fodu.parse_labeled_images(
+        _samples = foud.parse_labeled_images(
             samples,
             dataset_dir,
             sample_parser=sample_parser,
@@ -513,7 +527,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`Dataset`
         """
-        samples = fodu.parse_image_classification_dataset(dataset_dir)
+        samples = foud.parse_image_classification_dataset(dataset_dir)
         return cls.from_labeled_image_samples(samples, name=name, group=group)
 
     @classmethod
@@ -534,7 +548,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`Dataset`
         """
-        samples = fodu.parse_image_detection_dataset(dataset_dir)
+        samples = foud.parse_image_detection_dataset(dataset_dir)
         return cls.from_labeled_image_samples(samples, name=name, group=group)
 
     @classmethod
@@ -555,7 +569,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`Dataset`
         """
-        samples = fodu.parse_image_labels_dataset(dataset_dir)
+        samples = foud.parse_image_labels_dataset(dataset_dir)
         return cls.from_labeled_image_samples(samples, name=name, group=group)
 
     @classmethod
@@ -644,9 +658,9 @@ class Dataset(foc.SampleCollection):
 
         If your samples require preprocessing to convert to the above format,
         you can provide a custom
-        :class:`fiftyone.core.datautils.UnlabeledImageSampleParser` instance
-        via the ``sample_parser`` argument whose
-        :func:`fiftyone.core.datautils.UnlabeledImageSampleParser.parse` method
+        :class:`fiftyone.utils.data.UnlabeledImageSampleParser` instance via
+        the ``sample_parser`` argument whose
+        :func:`fiftyone.utils.data.UnlabeledImageSampleParser.parse` method
         will be used to parse the images in the input iterable.
 
         Args:
@@ -656,9 +670,9 @@ class Dataset(foc.SampleCollection):
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
             sample_parser (None): a
-                :class:`fiftyone.core.datautils.UnlabeledImageSampleParser`
+                :class:`fiftyone.utils.data.UnlabeledImageSampleParser`
                 instance whose
-                :func:`fiftyone.core.datautils.UnlabeledImageSampleParser.parse`
+                :func:`fiftyone.utils.data.UnlabeledImageSampleParser.parse`
                 method will be used to parse the images
             image_format (``fiftyone.config.default_image_ext``): the image
                 format to use to write the images to disk
@@ -672,7 +686,7 @@ class Dataset(foc.SampleCollection):
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(name)
 
-        image_paths = fodu.to_images_dir(
+        image_paths = foud.to_images_dir(
             samples,
             dataset_dir,
             sample_parser=sample_parser,
