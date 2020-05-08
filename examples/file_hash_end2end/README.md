@@ -96,19 +96,25 @@ print(sample)
 
 ### 3. Visualize the dataset
 
+Start browsing the dataset:
+
 ```python
 session = fo.launch_dashboard(dataset=dataset)
 ```
+
+Narrow your scope to 10 random samples
 
 ```python
 session.view = dataset.default_view().take(10, random=True)
 ```
 
-Select some samples in the GUI
+Select some samples in the GUI and see how this field updates instantly!
 
 ```python
 session.selected
 ```
+
+Create a view on the samples you selected:
 
 ```python
 session.view = dataset.default_view().select(session.selected)
