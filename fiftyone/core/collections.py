@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import itertools
 import logging
 
 import eta.core.utils as etau
@@ -53,6 +54,18 @@ class SampleCollection(object):
 
     def __iter__(self):
         return self.iter_samples()
+
+    def head(self, num_samples=3):
+        """Returns a string representation of the first few samples in the
+        collection.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return "\n".join(str(s) for s in itertools.islice(self, num_samples))
 
     def get_tags(self):
         """Returns the list of tags in the collection.

@@ -115,7 +115,7 @@ dataset = fo.Dataset.from_image_classification_samples(
 )
 
 # Print a few samples from the dataset
-dataset.head()
+print(dataset.head())
 ```
 
 
