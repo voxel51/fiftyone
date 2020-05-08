@@ -1,30 +1,38 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState } from "react";
+
 import Sidebar from "../components/Sidebar";
-import socketio from "../socketio/socketio";
+import { updateState } from "../actions/update";
+import { getSocket, useSubscribe } from "../utils/socket";
+import connect from "../utils/connect";
 
 type Props = {
   children: ReactNode;
 };
 
-let socket;
+function App(props: Props) {
+  const { children, dispatch, update } = props;
+  const [connectionEstablished, setConnectionEstablished] = useState(false);
+  const socket = getSocket("state");
+  useSubscribe(socket, "connect", () => {
+    console.log("connected");
+    if (!connectionEstablished) {
+      socket.emit("get_current_state", "", (data) => {
+        dispatch(updateState(data));
+      });
+      setConnectionEstablished(true);
+    }
+  });
+  useSubscribe(socket, "disconnect", () => console.log("disconnected"));
+  useSubscribe(socket, "update", (data) => {
+    dispatch(updateState(data));
+  });
 
-export default class App extends React.Component {
-  constructor(props: Props) {
-    super(props);
-    socket = socketio();
-  }
-
-  componentWillUnmount() {
-    socket.disconnect();
-  }
-
-  render() {
-    const { children } = this.props;
-    return (
-      <>
-        <Sidebar />
-        <div style={{ marginLeft: 260 }}>{children}</div>
-      </>
-    );
-  }
+  return (
+    <>
+      <Sidebar />
+      <div style={{ marginLeft: 260, height: "100%" }}>{children}</div>
+    </>
+  );
 }
+
+export default connect(App);

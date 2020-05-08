@@ -273,6 +273,7 @@
     "react-dom": "^16.12.0",
     "react-grid-gallery": "^0.5.5",
     "react-hot-loader": "^4.12.19",
+    "react-infinite-scroller": "^1.2.4",
     "react-redux": "^7.1.3",
     "react-router": "^5.1.2",
     "react-router-dom": "^5.1.2",
