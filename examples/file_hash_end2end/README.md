@@ -171,4 +171,33 @@ view = dataset.default_view().filter(
 )
 
 print("Number of images that have a duplicate: %d" % len(view))
+
+print("Number of duplicates: %d" % (len(view) - len(dup_filehashes)))
+```
+
+### 6. Delete duplicates
+
+```python
+print("Length of dataset before: %d" % len(dataset))
+
+for d in dataset.aggregate(pipeline):
+    file_hash = d["_id"]
+    count = d["count"]
+
+    view = (
+        dataset.default_view()
+        .filter(filter={"insights.file_hash.file_hash": file_hash})
+        .take(count - 1)
+    )
+
+    for sample in view:
+        del dataset[sample.id]
+
+print("Length of dataset after: %d" % len(dataset))
+```
+
+### 7. Export
+
+```python
+dataset.export(group="ground_truth", export_dir="/tmp/fiftyone/export")
 ```
