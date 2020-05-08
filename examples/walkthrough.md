@@ -238,16 +238,34 @@ for imgs, sample_ids in data_loader:
             model_name, fo.ScalarInsight.create("confidence", confidence)
         )
 
-# Print a sample with a prediction
-print(dataset[sample_id])
+#
+# Get the last batch of samples for which we added predictions
+#
+
+view = dataset.default_view().select(sample_ids)
+print(view.head())
+
+#
+# Get all samples for which we added predictions, in reverse order of
+# confidence
+#
+
+view = (dataset.default_view()
+    .filter(filter={"insights.inception_v3.name": "confidence"})
+    .sort_by("insights.inception_v3.scalar", reverse=True)
+)
+print(view.head())
 ```
 
 
 ## Launching a dashboard session
 
 ```
+# Launch the FiftyOne dashboard
+session = fo.launch_dashboard()
+
 # Open your dataset in the dashboard
-session = fo.launch_dashboard(dataset=dataset)
+session.dataset = dataset
 
 # Show five random samples in the dashboard
 session.view = dataset.default_view().take(5)
