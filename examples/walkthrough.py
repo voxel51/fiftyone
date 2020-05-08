@@ -10,6 +10,8 @@ import os
 
 import fiftyone as fo
 
+import fiftyone.core.odm as foo; foo.drop_database()
+
 # import fiftyone.core.config as foc
 # foc.set_config_settings(default_ml_backend="torch")
 # foc.set_config_settings(default_ml_backend="tensorflow")

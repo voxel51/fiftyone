@@ -2,6 +2,8 @@
 
 Examples:
 
+- `dataset_creation.md`: examples of creating FiftyOne datasets
+
 - `walkthrough.py`: walkthrough of common FiftyOne workflows
 
 
@@ -16,6 +18,7 @@ Examples:
 | `inference/`       | example scripts for running inference on CIFAR-10 using pretrained models       |
 | `mongodb/`         | example that ingests and explores data using MongoDB directly (no FiftyOne)     |
 | `pseudocode/`      | various pseudocode for interacting with FiftyOne                                |
+
 
 ## Copyright
 
