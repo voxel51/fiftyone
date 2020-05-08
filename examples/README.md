@@ -2,9 +2,9 @@
 
 Examples:
 
-- `dataset_creation.md`: examples of creating FiftyOne datasets
+- `walkthrough.md`: walkthrough of a common FiftyOne workflow
 
-- `walkthrough.py`: walkthrough of common FiftyOne workflows
+- `dataset_creation.md`: examples of creating FiftyOne datasets
 
 
 ## Miscellaneous
