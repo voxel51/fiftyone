@@ -18,10 +18,10 @@ import fiftyone.zoo as foz
 
 
 # Prints a few random samples from the dataset
-def print_random(dataset, num_samples=5):
+def print_random(dataset, num_samples=5, group="ground_truth"):
     view = dataset.default_view().take(num_samples, random=True)
     for sample in view.iter_samples():
-        label = sample.get_label("ground_truth").label
+        label = sample.get_label(group).label
         print("%s: %s" % (label, sample.filepath))
 
 
@@ -175,7 +175,7 @@ for imgs, sample_ids in data_loader:
     predictions = predict(model, imgs)
     for prediction, sample_id in zip(predictions, sample_ids):
         label = fo.ClassificationLabel.create(labels_map[prediction])
-        dataset[sample_id].add_label("my-model", label)
+        dataset[sample_id].add_label("inception_v3", label)
 
 # Print a sample with a prediction
 print(dataset[sample_id])
