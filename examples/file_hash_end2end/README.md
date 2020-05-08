@@ -58,9 +58,15 @@ dataset = fo.Dataset.from_image_classification_samples(
 ### 2. Explore the dataset
 
 ```python
-dataset.summary()
+print(dataset.summary())
 
 sample = next(dataset.iter_samples())
 
 print(sample)
+```
+
+### 3. Visualize the dataset
+
+```python
+session = fo.launch_dashboard()
 ```
