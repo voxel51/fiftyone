@@ -80,8 +80,8 @@ class ClassificationLabel(ImageLabel):
     """A classification label for an :class:`fiftyone.core.sample.ImageSample`
     in a :class:`fiftyone.core.dataset.Dataset`.
 
-    See :class:`fiftyone.core.datautils.ImageClassificationSampleParser` for
-    a convenient way to build labels of this type for your existing datasets.
+    See :class:`fiftyone.utils.data.ImageClassificationSampleParser` for a
+    convenient way to build labels of this type for your existing datasets.
     """
 
     _ODM_DOCUMENT_CLS = foo.ODMClassificationLabel
@@ -141,7 +141,7 @@ class DetectionLabels(ImageLabel):
     :class:`fiftyone.core.sample.ImageSample` in a
     :class:`fiftyone.core.dataset.Dataset`.
 
-    See :class:`fiftyone.core.datautils.ImageDetectionSampleParser` for a
+    See :class:`fiftyone.utils.data.ImageDetectionSampleParser` for a
     convenient way to build labels of this type for your existing datasets.
     """
 
@@ -212,7 +212,7 @@ class ImageLabels(ImageLabel):
     :class:`fiftyone.core.sample.ImageSample` in a
     :class:`fiftyone.core.dataset.Dataset`.
 
-    See :class:`fiftyone.core.datautils.ImageLabelsSampleParser` for a
+    See :class:`fiftyone.utils.data.ImageLabelsSampleParser` for a
     convenient way to build labels of this type for your existing datasets.
     """
 

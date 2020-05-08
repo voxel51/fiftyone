@@ -59,7 +59,7 @@ class ImageClassificationDataset(LabeledImageDataset):
 
     FiftyOne exports datasets of this type on disk in the following format::
 
-        dataset_dir/
+        <dataset_dir>/
             data/
                 <uuid1>.<ext>
                 <uuid2>.<ext>
@@ -91,7 +91,7 @@ class ImageDetectionDataset(LabeledImageDataset):
 
     FiftyOne exports datasets of this type on disk in the following format::
 
-        dataset_dir/
+        <dataset_dir>/
             data/
                 <uuid1>.<ext>
                 <uuid2>.<ext>
@@ -124,7 +124,7 @@ class ImageDetectionDataset(LabeledImageDataset):
             }
         }
 
-    where the bounding box coordinates are expressed as relative values in
+    and where the bounding box coordinates are expressed as relative values in
     ``[0, 1] x [0, 1]``.
     """
 
@@ -132,12 +132,12 @@ class ImageDetectionDataset(LabeledImageDataset):
 
 
 class ImageLabelsDataset(LabeledImageDataset):
-    """A labeled dataset consisting of images and their associated labels
-    stored in ``eta.core.image.ImageLabels`` format.
+    """A labeled dataset consisting of images and their associated multitask
+    predictions stored in ``eta.core.image.ImageLabels`` format.
 
     FiftyOne exports datasets of this type on disk in the following format::
 
-        dataset_dir/
+        <dataset_dir>/
             data/
                 <uuid1>.<ext>
                 <uuid2>.<ext>
@@ -162,8 +162,9 @@ class ImageLabelsDataset(LabeledImageDataset):
             ]
         }
 
-    and the each labels JSON file is stored in ``eta.core.image.ImageLabels``
-    format.
+    and where each labels JSON file is stored in ``eta.core.image.ImageLabels``
+    format. See https://voxel51.com/docs/api/#types-imagelabels for more
+    details.
     """
 
     pass

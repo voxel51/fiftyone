@@ -33,7 +33,7 @@ _db = connect(_DEFAULT_DATABASE)
 
 
 def drop_database():
-    """Drops the entire database."""
+    """Drops the database."""
     _db.drop_database(_DEFAULT_DATABASE)
 
 

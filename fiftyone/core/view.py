@@ -56,10 +56,6 @@ class DatasetView(foc.SampleCollection):
         self._dataset = dataset
         self._pipeline = []
 
-    @property
-    def _sample_cls(self):
-        return self._dataset._sample_cls
-
     def __len__(self):
         result = self.aggregate(self._pipeline + [{"$count": "count"}])
         return next(result)["count"]
@@ -277,23 +273,27 @@ class DatasetView(foc.SampleCollection):
             {"$match": {"_id": {"$not": {"$in": sample_ids}}}}
         )
 
-    def _get_ds_qs(self, **kwargs):
-        return self._dataset._get_query_set(**kwargs)
+    def _deserialize_sample(self, d):
+        doc = foo.ODMSample.from_dict(d, created=False, extended=False)
+        return self._load_sample(doc)
 
-    @staticmethod
-    def _deserialize_sample(d):
-        return fos.Sample.from_doc(
-            foo.ODMSample.from_dict(d, created=False, extended=False)
-        )
+    def _load_sample(self, doc):
+        sample = fos.Sample.from_doc(doc)
+        sample._set_dataset(self._dataset)
+        return sample
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)
         view._pipeline.append(stage)
         return view
 
+    def _get_ds_qs(self, **kwargs):
+        return self._dataset._get_query_set(**kwargs)
+
     def _get_latest_offset(self):
         """Returns the offset of the last $skip stage."""
         for stage in self._pipeline[::-1]:
             if "$skip" in stage:
                 return stage["$skip"]
+
         return 0

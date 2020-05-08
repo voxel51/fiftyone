@@ -26,8 +26,8 @@ import fiftyone.core.config as foc
 # foc.set_config_settings(default_ml_backend="tensorflow")
 # foc.set_config_settings(default_ml_backend="torch")
 
-import fiftyone.core.datautils as fodu
-import fiftyone.experimental.data as fed
+import fiftyone.experimental.data as foed
+import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
 
@@ -105,8 +105,8 @@ print_gt_detection_head(dataset2, num_samples=1, shuffle=True)
 #
 
 class_dir = "/Users/Brian/Desktop/class-dir"
-samples, _ = fodu.parse_image_classification_dir_tree(class_dir)
-dataset3 = fed.from_image_classification_samples(samples)
+samples, _ = foud.parse_image_classification_dir_tree(class_dir)
+dataset3 = foed.from_image_classification_samples(samples)
 
 print_gt_classification_head(dataset3)
 
@@ -116,7 +116,7 @@ print_gt_classification_head(dataset3)
 #
 
 class_dir = "/Users/Brian/Desktop/class-dir"
-dataset4 = fed.from_images_dir(class_dir, recursive=True)
+dataset4 = foed.from_images_dir(class_dir, recursive=True)
 
 print_images_head(dataset4)
 
@@ -159,13 +159,13 @@ context.get_view().shuffle().take(5).export(export_dir)
 
 import os
 import eta.core.datasets as etads
-import fiftyone.core.tfutils as fotu
+import fiftyone.utils.tf as fout
 
 labeled_dataset = etads.load_dataset(export_dir)
 tf_records_path = os.path.join(export_dir, "dataset.tfrecords")
-fotu.write_image_classification_tf_records(labeled_dataset, tf_records_path)
+fout.write_image_classification_tf_records(labeled_dataset, tf_records_path)
 
 # Load the TFRecords back and print them
-tf_dataset = fotu.load_image_classification_tf_records(tf_records_path)
+tf_dataset = fout.load_image_classification_tf_records(tf_records_path)
 for img, label in tf_dataset.as_numpy_iterator():
     print("Image: %s, label: %s" % (img.shape, label.decode()))

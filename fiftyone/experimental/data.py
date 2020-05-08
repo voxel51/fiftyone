@@ -29,10 +29,9 @@ from eta.core.serial import Serializable
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.constants as fc
-import fiftyone.core.datautils as fodu
 import fiftyone.core.utils as fou
-import fiftyone.experimental.contexts as fec
+import fiftyone.experimental.contexts as foec
+import fiftyone.utils.data as foud
 
 
 def from_image_classification_samples(samples, labels_map=None, name=None):
@@ -70,7 +69,7 @@ def from_image_classification_samples(samples, labels_map=None, name=None):
     Returns:
         a :class:`fiftyone.experimental.data.Dataset`
     """
-    sample_parser = fodu.ImageClassificationSampleParser(labels_map=labels_map)
+    sample_parser = foud.ImageClassificationSampleParser(labels_map=labels_map)
     return from_labeled_image_samples(
         samples, sample_parser=sample_parser, name=name,
     )
@@ -124,7 +123,7 @@ def from_image_detection_samples(samples, labels_map=None, name=None):
     Returns:
         a :class:`fiftyone.experimental.data.Dataset`
     """
-    sample_parser = fodu.ImageDetectionSampleParser(labels_map=labels_map)
+    sample_parser = foud.ImageDetectionSampleParser(labels_map=labels_map)
     return from_labeled_image_samples(
         samples, sample_parser=sample_parser, name=name,
     )
@@ -451,7 +450,7 @@ class Dataset(object):
         Returns:
             a :class:`fiftyone.core.contexts.ImageContext`
         """
-        return fec.ImageContext(self)
+        return foec.ImageContext(self)
 
     def get_ground_truth_context(self):
         """Returns a :class:`fiftyone.core.contexts.LabeledImageContext` for
@@ -460,7 +459,7 @@ class Dataset(object):
         Returns:
             a :class:`fiftyone.core.contexts.LabeledImageContext`
         """
-        return fec.LabeledImageContext(self, "gt_labels")
+        return foec.LabeledImageContext(self, "gt_labels")
 
     def register_model(self, name):
         """Registers a model for use with the dataset.
@@ -491,7 +490,7 @@ class Dataset(object):
         Returns:
             a :class:`fiftyone.core.contexts.ModelContext`
         """
-        return fec.ModelContext(self, name)
+        return foec.ModelContext(self, name)
 
     def publish_model_context(self, model_context):
         """Publishes the given :class:`fiftyone.core.contexts.ModelContext` to
