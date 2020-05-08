@@ -57,11 +57,38 @@ dataset = fo.Dataset.from_image_classification_samples(
 
 ### 2. Explore the dataset
 
+We can poke around in the dataset:
+
 ```python
 print(dataset.summary())
+```
 
+Grab a sample:
+
+```python
 sample = next(dataset.iter_samples())
+print(sample)
+```
 
+Create a view that filters only `mountain`
+
+```python
+view = dataset.default_view().filter({"labels.ground_truth.label": "mountain"})
+print(view.summary())
+
+sample = next(view.iter_samples())
+print(sample)
+```
+
+Create a view that sorts labels reverse-alphabetically
+
+```python
+view = dataset.default_view().sort_by(
+    "labels.ground_truth.label", reverse=True
+)
+print(view.summary())
+
+sample = next(view.iter_samples())
 print(sample)
 ```
 
