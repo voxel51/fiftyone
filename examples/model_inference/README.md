@@ -1,4 +1,4 @@
-# FiftyOne Walkthrough
+# FiftyOne Model Inference-in-the-Loop
 
 This walkthrough provides a glimpse into the possibilities for integrating
 FiftyOne into your machine learning workflows. It covers the following
@@ -6,7 +6,7 @@ concepts:
 
 - Loading your existing dataset in FiftyOne
 - Adding predictions from your model to your FiftyOne dataset
-- Launching the FiftyOne dashboard and visualizing exploring your data
+- Launching the FiftyOne dashboard and visualizing/exploring your data
 - Integrating the dashboard into your data wrangling workflow
 
 
@@ -32,8 +32,20 @@ foz.load_zoo_dataset("cifar10")
 foo.drop_database()
 ```
 
-- Follow the instructions in `inference/README.md` to download some pre-trained
-CIFAR-10 PyTorch models
+- Download some pretrained CIFAR-10 PyTorch models
+
+```
+# Download the software
+git clone https://github.com/huyvnphan/PyTorch_CIFAR10
+cd PyTorch_CIFAR10
+
+# Download pretrained models
+eta http download \
+    https://rutgers.box.com/shared/static/hm73mc6t8ncy1z499fwukpn1xes9rswe.zip \
+    cifar10_models/models.zip
+unzip cifar10_models/models.zip -d cifar10_models/
+rm cifar10_models/models.zip
+```
 
 
 ## Importing FiftyOne
