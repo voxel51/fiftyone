@@ -20,7 +20,7 @@ from builtins import *
 
 from copy import copy, deepcopy
 
-from bson import ObjectId
+from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
@@ -164,7 +164,10 @@ class DatasetView(foc.SampleCollection):
 
     def serialize(self):
         """Serialize the dataset"""
-        return {"dataset": self._dataset.serialize(), "view": self._pipeline}
+        return {
+            "dataset": self._dataset.serialize(),
+            "view": json_util.dumps(self._pipeline),
+        }
 
     def filter(
         self, tag=None, insight_group=None, label_group=None, filter=None
@@ -365,9 +368,6 @@ class DatasetView(foc.SampleCollection):
         view = copy(self)
         view._pipeline.append(stage)
         return view
-
-    def _get_ds_qs(self, **kwargs):
-        return self._dataset._get_query_set(**kwargs)
 
     def _get_latest_offset(self):
         """Returns the offset of the last $skip stage."""
