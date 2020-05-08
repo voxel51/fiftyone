@@ -47,9 +47,8 @@ print()
 # as keys. A label group spans all samples with the given label
 ###############################################################################
 
-# @todo(Tyler)
-# print("Label Groups: %s" % dataset.get_label_groups())
-# print()
+print("Label Groups: %s" % dataset.get_label_groups())
+print()
 
 ###############################################################################
 # Action 4: Check for insight groups on the dataset
@@ -59,9 +58,8 @@ print()
 # of a dataset.
 ###############################################################################
 
-# @todo(Tyler)
-# print("Insight Groups: %s" % dataset.get_insight_groups())
-# print()
+print("Insight Groups: %s" % dataset.get_insight_groups())
+print()
 
 ###############################################################################
 # Action 5: Iterate samples of the dataset

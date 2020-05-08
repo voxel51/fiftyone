@@ -20,6 +20,7 @@ from builtins import *
 
 from copy import copy, deepcopy
 
+from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
@@ -60,15 +61,13 @@ class DatasetView(foc.SampleCollection):
         return self._dataset._sample_cls
 
     def __len__(self):
-        result = self._get_ds_qs().aggregate(
-            self._pipeline + [{"$count": "count"}]
-        )
+        result = self.aggregate(self._pipeline + [{"$count": "count"}])
         return next(result)["count"]
 
     def __getitem__(self, sample_id):
         samples = self._get_ds_qs(id=sample_id)
         if not samples:
-            raise ValueError("No sample found with ID '%s'" % sample_id)
+            raise KeyError("No sample found with ID '%s'" % sample_id)
 
         # @todo(Tyler) this should fail if the sample is not in the view
         return fos.Sample.from_doc(samples[0])
@@ -78,14 +77,46 @@ class DatasetView(foc.SampleCollection):
         view._pipeline = deepcopy(self._pipeline)
         return view
 
+    def get_tags(self):
+        """Returns the list of tags in the collection.
+
+        Returns:
+            a list of tags
+        """
+        pipeline = [
+            {"$project": {"tags": "$tags"}},
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "None", "all_tags": {"$addToSet": "$tags"}}},
+        ]
+        try:
+            return next(self.aggregate(pipeline))["all_tags"]
+        except StopIteration:
+            pass
+        return []
+
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._get_ds_qs().aggregate(self._pipeline):
+        for d in self.aggregate():
             yield self._deserialize_sample(d)
+
+    def aggregate(self, pipeline=None):
+        """Calls a MongoDB aggregation pipeline on the view
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to append to the view's pipeline before aggregation.
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_ds_qs().aggregate(self._pipeline + pipeline)
 
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
@@ -125,7 +156,7 @@ class DatasetView(foc.SampleCollection):
         view = self
 
         if tag is not None:
-            view = view._copy_with_new_stage(stage={"$match": {"tags": tag}})
+            view = view._copy_with_new_stage({"$match": {"tags": tag}})
 
         if insight_group is not None:
             # @todo(Tyler) should this filter the insights as well? or just
@@ -140,7 +171,7 @@ class DatasetView(foc.SampleCollection):
             raise NotImplementedError("Not yet implemented")
 
         if filter is not None:
-            view = view._copy_with_new_stage(stage={"$match": filter})
+            view = view._copy_with_new_stage({"$match": filter})
 
         return view
 
@@ -190,7 +221,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self._copy_with_new_stage({"$skip": offset})
 
-    def select_samples(self, sample_ids):
+    def select(self, sample_ids):
         """Selects only the samples with the given IDs from the view.
 
         Args:
@@ -199,10 +230,13 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        raise NotImplementedError("Not yet implemented")
+        sample_ids = [ObjectId(id) for id in sample_ids]
+        return self._copy_with_new_stage(
+            {"$match": {"_id": {"$in": sample_ids}}}
+        )
 
-    def remove_samples(self, sample_ids):
-        """Removes the samples with the given IDs from the view.
+    def exclude(self, sample_ids):
+        """Exclude the samples with the given IDs from the view.
 
         Args:
             sample_ids: an iterable of sample IDs
@@ -210,7 +244,10 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        raise NotImplementedError("Not yet implemented")
+        sample_ids = [ObjectId(id) for id in sample_ids]
+        return self._copy_with_new_stage(
+            {"$match": {"_id": {"$not": {"$in": sample_ids}}}}
+        )
 
     def _label_distributions(self):
         pipeline = self._pipeline + [

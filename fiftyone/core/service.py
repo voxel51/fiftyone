@@ -62,6 +62,11 @@ class DatabaseService(Service):
         """Start the `DatabaseService`."""
         etau.call(foc.START_DB, **self._SUPPRESS)
 
+        # drop the entire database for now (lightweight!)
+        import fiftyone.core.odm as foo
+
+        foo.drop_database()
+
     def stop(self):
         """Stop the `DatabaseService`."""
         self._system(foc.STOP_DB)

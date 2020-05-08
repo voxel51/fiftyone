@@ -63,7 +63,9 @@ def get_default_dataset_name():
     Returns:
         a dataset name
     """
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    name = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("Using default dataset name '%s'", name)
+    return name
 
 
 def get_default_dataset_dir(name, split=None):
@@ -81,6 +83,7 @@ def get_default_dataset_dir(name, split=None):
     if split is not None:
         dataset_dir = os.path.join(dataset_dir, split)
 
+    logger.info("Using default dataset directory '%s'", dataset_dir)
     return dataset_dir
 
 
@@ -125,10 +128,22 @@ class Dataset(foc.SampleCollection):
         if not samples:
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
-        return fos.Sample.from_doc(samples[0])
+        return self._load_sample(samples[0])
 
     def __delitem__(self, sample_id):
-        return self[sample_id]._delete()
+        self[sample_id]._delete()
+
+    @property
+    def name(self):
+        """The name of the dataset."""
+        return self._name
+
+    @property
+    def _sample_cls(self):
+        """The :class:`fiftyone.core.sample.Sample` class that this dataset
+        can contain.
+        """
+        return fos.Sample
 
     def get_tags(self):
         """Returns the list of tags in the dataset.
@@ -138,28 +153,6 @@ class Dataset(foc.SampleCollection):
         """
         return self._get_query_set().distinct("tags")
 
-    def get_label_groups(self):
-        """Returns the list of label groups attached to at least one sample
-        in the dataset.
-
-        Returns:
-            a list of groups
-        """
-        # @todo(Tyler) This does not work with DictField
-        # return self._get_query_set().distinct("labels.group")
-        raise NotImplementedError("Not yet implemented")
-
-    def get_insight_groups(self):
-        """Returns the list of insight groups attached to at least one sample
-        in the dataset.
-
-        Returns:
-            a list of groups
-        """
-        # @todo(Tyler) This does not work with DictField
-        # return self._get_query_set().distinct("insights.group")
-        raise NotImplementedError("Not yet implemented")
-
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
 
@@ -167,19 +160,7 @@ class Dataset(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for doc in self._get_query_set():
-            yield fos.Sample.from_doc(doc)
-
-    @property
-    def _sample_cls(self):
-        """The :class:`fiftyone.core.sample.Sample` class that this dataset
-        can contain.
-        """
-        return fos.Sample
-
-    @property
-    def name(self):
-        """The name of the dataset."""
-        return self._name
+            yield self._load_sample(doc)
 
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
@@ -225,6 +206,21 @@ class Dataset(foc.SampleCollection):
 
     def serialize(self):
         return {"name": self.name}
+
+    def aggregate(self, pipeline=None):
+        """Calls a MongoDB aggregation pipeline on the dataset
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_query_set().aggregate(pipeline)
 
     @classmethod
     def from_image_classification_samples(
@@ -435,6 +431,70 @@ class Dataset(foc.SampleCollection):
         return dataset
 
     @classmethod
+    def ingest_labeled_image_samples(
+        cls,
+        samples,
+        name=None,
+        group="ground_truth",
+        dataset_dir=None,
+        sample_parser=None,
+        image_format=fo.config.default_image_ext,
+    ):
+        """Creates a :class:`Dataset` for the given iterable of samples, which
+        contains images and their associated labels.
+
+        The images are read in-memory and written to the given dataset
+        directory. The labels are ingested by FiftyOne.
+
+        The input ``samples`` can be any iterable that emits
+        ``(image_or_path, label)`` tuples, where:
+
+            - ``image_or_path`` is either an image that can be converted to
+              numpy format via ``np.asarray()`` or the path to an image on disk
+
+            - ``label`` is a :class:`fiftyone.core.labels.Label` instance
+
+        If your samples require preprocessing to convert to the above format,
+        you can provide a custom
+        :class:`fiftyone.core.datautils.LabeledImageSampleParser` instance via
+        the ``sample_parser`` argument whose
+        :func:`fiftyone.core.datautils.LabeledImageSampleParser.parse` method
+        will be used to parse the input samples.
+
+        Args:
+            samples: an iterable of images
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+            dataset_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            sample_parser (None): a
+                :class:`fiftyone.core.datautils.LabeledImageSampleParser`
+                instance whose
+                :func:`fiftyone.core.datautils.LabeledImageSampleParser.parse`
+                method will be used to parse the images
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        if dataset_dir is None:
+            dataset_dir = get_default_dataset_dir(name)
+
+        _samples = fodu.parse_labeled_images(
+            samples,
+            dataset_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+        return cls.from_labeled_image_samples(_samples, name=name, group=group)
+
+    @classmethod
     def from_image_classification_dataset(
         cls, dataset_dir, name=None, group="ground_truth"
     ):
@@ -564,6 +624,67 @@ class Dataset(foc.SampleCollection):
         dataset = cls(name)
         dataset.add_samples(samples)
         return dataset
+
+    @classmethod
+    def ingest_images(
+        cls,
+        samples,
+        name=None,
+        dataset_dir=None,
+        sample_parser=None,
+        image_format=fo.config.default_image_ext,
+    ):
+        """Creates a :class:`Dataset` for the given iterable of samples, which
+        contains images that are read in-memory and written to the given
+        dataset directory.
+
+        The input ``samples`` can be any iterable that emits images (or paths
+        to images on disk) that can be converted to numpy format via
+        ``np.asarray()``.
+
+        If your samples require preprocessing to convert to the above format,
+        you can provide a custom
+        :class:`fiftyone.core.datautils.UnlabeledImageSampleParser` instance
+        via the ``sample_parser`` argument whose
+        :func:`fiftyone.core.datautils.UnlabeledImageSampleParser.parse` method
+        will be used to parse the images in the input iterable.
+
+        Args:
+            samples: an iterable of images
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            dataset_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            sample_parser (None): a
+                :class:`fiftyone.core.datautils.UnlabeledImageSampleParser`
+                instance whose
+                :func:`fiftyone.core.datautils.UnlabeledImageSampleParser.parse`
+                method will be used to parse the images
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        if dataset_dir is None:
+            dataset_dir = get_default_dataset_dir(name)
+
+        image_paths = fodu.to_images_dir(
+            samples,
+            dataset_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+        return cls.from_images(image_paths, name=name)
+
+    def _load_sample(self, doc):
+        sample = fos.Sample.from_doc(doc)
+        sample._set_dataset(self)
+        return sample
 
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
