@@ -118,7 +118,7 @@ import torch
 import torchvision
 from torch.utils.data import DataLoader
 
-import fiftyone.core.torchutils as fotu
+import fiftyone.utils.torch as fout
 
 sys.path.insert(1, "inference/PyTorch_CIFAR10")
 from cifar10_models import *
@@ -133,7 +133,7 @@ def make_cifar10_data_loader(image_paths, sample_ids):
             torchvision.transforms.Normalize(mean, std),
         ]
     )
-    dataset = fotu.TorchImageDataset(
+    dataset = fout.TorchImageDataset(
         image_paths, sample_ids=sample_ids, transform=transforms
     )
     return DataLoader(dataset, batch_size=5, num_workers=4, pin_memory=True)
