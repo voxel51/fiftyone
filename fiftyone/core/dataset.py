@@ -220,6 +220,9 @@ class Dataset(foc.SampleCollection):
         """
         return fov.DatasetView(self)
 
+    def serialize(self):
+        return {"name": self.name}
+
     def aggregate(self, pipeline=None):
         """Calls a MongoDB aggregation pipeline on the dataset
 

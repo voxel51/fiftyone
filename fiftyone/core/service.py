@@ -18,11 +18,15 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import os
 
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+
+
+logger = logging.getLogger(__name__)
 
 
 class Service(object):

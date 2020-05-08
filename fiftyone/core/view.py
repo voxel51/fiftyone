@@ -153,16 +153,18 @@ class DatasetView(foc.SampleCollection):
 
         Returns:
             an iterator that emits ``(index, sample)`` tuples, where:
-
                 - ``index`` is an integer index relative to the offset, where
                   ``offset <= view_idx < offset + limit``
-
                 - ``sample`` is a :class:`fiftyone.core.sample.Sample`
         """
         offset = self._get_latest_offset()
         iterator = self.iter_samples()
         for idx, sample in enumerate(iterator, start=offset):
             yield idx, sample
+
+    def serialize(self):
+        """Serialize the dataset"""
+        return {"dataset": self._dataset.serialize(), "view": self._pipeline}
 
     def filter(
         self, tag=None, insight_group=None, label_group=None, filter=None
@@ -275,6 +277,80 @@ class DatasetView(foc.SampleCollection):
         return self._copy_with_new_stage(
             {"$match": {"_id": {"$not": {"$in": sample_ids}}}}
         )
+
+    def _label_distributions(self):
+        pipeline = self._pipeline + [
+            {"$project": {"label": {"$objectToArray": "$labels"}}},
+            {"$unwind": "$label"},
+            {"$project": {"group": "$label.k", "label": "$label.v.label"}},
+            {
+                "$group": {
+                    "_id": {"group": "$group", "label": "$label"},
+                    "count": {"$sum": 1},
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id.group",
+                    "labels": {
+                        "$push": {"label": "$_id.label", "count": "$count"}
+                    },
+                }
+            },
+        ]
+        return list(self._get_ds_qs().aggregate(pipeline))
+
+    def _facets(self):
+        pipeline = self._pipeline + [
+            {
+                "$facet": {
+                    "tags": [
+                        {"$project": {"tag": "$tags"}},
+                        {
+                            "$unwind": {
+                                "path": "$tag",
+                                "preserveNullAndEmptyArrays": True,
+                            }
+                        },
+                        {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
+                        {"$sort": {"_id": 1}},
+                    ],
+                    "labels": [
+                        {"$project": {"label": {"$objectToArray": "$labels"}}},
+                        {"$unwind": "$label"},
+                        {
+                            "$project": {
+                                "group": "$label.k",
+                                "label": "$label.v.label",
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": {"group": "$group", "label": "$label"},
+                                "count": {"$sum": 1},
+                            }
+                        },
+                        {
+                            "$group": {
+                                "_id": "$_id.group",
+                                "labels": {
+                                    "$push": {
+                                        "label": "$_id.label",
+                                        "count": "$count",
+                                    }
+                                },
+                            }
+                        },
+                    ],
+                }
+            }
+        ]
+        return list(self._get_ds_qs().aggregate(pipeline))
+
+    # PRIVATE #################################################################
+
+    def _get_ds_qs(self, **kwargs):
+        return self._dataset._get_query_set(**kwargs)
 
     def _deserialize_sample(self, d):
         doc = foo.ODMSample.from_dict(d, created=False, extended=False)
