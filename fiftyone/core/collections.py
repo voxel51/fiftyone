@@ -34,6 +34,9 @@ class SampleCollection(object):
     :class:`fiftyone.core.sample.Sample` instances.
     """
 
+    def __str__(self):
+        return "\n".join(str(s) for s in self)
+
     def __bool__(self):
         return len(self) > 0
 
@@ -110,7 +113,7 @@ class SampleCollection(object):
         labels = []
         for sample in self.iter_samples():
             data_paths.append(sample.filepath)
-            labels.append(sample.get_label[group])
+            labels.append(sample.get_label(group))
 
         if not labels:
             logger.warning("No samples to export; returning now")
@@ -120,7 +123,7 @@ class SampleCollection(object):
             fod.export_image_classification_dataset(
                 data_paths, labels, export_dir
             )
-        if isinstance(labels[0], fol.DetectionLabels):
+        elif isinstance(labels[0], fol.DetectionLabels):
             fod.export_image_detection_dataset(data_paths, labels, export_dir)
         elif isinstance(labels[0], fol.ImageLabels):
             fod.export_image_labels_dataset(data_paths, labels, export_dir)

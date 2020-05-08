@@ -92,9 +92,9 @@ def get_default_dataset_dir(name, split=None):
 class Dataset(foc.SampleCollection):
     """A FiftyOne dataset.
 
-    Datasets represent a homogenous collection of
+    Datasets represent a homogeneous collection of
     :class:`fiftyone.core.sample.Sample` instances that describe a particular
-    type of raw media (e.g., images) toegether with one or more sets of
+    type of raw media (e.g., images) together with one or more sets of
     :class:`fiftyone.core.labels.Label` instances (e.g., ground truth
     annotations or model predictions) and metadata associated with those
     labels.
@@ -131,7 +131,7 @@ class Dataset(foc.SampleCollection):
         return self[sample_id]._delete()
 
     def get_tags(self):
-        """Returns the list of tags for this SampleCollection.
+        """Returns the list of tags in the dataset.
 
         Returns:
             a list of tags
@@ -140,7 +140,7 @@ class Dataset(foc.SampleCollection):
 
     def get_label_groups(self):
         """Returns the list of label groups attached to at least one sample
-        in the SampleCollection.
+        in the dataset.
 
         Returns:
             a list of groups
@@ -151,7 +151,7 @@ class Dataset(foc.SampleCollection):
 
     def get_insight_groups(self):
         """Returns the list of insight groups attached to at least one sample
-        in the SampleCollection.
+        in the dataset.
 
         Returns:
             a list of groups
@@ -161,7 +161,7 @@ class Dataset(foc.SampleCollection):
         raise NotImplementedError("Not yet implemented")
 
     def iter_samples(self):
-        """Returns an iterator over the samples in the SampleCollection.
+        """Returns an iterator over the samples in the dataset.
 
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
