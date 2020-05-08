@@ -56,6 +56,23 @@ class DatasetView(foc.SampleCollection):
         self._dataset = dataset
         self._pipeline = []
 
+    def summary(self):
+        """Returns a string summary of the view"""
+        pipeline_str = "\t" + "\n\t".join(
+            [
+                "%d. %s" % (idx, str(d))
+                for idx, d in enumerate(self._pipeline, start=1)
+            ]
+        )
+
+        return "\n".join(
+            [
+                super(DatasetView, self).summary(),
+                "Pipeline Stages:",
+                pipeline_str,
+            ]
+        )
+
     @property
     def _sample_cls(self):
         return self._dataset._sample_cls

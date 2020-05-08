@@ -34,9 +34,6 @@ class SampleCollection(object):
     :class:`fiftyone.core.sample.Sample` instances.
     """
 
-    def __str__(self):
-        return "\n".join(str(s) for s in self)
-
     def __bool__(self):
         return len(self) > 0
 
@@ -56,6 +53,17 @@ class SampleCollection(object):
 
     def __iter__(self):
         return self.iter_samples()
+
+    def summary(self):
+        """Returns a string summary of the collection"""
+        return "\n".join(
+            [
+                "Num samples:    %d" % len(self),
+                "tags:           %s" % self.get_tags(),
+                "label_roups:    %s" % self.get_label_groups(),
+                "insight_groups: %s" % self.get_insight_groups(),
+            ]
+        )
 
     @property
     def _sample_cls(self):
