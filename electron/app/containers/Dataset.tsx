@@ -25,8 +25,7 @@ function Dataset(props) {
   if (view.sample) {
     const path = view.sample.filepath;
     const host = "http://127.0.0.1:5151/";
-    const mimeType = view.sample.metadata.mime_type;
-    src = `${host}?path=${path}&mime_type=${mimeType}`;
+    src = `${host}?path=${path}`;
   }
 
   return (
