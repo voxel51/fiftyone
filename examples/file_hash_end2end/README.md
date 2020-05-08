@@ -185,6 +185,12 @@ print("Number of images that have a duplicate: %d" % len(view))
 print("Number of duplicates: %d" % (len(view) - len(dup_filehashes)))
 ```
 
+And we can always visualize views!
+
+```python
+session.view = view.sort_by("insights.file_hash.file_hash")
+```
+
 ### 6. Delete duplicates
 
 This snippet iterates over the duplicate file hashes and deletes `count - 1`
