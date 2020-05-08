@@ -97,5 +97,19 @@ print(sample)
 ### 3. Visualize the dataset
 
 ```python
-session = fo.launch_dashboard()
+session = fo.launch_dashboard(dataset=dataset)
+```
+
+```python
+session.view = dataset.default_view().take(10, random=True)
+```
+
+Select some samples in the GUI
+
+```python
+session.selected
+```
+
+```python
+session.view = dataset.default_view().select(session.selected)
 ```
