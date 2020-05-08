@@ -3,7 +3,6 @@
 This example demonstrates a simple use case of using FiftyOne to detect and
 remove duplicate images from your dataset.
 
-
 ## Download the data
 
 First we download the dataset to disk. The dataset is a 1000 sample subset of
@@ -234,7 +233,6 @@ But we have a very small dataset here, so we could just export a copy:
 ```python
 dataset.export(group="ground_truth", export_dir="/tmp/fiftyone/export")
 ```
-
 
 ## Copyright
 
