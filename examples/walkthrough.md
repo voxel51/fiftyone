@@ -14,7 +14,7 @@ concepts:
 
 Importing FiftyOne is simple:
 
-```
+```py
 import fiftyone as fo
 ```
 
@@ -36,18 +36,18 @@ in the following format:
 where ``labels.json`` is a JSON file in the following format:
 
 ```
-    {
-        "labels_map": {
-            <targetA>: <labelA>,
-            <targetB>: <labelB>,
-            ...
-        },
-        "labels": {
-            <uuid1>: <target1>,
-            <uuid2>: <target2>,
-            ...
-        }
+{
+    "labels_map": {
+        <targetA>: <labelA>,
+        <targetB>: <labelB>,
+        ...
+    },
+    "labels": {
+        <uuid1>: <target1>,
+        <uuid2>: <target2>,
+        ...
     }
+}
 ```
 
 Let's construct a dataset of this kind on disk:
@@ -57,8 +57,10 @@ import fiftyone.zoo as foz
 import fiftyone.core.odm as foo
 
 #
-# Quick way to download CIFAR-10 in the above format on disk in `dataset_dir`
-# This is safe to run multiple times; the data will not be redownloaded
+# This is a quick way to download CIFAR-10 in the above format on disk in
+# `dataset_dir`.
+#
+# It is safe to run multiple times; the data will not be re-downloaded.
 #
 
 foz.load_zoo_dataset("cifar10")
@@ -102,7 +104,7 @@ dataset = fo.Dataset.from_image_classification_samples(
     samples, name="my-dataset"
 )
 
-# Print a few samples
+# Print a few samples from the dataset
 dataset.head()
 ```
 
@@ -115,14 +117,27 @@ subsets of the samples in your dataset.
 Here's an example operation:
 
 ```py
+# Gets five random samples from among the first 100 samples in the dataset
 view = (dataset.default_view()
-    .filter(tag="foobar")
-    .take()
+    .take(100)
+    .take(5, random=True)
 )
 
+# Print some information about the entire dataset
 print(dataset.summary())
+
+# Print some information about the view you created
 print(view.summary())
+
+# Print a few samples from the view
 print(view.head())
+```
+
+Iterating over the samples in a view is easy:
+
+```py
+for sample in view.iter_samples():
+    print(sample)
 ```
 
 
@@ -226,7 +241,7 @@ print(foz.list_zoo_datasets())
 dataset = foz.load_zoo_dataset("cifar10")
 
 # Print a few samples from the dataset
-print(dataset.default_view().take(3, random=True))
+dataset.head()
 ```
 
 
