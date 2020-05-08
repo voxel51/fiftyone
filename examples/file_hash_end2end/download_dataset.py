@@ -5,12 +5,15 @@ Download CIFAR100 data and store as images and labels JSON to:
 Data is downloaded as:
 /tmp/fiftyone/
 └── cifar100_with_duplicates/
-    ├── apple/                       # 10k INDEX.jpg test images
-    ├── test_coarse.json            # coarse labels for test images
-    ├── test_fine.json              # fine-grain labels for test images
-    ├── train/                      # 50k INDEX.jpg train images
-    ├── train_coarse.json           # coarse labels for test images
-    └── train_fine.json             # fine-grain labels for train images
+    ├── <classA>/
+    │   ├── <image1>.jpg
+    │   ├── <image2>.jpg
+    │   └── ...
+    ├── <classB>/
+    │   ├── <image1>.jpg
+    │   ├── <image2>.jpg
+    │   └── ...
+    └── ...
 
 """
 import os

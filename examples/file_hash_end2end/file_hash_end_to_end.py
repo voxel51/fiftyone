@@ -8,10 +8,9 @@ dataset.
 """
 import os
 import time
-from pprint import pprint
 
 import fiftyone as fo
-from fiftyone.core.datautils import parse_image_classification_dir_tree
+from fiftyone.utils.data import parse_image_classification_dir_tree
 import fiftyone.core.features as fof
 import fiftyone.core.insights as foi
 
