@@ -127,7 +127,7 @@ session.view = dataset.default_view().select(session.selected)
 Iterate over the samples and compute file hash:
 
 ```python
-for idx, sample in enumerate(dataset):
+for sample in dataset:
     # compute the insight
     file_hash = fof.compute_filehash(sample.filepath)
 
