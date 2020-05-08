@@ -162,13 +162,6 @@ class DatasetView(foc.SampleCollection):
         for idx, sample in enumerate(iterator, start=offset):
             yield idx, sample
 
-    def serialize(self):
-        """Serialize the dataset"""
-        return {
-            "dataset": self._dataset.serialize(),
-            "view": json_util.dumps(self._pipeline),
-        }
-
     def filter(
         self, tag=None, insight_group=None, label_group=None, filter=None
     ):
@@ -281,6 +274,17 @@ class DatasetView(foc.SampleCollection):
             {"$match": {"_id": {"$not": {"$in": sample_ids}}}}
         )
 
+    def serialize(self):
+        """Serializes the view.
+
+        Returns:
+            a JSON representation of the view
+        """
+        return {
+            "dataset": self._dataset.serialize(),
+            "view": json_util.dumps(self._pipeline),
+        }
+
     def _label_distributions(self):
         pipeline = self._pipeline + [
             {"$project": {"label": {"$objectToArray": "$labels"}}},
@@ -349,8 +353,6 @@ class DatasetView(foc.SampleCollection):
             }
         ]
         return list(self._get_ds_qs().aggregate(pipeline))
-
-    # PRIVATE #################################################################
 
     def _get_ds_qs(self, **kwargs):
         return self._dataset._get_query_set(**kwargs)

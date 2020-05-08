@@ -220,24 +220,6 @@ class Dataset(foc.SampleCollection):
         """
         return fov.DatasetView(self)
 
-    def serialize(self):
-        return {"name": self.name}
-
-    def aggregate(self, pipeline=None):
-        """Calls a MongoDB aggregation pipeline on the dataset
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to aggregate on
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        if pipeline is None:
-            pipeline = []
-
-        return self._get_query_set().aggregate(pipeline)
-
     @classmethod
     def from_image_classification_samples(
         cls, samples, name=None, group="ground_truth", labels_map=None,
@@ -694,6 +676,29 @@ class Dataset(foc.SampleCollection):
         )
 
         return cls.from_images(image_paths, name=name)
+
+    def serialize(self):
+        """Serializes the dataset.
+
+        Returns:
+            a JSON representation of the dataset
+        """
+        return {"name": self.name}
+
+    def aggregate(self, pipeline=None):
+        """Calls a MongoDB aggregation pipeline on the dataset.
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_query_set().aggregate(pipeline)
 
     def _load_sample(self, doc):
         sample = fos.Sample.from_doc(doc)
