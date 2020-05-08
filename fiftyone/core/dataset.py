@@ -145,6 +145,22 @@ class Dataset(foc.SampleCollection):
         """
         return fos.Sample
 
+    def summary(self):
+        """Returns a string summary of the dataset.
+
+        Returns:
+            a string summary
+        """
+        return "\n".join(
+            [
+                "Name:           %s" % self.name,
+                "Num samples:    %d" % len(self),
+                "Tags:           %s" % self.get_tags(),
+                "Label groups:   %s" % self.get_label_groups(),
+                "Insight groups: %s" % self.get_insight_groups(),
+            ]
+        )
+
     def get_tags(self):
         """Returns the list of tags in the dataset.
 
@@ -152,28 +168,6 @@ class Dataset(foc.SampleCollection):
             a list of tags
         """
         return self._get_query_set().distinct("tags")
-
-    def get_label_groups(self):
-        """Returns the list of label groups attached to at least one sample
-        in the dataset.
-
-        Returns:
-            a list of groups
-        """
-        # @todo(Tyler) This does not work with DictField
-        # return self._get_query_set().distinct("labels.group")
-        raise NotImplementedError("Not yet implemented")
-
-    def get_insight_groups(self):
-        """Returns the list of insight groups attached to at least one sample
-        in the dataset.
-
-        Returns:
-            a list of groups
-        """
-        # @todo(Tyler) This does not work with DictField
-        # return self._get_query_set().distinct("insights.group")
-        raise NotImplementedError("Not yet implemented")
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -225,6 +219,21 @@ class Dataset(foc.SampleCollection):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return fov.DatasetView(self)
+
+    def aggregate(self, pipeline=None):
+        """Calls a MongoDB aggregation pipeline on the dataset
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_query_set().aggregate(pipeline)
 
     @classmethod
     def from_image_classification_samples(

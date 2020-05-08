@@ -112,6 +112,7 @@ class ODMMetadata(EmbeddedDocument):
 
     size_bytes = IntField()
     mime_type = StringField()
+
     meta = {"allow_inheritance": True}
 
 
@@ -185,7 +186,7 @@ class ODMInsight(EmbeddedDocument):
 class ODMFileHashInsight(ODMInsight):
     """Backing document for file hash insights."""
 
-    file_hash = StringField()
+    file_hash = IntField()
 
 
 class ODMSample(ODMDocument):
@@ -197,6 +198,7 @@ class ODMSample(ODMDocument):
     tags = ListField(StringField())
     insights = DictField(EmbeddedDocumentField(ODMInsight))
     labels = DictField(EmbeddedDocumentField(ODMLabel))
+
     # @todo(Tyler) replace the unique index on "filepath" with a unique on
     # "filepath" + "dataset"
     meta = {"allow_inheritance": True, "indexes": ["dataset", "filepath"]}
