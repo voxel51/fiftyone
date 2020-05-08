@@ -41,10 +41,12 @@ const _Sidebar = (props) => {
         <Menu.Item as="h4">
           View
           <Menu inverted vertical>
-            <Menu.Item as="pre">
-              {state && state.view
-                ? JSON.stringify(state.view.view, null, 2)
-                : "Empty view"}
+            <Menu.Item as="div" style={{ overflowX: "auto" }}>
+              <pre>
+                {state && state.view
+                  ? JSON.stringify(JSON.parse(state.view.view), null, 2)
+                  : "Empty view"}
+              </pre>
             </Menu.Item>
           </Menu>
         </Menu.Item>
