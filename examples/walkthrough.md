@@ -260,7 +260,7 @@ print(view.head())
 
 ## Launching a dashboard session
 
-```
+```py
 # Launch the FiftyOne dashboard
 session = fo.launch_dashboard()
 
@@ -270,11 +270,11 @@ session.dataset = dataset
 # Show five random samples in the dashboard
 session.view = dataset.default_view().take(5)
 
-# Get currently selected samples from the dashboard
-sample_ids = session.selected
+# Show the full dataset again
+session.view = None
 
 # Print details about the selected samples
-view = dataset.default_view().select(sample_ids)
+print(dataset.default_view().select(session.selected).head())
 ```
 
 
