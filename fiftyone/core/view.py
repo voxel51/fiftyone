@@ -369,9 +369,6 @@ class DatasetView(foc.SampleCollection):
         view._pipeline.append(stage)
         return view
 
-    def _get_ds_qs(self, **kwargs):
-        return self._dataset._get_query_set(**kwargs)
-
     def _get_latest_offset(self):
         """Returns the offset of the last $skip stage."""
         for stage in self._pipeline[::-1]:
