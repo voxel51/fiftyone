@@ -125,13 +125,13 @@ query.export(dataset, export_dir, pretty_print=True)
 # @todo(Tyler)
 # import os
 # import eta.core.datasets as etads
-# import fiftyone.core.tfutils as fotu
+# import fiftyone.utils.tf as fout
 #
 # labeled_dataset = etads.load_dataset(export_dir)
 # tf_records_path = os.path.join(export_dir, "dataset.tfrecords")
-# fotu.write_image_classification_tf_records(labeled_dataset, tf_records_path)
+# fout.write_image_classification_tf_records(labeled_dataset, tf_records_path)
 #
 # # Load the TFRecords back and print them
-# tf_dataset = fotu.load_image_classification_tf_records(tf_records_path)
+# tf_dataset = fout.load_image_classification_tf_records(tf_records_path)
 # for img, label in tf_dataset.as_numpy_iterator():
 #     print("Image: %s, label: %s" % (img.shape, label.decode()))

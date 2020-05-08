@@ -25,8 +25,8 @@ import resource
 
 import eta.core.utils as etau
 
-import fiftyone.core.datautils as fodu
 import fiftyone.core.utils as fou
+import fiftyone.utils.data as foud
 import fiftyone.types as fot
 import fiftyone.zoo as foz
 
@@ -432,7 +432,7 @@ foz.AVAILABLE_DATASETS.update(
 
 
 class _TFDSImageClassificationSampleParser(
-    fodu.ImageClassificationSampleParser
+    foud.ImageClassificationSampleParser
 ):
     def __init__(self, image_field="image", label_field="label", **kwargs):
         super(_TFDSImageClassificationSampleParser, self).__init__(**kwargs)
@@ -452,7 +452,7 @@ class _TFDSImageClassificationSampleParser(
         )
 
 
-class _TFDSImageDetectionSampleParser(fodu.ImageDetectionSampleParser):
+class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
     def __init__(self, image_field="image", objects_field="objects", **kwargs):
         super(_TFDSImageDetectionSampleParser, self).__init__(**kwargs)
         self.image_field = image_field
@@ -531,14 +531,14 @@ def _download_and_prepare(
     sample_parser.labels_map = labels_map
     num_samples = info.splits[split].num_examples
 
-    if isinstance(sample_parser, fodu.ImageClassificationSampleParser):
-        write_dataset_fcn = fodu.to_image_classification_dataset
+    if isinstance(sample_parser, foud.ImageClassificationSampleParser):
+        write_dataset_fcn = foud.to_image_classification_dataset
         format = fot.ImageClassificationDataset
-    elif isinstance(sample_parser, fodu.ImageDetectionSampleParser):
-        write_dataset_fcn = fodu.to_image_detection_dataset
+    elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
+        write_dataset_fcn = foud.to_image_detection_dataset
         format = fot.ImageDetectionDataset
-    elif isinstance(sample_parser, fodu.ImageLabelsSampleParser):
-        write_dataset_fcn = fodu.to_image_labels_dataset
+    elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
+        write_dataset_fcn = foud.to_image_labels_dataset
         format = fot.ImageLabelsDataset
     else:
         raise ValueError("Unsupported sample parser: %s" % sample_parser)
