@@ -74,8 +74,6 @@ function SampleList(props) {
           return {
             src: src,
             thumbnail: src,
-            thumbnailWidth: samples[k].metadata.width,
-            thumbnailHeight: samples[k].metadata.height,
             sample: sample,
             tags: makeTags(labels),
           };
