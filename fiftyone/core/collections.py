@@ -93,7 +93,7 @@ class SampleCollection(object):
             },
         ]
         try:
-            return next(self.aggregate(pipeline))["all_groups"]
+            return next(self._aggregate(pipeline))["all_groups"]
         except StopIteration:
             pass
         return []
@@ -116,7 +116,7 @@ class SampleCollection(object):
             },
         ]
         try:
-            return next(self.aggregate(pipeline))["all_groups"]
+            return next(self._aggregate(pipeline))["all_groups"]
         except StopIteration:
             pass
         return []
@@ -129,7 +129,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def aggregate(self, pipeline=None):
+    def _aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the collection.
 
         Args:
@@ -139,7 +139,7 @@ class SampleCollection(object):
         Returns:
             an iterable over the aggregation result
         """
-        raise NotImplementedError("Subclass must implement aggregate()")
+        raise NotImplementedError("Subclass must implement _aggregate()")
 
     def export(self, group, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,

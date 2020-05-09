@@ -685,7 +685,7 @@ class Dataset(foc.SampleCollection):
         """
         return {"name": self.name}
 
-    def aggregate(self, pipeline=None):
+    def _aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the dataset.
 
         Args:

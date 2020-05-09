@@ -58,7 +58,7 @@ class DatasetView(foc.SampleCollection):
 
     def __len__(self):
         try:
-            result = self.aggregate([{"$count": "count"}])
+            result = self._aggregate([{"$count": "count"}])
             return next(result)["count"]
         except StopIteration:
             pass
@@ -68,7 +68,7 @@ class DatasetView(foc.SampleCollection):
         try:
             # Find `sample_id` in the pipeline
             pipeline = [{"$match": {"_id": ObjectId(sample_id)}}]
-            next(self.aggregate(pipeline))
+            next(self._aggregate(pipeline))
             found = True
         except StopIteration:
             found = False
@@ -118,7 +118,7 @@ class DatasetView(foc.SampleCollection):
             {"$group": {"_id": "None", "all_tags": {"$addToSet": "$tags"}}},
         ]
         try:
-            return next(self.aggregate(pipeline))["all_tags"]
+            return next(self._aggregate(pipeline))["all_tags"]
         except StopIteration:
             pass
         return []
@@ -129,7 +129,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self.aggregate():
+        for d in self._aggregate():
             yield self._deserialize_sample(d)
 
     def iter_samples_with_index(self):
@@ -259,7 +259,7 @@ class DatasetView(foc.SampleCollection):
             {"$match": {"_id": {"$not": {"$in": sample_ids}}}}
         )
 
-    def aggregate(self, pipeline=None):
+    def _aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.
 
         Args:
