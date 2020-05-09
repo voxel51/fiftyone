@@ -285,73 +285,12 @@ class DatasetView(foc.SampleCollection):
             "view": json_util.dumps(self._pipeline),
         }
 
-    def _label_distributions(self):
-        pipeline = self._pipeline + [
-            {"$project": {"label": {"$objectToArray": "$labels"}}},
-            {"$unwind": "$label"},
-            {"$project": {"group": "$label.k", "label": "$label.v.label"}},
-            {
-                "$group": {
-                    "_id": {"group": "$group", "label": "$label"},
-                    "count": {"$sum": 1},
-                }
-            },
-            {
-                "$group": {
-                    "_id": "$_id.group",
-                    "labels": {
-                        "$push": {"label": "$_id.label", "count": "$count"}
-                    },
-                }
-            },
-        ]
+    def _get_label_distributions(self):
+        pipeline = self._pipeline + _LABEL_DISTRIBUTIONS_PIPELINE
         return list(self._get_ds_qs().aggregate(pipeline))
 
-    def _facets(self):
-        pipeline = self._pipeline + [
-            {
-                "$facet": {
-                    "tags": [
-                        {"$project": {"tag": "$tags"}},
-                        {
-                            "$unwind": {
-                                "path": "$tag",
-                                "preserveNullAndEmptyArrays": True,
-                            }
-                        },
-                        {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
-                        {"$sort": {"_id": 1}},
-                    ],
-                    "labels": [
-                        {"$project": {"label": {"$objectToArray": "$labels"}}},
-                        {"$unwind": "$label"},
-                        {
-                            "$project": {
-                                "group": "$label.k",
-                                "label": "$label.v.label",
-                            }
-                        },
-                        {
-                            "$group": {
-                                "_id": {"group": "$group", "label": "$label"},
-                                "count": {"$sum": 1},
-                            }
-                        },
-                        {
-                            "$group": {
-                                "_id": "$_id.group",
-                                "labels": {
-                                    "$push": {
-                                        "label": "$_id.label",
-                                        "count": "$count",
-                                    }
-                                },
-                            }
-                        },
-                    ],
-                }
-            }
-        ]
+    def _get_facets(self):
+        pipeline = self._pipeline + _FACETS_PIPELINE
         return list(self._get_ds_qs().aggregate(pipeline))
 
     def _get_ds_qs(self, **kwargs):
@@ -372,9 +311,73 @@ class DatasetView(foc.SampleCollection):
         return view
 
     def _get_latest_offset(self):
-        """Returns the offset of the last $skip stage."""
         for stage in self._pipeline[::-1]:
             if "$skip" in stage:
                 return stage["$skip"]
 
         return 0
+
+
+_LABEL_DISTRIBUTIONS_PIPELINE = [
+    {"$project": {"label": {"$objectToArray": "$labels"}}},
+    {"$unwind": "$label"},
+    {"$project": {"group": "$label.k", "label": "$label.v.label"}},
+    {
+        "$group": {
+            "_id": {"group": "$group", "label": "$label"},
+            "count": {"$sum": 1},
+        }
+    },
+    {
+        "$group": {
+            "_id": "$_id.group",
+            "labels": {"$push": {"label": "$_id.label", "count": "$count"}},
+        }
+    },
+]
+
+
+_FACETS_PIPELINE = [
+    {
+        "$facet": {
+            "tags": [
+                {"$project": {"tag": "$tags"}},
+                {
+                    "$unwind": {
+                        "path": "$tag",
+                        "preserveNullAndEmptyArrays": True,
+                    }
+                },
+                {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
+                {"$sort": {"_id": 1}},
+            ],
+            "labels": [
+                {"$project": {"label": {"$objectToArray": "$labels"}}},
+                {"$unwind": "$label"},
+                {
+                    "$project": {
+                        "group": "$label.k",
+                        "label": "$label.v.label",
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": {"group": "$group", "label": "$label"},
+                        "count": {"$sum": 1},
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$_id.group",
+                        "labels": {
+                            "$push": {
+                                "label": "$_id.label",
+                                "count": "$count",
+                            }
+                        },
+                    }
+                },
+            ],
+        }
+    }
+]
