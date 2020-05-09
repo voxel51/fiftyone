@@ -20,6 +20,7 @@ from builtins import *
 
 import datetime
 import logging
+import numbers
 import os
 
 import eta.core.utils as etau
@@ -124,6 +125,15 @@ class Dataset(foc.SampleCollection):
         return self._get_query_set().count()
 
     def __getitem__(self, sample_id):
+        if isinstance(sample_id, numbers.Integral):
+            raise ValueError(
+                "Accessing samples by numeric index is not supported. "
+                "Use sample IDs or slices"
+            )
+
+        if isinstance(sample_id, slice):
+            return self.default_view()[sample_id]
+
         samples = self._get_query_set(id=sample_id)
         if not samples:
             raise ValueError("No sample found with ID '%s'" % sample_id)
@@ -160,6 +170,30 @@ class Dataset(foc.SampleCollection):
                 "Insight groups: %s" % self.get_insight_groups(),
             ]
         )
+
+    def head(self, num_samples=3):
+        """Returns a string representation of the first few samples in the
+        dataset.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return self.default_view().head(num_samples=num_samples)
+
+    def tail(self, num_samples=3):
+        """Returns a string representation of the last few samples in the
+        dataset.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return self.default_view().tail(num_samples=num_samples)
 
     def get_tags(self):
         """Returns the list of tags in the dataset.
