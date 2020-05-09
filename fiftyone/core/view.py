@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from copy import copy, deepcopy
+import numbers
 
 from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
@@ -62,18 +63,24 @@ class DatasetView(foc.SampleCollection):
             return next(result)["count"]
         except StopIteration:
             pass
+
         return 0
 
     def __getitem__(self, sample_id):
+        if isinstance(sample_id, numbers.Integral):
+            raise ValueError(
+                "Accessing samples by numeric index is not supported. "
+                "Use sample IDs or slices"
+            )
+
+        if isinstance(sample_id, slice):
+            return self._slice(sample_id)
+
         try:
-            # Find `sample_id` in the pipeline
+            # Ensure `sample_id` is in the view
             pipeline = [{"$match": {"_id": ObjectId(sample_id)}}]
             next(self.aggregate(pipeline))
-            found = True
         except StopIteration:
-            found = False
-
-        if not found:
             raise KeyError("No sample found with ID '%s'" % sample_id)
 
         return self._dataset[sample_id]
@@ -218,36 +225,41 @@ class DatasetView(foc.SampleCollection):
         order = DESCENDING if reverse else ASCENDING
         return self._copy_with_new_stage({"$sort": {field: order}})
 
-    def take(self, size, random=False):
-        """Takes the given number of samples from the view.
-
-        Args:
-            size: the number of samples to return
-            random (False): whether to randomly select the samples
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        if random:
-            stage = {"$sample": {"size": size}}
-        else:
-            stage = {"$limit": size}
-
-        return self._copy_with_new_stage(stage)
-
-    def offset(self, offset):
+    def skip(self, skip):
         """Omits the given number of samples from the head of the view.
 
         Args:
-            offset: the offset
+            skip: the number of samples to skip
 
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage({"$skip": offset})
+        return self._copy_with_new_stage({"$skip": skip})
+
+    def limit(self, limit):
+        """Limits the view to the given number of samples.
+
+        Args:
+            num: the maximum number of samples to return
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage({"$limit": limit})
+
+    def sample(self, size):
+        """Randomly samples the given number of samples from the view.
+
+        Args:
+            size: the number of samples to return
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage({"$sample": {"size": size}})
 
     def select(self, sample_ids):
-        """Selects only the samples with the given IDs from the view.
+        """Selects the samples with the given IDs from the view.
 
         Args:
             sample_ids: an iterable of sample IDs
@@ -284,6 +296,37 @@ class DatasetView(foc.SampleCollection):
             "dataset": self._dataset.serialize(),
             "view": json_util.dumps(self._pipeline),
         }
+
+    def _slice(self, s):
+        if s.step is not None and s.step != 1:
+            raise ValueError(
+                "Unsupported slice '%s'; step is not supported" % s
+            )
+
+        _len = None
+
+        start = s.start
+        if start is not None and start < 0:
+            _len = len(self)
+            start += _len
+
+        stop = s.stop
+        if stop is not None and stop < 0:
+            if _len is None:
+                _len = len(self)
+
+            stop += _len
+
+        if start is None:
+            if stop is None:
+                return self
+
+            return self.limit(stop)
+
+        if stop is None:
+            return self.skip(start)
+
+        return self.skip(start).limit(stop - start)
 
     def _label_distributions(self):
         pipeline = self._pipeline + [
