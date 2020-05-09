@@ -1,6 +1,9 @@
 """
-Core Module for `fiftyone` Session class
+Session class for the FiftyOne app.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -10,47 +13,41 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
 import fiftyone.core.view as fov
 
-# global session singleton
+
+# Global session singleton
 session = None
 
 
 def launch_dashboard(dataset=None, view=None):
-    """Luanches the FiftyOne App.
+    """Luanches the FiftyOne dashboard.
 
     Args:
-        dataset: (optional) the dataset
-        view: (optional) the view
+        dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
+            load
+        view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
+            load
 
     Returns:
-        a Session instance
+        a :class:`Session`
     """
-    global session
+    global session  # pylint: disable=global-statement
     session = Session()
     session.dataset = dataset
     session.view = view
     return session
 
 
-def update_state(func):
-    """Update state descorator.
-
-    Args:
-        func: the Session method to decorate
-
-    Returns:
-        the wrapped function
-    """
-
+def _update_state(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         self._update_state()
@@ -60,21 +57,29 @@ def update_state(func):
 
 
 class Session(foc.HasClient):
-    """Sessions have a 1-to-1 shared state with the GUI."""
+    """Session class that maintains a 1-1 shared state with the FiftyOne app.
+
+    Args:
+        dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
+            load
+        view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
+            load
+    """
 
     _HC_NAMESPACE = "state"
     _HC_ATTR_NAME = "state"
     _HC_ATTR_TYPE = StateDescription
 
-    def __init__(
-        self, dataset=None, view=None,
-    ):
+    def __init__(self, dataset=None, view=None):
         if session is not None:
             raise ValueError("Only one session is permitted")
+
         self._app_service = fos.AppService()
-        super(Session, self).__init__()
         self._dataset = None
         self._view = None
+        self.state = None
+
+        super(Session, self).__init__()
 
         if dataset is not None and view is not None:
             assert view.dataset == dataset, (
@@ -92,44 +97,61 @@ class Session(foc.HasClient):
 
     @property
     def dataset(self):
+        """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
+        """
         if self.view is not None:
-            return self.view.dataset
+            return self.view._dataset
+
         return self._dataset
 
     @property
-    def selected(self):
-        return list(self.state.selected)
+    def view(self):
+        """The :class:`fiftyone.core.view.DatasetView` connected to the
+        session, or ``None`` if no view is connected.
+        """
+        return self._view
 
     @property
-    def view(self):
-        return self._view
+    def selected(self):
+        """A list of sample IDs of the currently selected samples in the
+        FiftyOne app.
+        """
+        return list(self.state.selected)
 
     # SETTERS #################################################################
 
     @dataset.setter
-    @update_state
+    @_update_state
     def dataset(self, dataset):
         self._dataset = dataset
         self.state.selected = []
 
     @view.setter
-    @update_state
+    @_update_state
     def view(self, view):
         self._view = view
         if view is not None:
             self._dataset = self._view._dataset
         else:
             self._view = None
+
         self.state.selected = []
 
     # CLEAR STATE #############################################################
 
-    @update_state
+    @_update_state
     def clear_dataset(self):
+        """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
+        session, if any.
+        """
         self._dataset = None
+        self._view = None
 
-    @update_state
+    @_update_state
     def clear_view(self):
+        """Clears the current :class:`fiftyone.core.view.DatasetView` from the
+        session, if any.
+        """
         self._view = None
 
     # PRIVATE #################################################################
@@ -145,6 +167,7 @@ class Session(foc.HasClient):
         dataset_or_view = self.view if self.view else self.dataset
         if dataset_or_view:
             return len(dataset_or_view)
+
         return 0
 
     def _compute_samples(self):
