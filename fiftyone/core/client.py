@@ -1,5 +1,5 @@
 """
-Core module that defines web socket client mixins for the SDK.
+Web socket client mixins.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -34,44 +33,36 @@ logging.getLogger("engineio").setLevel(logging.ERROR)
 class BaseClient(socketio.ClientNamespace):
     """SocketIO Client.
 
-    It is possible to add any arbitrary `on_my_event()` method to a socketio
-    ClientNamespace, but using a single generic `on_update()` is sufficient.
+    It is possible to add any arbitrary ``on_my_event()`` method to a socketio
+    ClientNamespace, but using a single generic ``on_update()`` is sufficient.
 
     Organizing message categories can instead be done by subclassing
-    `HasClient`.
+    :class:`HasClient`.
 
     Attributes:
         data: the current data
         data_cls: the data cls to load updated data as
+
+    Args:
+        namespace: client namespace
+        data_cls: data class type (must be ``eta.core.serial.Serializable``)
     """
 
     def __init__(self, namespace, data_cls):
-        """Creates a BaseClient
-
-        Args:
-            namespace: client namespace
-            data_cls: data class type (must be Serializable)
-        """
         self.data_cls = data_cls
         self.data = data_cls()
         super(BaseClient, self).__init__(namespace)
 
     def on_connect(self):
-        """Receive the "connect" event.
-
-        Nothing is required of us at the moment
-        """
+        """Receives the "connect" event."""
         pass
 
     def on_disconnect(self):
-        """Receive the "disconnect" event.
-
-        Nothing is required of us at the moment
-        """
+        """Receives the "disconnect" event."""
         pass
 
     def on_update(self, data):
-        """Receive an update.
+        """Receives an update.
 
         Args:
             data: the new data
@@ -79,7 +70,7 @@ class BaseClient(socketio.ClientNamespace):
         self.data = self.data_cls.from_dict(data)
 
     def update(self, data):
-        """Send an update.
+        """Sends an update.
 
         Args:
             data: the new data
@@ -89,16 +80,16 @@ class BaseClient(socketio.ClientNamespace):
 
 
 class HasClient(object):
-    """HasClient is a mixin that supports maintaining a shared state of data
-    using web sockets.
+    """Mixin that supports maintaining a shared state of data using web
+    sockets.
 
-    `_HC_NAMESPACE` and `_HC_ATTR_NAME` MUST be set by subclasses at the class
-    level.
+    Subclasses must set the ``_HC_NAMESPACE`` and ``_HC_ATTR_NAME`` class
+    attributes.
 
     Attributes:
-        _HC_NAMESPACE: The socketio namespace to use. To be set by subclasses.
+        _HC_NAMESPACE: The socketio namespace to use
         _HC_ATTR_NAME: The attribute name to use for that shared data. The data
-            must be a subclass of eta.core.serial.Serializable
+            must be a subclass of ``eta.core.serial.Serializable``
     """
 
     _HC_NAMESPACE = None
@@ -106,7 +97,6 @@ class HasClient(object):
     _HC_ATTR_TYPE = None
 
     def __init__(self):
-        """Creates the SocketIO client"""
         self._hc_sio = socketio.Client()
         # the following is a monkey patch to set threads to daemon mode
         self._hc_sio.eio.start_background_task = _start_background_task
@@ -117,12 +107,14 @@ class HasClient(object):
         self._hc_sio.connect(foc.SERVER_ADDR)
 
     def __getattr__(self, name):
-        """Get the data via the attribute defined by `_HC_ATTR_NAME`."""
+        """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
             return self._hc_client.data
 
+        return None
+
     def __setattr__(self, name, value):
-        """Set the data to the attribute defined by `_HC_ATTR_NAME`."""
+        """Sets the data to the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
             if self._HC_ATTR_TYPE is not None and not isinstance(
                 value, self._HC_ATTR_TYPE
@@ -137,25 +129,26 @@ class HasClient(object):
 
 
 def _start_background_task(target, *args, **kwargs):
-    """We are monkey patching here to start threads in `daemon` mode.
+    """We are monkey patching here to start threads in ``daemon`` mode.
 
-    ### Original Docs Below ###
+    Original docs below:
 
-    The patch allows for clean exits out of python.
+        The patch allows for clean exits out of python.
 
-    Start a background task.
+        Start a background task.
 
-    This is a utility function that applications can use to start a
-    background task.
+        This is a utility function that applications can use to start a
+        background task.
 
     Args:
-        target: the target function to execute.
-        args: arguments to pass to the function.
-        kwargs: keyword arguments to pass to the function.
+        target: the target function to execute
+        *args: arguments to pass to the function
+        **kwargs: keyword arguments to pass to the function
 
-    This function returns an object compatible with the `Thread` class in
-    the Python standard library. The `start()` method on this object is
-    already called by this function.
+    Returns:
+        an object compatible with the ``Thread`` class in the Python standard
+        library. The ``start()`` method on this object is called by this
+        function before returning it
     """
     th = threading.Thread(target=target, args=args, kwargs=kwargs, daemon=True)
     th.start()
