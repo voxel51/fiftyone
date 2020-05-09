@@ -77,7 +77,6 @@ class Session(foc.HasClient):
         self._app_service = fos.AppService()
         self._dataset = None
         self._view = None
-        self.state = None
 
         super(Session, self).__init__()
 
