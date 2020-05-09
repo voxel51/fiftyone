@@ -29,8 +29,8 @@ The dataset is organized on disk as follows:
     └── ...
 ```
 
-As we will soon come to discover, some of these samples are duplicates and
-we have no clue which they are!
+As we will soon come to discover, some of these samples are duplicates and we
+have no clue which they are!
 
 ## Walkthrough
 
@@ -44,7 +44,6 @@ import os
 import fiftyone as fo
 from fiftyone.utils.data import parse_image_classification_dir_tree
 import fiftyone.core.features as fof
-import fiftyone.core.insights as foi
 ```
 
 ### 1. Create a `fiftyone.Dataset`
@@ -135,9 +134,7 @@ for idx, sample in enumerate(dataset):
     file_hash = fof.compute_filehash(sample.filepath)
 
     # add the insight to the sample
-    sample.add_insight(
-        "file_hash", foi.FileHashInsight.create(file_hash=file_hash)
-    )
+    sample.add_insight("file_hash", fo.IntInsight.create(file_hash))
 
 print(dataset.summary())
 ```
@@ -159,13 +156,13 @@ session.dataset = dataset
 
 ### 5. Check for duplicates
 
-We are using a more powerful query here to search for all file hashes with
-more than sample:
+We are using a more powerful query here to search for all file hashes with more
+than sample:
 
 ```python
 pipeline = [
     # find all unique file hashes
-    {"$group": {"_id": "$insights.file_hash.file_hash", "count": {"$sum": 1}}},
+    {"$group": {"_id": "$insights.file_hash.value", "count": {"$sum": 1}}},
     # filter out file hashes with a count of 1
     {"$match": {"count": {"$gt": 1}}},
 ]
@@ -180,7 +177,7 @@ that contrains to only samples with these file hashes:
 print("Number of unique images that are duplicated: %d" % len(dup_filehashes))
 
 view = dataset.default_view().filter(
-    filter={"insights.file_hash.file_hash": {"$in": dup_filehashes}}
+    filter={"insights.file_hash.value": {"$in": dup_filehashes}}
 )
 
 print("Number of images that have a duplicate: %d" % len(view))
@@ -191,7 +188,7 @@ print("Number of duplicates: %d" % (len(view) - len(dup_filehashes)))
 And we can always visualize views!
 
 ```python
-session.view = view.sort_by("insights.file_hash.file_hash")
+session.view = view.sort_by("insights.file_hash.value")
 ```
 
 ### 6. Delete duplicates
@@ -208,7 +205,7 @@ for d in dataset.aggregate(pipeline):
 
     view = (
         dataset.default_view()
-        .filter(filter={"insights.file_hash.file_hash": file_hash})
+        .filter(filter={"insights.file_hash.value": file_hash})
         .take(count - 1)
     )
 
@@ -219,14 +216,14 @@ print("Length of dataset after: %d" % len(dataset))
 ```
 
 Alternatively, it also would be possible to create a view with all of the
-duplicates "to be deleted" and then iterate over our own non-`fiftyone` code
-to delete these files from the original dataset.
+duplicates "to be deleted" and then iterate over our own non-`fiftyone` code to
+delete these files from the original dataset.
 
 ### 7. Export
 
-In this lightweight workflow none of the work down with `fiftyone` persists.
-As mentioned above we could have used fiftyone to tell us which samples we
-needed to delete.
+In this lightweight workflow none of the work down with `fiftyone` persists. As
+mentioned above we could have used fiftyone to tell us which samples we needed
+to delete.
 
 But we have a very small dataset here, so we could just export a copy:
 
@@ -236,5 +233,4 @@ dataset.export(group="ground_truth", export_dir="/tmp/fiftyone/export")
 
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

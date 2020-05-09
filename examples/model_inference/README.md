@@ -4,21 +4,22 @@ This walkthrough provides a glimpse into the possibilities for integrating
 FiftyOne into your machine learning workflows. It covers the following
 concepts:
 
-- Loading your existing dataset in FiftyOne
-- Adding predictions from your model to your FiftyOne dataset
-- Launching the FiftyOne dashboard and visualizing/exploring your data
-- Integrating the dashboard into your data wrangling workflow
+-   Loading your existing dataset in FiftyOne
+-   Adding predictions from your model to your FiftyOne dataset
+-   Launching the FiftyOne dashboard and visualizing/exploring your data
+-   Integrating the dashboard into your data wrangling workflow
 
 ## Setup
 
-- Install `torch` and `torchvision`, if necessary:
+-   Install `torch` and `torchvision`, if necessary:
 
 ```
 pip install torch
 pip install torchvision
 ```
 
-- Download the test split of the CIFAR-10 dataset to `~/fiftyone/cifar10/test`:
+-   Download the test split of the CIFAR-10 dataset to
+    `~/fiftyone/cifar10/test`:
 
 ```py
 import fiftyone.zoo as foz
@@ -31,7 +32,7 @@ foz.load_zoo_dataset("cifar10")
 foo.drop_database()
 ```
 
-- Download some pretrained CIFAR-10 PyTorch models
+-   Download some pretrained CIFAR-10 PyTorch models
 
 ```
 # Download the software
@@ -216,7 +217,6 @@ def predict(model, imgs):
 #
 
 model = inception_v3(pretrained=True)
-model_name = "inception_v3"
 
 #
 # Extract a few images to process
@@ -243,10 +243,12 @@ for imgs, sample_ids in data_loader:
     ):
         sample = dataset[sample_id]
         sample.add_label(
-            model_name, fo.ClassificationLabel.create(labels_map[prediction])
+            "inception_v3",
+            fo.ClassificationLabel.create(labels_map[prediction]),
         )
         sample.add_insight(
-            model_name, fo.ScalarInsight.create("confidence", confidence)
+            "inception_v3-confidence",
+            fo.ScalarInsight.create(confidence),
         )
 
 #
@@ -262,8 +264,8 @@ print(view.head(batch_size))
 #
 
 pred_view = (dataset.default_view()
-    .filter(filter={"insights.inception_v3.name": "confidence"})
-    .sort_by("insights.inception_v3.scalar", reverse=True)
+    .sort_by("insights.inception_v3-confidence.value", reverse=True)
+    .take(num_samples)
 )
 print(len(pred_view))
 print(pred_view.head())
@@ -302,5 +304,4 @@ print(selected_view.head())
 
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
