@@ -260,7 +260,7 @@ class DatasetView(foc.SampleCollection):
         )
 
     def aggregate(self, pipeline=None):
-        """Calls a MongoDB aggregation pipeline on the view
+        """Calls the current MongoDB aggregation pipeline on the view.
 
         Args:
             pipeline (None): an optional aggregation pipeline (list of dicts)
