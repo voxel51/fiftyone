@@ -1,5 +1,5 @@
 """
-Core definitions of FiftyOne datasets.
+FiftyOne datasets.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -719,8 +719,8 @@ class Dataset(foc.SampleCollection):
         """
         return {"name": self.name}
 
-    def aggregate(self, pipeline=None):
-        """Calls a MongoDB aggregation pipeline on the dataset.
+    def _aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the dataset.
 
         Args:
             pipeline (None): an optional aggregation pipeline (list of dicts)
