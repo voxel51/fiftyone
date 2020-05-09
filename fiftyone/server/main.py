@@ -5,6 +5,19 @@ FiftyOne Flask server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
+
 import logging
 
 from flask import Flask, request, send_file
@@ -12,17 +25,18 @@ from flask_socketio import emit, Namespace, SocketIO
 
 import fiftyone.core.state as fos
 
+
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "fiftyone"
+
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origin="*")
 
 
 @app.route("/")
 def get_sample_media():
-    """
-    Get the sample media
+    """Gets the sample media.
 
     Returns:
         bytes
@@ -31,16 +45,7 @@ def get_sample_media():
     return send_file(path)
 
 
-def load_state(func):
-    """Load state descorator.
-
-    Args:
-        func: the StateController method to decorate
-
-    Returns:
-        the wrapped function
-    """
-
+def _load_state(func):
     def wrapper(self, *args, **kwargs):
         state = fos.StateDescription.from_dict(self.state)
         state = func(self, state, *args, **kwargs)
@@ -52,70 +57,72 @@ def load_state(func):
 
 
 class StateController(Namespace):
-    """Controller for state
+    """State controller.
 
     Attributes:
-        state: a StateDescription instance
+        state: a :class:`fiftyone.core.state.StateDescription` instance
+
+    Args:
+        **args: postional arguments for ``flask_socketio.Namespace``
+        **kwargs: keyword arguments for ``flask_socketio.Namespace``
     """
 
     def __init__(self, *args, **kwargs):
-        """Creates a StateController instance.
-
-        Args:
-            *args: args tuple or list
-            **kwargs: kwargs dictionary
-        """
         self.state = fos.StateDescription().serialize()
         super(StateController, self).__init__(*args, **kwargs)
 
     def on_connect(self):
-        """On connect"""
+        """Handles connection to the server."""
         pass
 
     def on_disconnect(self):
-        """On disconnect"""
+        """Handles disconnection from the server."""
         pass
 
     def on_update(self, state):
-        """Update the StateDescription
+        """Updates the state.
 
         Args:
-            state: a serialized StateDescription
+            state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
         print(state)
         self.state = state
         emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
-        """Get the current state"""
-        return self.state
-
-    @load_state
-    def on_add_selection(self, state, _id):
-        """Add a sample to the selected samples list
-
-        Args:
-            state: the current StateDescription
-            _id: the sample id
+        """Gets the current state.
 
         Returns:
-            the updated StateDescription
+            a :class:`fiftyone.core.state.StateDescription`
+        """
+        return self.state
+
+    @_load_state
+    def on_add_selection(self, state, _id):
+        """Adds a sample to the selected samples list.
+
+        Args:
+            state: the current :class:`fiftyone.core.state.StateDescription`
+            _id: the sample ID
+
+        Returns:
+            the updated :class:`fiftyone.core.state.StateDescription`
         """
         selected = set(state.selected)
         selected.add(_id)
         state.selected = list(selected)
         return state
 
-    @load_state
+    @_load_state
     def on_remove_selection(self, state, _id):
         """Remove a sample from the selected samples list
 
         Args:
-            state: the current StateDescription
-            _id: the sample id
+            state: the current :class:`fiftyone.core.state.StateDescription`
+            _id: the sample ID
 
         Returns:
-            the updated StateDescription
+            the updated :class:`fiftyone.core.state.StateDescription`
         """
         selected = set(state.selected)
         selected.remove(_id)
@@ -123,7 +130,15 @@ class StateController(Namespace):
         return state
 
     def on_page(self, page, page_length=20):
-        """Get the next state using the query iterator"""
+        """Gets the requested page of samples.
+
+        Args:
+            page: the page number
+            page_length: the page length
+
+        Returns:
+            the list of sample dicts for the page
+        """
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
@@ -131,13 +146,12 @@ class StateController(Namespace):
             view = state.dataset.default_view()
         else:
             return []
+
         view = view.offset((page - 1) * page_length).take(page_length)
-        res = [
-            s.get_backing_doc_dict(extended=True) for s in view.iter_samples()
-        ]
-        return res
+        return [s.get_backing_doc_dict(extended=True) for s in view]
 
     def on_get_label_distributions(self, _):
+        """Gets the labels distributions for the current state."""
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
@@ -148,6 +162,7 @@ class StateController(Namespace):
         return view._label_distributions()
 
     def on_get_facets(self, _):
+        """Gets the facets for the current state."""
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
@@ -165,7 +180,8 @@ class StateController(Namespace):
         elif state.dataset is not None:
             view = state.dataset.default_view()
         else:
-            raise ValueError("No view")
+            raise ValueError("No dataset found")
+
         state.view = state.dataset.default_view().filter(tag=value)
         self.state = state.serialize()
         emit("update", self.state, broadcast=True, include_self=True)
