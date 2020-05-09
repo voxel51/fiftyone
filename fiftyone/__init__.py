@@ -37,8 +37,10 @@ from .core.dataset import (
 )
 from .core.insights import (
     Insight,
+    IntInsight,
     ScalarInsight,
-    FileHashInsight,
+    StringInsight,
+    DictInsight,
 )
 from .core.labels import (
     Label,
