@@ -183,17 +183,28 @@ class ODMInsight(EmbeddedDocument):
     meta = {"allow_inheritance": True}
 
 
+class ODMIntInsight(ODMInsight):
+    """Backing document for integer scalar insights."""
+
+    value = IntField()
+
+
 class ODMScalarInsight(ODMInsight):
     """Backing document for numerical scalar insights."""
 
-    name = StringField()
-    scalar = FloatField()
+    value = FloatField()
 
 
-class ODMFileHashInsight(ODMInsight):
-    """Backing document for file hash insights."""
+class ODMStringInsight(ODMInsight):
+    """Backing document for string insights."""
 
-    file_hash = IntField()
+    value = StringField()
+
+
+class ODMDictInsight(ODMInsight):
+    """Backing document for arbitrary JSON-serializable dictionary insights."""
+
+    value = DictField()
 
 
 class ODMSample(ODMDocument):
