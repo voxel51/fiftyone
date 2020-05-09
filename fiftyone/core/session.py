@@ -155,7 +155,7 @@ class Session(foc.HasClient):
             self.view if self.view else fov.DatasetView(dataset=self.dataset)
         )
 
-        view = view.offset(self.offset).take(self.limit)
+        view = view.skip(self.offset).limit(self.limit)
 
         return {
             idx: sample.get_backing_doc_dict(extended=True)

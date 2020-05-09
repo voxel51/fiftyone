@@ -141,7 +141,7 @@ Here's an example operation:
 # Gets five random airplanes from the dataset
 view = (dataset.default_view()
     .filter(filter={"labels.ground_truth.label": "airplane"})
-    .take(5, random=True)
+    .sample(5)
 )
 
 # Print some information about the entire dataset
@@ -224,7 +224,7 @@ model_name = "inception_v3"
 
 num_samples = 25
 batch_size = 5
-view = dataset.default_view().take(num_samples, random=True)
+view = dataset.default_view().sample(num_samples)
 image_paths, sample_ids = zip(
     *[(s.filepath, s.id) for s in view.iter_samples()]
 )
@@ -285,7 +285,7 @@ session = fo.launch_dashboard()
 session.dataset = dataset
 
 # Show five random samples in the dashboard
-view = dataset.default_view().take(5)
+view = dataset.default_view().limit(5)
 session.view = view
 
 # Show the samples for which we previously added pre
