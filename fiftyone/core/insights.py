@@ -23,22 +23,38 @@ import fiftyone.core.odm as foo
 
 
 class Insight(fod.BackedByDocument):
-    """An insight for a :class:`fiftyone.core.sample.Sample` in a
-    :class:`fiftyone.core.dataset.Dataset`.
+    """Base class for insights attached to :class:`fiftyone.core.sample.Sample`
+    instances in a :class:`fiftyone.core.dataset.Dataset`.
 
-    Insight instances may represent simple features on the sample such as
-    the file hash or the image brightness, or more complex concepts like
-    "difficulty of classification" or "mislabel probability". They can be
-    anything from a single scalar, string or vector to a much more complicated
+    Insights may represent simple features on the sample such as the file hash
+    or the image brightness, or more complex concepts like "difficulty of
+    classification" or "mislabel probability". They can be anything from a
+    single scalar, string or vector to a much more complicated
     data structure.
+
+    Each concrete :class:`Insight` subclass supports a specific value type:
+
+        - :class:`IntInsight`: integer insights
+        - :class:`ScalarInsight`: numeric scalar insights
+        - :class:`StringInsight`: string insights
+        - :class:`DictInsight`: arbitrary JSON-serializable dict insights
     """
 
     _ODM_DOCUMENT_CLS = foo.ODMInsight
 
+    @property
+    def value(self):
+        """The insight value."""
+        return self._backing_doc.value
+
     @classmethod
-    def create(cls):
-        """Creates a :class:`Insight` instance."""
-        return cls._create()
+    def create(cls, value):
+        """Creates a :class:`Insight` instance.
+
+        Args:
+            value: the value of the insight
+        """
+        return cls._create(value=value)
 
     @classmethod
     def from_doc(cls, document):
@@ -52,64 +68,34 @@ class Insight(fod.BackedByDocument):
         return insight_cls(document)
 
 
+class IntInsight(Insight):
+    """An integer insight."""
+
+    _ODM_DOCUMENT_CLS = foo.ODMIntInsight
+
+
 class ScalarInsight(Insight):
-    """An insight that stores a numerical scalar value and a name associated
-    with it.
-    """
+    """A numeric scalar insight."""
 
     _ODM_DOCUMENT_CLS = foo.ODMScalarInsight
 
-    @property
-    def name(self):
-        """The name describing the insight."""
-        return self._backing_doc.name
 
-    @property
-    def scalar(self):
-        """The scalar value in the insight."""
-        return self._backing_doc.scalar
+class StringInsight(Insight):
+    """A string insight."""
 
-    @classmethod
-    def create(cls, name, scalar):
-        """Creates a :class:`ScalarInsight` instance.
-
-        Args:
-            name: string describing the insight
-            scalar: the real-valued scalar insight
-
-        Returns:
-            a :class:`ScalarInsight`
-        """
-        return cls._create(name=name, scalar=scalar)
+    _ODM_DOCUMENT_CLS = foo.ODMStringInsight
 
 
-class FileHashInsight(Insight):
-    """An insight that stores the file hash of the raw data associated with a
-    sample in a dataset.
-    """
+class DictInsight(Insight):
+    """An arbitrary JSON-serializable dictionary insight."""
 
-    _ODM_DOCUMENT_CLS = foo.ODMFileHashInsight
-
-    @property
-    def file_hash(self):
-        """The integer file hash."""
-        return self._backing_doc.file_hash
-
-    @classmethod
-    def create(cls, file_hash):
-        """Creates a :class:`FileHashInsight` instance.
-
-        Args:
-            file_hash: the integer file hash
-
-        Returns:
-            a :class:`FileHashInsight`
-        """
-        return cls._create(file_hash=file_hash)
+    _ODM_DOCUMENT_CLS = foo.ODMDictInsight
 
 
 _INSIGHT_CLS_MAP = {
     foo.ODMInsight: Insight,
+    foo.ODMIntInsight: IntInsight,
     foo.ODMScalarInsight: ScalarInsight,
-    foo.ODMFileHashInsight: FileHashInsight,
+    foo.ODMStringInsight: StringInsight,
+    foo.ODMDictInsight: DictInsight,
 }
