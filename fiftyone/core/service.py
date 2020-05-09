@@ -1,5 +1,5 @@
 """
-Core module that defines the FiftyOne services.
+FiftyOne Services.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import logging
 import os
 
 import eta.core.utils as etau
@@ -26,75 +25,63 @@ import eta.core.utils as etau
 import fiftyone.constants as foc
 
 
-logger = logging.getLogger(__name__)
-
-
 class Service(object):
-    """A Service is a class that implements a start method and stop method"""
+    """Interface for FiftyOne services.
+
+    All services must implement :func:`Service.start` and :func:`Service.stop`.
+    """
 
     _DEVNULL = open(os.devnull, "wb")
     _SUPPRESS = {"stderr": _DEVNULL, "stdout": _DEVNULL}
 
     def __init__(self):
-        """Creates the `Service`."""
         self._system = os.system
         self.start()
 
     def __del__(self):
-        """Destroys the `Service`."""
         self.stop()
 
     def start(self):
-        """Start the service"""
+        """Starts the service."""
         raise NotImplementedError("subclasses must implement `start()`")
 
     def stop(self):
-        """Stop the service"""
+        """Stops the service."""
         raise NotImplementedError("subclasses must implement `stop()`")
 
 
 class DatabaseService(Service):
-    """A `DatabaseService` has start and stop control over the hidden
-    installation of MongoDB.
-    """
+    """Service that controls the underlying MongoDB database."""
 
     def start(self):
-        """Start the `DatabaseService`."""
         etau.call(foc.START_DB, **self._SUPPRESS)
 
-        # drop the entire database for now (lightweight!)
+        # Drop the entire database (lightweight!)
         import fiftyone.core.odm as foo
 
         foo.drop_database()
 
     def stop(self):
-        """Stop the `DatabaseService`."""
         self._system(foc.STOP_DB)
 
 
 class ServerService(Service):
-    """A `ServerService` has start and stop control over the FiftyOne web
-    server.
-    """
+    """Service that controls the FiftyOne web server."""
 
     def start(self):
-        """Start the `ServerService`."""
         with etau.WorkingDir(foc.SERVER_DIR):
             etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
-        """Stop the `ServerService`."""
         self._system(foc.STOP_SERVER)
 
 
 class AppService(Service):
-    """An `AppService` has start and stop control over the FiftyOne app."""
+    """Service that controls the FiftyOne app."""
 
     def start(self):
-        """Start the `AppService`."""
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             etau.call(foc.START_APP, **self._SUPPRESS)
 
     def stop(self):
-        """Stop the `AppService`."""
         self._system(foc.STOP_APP)
