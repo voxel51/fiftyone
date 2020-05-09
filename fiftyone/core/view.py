@@ -132,21 +132,6 @@ class DatasetView(foc.SampleCollection):
         for d in self.aggregate():
             yield self._deserialize_sample(d)
 
-    def aggregate(self, pipeline=None):
-        """Calls a MongoDB aggregation pipeline on the view
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before aggregation.
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        if pipeline is None:
-            pipeline = []
-
-        return self._get_ds_qs().aggregate(self._pipeline + pipeline)
-
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
         their integer index in the collection.
@@ -273,6 +258,21 @@ class DatasetView(foc.SampleCollection):
         return self._copy_with_new_stage(
             {"$match": {"_id": {"$not": {"$in": sample_ids}}}}
         )
+
+    def aggregate(self, pipeline=None):
+        """Calls a MongoDB aggregation pipeline on the view
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to append to the view's pipeline before aggregation.
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_ds_qs().aggregate(self._pipeline + pipeline)
 
     def serialize(self):
         """Serializes the view.
