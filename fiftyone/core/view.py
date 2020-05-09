@@ -41,12 +41,9 @@ class DatasetView(foc.SampleCollection):
 
     Example use::
 
-        # Print the paths to 5 random data samples in the dataset
-        view =
-            .sort_by("metadata.size_bytes")
-            .take(5)
-        )
-        for sample in dataset.default_view().take(5, random=True):
+        # Print the paths for 5 random samples in the dataset
+        view = dataset.default_view().sample(5)
+        for sample in view:
             print(sample.filepath)
 
     Args:
