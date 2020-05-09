@@ -159,7 +159,8 @@ class StateController(Namespace):
             view = state.dataset.default_view()
         else:
             return []
-        return view._label_distributions()
+
+        return view._get_label_distributions()
 
     def on_get_facets(self, _):
         """Gets the facets for the current state."""
@@ -170,10 +171,16 @@ class StateController(Namespace):
             view = state.dataset.default_view()
         else:
             return []
-        return view._facets()
 
-    def on_set_facets(self, facet):
-        name, value = facet.split(".")
+        return view._get_facets()
+
+    def on_set_facets(self, facets):
+        """Sets the facets for the current state.
+
+        Args:
+            facets: the facets string
+        """
+        _, value = facets.split(".")
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
