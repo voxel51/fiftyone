@@ -110,6 +110,29 @@ class DatasetView(foc.SampleCollection):
             ]
         )
 
+    def head(self, num_samples=3):
+        """Returns a string representation of the first few samples in the
+        view.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return "\n".join(str(s) for s in self[:num_samples])
+
+    def tail(self, num_samples=3):
+        """Returns a string representation of the last few samples in the view.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return "\n".join(str(s) for s in self[-num_samples:])
+
     def get_tags(self):
         """Returns the list of tags in the collection.
 
