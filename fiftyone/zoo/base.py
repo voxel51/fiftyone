@@ -1,5 +1,5 @@
 """
-Base definitions of the FiftyOne Dataset Zoo.
+The FiftyOne Dataset Zoo.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

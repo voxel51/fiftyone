@@ -1,5 +1,5 @@
 """
-Core definitions of insights stored in FiftyOne dataset samples.
+Insights stored in dataset samples.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
