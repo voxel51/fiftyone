@@ -1,5 +1,5 @@
 """
-Session class for the FiftyOne app.
+Session class for interacting with the FiftyOne Dashboard.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,6 +18,9 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import atexit
+import signal
+
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
@@ -29,7 +32,10 @@ session = None
 
 
 def launch_dashboard(dataset=None, view=None):
-    """Luanches the FiftyOne dashboard.
+    """Launches the FiftyOne Dashboard.
+
+    Only one dashboard instance can be opened at a time. If this method is
+    called when another dashboard exists, the existing dashboard is closed.
 
     Args:
         dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
@@ -41,10 +47,37 @@ def launch_dashboard(dataset=None, view=None):
         a :class:`Session`
     """
     global session  # pylint: disable=global-statement
-    session = Session()
-    session.dataset = dataset
-    session.view = view
+
+    #
+    # Note, we always `close_dashboard()` here rather than just calling
+    # `session.open()` if a session already exists, because the app may have
+    # been closed in some way other than `session.close()` --- e.g., the user
+    # closing the GUI --- in which case the underlying Electron process may
+    # still exist; in this case, `session.open()` does not seem to reopen the
+    # app
+    #
+    # @todo this can probably be improved
+    #
+    close_dashboard()
+
+    session = Session(dataset=dataset, view=view)
+
+    # Ensure that the session (and therefore the app) is closed whenever the
+    # Python process exits
+    _close_on_exit(session)
+
     return session
+
+
+def close_dashboard():
+    """Closes the FiftyOne Dashboard, if necessary.
+
+    If no dashboard is currently open, this method has no effect.
+    """
+    global session  # pylint: disable=global-statement
+
+    if session is not None:
+        session.close()
 
 
 def _update_state(func):
@@ -57,7 +90,32 @@ def _update_state(func):
 
 
 class Session(foc.HasClient):
-    """Session class that maintains a 1-1 shared state with the FiftyOne app.
+    """Session that maintains a 1-1 shared state with the FiftyOne Dashboard.
+
+    **Basic Usage**
+
+    -   Use :func:`launch_dashboard` to launch the dashboard and retrieve its
+        corresponding :class:`Session` instance.
+
+    -   To open a dataset in the dashboard, simply set the
+        :attr:`Session.dataset` property of the session to your
+        :class:`fiftyone.core.dataset.Dataset`.
+
+    -   To load a specific view into your dataset, simply set the
+        :attr:`Session.view` property of the session to your
+        :class:`fiftyone.core.view.DatasetView`.
+
+    -   Use :attr:`Session.selected` to retrieve the IDs of the currently
+        selected samples in the dashboard.
+
+    -   Use :func:`Session.close` and :func:`Session.open` to temporarily close
+        and reopen the dashboard without creating a new :class:`Session`
+        instance.
+
+    -   Use :func:`close_dashboard` to programmatically close the dashboard and
+        teriminate the session.
+
+    Note that only one session instance can exist at any time.
 
     Args:
         dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
@@ -80,17 +138,24 @@ class Session(foc.HasClient):
 
         super(Session, self).__init__()
 
-        if dataset is not None and view is not None:
-            assert view.dataset == dataset, (
-                "Inconsistent dataset and view: %s != %s"
-                % (dataset.name, view.dataset.name)
-            )
-
         if view is not None:
-            self._view = view
-            self._dataset = self._view.dataset
+            self.view = view
         elif dataset is not None:
-            self._dataset = dataset
+            self.dataset = dataset
+
+    def open(self):
+        """Opens the session.
+
+        This opens the FiftyOne Dashboard, if necessary.
+        """
+        self._app_service.start()
+
+    def close(self):
+        """Closes the session.
+
+        This terminates the FiftyOne Dashboard, if necessary.
+        """
+        self._app_service.stop()
 
     # GETTERS #################################################################
 
@@ -183,3 +248,12 @@ class Session(foc.HasClient):
             idx: sample.get_backing_doc_dict(extended=True)
             for idx, sample in view.iter_samples_with_index()
         }
+
+
+def _close_on_exit(session):
+    def handle_exit():
+        session.close()
+
+    atexit.register(handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
+    signal.signal(signal.SIGINT, handle_exit)
