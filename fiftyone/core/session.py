@@ -251,7 +251,10 @@ class Session(foc.HasClient):
 
 def _close_on_exit(session):
     def handle_exit():
-        session.close()
+        try:
+            session.close()
+        except:
+            pass
 
     atexit.register(handle_exit)
     signal.signal(signal.SIGTERM, handle_exit)
