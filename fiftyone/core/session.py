@@ -188,6 +188,7 @@ class Session(foc.HasClient):
     @_update_state
     def dataset(self, dataset):
         self._dataset = dataset
+        self._view = None
         self.state.selected = []
 
     @view.setter
@@ -196,8 +197,6 @@ class Session(foc.HasClient):
         self._view = view
         if view is not None:
             self._dataset = self._view._dataset
-        else:
-            self._view = None
 
         self.state.selected = []
 
@@ -208,19 +207,19 @@ class Session(foc.HasClient):
         """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
         session, if any.
         """
-        self._dataset = None
-        self._view = None
+        self.dataset = None
 
     @_update_state
     def clear_view(self):
         """Clears the current :class:`fiftyone.core.view.DatasetView` from the
         session, if any.
         """
-        self._view = None
+        self.view = None
 
     # PRIVATE #################################################################
 
     def _update_state(self):
+        # pylint: disable=attribute-defined-outside-init
         self.state = StateDescription(
             dataset=self._dataset,
             view=self._view,
