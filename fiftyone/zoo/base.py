@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import logging
 import os
 
@@ -56,6 +57,63 @@ def list_zoo_datasets():
     return list(AVAILABLE_DATASETS.keys())
 
 
+def list_downloaded_zoo_datasets(base_dir=None):
+    """Returns information about the zoo datasets that have been downloaded to
+    the given base directory.
+
+    Args:
+        base_dir (None): the base directory to search. By default,
+            ``fo.config.default_dataset_dir`` is used, which is where all Zoo
+            datasets are downloaded, by default
+
+    Returns:
+        a dict of the following form::
+
+            {
+                # Datasets with splits
+                <name>: {
+                    <split>: (dataset_dir, ZooDatasetInfo)
+                    }
+                },
+                ...
+
+                # Datasets with no splits
+                <name>: (dataset_dir, ZooDatasetInfo),
+                ...
+            }
+    """
+    if base_dir is None:
+        base_dir = fo.config.default_dataset_dir
+
+    zoo_datasets = {}
+    found_datasets = defaultdict(dict)
+    for sub_dir in etau.list_subdirs(base_dir, recursive=True):
+        # We're looking for subdirs of the form `<name>` or `<name>/<split>`
+        chunks = sub_dir.split(os.path.sep)
+        if len(chunks) > 2:
+            continue
+
+        name = chunks[0]
+        split = chunks[1] if len(chunks) == 2 else None
+
+        try:
+            if name not in zoo_datasets:
+                zoo_datasets[name] = _get_zoo_dataset(name)
+
+            zoo_dataset = zoo_datasets[name]
+            dataset_dir = os.path.join(base_dir, sub_dir)
+            info = zoo_dataset.load_dataset_info(dataset_dir)
+
+            if split is not None:
+                found_datasets[name][split] = (dataset_dir, info)
+            else:
+                found_datasets[name] = (dataset_dir, info)
+        except:
+            pass
+
+    return dict(found_datasets)
+
+
 def download_zoo_dataset(name, split=None, dataset_dir=None):
     """Downloads the dataset of the given name from the FiftyOne Dataset Zoo.
 
@@ -71,8 +129,8 @@ def download_zoo_dataset(name, split=None, dataset_dir=None):
             documentation for the :class:`ZooDataset` you specified to see the
             supported splits
         dataset_dir (None): the directory into which to download the dataset.
-            By default, :func:`fiftyone.core.data.get_default_dataset_dir` is
-            used
+            By default, :func:`fiftyone.core.dataset.get_default_dataset_dir`
+            is used
 
     Returns:
         info: the :class:`fiftyone.zoo.ZooDatasetInfo` for the dataset
@@ -104,7 +162,7 @@ def load_zoo_dataset(
             splits
         dataset_dir (None): the directory in which the dataset is stored or
             will be downloaded. By default,
-            :func:`fiftyone.core.data.get_default_dataset_dir` is used
+            :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
 
