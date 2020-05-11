@@ -35,10 +35,12 @@ class Service(object):
     _SUPPRESS = {"stderr": _DEVNULL, "stdout": _DEVNULL}
 
     def __init__(self):
+        """Creates (starts) the Service."""
         self._system = os.system
         self.start()
 
     def __del__(self):
+        """Deletes (stops) the Service."""
         self.stop()
 
     def start(self):
@@ -54,6 +56,7 @@ class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
 
     def start(self):
+        """Start the DatabaseService."""
         etau.call(foc.START_DB, **self._SUPPRESS)
 
         # Drop the entire database (lightweight!)
@@ -62,6 +65,7 @@ class DatabaseService(Service):
         foo.drop_database()
 
     def stop(self):
+        """Stop the DatabaseService."""
         self._system(foc.STOP_DB)
 
 
@@ -69,10 +73,12 @@ class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
     def start(self):
+        """Start the ServerService."""
         with etau.WorkingDir(foc.SERVER_DIR):
             etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
+        """Stop the ServerService."""
         self._system(foc.STOP_SERVER)
 
 
@@ -80,8 +86,16 @@ class AppService(Service):
     """Service that controls the FiftyOne app."""
 
     def start(self):
+        """Start the AppService.
+
+        TODO: Add production call to start the app
+        """
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             etau.call(foc.START_APP, **self._SUPPRESS)
 
     def stop(self):
+        """Stop the AppService.
+
+        Noop as the session requests the app to close itself.
+        """
         pass
