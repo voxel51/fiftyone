@@ -205,7 +205,7 @@ export default class MenuBuilder {
         submenu: [
           {
             label: "Remote Session",
-            accelerator: "Ctrl+Command+R",
+            accelerator: "Ctrl+Shift+R",
             click: () => {
               this.mainWindow.webContents.send(
                 "update-session-config",

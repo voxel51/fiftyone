@@ -1,6 +1,6 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
-import { Button, Modal } from "semantic-ui-react";
+import { Button, Modal, Input } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
 import { updateState } from "../actions/update";
@@ -45,7 +45,12 @@ function App(props: Props) {
           <Button style={{ display: "none" }} ref={settingsRef}></Button>
         }
       >
-        <Modal.Header>Set Session Server</Modal.Header>
+        <Modal.Header>Server Address</Modal.Header>
+        <Modal.Content>
+          <Modal.Description>
+            <Input value={server} loading />
+          </Modal.Description>
+        </Modal.Content>
       </Modal>
       <Sidebar />
       <div style={{ marginLeft: 260, height: "100%" }}>{children}</div>
