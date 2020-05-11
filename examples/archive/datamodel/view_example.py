@@ -56,15 +56,15 @@ print()
 ###############################################################################
 # Action 2: Sort, Offset and Limit
 #
-# Transforms like `filter`, `sort`, `offset`, `limit` return a `DatasetView`
+# Transforms like `filter`, `sort`, `skip`, `limit` return a `DatasetView`
 # object with the additional transform appended to the view pipeline.
 ###############################################################################
 
 view = (
     fov.DatasetView(dataset=dataset)
     .sort_by("metadata.size_bytes")
-    .offset(2)
-    .take(10)
+    .skip(2)
+    .limit(10)
 )
 print("Num samples in view: %d" % len(view))
 for sample in view.iter_samples():
@@ -74,7 +74,7 @@ print()
 view = (
     fov.DatasetView(dataset=dataset)
     .sort_by("labels.ground_truth_fine.label")
-    .take(10)
+    .limit(10)
 )
 print("Num samples in view: %d" % len(view))
 for sample in view.iter_samples():
@@ -106,7 +106,7 @@ view = (
             "metadata.size_bytes": {"$gt": 1200},
         }
     )
-    .take(5, random=True)
+    .sample(5)
 )
 print("Num samples in view: %d" % len(view))
 for sample in view.iter_samples():

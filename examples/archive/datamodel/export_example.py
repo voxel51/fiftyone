@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 dataset = fod.Dataset(name="cifar100")
 
 view = (
-    dataset.default_view().sort_by("labels.ground_truth_fine.label").take(10)
+    dataset.default_view().sort_by("labels.ground_truth_fine.label").limit(10)
 )
 
 ###############################################################################
