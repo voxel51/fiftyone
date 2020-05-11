@@ -3,9 +3,9 @@ import { useEffect } from "react";
 
 const sockets = {};
 
-export function getSocket(name) {
+export function getSocket(server, name) {
   if (!sockets[name]) {
-    sockets[name] = io.connect("http://127.0.0.1:5151/" + name);
+    sockets[name] = io.connect(server + name);
   }
   return sockets[name];
 }

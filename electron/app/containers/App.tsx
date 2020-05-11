@@ -1,5 +1,6 @@
 import { remote, ipcRenderer } from "electron";
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode, useState, useRef } from "react";
+import { Button, Modal } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
 import { updateState } from "../actions/update";
@@ -13,7 +14,9 @@ type Props = {
 function App(props: Props) {
   const { children, dispatch, update } = props;
   const [connectionEstablished, setConnectionEstablished] = useState(false);
-  const socket = getSocket("state");
+  const settingsRef = useRef(null);
+  const [server, setServer] = useState("http://127.0.0.1:5151/");
+  const socket = getSocket(server, "state");
   useSubscribe(socket, "connect", () => {
     console.log("connected");
     if (!connectionEstablished) {
@@ -32,12 +35,18 @@ function App(props: Props) {
   });
 
   ipcRenderer.on("update-session-config", (event, message) => {
-    console.log("Received!");
-    console.log(event, message);
+    settingsRef.current.ref.current.click();
   });
 
   return (
     <>
+      <Modal
+        trigger={
+          <Button style={{ display: "none" }} ref={settingsRef}></Button>
+        }
+      >
+        <Modal.Header>Set Session Server</Modal.Header>
+      </Modal>
       <Sidebar />
       <div style={{ marginLeft: 260, height: "100%" }}>{children}</div>
     </>
