@@ -24,7 +24,6 @@ import signal
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
-import fiftyone.core.view as fov
 
 
 # Global session singleton
@@ -225,28 +224,6 @@ class Session(foc.HasClient):
             view=self._view,
             selected=self.state.selected,
         )
-
-    def _compute_count(self):
-        dataset_or_view = self.view if self.view else self.dataset
-        if dataset_or_view:
-            return len(dataset_or_view)
-
-        return 0
-
-    def _compute_samples(self):
-        if not self.dataset:
-            return {}
-
-        view = (
-            self.view if self.view else fov.DatasetView(dataset=self.dataset)
-        )
-
-        view = view.offset(self.offset).take(self.limit)
-
-        return {
-            idx: sample.get_backing_doc_dict(extended=True)
-            for idx, sample in view.iter_samples_with_index()
-        }
 
 
 def _close_on_exit(session):
