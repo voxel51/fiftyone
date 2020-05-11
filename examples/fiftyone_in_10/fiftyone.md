@@ -13,12 +13,20 @@ import fiftyone as fo
 
 ```python
 len(dataset)
-dataset.get_tags()
-# ["train", "test", "validation"]
-dataset.get_insight_groups()
-# ["file_hash", "gtf_hardness", "m1_hardness", "gtf_m1_eval"]
-dataset.get_label_groups()
+
+# get all accessible fields on samples of a dataset
+dataset.get_fields()
+# ["tags", "metadata", file_hash", "ground_truth_fine", "ground_truth_coarse",
+# "model_1_preds", "gtf_hardness", "m1_hardness", "gtf_m1_eval"]
+
+# get all fields that are subclass of `Labels`
+dataset.get_fields(type=fo.Labels)
 # ["ground_truth_fine", "ground_truth_coarse", "model_1"]
+
+# get all tags
+dataset.distinct("tags")
+# ["train", "test", "validation"]
+
 dataset.sample_class
 # fiftyone.core.sample.ImageSample
 
@@ -39,7 +47,7 @@ dataset.sample(5)  # -> fiftyone.core.view.DatasetView
 
 ```python
 view.sort_by("filepath")
-view.sort_by("labels.ground_truth.confidence")
+view.sort_by("model_1_preds.confidence")
 # -> fiftyone.core.view.DatasetView
 ```
 
@@ -89,6 +97,10 @@ The core query function is `match`, which uses
 [MongoDB query syntax](https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument):
 
 ```python
+# samples with this tag
+view.match({"tags": "train"})
+
+# samples with 3 channels and size > 1200 bytes
 view.match(
     {"metadata.num_channels": 3, "metadata.size_bytes": {"$gt": 1200},}
 )
@@ -97,14 +109,11 @@ view.match(
 Convenience wrappers are available for common queries:
 
 ```python
-# samples with this tag
-view.match_tag("train")
+# samples that have the file hash field populated
+view.exists("file_hash")
 
-# samples with this insight group
-view.match_insight("metadata")
-
-# samples with this label group
-view.match_label("ground_truth_fine")
+# samples that have the `model_1_preds` field populated
+view.exists("ground_truth_fine")
 
 # samples with/without these IDs
 view.select([id1, id2, id3])
@@ -116,7 +125,9 @@ view.exclude([id1, id2, id3])
 Many operations on views return a view. It is easy to chain these commands.
 
 ```python
-dataset.match_tag("train").sort_by("filepath")[10:20].sample(5)
+dataset.match({"tags": "train"}).exists("file_hash").sort_by("filepath")[
+    10:20
+].sample(5)
 # -> fiftyone.core.view.DatasetView
 ```
 
@@ -124,14 +135,10 @@ dataset.match_tag("train").sort_by("filepath")[10:20].sample(5)
 
 ```python
 # query
-view.match_tag("train")
-view.match_insight("metadata")
-view.match_label("ground_truth_fine")
+view.match({"tags": "train"})
+view.exists("metadata")
 view.select([id1, id2, id3])
 view.exclude([id1, id2, id3])
-view.match(
-    {"metadata.num_channels": 3, "metadata.size_bytes": {"$gt": 1200},}
-)
 
 # sory
 view.sort_by("filepath")
@@ -157,8 +164,9 @@ dataset.add_samples([sample1, sample2])
 view.add_sample(sample1)
 # AttributeError: type object 'DatasetView' has no attribute 'add_sample'
 
-# @todo(Tyler)
+# @todo(Tyler) is this even needed?
 dataset.update(...)
+view.update(...)
 
 # delete all matching samples
 view.delete()
@@ -193,9 +201,9 @@ for d in view.aggregate(pipeline):
     ...
 ```
 
-## `Field`s of `Sample`
+## `Field`(s) of `Sample`(s)
 
-Samples have `Field`s on them.
+`Sample`s have `Field`s on them.
 
 Some fields are automatically set on all samples. And some are immutable:
 
@@ -260,11 +268,11 @@ sample.save()
 Adding a classification label to a sample:
 
 ```python
-sample["model_1"] = fo.ClassificationLabelField(label="cow", confidence=0.98)
+sample["model_1_preds"] = fo.ClassificationLabel(label="cow", confidence=0.98)
 sample.save()
 
-sample.model_1
-# <ClassificationLabelField: ClassificationLabelField object>
+sample.model_1_preds
+# <ClassificationLabel: ClassificationLabel object>
 ```
 
 What used to be called "insights" are nothing more than `Fields`:
