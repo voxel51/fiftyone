@@ -73,11 +73,9 @@ class DatasetView(foc.SampleCollection):
         if isinstance(sample_id, slice):
             return self._slice(sample_id)
 
-        try:
-            # Ensure `sample_id` is in the view
-            pipeline = [{"$match": {"_id": ObjectId(sample_id)}}]
-            next(self._aggregate(pipeline))
-        except StopIteration:
+        # Ensure `sample_id` is in the view
+        view = self.match({"_id": ObjectId(sample_id)})
+        if not view:
             raise KeyError("No sample found with ID '%s'" % sample_id)
 
         return self._dataset[sample_id]
@@ -195,9 +193,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage(
-            {"$match": {"insights.%s" % insight_group: {"$exists": True}}}
-        )
+        return self.match({"insights.%s" % insight_group: {"$exists": True}})
 
     def match_labels(self, label_group):
         """Filters the samples in the view to have the label group. Filtering
@@ -209,9 +205,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage(
-            {"$match": {"labels.%s" % label_group: {"$exists": True}}}
-        )
+        return self.match({"labels.%s" % label_group: {"$exists": True}})
 
     def match(self, filter):
         """Filters the samples in the view by the given filter.
@@ -287,9 +281,7 @@ class DatasetView(foc.SampleCollection):
             a :class:`DatasetView`
         """
         sample_ids = [ObjectId(id) for id in sample_ids]
-        return self._copy_with_new_stage(
-            {"$match": {"_id": {"$in": sample_ids}}}
-        )
+        return self.match({"_id": {"$in": sample_ids}})
 
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the view.
@@ -301,9 +293,7 @@ class DatasetView(foc.SampleCollection):
             a :class:`DatasetView`
         """
         sample_ids = [ObjectId(id) for id in sample_ids]
-        return self._copy_with_new_stage(
-            {"$match": {"_id": {"$not": {"$in": sample_ids}}}}
-        )
+        return self.match({"_id": {"$not": {"$in": sample_ids}}})
 
     def _aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.

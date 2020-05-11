@@ -9,7 +9,7 @@ the dataset creates a default view and calls the method on that view.
 import fiftyone as fo
 ```
 
-## Viewing
+## Poking Around
 
 ```python
 len(dataset)
@@ -85,8 +85,6 @@ view.with_id(sample_id)[0]  # -> fiftyone.core.sample.Sample OR IndexError
 
 ## Querying (searching)
 
-@todo(Tyler)
-
 ## Chaining Commands
 
 Many operations on views return a view. It is easy to chain these commands.
@@ -94,6 +92,32 @@ Many operations on views return a view. It is easy to chain these commands.
 ```python
 dataset.match_tag("train").sort_by("filepath")[10:20].sample(5)
 # -> fiftyone.core.view.DatasetView
+```
+
+## All Query/Sort/Slice Operations On Views
+
+```python
+# query
+view.match_tag("train")
+view.match_insight("metadata")
+view.match_label("ground_truth_fine")
+view.select([id1, id2, id3])
+view.exclude([id1, id2, id3])
+# ANY query can be specified using `match`. The above methods are convenience
+# wrappers
+view.match(
+    {"metadata.num_channels": 3, "metadata.size_bytes": {"$gt": 1200},}
+)
+
+# sory
+view.sort_by("filepath")
+
+# slice
+view.head(5)
+view.tail(5)
+view.skip(3)
+view.limit(10)
+view.sample(10)
 ```
 
 ## Modifying
