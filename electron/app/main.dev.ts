@@ -33,7 +33,8 @@ if (
   process.env.NODE_ENV === "development" ||
   process.env.DEBUG_PROD === "true"
 ) {
-  //require('electron-debug')();
+  // The following opens dev tools on start up
+  // require('electron-debug')();
 }
 
 const installExtensions = async () => {
