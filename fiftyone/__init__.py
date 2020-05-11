@@ -21,28 +21,33 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import fiftyone.core.config as foc
-
-config = foc.load_config()
-from fiftyone.core.session import launch_dashboard
 import fiftyone.core.service as fos
 
-dataset_service = fos.DatabaseService()
-server_service = fos.ServerService()
+_database_service = fos.DatabaseService()
+_server_service = fos.ServerService()
+config = foc.load_config()
 
 from .core.dataset import (
     Dataset,
     list_dataset_names,
     load_dataset,
 )
+from .core.insights import (
+    Insight,
+    ScalarInsight,
+    FileHashInsight,
+)
 from .core.labels import (
+    Label,
     ClassificationLabel,
     DetectionLabels,
     ImageLabels,
-    Label,
 )
-from .core.insights import (
-    Insight,
-    FileHashInsight,
-    ScalarInsight,
+from .core.sample import (
+    Sample,
+    ImageSample,
 )
-from .core.sample import ImageSample, Sample
+from .core.session import (
+    launch_dashboard,
+    close_dashboard,
+)

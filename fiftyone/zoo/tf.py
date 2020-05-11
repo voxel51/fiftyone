@@ -1,6 +1,5 @@
 """
-Methods for working with datasets provided by the ``tensorflow_datasets``
-package in the FiftyOne Dataset Zoo.
+FiftyOne Zoo Datasets provided by ``tensorflow_datasets``.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

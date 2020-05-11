@@ -1,5 +1,5 @@
 """
-Core definitions of FiftyOne sample collections.
+Base classes for collections of samples.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import itertools
 import logging
 
 import eta.core.utils as etau
@@ -54,6 +55,18 @@ class SampleCollection(object):
     def __iter__(self):
         return self.iter_samples()
 
+    def head(self, num_samples=3):
+        """Returns a string representation of the first few samples in the
+        collection.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return "\n".join(str(s) for s in itertools.islice(self, num_samples))
+
     def get_tags(self):
         """Returns the list of tags in the collection.
 
@@ -80,7 +93,7 @@ class SampleCollection(object):
             },
         ]
         try:
-            return next(self.aggregate(pipeline))["all_groups"]
+            return next(self._aggregate(pipeline))["all_groups"]
         except StopIteration:
             pass
         return []
@@ -103,7 +116,7 @@ class SampleCollection(object):
             },
         ]
         try:
-            return next(self.aggregate(pipeline))["all_groups"]
+            return next(self._aggregate(pipeline))["all_groups"]
         except StopIteration:
             pass
         return []
@@ -116,8 +129,8 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def aggregate(self, pipeline=None):
-        """Calls a MongoDB aggregation pipeline on the collection.
+    def _aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the collection.
 
         Args:
             pipeline (None): an optional aggregation pipeline (list of dicts)
@@ -126,7 +139,7 @@ class SampleCollection(object):
         Returns:
             an iterable over the aggregation result
         """
-        raise NotImplementedError("Subclass must implement aggregate()")
+        raise NotImplementedError("Subclass must implement _aggregate()")
 
     def export(self, group, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,

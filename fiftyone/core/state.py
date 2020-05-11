@@ -1,5 +1,5 @@
 """
-Core module that define shared state between the FiftyOne GUI and FiftyOne SDK.
+Defines the shared state between the FiftyOne App and SDK.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

@@ -1,5 +1,5 @@
 """
-Core module for serializable database documents.
+Base classes for serializable database documents.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -78,36 +78,6 @@ class BackedByDocument(object):
         """
         return self._doc.id.generation_time if self._in_db else None
 
-    @classmethod
-    def create(cls, *args, **kwargs):
-        """Creates a :class:`BackedByDocument` instance.
-
-        Args:
-            *args: subclass-specific positional arguments
-            **kwargs: subclass-specific keyword arguments
-
-        Returns:
-            a :class:`BackedByDocument`
-        """
-        raise NotImplementedError("Subclass must implement create()")
-
-    def get_backing_doc_dict(self, extended=False):
-        """Returns the backing document as a JSON dict.
-
-        Args:
-            extended: If True, return extended JSON (ObjectIDs, Datetimes, ...
-                are serialized to dicts/strings/etc.)
-        """
-        return self._doc.to_dict(extended=extended)
-
-    def get_backing_doc_json(self):
-        """Returns the backing document as a JSON string.
-
-        Use for the purpose of serialization. Use __str__ to print/visualize
-        the document.
-        """
-        return self._doc.to_json()
-
     @property
     def _backing_doc(self):
         """The backing :class:`fiftyone.core.odm.ODMDocument` for the object.
@@ -120,6 +90,39 @@ class BackedByDocument(object):
         been inserted into the database.
         """
         return self._doc.id is not None
+
+    def get_backing_doc_dict(self, extended=False):
+        """Returns a JSON dict representation of the document.
+
+        Args:
+            extended (False): whether to return extended JSON, i.e.,
+                ObjectIDs, Datetimes, etc. are serialized
+
+        Returns:
+            a JSON dict
+        """
+        return self._doc.to_dict(extended=extended)
+
+    def get_backing_doc_json(self):
+        """Returns a JSON string representation of the document.
+
+        Returns:
+            a JSON string
+        """
+        return self._doc.to_json()
+
+    @classmethod
+    def create(cls, *args, **kwargs):
+        """Creates a :class:`BackedByDocument` instance.
+
+        Args:
+            *args: subclass-specific positional arguments
+            **kwargs: subclass-specific keyword arguments
+
+        Returns:
+            a :class:`BackedByDocument`
+        """
+        raise NotImplementedError("Subclass must implement create()")
 
     @classmethod
     def _create(cls, **kwargs):

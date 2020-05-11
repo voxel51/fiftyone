@@ -1,5 +1,5 @@
 """
-Core definitions of FiftyOne dataset samples.
+Dataset samples.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -38,6 +38,9 @@ class Sample(fod.BackedByDocument):
     a dataset, including basic metadata about the data, one or more sets of
     labels (ground truth, user-provided, or FiftyOne-generated), and additional
     features associated with subsets of the data and/or label sets.
+
+    Args:
+        document: a :class:`fiftyone.core.odm.ODMSample`
     """
 
     _ODM_DOCUMENT_CLS = foo.ODMSample
