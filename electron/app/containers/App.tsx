@@ -1,4 +1,4 @@
-import { remote } from "electron";
+import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState } from "react";
 
 import Sidebar from "../components/Sidebar";
@@ -29,6 +29,11 @@ function App(props: Props) {
       remote.getCurrentWindow().close();
     }
     dispatch(updateState(data));
+  });
+
+  ipcRenderer.on("update-session-config", (event, message) => {
+    console.log("Received!");
+    console.log(event, message);
   });
 
   return (
