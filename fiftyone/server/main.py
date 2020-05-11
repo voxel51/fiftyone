@@ -189,7 +189,7 @@ class StateController(Namespace):
         else:
             raise ValueError("No dataset found")
 
-        state.view = state.dataset.default_view().filter(tag=value)
+        state.view = state.dataset.default_view().match_tag(value)
         self.state = state.serialize()
         emit("update", self.state, broadcast=True, include_self=True)
 
