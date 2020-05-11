@@ -20,6 +20,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 import argparse
+import json
 
 import argcomplete
 from tabulate import tabulate
@@ -30,7 +31,8 @@ import fiftyone as fo
 import fiftyone.constants as foc
 
 
-TABLE_FORMAT = "simple"
+_TABLE_FORMAT = "simple"
+_MAX_CONSTANT_VALUE_COL_WIDTH = 79
 
 
 class Command(object):
@@ -70,6 +72,7 @@ class FiftyOneCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
+        _register_command(subparsers, "zoo", ZooCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -113,11 +116,11 @@ class ConstantsCommand(Command):
     """Print constants from `fiftyone.constants`.
 
     Examples:
-        # Print the specified constant
-        fiftyone constants <CONSTANT>
-
         # Print all constants
-        fiftyone constants --all
+        fiftyone constants
+
+        # Print a specific constant
+        fiftyone constants <CONSTANT>
     """
 
     @staticmethod
@@ -128,33 +131,176 @@ class ConstantsCommand(Command):
             metavar="CONSTANT",
             help="the constant to print",
         )
-        parser.add_argument(
-            "-a",
-            "--all",
-            action="store_true",
-            help="print all available constants",
-        )
 
     @staticmethod
     def execute(parser, args):
-        if args.all:
-            d = {
+        if args.constant:
+            print(getattr(foc, args.constant))
+            return
+
+        # Print all constants
+        _print_constants_table(
+            {
                 k: v
                 for k, v in iteritems(vars(foc))
                 if not k.startswith("_") and k == k.upper()
             }
-            _print_constants_table(d)
-
-        if args.constant:
-            print(getattr(foc, args.constant))
+        )
 
 
 def _print_constants_table(d):
-    contents = sorted(iteritems(d), key=lambda kv: kv[0])
+    contents = sorted(
+        ((k, _render_constant_value(v)) for k, v in iteritems(d)),
+        key=lambda kv: kv[0],
+    )
     table_str = tabulate(
-        contents, headers=["constant", "value"], tablefmt=TABLE_FORMAT
+        contents, headers=["constant", "value"], tablefmt=_TABLE_FORMAT
     )
     print(table_str)
+
+
+def _render_constant_value(value):
+    value = str(value)
+    if (
+        _MAX_CONSTANT_VALUE_COL_WIDTH is not None
+        and len(value) > _MAX_CONSTANT_VALUE_COL_WIDTH
+    ):
+        value = value[: (_MAX_CONSTANT_VALUE_COL_WIDTH - 4)] + " ..."
+
+    return value
+
+
+class ZooCommand(Command):
+    """Tools for working with the FiftyOne Dataset Zoo."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", ZooListCommand)
+        _register_command(subparsers, "info", ZooInfoCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class ZooListCommand(Command):
+    """Tools for listing datasets in the FiftyOne Dataset Zoo.
+
+    Examples:
+        # List the available datasets in the zoo
+        fiftyone zoo list
+
+        # List the downloaded zoo datasets
+        fiftyone zoo list --downloaded-only
+
+        # List the downloaded zoo datasets in the specified base directory
+        fiftyone zoo list --downloaded-only <base-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-d",
+            "--downloaded-only",
+            action="store_true",
+            help="only list downloaded datasets",
+        )
+        parser.add_argument(
+            "base_dir",
+            nargs="?",
+            metavar="BASE_DIR",
+            help=(
+                "a custom base directory in which to search for downloaded "
+                "datasets"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        import fiftyone.zoo as foz
+
+        if args.downloaded_only:
+            base_dir = args.base_dir
+            dd = foz.list_downloaded_zoo_datasets(base_dir=base_dir)
+            for name in dd:
+                print(name)
+        else:
+            for name in foz.list_zoo_datasets():
+                print(name)
+
+
+class ZooInfoCommand(Command):
+    """Tools for printing info about downloaded zoo datasets.
+
+    Examples:
+        # Print information about a downloaded zoo dataset
+        fiftyone zoo info <name>
+
+        # Print information about all downloaded zoo datasets
+        fiftyone zoo info --all
+
+        # Print information about the zoo dataset downloaded to the specified
+        # custom directory
+        fiftyone zoo info <name> --base-dir <base-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", nargs="?", help="the name of the dataset"
+        )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="print info about all downloaded zoo datasets",
+        )
+        parser.add_argument(
+            "-b",
+            "--base-dir",
+            metavar="BASE_DIR",
+            help="a custom base directory in which to search for datasets",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        import fiftyone.zoo as foz
+
+        name = args.name
+        base_dir = args.base_dir or None
+        downloaded_datasets = foz.list_downloaded_zoo_datasets(
+            base_dir=base_dir
+        )
+
+        if args.all:
+            for name in sorted(downloaded_datasets):
+                val = downloaded_datasets[name]
+                if isinstance(val, dict):
+                    for dataset_dir, info in itervalues(val):
+                        _print_zoo_dataset_info(dataset_dir, info)
+                else:
+                    _print_zoo_dataset_info(dataset_dir, info)
+
+            return
+
+        if name not in downloaded_datasets:
+            if name not in foz.list_zoo_datasets():
+                print("Dataset '%s' not found in the zoo" % name)
+            else:
+                print("Zoo dataset '%s' is not downloaded" % name)
+
+            return
+
+        dataset_dir, info = downloaded_datasets[name]
+        _print_zoo_dataset_info(dataset_dir, info)
+
+
+def _print_zoo_dataset_info(dataset_dir, info):
+    d = info.serialize()
+    d["dataset_dir"] = dataset_dir
+    _print_dict_as_json(d)
+    print("")
 
 
 def _has_subparsers(parser):
@@ -163,6 +309,11 @@ def _has_subparsers(parser):
             return True
 
     return False
+
+
+def _print_dict_as_json(d):
+    s = json.dumps(d, indent=4)
+    print(s)
 
 
 def _iter_subparsers(parser):
