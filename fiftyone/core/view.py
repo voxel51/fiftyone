@@ -174,43 +174,57 @@ class DatasetView(foc.SampleCollection):
         for idx, sample in enumerate(iterator, start=offset):
             yield idx, sample
 
-    def filter(
-        self, tag=None, insight_group=None, label_group=None, filter=None
-    ):
+    def match_tag(self, tag):
+        """Filters the samples in the view to have the tag.
+
+        Args:
+            tag: a sample tag string
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.match({"tags": tag})
+
+    def match_insight(self, insight_group):
+        """Filters the samples in the view to have the label group. Filtering
+        ensures that the insight exists on the sample.
+
+        Args:
+            insight_group: an insight group string
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage(
+            {"$match": {"insights.%s" % insight_group: {"$exists": True}}}
+        )
+
+    def match_labels(self, label_group):
+        """Filters the samples in the view to have the label group. Filtering
+        ensures that the label exists on the sample.
+
+        Args:
+            label_group: a label group string
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage(
+            {"$match": {"labels.%s" % label_group: {"$exists": True}}}
+        )
+
+    def match(self, filter):
         """Filters the samples in the view by the given filter.
 
         Args:
-            tag (None): a sample tag string
-            insight_group (None): an insight group string. Filtering ensures
-                that it exists
-            label_group (None): a label group string. Filtering ensures that it
-                exists
-            filter (None): a MongoDB query dict. See
+            filter: a MongoDB query dict. See
                 https://docs.mongodb.com/manual/tutorial/query-documents
                 for details
 
         Returns:
             a :class:`DatasetView`
         """
-        view = self
-
-        if tag is not None:
-            view = view._copy_with_new_stage({"$match": {"tags": tag}})
-
-        if insight_group is not None:
-            view = view._copy_with_new_stage(
-                {"$match": {"insights.%s" % insight_group: {"$exists": True}}}
-            )
-
-        if label_group is not None:
-            view = view._copy_with_new_stage(
-                {"$match": {"labels.%s" % label_group: {"$exists": True}}}
-            )
-
-        if filter is not None:
-            view = view._copy_with_new_stage({"$match": filter})
-
-        return view
+        return self._copy_with_new_stage({"$match": filter})
 
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
