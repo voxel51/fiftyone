@@ -127,8 +127,14 @@ class Dataset(foc.SampleCollection):
     def __getitem__(self, sample_id):
         if isinstance(sample_id, numbers.Integral):
             raise ValueError(
-                "Accessing samples by numeric index is not supported. "
-                "Use sample IDs or slices"
+                "Accessing dataset samples by numeric index is not supported. "
+                "Use sample IDs instead"
+            )
+
+        if isinstance(sample_id, slice):
+            raise ValueError(
+                "Slicing datasets is not supported. Use `default_view()` to "
+                "obtain a DatasetView if you want to slice your samples"
             )
 
         if isinstance(sample_id, slice):
