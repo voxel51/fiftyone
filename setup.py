@@ -38,6 +38,11 @@ with open("requirements/common.txt") as reqs, open(
 ) as eta_reqs:
     requirements = eta_reqs.readlines() + reqs.readlines()
 
+requirements += [
+    "fiftyone-gui",
+    "fiftyone-db",
+]
+
 setup(
     name="fiftyone",
     version="0.1.0",
