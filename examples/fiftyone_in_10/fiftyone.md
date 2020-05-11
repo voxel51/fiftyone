@@ -1,9 +1,14 @@
-# `fiftyone.Dataset/Sample/DatasetView`
+# `fiftyone.Dataset/DatasetView/Sample/Field`
 
 The fundamental `fiftyone` object that a user interacts with is the
 `DatasetView`. Users are constantly creating and chaining commands on views.
 Any method on a `DatasetView` is also available on a `Dataset`. If appropriate,
 the dataset creates a default view and calls the method on that view.
+
+`Sample`s are the building blocks that `Dataset`s are composed of. `Sample`s
+can have dynamically added `Field`s on them. `Field`s can be of special types,
+like the `fiftyone.Labels` class, or they can be primitive serializable types
+like dicts, lists, strings, scalars, etc.
 
 ```python
 import fiftyone as fo
@@ -23,10 +28,6 @@ dataset.get_fields()
 dataset.get_fields(type=fo.Labels)
 # ["ground_truth_fine", "ground_truth_coarse", "model_1"]
 
-# get all tags
-dataset.distinct("tags")
-# ["train", "test", "validation"]
-
 dataset.sample_class
 # fiftyone.core.sample.ImageSample
 
@@ -43,7 +44,9 @@ dataset.view.sample(5)  # -> fiftyone.core.view.DatasetView
 dataset.sample(5)  # -> fiftyone.core.view.DatasetView
 ```
 
-## Sorting
+## Basics with `Views`
+
+### Sorting
 
 ```python
 view.sort_by("filepath")
@@ -51,9 +54,9 @@ view.sort_by("model_1_preds.confidence")
 # -> fiftyone.core.view.DatasetView
 ```
 
-## Selection (slicing)
+### Selection (slicing)
 
-### Slice
+#### Slice
 
 Slices are always list-like.
 
@@ -63,9 +66,9 @@ view.skip(5).limit(5)  # -> fiftyone.core.view.DatasetView
 view[5:10]  # -> fiftyone.core.view.DatasetView
 ```
 
-### Key/Index
+#### Key/Index
 
-#### Idea 1:
+##### Idea 1:
 
 Views are keyed same as datasets. Slicing only works if a `:` is provided.
 
@@ -76,7 +79,7 @@ view[sample_id]  # -> fiftyone.core.sample.Sample OR KeyError
 view[5]  # -> KeyError
 ```
 
-#### Idea 2:
+##### Idea 2:
 
 Views are NOT keyed same as datasets. They are always accessed in a list-like
 style.
@@ -91,7 +94,7 @@ view.with_id(sample_id)  # -> fiftyone.core.view.DatasetView
 view.with_id(sample_id)[0]  # -> fiftyone.core.sample.Sample OR IndexError
 ```
 
-## Querying (searching)
+### Querying
 
 The core query function is `match`, which uses
 [MongoDB query syntax](https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument):
@@ -120,7 +123,7 @@ view.select([id1, id2, id3])
 view.exclude([id1, id2, id3])
 ```
 
-## Chaining Commands
+### Chaining Commands
 
 Many operations on views return a view. It is easy to chain these commands.
 
@@ -131,7 +134,7 @@ dataset.match({"tags": "train"}).exists("file_hash").sort_by("filepath")[
 # -> fiftyone.core.view.DatasetView
 ```
 
-## All Query/Sort/Slice Operations On Views
+All chain operations on `View`s:
 
 ```python
 # query
@@ -151,9 +154,7 @@ view.limit(10)
 view.sample(10)
 ```
 
-## Modifying
-
-### Operations on `Dataset` or `View`
+## Modifying `Dataset`s (Insert/Delete)
 
 ```python
 # add one or more samples to a dataset
@@ -170,6 +171,9 @@ view.update(...)
 
 # delete all matching samples
 view.delete()
+
+# delete a single sample
+del dataset[sample_id]
 ```
 
 ## Operations (Aggregations)
