@@ -296,6 +296,18 @@ ODMSample.objects(__raw__={"labels.ground_truth": {"$exists": True}})
 ### Setting
 
 ```python
+sample.tags  # -> mongoengine.base.datastructures.BaseList
+# []
+
+sample.tags += ["train"]
+sample.tags.append("train")
+sample.tags
+# ['train']
+```
+
+### Operations (Aggregations)
+
+```python
 ODMSample.objects.count()  # -> int
 ODMSample.objects.distinct(
     "tags"
@@ -305,12 +317,6 @@ ODMSample.objects.average("labels.ground_truth.confidence")  # -> scalar
 
 # MongoDB aggregation pipeline
 ODMSample.objects.aggregate([])  # -> pymongo.command_cursor.CommandCursor
-```
-
-### Operations (Aggregations)
-
-```python
-
 ```
 
 ## WIP
