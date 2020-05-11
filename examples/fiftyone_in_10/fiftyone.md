@@ -223,23 +223,19 @@ sample.filepath = "new/file/path.jpg"
 Samples can have arbitrary `Field`s added to them. This example adds a `tags`
 field which is a list of strings.
 
-Modifications to samples are not saved to the DB until `sample.save` is called.
-
 ```python
 sample["tags"] = ["train"]
 
 sample["tags"]
 sample.tags  # -> mongoengine.base.datastructures.BaseList
 # ["train"]
-
-sample.save()
 ```
 
 Datasets contain meta information about the fields. The `tags` field was
 automatically added when `tags` was added to a sample in the above code block.
 
 ```python
-dataset.fields
+dataset.get_fields()
 # {
 #     "dataset": fiftyone.core.fields.StringField(immutable=True),
 #     "filepath": fiftyone.core.fields.StringField(immutable=True),
@@ -247,9 +243,9 @@ dataset.fields
 # }
 ```
 
-Setting a `Field` to an inappropriate type raises an error when saving.
-However, a field can be entirely deleted from a dataset, afterwhich it can be
-set again to any type.
+Setting a `Field` to an inappropriate type raises a `ValidationError`. However,
+a field can be entirely deleted from a dataset, afterwhich it can be set again
+to any type.
 
 ```python
 sample.tags = 67
@@ -261,7 +257,8 @@ sample.tags = [1, 2]
 dataset.delete_field("tags")
 
 sample["tags"] = 9
-sample.save()
+
+dataset.get_fields()
 # {
 #     "dataset": fiftyone.core.fields.StringField(immutable=True),
 #     "filepath": fiftyone.core.fields.StringField(immutable=True),
@@ -273,7 +270,6 @@ Adding a classification label to a sample:
 
 ```python
 sample["model_1_preds"] = fo.ClassificationLabel(label="cow", confidence=0.98)
-sample.save()
 
 sample.model_1_preds
 # <ClassificationLabel: ClassificationLabel object>
@@ -284,7 +280,6 @@ What used to be called "insights" are nothing more than `Fields`:
 ```python
 file_hash = compute_file_hash(sample.filepath)
 sample["model_1"] = fo.IntField(file_hash)
-sample.save()
 
 sample.file_hash
 # 8495821470157
