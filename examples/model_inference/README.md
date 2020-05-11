@@ -4,21 +4,22 @@ This walkthrough provides a glimpse into the possibilities for integrating
 FiftyOne into your machine learning workflows. It covers the following
 concepts:
 
-- Loading your existing dataset in FiftyOne
-- Adding predictions from your model to your FiftyOne dataset
-- Launching the FiftyOne dashboard and visualizing/exploring your data
-- Integrating the dashboard into your data wrangling workflow
+-   Loading your existing dataset in FiftyOne
+-   Adding predictions from your model to your FiftyOne dataset
+-   Launching the FiftyOne dashboard and visualizing/exploring your data
+-   Integrating the dashboard into your data wrangling workflow
 
 ## Setup
 
-- Install `torch` and `torchvision`, if necessary:
+-   Install `torch` and `torchvision`, if necessary:
 
 ```
 pip install torch
 pip install torchvision
 ```
 
-- Download the test split of the CIFAR-10 dataset to `~/fiftyone/cifar10/test`:
+-   Download the test split of the CIFAR-10 dataset to
+    `~/fiftyone/cifar10/test`:
 
 ```py
 import fiftyone.zoo as foz
@@ -31,7 +32,7 @@ foz.load_zoo_dataset("cifar10")
 foo.drop_database()
 ```
 
-- Download some pretrained CIFAR-10 PyTorch models
+-   Download some pretrained CIFAR-10 PyTorch models
 
 ```
 # Download the software
@@ -127,7 +128,7 @@ dataset = fo.Dataset.from_image_classification_samples(
 )
 
 # Print a few samples from the dataset
-print(dataset.head())
+print(dataset.sample())
 ```
 
 ## Working with views into your dataset
@@ -141,7 +142,7 @@ Here's an example operation:
 # Gets five random airplanes from the dataset
 view = (dataset.default_view()
     .filter(filter={"labels.ground_truth.label": "airplane"})
-    .take(5, random=True)
+    .sample(5)
 )
 
 # Print some information about the entire dataset
@@ -224,7 +225,7 @@ model_name = "inception_v3"
 
 num_samples = 25
 batch_size = 5
-view = dataset.default_view().take(num_samples, random=True)
+view = dataset.default_view().sample(num_samples)
 image_paths, sample_ids = zip(
     *[(s.filepath, s.id) for s in view.iter_samples()]
 )
@@ -285,7 +286,7 @@ session = fo.launch_dashboard()
 session.dataset = dataset
 
 # Show five random samples in the dashboard
-view = dataset.default_view().take(5)
+view = dataset.default_view().limit(5)
 session.view = view
 
 # Show the samples for which we previously added pre
@@ -302,5 +303,4 @@ print(selected_view.head())
 
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

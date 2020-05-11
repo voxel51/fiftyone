@@ -110,7 +110,7 @@ session = fo.launch_dashboard(dataset=dataset)
 Narrow your scope to 10 random samples
 
 ```python
-session.view = dataset.default_view().take(10, random=True)
+session.view = dataset.default_view().sample(10)
 ```
 
 Select some samples in the GUI and see how this field updates instantly!
@@ -209,7 +209,7 @@ for d in dataset.aggregate(pipeline):
     view = (
         dataset.default_view()
         .filter(filter={"insights.file_hash.file_hash": file_hash})
-        .take(count - 1)
+        .limit(count - 1)
     )
 
     for sample in view:
