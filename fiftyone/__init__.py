@@ -1,5 +1,7 @@
 """
-FiftyOne package namespace.
+FiftyOne: a powerful package for dataset curation, analysis, and visualization.
+
+See https://github.com/voxel51/fiftyone for more information.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -19,8 +21,33 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import fiftyone.core.config as foc
-from fiftyone.core.session import launch_dashboard
 import fiftyone.core.service as fos
 
+_database_service = fos.DatabaseService()
+_server_service = fos.ServerService()
 config = foc.load_config()
-dataset_service = fos.DatabaseService()
+
+from .core.dataset import (
+    Dataset,
+    list_dataset_names,
+    load_dataset,
+)
+from .core.insights import (
+    Insight,
+    ScalarInsight,
+    FileHashInsight,
+)
+from .core.labels import (
+    Label,
+    ClassificationLabel,
+    DetectionLabels,
+    ImageLabels,
+)
+from .core.sample import (
+    Sample,
+    ImageSample,
+)
+from .core.session import (
+    launch_dashboard,
+    close_dashboard,
+)

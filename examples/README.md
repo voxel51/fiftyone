@@ -1,22 +1,12 @@
-# Examples
+# FiftyOne Examples
 
-`pseudocode.py` - first draft pseudocode for `fiftyone`
+Examples of using FiftyOne.
 
-`download_data.py` - download CIFAR100 dataset (images and JSON labels)
-
-`mongodb/` - example that ingests and explores data **WITHOUT** using
-`fiftyone`
-
-`datamodel/` - example scripts for interacting with the database/model
-
-`datasets/` - example scripts for downloading and wrangling common public
-datasets
-
-`inference/` - example scripts for running inference on CIFAR-10 using
-pretrained models
-
-`experimental/` - example of using Brian's experimental dataset structure
-defined by the `fiftyone.experimental` package
+| Directory           | Description                                                       |
+| ------------------- | ----------------------------------------------------------------- |
+| `dataset_creation/` | Examples of the many ways of easily creating FiftyOne datasets    |
+| `file_hashing/`     | Example of using FiftyOne to detect duplicate images in a dataset |
+| `model_inference/`  | Example of integrating FiftyOne in your model inference loop      |
 
 ## Copyright
 

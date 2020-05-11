@@ -1,15 +1,9 @@
 """
-Core Module for `fiftyone` Database Serializable Documents
+Base classes for serializable database documents.
 
-This is an extension of `eta.core.serial.Serializable` class that provides
-additional functionality centered around `Document` objects, which are
-serializables that can be inserted and read from the MongoDB database.
-
-Important functionality includes:
-- access to the ID when is automatically generated when the Document is
-    inserted in the database
-- default reflective serialization when storing to the database
-
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -23,101 +17,132 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-from bson.objectid import ObjectId
 
-import eta.core.serial as etas
+import eta.core.utils as etau
 
-
-def insert_one(collection, document):
-    # @todo(Tyler) include collection.name when serializing
-    result = collection.insert_one(document._dbserialize())
-    document._set_id(result.inserted_id)
-    return result
+import fiftyone.core.odm as foo
 
 
-def insert_many(collection, documents):
-    result = collection.insert_many(
-        [document._dbserialize() for document in documents]
-    )
-    for inserted_id, document in zip(result.inserted_ids, documents):
-        document._set_id(inserted_id)
+class BackedByDocument(object):
+    """Base class for objects that are serialized to the database.
 
+    The constructor of all subclasses must take a single argument as input
+    which is the :class:`fiftyone.core.odm.ODMDocument` describing the
+    serialized content of the instance.
 
-class Document(etas.Serializable):
-    """Adds additional functionality to Serializable class to handle `_id`
-    field which is created when a document is added to the database.
+    New instances of this class that have not yet been serialized to the
+    database can be created by
+
+    Args:
+        document: an instance of the :class:`fiftyone.core.odm.ODMDocument`
+            class specified by the class's ``_ODM_DOCUMENT_CLS`` constant
     """
+
+    _ODM_DOCUMENT_CLS = foo.ODMDocument
+
+    def __init__(self, document):
+        etau.validate_type(document, self._ODM_DOCUMENT_CLS)
+        self._doc = document
+
+    def __str__(self):
+        return str(self._doc)
 
     @property
     def id(self):
-        """Document ObjectId value.
+        """The ID of the document.
 
-        - automatically created when added to the database)
-        - None, if it has not been added
+        Implementation details:
 
-        The 12-byte ObjectId value consists of:
-            - a 4-byte timestamp value, representing the ObjectId’s creation,
-              measured in seconds since the Unix epoch
-            - a 5-byte random value
-            - a 3-byte incrementing counter, initialized to a random value
+            - the ID of a document is automatically populated when it is added
+              to the database
+
+            - the ID is of a document is ``None`` if it has not been added to
+              the database
+
+            - the ID is a 12 byte value consisting of the concatentation of the
+              following:
+
+                - a 4 byte timestamp representing the document's commit time,
+                  measured in seconds since epoch
+
+                - a 5 byte random value
+
+                - a 3 byte incrementing counter, initialized to a random value
         """
-        if not hasattr(self, "_id"):
-            self._id = None
-        return self._id
+        return str(self._doc.id) if self._in_db else None
 
     @property
     def ingest_time(self):
-        """Document UTC generation/ingest time
-
-        - automatically created when added to the database)
-        - None, if it has not been added
+        """The time the document was added to the database, or ``None`` if it
+        has not been added to the database.
         """
-        if self.id:
-            return ObjectId(self.id).generation_time
-        return None
+        return self._doc.id.generation_time if self._in_db else None
 
-    def attributes(self):
-        attributes = super(Document, self).attributes()
-        if hasattr(self, "_id"):
-            attributes += ["_id"]
-        return attributes
+    @property
+    def _backing_doc(self):
+        """The backing :class:`fiftyone.core.odm.ODMDocument` for the object.
+        """
+        return self._doc
 
-    @classmethod
-    def from_dict(cls, d, *args, **kwargs):
-        obj = cls._from_dict(d, *args, **kwargs)
+    @property
+    def _in_db(self):
+        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
+        been inserted into the database.
+        """
+        return self._doc.id is not None
 
-        id = d.get("_id", None)
-        if id:
-            obj._set_id(id)
-
-        return obj
-
-    # PRIVATE #################################################################
-
-    def _set_id(self, id):
-        """This should only be set when reading from the database"""
-        self._id = str(id)
-        return self
-
-    def _dbserialize(self):
-        """Serialize for insertion into a MongoDB database"""
-        d = self.serialize(reflective=True)
-        d.pop("_id", None)
-        return d
-
-    @classmethod
-    def _from_dict(cls, d, *args, **kwargs):
-        """Constructs a Serializable object from a JSON dictionary.
-
-        Subclasses must implement this method if they intend to support being
-        read from disk.
+    def get_backing_doc_dict(self, extended=False):
+        """Returns a JSON dict representation of the document.
 
         Args:
-            d: a JSON dictionary representation of a Serializable object
-            *args: optional class-specific positional arguments
-            **kwargs: optional class-specific keyword arguments
+            extended (False): whether to return extended JSON, i.e.,
+                ObjectIDs, Datetimes, etc. are serialized
 
         Returns:
-            an instance of the Serializable class
+            a JSON dict
         """
-        raise NotImplementedError("Subclass must implement")
+        return self._doc.to_dict(extended=extended)
+
+    def get_backing_doc_json(self):
+        """Returns a JSON string representation of the document.
+
+        Returns:
+            a JSON string
+        """
+        return self._doc.to_json()
+
+    @classmethod
+    def create(cls, *args, **kwargs):
+        """Creates a :class:`BackedByDocument` instance.
+
+        Args:
+            *args: subclass-specific positional arguments
+            **kwargs: subclass-specific keyword arguments
+
+        Returns:
+            a :class:`BackedByDocument`
+        """
+        raise NotImplementedError("Subclass must implement create()")
+
+    @classmethod
+    def _create(cls, **kwargs):
+        """Internal method that creates a :class:`BackedByDocument` instance
+        from keyword arguments for its underlying
+        :class:`fiftyone.core.odm.ODMDocument`.
+
+        Args:
+            **kwargs: keyword arguments for
+                ``cls._ODM_DOCUMENT_CLS.__init__(**kwargs)``
+
+        Returns:
+            a :class:`BackedByDocument`
+        """
+        return cls(cls._ODM_DOCUMENT_CLS(**kwargs))
+
+    def _save(self):
+        """Saves the document to the database."""
+        self._doc.save()
+
+    def _delete(self):
+        """Deletes the document from the dataset."""
+        self._doc.delete()

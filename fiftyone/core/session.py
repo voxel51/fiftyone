@@ -1,6 +1,9 @@
 """
-Core Module for `fiftyone` Session class
+Session class for interacting with the FiftyOne Dashboard.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -14,42 +17,69 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+
+import atexit
+import signal
+
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
 
 
-# global session singleton
+# Global session singleton
 session = None
 
 
 def launch_dashboard(dataset=None, view=None):
-    """Luanches the FiftyOne App.
+    """Launches the FiftyOne Dashboard.
+
+    Only one dashboard instance can be opened at a time. If this method is
+    called when another dashboard exists, the existing dashboard is closed.
 
     Args:
-        dataset: (optional) the dataset
-        view: (optional) the view
+        dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
+            load
+        view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
+            load
 
     Returns:
-        a Session instance
+        a :class:`Session`
     """
-    global session
-    session = Session()
-    session.dataset = dataset
-    session.view = view
+    global session  # pylint: disable=global-statement
+
+    #
+    # Note, we always `close_dashboard()` here rather than just calling
+    # `session.open()` if a session already exists, because the app may have
+    # been closed in some way other than `session.close()` --- e.g., the user
+    # closing the GUI --- in which case the underlying Electron process may
+    # still exist; in this case, `session.open()` does not seem to reopen the
+    # app
+    #
+    # @todo this can probably be improved
+    #
+    close_dashboard()
+
+    session = Session(dataset=dataset, view=view)
+
+    # Ensure that the session (and therefore the app) is closed whenever the
+    # Python process exits
+    _close_on_exit(session)
+
     return session
 
 
-def update_state(func):
-    """Update state descorator.
+def close_dashboard():
+    """Closes the FiftyOne Dashboard, if necessary.
 
-    Args:
-        func: the Session method to decorate
-
-    Returns:
-        the wrapped function
+    If no dashboard is currently open, this method has no effect.
     """
+    global session  # pylint: disable=global-statement
 
+    if session is not None:
+        session.close()
+
+
+def _update_state(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         self._update_state()
@@ -59,129 +89,150 @@ def update_state(func):
 
 
 class Session(foc.HasClient):
-    """Sessions have a 1-to-1 shared state with the GUI."""
+    """Session that maintains a 1-1 shared state with the FiftyOne Dashboard.
+
+    **Basic Usage**
+
+    -   Use :func:`launch_dashboard` to launch the dashboard and retrieve its
+        corresponding :class:`Session` instance.
+
+    -   To open a dataset in the dashboard, simply set the
+        :attr:`Session.dataset` property of the session to your
+        :class:`fiftyone.core.dataset.Dataset`.
+
+    -   To load a specific view into your dataset, simply set the
+        :attr:`Session.view` property of the session to your
+        :class:`fiftyone.core.view.DatasetView`.
+
+    -   Use :attr:`Session.selected` to retrieve the IDs of the currently
+        selected samples in the dashboard.
+
+    -   Use :func:`Session.close` and :func:`Session.open` to temporarily close
+        and reopen the dashboard without creating a new :class:`Session`
+        instance.
+
+    -   Use :func:`close_dashboard` to programmatically close the dashboard and
+        teriminate the session.
+
+    Note that only one session instance can exist at any time.
+
+    Args:
+        dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
+            load
+        view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
+            load
+    """
 
     _HC_NAMESPACE = "state"
     _HC_ATTR_NAME = "state"
     _HC_ATTR_TYPE = StateDescription
 
-    DEFAULT_OFFSET = 0
-    DEFAULT_LIMIT = 10
-
-    def __init__(
-        self,
-        offset=DEFAULT_OFFSET,
-        limit=DEFAULT_LIMIT,
-        dataset=None,
-        view=None,
-    ):
+    def __init__(self, dataset=None, view=None):
         if session is not None:
             raise ValueError("Only one session is permitted")
-        self._server_service = fos.ServerService()
+
         self._app_service = fos.AppService()
-        super(Session, self).__init__()
-        self._offset = offset
-        self._limit = limit
         self._dataset = None
         self._view = None
 
-        if dataset is not None and view is not None:
-            assert view.dataset == dataset, (
-                "Inconsistent dataset and view: %s != %s"
-                % (dataset.name, view.dataset.name)
-            )
+        super(Session, self).__init__()
 
         if view is not None:
-            self._view = view
-            self._dataset = self._view.dataset
+            self.view = view
         elif dataset is not None:
-            self._dataset = dataset
+            self.dataset = dataset
+
+    def open(self):
+        """Opens the session.
+
+        This opens the FiftyOne Dashboard, if necessary.
+        """
+        self._app_service.start()
+
+    def close(self):
+        """Closes the session.
+
+        This terminates the FiftyOne Dashboard, if necessary.
+        """
+        self._app_service.stop()
 
     # GETTERS #################################################################
 
     @property
-    def offset(self):
-        return self._offset
-
-    @property
-    def limit(self):
-        return self._limit
-
-    @property
     def dataset(self):
+        """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
+        """
         if self.view is not None:
-            return self.view.dataset
+            return self.view._dataset
+
         return self._dataset
 
     @property
-    def selected(self):
-        return list(self.state.selected)
+    def view(self):
+        """The :class:`fiftyone.core.view.DatasetView` connected to the
+        session, or ``None`` if no view is connected.
+        """
+        return self._view
 
     @property
-    def view(self):
-        return self._view
+    def selected(self):
+        """A list of sample IDs of the currently selected samples in the
+        FiftyOne app.
+        """
+        return list(self.state.selected)
 
     # SETTERS #################################################################
 
-    @offset.setter
-    @update_state
-    def offset(self, offset):
-        self._offset = offset
-
-    @limit.setter
-    @update_state
-    def limit(self, limit):
-        self._limit = limit
-
     @dataset.setter
-    @update_state
+    @_update_state
     def dataset(self, dataset):
         self._dataset = dataset
+        self._view = None
         self.state.selected = []
 
     @view.setter
-    @update_state
+    @_update_state
     def view(self, view):
         self._view = view
         if view is not None:
-            self._dataset = self._view.dataset
-        else:
-            self._view = None
+            self._dataset = self._view._dataset
+
         self.state.selected = []
 
     # CLEAR STATE #############################################################
 
-    @update_state
-    def clear_offset(self):
-        self._offset = self.DEFAULT_OFFSET
-
-    @update_state
-    def clear_limit(self):
-        self._limit = self.clear_limit
-
-    @update_state
+    @_update_state
     def clear_dataset(self):
-        self._dataset = None
+        """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
+        session, if any.
+        """
+        self.dataset = None
 
-    @update_state
+    @_update_state
     def clear_view(self):
-        self._view = None
+        """Clears the current :class:`fiftyone.core.view.DatasetView` from the
+        session, if any.
+        """
+        self.view = None
 
     # PRIVATE #################################################################
 
     def _update_state(self):
+        # pylint: disable=attribute-defined-outside-init
         self.state = StateDescription(
             dataset=self._dataset,
             view=self._view,
             selected=self.state.selected,
         )
 
-    def _get_dataset_or_view(self):
-        # view takes precedence over dataset if set
-        return self.view if self.view else self.dataset
 
-    def _compute_count(self):
-        dataset_or_view = self._get_dataset_or_view()
-        if dataset_or_view:
-            return len(dataset_or_view)
-        return 0
+def _close_on_exit(session):
+    def handle_exit():
+        try:
+            session.close()
+        except:
+            pass
+
+    atexit.register(handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
+    signal.signal(signal.SIGINT, handle_exit)

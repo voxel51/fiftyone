@@ -1,6 +1,5 @@
 """
-Methods for working with datasets provided by PyTorch in the FiftyOne Dataset
-Zoo.
+FiftyOne Zoo Datasets provided by ``torchvision.datasets``.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -25,9 +24,10 @@ import os
 import eta.core.utils as etau
 import eta.core.web as etaw
 
-import fiftyone.core.datautils as fodu
-import fiftyone.zoo as foz
 import fiftyone.core.utils as fou
+import fiftyone.utils.data as foud
+import fiftyone.types as fot
+import fiftyone.zoo as foz
 
 fou.ensure_torch()
 import torchvision  # pylint: disable=wrong-import-order
@@ -70,7 +70,7 @@ class MNISTDataset(foz.ZooDataset):
             )
 
         get_class_labels_fcn = _parse_classification_labels_map
-        sample_parser = fodu.ImageClassificationSampleParser()
+        sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -114,7 +114,7 @@ class CIFAR10Dataset(foz.ZooDataset):
             )
 
         get_class_labels_fcn = _parse_classification_labels_map
-        sample_parser = fodu.ImageClassificationSampleParser()
+        sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -178,7 +178,7 @@ class ImageNet2012Dataset(foz.ZooDataset):
             return torchvision.datasets.ImageNet(dataset_dir, split=split)
 
         get_class_labels_fcn = _parse_classification_labels_map
-        sample_parser = fodu.ImageClassificationSampleParser()
+        sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
             self,
             split,
@@ -228,8 +228,8 @@ class COCO2017Dataset(foz.ZooDataset):
 
         download_fcn = _download_coco_train_dataset
         get_class_labels_fcn = _parse_coco_detection_labels_map
-        sample_parser = fodu.ImageDetectionSampleParser(
-            label_field="category_id"
+        sample_parser = foud.ImageDetectionSampleParser(
+            label_field="category_id", normalized=False
         )
 
         return _download_and_prepare(
@@ -298,13 +298,29 @@ def _download_and_prepare(
     # Download the raw dataset to a tmp directory
     tmp_dir = os.path.join(dataset_dir, "tmp")
     dataset = download_fcn(tmp_dir)
+
     labels_map = get_class_labels_fcn(dataset)
     sample_parser.labels_map = labels_map
     num_samples = len(dataset)
 
-    # Consturct the LabeledDataset in `dataset_dir`
-    labeled_dataset = fodu.to_labeled_image_dataset(
-        dataset, sample_parser, dataset_dir, num_samples=num_samples,
+    if isinstance(sample_parser, foud.ImageClassificationSampleParser):
+        write_dataset_fcn = foud.to_image_classification_dataset
+        format = fot.ImageClassificationDataset
+    elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
+        write_dataset_fcn = foud.to_image_detection_dataset
+        format = fot.ImageDetectionDataset
+    elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
+        write_dataset_fcn = foud.to_image_labels_dataset
+        format = fot.ImageLabelsDataset
+    else:
+        raise ValueError("Unsupported sample parser: %s" % sample_parser)
+
+    # Write the formatted dataset to `dataset_dir`
+    write_dataset_fcn(
+        dataset,
+        dataset_dir,
+        sample_parser=sample_parser,
+        num_samples=num_samples,
     )
 
     info = foz.ZooDatasetInfo(
@@ -312,7 +328,7 @@ def _download_and_prepare(
         type(zoo_dataset),
         split,
         num_samples,
-        type(labeled_dataset),
+        format,
         labels_map=labels_map,
     )
 

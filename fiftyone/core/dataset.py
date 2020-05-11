@@ -1,6 +1,9 @@
 """
-Core Module for `fiftyone` Dataset class
+FiftyOne datasets.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -14,139 +17,718 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-from bson.objectid import ObjectId
-from pymongo import MongoClient
 
-import eta.core.serial as etas
+import datetime
+import logging
+import os
 
-import fiftyone.core.document as fod
+import eta.core.utils as etau
+
+import fiftyone as fo
+import fiftyone.core.collections as foc
+import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
+import fiftyone.utils.data as foud
 
 
-# We are currently assuming this is not configurable
-DEFAULT_DATABASE = "fiftyone"
-
-META_COLLECTION = "_meta"
-
-
-def drop_database():
-    client = MongoClient()
-    client.drop_database(DEFAULT_DATABASE)
+logger = logging.getLogger(__name__)
 
 
 def list_dataset_names():
-    members = _get_members_for_collection_type(Dataset.COLLECTION_TYPE)
-    return [
-        collection_name
-        for collection_name in _db().list_collection_names()
-        if collection_name in members
-    ]
+    """Returns the list of available FiftyOne datasets.
+
+    Returns:
+        a list of :class:`Dataset` names
+    """
+    # pylint: disable=no-member
+    return foo.ODMSample.objects.distinct("dataset")
 
 
 def load_dataset(name):
-    return Dataset(name=name)
+    """Loads the FiftyOne dataset with the given name.
+
+    Args:
+        name: the name of the dataset
+
+    Returns:
+        a :class:`Dataset`
+    """
+    return Dataset(name, create_empty=False)
 
 
-class Dataset(fov.SampleCollection):
-    COLLECTION_TYPE = "DATASET"
+def get_default_dataset_name():
+    """Returns a default dataset name based on the current time.
 
-    def __init__(self, name):
-        self.name = name
-        self._c = self._get_collection()
+    Returns:
+        a dataset name
+    """
+    name = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("Using default dataset name '%s'", name)
+    return name
+
+
+def get_default_dataset_dir(name, split=None):
+    """Returns the default dataset directory for the dataset with the given
+    name.
+
+    Args:
+        name: the dataset name
+        split (None): an optional split
+
+    Returns:
+        the default dataset directory
+    """
+    dataset_dir = os.path.join(fo.config.default_dataset_dir, name)
+    if split is not None:
+        dataset_dir = os.path.join(dataset_dir, split)
+
+    logger.info("Using default dataset directory '%s'", dataset_dir)
+    return dataset_dir
+
+
+#
+# @todo datasets should be registered in the DB even if they are empty
+# Currently they only "appear" in the DB when they have their first sample
+# added
+#
+class Dataset(foc.SampleCollection):
+    """A FiftyOne dataset.
+
+    Datasets represent a homogeneous collection of
+    :class:`fiftyone.core.sample.Sample` instances that describe a particular
+    type of raw media (e.g., images) together with one or more sets of
+    :class:`fiftyone.core.labels.Label` instances (e.g., ground truth
+    annotations or model predictions) and metadata associated with those
+    labels.
+
+    FiftyOne datasets ingest and store the labels for all samples internally;
+    raw media is stored on disk and the dataset provides paths to the data.
+
+    Args:
+        name: the name of the dataset
+        create_empty (True): whether to create a dataset with the given name
+            if it does not already exist
+    """
+
+    def __init__(self, name, create_empty=True):
+        self._name = name
+
+        # @todo populate this when reading an existing collection from the DB
+        self._label_types = {}
+
+        if not create_empty and not self:
+            raise ValueError("Dataset '%s' not found" % name)
 
     def __len__(self):
-        return self._c.count_documents({})
+        return self._get_query_set().count()
 
     def __getitem__(self, sample_id):
-        return self._deserialize(
-            self._c.find_one({"_id": ObjectId(sample_id)})
+        samples = self._get_query_set(id=sample_id)
+        if not samples:
+            raise ValueError("No sample found with ID '%s'" % sample_id)
+
+        return self._load_sample(samples[0])
+
+    def __delitem__(self, sample_id):
+        self[sample_id]._delete()
+
+    @property
+    def name(self):
+        """The name of the dataset."""
+        return self._name
+
+    @property
+    def _sample_cls(self):
+        """The :class:`fiftyone.core.sample.Sample` class that this dataset
+        can contain.
+        """
+        return fos.Sample
+
+    def summary(self):
+        """Returns a string summary of the dataset.
+
+        Returns:
+            a string summary
+        """
+        return "\n".join(
+            [
+                "Name:           %s" % self.name,
+                "Num samples:    %d" % len(self),
+                "Tags:           %s" % self.get_tags(),
+                "Label groups:   %s" % self.get_label_groups(),
+                "Insight groups: %s" % self.get_insight_groups(),
+            ]
         )
 
     def get_tags(self):
-        return self._c.distinct("tags")
+        """Returns the list of tags in the dataset.
 
-    def add_sample(self, sample):
-        fos.Sample.validate(sample)
-        fod.insert_one(self._c, sample)
-
-    def add_samples(self, samples):
-        for sample in samples:
-            fos.Sample.validate(sample)
-        fod.insert_many(self._c, samples)
-
-    def add_labels(self, labels_dict):
-        for sample_id, label in labels_dict.items():
-            # @todo(Tyler) this could be done better...
-            sample = self[sample_id]
-            sample.add_label(label)
-
-            # self._c.find_one_and_update(
-            #     {"_id": ObjectId(sample_id)},
-            #     {"$set": {"labels": label.serialize(reflective=True)}}
-            # )
-            self._c.find_one_and_replace(
-                {"_id": ObjectId(sample_id)}, sample._dbserialize()
-            )
+        Returns:
+            a list of tags
+        """
+        return self._get_query_set().distinct("tags")
 
     def iter_samples(self):
-        for sample_dict in self._c.find():
-            # uses reflective `_CLS` to determine type
-            yield self._deserialize(sample_dict)
+        """Returns an iterator over the samples in the dataset.
+
+        Returns:
+            an iterator over :class:`fiftyone.core.sample.Sample` instances
+        """
+        for doc in self._get_query_set():
+            yield self._load_sample(doc)
+
+    def add_sample(self, sample):
+        """Adds the given sample to the dataset.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+
+        Returns:
+            the ID of the sample
+        """
+        self._validate_sample(sample)
+        sample._set_dataset(self)
+        sample._save()
+        return sample.id
+
+    def add_samples(self, samples):
+        """Adds the given samples to the dataset.
+
+        Args:
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
+                instances
+
+        Returns:
+            a list of sample IDs
+        """
+        for sample in samples:
+            self._validate_sample(sample)
+            sample._set_dataset(self)
+
+        sample_docs = self._get_query_set().insert(
+            [s._backing_doc for s in samples]
+        )
+        return [str(s.id) for s in sample_docs]
 
     def default_view(self):
-        return fov.DatasetView(dataset=self)
+        """Returns a :class:`fiftyone.core.view.DatasetView` containing the
+        entire dataset.
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return fov.DatasetView(self)
+
+    @classmethod
+    def from_image_classification_samples(
+        cls, samples, name=None, group="ground_truth", labels_map=None,
+    ):
+        """Creates a :class:`Dataset` for the given image classification
+        samples.
+
+        The input ``samples`` can be any iterable that emits
+        ``(image_path, target)`` tuples, where:
+
+            - ``image_path`` is the path to the image on disk
+
+            - ``target`` is either a label string, or, if a ``labels_map`` is
+              provided, a class ID that can be mapped to a label string via
+              ``labels_map[target]``
+
+        For example, ``samples`` may be a ``torch.utils.data.Dataset`` or an
+        iterable generated by ``tf.data.Dataset.as_numpy_iterator()``.
+
+        If your samples do not fit this schema, see
+        :func:`Dataset.from_labeled_image_samples` for details on how to
+        provide your own :class:`fiftyone.utils.data.LabeledImageSampleParser`
+        to parse your samples.
+
+        This operation will iterate over all provided samples, but the images
+        will not be read.
+
+        Args:
+            samples: an iterable of samples
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+            labels_map (None): an optional dict mapping class IDs to label
+                strings. If provided, it is assumed that ``target`` is a class
+                ID that should be mapped to a label string via
+                ``labels_map[target]``
+
+        Returns:
+            a :class:`Dataset`
+        """
+        sample_parser = foud.ImageClassificationSampleParser(
+            labels_map=labels_map
+        )
+        return cls.from_labeled_image_samples(
+            samples, name=name, group=group, sample_parser=sample_parser
+        )
+
+    @classmethod
+    def from_image_detection_samples(
+        cls, samples, name=None, group="ground_truth", labels_map=None,
+    ):
+        """Creates a :class:`Dataset` for the given image detection samples.
+
+        The input ``samples`` can be any iterable that emits
+        ``(image_path, detections)`` tuples, where:
+
+            - ``image_path`` is the path to the image on disk
+
+            - ``detections`` is a list of detections in the following format::
+
+                [
+                    {
+                        "label": <label>,
+                        "bounding_box": [
+                            <top-left-x>, <top-left-y>, <width>, <height>
+                        ],
+                        "confidence": <optional-confidence>,
+                    },
+                    ...
+                ]
+
+              where ``label`` is either a label string, or, if a ``labels_map``
+              is provided, a class ID that can be mapped to a label string via
+              ``labels_map[label]``, and the bounding box coordinates are
+              relative values in ``[0, 1] x [0, 1]``
+
+        For example, ``samples`` may be a ``torch.utils.data.Dataset`` or an
+        iterable generated by ``tf.data.Dataset.as_numpy_iterator()``.
+
+        If your samples do not fit this schema, see
+        :func:`Dataset.from_labeled_image_samples` for details on how to
+        provide your own :class:`fiftyone.utils.data.LabeledImageSampleParser`
+        to parse your samples.
+
+        This operation will iterate over all provided samples, but the images
+        will not be read.
+
+        Args:
+            samples: an iterable of samples
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+            labels_map (None): an optional dict mapping class IDs to label
+                strings. If provided, it is assumed that the ``label`` values
+                in ``target`` are class IDs that should be mapped to label
+                strings via ``labels_map[label]``
+
+        Returns:
+            a :class:`Dataset`
+        """
+        sample_parser = foud.ImageDetectionSampleParser(labels_map=labels_map)
+        return cls.from_labeled_image_samples(
+            samples, name=name, group=group, sample_parser=sample_parser
+        )
+
+    @classmethod
+    def from_image_labels_samples(
+        cls, samples, name=None, group="ground_truth"
+    ):
+        """Creates a :class:`Dataset` for the given image labels samples.
+
+        The input ``samples`` can be any iterable that emits
+        ``(image_path, image_labels)`` tuples, where:
+
+            - ``image_path`` is the path to the image on disk
+
+            - ``image_labels`` is an ``eta.core.image.ImageLabels`` instance
+              or a serialized dict representation of one
+
+        For example, ``samples`` may be a ``torch.utils.data.Dataset`` or an
+        iterable generated by ``tf.data.Dataset.as_numpy_iterator()``.
+
+        If your samples do not fit this schema, see
+        :func:`Dataset.from_labeled_image_samples` for details on how to
+        provide your own :class:`fiftyone.utils.data.LabeledImageSampleParser`
+        to parse your samples.
+
+        This operation will iterate over all provided samples, but the images
+        will not be read.
+
+        Args:
+            samples: an iterable of samples
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+
+        Returns:
+            a :class:`Dataset`
+        """
+        sample_parser = foud.ImageLabelsSampleParser()
+        return cls.from_labeled_image_samples(
+            samples, name=name, group=group, sample_parser=sample_parser
+        )
+
+    @classmethod
+    def from_labeled_image_samples(
+        cls, samples, name=None, group="ground_truth", sample_parser=None
+    ):
+        """Creates a :class:`Dataset` for the given labeled image samples.
+
+        The input ``samples`` can be any iterable that emits
+        ``(image_path, label)`` tuples, where:
+
+            - ``image_path`` is the path to the image on disk
+
+            - ``label`` is a :class:`fiftyone.core.labels.Label` instance
+              containing the image label(s)
+
+        If your samples require preprocessing to convert to the above format,
+        you can provide a custom
+        :class:`fiftyone.utils.data.LabeledImageSampleParser` instance via
+        the ``sample_parser`` argument whose
+        :func:`fiftyone.utils.data.LabeledImageSampleParser.parse_label` method
+        will be used to parse the sample labels in the input iterable.
+
+        This operation will iterate over all provided samples, but the images
+        will not be read.
+
+        Args:
+            samples: an iterable of samples
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+            sample_parser (None): a
+                :class:`fiftyone.utils.data.LabeledImageSampleParser` instance
+                whose :func:`fiftyone.utils.data.LabeledImageSampleParser.parse_label`
+                method will be used to parse the sample labels
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        # @todo add a progress bar here? Note that `len(samples)` may not work
+        # for some iterables
+        logger.info("Parsing samples...")
+        _samples = []
+        for sample in samples:
+            if sample_parser is not None:
+                label = sample_parser.parse_label(sample)
+            else:
+                label = sample[1]
+
+            filepath = os.path.abspath(os.path.expanduser(sample[0]))
+            _sample = fos.Sample.create(filepath)
+
+            _sample.add_label(group, label)
+            _samples.append(_sample)
+
+        logger.info(
+            "Creating dataset '%s' containing %d samples", name, len(_samples)
+        )
+        dataset = cls(name)
+        dataset.add_samples(_samples)
+        return dataset
+
+    @classmethod
+    def ingest_labeled_image_samples(
+        cls,
+        samples,
+        name=None,
+        group="ground_truth",
+        dataset_dir=None,
+        sample_parser=None,
+        image_format=fo.config.default_image_ext,
+    ):
+        """Creates a :class:`Dataset` for the given iterable of samples, which
+        contains images and their associated labels.
+
+        The images are read in-memory and written to the given dataset
+        directory. The labels are ingested by FiftyOne.
+
+        The input ``samples`` can be any iterable that emits
+        ``(image_or_path, label)`` tuples, where:
+
+            - ``image_or_path`` is either an image that can be converted to
+              numpy format via ``np.asarray()`` or the path to an image on disk
+
+            - ``label`` is a :class:`fiftyone.core.labels.Label` instance
+
+        If your samples require preprocessing to convert to the above format,
+        you can provide a custom
+        :class:`fiftyone.utils.data.LabeledImageSampleParser` instance via the
+        ``sample_parser`` argument whose
+        :func:`fiftyone.utils.data.LabeledImageSampleParser.parse` method will
+        be used to parse the input samples.
+
+        Args:
+            samples: an iterable of images
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+            dataset_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            sample_parser (None): a
+                :class:`fiftyone.utils.data.LabeledImageSampleParser` instance
+                whose :func:`fiftyone.utils.data.LabeledImageSampleParser.parse`
+                method will be used to parse the images
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        if dataset_dir is None:
+            dataset_dir = get_default_dataset_dir(name)
+
+        _samples = foud.parse_labeled_images(
+            samples,
+            dataset_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+        return cls.from_labeled_image_samples(_samples, name=name, group=group)
+
+    @classmethod
+    def from_image_classification_dataset(
+        cls, dataset_dir, name=None, group="ground_truth"
+    ):
+        """Creates a :class:`Dataset` for the given image classification
+        dataset stored on disk.
+
+        See :class:`fiftyone.types.ImageClassificationDataset` for format
+        details.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+
+        Returns:
+            a :class:`Dataset`
+        """
+        samples = foud.parse_image_classification_dataset(dataset_dir)
+        return cls.from_labeled_image_samples(samples, name=name, group=group)
+
+    @classmethod
+    def from_image_detection_dataset(
+        cls, dataset_dir, name=None, group="ground_truth"
+    ):
+        """Creates a :class:`Dataset` for the given image detection dataset
+        stored on disk.
+
+        See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+
+        Returns:
+            a :class:`Dataset`
+        """
+        samples = foud.parse_image_detection_dataset(dataset_dir)
+        return cls.from_labeled_image_samples(samples, name=name, group=group)
+
+    @classmethod
+    def from_image_labels_dataset(
+        cls, dataset_dir, name=None, group="ground_truth"
+    ):
+        """Creates a :class:`Dataset` for the given image labels dataset stored
+        on disk.
+
+        See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            group ("ground_truth"): the group name to use for the labels
+
+        Returns:
+            a :class:`Dataset`
+        """
+        samples = foud.parse_image_labels_dataset(dataset_dir)
+        return cls.from_labeled_image_samples(samples, name=name, group=group)
+
+    @classmethod
+    def from_images_dir(cls, images_dir, recursive=False, name=None):
+        """Creates a :class:`Dataset` for the given directory of images.
+
+        This operation does not read the images.
+
+        Args:
+            images_dir: a directory of images
+            recursive (False): whether to recursively traverse subdirectories
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        image_paths = etau.list_files(
+            images_dir, abs_paths=True, recursive=recursive
+        )
+        return cls.from_images(image_paths, name=name)
+
+    @classmethod
+    def from_images_patt(cls, image_patt, name=None):
+        """Creates a :class:`Dataset` for the given glob pattern of images.
+
+        This operation does not read the images.
+
+        Args:
+            image_patt: a glob pattern of images like ``/path/to/images/*.jpg``
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        image_paths = etau.parse_glob_pattern(image_patt)
+        return cls.from_images(image_paths, name=name)
+
+    @classmethod
+    def from_images(cls, image_paths, name=None):
+        """Creates a :class:`Dataset` for the given list of images.
+
+        This operation does not read the images.
+
+        Args:
+            image_paths: a list of image paths
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        logger.info("Parsing image paths...")
+        samples = []
+        for image_path in image_paths:
+            filepath = os.path.abspath(os.path.expanduser(image_path))
+            samples.append(fos.Sample.create(filepath))
+
+        logger.info(
+            "Creating dataset '%s' containing %d samples", name, len(samples)
+        )
+        dataset = cls(name)
+        dataset.add_samples(samples)
+        return dataset
+
+    @classmethod
+    def ingest_images(
+        cls,
+        samples,
+        name=None,
+        dataset_dir=None,
+        sample_parser=None,
+        image_format=fo.config.default_image_ext,
+    ):
+        """Creates a :class:`Dataset` for the given iterable of samples, which
+        contains images that are read in-memory and written to the given
+        dataset directory.
+
+        The input ``samples`` can be any iterable that emits images (or paths
+        to images on disk) that can be converted to numpy format via
+        ``np.asarray()``.
+
+        If your samples require preprocessing to convert to the above format,
+        you can provide a custom
+        :class:`fiftyone.utils.data.UnlabeledImageSampleParser` instance via
+        the ``sample_parser`` argument whose
+        :func:`fiftyone.utils.data.UnlabeledImageSampleParser.parse` method
+        will be used to parse the images in the input iterable.
+
+        Args:
+            samples: an iterable of images
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            dataset_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            sample_parser (None): a
+                :class:`fiftyone.utils.data.UnlabeledImageSampleParser`
+                instance whose
+                :func:`fiftyone.utils.data.UnlabeledImageSampleParser.parse`
+                method will be used to parse the images
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        if dataset_dir is None:
+            dataset_dir = get_default_dataset_dir(name)
+
+        image_paths = foud.to_images_dir(
+            samples,
+            dataset_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+        return cls.from_images(image_paths, name=name)
 
     def serialize(self):
+        """Serializes the dataset.
+
+        Returns:
+            a JSON representation of the dataset
+        """
         return {"name": self.name}
 
-    # PRIVATE #################################################################
+    def _aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the dataset.
 
-    def _get_collection(self):
-        """Get the collection backing this _SampleCollection.
-        Ensures that the collection is properly initialized and registered in
-        the meta collection.
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
         """
-        if self.name in _db().list_collection_names():
-            # make sure it's the right collection type
-            members = _get_members_for_collection_type(self.COLLECTION_TYPE)
-            assert self.name in members, "raise a better error!"
+        if pipeline is None:
+            pipeline = []
 
-        else:
-            # add to meta collection
-            c = _get_meta_collection()
-            c.update_one(
-                {"collection_type": self.COLLECTION_TYPE},
-                {"$push": {"members": self.name}},
+        return self._get_query_set().aggregate(pipeline)
+
+    def _load_sample(self, doc):
+        sample = fos.Sample.from_doc(doc)
+        sample._set_dataset(self)
+        return sample
+
+    def _get_query_set(self, **kwargs):
+        # pylint: disable=no-member
+        return foo.ODMSample.objects(dataset=self.name, **kwargs)
+
+    def _validate_sample(self, sample):
+        if not isinstance(sample, self._sample_cls):
+            raise ValueError(
+                "Expected sample to be an instance of '%s'; found '%s'"
+                % (
+                    etau.get_class_name(self._sample_cls),
+                    etau.get_class_name(sample),
+                )
             )
 
-        return _db()[self.name]
-
-    @staticmethod
-    def _deserialize(sample_dict):
-        if sample_dict is None:
-            return sample_dict
-        return etas.Serializable.from_dict(sample_dict)
-
-
-# PRIVATE #####################################################################
-
-
-def _db():
-    return MongoClient()[DEFAULT_DATABASE]
-
-
-def _get_meta_collection():
-    """Get the meta collection (and initialize if necessary)"""
-    c = _db()[META_COLLECTION]
-    if not c.count({"collection_type": Dataset.COLLECTION_TYPE}):
-        c.insert_many(
-            [{"collection_type": Dataset.COLLECTION_TYPE, "members": []}]
-        )
-    return c
-
-
-def _get_members_for_collection_type(collection_type):
-    c = _get_meta_collection()
-    members = c.find_one({"collection_type": collection_type})["members"]
-    return members
+    def _validate_label(self, group, label):
+        if group not in self._label_types:
+            self._label_types[group] = label.__class__
+        else:
+            label_cls = self._label_types[group]
+            if not isinstance(label, label_cls):
+                raise ValueError(
+                    "Expected label to be an instance of '%s'; found '%s'"
+                    % (
+                        etau.get_class_name(label_cls),
+                        etau.get_class_name(label),
+                    )
+                )

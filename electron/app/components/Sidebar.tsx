@@ -7,6 +7,7 @@ import connect from "../utils/connect";
 const _Sidebar = (props) => {
   const { state } = props;
   const hasDataset = Boolean(state && state.dataset);
+  console.log(state);
   return (
     <Sidebar
       as={Menu}
@@ -31,70 +32,25 @@ const _Sidebar = (props) => {
               Selected &middot; <code>{state.selected.length}</code>
             </Menu.Item>
             <Menu.Item as="span">
-              Shape &middot; <code>({state.count},)</code>
+              Shape &middot; <code>({state.count},32,32,3)</code>
             </Menu.Item>
           </Menu>
         ) : null}
       </Menu.Item>
-      {hasDataset ? (
-        <>
-          <Menu.Item as="h4">
-            Page
-            <Menu inverted vertical>
-              {state && state.page
-                ? Object.keys(state.page).map((k) => {
-                    const v = state.page[k];
-                    return (
-                      <Menu.Item as="span">
-                        {k}: {v}
-                      </Menu.Item>
-                    );
-                  })
-                : null}
-            </Menu>
-          </Menu.Item>
-          <Menu.Item as="h4">
-            View
-            <Menu inverted vertical>
-              <Menu.Item as="span">
-                {state && state.view_tag ? state.view_tag : "No view"}
-              </Menu.Item>
-            </Menu>
-          </Menu.Item>
-          <Menu.Item as="h4">
-            Query
-            <Menu inverted vertical>
-              {state && state.query ? (
-                Object.keys(state.query).map((k) => {
-                  return (
-                    <Menu.Item as="span">
-                      {String(Object.keys(state.query[k])[0])}
-                    </Menu.Item>
-                  );
-                })
-              ) : (
-                <Menu.Item as="span">Empty query</Menu.Item>
-              )}
-            </Menu>
-          </Menu.Item>
-          <Menu.Item as="h4">
-            Classes
-            <Menu inverted vertical>
-              {state && state.query ? (
-                Object.keys(state.query).map((k) => {
-                  return (
-                    <Menu.Item as="span">
-                      {String(Object.keys(state.query[k])[0])}
-                    </Menu.Item>
-                  );
-                })
-              ) : (
-                <Menu.Item as="span">No classes</Menu.Item>
-              )}
-            </Menu>
-          </Menu.Item>
-        </>
-      ) : null}
+      <>
+        <Menu.Item as="h4">
+          View
+          <Menu inverted vertical>
+            <Menu.Item as="div" style={{ overflowX: "auto" }}>
+              <pre>
+                {state && state.view
+                  ? JSON.stringify(JSON.parse(state.view.view), null, 2)
+                  : "Empty view"}
+              </pre>
+            </Menu.Item>
+          </Menu>
+        </Menu.Item>
+      </>
     </Sidebar>
   );
 };

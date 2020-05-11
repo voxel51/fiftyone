@@ -1,5 +1,6 @@
 {
   "DATASET": "/",
-  "LIST": "/list",
-  "CHARTS": "/charts"
+  "SAMPLES": "/samples",
+  "LABELS": "/labels",
+  "INSIGHTS": "/insights"
 }
