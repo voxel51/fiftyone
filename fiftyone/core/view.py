@@ -186,7 +186,7 @@ class DatasetView(foc.SampleCollection):
         return self.match({"tags": tag})
 
     def match_insight(self, insight_group):
-        """Filters the samples in the view to have the label group. Filtering
+        """Filters the samples in the view to have the insight group. Filtering
         ensures that the insight exists on the sample.
 
         Args:
