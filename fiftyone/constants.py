@@ -35,7 +35,6 @@ FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 
-
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
@@ -71,17 +70,28 @@ STOP_DB = " ".join(
 )
 
 if sys.platform == "linux":
-    STOP_SERVICE = "fuser -k %d/tcp >/dev/null 2>&1"
+    _STOP_SERVICE = "fuser -k %d/tcp >/dev/null 2>&1"
+
+    # @todo this is a hack
+    _STOP_ELECTRON = (
+        "ps -c | grep ' Electron$' | awk '{print $1}' | xargs -r kill"
+    )
 elif sys.platform == "darwin":
-    STOP_SERVICE = (
+    _STOP_SERVICE = (
         "lsof -i tcp:%d | grep -v PID | awk '{print $2}' | xargs kill"
+    )
+
+    # @todo this is a hack
+    _STOP_ELECTRON = (
+        "ps -c | grep ' Electron$' | awk '{print $1}' | xargs kill"
     )
 else:
     raise OSError("Unsupported OS: %s" % sys.platform)
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
-SERVER_ADDR = "http://127.0.0.1:5151"
+SERVER_PORT = 5151
+SERVER_ADDR = "http://127.0.0.1:%s" % SERVER_PORT
 START_SERVER = [
     "gunicorn",
     "-w",
@@ -89,14 +99,14 @@ START_SERVER = [
     "--worker-class",
     "eventlet",
     "-b",
-    "127.0.0.1:5151",
+    "127.0.0.1:%s" % SERVER_PORT,
     "main:app",
     "--daemon",
     "--reload",
 ]
-STOP_SERVER = STOP_SERVICE % 5151
+STOP_SERVER = _STOP_SERVICE % SERVER_PORT
 
 # App setup
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
 START_APP = ["yarn", "background-dev"]
-STOP_APP = STOP_SERVICE % 1212
+STOP_APP = "; ".join([_STOP_SERVICE % 1212, _STOP_ELECTRON])
