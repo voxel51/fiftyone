@@ -1,34 +1,4 @@
-# Interface
-
-Existing Interfaces:
-
-1. python primitives (`list`, `dict`)
-2. `pandas`
-3. MongoDB (`pymongo`)
-4. MongoEngine (`mongoengine`)
-
-Objects to consider:
-
--   `Dataset`
--   `Sample`
--   `DatasetView`
--   `Label`
--   `Insight`
-
-## python `dict`
-
-```python
-d = {}
-
-for sample_id in d:
-    ...
-for sample in d.values():
-    ...
-for sample_id, sample in d.items():
-    ...
-```
-
-## `pandas.DataFrame`
+# `pandas.DataFrame`
 
 Generally speaking, operations on dataframes return dataframes. A single column
 dataframe is a series.
@@ -49,7 +19,7 @@ df = pd.DataFrame(
 )
 ```
 
-### Viewing
+## Viewing
 
 ```python
 df.describe()  # -> pandas.core.frame.DataFrame
@@ -81,15 +51,15 @@ df.A  # -> pandas.core.series.Series
 # Name: A, dtype: float64
 ```
 
-### Sorting
+## Sorting
 
 ```python
 df.sort_values(by="B")  # -> pandas.core.frame.DataFrame (reorder of df)
 ```
 
-### Selection
+## Selection
 
-#### Slicing by Label
+### Slicing by Label
 
 ```python
 # indexing returns a DataFrame, Series or "dtype" depending on the return shape
@@ -109,7 +79,7 @@ df.at[dates[0], "A"]
 # 0.4691122999071863
 ```
 
-#### Slicing by Positing
+### Slicing by Positing
 
 ```python
 df.iloc[3:5, 0:2]
@@ -126,7 +96,7 @@ df.iat[1, 1]
 # -0.17321464905330858
 ```
 
-#### "Implicit" Slicing
+### "Implicit" Slicing
 
 ```python
 # slicing rows (accepts position or label. position takes precedence)
@@ -157,7 +127,7 @@ df[1:2]  # -> pandas.core.frame.DataFrame
 # 1  1.0 2013-01-02  1.0  3  train  foo
 ```
 
-### Querying (Boolean Indexing)
+## Querying (Boolean Indexing)
 
 ```python
 df["A"] > 0  # -> pandas.core.series.Series
@@ -181,7 +151,7 @@ df["E"].isin(["test", "train"])  # -> pandas.core.series.Series
 # Name: E, dtype: bool
 ```
 
-### Setting
+## Setting
 
 ```python
 # Set a series
@@ -195,7 +165,7 @@ df.at[dates[0], "A"] = 0
 df[df > 0] = -df
 ```
 
-### Operations
+## Operations
 
 ```python
 df.apply(np.cumsum)  # -> pandas.core.frame.DataFrame
@@ -231,114 +201,4 @@ df2.groupby("A").sum()  # -> pandas.core.frame.DataFrame
 # A
 # bar  0.995306  2.592467
 # foo -1.733846 -1.967416
-```
-
-## `mongoengine.Document`
-
-```python
-from mongoengine import *
-
-
-class ODMSample(Document):
-    dataset = StringField()
-    filepath = StringField(unique=True)
-    tags = ListField(StringField())
-
-
-ODMSample  # -> mongoengine.base.metaclasses.TopLevelDocumentMetaclass
-# fiftyone.core.odm.ODMSample
-
-sample = ODMSample(filepath="path/to/img.jpg")
-```
-
-### Viewing
-
-```python
-ODMSample.objects()  # -> mongoengine.queryset.queryset.QuerySet
-ODMSample.objects  # -> mongoengine.queryset.queryset.QuerySet
-# [<ODMSample: ODMSample object>]
-```
-
-### Sorting
-
-```python
-ODMSample.objects.order_by("filepath")
-```
-
-### Selection (slicing)
-
-```python
-# Only the first 5
-ODMSample.objects.limit(5)
-samples = ODMSample.objects[:5]
-
-# All except for the first 5
-ODMSample.objects.skip(5)
-samples = ODMSample.objects[5:]
-
-# 5 samples, starting from the 11th user found
-ODMSample.objects.skip(5).limit(10)
-samples = ODMSample.objects[10:15]
-```
-
-### Querying (searching)
-
-```python
-ODMSample.objects(tags="train")
-ODMSample.objects(__raw__={"tags": "train"})
-# -> mongoengine.queryset.queryset.QuerySet
-
-ODMSample.objects(labels__ground_truth__exists=True)
-ODMSample.objects(__raw__={"labels.ground_truth": {"$exists": True}})
-# -> mongoengine.queryset.queryset.QuerySet
-```
-
-### Setting
-
-```python
-sample.tags  # -> mongoengine.base.datastructures.BaseList
-# []
-
-sample.tags += ["train"]
-sample.tags.append("train")
-sample.tags
-# ['train']
-```
-
-### Operations (Aggregations)
-
-```python
-ODMSample.objects.count()  # -> int
-ODMSample.objects.distinct(
-    "tags"
-)  # -> mongoengine.base.datastructures.BaseList
-ODMSample.objects.sum("labels.ground_truth.confidence")  # -> scalar
-ODMSample.objects.average("labels.ground_truth.confidence")  # -> scalar
-
-# MongoDB aggregation pipeline
-ODMSample.objects.aggregate([])  # -> pymongo.command_cursor.CommandCursor
-```
-
-## WIP
-
-```python
-sample.insights["my_int"] = 7
-print(sample.insights.my_int)
-# 7
-
-sample.insights["my_scalar"] = 7.0
-print(sample.insights.my_scalar)
-# 7.0
-
-sample.insights["my_string"] = "hello"
-print(sample.insights.my_string)
-# 'hello'
-
-sample.insights["my_list"] = [1, 2, 3]
-print(sample.insights.my_list)
-# <fiftyone.core.insights.ListInsight at 0x...>
-
-sample.insights["my_dict"] = {"a": 1, "b": 2}
-print(sample.insights.my_dict)
-# <fiftyone.core.insights.DictInsight at 0x...>
 ```
