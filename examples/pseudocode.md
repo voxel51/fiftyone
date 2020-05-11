@@ -233,6 +233,68 @@ df2.groupby("A").sum()  # -> pandas.core.frame.DataFrame
 # foo -1.733846 -1.967416
 ```
 
+## `mongoengine.Document`
+
+```python
+from mongoengine import *
+
+
+class ODMSample(Document):
+    dataset = StringField()
+    filepath = StringField(unique=True)
+    tags = ListField(StringField())
+
+
+ODMSample  # -> mongoengine.base.metaclasses.TopLevelDocumentMetaclass
+# fiftyone.core.odm.ODMSample
+
+sample = ODMSample()
+```
+
+### Viewing
+
+```python
+ODMSample.objects()  # -> mongoengine.queryset.queryset.QuerySet
+ODMSample.objects  # -> mongoengine.queryset.queryset.QuerySet
+# [<ODMSample: ODMSample object>]
+```
+
+### Sorting
+
+```python
+
+```
+
+### Selection (slicing)
+
+```python
+
+```
+
+### Querying (searching)
+
+```python
+ODMSample.objects(tags="train")
+ODMSample.objects(__raw__={"tags": "train"})
+# -> mongoengine.queryset.queryset.QuerySet
+
+ODMSample.objects(labels__exists=True)
+ODMSample.objects(__raw__={"tags": "train"})
+# -> mongoengine.queryset.queryset.QuerySet
+```
+
+### Setting
+
+```python
+
+```
+
+### Operations
+
+```python
+
+```
+
 ## WIP
 
 ```python
