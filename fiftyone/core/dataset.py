@@ -171,9 +171,8 @@ class Dataset(foc.SampleCollection):
             ]
         )
 
-    def head(self, num_samples=3):
-        """Returns a string representation of the first few samples in the
-        dataset.
+    def sample(self, num_samples=3):
+        """Returns a string summary of a few random samples from the dataset.
 
         Args:
             num_samples (3): the number of samples
@@ -181,19 +180,11 @@ class Dataset(foc.SampleCollection):
         Returns:
             a string representation of the samples
         """
-        return self.default_view().head(num_samples=num_samples)
-
-    def tail(self, num_samples=3):
-        """Returns a string representation of the last few samples in the
-        dataset.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return self.default_view().tail(num_samples=num_samples)
+        return (
+            self.default_view()
+            .sample(num_samples)
+            .head(num_samples=num_samples)
+        )
 
     def get_tags(self):
         """Returns the list of tags in the dataset.
