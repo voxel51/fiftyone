@@ -44,11 +44,11 @@ class Service(object):
         self.stop()
 
     def start(self):
-        """Starts the service."""
+        """Starts the Service."""
         raise NotImplementedError("subclasses must implement `start()`")
 
     def stop(self):
-        """Stops the service."""
+        """Stops the Service."""
         raise NotImplementedError("subclasses must implement `stop()`")
 
 
@@ -56,7 +56,7 @@ class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
 
     def start(self):
-        """Start the DatabaseService."""
+        """Starts the DatabaseService."""
         etau.call(foc.START_DB, **self._SUPPRESS)
 
         # Drop the entire database (lightweight!)
@@ -65,7 +65,7 @@ class DatabaseService(Service):
         foo.drop_database()
 
     def stop(self):
-        """Stop the DatabaseService."""
+        """Stops the DatabaseService."""
         self._system(foc.STOP_DB)
 
 
@@ -73,12 +73,12 @@ class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
     def start(self):
-        """Start the ServerService."""
+        """Starts the ServerService."""
         with etau.WorkingDir(foc.SERVER_DIR):
             etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
-        """Stop the ServerService."""
+        """Stops the ServerService."""
         self._system(foc.STOP_SERVER)
 
 
@@ -86,7 +86,7 @@ class AppService(Service):
     """Service that controls the FiftyOne app."""
 
     def start(self):
-        """Start the AppService.
+        """Starts the AppService.
 
         TODO: Add production call to start the app
         """
@@ -94,7 +94,7 @@ class AppService(Service):
             etau.call(foc.START_APP, **self._SUPPRESS)
 
     def stop(self):
-        """Stop the AppService.
+        """Stops the AppService.
 
         Noop as the session requests the app to close itself.
         """
