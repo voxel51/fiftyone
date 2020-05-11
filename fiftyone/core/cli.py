@@ -178,6 +178,7 @@ class ZooCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "list", ZooListCommand)
         _register_command(subparsers, "info", ZooInfoCommand)
+        _register_command(subparsers, "download", ZooDownloadCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -294,6 +295,45 @@ class ZooInfoCommand(Command):
 
         dataset_dir, info = downloaded_datasets[name]
         _print_zoo_dataset_info(dataset_dir, info)
+
+
+class ZooDownloadCommand(Command):
+    """Tools for downloading zoo datasets.
+
+    Examples:
+        # Download the default split of the zoo dataset
+        fiftyone zoo download <name>
+
+        # Download the specified split of the zoo dataset
+        fiftyone zoo download <name> <split>
+
+        # Download to a custom directory
+        fiftyone zoo download <name> --dataset-dir <dataset-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset"
+        )
+        parser.add_argument(
+            "split", metavar="SPLIT", nargs="?", help="the split to download"
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset-dir",
+            metavar="BASE_DIR",
+            help="a custom directory to which to download the dataset",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        import fiftyone.zoo as foz
+
+        name = args.name
+        split = args.split
+        dataset_dir = args.dataset_dir or None
+        foz.download_zoo_dataset(name, split=split, dataset_dir=dataset_dir)
 
 
 def _print_zoo_dataset_info(dataset_dir, info):
