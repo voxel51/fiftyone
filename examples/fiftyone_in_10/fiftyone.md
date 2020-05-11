@@ -85,6 +85,32 @@ view.with_id(sample_id)[0]  # -> fiftyone.core.sample.Sample OR IndexError
 
 ## Querying (searching)
 
+The core query function is `match`, which uses
+[MongoDB query syntax](https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument):
+
+```python
+view.match(
+    {"metadata.num_channels": 3, "metadata.size_bytes": {"$gt": 1200},}
+)
+```
+
+Convenience wrappers are available for common queries:
+
+```python
+# samples with this tag
+view.match_tag("train")
+
+# samples with this insight group
+view.match_insight("metadata")
+
+# samples with this label group
+view.match_label("ground_truth_fine")
+
+# samples with/without these IDs
+view.select([id1, id2, id3])
+view.exclude([id1, id2, id3])
+```
+
 ## Chaining Commands
 
 Many operations on views return a view. It is easy to chain these commands.
@@ -103,8 +129,6 @@ view.match_insight("metadata")
 view.match_label("ground_truth_fine")
 view.select([id1, id2, id3])
 view.exclude([id1, id2, id3])
-# ANY query can be specified using `match`. The above methods are convenience
-# wrappers
 view.match(
     {"metadata.num_channels": 3, "metadata.size_bytes": {"$gt": 1200},}
 )
@@ -121,10 +145,6 @@ view.sample(10)
 ```
 
 ## Modifying
-
-### Operations on `Sample`
-
-@todo(Tyler)
 
 ### Operations on `Dataset` or `View`
 
@@ -171,4 +191,89 @@ view.aggregate(pipeline)  # -> pymongo.command_cursor.CommandCursor
 for d in view.aggregate(pipeline):
     # d is a dictionary whos structure depends on the pipeline
     ...
+```
+
+## `Field`s of `Sample`
+
+Samples have `Field`s on them.
+
+Some fields are automatically set on all samples. And some are immutable:
+
+```python
+sample.id  # -> str
+sample.filepath  # -> str
+sample.dataset  # -> str? or fiftyone.core.dataset.Dataset object??
+
+sample.filepath = "new/file/path.jpg"
+# AttributeError: can't set attribute
+```
+
+Samples can have arbitrary `Field`s added to them. This example adds a `tags`
+field which is a list of strings.
+
+Modifications to samples are not saved to the DB until `sample.save` is called.
+
+```python
+sample["tags"] = ["train"]
+
+sample["tags"]
+sample.tags  # -> mongoengine.base.datastructures.BaseList
+# ["train"]
+
+sample.save()
+```
+
+Datasets contain meta information about the fields. The `tags` field was
+automatically added when `tags` was added to a sample in the above code block.
+
+```python
+dataset.fields
+# {
+#     "dataset": fiftyone.core.fields.StringField(immutable=True),
+#     "filepath": fiftyone.core.fields.StringField(immutable=True),
+#     "tags": fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+# }
+```
+
+Setting a `Field` to an inappropriate type raises an error when saving.
+However, a field can be entirely deleted from a dataset, afterwhich it can be
+set again to any type.
+
+```python
+sample.tags = 67
+# ValidationError: ValidationError (ODMDocument.ODMSample:5eb9c958a33a60b54d16eee5) (Only lists and tuples may be used in a list field: ['tags'])
+
+sample.tags = [1, 2]
+# ValidationError: ValidationError (ODMDocument.ODMSample:5eb9c958a33a60b54d16eee5) (StringField only accepts string values 1.StringField only accepts string values: ['tags'])
+
+dataset.delete_field("tags")
+
+sample["tags"] = 9
+sample.save()
+# {
+#     "dataset": fiftyone.core.fields.StringField(immutable=True),
+#     "filepath": fiftyone.core.fields.StringField(immutable=True),
+#     "tags": fiftyone.core.fields.IntField()
+# }
+```
+
+Adding a classification label to a sample:
+
+```python
+sample["model_1"] = fo.ClassificationLabelField(label="cow", confidence=0.98)
+sample.save()
+
+sample.model_1
+# <ClassificationLabelField: ClassificationLabelField object>
+```
+
+What used to be called "insights" are nothing more than `Fields`:
+
+```python
+file_hash = compute_file_hash(sample.filepath)
+sample["model_1"] = fo.IntField(file_hash)
+sample.save()
+
+sample.file_hash
+# 8495821470157
 ```
