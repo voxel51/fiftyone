@@ -14,9 +14,9 @@ type Props = {
 function App(props: Props) {
   const { children, dispatch, update } = props;
   const [connectionEstablished, setConnectionEstablished] = useState(false);
-  const settingsRef = useRef(null);
-  const [server, setServer] = useState("http://127.0.0.1:5151/");
-  const socket = getSocket(server, "state");
+  const portRef = useRef(null);
+  const [port, setPort] = useState(5151);
+  const socket = getSocket(port, "state");
   useSubscribe(socket, "connect", () => {
     console.log("connected");
     if (!connectionEstablished) {
@@ -26,7 +26,7 @@ function App(props: Props) {
       setConnectionEstablished(true);
     }
   });
-  useSubscribe(socket, "disconnect", () => console.log("disconnected"));
+  useSubscribe(socket, "disconnect", () => alert("sfgs"));
   useSubscribe(socket, "update", (data) => {
     if (data.close) {
       remote.getCurrentWindow().close();
@@ -35,20 +35,18 @@ function App(props: Props) {
   });
 
   ipcRenderer.on("update-session-config", (event, message) => {
-    settingsRef.current.ref.current.click();
+    portRef.current.ref.current.click();
   });
 
   return (
     <>
       <Modal
-        trigger={
-          <Button style={{ display: "none" }} ref={settingsRef}></Button>
-        }
+        trigger={<Button style={{ display: "none" }} ref={portRef}></Button>}
       >
         <Modal.Header>Server Address</Modal.Header>
         <Modal.Content>
           <Modal.Description>
-            <Input value={server} loading />
+            <Input value={port} loading />
           </Modal.Description>
         </Modal.Content>
       </Modal>
