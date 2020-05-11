@@ -136,8 +136,8 @@ def predict(model, imgs):
 #   https://github.com/huyvnphan/PyTorch_CIFAR10
 #
 
-model = mobilenet_v2(pretrained=True)
-model_name = "mobilenet_v2"
+model = resnet50(pretrained=True)
+model_name = "resnet50"
 
 #
 # Extract a few images to process (some of these will have been manipulated above)
