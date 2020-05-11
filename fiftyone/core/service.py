@@ -84,4 +84,4 @@ class AppService(Service):
             etau.call(foc.START_APP, **self._SUPPRESS)
 
     def stop(self):
-        self._system(foc.STOP_APP)
+        pass
