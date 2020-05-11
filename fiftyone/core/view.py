@@ -154,8 +154,10 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             tag (None): a sample tag string
-            insight_group (None): an insight group string
-            label_group (None): a label group string
+            insight_group (None): an insight group string. Filtering ensures
+                that it exists
+            label_group (None): a label group string. Filtering ensures that it
+                exists
             filter (None): a MongoDB query dict. See
                 https://docs.mongodb.com/manual/tutorial/query-documents
                 for details
@@ -169,16 +171,14 @@ class DatasetView(foc.SampleCollection):
             view = view._copy_with_new_stage({"$match": {"tags": tag}})
 
         if insight_group is not None:
-            # @todo(Tyler) should this filter the insights as well? or just
-            # filter the samples based on whether or not the insight is
-            # present?
-            raise NotImplementedError("Not yet implemented")
+            view = view._copy_with_new_stage(
+                {"$match": {"insights.%s" % insight_group: {"$exists": True}}}
+            )
 
         if label_group is not None:
-            # @todo(Tyler) should this filter the labels as well? or just
-            # filter the samples based on whether or not the label is
-            # present?
-            raise NotImplementedError("Not yet implemented")
+            view = view._copy_with_new_stage(
+                {"$match": {"labels.%s" % label_group: {"$exists": True}}}
+            )
 
         if filter is not None:
             view = view._copy_with_new_stage({"$match": filter})
