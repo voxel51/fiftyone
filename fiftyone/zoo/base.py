@@ -86,7 +86,7 @@ def list_downloaded_zoo_datasets(base_dir=None):
         base_dir = fo.config.default_dataset_dir
 
     zoo_datasets = {}
-    found_datasets = defaultdict(dict)
+    downloaded_datasets = defaultdict(dict)
     for sub_dir in etau.list_subdirs(base_dir, recursive=True):
         # We're looking for subdirs of the form `<name>` or `<name>/<split>`
         chunks = sub_dir.split(os.path.sep)
@@ -105,13 +105,13 @@ def list_downloaded_zoo_datasets(base_dir=None):
             info = zoo_dataset.load_dataset_info(dataset_dir)
 
             if split is not None:
-                found_datasets[name][split] = (dataset_dir, info)
+                downloaded_datasets[name][split] = (dataset_dir, info)
             else:
-                found_datasets[name] = (dataset_dir, info)
+                downloaded_datasets[name] = (dataset_dir, info)
         except:
             pass
 
-    return dict(found_datasets)
+    return dict(downloaded_datasets)
 
 
 def download_zoo_dataset(name, split=None, dataset_dir=None):
