@@ -1,4 +1,4 @@
-# `pandas.DataFrame`
+# `pandas.DataFrame/Series`
 
 Generally speaking, operations on dataframes return dataframes. A single column
 dataframe is a series.

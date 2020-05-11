@@ -1,4 +1,4 @@
-# `mongoengine.Document`
+# `mongoengine.Document/QuerySet`
 
 The core of `mongoengine` is the `QuerySet` which allows you to search, sort
 and slice collections of `Document`s.
