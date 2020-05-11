@@ -138,6 +138,7 @@ df["A"] > 0  # -> pandas.core.series.Series
 # Name: A, dtype: bool
 
 df[df["A"] > 0]
+df.query("A > 0")
 #                    A         B         C         D
 # 2013-01-01  0.469112 -0.282863 -1.509059 -1.135632
 # 2013-01-02  1.212112 -0.173215  0.119209 -1.044236
@@ -151,7 +152,7 @@ df["E"].isin(["test", "train"])  # -> pandas.core.series.Series
 # Name: E, dtype: bool
 ```
 
-## Setting
+## Modifying
 
 ```python
 # Set a series
