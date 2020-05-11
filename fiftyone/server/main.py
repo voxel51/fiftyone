@@ -147,7 +147,7 @@ class StateController(Namespace):
         else:
             return []
 
-        view = view.offset((page - 1) * page_length).take(page_length)
+        view = view.skip((page - 1) * page_length).limit(page_length)
         return [s.get_backing_doc_dict(extended=True) for s in view]
 
     def on_get_label_distributions(self, _):
