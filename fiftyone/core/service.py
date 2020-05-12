@@ -73,13 +73,14 @@ class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
     def __init__(self, port):
-        self._port = str(port)
+        self._port = port
         super(ServerService, self).__init__()
 
     def start(self):
         """Starts the ServerService."""
+        cmd = " ".join(foc.START_SERVER) % self._port
         with etau.WorkingDir(foc.SERVER_DIR):
-            etau.call(foc.START_SERVER % self._port, **self._SUPPRESS)
+            etau.call(cmd.split(" "), **self._SUPPRESS)
 
     def stop(self):
         """Stops the ServerService."""

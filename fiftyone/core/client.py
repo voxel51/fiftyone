@@ -19,13 +19,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+from retrying import retry
 import threading
 
 import socketio
 
 import fiftyone.constants as foc
 import fiftyone.core.service as fos
-
 
 logging.getLogger("socketio").setLevel(logging.ERROR)
 logging.getLogger("engineio").setLevel(logging.ERROR)
@@ -80,6 +80,11 @@ class BaseClient(socketio.ClientNamespace):
         self.emit("update", data.serialize())
 
 
+@retry(wait_fixed=500, stop_max_attempt_number=5)
+def _connect(sio, addr):
+    sio.connect(addr)
+
+
 class HasClient(object):
     """Mixin that supports maintaining a shared state of data using web
     sockets.
@@ -106,7 +111,7 @@ class HasClient(object):
             "/" + self._HC_NAMESPACE, self._HC_ATTR_TYPE
         )
         self._hc_sio.register_namespace(self._hc_client)
-        self._hc_sio.connect(foc.SERVER_ADDR % port)
+        _connect(self._hc_sio, foc.SERVER_ADDR % port)
 
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""

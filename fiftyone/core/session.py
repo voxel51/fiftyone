@@ -31,7 +31,7 @@ import fiftyone.core.view as fov
 session = None
 
 
-def launch_dashboard(dataset=None, view=None, port=5151):
+def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
     """Launches the FiftyOne Dashboard.
 
     Only one dashboard instance can be opened at a time. If this method is
@@ -42,6 +42,8 @@ def launch_dashboard(dataset=None, view=None, port=5151):
             load
         view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
             load
+        port (5151): the port number of the server
+        remote (False): whether this is a remote session
 
     Returns:
         a :class:`Session`
@@ -60,7 +62,7 @@ def launch_dashboard(dataset=None, view=None, port=5151):
     #
     close_dashboard()
 
-    session = Session(dataset=dataset, view=view, port=port)
+    session = Session(dataset=dataset, view=view, port=port, remote=remote)
 
     # Ensure that the session (and therefore the app) is closed whenever the
     # Python process exits
@@ -140,7 +142,7 @@ class Session(foc.HasClient):
         self._close = False
         self._dataset = None
         self._view = None
-        self._port = str(port)
+        self._port = port
         self._remote = remote
 
         super(Session, self).__init__(self._port)
