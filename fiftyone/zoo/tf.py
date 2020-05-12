@@ -417,13 +417,10 @@ foz.AVAILABLE_DATASETS.update(
     {
         "mnist": MNISTDataset,
         "cifar10": CIFAR10Dataset,
-        "imagenet": ImageNet2012Dataset,  # default ImageNet
         "imagenet-2012": ImageNet2012Dataset,
-        "coco": COCO2014Dataset,  # default COCO
         "coco-2014": COCO2014Dataset,
         "coco-2017": COCO2017Dataset,
         "kitti": KITTIDataset,
-        "voc": VOC2007Dataset,  # default VOC
         "voc-2007": VOC2007Dataset,
         "voc-2012": VOC2012Dataset,
     }
