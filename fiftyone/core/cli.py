@@ -26,6 +26,7 @@ import argcomplete
 from tabulate import tabulate
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
@@ -84,10 +85,10 @@ class ConfigCommand(Command):
 
     Examples:
         # Print your entire config
-        fiftyone config --print
+        fiftyone config
 
         # Print a specific config field
-        fiftyone config --print <field>
+        fiftyone config <field>
     """
 
     @staticmethod
@@ -95,21 +96,17 @@ class ConfigCommand(Command):
         parser.add_argument(
             "field", nargs="?", metavar="FIELD", help="a config field"
         )
-        parser.add_argument(
-            "-p",
-            "--print",
-            action="store_true",
-            help="print your FiftyOne config",
-        )
 
     @staticmethod
     def execute(parser, args):
-        if args.print:
-            if args.field:
-                field = getattr(fo.config, args.field)
-                print(etas.json_to_str(field))
+        if args.field:
+            field = getattr(fo.config, args.field)
+            if etau.is_str(field):
+                print(field)
             else:
-                print(fo.config)
+                print(etas.json_to_str(field))
+        else:
+            print(fo.config)
 
 
 class ConstantsCommand(Command):
