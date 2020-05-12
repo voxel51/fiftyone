@@ -2,19 +2,24 @@ import _ from "lodash";
 import React, { useState } from "react";
 import { Input, Label } from "semantic-ui-react";
 
-import { updateState } from "../actions/update";
 import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
 import CodeBlock from "./CodeBlock";
 
-export default connect(function (props) {
-  const { title, language, children, port, connected, onClose } = props;
+export default connect(({ connected, port, resolving, setPort }) => {
+  const [initialPort, setInitialPort] = useState(port);
   const [formState, setFormState] = useState({
     port: port,
     connected: connected,
     resolving: false,
     invalid: false,
   });
+
+  function setPort() {
+    if (formState.connected) {
+      dispatch(updatePort(formState.port));
+    }
+  }
 
   const onChange = (event, input) => {
     if (isNaN(input.value)) {
@@ -25,6 +30,7 @@ export default connect(function (props) {
         invalid: true,
         port: input.value,
       });
+      setPort(initialPort);
     } else if (parseInt(input.value) <= 65535) {
       const tempFormState = {
         ...formState,
@@ -35,15 +41,14 @@ export default connect(function (props) {
       };
       setFormState(tempFormState);
       const socket = getSocket(input.value, "state");
-      setTimeout(
-        () =>
-          setFormState({
-            ...tempFormState,
-            resolving: false,
-            connected: socket.connected,
-          }),
-        1000
-      );
+      setTimeout(() => {
+        setFormState({
+          ...tempFormState,
+          resolving: false,
+          connected: socket.connected,
+        });
+        setPort(input.value);
+      }, 1000);
     } else {
       setFormState({
         ...formState,
@@ -52,6 +57,7 @@ export default connect(function (props) {
         invalid: true,
         port: input.value,
       });
+      setPort(initialPort);
     }
   };
 

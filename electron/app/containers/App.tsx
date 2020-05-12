@@ -4,7 +4,7 @@ import { Button, Modal, Label } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
-import { updateState, updateConnected } from "../actions/update";
+import { updateState, updateConnected, updatePort } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
@@ -15,8 +15,10 @@ type Props = {
 function App(props: Props) {
   const { children, dispatch, update, connected, port } = props;
   const [connectionEstablished, setConnectionEstablished] = useState(false);
-  const portRef = useRef(null);
+  const portRef = useRef();
   const socket = getSocket(port, "state");
+  const [portFromForm, setPortFromForm] = useState(port);
+
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
     if (!connectionEstablished) {
@@ -39,19 +41,24 @@ function App(props: Props) {
   });
   const bodyStyle = { height: "100%", padding: "1em" };
   if (connected) bodyStyle.marginLeft = 260;
-  const portPattern =
-    "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$";
 
   return (
     <>
       <Modal
         trigger={<Button style={{ display: "none" }} ref={portRef}></Button>}
         size="tiny"
+        onClose={() => dispatch(updatePort(portFromForm))}
       >
         <Modal.Header>Port number</Modal.Header>
         <Modal.Content>
           <Modal.Description>
-            <PortForm />
+            <PortForm
+              setPort={setPortFromForm}
+              connected={connected}
+              port={port}
+              resolving={false}
+              invalid={false}
+            />
           </Modal.Description>
         </Modal.Content>
       </Modal>
