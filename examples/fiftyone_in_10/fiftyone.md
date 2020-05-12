@@ -88,8 +88,6 @@ view[5:10]  # -> fiftyone.core.view.DatasetView
 
 #### Key/Index
 
-##### Idea 1:
-
 Views are keyed same as datasets. Slicing only works if a `:` is provided.
 
 ```python
@@ -97,21 +95,6 @@ sample_id = "FFFFFFFF"
 view[sample_id]  # -> fiftyone.core.sample.Sample OR KeyError
 
 view[5]  # -> KeyError
-```
-
-##### Idea 2:
-
-Views are NOT keyed same as datasets. They are always accessed in a list-like
-style.
-
-To get a similar effect to dataset keys one would use the `with_id` filter.
-
-```python
-view[5]  # -> fiftyone.core.sample.Sample OR IndexError
-
-sample_id = "FFFFFFFF"
-view.with_id(sample_id)  # -> fiftyone.core.view.DatasetView
-view.with_id(sample_id)[0]  # -> fiftyone.core.sample.Sample OR IndexError
 ```
 
 ### Querying
@@ -226,7 +209,7 @@ for d in view.aggregate(pipeline):
     ...
 ```
 
-## `Field`(s) of `Sample`(s)
+## `Field`s of `Sample`s
 
 `Sample`s have `Field`s on them.
 
@@ -359,7 +342,7 @@ print(sample.model_1_preds)
 # }
 ```
 
-What used to be called "insights" are nothing more than `Fields`:
+What used to be called "insights" are nothing more than `Field`s:
 
 ```python
 sample["file_hash"] = compute_file_hash(sample.filepath)
