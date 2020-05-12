@@ -17,28 +17,42 @@ import fiftyone as fo
 ## Poking Around
 
 ```python
-len(dataset)
+len(dataset) # -> int
 
 # get all accessible fields on samples of a dataset
-dataset.get_fields()
-# ["tags", "metadata", file_hash", "ground_truth_fine", "ground_truth_coarse",
-# "model_1_preds", "gtf_hardness", "m1_hardness", "gtf_m1_eval"]
+dataset.get_fields() # -> dict
+# {
+#     "tags":                fo.core.fields.ListField(fo.core.fields.StringField),
+#     "metadata":            fo.core.fields.fo.core.fields.DictField,
+#     "file_hash":           fo.core.fields.IntField,
+#     "ground_truth_fine":   fo.core.fields.ClassificationLabel,
+#     "ground_truth_coarse": fo.core.fields.ClassificationLabel,
+#     "model_1_preds":       fo.core.fields.ClassificationLabel,
+#     "gtf_hardness":        fo.core.fields.HardnessField,
+#     "m1_hardness":         fo.core.fields.HardnessField,
+#     "gtf_m1_eval":         fo.core.fields.EvaluationField,
+# }
 
 # get all fields that are subclass of `Labels`
-dataset.get_fields(type=fo.Labels)
-# ["ground_truth_fine", "ground_truth_coarse", "model_1"]
+dataset.get_fields(type=fo.Labels) # -> dict
+# {
+#     "ground_truth_fine":   fo.core.fields.ClassificationLabel,
+#     "ground_truth_coarse": fo.core.fields.ClassificationLabel,
+#     "model_1_preds":       fo.core.fields.ClassificationLabel,
+# }
 
-dataset.sample_class
+dataset.sample_class  # -> type
 # fiftyone.core.sample.ImageSample
 
-dataset.summary()
+dataset.summary() # -> str
 # a string of all the above things
 
-dataset.view  # -> fiftyone.core.view.DatasetView
+dataset.view    # -> fiftyone.core.view.DatasetView
 dataset.view()  # -> fiftyone.core.view.DatasetView
 
 # grab 5 random samples
 dataset.view.sample(5)  # -> fiftyone.core.view.DatasetView
+
 # all methods on views are also valid on datasets. The dataset merely creates
 # a view and calls the method on that view:
 dataset.sample(5)  # -> fiftyone.core.view.DatasetView
@@ -49,9 +63,9 @@ dataset.sample(5)  # -> fiftyone.core.view.DatasetView
 ### Sorting
 
 ```python
-view.sort_by("filepath")
-view.sort_by("model_1_preds.confidence")
-# -> fiftyone.core.view.DatasetView
+view.sort_by("filepath") # -> fiftyone.core.view.DatasetView
+
+view.sort_by("model_1_preds.confidence") # -> fiftyone.core.view.DatasetView
 ```
 
 ### Selection (slicing)
@@ -61,7 +75,7 @@ view.sort_by("model_1_preds.confidence")
 Slices are always list-like.
 
 ```python
-# two equivalent methods:
+# equivalent:
 view.skip(5).limit(5)  # -> fiftyone.core.view.DatasetView
 view[5:10]  # -> fiftyone.core.view.DatasetView
 ```
@@ -101,26 +115,26 @@ The core query function is `match`, which uses
 
 ```python
 # samples with this tag
-view.match({"tags": "train"})
+view.match({"tags": "train"}) # -> fiftyone.core.view.DatasetView
 
 # samples with 3 channels and size > 1200 bytes
 view.match(
     {"metadata.num_channels": 3, "metadata.size_bytes": {"$gt": 1200},}
-)
+) # -> fiftyone.core.view.DatasetView
 ```
 
 Convenience wrappers are available for common queries:
 
 ```python
-# samples that have the file hash field populated
-view.exists("file_hash")
+# samples that have the `sample.file_hash` field populated
+view.exists("file_hash") # -> fiftyone.core.view.DatasetView
 
-# samples that have the `model_1_preds` field populated
-view.exists("ground_truth_fine")
+# samples that have the `sample.model_1_preds` field populated
+view.exists("model_1_preds") # -> fiftyone.core.view.DatasetView
 
 # samples with/without these IDs
-view.select([id1, id2, id3])
-view.exclude([id1, id2, id3])
+view.select([id1, id2, id3])  # -> fiftyone.core.view.DatasetView
+view.exclude([id1, id2, id3]) # -> fiftyone.core.view.DatasetView
 ```
 
 ### Chaining Commands
@@ -128,10 +142,13 @@ view.exclude([id1, id2, id3])
 Many operations on views return a view. It is easy to chain these commands.
 
 ```python
-dataset.match({"tags": "train"}).exists("file_hash").sort_by("filepath")[
-    10:20
-].sample(5)
-# -> fiftyone.core.view.DatasetView
+view = (
+    dataset
+    .match({"tags": "train"})
+    .exists("file_hash")
+    .sort_by("filepath")[10:20]
+    .sample(5)
+) # -> fiftyone.core.view.DatasetView
 ```
 
 All chain operations on `View`s:
@@ -143,7 +160,7 @@ view.exists("metadata")
 view.select([id1, id2, id3])
 view.exclude([id1, id2, id3])
 
-# sory
+# sort
 view.sort_by("filepath")
 
 # slice
@@ -226,8 +243,9 @@ field which is a list of strings.
 ```python
 sample["tags"] = ["train"]
 
-sample["tags"]
-sample.tags  # -> mongoengine.base.datastructures.BaseList
+# equivalent:
+sample["tags"] # -> fiftyone.core.fields.ListField
+sample.tags    # -> fiftyone.core.fields.ListField
 # ["train"]
 ```
 
@@ -271,7 +289,7 @@ Adding a classification label to a sample:
 ```python
 sample["model_1_preds"] = fo.ClassificationLabel(label="cow", confidence=0.98)
 
-sample.model_1_preds
+sample.model_1_preds # -> fiftyone.core.fields.ClassificationLabel
 # <ClassificationLabel: ClassificationLabel object>
 ```
 
@@ -279,8 +297,11 @@ What used to be called "insights" are nothing more than `Fields`:
 
 ```python
 file_hash = compute_file_hash(sample.filepath)
-sample["model_1"] = fo.IntField(file_hash)
 
-sample.file_hash
+# equivalent:
+sample["file_hash"] = fo.IntField(file_hash)
+sample["file_hash"] = file_hash
+
+sample.file_hash # -> int
 # 8495821470157
 ```
