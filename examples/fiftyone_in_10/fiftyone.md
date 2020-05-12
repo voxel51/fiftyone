@@ -26,21 +26,22 @@ len(dataset) # -> int
 # 60000
 
 # get all accessible fields on samples of a dataset
-dataset.get_fields() # -> dict
+dataset.get_sample_fields() # -> dict
 # {
+#     "filepath":            fo.core.fields.StringField,
 #     "tags":                fo.core.fields.ListField(fo.core.fields.StringField),
-#     "metadata":            fo.core.fields.DictField,
-#     "file_hash":           fo.core.fields.IntField,
+#     "metadata":            fo.core.fields.MetadataField,
 #     "ground_truth_fine":   fo.core.fields.ClassificationLabel,
 #     "ground_truth_coarse": fo.core.fields.ClassificationLabel,
 #     "model_1_preds":       fo.core.fields.ClassificationLabel,
+#     "file_hash":           fo.core.fields.IntField,
 #     "gtf_hardness":        fo.core.fields.DictField,
 #     "m1_hardness":         fo.core.fields.DictField,
 #     "gtf_m1_eval":         fo.core.fields.DictField,
 # }
 
 # get all fields that are subclass of `Labels`
-dataset.get_fields(type=fo.Labels) # -> dict
+dataset.get_sample_fields(type=fo.Labels) # -> dict
 # {
 #     "ground_truth_fine":   fo.core.fields.ClassificationLabel,
 #     "ground_truth_coarse": fo.core.fields.ClassificationLabel,
@@ -229,38 +230,93 @@ for d in view.aggregate(pipeline):
 
 `Sample`s have `Field`s on them.
 
-Some fields are automatically set on all samples. And some are immutable:
+### Default `Field`s
+
+Some fields are automatically set on all samples.
 
 ```python
 sample.id  # -> str
+# '5ebabe113724dbbe3ecceba7'
+
 sample.filepath  # -> str
-sample.dataset  # -> str? or fiftyone.core.dataset.Dataset object??
+# '/tmp/fiftyone/apple/113.jpg'
 
-sample.filepath = "new/file/path.jpg"
-# AttributeError: can't set attribute
-```
+sample.tags # -> fiftyone.core.fields.ListField
+# []
 
-Samples can have arbitrary `Field`s added to them. This example adds a `tags`
-field which is a list of strings.
-
-```python
-sample["tags"] = ["train"]
-
-# equivalent:
-sample["tags"] # -> fiftyone.core.fields.ListField
-sample.tags    # -> fiftyone.core.fields.ListField
-# ["train"]
-```
-
-Datasets contain meta information about the fields. The `tags` field was
-automatically added when `tags` was added to a sample in the above code block.
-
-```python
-dataset.get_fields() # -> dict
+sample.metadata # -> fiftyone.core.metadata.ImageMetadata (or None if not set)
+# <ClassificationLabel: ClassificationLabel object>
+print(sample.metadata)
 # {
-#     "dataset":  fiftyone.core.fields.StringField(immutable=True),
-#     "filepath": fiftyone.core.fields.StringField(immutable=True),
-#     "tags":     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+#     "size_bytes": 515151,
+#     "num_channels": 3,
+#     ...
+# }
+```
+
+### Dynamically Adding `Field`s
+
+Samples can have arbitrary `Field`s added to them. We can add python primitives
+as well as `list`s and `dict`s and `Field` subclasses
+
+```python
+sample["my_boolean"] = True
+# equivalent:
+sample["my_boolean"] # -> bool
+sample.my_boolean    # -> bool
+# True
+
+sample["my_int"] = 51
+# equivalent:
+sample["my_int"] # -> int
+sample.my_int    # -> int
+# 51
+
+sample["my_string"] = "fiftyone"
+# equivalent:
+sample["my_string"] # -> str
+sample.my_string    # -> str
+# 'fiftyone'
+
+sample["my_list"] = ["fifty", "one"]
+# equivalent:
+sample["my_list"] # -> fiftyone.core.fields.ListField(fiftone.core.fields.StringField)
+sample.my_list    # -> fiftyone.core.fields.ListField(fiftone.core.fields.StringField)
+# ['fifty', 'one']
+
+sample["my_dict"] = {"fifty": 50, "one": "uno"}
+# equivalent:
+sample["my_dict"] # -> fiftyone.core.fields.DictField
+sample.my_dict    # -> fiftyone.core.fields.DictField
+# {
+#     "fifty": 50,
+#     "one": "uno",
+# }
+
+sample["model_1_preds"] = fo.ClassificationLabel(label="cow", confidence=0.98)
+# equivalent:
+sample["model_1_preds"] # -> fiftyone.core.fields.ClassificationLabel
+sample.model_1_preds    # -> fiftyone.core.fields.ClassificationLabel
+# <ClassificationLabel: ClassificationLabel object>
+print(sample.model_1_preds)
+# {
+#     "label": "cow",
+#     "confidence": 0.98,
+# }
+```
+
+### `Dataset`s and `Field`s
+
+Datasets contain meta information about the sample fields. The `my_list`
+sample field was automatically added to the dataset when `my_list` was added
+to a sample in the above code block.
+
+```python
+dataset.get_sample_fields() # -> dict
+# {
+#     "filepath": fiftyone.core.fields.StringField,
+#     ...
+#     "my_list":  fiftyone.core.fields.ListField(fiftone.core.fields.StringField)
 # }
 ```
 
@@ -269,21 +325,22 @@ a field can be entirely deleted from a dataset, afterwhich it can be set again
 to any type.
 
 ```python
-sample.tags = 67
-# ValidationError: Only lists and tuples may be used in a list field: ['tags']
+sample.my_list = 67
+# ValidationError: Only lists and tuples may be used in a list field: ['my_field']
 
-sample.tags = [1, 2]
-# ValidationError: StringField only accepts string values: ['tags']
+# ListFields only contain elements of one Field type
+sample.my_list = [1, 2]
+# ValidationError: StringField only accepts string values: ['my_field']
 
-dataset.delete_field("tags")
+dataset.delete_field("my_list")
 
-sample["tags"] = 9
+sample["my_list"] = 9
 
-dataset.get_fields() # -> dict
+dataset.get_sample_fields() # -> dict
 # {
-#     "dataset":  fiftyone.core.fields.StringField(immutable=True),
-#     "filepath": fiftyone.core.fields.StringField(immutable=True),
-#     "tags":     fiftyone.core.fields.IntField()
+#     "filepath": fiftyone.core.fields.StringField,
+#     ...
+#     "my_list":  fiftyone.core.fields.IntField
 # }
 ```
 
