@@ -140,7 +140,7 @@ class Session(foc.HasClient):
         self._close = False
         self._dataset = None
         self._view = None
-        self._port = port
+        self._port = str(port)
         self._remote = remote
 
         super(Session, self).__init__(self._port)
