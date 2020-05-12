@@ -1,6 +1,6 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
-import { Button, Modal, Input } from "semantic-ui-react";
+import { Button, Modal, Input, Label } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
 import { updateState, updateConnected } from "../actions/update";
@@ -38,16 +38,22 @@ function App(props: Props) {
   });
   const bodyStyle = { height: "100%", padding: "1em" };
   if (connected) bodyStyle.marginLeft = 260;
+  const portPattern =
+    "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$";
 
   return (
     <>
       <Modal
         trigger={<Button style={{ display: "none" }} ref={portRef}></Button>}
+        size="tiny"
       >
-        <Modal.Header>Server Address</Modal.Header>
+        <Modal.Header>Port number</Modal.Header>
         <Modal.Content>
           <Modal.Description>
-            <Input value={port} loading />
+            <Input labelPosition="right" value={port} pattern={portPattern}>
+              <input />
+              <Label>Connected</Label>
+            </Input>
           </Modal.Description>
         </Modal.Content>
       </Modal>
