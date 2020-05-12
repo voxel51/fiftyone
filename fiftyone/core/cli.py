@@ -189,27 +189,19 @@ class ZooListCommand(Command):
     """Tools for listing datasets in the FiftyOne Dataset Zoo.
 
     Examples:
-        # List the available datasets in the zoo
+        # List available datasets
         fiftyone zoo list
 
-        # List the downloaded zoo datasets
-        fiftyone zoo list --downloaded-only
-
-        # List the downloaded zoo datasets in the specified base directory
-        fiftyone zoo list --downloaded-only <base-dir>
+        # List available datasets, using the specified base directory to search
+        # for downloaded datasets
+        fiftyone zoo list --base-dir <base-dir>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-d",
-            "--downloaded-only",
-            action="store_true",
-            help="only list downloaded datasets",
-        )
-        parser.add_argument(
-            "base_dir",
-            nargs="?",
+            "-b",
+            "--base_dir",
             metavar="BASE_DIR",
             help=(
                 "a custom base directory in which to search for downloaded "
@@ -221,14 +213,50 @@ class ZooListCommand(Command):
     def execute(parser, args):
         import fiftyone.zoo as foz
 
-        if args.downloaded_only:
-            base_dir = args.base_dir
-            dd = foz.list_downloaded_zoo_datasets(base_dir=base_dir)
-            for name in dd:
-                print(name)
+        foz.list_zoo_datasets()  # this loads the appropriate ML backend
+        available_datasets = foz.AVAILABLE_DATASETS
+
+        base_dir = args.base_dir
+        downloaded_datasets = foz.list_downloaded_zoo_datasets(
+            base_dir=base_dir
+        )
+
+        _print_zoo_dataset_list(available_datasets, downloaded_datasets)
+
+
+def _print_zoo_dataset_list(available_datasets, downloaded_datasets):
+    records = []
+    for name, zoo_dataset_cls in iteritems(available_datasets):
+        zoo_dataset = zoo_dataset_cls()
+
+        if zoo_dataset.supported_splits is not None:
+            downloaded_splits = {}
+            if name in downloaded_datasets:
+                for split, (dataset_dir, info) in iteritems(
+                    downloaded_datasets[name]
+                ):
+                    downloaded_splits[split] = dataset_dir
+
+            for split in zoo_dataset.supported_splits:
+                if split in downloaded_splits:
+                    records.append(
+                        (name, split, "\u2713", downloaded_splits[split])
+                    )
+                else:
+                    records.append((name, split, "", "-"))
         else:
-            for name in foz.list_zoo_datasets():
-                print(name)
+            if name in downloaded_datasets:
+                dataset_dir, info = downloaded_datasets[name]
+                records.append((name, "", "\u2713", dataset_dir))
+            else:
+                records.append((name, "", "", "-"))
+
+    table_str = tabulate(
+        records,
+        headers=["name", "split", "downloaded", "dataset_dir"],
+        tablefmt=_TABLE_FORMAT,
+    )
+    print(table_str)
 
 
 class ZooInfoCommand(Command):
@@ -238,11 +266,8 @@ class ZooInfoCommand(Command):
         # Print information about a downloaded zoo dataset
         fiftyone zoo info <name>
 
-        # Print information about all downloaded zoo datasets
-        fiftyone zoo info --all
-
         # Print information about the zoo dataset downloaded to the specified
-        # custom directory
+        # base directory
         fiftyone zoo info <name> --base-dir <base-dir>
     """
 
@@ -252,16 +277,13 @@ class ZooInfoCommand(Command):
             "name", metavar="NAME", nargs="?", help="the name of the dataset"
         )
         parser.add_argument(
-            "-a",
-            "--all",
-            action="store_true",
-            help="print info about all downloaded zoo datasets",
-        )
-        parser.add_argument(
             "-b",
-            "--base-dir",
+            "--base_dir",
             metavar="BASE_DIR",
-            help="a custom base directory in which to search for datasets",
+            help=(
+                "a custom base directory in which to search for downloaded "
+                "datasets"
+            ),
         )
 
     @staticmethod
@@ -274,27 +296,29 @@ class ZooInfoCommand(Command):
             base_dir=base_dir
         )
 
-        if args.all:
-            for name in sorted(downloaded_datasets):
-                val = downloaded_datasets[name]
-                if isinstance(val, dict):
-                    for dataset_dir, info in itervalues(val):
-                        _print_zoo_dataset_info(dataset_dir, info)
-                else:
-                    _print_zoo_dataset_info(dataset_dir, info)
-
-            return
-
         if name not in downloaded_datasets:
             if name not in foz.list_zoo_datasets():
                 print("Dataset '%s' not found in the zoo" % name)
             else:
-                print("Zoo dataset '%s' is not downloaded" % name)
+                print("Dataset '%s' is not downloaded" % name)
 
             return
 
-        dataset_dir, info = downloaded_datasets[name]
-        _print_zoo_dataset_info(dataset_dir, info)
+        d = downloaded_datasets[name]
+        if isinstance(d, dict):
+            for split, (dataset_dir, info) in iteritems(d):
+                _print_zoo_dataset_info(dataset_dir, info)
+        else:
+            dataset_dir, info = d
+            _print_zoo_dataset_info(dataset_dir, info)
+
+
+def _print_zoo_dataset_info(dataset_dir, info):
+    d = info.serialize()
+    d["dataset_dir"] = dataset_dir
+    _print_dict_as_json(d)
+    # _print_dict_as_table(d)
+    print("")
 
 
 class ZooDownloadCommand(Command):
@@ -305,7 +329,7 @@ class ZooDownloadCommand(Command):
         fiftyone zoo download <name>
 
         # Download the specified split of the zoo dataset
-        fiftyone zoo download <name> <split>
+        fiftyone zoo download <name> --split <split>
 
         # Download to a custom directory
         fiftyone zoo download <name> --dataset-dir <dataset-dir>
@@ -317,7 +341,10 @@ class ZooDownloadCommand(Command):
             "name", metavar="NAME", help="the name of the dataset"
         )
         parser.add_argument(
-            "split", metavar="SPLIT", nargs="?", help="the split to download"
+            "-s",
+            "--split",
+            metavar="SPLIT",
+            help="the dataset split to download",
         )
         parser.add_argument(
             "-d",
@@ -336,11 +363,16 @@ class ZooDownloadCommand(Command):
         foz.download_zoo_dataset(name, split=split, dataset_dir=dataset_dir)
 
 
-def _print_zoo_dataset_info(dataset_dir, info):
-    d = info.serialize()
-    d["dataset_dir"] = dataset_dir
-    _print_dict_as_json(d)
-    print("")
+def _print_dict_as_json(d):
+    print(json.dumps(d, indent=4))
+
+
+def _print_dict_as_table(d):
+    records = [(k, v) for k, v in iteritems(d)]
+    table_str = tabulate(
+        records, headers=["key", "value"], tablefmt=_TABLE_FORMAT
+    )
+    print(table_str)
 
 
 def _has_subparsers(parser):
@@ -349,11 +381,6 @@ def _has_subparsers(parser):
             return True
 
     return False
-
-
-def _print_dict_as_json(d):
-    s = json.dumps(d, indent=4)
-    print(s)
 
 
 def _iter_subparsers(parser):
