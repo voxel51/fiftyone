@@ -1,8 +1,8 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
-import { Button, Modal, Input } from "semantic-ui-react";
+import { Sidebar, Button, Modal, Input } from "semantic-ui-react";
 
-import Sidebar from "../components/Sidebar";
+import Navbar from "../components/Sidebar";
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
@@ -50,8 +50,10 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
-      <Sidebar />
-      <div style={{ marginLeft: 260, height: "100%" }}>{children}</div>
+      <Sidebar.Pushable>
+        <Navbar />
+        <Sidebar.Pusher>{children}</Sidebar.Pusher>
+      </Sidebar.Pushable>
     </>
   );
 }
