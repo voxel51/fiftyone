@@ -1,8 +1,9 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
-import { Button, Modal, Input, Label } from "semantic-ui-react";
+import { Button, Modal, Label } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
+import PortForm from "../components/PortForm";
 import { updateState, updateConnected } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
@@ -25,7 +26,7 @@ function App(props: Props) {
       setConnectionEstablished(true);
     }
   });
-  useSubscribe(socket, "disconnect", () => alert("sfgs"));
+  useSubscribe(socket, "disconnect", () => console.log("disconnected"));
   useSubscribe(socket, "update", (data) => {
     if (data.close) {
       remote.getCurrentWindow().close();
@@ -50,10 +51,7 @@ function App(props: Props) {
         <Modal.Header>Port number</Modal.Header>
         <Modal.Content>
           <Modal.Description>
-            <Input labelPosition="right" value={port} pattern={portPattern}>
-              <input />
-              <Label>Connected</Label>
-            </Input>
+            <PortForm />
           </Modal.Description>
         </Modal.Content>
       </Modal>
