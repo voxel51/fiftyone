@@ -12,7 +12,7 @@ function Setup(props) {
     <Container as={Segment} fluid>
       <Header as="h1">Hi there! Welcome to FiftyOne</Header>
       <Divider />
-      <Header as="h4">It looks like you are not connected to session.</Header>
+      <Header as="h4">It looks like you are not connected to a session.</Header>
     </Container>
   );
 }
