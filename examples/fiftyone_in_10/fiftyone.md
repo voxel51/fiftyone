@@ -28,14 +28,14 @@ len(dataset) # -> int
 dataset.get_fields() # -> dict
 # {
 #     "tags":                fo.core.fields.ListField(fo.core.fields.StringField),
-#     "metadata":            fo.core.fields.fo.core.fields.DictField,
+#     "metadata":            fo.core.fields.DictField,
 #     "file_hash":           fo.core.fields.IntField,
 #     "ground_truth_fine":   fo.core.fields.ClassificationLabel,
 #     "ground_truth_coarse": fo.core.fields.ClassificationLabel,
 #     "model_1_preds":       fo.core.fields.ClassificationLabel,
-#     "gtf_hardness":        fo.core.fields.HardnessField,
-#     "m1_hardness":         fo.core.fields.HardnessField,
-#     "gtf_m1_eval":         fo.core.fields.EvaluationField,
+#     "gtf_hardness":        fo.core.fields.DictField,
+#     "m1_hardness":         fo.core.fields.DictField,
+#     "gtf_m1_eval":         fo.core.fields.DictField,
 # }
 
 # get all fields that are subclass of `Labels`
