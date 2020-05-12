@@ -21,6 +21,7 @@ from builtins import *
 import logging
 import fiftyone.core.odm2 as foo
 
+import eta.core.serial as etas
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +68,50 @@ class Dataset(object):
         # @todo(Tyler) use MetaDataset to load this class from the DB
         self._Doc = type(self._name, (foo.Dataset,), {})
 
+    @property
+    def name(self):
+        """The name of the dataset."""
+        return self._name
+
+    def summary(self):
+        """Returns a string summary of the dataset.
+
+        Returns:
+            a string summary
+        """
+        return "\n".join(
+            [
+                "Name:           %s" % self.name,
+                "Num samples:    %d" % len(self),
+                "Sample Fields:",
+                etas.pretty_str(self.get_sample_fields()),
+                "Tags: %s" % self.distinct("tags"),
+            ]
+        )
+
     def get_sample_fields(self, field_type=None):
         return self._Doc.get_sample_fields(field_type=field_type)
 
     def add_sample(self, *args, **kwargs):
         sample = self._Doc(*args, **kwargs)
+        sample.save()
         return sample
+
+    def _get_query_set(self, **kwargs):
+        # pylint: disable=no-member
+        return self._Doc.objects(**kwargs)
+
+    def iter_samples(self):
+        """Returns an iterator over the samples in the dataset.
+
+        Returns:
+            an iterator over :class:`fiftyone.core.sample.Sample` instances
+        """
+        for doc in self._get_query_set():
+            yield doc
+
+    def distinct(self, field):
+        return self._get_query_set().distinct(field)
+
+    def __len__(self):
+        return self._get_query_set().count()

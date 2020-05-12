@@ -18,15 +18,14 @@ dataset2 = fod.Dataset("my_dataset")
 print("Datasets are per-name singletons: %s" % (dataset is dataset2))
 print()
 
-pprint(dataset.get_sample_fields())
+print(dataset.summary())
 print()
 
 sample = dataset.add_sample(filepath="/path/to/img.jpg", tags=["train"])
+print(dataset.summary())
 print(sample)
 print()
 
-
-# fails if signature doesn't match?
-#
-# sample = next(dataset.iter_samples())
-# print(sample)
+sample = next(dataset.iter_samples())
+print(sample)
+print()
