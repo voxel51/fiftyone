@@ -47,13 +47,12 @@ dataset.get_fields(type=fo.Labels) # -> dict
 #     "model_1_preds":       fo.core.fields.ClassificationLabel,
 # }
 
-dataset.sample_class  # -> type
+dataset.sample_type  # -> type
 # fiftyone.core.sample.ImageSample
 
 dataset.summary() # -> str
 # <a string of all the above things>
 
-dataset.view    # -> fiftyone.core.view.DatasetView
 dataset.view()  # -> fiftyone.core.view.DatasetView
 
 # grab 5 random samples
@@ -193,7 +192,7 @@ dataset.update(...)
 view.update(...)
 
 # delete all matching samples
-view.delete()
+view.delete_samples()
 
 # delete a single sample
 del dataset[sample_id]
