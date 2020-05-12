@@ -6,6 +6,7 @@ Examples of using FiftyOne.
 | ------------------- | ----------------------------------------------------------------- |
 | `dataset_creation/` | Examples of the many ways of easily creating FiftyOne datasets    |
 | `file_hashing/`     | Example of using FiftyOne to detect duplicate images in a dataset |
+| `label_mistakes/`   | Example of finding label errors using FiftyOne's hardness measure |
 | `model_inference/`  | Example of integrating FiftyOne in your model inference loop      |
 
 ## Copyright
