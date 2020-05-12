@@ -16,7 +16,7 @@ class CustomBdistWheel(bdist_wheel):
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
         bin_dir = os.path.join(
-            self.bdist_dir, self.data_dir, "purelib", "fiftyone_gui", "bin"
+            self.bdist_dir, self.data_dir, "purelib", "fiftyone", "bin"
         )
         if not os.path.isdir(bin_dir):
             os.mkdir(bin_dir)
