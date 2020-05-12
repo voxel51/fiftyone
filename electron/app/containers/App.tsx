@@ -1,8 +1,8 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
-import { Sidebar, Button, Modal, Input } from "semantic-ui-react";
+import { Button, Modal, Input } from "semantic-ui-react";
 
-import Navbar from "../components/Sidebar";
+import Sidebar from "../components/Sidebar";
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
@@ -12,7 +12,7 @@ type Props = {
 };
 
 function App(props: Props) {
-  const { children, dispatch, update } = props;
+  const { children, dispatch, update, connected } = props;
   const [connectionEstablished, setConnectionEstablished] = useState(false);
   const portRef = useRef(null);
   const [port, setPort] = useState(5151);
@@ -37,6 +37,8 @@ function App(props: Props) {
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
+  const bodyStyle = { height: "100%", padding: "1em" };
+  if (connected) bodyStyle.marginLeft = 260;
 
   return (
     <>
@@ -50,10 +52,8 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
-      <Sidebar.Pushable>
-        <Navbar />
-        <Sidebar.Pusher>{children}</Sidebar.Pusher>
-      </Sidebar.Pushable>
+      <Sidebar />
+      <div style={bodyStyle}>{children}</div>
     </>
   );
 }
