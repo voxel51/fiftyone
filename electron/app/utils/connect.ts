@@ -3,7 +3,8 @@ import { connect } from "react-redux";
 const mapStateToProps = (state) => {
   return {
     state: state.update.state,
-    socket: state.update.socket,
+    port: state.update.port,
+    connected: state.update.connected,
   };
 };
 
