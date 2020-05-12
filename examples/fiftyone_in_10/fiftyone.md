@@ -301,11 +301,7 @@ sample.model_1_preds # -> fiftyone.core.fields.ClassificationLabel
 What used to be called "insights" are nothing more than `Fields`:
 
 ```python
-file_hash = compute_file_hash(sample.filepath)
-
-# equivalent:
-sample["file_hash"] = fo.IntField(file_hash)
-sample["file_hash"] = file_hash
+sample["file_hash"] = compute_file_hash(sample.filepath)
 
 sample.file_hash # -> int
 # 8495821470157
