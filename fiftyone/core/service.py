@@ -73,7 +73,7 @@ class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
     def __init__(self, port):
-        self._port = port
+        self._port = str(port)
         super(ServerService, self).__init__()
 
     def start(self):
