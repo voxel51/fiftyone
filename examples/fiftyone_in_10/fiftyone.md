@@ -23,6 +23,7 @@ import fiftyone as fo
 
 ```python
 len(dataset) # -> int
+# 60000
 
 # get all accessible fields on samples of a dataset
 dataset.get_fields() # -> dict
@@ -50,7 +51,7 @@ dataset.sample_class  # -> type
 # fiftyone.core.sample.ImageSample
 
 dataset.summary() # -> str
-# a string of all the above things
+# <a string of all the above things>
 
 dataset.view    # -> fiftyone.core.view.DatasetView
 dataset.view()  # -> fiftyone.core.view.DatasetView
@@ -209,15 +210,13 @@ view.distinct("tags")  # -> list
 # ["train", "test"]
 
 # sum/average over the specified field
-view.sum("labels.ground_truth.confidence")  # -> scalar
-view.average("labels.ground_truth.confidence")  # -> scalar
+view.sum("labels.ground_truth.confidence")  # -> float
+view.average("labels.ground_truth.confidence")  # -> float
 
 # MongoDB aggregation pipeline
 pipeline = [
-    # filter samples that have `file_hash`
-    {"$match": {"insights.file_hash": {"$exists": True}}},
     # find all unique file hashes
-    {"$group": {"_id": "$insights.file_hash.file_hash", "count": {"$sum": 1}}},
+    {"$group": {"_id": "file_hash", "count": {"$sum": 1}}},
     # filter out file hashes with a count of 1
     {"$match": {"count": {"$gt": 1}}},
 ]
@@ -258,11 +257,11 @@ Datasets contain meta information about the fields. The `tags` field was
 automatically added when `tags` was added to a sample in the above code block.
 
 ```python
-dataset.get_fields()
+dataset.get_fields() # -> dict
 # {
-#     "dataset": fiftyone.core.fields.StringField(immutable=True),
+#     "dataset":  fiftyone.core.fields.StringField(immutable=True),
 #     "filepath": fiftyone.core.fields.StringField(immutable=True),
-#     "tags": fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+#     "tags":     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
 # }
 ```
 
@@ -281,11 +280,11 @@ dataset.delete_field("tags")
 
 sample["tags"] = 9
 
-dataset.get_fields()
+dataset.get_fields() # -> dict
 # {
-#     "dataset": fiftyone.core.fields.StringField(immutable=True),
+#     "dataset":  fiftyone.core.fields.StringField(immutable=True),
 #     "filepath": fiftyone.core.fields.StringField(immutable=True),
-#     "tags": fiftyone.core.fields.IntField()
+#     "tags":     fiftyone.core.fields.IntField()
 # }
 ```
 
@@ -296,6 +295,12 @@ sample["model_1_preds"] = fo.ClassificationLabel(label="cow", confidence=0.98)
 
 sample.model_1_preds # -> fiftyone.core.fields.ClassificationLabel
 # <ClassificationLabel: ClassificationLabel object>
+
+print(sample.model_1_preds)
+# {
+#     "label": "cow",
+#     "confidence": 0.98,
+# }
 ```
 
 What used to be called "insights" are nothing more than `Fields`:
