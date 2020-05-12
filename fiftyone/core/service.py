@@ -88,7 +88,7 @@ class ServerService(Service):
 
     @property
     def port(self):
-        """Getter for the current server port"""
+        """Getter for the current port"""
         return self._port
 
 

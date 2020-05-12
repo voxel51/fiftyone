@@ -4,6 +4,7 @@ import { Container, Header, Divider, Segment } from "semantic-ui-react";
 import routes from "../constants/routes.json";
 import connect from "../utils/connect";
 import CodeBlock from "../components/CodeBlock";
+import PortForm from "../components/PortForm";
 
 function Setup(props) {
   return (
@@ -27,7 +28,7 @@ function Setup(props) {
       <Divider />
       <p>
         If you would like to connect to a remote session, you'll have to
-        configure port forwarding on your local machine
+        configure port forwarding on your local machine.
       </p>
       <CodeBlock language="bash">
         ssh -L 5151:127.0.0.1:5151 username@remote_session_ip
@@ -39,6 +40,7 @@ function Setup(props) {
         The default FiftyOne port is <code>5151</code>. You can configure it
         below, and change it at anytime in the settings tab.
       </p>
+      <PortForm />
     </Segment>
   );
 }
