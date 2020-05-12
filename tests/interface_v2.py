@@ -1,29 +1,32 @@
 """
 
-@todo(Tyler) new collection per dataset??
-@todo(Tyler) dynamic documents - reloading from database
+$ mongo51
+> use fiftyone
+> db.getCollectionNames()
+> db.getCollection("o_d_m_document").findOne()
+
+@todo(Tyler) dynamic documents -> reloading from database
 """
 import os
 from pprint import pprint
 
-import fiftyone as fo
-from fiftyone.utils.data import parse_image_classification_dir_tree
-import fiftyone.core.iv2 as foiv2
+import fiftyone.core.dataset2 as fod
 
-dataset_name = "cifar100_with_duplicates"
+# Dataset is a per-name singleton
+dataset = fod.Dataset("my_dataset")
+dataset2 = fod.Dataset("my_dataset")
+print("Datasets are per-name singletons: %s" % (dataset is dataset2))
+print()
 
-src_data_dir = os.path.join("/tmp/fiftyone", dataset_name)
+pprint(dataset.get_sample_fields())
+print()
 
-samples, _ = parse_image_classification_dir_tree(src_data_dir)
-dataset = fo.Dataset.from_image_classification_samples(
-    samples, name=dataset_name
-)
+sample = dataset.add_sample(filepath="/path/to/img.jpg", tags=["train"])
+print(sample)
+print()
 
-sample = next(dataset.iter_samples())
-s = sample._backing_doc
 
-dataset = foiv2.Dataset(filepath="/path/to/img.jpg", tags=["train"])
-
-pprint(foiv2.Dataset.get_sample_fields())
-
-asdf = 0
+# fails if signature doesn't match?
+#
+# sample = next(dataset.iter_samples())
+# print(sample)
