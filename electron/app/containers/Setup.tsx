@@ -1,5 +1,6 @@
 import React, { createRef, useState } from "react";
 import { Container, Header, Divider, Segment } from "semantic-ui-react";
+import { Redirect } from "react-router-dom";
 
 import routes from "../constants/routes.json";
 import connect from "../utils/connect";
@@ -7,6 +8,10 @@ import CodeBlock from "../components/CodeBlock";
 import PortForm from "../components/PortForm";
 
 function Setup(props) {
+  const { connected } = props;
+  if (connected) {
+    return <Redirect to={routes.DATASET} />;
+  }
   return (
     <Segment>
       <Header as="h1">Hi there! Welcome to FiftyOne</Header>

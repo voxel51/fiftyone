@@ -16,7 +16,8 @@ import Search from "../components/Search";
 import connect from "../utils/connect";
 
 function Dataset(props) {
-  const { path, url, connected } = useRouteMatch();
+  const { path, url } = useRouteMatch();
+  const { connected } = props;
   const stickyRef = createRef();
   const tabs = ["samples", "labels"];
   const [view, setView] = useState({ visible: false, sample: null });

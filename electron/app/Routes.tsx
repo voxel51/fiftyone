@@ -10,10 +10,10 @@ export default function Routes() {
   return (
     <App>
       <Switch>
-        <Route path={routes.SETUP} component={Setup} />
-        <Route path={routes.DATASET} component={Dataset} />
-        <Route path={routes.LIST} component={Dataset} />
-        <Route path={routes.CHARTS} component={Dataset} />
+        <Route path={routes.SETUP} exact component={Setup} />
+        <Route path={routes.DATASET} exact component={Dataset} />
+        <Route path={routes.LIST} exact component={Dataset} />
+        <Route path={routes.CHARTS} exact component={Dataset} />
       </Switch>
     </App>
   );
