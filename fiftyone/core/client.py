@@ -134,6 +134,13 @@ class HasClient(object):
         else:
             super(HasClient, self).__setattr__(name, value)
 
+    @property
+    def server_port(self):
+        """Getter for the port number the :class:`ServerService` is listening
+        on.
+        """
+        return self._server_service.port
+
 
 def _start_background_task(target, *args, **kwargs):
     """We are monkey patching here to start threads in ``daemon`` mode.

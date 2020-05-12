@@ -86,6 +86,11 @@ class ServerService(Service):
         """Stops the ServerService."""
         self._system(foc.STOP_SERVER % self._port)
 
+    @property
+    def port(self):
+        """Getter for the current server port"""
+        return self._port
+
 
 class AppService(Service):
     """Service that controls the FiftyOne app."""

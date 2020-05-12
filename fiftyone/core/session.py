@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import atexit
+import logging
 import signal
 
 import fiftyone.core.client as foc
@@ -29,6 +30,7 @@ import fiftyone.core.view as fov
 
 # Global session singleton
 session = None
+logger = logging.getLogger(__name__)
 
 
 def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
@@ -137,8 +139,6 @@ class Session(foc.HasClient):
         if session is not None:
             raise ValueError("Only one session is permitted")
 
-        if not remote:
-            self._app_service = fos.AppService()
         self._close = False
         self._dataset = None
         self._view = None
@@ -151,6 +151,18 @@ class Session(foc.HasClient):
             self.view = view
         elif dataset is not None:
             self.dataset = dataset
+
+        if not self._remote:
+            self._app_service = fos.AppService()
+        else:
+            logger.info(
+                "You have launched a remote session and will need to configure "
+                "port forwarding. The current port number is %d.\n\n"
+                "Runnning the following command forwards this session to the default"
+                " port of 5151 on your local machine.\n"
+                "ssh -L %d:127.0.0.1:5151 username@this_machine_ip\n"
+                % (self.server_port, self.server_port)
+            )
 
     def open(self):
         """Opens the session.
