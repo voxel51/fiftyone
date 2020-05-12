@@ -1,5 +1,5 @@
 import { Action } from "redux";
-import { UPDATE, PORT } from "../actions/update";
+import { UPDATE, PORT, CONNECTED } from "../actions/update";
 import io from "socket.io-client";
 
 export default function state(
@@ -11,6 +11,8 @@ export default function state(
       return { ...state, state: action.data };
     case PORT:
       return { ...state, port: action.data };
+    case CONNECTED:
+      return { ...state, connected: action.data };
     default:
       return state;
   }

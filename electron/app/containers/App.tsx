@@ -3,7 +3,7 @@ import React, { ReactNode, useState, useRef } from "react";
 import { Button, Modal, Input } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
-import { updateState } from "../actions/update";
+import { updateState, updateConnected } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
@@ -12,13 +12,12 @@ type Props = {
 };
 
 function App(props: Props) {
-  const { children, dispatch, update, connected } = props;
+  const { children, dispatch, update, connected, port } = props;
   const [connectionEstablished, setConnectionEstablished] = useState(false);
   const portRef = useRef(null);
-  const [port, setPort] = useState(5151);
   const socket = getSocket(port, "state");
   useSubscribe(socket, "connect", () => {
-    console.log("connected");
+    dispatch(updateConnected(true));
     if (!connectionEstablished) {
       socket.emit("get_current_state", "", (data) => {
         dispatch(updateState(data));

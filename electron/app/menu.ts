@@ -157,6 +157,18 @@ export default class MenuBuilder {
         { label: "Bring All to Front", selector: "arrangeInFront:" },
       ],
     };
+    const subMenuSettings: MenuItemConstructorOptions = {
+      label: "Settings",
+      submenu: [
+        {
+          label: "Port Number",
+          accelerator: "Ctrl+Shift+R",
+          click: () => {
+            this.mainWindow.webContents.send("update-session-config", "...");
+          },
+        },
+      ],
+    };
     const subMenuHelp: MenuItemConstructorOptions = {
       label: "Help",
       submenu: [
@@ -195,7 +207,14 @@ export default class MenuBuilder {
         ? subMenuViewDev
         : subMenuViewProd;
 
-    return [subMenuAbout, subMenuEdit, subMenuView, subMenuWindow, subMenuHelp];
+    return [
+      subMenuAbout,
+      subMenuEdit,
+      subMenuView,
+      subMenuWindow,
+      subMenuSettings,
+      subMenuHelp,
+    ];
   }
 
   buildDefaultTemplate() {
@@ -203,16 +222,6 @@ export default class MenuBuilder {
       {
         label: "&File",
         submenu: [
-          {
-            label: "Remote Session",
-            accelerator: "Ctrl+Shift+R",
-            click: () => {
-              this.mainWindow.webContents.send(
-                "update-session-config",
-                "Awesome"
-              );
-            },
-          },
           {
             label: "&Open",
             accelerator: "Ctrl+O",
@@ -267,6 +276,18 @@ export default class MenuBuilder {
                   },
                 },
               ],
+      },
+      {
+        label: "Settings",
+        submenu: [
+          {
+            label: "Port Number",
+            accelerator: "Ctrl+Shift+R",
+            click: () => {
+              this.mainWindow.webContents.send("update-session-config", "...");
+            },
+          },
+        ],
       },
       {
         label: "Help",
