@@ -272,10 +272,10 @@ to any type.
 
 ```python
 sample.tags = 67
-# ValidationError: ValidationError (ODMDocument.ODMSample:5eb9c958a33a60b54d16eee5) (Only lists and tuples may be used in a list field: ['tags'])
+# ValidationError: Only lists and tuples may be used in a list field: ['tags']
 
 sample.tags = [1, 2]
-# ValidationError: ValidationError (ODMDocument.ODMSample:5eb9c958a33a60b54d16eee5) (StringField only accepts string values 1.StringField only accepts string values: ['tags'])
+# ValidationError: StringField only accepts string values: ['tags']
 
 dataset.delete_field("tags")
 
