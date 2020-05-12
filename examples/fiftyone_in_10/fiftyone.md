@@ -1,9 +1,9 @@
 # `fiftyone.Dataset/Sample/Field/DatasetView`
 
 Two sentence summary:
-> `Dataset`s are made of `Sample`s which contain `Field`s, all of which can be
-dynamically created, modified and deleted. `DatasetView`s allow one to easily
-view and manipulate subsets of `Dataset`s.
+> `Dataset`s are composed of `Sample`s which contain `Field`s, all of which can
+be dynamically created, modified and deleted. `DatasetView`s allow one to
+easily view and manipulate subsets of `Dataset`s.
 
 The fundamental `fiftyone` object that a user interacts with is the
 `DatasetView`. Users are constantly creating and chaining commands on views.
