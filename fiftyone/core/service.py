@@ -78,8 +78,8 @@ class ServerService(Service):
 
     def start(self):
         """Starts the ServerService."""
-        with etau.WorkingDir(foc.SERVER_DIR % self._port):
-            etau.call(foc.START_SERVER, **self._SUPPRESS)
+        with etau.WorkingDir(foc.SERVER_DIR):
+            etau.call(foc.START_SERVER % self._port, **self._SUPPRESS)
 
     def stop(self):
         """Stops the ServerService."""
