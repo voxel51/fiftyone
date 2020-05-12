@@ -82,8 +82,7 @@ else:
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
-SERVER_PORT = 5151
-SERVER_ADDR = "http://127.0.0.1:%s" % SERVER_PORT
+SERVER_ADDR = "http://127.0.0.1:%s"
 START_SERVER = [
     "gunicorn",
     "-w",
@@ -91,12 +90,11 @@ START_SERVER = [
     "--worker-class",
     "eventlet",
     "-b",
-    "127.0.0.1:%s" % SERVER_PORT,
-    "main:app",
+    "127.0.0.1:%s" "main:app",
     "--daemon",
     "--reload",
 ]
-STOP_SERVER = _STOP_SERVICE % SERVER_PORT
+STOP_SERVER = _STOP_SERVICE
 
 # App setup
 FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")

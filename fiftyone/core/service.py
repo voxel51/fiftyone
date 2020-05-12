@@ -72,14 +72,18 @@ class DatabaseService(Service):
 class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
+    def __init__(self, port):
+        self._port = port
+        super(ServerService, self).__init__()
+
     def start(self):
         """Starts the ServerService."""
-        with etau.WorkingDir(foc.SERVER_DIR):
+        with etau.WorkingDir(foc.SERVER_DIR % self._port):
             etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
         """Stops the ServerService."""
-        self._system(foc.STOP_SERVER)
+        self._system(foc.STOP_SERVER % self._port)
 
 
 class AppService(Service):

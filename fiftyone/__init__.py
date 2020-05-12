@@ -24,7 +24,6 @@ import fiftyone.core.config as foc
 import fiftyone.core.service as fos
 
 _database_service = fos.DatabaseService()
-_server_service = fos.ServerService()
 config = foc.load_config()
 
 from .core.dataset import (

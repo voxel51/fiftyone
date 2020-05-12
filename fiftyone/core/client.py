@@ -24,6 +24,7 @@ import threading
 import socketio
 
 import fiftyone.constants as foc
+import fiftyone.core.service as fos
 
 
 logging.getLogger("socketio").setLevel(logging.ERROR)
@@ -96,7 +97,8 @@ class HasClient(object):
     _HC_ATTR_NAME = None
     _HC_ATTR_TYPE = None
 
-    def __init__(self):
+    def __init__(self, port):
+        self._server_service = fos.ServerService(port)
         self._hc_sio = socketio.Client()
         # the following is a monkey patch to set threads to daemon mode
         self._hc_sio.eio.start_background_task = _start_background_task
@@ -104,7 +106,7 @@ class HasClient(object):
             "/" + self._HC_NAMESPACE, self._HC_ATTR_TYPE
         )
         self._hc_sio.register_namespace(self._hc_client)
-        self._hc_sio.connect(foc.SERVER_ADDR)
+        self._hc_sio.connect(foc.SERVER_ADDR % port)
 
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""

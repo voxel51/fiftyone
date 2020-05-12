@@ -31,7 +31,7 @@ import fiftyone.core.view as fov
 session = None
 
 
-def launch_dashboard(dataset=None, view=None):
+def launch_dashboard(dataset=None, view=None, port=5151):
     """Launches the FiftyOne Dashboard.
 
     Only one dashboard instance can be opened at a time. If this method is
@@ -60,7 +60,7 @@ def launch_dashboard(dataset=None, view=None):
     #
     close_dashboard()
 
-    session = Session(dataset=dataset, view=view)
+    session = Session(dataset=dataset, view=view, port=port)
 
     # Ensure that the session (and therefore the app) is closed whenever the
     # Python process exits
@@ -122,22 +122,28 @@ class Session(foc.HasClient):
             load
         view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
             load
+        port (5151): the port to use to connect the FiftyOne app.
+        remote (False): whether this is a remote session. Remote sessions do not
+            launch the FiftyOne app
     """
 
     _HC_NAMESPACE = "state"
     _HC_ATTR_NAME = "state"
     _HC_ATTR_TYPE = StateDescription
 
-    def __init__(self, dataset=None, view=None):
+    def __init__(self, dataset=None, view=None, port=5151, remote=False):
         if session is not None:
             raise ValueError("Only one session is permitted")
 
-        self._app_service = fos.AppService()
+        if not remote:
+            self._app_service = fos.AppService()
         self._close = False
         self._dataset = None
         self._view = None
+        self._port = port
+        self._remote = remote
 
-        super(Session, self).__init__()
+        super(Session, self).__init__(self._port)
 
         if view is not None:
             self.view = view
@@ -149,6 +155,8 @@ class Session(foc.HasClient):
 
         This opens the FiftyOne Dashboard, if necessary.
         """
+        if self._remote:
+            raise ValueError("Remote sessions cannot launch the FiftyOne app")
         self._app_service.start()
 
     def close(self):
@@ -158,7 +166,6 @@ class Session(foc.HasClient):
         """
         self._close = True
         self._update_state()
-        self._app_service.stop()
 
     # GETTERS #################################################################
 
