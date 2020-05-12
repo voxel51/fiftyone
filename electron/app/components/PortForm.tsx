@@ -8,14 +8,13 @@ import { getSocket, useSubscribe } from "../utils/socket";
 import CodeBlock from "./CodeBlock";
 
 export default connect(function (props) {
-  const { title, language, children, port, connected } = props;
+  const { title, language, children, port, connected, onClose } = props;
   const [formState, setFormState] = useState({
     port: port,
-    connect: connected,
+    connected: connected,
     resolving: false,
     invalid: false,
   });
-  console.log(connected);
 
   const onChange = (event, input) => {
     if (isNaN(input.value)) {
@@ -36,22 +35,14 @@ export default connect(function (props) {
       };
       setFormState(tempFormState);
       const socket = getSocket(input.value, "state");
-      socket.on("connect", () => {
-        setState({
-          ...formState,
-          invalid: false,
-          connected: true,
-          resolving: false,
-        });
-      });
       setTimeout(
         () =>
           setFormState({
             ...tempFormState,
             resolving: false,
-            connected: false,
+            connected: socket.connected,
           }),
-        500
+        1000
       );
     } else {
       setFormState({

@@ -4,10 +4,15 @@ import { useEffect } from "react";
 const sockets = {};
 
 export function getSocket(server, name) {
-  if (!sockets[name]) {
-    sockets[name] = io.connect("http://127.0.0.1:" + server + "/" + name);
+  if (!sockets[server]) {
+    sockets[server] = {};
   }
-  return sockets[name];
+  if (!sockets[server][name]) {
+    sockets[server][name] = io.connect(
+      "http://127.0.0.1:" + server + "/" + name
+    );
+  }
+  return sockets[server][name];
 }
 
 export function useSubscribe(socket, event, callback) {
