@@ -159,14 +159,14 @@ for imgs, sample_ids in data_loader:
     predictions, _, logits = predict(model, imgs)
 
     # Add predictions to your FiftyOne dataset
-    for sample_id, prediction, logits in zip(
+    for the_sample_id, the_prediction, the_logits in zip(
         sample_ids, predictions, logits 
     ):
-        sample = dataset[sample_id]
+        sample = dataset[the_sample_id]
         sample.add_tag("processed")
         sample.add_label(
-            model_name, fo.ClassificationLabel.create(labels_map[prediction], 
-                                                      logits=logits)
+            model_name, fo.ClassificationLabel.create(labels_map[the_prediction], 
+                                                      logits=the_logits)
         )
 
 #
