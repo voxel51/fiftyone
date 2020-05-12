@@ -1,26 +1,17 @@
 import { Action } from "redux";
-import { UPDATE } from "../actions/update";
+import { UPDATE, PORT } from "../actions/update";
 import io from "socket.io-client";
 
-export default function state(state = {}, action) {
+export default function state(
+  state = { port: 5151, connected: false },
+  action
+) {
   switch (action.type) {
     case UPDATE:
-      if (!state.socket) {
-        return {
-          ...state,
-          state: action.data,
-          socket: io.connect("http://localhost:5151/state"),
-        };
-      }
       return { ...state, state: action.data };
+    case PORT:
+      return { ...state, port: action.data };
     default:
-      if (!state.socket) {
-        return {
-          ...state,
-          state: action.data,
-          socket: io.connect("http://localhost:5151/state"),
-        };
-      }
       return state;
   }
 }

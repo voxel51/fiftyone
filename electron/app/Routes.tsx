@@ -12,6 +12,7 @@ export default function Routes() {
         <Route path={routes.DATASET} component={Dataset} />
         <Route path={routes.LIST} component={Dataset} />
         <Route path={routes.CHARTS} component={Dataset} />
+        <Route path={routes.SETUP} component={Dataset} />
       </Switch>
     </App>
   );

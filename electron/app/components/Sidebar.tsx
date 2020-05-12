@@ -7,7 +7,6 @@ import connect from "../utils/connect";
 const _Sidebar = (props) => {
   const { state } = props;
   const hasDataset = Boolean(state && state.dataset);
-  console.log(state);
   return (
     <Sidebar
       as={Menu}
