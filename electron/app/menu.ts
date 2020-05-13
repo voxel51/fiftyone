@@ -161,7 +161,7 @@ export default class MenuBuilder {
       label: "Settings",
       submenu: [
         {
-          label: "Port Number",
+          label: "Port number",
           accelerator: "Ctrl+Shift+R",
           click: () => {
             this.mainWindow.webContents.send("update-session-config", "...");
@@ -281,7 +281,7 @@ export default class MenuBuilder {
         label: "Settings",
         submenu: [
           {
-            label: "Port Number",
+            label: "Port number",
             accelerator: "Ctrl+Shift+R",
             click: () => {
               this.mainWindow.webContents.send("update-session-config", "...");
