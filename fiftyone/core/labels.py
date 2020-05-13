@@ -145,7 +145,7 @@ class DetectionLabels(ImageLabel):
     convenient way to build labels of this type for your existing datasets.
     """
 
-    _ODM_DOCUMENT_CLS = foo.ODMDetectionLabel
+    _ODM_DOCUMENT_CLS = foo.ODMDetectionLabels
 
     @property
     def detections(self):
@@ -252,6 +252,6 @@ class ImageLabels(ImageLabel):
 _LABEL_CLS_MAP = {
     foo.ODMLabel: Label,
     foo.ODMClassificationLabel: ClassificationLabel,
-    foo.ODMDetectionLabel: DetectionLabels,
+    foo.ODMDetectionLabels: DetectionLabels,
     foo.ODMImageLabel: ImageLabels,
 }
