@@ -54,9 +54,9 @@ const GalleryWrapper = connect((props) => {
 });
 
 function SampleList(props) {
-  const { state, setView } = props;
+  const { state, setView, port } = props;
   const hasDataset = Boolean(state && state.dataset);
-  const socket = getSocket("state");
+  const socket = getSocket(port, "state");
   const [scrollState, setScrollState] = useState({
     initialLoad: true,
     hasMore: true,
@@ -81,6 +81,7 @@ function SampleList(props) {
       : [];
   }
   const loadMore = () => {
+    console.log(socket, socket.connected);
     if (hasDataset) {
       socket.emit("page", scrollState.pageToLoad, (data) => {
         const more = createImages(data);
