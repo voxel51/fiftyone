@@ -22,9 +22,10 @@ def print_snippet(snippet_str, snippet):
 
 
 dataset = fo.Dataset("fiftyone_in_fifteen")
-sample_id = dataset.add_sample(filepath="/path/to/img.jpg", tags=["train"])
+sample_id = dataset.add_sample(filepath="/path/to/img1.jpg", tags=["train"])
+dataset.add_sample(filepath="/path/to/img2.jpg", tags=["train"])
+dataset.add_sample(filepath="/path/to/img3.jpg", tags=["test"])
 sample = dataset[sample_id]
-
 
 ###############################################################################
 # Poking Around

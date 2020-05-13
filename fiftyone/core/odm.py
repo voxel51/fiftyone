@@ -211,16 +211,21 @@ class ODMDataset(ODMDocument):
         return os.path.basename(self.filepath)
 
     def __setattr__(self, name, value):
-        if name.startswith("_"):
+        if name.startswith("_") or (
+            hasattr(self, name) and name not in self._fields
+        ):
             return super(ODMDataset, self).__setattr__(name, value)
 
         cls = type(self)
         if hasattr(cls, name):
             if value is not None:
                 getattr(cls, name).validate(value)
+
             result = super(ODMDataset, self).__setattr__(name, value)
-            if name not in ["_cls", "id"] and isinstance(
-                getattr(cls, name), BaseField
+            if (
+                name not in ["_cls", "id"]
+                and isinstance(getattr(cls, name), BaseField)
+                and self._in_db
             ):
                 self.save()
             return result

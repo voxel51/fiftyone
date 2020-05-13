@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -139,9 +140,6 @@ class Dataset(foc.SampleCollection):
                 "obtain a DatasetView if you want to slice your samples"
             )
 
-        if isinstance(sample_id, slice):
-            return self.view()[sample_id]
-
         samples = self._get_query_set(id=sample_id)
         if not samples:
             raise ValueError("No sample found with ID '%s'" % sample_id)
@@ -162,12 +160,19 @@ class Dataset(foc.SampleCollection):
         Returns:
             a string summary
         """
+        fields = self.get_sample_fields()
+        max_len = max([len(field_name) for field_name in fields])
+        field_strings = "\n".join(
+            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
+            for field_name, field in iteritems(fields)
+        )
+
         return "\n".join(
             [
                 "Name:           %s" % self.name,
                 "Num samples:    %d" % len(self),
                 "Sample Fields:",
-                etas.pretty_str(self.get_sample_fields()),
+                field_strings,
                 "Tags: %s" % self.distinct("tags"),
             ]
         )
