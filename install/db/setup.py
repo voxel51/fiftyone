@@ -37,6 +37,7 @@ setup(
     url="https://github.com/voxel51/fiftyone",
     license="",
     packages=["fiftyone.db"],
+    package_dir={"fiftyone.db": "src"},
     package_data={"fiftyone.db": ["bin/mongo", "bin/mongod"]},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
