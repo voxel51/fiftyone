@@ -6,54 +6,39 @@ import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
 import CodeBlock from "./CodeBlock";
 
-export default connect(({ connected, port, resolving, setPort }) => {
+export default connect(({ connected, port, setPort }) => {
   const [initialPort, setInitialPort] = useState(port);
   const [formState, setFormState] = useState({
     port: port,
     connected: connected,
-    resolving: false,
     invalid: false,
   });
-
-  function setPort() {
-    if (formState.connected) {
-      dispatch(updatePort(formState.port));
-    }
-  }
 
   const onChange = (event, input) => {
     if (isNaN(input.value)) {
       setFormState({
         ...formState,
         connected: false,
-        resolving: false,
         invalid: true,
         port: input.value,
       });
       setPort(initialPort);
     } else if (parseInt(input.value) <= 65535) {
+      const socket = getSocket(input.value, "state");
       const tempFormState = {
         ...formState,
-        connected: false,
-        resolving: true,
+        connected: socket.connected,
         invalid: false,
         port: input.value,
       };
       setFormState(tempFormState);
-      const socket = getSocket(input.value, "state");
-      setTimeout(() => {
-        setFormState({
-          ...tempFormState,
-          resolving: false,
-          connected: socket.connected,
-        });
+      if (socket.connected) {
         setPort(input.value);
-      }, 1000);
+      }
     } else {
       setFormState({
         ...formState,
         connected: false,
-        resolving: false,
         invalid: true,
         port: input.value,
       });
@@ -62,20 +47,13 @@ export default connect(({ connected, port, resolving, setPort }) => {
   };
 
   return (
-    <Input
-      labelPosition="right"
-      value={formState.port}
-      onChange={onChange}
-      loading={formState.resolving}
-    >
+    <Input labelPosition="right" value={formState.port} onChange={onChange}>
       <input />
       <Label>
         {formState.invalid
           ? "Invalid"
-          : formState.resolving
-          ? "Resolving"
           : formState.connected
-          ? "Connected"
+          ? "Connected!"
           : "Not connected"}
       </Label>
     </Input>

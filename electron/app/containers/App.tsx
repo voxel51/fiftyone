@@ -56,7 +56,6 @@ function App(props: Props) {
               setPort={setPortFromForm}
               connected={connected}
               port={port}
-              resolving={false}
               invalid={false}
             />
           </Modal.Description>
