@@ -21,8 +21,7 @@ function App(props: Props) {
   const { loading, children, dispatch, update, connected, port } = props;
   const portRef = useRef();
   const socket = getSocket(port, "state");
-  const [portFromForm, setPortFromForm] = useState(port);
-
+  const [result, setResultFromForm] = useState({ port, connected });
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
     if (loading) {
@@ -56,13 +55,16 @@ function App(props: Props) {
       <Modal
         trigger={<Button style={{ display: "none" }} ref={portRef}></Button>}
         size="tiny"
-        onClose={() => dispatch(updatePort(portFromForm))}
+        onClose={() => {
+          dispatch(updatePort(result.port));
+          dispatch(updateConnected(result.connected));
+        }}
       >
         <Modal.Header>Port number</Modal.Header>
         <Modal.Content>
           <Modal.Description>
             <PortForm
-              setPort={setPortFromForm}
+              setResult={setResultFromForm}
               connected={connected}
               port={port}
               invalid={false}

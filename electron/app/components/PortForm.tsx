@@ -6,8 +6,8 @@ import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
 import CodeBlock from "./CodeBlock";
 
-export default connect(({ connected, port, setPort }) => {
-  const [initialPort, setInitialPort] = useState(port);
+export default connect(({ connected, port, setResult }) => {
+  const [initialState, setInitialState] = useState({ port, connected });
   const [formState, setFormState] = useState({
     port: port,
     connected: connected,
@@ -22,7 +22,7 @@ export default connect(({ connected, port, setPort }) => {
         invalid: true,
         port: input.value,
       });
-      setPort(initialPort);
+      setResult(initialState);
     } else if (parseInt(input.value) <= 65535) {
       const socket = getSocket(input.value, "state");
       const tempFormState = {
@@ -33,7 +33,7 @@ export default connect(({ connected, port, setPort }) => {
       };
       setFormState(tempFormState);
       if (socket.connected) {
-        setPort(input.value);
+        setResult({ port: input.value, connected: true });
       }
     } else {
       setFormState({
@@ -42,7 +42,7 @@ export default connect(({ connected, port, setPort }) => {
         invalid: true,
         port: input.value,
       });
-      setPort(initialPort);
+      setResult(initialState);
     }
   };
 

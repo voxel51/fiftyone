@@ -10,7 +10,7 @@ function Loading(props) {
   if (!loading && connected) {
     return <Redirect to={routes.DATASET} />;
   } else if (!loading && !connected) {
-    return <Redirect to={routes.Setup} />;
+    return <Redirect to={routes.SETUP} />;
   }
   return (
     <Dimmer active>
