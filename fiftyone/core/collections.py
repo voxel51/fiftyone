@@ -20,7 +20,7 @@ from builtins import *
 
 import logging
 
-import eta.core.utils as etau
+# import eta.core.utils as etau
 
 # import fiftyone.core.labels as fol
 # import fiftyone.utils.data as foud

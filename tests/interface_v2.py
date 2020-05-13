@@ -15,7 +15,12 @@ import fiftyone.core.dataset as fod
 # Dataset is a per-name singleton
 dataset = fod.Dataset("my_dataset")
 dataset2 = fod.Dataset("my_dataset")
+dataset3 = fod.Dataset("another_dataset")
 print("Datasets are per-name singletons: %s" % (dataset is dataset2))
+print(
+    "Datasets with different names are different: %s"
+    % (dataset is not dataset3)
+)
 print()
 
 print(dataset.summary())

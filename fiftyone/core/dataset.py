@@ -135,12 +135,12 @@ class Dataset(foc.SampleCollection):
 
         if isinstance(sample_id, slice):
             raise ValueError(
-                "Slicing datasets is not supported. Use `default_view()` to "
+                "Slicing datasets is not supported. Use `view()` to "
                 "obtain a DatasetView if you want to slice your samples"
             )
 
         if isinstance(sample_id, slice):
-            return self.default_view()[sample_id]
+            return self.view()[sample_id]
 
         samples = self._get_query_set(id=sample_id)
         if not samples:
