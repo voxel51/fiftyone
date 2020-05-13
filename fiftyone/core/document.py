@@ -137,7 +137,6 @@ class BackedByDocument(object):
         Returns:
             a :class:`BackedByDocument`
         """
-        print(cls._ODM_DOCUMENT_CLS)
         return cls(cls._ODM_DOCUMENT_CLS(**kwargs))
 
     def _save(self):
