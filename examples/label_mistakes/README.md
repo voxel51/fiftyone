@@ -13,15 +13,14 @@ Inference walkthrough, then you can skip the setup and data download sections.
 
 ## Setup
 
--   Install `torch` and `torchvision`, if necessary:
+Install `torch` and `torchvision`, if necessary:
 
 ```
 pip install torch
 pip install torchvision
 ```
 
--   Download the test split of the CIFAR-10 dataset to
-    `~/fiftyone/cifar10/test`:
+Download the test split of the CIFAR-10 dataset to `~/fiftyone/cifar10/test`:
 
 ```py
 import fiftyone.zoo as foz
@@ -34,7 +33,7 @@ foz.load_zoo_dataset("cifar10")
 foo.drop_database()
 ```
 
--   Download some pretrained CIFAR-10 PyTorch models
+Download some pretrained CIFAR-10 PyTorch models
 
 ```
 # Download the software
@@ -136,12 +135,15 @@ def predict(model, imgs):
 #   https://github.com/huyvnphan/PyTorch_CIFAR10
 #
 
+
 model = resnet50(pretrained=True)
 model_name = "resnet50"
+
 
 #
 # Extract a few images to process (some of these will have been manipulated above)
 #
+
 
 num_samples = 1000
 batch_size = 20
@@ -151,9 +153,11 @@ image_paths, sample_ids = zip(
 )
 data_loader = make_cifar10_data_loader(image_paths, sample_ids, batch_size)
 
+
 #
 # Perform prediction and store results in dataset
 #
+
 
 for imgs, sample_ids in data_loader:
     predictions, _, logits = predict(model, imgs)
@@ -168,6 +172,7 @@ for imgs, sample_ids in data_loader:
             model_name, fo.ClassificationLabel.create(labels_map[the_prediction], 
                                                       logits=the_logits)
         )
+
 
 #
 # Print some information about the Predictions
