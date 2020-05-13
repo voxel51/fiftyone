@@ -93,8 +93,8 @@ class ODMDocument(Document, fof.SerializableDocumentMixin):
         return hasattr(self, "id") and self.id is not None
 
 
-class ODMDataset(ODMDocument):
-    """Abstract ODMDataset class that all
+class ODMSample(ODMDocument):
+    """Abstract ODMSample class that all
     :class:`fiftyone.core.dataset.Dataset._Doc` classes inherit from.
     Instances of the subclasses are samples. I.e.:
 
@@ -109,9 +109,7 @@ class ODMDataset(ODMDocument):
     meta = {"abstract": True}
 
     # the path to the data on disk
-    # @todo(Tyler)
-    filepath = StringField()
-    # filepath = StringField(unique=True)
+    filepath = StringField(unique=True)
     # the set of tags associated with the sample
     tags = ListField(StringField())
     # metadata about the sample media
@@ -173,14 +171,14 @@ class ODMDataset(ODMDocument):
         if name.startswith("_") or (
             hasattr(self, name) and name not in self._fields
         ):
-            return super(ODMDataset, self).__setattr__(name, value)
+            return super(ODMSample, self).__setattr__(name, value)
 
         cls = type(self)
         if hasattr(cls, name):
             if value is not None:
                 getattr(cls, name).validate(value)
 
-            result = super(ODMDataset, self).__setattr__(name, value)
+            result = super(ODMSample, self).__setattr__(name, value)
             if (
                 name not in ["_cls", "id"]
                 and isinstance(getattr(cls, name), BaseField)
@@ -196,7 +194,7 @@ class ODMDataset(ODMDocument):
             "stable/indexing.html#attribute-access",
             stacklevel=2,
         )
-        result = super(ODMDataset, self).__setattr__(name, value)
+        result = super(ODMSample, self).__setattr__(name, value)
         if name not in ["_cls", "id"] and isinstance(
             getattr(cls, name), BaseField
         ):
@@ -206,7 +204,7 @@ class ODMDataset(ODMDocument):
     def __getitem__(self, key):
         if hasattr(self, key):
             return self.__getattribute__(key)
-        return super(ODMDataset, self).__getitem__(key)
+        return super(ODMSample, self).__getitem__(key)
 
     def __setitem__(self, key, value):
         if key.startswith("_"):

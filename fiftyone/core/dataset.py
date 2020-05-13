@@ -123,7 +123,7 @@ class Dataset(foc.SampleCollection):
         self._name = name
 
         # @todo(Tyler) use MetaDataset to load this class from the DB
-        self._Doc = type(self._name, (foo.ODMDataset,), {})
+        self._Doc = type(self._name, (foo.ODMSample,), {})
 
     def __len__(self):
         return self._get_query_set().count()

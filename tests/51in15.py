@@ -59,12 +59,12 @@ print_snippet("dataset.summary()", dataset.summary())
 
 # @todo(Tyler)
 # grab 5 random samples
-# dataset.view.sample(5)  # -> fiftyone.core.view.DatasetView
+# dataset.view.take(5)  # -> fiftyone.core.view.DatasetView
 
 # @todo(Tyler)
 # all methods on views are also valid on datasets. The dataset merely creates
 # a view and calls the method on that view:
-# dataset.sample(5)  # -> fiftyone.core.view.DatasetView
+# dataset.take(5)  # -> fiftyone.core.view.DatasetView
 
 ###############################################################################
 # Basics with DatasetViews
@@ -123,7 +123,7 @@ view = (
     .match({"tags": "train"})
     .exists("file_hash")
     .sort_by("filepath")[10:20]
-    .sample(5)
+    .take(5)
 )
 """
 view = (
@@ -131,7 +131,7 @@ view = (
     .match({"tags": "train"})
     .exists("file_hash")
     .sort_by("filepath")[10:20]
-    .sample(5)
+    .take(5)
 )
 print_snippet(snippet_str, view)
 
