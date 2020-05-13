@@ -18,10 +18,21 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import datetime
 import logging
-import fiftyone.core.odm2 as foo
+import numbers
+import os
 
 import eta.core.serial as etas
+import eta.core.utils as etau
+
+import fiftyone as fo
+import fiftyone.core.collections as foc
+import fiftyone.core.odm2 as foo
+
+# import fiftyone.core.view as fov
+# import fiftyone.utils.data as foud
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +44,8 @@ def list_dataset_names():
         a list of :class:`Dataset` names
     """
     # pylint: disable=no-member
-    # @todo(Tyler)
-    return foo.ODMSample.objects.distinct("dataset")
+    # @todo(Tyler) list_dataset_names()
+    raise NotImplementedError("TODO")
 
 
 def load_dataset(name):
@@ -46,15 +57,58 @@ def load_dataset(name):
     Returns:
         a :class:`Dataset`
     """
-    # @todo(Tyler)
     return Dataset(name, create_empty=False)
 
 
-class MetaDataset:
-    pass
+def get_default_dataset_name():
+    """Returns a default dataset name based on the current time.
+
+    Returns:
+        a dataset name
+    """
+    name = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info("Using default dataset name '%s'", name)
+    return name
 
 
-class Dataset(object):
+def get_default_dataset_dir(name, split=None):
+    """Returns the default dataset directory for the dataset with the given
+    name.
+
+    Args:
+        name: the dataset name
+        split (None): an optional split
+
+    Returns:
+        the default dataset directory
+    """
+    dataset_dir = os.path.join(fo.config.default_dataset_dir, name)
+    if split is not None:
+        dataset_dir = os.path.join(dataset_dir, split)
+
+    logger.info("Using default dataset directory '%s'", dataset_dir)
+    return dataset_dir
+
+
+class Dataset(foc.SampleCollection):
+    """A FiftyOne dataset.
+
+    Datasets represent a homogeneous collection of
+    :class:`fiftyone.core.sample.Sample` instances that describe a particular
+    type of raw media (e.g., images) together with one or more sets of
+    :class:`fiftyone.core.labels.Label` instances (e.g., ground truth
+    annotations or model predictions) and metadata associated with those
+    labels.
+
+    FiftyOne datasets ingest and store the labels for all samples internally;
+    raw media is stored on disk and the dataset provides paths to the data.
+
+    Args:
+        name: the name of the dataset
+        create_empty (True): whether to create a dataset with the given name
+            if it does not already exist
+    """
+
     _instances = {}
 
     def __new__(cls, name, *args, **kwargs):
@@ -66,7 +120,35 @@ class Dataset(object):
         self._name = name
 
         # @todo(Tyler) use MetaDataset to load this class from the DB
-        self._Doc = type(self._name, (foo.Dataset,), {})
+        self._Doc = type(self._name, (foo.ODMDataset,), {})
+
+    def __len__(self):
+        return self._get_query_set().count()
+
+    def __getitem__(self, sample_id):
+        if isinstance(sample_id, numbers.Integral):
+            raise ValueError(
+                "Accessing dataset samples by numeric index is not supported. "
+                "Use sample IDs instead"
+            )
+
+        if isinstance(sample_id, slice):
+            raise ValueError(
+                "Slicing datasets is not supported. Use `default_view()` to "
+                "obtain a DatasetView if you want to slice your samples"
+            )
+
+        if isinstance(sample_id, slice):
+            return self.default_view()[sample_id]
+
+        samples = self._get_query_set(id=sample_id)
+        if not samples:
+            raise ValueError("No sample found with ID '%s'" % sample_id)
+
+        return self._load_sample(samples[0])
+
+    def __delitem__(self, sample_id):
+        self[sample_id].delete()
 
     @property
     def name(self):

@@ -22,8 +22,8 @@ import logging
 
 import eta.core.utils as etau
 
-import fiftyone.core.labels as fol
-import fiftyone.utils.data as foud
+# import fiftyone.core.labels as fol
+# import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
@@ -62,52 +62,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_tags()")
 
-    def get_label_groups(self):
-        """Returns the list of label groups attached to at least one sample
-        in the collection.
-
-        Returns:
-            a list of groups
-        """
-        pipeline = [
-            {"$project": {"arrayofkeyvalue": {"$objectToArray": "$labels"}}},
-            {"$unwind": "$arrayofkeyvalue"},
-            {
-                "$group": {
-                    "_id": None,
-                    "all_groups": {"$addToSet": "$arrayofkeyvalue.k"},
-                }
-            },
-        ]
-        try:
-            return next(self._aggregate(pipeline))["all_groups"]
-        except StopIteration:
-            pass
-        return []
-
-    def get_insight_groups(self):
-        """Returns the list of insight groups attached to at least one sample
-        in the collection.
-
-        Returns:
-            a list of groups
-        """
-        pipeline = [
-            {"$project": {"arrayofkeyvalue": {"$objectToArray": "$insights"}}},
-            {"$unwind": "$arrayofkeyvalue"},
-            {
-                "$group": {
-                    "_id": None,
-                    "all_groups": {"$addToSet": "$arrayofkeyvalue.k"},
-                }
-            },
-        ]
-        try:
-            return next(self._aggregate(pipeline))["all_groups"]
-        except StopIteration:
-            pass
-        return []
-
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.
 
@@ -116,7 +70,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def _aggregate(self, pipeline=None):
+    def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the collection.
 
         Args:
@@ -126,7 +80,7 @@ class SampleCollection(object):
         Returns:
             an iterable over the aggregation result
         """
-        raise NotImplementedError("Subclass must implement _aggregate()")
+        raise NotImplementedError("Subclass must implement aggregate()")
 
     def export(self, group, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,
@@ -140,26 +94,29 @@ class SampleCollection(object):
             group: the label group to use
             export_dir: the directory to which to export
         """
-        data_paths = []
-        labels = []
-        for sample in self.iter_samples():
-            data_paths.append(sample.filepath)
-            labels.append(sample.get_label(group))
-
-        if not labels:
-            logger.warning("No samples to export; returning now")
-            return
-
-        if isinstance(labels[0], fol.ClassificationLabel):
-            foud.export_image_classification_dataset(
-                data_paths, labels, export_dir
-            )
-        elif isinstance(labels[0], fol.DetectionLabels):
-            foud.export_image_detection_dataset(data_paths, labels, export_dir)
-        elif isinstance(labels[0], fol.ImageLabels):
-            foud.export_image_labels_dataset(data_paths, labels, export_dir)
-        else:
-            raise ValueError(
-                "Cannot export labels of type '%s'"
-                % etau.get_class_name(labels[0])
-            )
+        # @todo(Tyler) SampleCollection.export()
+        # @todo(Tyler) remove everything with groups
+        raise NotImplementedError("TODO")
+        # data_paths = []
+        # labels = []
+        # for sample in self.iter_samples():
+        #     data_paths.append(sample.filepath)
+        #     labels.append(sample.get_label(group))
+        #
+        # if not labels:
+        #     logger.warning("No samples to export; returning now")
+        #     return
+        #
+        # if isinstance(labels[0], fol.ClassificationLabel):
+        #     foud.export_image_classification_dataset(
+        #         data_paths, labels, export_dir
+        #     )
+        # elif isinstance(labels[0], fol.DetectionLabels):
+        #     foud.export_image_detection_dataset(data_paths, labels, export_dir)
+        # elif isinstance(labels[0], fol.ImageLabels):
+        #     foud.export_image_labels_dataset(data_paths, labels, export_dir)
+        # else:
+        #     raise ValueError(
+        #         "Cannot export labels of type '%s'"
+        #         % etau.get_class_name(labels[0])
+        #     )
