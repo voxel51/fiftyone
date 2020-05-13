@@ -6,7 +6,9 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import glob
 import os
+import shutil
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 from wheel.bdist_wheel import bdist_wheel
@@ -15,13 +17,40 @@ from wheel.bdist_wheel import bdist_wheel
 class CustomBdistWheel(bdist_wheel):
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
+        release_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "..",
+            "electron",
+            "release",
+        )
         bin_dir = os.path.join(
             self.bdist_dir, self.data_dir, "purelib", "fiftyone", "gui", "bin"
         )
+
+        if self.plat_name.startswith("linux"):
+            apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
+        else:
+            raise OSError("Unsupported target platform: %r" % self.plat_name)
+        if not apps:
+            raise RuntimeError(
+                "Could not find any built Electron apps in %r. "
+                "Run 'yarn package-PLATFORM' in the 'electron' folder first."
+                % release_dir
+            )
+        elif len(apps) > 1:
+            raise RuntimeError(
+                "Found too many Electron apps in %r: %r" % (release_dir, apps)
+            )
+        app_path = apps[0]
+
         if not os.path.isdir(bin_dir):
             os.mkdir(bin_dir)
-        with open(os.path.join(bin_dir, "test"), "w") as f:
-            f.write(self.plat_name)
+        if os.path.isfile(app_path):
+            # use copy2 to maintain executable permission
+            shutil.copy2(app_path, os.path.join(bin_dir, "FiftyOne.AppImage"))
+        else:
+            raise RuntimeError("Unsupported file type: %r" % app_path)
 
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
