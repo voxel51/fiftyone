@@ -216,7 +216,8 @@ class COCO2017Dataset(foz.ZooDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train", "val")
+        return "train"  # @todo support other splits
+        # return ("test", "train", "val")
 
     @property
     def default_split(self):
