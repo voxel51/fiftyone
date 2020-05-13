@@ -8,9 +8,20 @@ import warnings
 
 from bson import json_util
 
+# pylint: disable=wildcard-import,unused-wildcard-import
 from mongoengine import *
-
 from mongoengine.fields import BaseField
+
+
+_DEFAULT_DATABASE = "fiftyone"
+
+
+_db = connect(_DEFAULT_DATABASE)
+
+
+def drop_database():
+    """Drops the database."""
+    _db.drop_database(_DEFAULT_DATABASE)
 
 
 class ODMDocument(Document):
