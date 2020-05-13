@@ -186,10 +186,10 @@ we processed.  We can use this to find possible label mistakes both in the code
 and in the visualization.
 
 ```
-import fiftyonebrain.hardness as fbh
+import fiftyone.brain.mistakenness as fbm
 
 h_view = dataset.default_view().match_tag("processed")
-fbh.compute_hardness(h_view, model_name, "hardness")
+fbm.compute_mistakenness(h_view, model_name, "mistakenness")
 
 # Launch the FiftyOne dashboard
 session = fo.launch_dashboard()
@@ -208,7 +208,7 @@ session.view = view
 # Show the samples we processed in rank order by the hardness
 mistake_view = (dataset.default_view()
     .match_tag("processed")
-    .sort_by("insights.hardness.scalar", reverse=True)
+    .sort_by("insights.mistakenness.scalar", reverse=True)
 )
 session.view = mistake_view
 
