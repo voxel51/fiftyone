@@ -20,17 +20,26 @@ type Props = {
 function App(props: Props) {
   const { loading, children, dispatch, update, connected, port } = props;
   const portRef = useRef();
-  const socket = getSocket(port, "state");
   const [result, setResultFromForm] = useState({ port, connected });
+  const [socket, setSocket] = useState(getSocket(result.port, "state"));
+
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
     if (loading) {
       socket.emit("get_current_state", "", (data) => {
         dispatch(updateState(data));
+        dispatch(updateLoading(false));
       });
-      dispatch(updateLoading(false));
     }
   });
+  if (socket.connected && !connected) {
+    dispatch(updateConnected(true));
+    dispatch(updateLoading(true));
+    socket.emit("get_current_state", "", (data) => {
+      dispatch(updateState(data));
+      dispatch(updateLoading(false));
+    });
+  }
   setTimeout(() => {
     if (loading && !connected) {
       dispatch(updateLoading(false));
@@ -57,7 +66,7 @@ function App(props: Props) {
         size="tiny"
         onClose={() => {
           dispatch(updatePort(result.port));
-          dispatch(updateConnected(result.connected));
+          setSocket(getSocket(result.port, "state"));
         }}
       >
         <Modal.Header>Port number</Modal.Header>

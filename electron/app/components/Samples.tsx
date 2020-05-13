@@ -30,8 +30,8 @@ const GalleryImage = (props) => {
 };
 
 const GalleryWrapper = connect((props) => {
-  const { images, dispatch, state, setView } = props;
-  const socket = getSocket("state");
+  const { images, dispatch, state, setView, port } = props;
+  const socket = getSocket(port, "state");
   return (
     <div style={{ overflowY: "auto" }}>
       <Gallery
@@ -81,7 +81,6 @@ function SampleList(props) {
       : [];
   }
   const loadMore = () => {
-    console.log(socket, socket.connected);
     if (hasDataset) {
       socket.emit("page", scrollState.pageToLoad, (data) => {
         const more = createImages(data);
