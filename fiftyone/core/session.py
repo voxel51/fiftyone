@@ -159,7 +159,7 @@ class Session(foc.HasClient):
                 "port forwarding. The current port number is %d.\n\n"
                 "Runnning the following command forwards this session to the default"
                 " port of 5151 on your local machine.\n"
-                "ssh -L %d:127.0.0.1:5151 username@this_machine_ip\n"
+                "ssh -N -L %d:127.0.0.1:5151 username@this_machine_ip\n"
                 % (self.server_port, self.server_port)
             )
 
