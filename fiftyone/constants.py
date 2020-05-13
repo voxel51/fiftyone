@@ -48,7 +48,7 @@ VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
 
 # MongoDB setup
 try:
-    from fiftyone_db import FIFTYONE_DB_BIN_DIR
+    from fiftyone.db import FIFTYONE_DB_BIN_DIR
 except ImportError:
     # development installation
     FIFTYONE_DB_BIN_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
