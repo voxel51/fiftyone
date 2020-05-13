@@ -212,31 +212,34 @@ class Dataset(foc.SampleCollection):
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
 
+        If the sample belongs to another dataset, a copy is created and added
+        to this dataset.
+
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
 
         Returns:
-            the ID of the sample
+            the ID of the sample in the dataset
         """
-        self._validate_sample(sample)
-        sample._set_dataset(self)
+        sample = self._ingest_sample(sample)
         sample._save()
         return sample.id
 
     def add_samples(self, samples):
         """Adds the given samples to the dataset.
 
+        If a sample belongs to another dataset, a copy is created and added to
+        this dataset.
+
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances
+                instances. Note that ``samples`` may be another
+                :class:`Dataset` or a :class:`fiftyone.core.views.DatasetView`
 
         Returns:
-            a list of sample IDs
+            a list of IDs of the samples in the dataset
         """
-        for sample in samples:
-            self._validate_sample(sample)
-            sample._set_dataset(self)
-
+        samples = [self._ingest_sample(s) for s in samples]
         sample_docs = self._get_query_set().insert(
             [s._backing_doc for s in samples]
         )
@@ -730,6 +733,12 @@ class Dataset(foc.SampleCollection):
             pipeline = []
 
         return self._get_query_set().aggregate(pipeline)
+
+    def _ingest_sample(self, sample):
+        self._validate_sample(sample)
+        sample = sample.copy() if sample.in_dataset else sample
+        sample._set_dataset(self)
+        return sample
 
     def _load_sample(self, doc):
         sample = fos.Sample.from_doc(doc)
