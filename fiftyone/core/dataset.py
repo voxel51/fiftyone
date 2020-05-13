@@ -233,7 +233,7 @@ class Dataset(foc.SampleCollection):
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances. Note that ``samples`` may be another
+                instances. For example, ``samples`` may be another
                 :class:`Dataset` or a :class:`fiftyone.core.views.DatasetView`
 
         Returns:
@@ -244,6 +244,37 @@ class Dataset(foc.SampleCollection):
             [s._backing_doc for s in samples]
         )
         return [str(s.id) for s in sample_docs]
+
+    def delete_sample(self, sample_or_id):
+        """Deletes the given sample from the dataset.
+
+        Args:
+            sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
+                ID to delete
+        """
+        if isinstance(sample_or_id, fos.Sample):
+            sample_id = sample_or_id.id
+        else:
+            sample_id = sample_or_id
+
+        del self[sample_id]
+
+    def delete_samples(self, samples_or_ids):
+        """Deletes the given samples from the dataset.
+
+        Args:
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
+                instances or sample IDs. For example, ``samples`` may be a
+                :class:`fiftyone.core.views.DatasetView`
+        """
+        # @todo optimize with bulk deletion?
+        for sample_or_id in samples_or_ids:
+            self.delete_sample(sample_or_id)
+
+    def clear(self):
+        """Deletes all samples from the dataset."""
+        # @todo optimize by deleteing the entire collection
+        self.delete_samples(self)
 
     def default_view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
