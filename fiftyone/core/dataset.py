@@ -162,7 +162,7 @@ class Dataset(foc.SampleCollection):
         """
         fields = self.get_sample_fields()
         max_len = max([len(field_name) for field_name in fields])
-        field_strings = "\n".join(
+        fields_str = "\n".join(
             "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
             for field_name, field in iteritems(fields)
         )
@@ -171,9 +171,9 @@ class Dataset(foc.SampleCollection):
             [
                 "Name:           %s" % self.name,
                 "Num samples:    %d" % len(self),
+                "Tags:           %s" % self.get_tags(),
                 "Sample Fields:",
-                field_strings,
-                "Tags: %s" % self.distinct("tags"),
+                fields_str,
             ]
         )
 

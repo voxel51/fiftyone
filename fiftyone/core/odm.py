@@ -144,7 +144,7 @@ class ODMDocument(Document):
         """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
         been inserted into the database.
         """
-        return self.id is not None
+        return hasattr(self, "id") and self.id is not None
 
 
 class ODMDataset(ODMDocument):
@@ -177,25 +177,38 @@ class ODMDataset(ODMDocument):
         collection.
 
         Args:
-            field_type (None): the subclass of ``BaseField`` to filter by
+            field_type (None): the subclass of ``BaseField`` for primitives
+                or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
+                filter by
+
 
         Returns:
              a dictionary of (field name: field type) per field that is a
              subclass of ``field_type``
         """
-        try:
-            if not issubclass(field_type, BaseField):
-                field_type = BaseField
-        except Exception:
+        if field_type is None:
             field_type = BaseField
 
-        return OrderedDict(
-            [
-                (field_name, cls._fields[field_name])
-                for field_name in cls._fields_ordered
-                if isinstance(cls._fields[field_name], field_type)
-            ]
-        )
+        if not issubclass(field_type, BaseField) and not issubclass(
+            field_type, EmbeddedDocument
+        ):
+            raise ValueError(
+                "field_type must be subclass of %s or %s" % BaseField,
+                EmbeddedDocument,
+            )
+
+        d = OrderedDict()
+
+        for field_name in cls._fields_ordered:
+            field = cls._fields[field_name]
+            if issubclass(field_type, BaseField):
+                if isinstance(field, field_type):
+                    d[field_name] = field
+            elif isinstance(field, EmbeddedDocumentField):
+                if issubclass(field.document_type, field_type):
+                    d[field_name] = field
+
+        return d
 
     @property
     def dataset_name(self):

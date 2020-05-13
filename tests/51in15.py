@@ -38,9 +38,11 @@ print_snippet("len(dataset)", len(dataset))
 # get all accessible fields on samples of a dataset
 print_snippet("dataset.get_sample_fields()", dataset.get_sample_fields())
 
-# @todo(Tyler)
-# get all fields that are subclass of `Labels`
-# dataset.get_sample_fields(type=fo.Labels)  # -> dict
+# get all fields that are subclass of `Label`
+print_snippet(
+    "dataset.get_sample_fields(field_type=fo.Label)",
+    dataset.get_sample_fields(field_type=fo.Label),
+)
 
 # @todo(Tyler)
 # dataset.sample_type  # -> type
@@ -59,6 +61,11 @@ print_snippet("dataset.summary()", dataset.summary())
 # all methods on views are also valid on datasets. The dataset merely creates
 # a view and calls the method on that view:
 # dataset.sample(5)  # -> fiftyone.core.view.DatasetView
+
+###############################################################################
+# Basics with DatasetViews
+###############################################################################
+
 
 ###############################################################################
 # Fields of Samples
@@ -110,7 +117,7 @@ print()
 
 # @todo(Tyler)
 # ListFields only contain elements of one Field type
-# sample.my_list = [1, 2]
+sample.my_list = [1, 2]
 # ValidationError: StringField only accepts string values: ['my_field']
 
 # @todo(Tyler)

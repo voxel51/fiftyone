@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -26,7 +27,6 @@ from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
-import fiftyone.core.sample as fos
 
 
 class DatasetView(foc.SampleCollection):
@@ -56,7 +56,7 @@ class DatasetView(foc.SampleCollection):
 
     def __len__(self):
         try:
-            result = self._aggregate([{"$count": "count"}])
+            result = self.aggregate([{"$count": "count"}])
             return next(result)["count"]
         except StopIteration:
             pass
@@ -91,6 +91,13 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
+        fields = self.get_sample_fields()
+        max_len = max([len(field_name) for field_name in fields])
+        fields_str = "\n".join(
+            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
+            for field_name, field in iteritems(fields)
+        )
+
         pipeline_str = "\t" + "\n\t".join(
             [
                 "%d. %s" % (idx, str(d))
@@ -100,10 +107,11 @@ class DatasetView(foc.SampleCollection):
 
         return "\n".join(
             [
+                "Dataset:        %s" % self._dataset.name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
-                "Label groups:   %s" % self.get_label_groups(),
-                "Insight groups: %s" % self.get_insight_groups(),
+                "Sample Fields:",
+                fields_str,
                 "Pipeline stages:\n%s" % pipeline_str,
             ]
         )

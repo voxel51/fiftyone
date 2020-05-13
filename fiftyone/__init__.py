@@ -53,18 +53,8 @@ from .core.field import (
     ImageLabels,
 )
 
-# from .core.insights import (
-#     Insight,
-#     ScalarInsight,
-#     FileHashInsight,
-# )
-# from .core.labels import (
-#     Label,
-#     ClassificationLabel,
-#     DetectionLabels,
-#     ImageLabels,
-# )
 # from .core.session import (
 #     launch_dashboard,
 #     close_dashboard,
 # )
+from .core.view import DatasetView
