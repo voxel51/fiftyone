@@ -29,7 +29,7 @@ import eta.core.serial as etas
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.odm2 as foo
+import fiftyone.core.odm as foo
 
 # import fiftyone.core.view as fov
 # import fiftyone.utils.data as foud
