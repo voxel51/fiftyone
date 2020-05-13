@@ -28,7 +28,7 @@ def print_state(session):
 # GUI displays dataset browser landing page
 ###############################################################################
 
-session = fos.Session(limit=3)
+session = fos.Session()
 print("Empty session:")
 print_state(session)
 print()
@@ -50,7 +50,7 @@ print()
 # GUI displays CIFAR100 'train' set
 ###############################################################################
 
-session.view = session.dataset.default_view().filter(tag="test")
+session.view = session.dataset.default_view().match_tag("test")
 print("'test' view set:")
 print_state(session)
 print()
@@ -61,8 +61,8 @@ print()
 # GUI displays filtered/sorted CIFAR100 'test' set
 ###############################################################################
 
-session.view = session.view.filter(
-    filter={"metadata.size_bytes": {"$gt": 1000}}
+session.view = session.view.match(
+    {"metadata.size_bytes": {"$gt": 1000}}
 ).sort_by("metadata.size_bytes")
 print("'metadata.size_bytes > 1000' transform added:")
 print_state(session)

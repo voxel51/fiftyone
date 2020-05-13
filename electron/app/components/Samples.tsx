@@ -130,7 +130,7 @@ function SampleList(props) {
       >
         {content}
       </InfiniteScroll>
-      {scrollState.hasMore ? <Loader /> : "End of samples"}
+      {scrollState.hasMore ? <Loader /> : ""}
     </>
   );
 }

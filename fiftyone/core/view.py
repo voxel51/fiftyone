@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from copy import copy, deepcopy
+import numbers
 
 from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
@@ -40,12 +41,9 @@ class DatasetView(foc.SampleCollection):
 
     Example use::
 
-        # Print the paths to 5 random data samples in the dataset
-        view =
-            .sort_by("metadata.size_bytes")
-            .take(5)
-        )
-        for sample in dataset.default_view().take(5, random=True):
+        # Print the paths for 5 random samples in the dataset
+        view = dataset.default_view().sample(5)
+        for sample in view:
             print(sample.filepath)
 
     Args:
@@ -62,18 +60,24 @@ class DatasetView(foc.SampleCollection):
             return next(result)["count"]
         except StopIteration:
             pass
+
         return 0
 
     def __getitem__(self, sample_id):
+        if isinstance(sample_id, numbers.Integral):
+            raise ValueError(
+                "Accessing samples by numeric index is not supported. "
+                "Use sample IDs or slices"
+            )
+
+        if isinstance(sample_id, slice):
+            return self._slice(sample_id)
+
         try:
-            # Find `sample_id` in the pipeline
+            # Ensure `sample_id` is in the view
             pipeline = [{"$match": {"_id": ObjectId(sample_id)}}]
             next(self._aggregate(pipeline))
-            found = True
         except StopIteration:
-            found = False
-
-        if not found:
             raise KeyError("No sample found with ID '%s'" % sample_id)
 
         return self._dataset[sample_id]
@@ -105,6 +109,29 @@ class DatasetView(foc.SampleCollection):
                 "Pipeline stages:\n%s" % pipeline_str,
             ]
         )
+
+    def head(self, num_samples=3):
+        """Returns a string representation of the first few samples in the
+        view.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return "\n".join(str(s) for s in self[:num_samples])
+
+    def tail(self, num_samples=3):
+        """Returns a string representation of the last few samples in the view.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return "\n".join(str(s) for s in self[-num_samples:])
 
     def get_tags(self):
         """Returns the list of tags in the collection.
@@ -147,43 +174,57 @@ class DatasetView(foc.SampleCollection):
         for idx, sample in enumerate(iterator, start=offset):
             yield idx, sample
 
-    def filter(
-        self, tag=None, insight_group=None, label_group=None, filter=None
-    ):
+    def match_tag(self, tag):
+        """Filters the samples in the view to have the tag.
+
+        Args:
+            tag: a sample tag string
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.match({"tags": tag})
+
+    def match_insight(self, insight_group):
+        """Filters the samples in the view to have the insight group. Filtering
+        ensures that the insight exists on the sample.
+
+        Args:
+            insight_group: an insight group string
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage(
+            {"$match": {"insights.%s" % insight_group: {"$exists": True}}}
+        )
+
+    def match_labels(self, label_group):
+        """Filters the samples in the view to have the label group. Filtering
+        ensures that the label exists on the sample.
+
+        Args:
+            label_group: a label group string
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage(
+            {"$match": {"labels.%s" % label_group: {"$exists": True}}}
+        )
+
+    def match(self, filter):
         """Filters the samples in the view by the given filter.
 
         Args:
-            tag (None): a sample tag string
-            insight_group (None): an insight group string
-            label_group (None): a label group string
-            filter (None): a MongoDB query dict. See
+            filter: a MongoDB query dict. See
                 https://docs.mongodb.com/manual/tutorial/query-documents
                 for details
 
         Returns:
             a :class:`DatasetView`
         """
-        view = self
-
-        if tag is not None:
-            view = view._copy_with_new_stage({"$match": {"tags": tag}})
-
-        if insight_group is not None:
-            # @todo(Tyler) should this filter the insights as well? or just
-            # filter the samples based on whether or not the insight is
-            # present?
-            raise NotImplementedError("Not yet implemented")
-
-        if label_group is not None:
-            # @todo(Tyler) should this filter the labels as well? or just
-            # filter the samples based on whether or not the label is
-            # present?
-            raise NotImplementedError("Not yet implemented")
-
-        if filter is not None:
-            view = view._copy_with_new_stage({"$match": filter})
-
-        return view
+        return self._copy_with_new_stage({"$match": filter})
 
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
@@ -203,36 +244,41 @@ class DatasetView(foc.SampleCollection):
         order = DESCENDING if reverse else ASCENDING
         return self._copy_with_new_stage({"$sort": {field: order}})
 
-    def take(self, size, random=False):
-        """Takes the given number of samples from the view.
-
-        Args:
-            size: the number of samples to return
-            random (False): whether to randomly select the samples
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        if random:
-            stage = {"$sample": {"size": size}}
-        else:
-            stage = {"$limit": size}
-
-        return self._copy_with_new_stage(stage)
-
-    def offset(self, offset):
+    def skip(self, skip):
         """Omits the given number of samples from the head of the view.
 
         Args:
-            offset: the offset
+            skip: the number of samples to skip
 
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage({"$skip": offset})
+        return self._copy_with_new_stage({"$skip": skip})
+
+    def limit(self, limit):
+        """Limits the view to the given number of samples.
+
+        Args:
+            num: the maximum number of samples to return
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage({"$limit": limit})
+
+    def sample(self, size):
+        """Randomly samples the given number of samples from the view.
+
+        Args:
+            size: the number of samples to return
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage({"$sample": {"size": size}})
 
     def select(self, sample_ids):
-        """Selects only the samples with the given IDs from the view.
+        """Selects the samples with the given IDs from the view.
 
         Args:
             sample_ids: an iterable of sample IDs
@@ -284,6 +330,37 @@ class DatasetView(foc.SampleCollection):
             "dataset": self._dataset.serialize(),
             "view": json_util.dumps(self._pipeline),
         }
+
+    def _slice(self, s):
+        if s.step is not None and s.step != 1:
+            raise ValueError(
+                "Unsupported slice '%s'; step is not supported" % s
+            )
+
+        _len = None
+
+        start = s.start
+        if start is not None and start < 0:
+            _len = len(self)
+            start += _len
+
+        stop = s.stop
+        if stop is not None and stop < 0:
+            if _len is None:
+                _len = len(self)
+
+            stop += _len
+
+        if start is None:
+            if stop is None:
+                return self
+
+            return self.limit(stop)
+
+        if stop is None:
+            return self.skip(start)
+
+        return self.skip(start).limit(stop - start)
 
     def _get_label_distributions(self):
         pipeline = self._pipeline + _LABEL_DISTRIBUTIONS_PIPELINE

@@ -85,7 +85,6 @@ class StateController(Namespace):
         Args:
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
-        print(state)
         self.state = state
         emit("update", state, broadcast=True, include_self=False)
 
@@ -147,11 +146,18 @@ class StateController(Namespace):
         else:
             return []
 
-        view = view.offset((page - 1) * page_length).take(page_length)
+        view = view.skip((page - 1) * page_length).limit(page_length)
         return [s.get_backing_doc_dict(extended=True) for s in view]
 
     def on_get_label_distributions(self, _):
-        """Gets the labels distributions for the current state."""
+        """Gets the labels distributions for the current state.
+
+        Args:
+            _: the message, which is not used
+
+        Returns:
+            the list of label distributions
+        """
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
@@ -163,7 +169,14 @@ class StateController(Namespace):
         return view._get_label_distributions()
 
     def on_get_facets(self, _):
-        """Gets the facets for the current state."""
+        """Gets the facets for the current state.
+
+        Args:
+            _: the message, which is not used
+
+        Returns:
+            the list of facets
+        """
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
@@ -182,14 +195,7 @@ class StateController(Namespace):
         """
         _, value = facets.split(".")
         state = fos.StateDescription.from_dict(self.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.default_view()
-        else:
-            raise ValueError("No dataset found")
-
-        state.view = state.dataset.default_view().filter(tag=value)
+        state.view = state.dataset.default_view().match_tag(value)
         self.state = state.serialize()
         emit("update", self.state, broadcast=True, include_self=True)
 
