@@ -146,7 +146,7 @@ class Dataset(foc.SampleCollection):
         if not samples:
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
-        return self._load_sample(samples[0])
+        return samples[0]
 
     def __delitem__(self, sample_id):
         self[sample_id].delete()
