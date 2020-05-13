@@ -4,6 +4,7 @@ import { GetState, Dispatch } from "../reducers/types";
 export const UPDATE = "UPDATE";
 export const PORT = "PORT";
 export const CONNECTED = "CONNECTED";
+export const LOADING = "LOADING";
 
 function doUpdateState(data) {
   return {
@@ -41,5 +42,18 @@ function doUpdateConnected(data) {
 export function updateConnected(data) {
   return (dispatch) => {
     return dispatch(doUpdateConnected(data));
+  };
+}
+
+function doUpdateLoading(data) {
+  return {
+    type: LOADING,
+    data: data,
+  };
+}
+
+export function updateLoading(data) {
+  return (dispatch) => {
+    return dispatch(doUpdateLoading(data));
   };
 }

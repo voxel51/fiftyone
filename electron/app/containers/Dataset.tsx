@@ -17,7 +17,7 @@ import connect from "../utils/connect";
 
 function Dataset(props) {
   const { path, url } = useRouteMatch();
-  const { connected } = props;
+  const { connected, loading } = props;
   const stickyRef = createRef();
   const tabs = ["samples", "labels"];
   const [view, setView] = useState({ visible: false, sample: null });
@@ -26,6 +26,10 @@ function Dataset(props) {
     const path = view.sample.filepath;
     const host = "http://127.0.0.1:5151/";
     src = `${host}?path=${path}`;
+  }
+
+  if (loading) {
+    return <Redirect to={routes.LOADING} />;
   }
 
   if (!connected) {

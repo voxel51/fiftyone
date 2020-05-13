@@ -2,5 +2,6 @@
   "DATASET": "/",
   "SAMPLES": "/samples",
   "LABELS": "/labels",
-  "SETUP": "/setup"
+  "SETUP": "/setup",
+  "LOADING": "/loading"
 }

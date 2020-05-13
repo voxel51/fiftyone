@@ -4,7 +4,12 @@ import { Button, Modal, Label } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
-import { updateState, updateConnected, updatePort } from "../actions/update";
+import {
+  updateState,
+  updateConnected,
+  updatePort,
+  updateLoading,
+} from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
@@ -13,21 +18,25 @@ type Props = {
 };
 
 function App(props: Props) {
-  const { children, dispatch, update, connected, port } = props;
-  const [connectionEstablished, setConnectionEstablished] = useState(false);
+  const { loading, children, dispatch, update, connected, port } = props;
   const portRef = useRef();
   const socket = getSocket(port, "state");
   const [portFromForm, setPortFromForm] = useState(port);
 
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
-    if (!connectionEstablished) {
+    if (loading) {
       socket.emit("get_current_state", "", (data) => {
         dispatch(updateState(data));
       });
-      setConnectionEstablished(true);
+      dispatch(updateLoading(false));
     }
   });
+  setTimeout(() => {
+    if (loading && !connected) {
+      dispatch(updateLoading(false));
+    }
+  }, 250);
   useSubscribe(socket, "disconnect", () => console.log("disconnected"));
   useSubscribe(socket, "update", (data) => {
     if (data.close) {

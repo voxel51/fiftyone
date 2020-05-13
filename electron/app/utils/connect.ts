@@ -5,6 +5,7 @@ const mapStateToProps = (state) => {
     state: state.update.state,
     port: state.update.port,
     connected: state.update.connected,
+    loading: state.update.loading,
   };
 };
 
