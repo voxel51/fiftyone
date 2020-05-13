@@ -38,106 +38,11 @@ logger = logging.getLogger(__name__)
 
 class Dataset(foc.SampleCollection):
     @property
-    def name(self):
-        """The name of the dataset."""
-        return self._name
-
-    @property
     def _sample_cls(self):
         """The :class:`fiftyone.core.sample.Sample` class that this dataset
         can contain.
         """
         return fos.Sample
-
-    def summary(self):
-        """Returns a string summary of the dataset.
-
-        Returns:
-            a string summary
-        """
-        return "\n".join(
-            [
-                "Name:           %s" % self.name,
-                "Num samples:    %d" % len(self),
-                "Tags:           %s" % self.get_tags(),
-                "Label groups:   %s" % self.get_label_groups(),
-                "Insight groups: %s" % self.get_insight_groups(),
-            ]
-        )
-
-    def sample(self, num_samples=3):
-        """Returns a string summary of a few random samples from the dataset.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return (
-            self.default_view()
-            .sample(num_samples)
-            .head(num_samples=num_samples)
-        )
-
-    def get_tags(self):
-        """Returns the list of tags in the dataset.
-
-        Returns:
-            a list of tags
-        """
-        return self._get_query_set().distinct("tags")
-
-    def iter_samples(self):
-        """Returns an iterator over the samples in the dataset.
-
-        Returns:
-            an iterator over :class:`fiftyone.core.sample.Sample` instances
-        """
-        for doc in self._get_query_set():
-            yield self._load_sample(doc)
-
-    def add_sample(self, sample):
-        """Adds the given sample to the dataset.
-
-        Args:
-            sample: a :class:`fiftyone.core.sample.Sample`
-
-        Returns:
-            the ID of the sample
-        """
-        self._validate_sample(sample)
-        sample._set_dataset(self)
-        sample._save()
-        return sample.id
-
-    def add_samples(self, samples):
-        """Adds the given samples to the dataset.
-
-        Args:
-            samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances
-
-        Returns:
-            a list of sample IDs
-        """
-        for sample in samples:
-            self._validate_sample(sample)
-            sample._set_dataset(self)
-
-        sample_docs = self._get_query_set().insert(
-            [s._backing_doc for s in samples]
-        )
-        return [str(s.id) for s in sample_docs]
-
-    def default_view(self):
-        """Returns a :class:`fiftyone.core.view.DatasetView` containing the
-        entire dataset.
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
-        """
-        return fov.DatasetView(self)
 
     @classmethod
     def from_image_classification_samples(
@@ -596,37 +501,10 @@ class Dataset(foc.SampleCollection):
 
         return cls.from_images(image_paths, name=name)
 
-    def serialize(self):
-        """Serializes the dataset.
-
-        Returns:
-            a JSON representation of the dataset
-        """
-        return {"name": self.name}
-
-    def _aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the dataset.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to aggregate on
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        if pipeline is None:
-            pipeline = []
-
-        return self._get_query_set().aggregate(pipeline)
-
     def _load_sample(self, doc):
         sample = fos.Sample.from_doc(doc)
         sample._set_dataset(self)
         return sample
-
-    def _get_query_set(self, **kwargs):
-        # pylint: disable=no-member
-        return foo.ODMSample.objects(dataset=self.name, **kwargs)
 
     def _validate_sample(self, sample):
         if not isinstance(sample, self._sample_cls):

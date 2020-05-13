@@ -24,7 +24,7 @@ import numbers
 import os
 
 import eta.core.serial as etas
-import eta.core.utils as etau
+# import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
@@ -172,16 +172,15 @@ class Dataset(foc.SampleCollection):
         )
 
     def get_sample_fields(self, field_type=None):
-        return self._Doc.get_sample_fields(field_type=field_type)
+        return self._Doc.get_fields(field_type=field_type)
 
-    def add_sample(self, *args, **kwargs):
-        sample = self._Doc(*args, **kwargs)
-        sample.save()
-        return sample
+    def get_tags(self):
+        """Returns the list of tags in the dataset.
 
-    def _get_query_set(self, **kwargs):
-        # pylint: disable=no-member
-        return self._Doc.objects(**kwargs)
+        Returns:
+            a list of tags
+        """
+        return self.distinct("tags")
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -192,8 +191,91 @@ class Dataset(foc.SampleCollection):
         for doc in self._get_query_set():
             yield doc
 
+    def add_sample(self, *args, **kwargs):
+        """Adds the given sample to the dataset.
+
+        Args:
+            args and kwargs used to initialize a sample (this varies depending
+                on what fields the dataset has)
+
+        Returns:
+            the ID of the sample
+        """
+        sample = self._Doc(*args, **kwargs)
+        sample.save()
+        return sample.id
+
+    def add_samples(self, samples):
+        """Adds the given samples to the dataset.
+
+        Args:
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
+                instances
+
+        Returns:
+            a list of sample IDs
+        """
+        for sample in samples:
+            self._validate_sample(sample)
+            sample._set_dataset(self)
+
+        sample_docs = self._get_query_set().insert(
+            [s._backing_doc for s in samples]
+        )
+        return [str(s.id) for s in sample_docs]
+
+    def view(self):
+        """Returns a :class:`fiftyone.core.view.DatasetView` containing the
+        entire dataset.
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        # @todo(Tyler) Dataset.view()
+        raise NotImplementedError("TODO")
+        # return fov.DatasetView(self)
+
+    def take(self, num_samples=3):
+        """Returns a string summary of a few random samples from the dataset.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return (
+            self.view()
+            .take(num_samples)
+            .head(num_samples=num_samples)
+        )
+
     def distinct(self, field):
         return self._get_query_set().distinct(field)
 
-    def __len__(self):
-        return self._get_query_set().count()
+    def aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the dataset.
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_query_set().aggregate(pipeline)
+
+    def serialize(self):
+        """Serializes the dataset.
+
+        Returns:
+            a JSON representation of the dataset
+        """
+        return {"name": self.name}
+
+    def _get_query_set(self, **kwargs):
+        # pylint: disable=no-member
+        return self._Doc.objects(**kwargs)

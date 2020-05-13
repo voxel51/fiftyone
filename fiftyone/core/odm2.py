@@ -142,8 +142,20 @@ class ODMDataset(ODMDocument):
     metadata = DictField()
 
     @classmethod
-    def get_sample_fields(cls, field_type=None):
+    def get_fields(cls, field_type=None):
+        """Gets a dictionary of all document fields on elements of this
+        collection.
+
+        Args:
+            field_type (None): the subclass of ``BaseField`` to filter by
+
+        Returns:
+             a dictionary of (field name: field type) per field that is a
+             subclass of ``field_type``
+        """
         exclude_fields = ["_cls"]
+
+        # @todo(Tyler) consider other exclude fields
         # exclude_fields = ["_cls", "dataset", "id"]
 
         try:
