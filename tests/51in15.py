@@ -65,13 +65,33 @@ print_snippet("dataset.summary()", dataset.summary())
 
 print_section("Fields of Samples")
 
+print_snippet("sample", sample)
+print_snippet("dataset.get_sample_fields()", dataset.get_sample_fields())
+
 print_snippet("sample.id", sample.id)
 print_snippet("sample.filepath", sample.filepath)
 print_snippet("sample.tags", sample.tags)
 print_snippet("sample.metadata", sample.metadata)
 
-# sample["my_boolean"] = True
-# print_snippet('sample["my_boolean"]', sample["my_boolean"])
-# print_snippet("sample.my_boolean", sample.my_boolean)
+sample["my_boolean"] = True
+print_snippet('sample["my_boolean"]', sample["my_boolean"])
+print_snippet("sample.my_boolean", sample.my_boolean)
 
+sample["my_int"] = 51
+print_snippet('sample["my_int"]', sample["my_int"])
+print_snippet("sample.my_int", sample.my_int)
+
+sample["my_string"] = "fiftyone"
+print_snippet('sample["my_string"]', sample["my_string"])
+print_snippet("sample.my_string", sample.my_string)
+
+sample["my_list"] = ["fifty", "one"]
+print_snippet('sample["my_list"]', sample["my_list"])
+print_snippet("sample.my_list", sample.my_list)
+
+sample["my_dict"] = {"fifty": 50, "one": "uno"}
+print_snippet('sample["my_dict"]', sample["my_dict"])
+print_snippet("sample.my_dict", sample.my_dict)
+
+print_snippet("sample", sample)
 print_snippet("dataset.get_sample_fields()", dataset.get_sample_fields())

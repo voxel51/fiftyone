@@ -1,6 +1,21 @@
 """
 
 """
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+from future.utils import iteritems, itervalues
+
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
+
+from collections import OrderedDict
 import json
 import os
 import six
@@ -164,27 +179,19 @@ class ODMDataset(ODMDocument):
              a dictionary of (field name: field type) per field that is a
              subclass of ``field_type``
         """
-        exclude_fields = ["_cls"]
-
-        # @todo(Tyler) consider other exclude fields
-        # exclude_fields = ["_cls", "dataset", "id"]
-
         try:
             if not issubclass(field_type, BaseField):
                 field_type = BaseField
         except Exception:
             field_type = BaseField
 
-        field_names = [
-            fn
-            for fn in dir(cls)
-            if isinstance(getattr(cls, fn), field_type)
-            and fn not in exclude_fields
-        ]
-
-        fields = {fn: type(getattr(cls, fn)) for fn in field_names}
-
-        return fields
+        return OrderedDict(
+            [
+                (field_name, cls._fields[field_name])
+                for field_name in cls._fields_ordered
+                if isinstance(cls._fields[field_name], field_type)
+            ]
+        )
 
     @property
     def dataset_name(self):
@@ -235,27 +242,43 @@ class ODMDataset(ODMDocument):
 
     def __setitem__(self, key, value):
         if key.startswith("_"):
-            raise KeyError("Invalid key: '%s'. Key canot start with '_'" % key)
+            raise KeyError(
+                "Invalid key: '%s'. Key cannot start with '_'" % key
+            )
 
-        if not hasattr(self, key):
+        cls = type(self)
+
+        if hasattr(self, key) and key not in cls._fields:
+            raise KeyError("Cannot set reserve word '%s'" % key)
+
+        # if not hasattr(self, key):
+        if key not in cls._fields:
+            # Mimicking setting a DynamicField from this code:
+            # >>> https://github.com/MongoEngine/mongoengine/blob/3db9d58dac138dd0e838c524f616ebe3d23db2ff/mongoengine/base/document.py#L170
+
+            kwargs = {"db_field": key}
+
             if isinstance(value, BaseField):
-                field = type(value)()
+                field = type(value)(**kwargs)
             elif isinstance(value, bool):
-                field = BooleanField()
+                field = BooleanField(**kwargs)
             elif isinstance(value, six.integer_types):
-                field = IntField()
+                field = IntField(**kwargs)
             elif isinstance(value, six.string_types):
-                field = StringField()
+                field = StringField(**kwargs)
             elif isinstance(value, list) or isinstance(value, tuple):
-                field = ListField()
+                field = ListField(**kwargs)
             elif isinstance(value, dict):
-                field = DictField()
+                field = DictField(**kwargs)
             else:
                 raise TypeError(
                     "Invalid type: '%s' could not be cast to Field"
                     % type(value)
                 )
 
-            setattr(type(self), key, field)
+            field.name = key
+            cls._fields[key] = field
+            cls._fields_ordered += (key,)
+            setattr(cls, key, field)
 
         return self.__setattr__(key, value)
