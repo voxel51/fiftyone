@@ -52,9 +52,8 @@ from .core.field import (
     Detections,
     ImageLabels,
 )
-
-# from .core.session import (
-#     launch_dashboard,
-#     close_dashboard,
-# )
+from .core.session import (
+    launch_dashboard,
+    close_dashboard,
+)
 from .core.view import DatasetView

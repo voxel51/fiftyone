@@ -31,7 +31,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.labels as fol
+import fiftyone.core.field as fof
 import fiftyone.types as fot
 
 
@@ -809,7 +809,7 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
         else:
             label = target
 
-        return fol.ClassificationLabel.create(label)
+        return fof.Classification(label=label)
 
 
 class ImageDetectionSampleParser(LabeledImageSampleParser):
@@ -953,7 +953,7 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
                 }
             )
 
-        return fol.DetectionLabels.create(detections)
+        return fol.Detections(detections=detections)
 
 
 class ImageLabelsSampleParser(LabeledImageSampleParser):
@@ -983,7 +983,7 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
             a :class:`fiftyone.core.labels.ImageLabels` instance
         """
         labels = sample[1]
-        return fol.ImageLabels.create(labels)
+        return fof.ImageLabels(labels=labels)
 
 
 def _to_rel_bounding_box(tlx, tly, w, h, img):

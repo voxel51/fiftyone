@@ -1,5 +1,7 @@
 """
-FiftyOne meta-datasets.
+FiftyOne meta-datasets. The MetaDataset is a database collection used to
+keep track of all persistent datasets. Also relevant without persistence
+for actions like: `list_dataset_names()`
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -23,6 +25,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# @todo(Tyler) for reconstructing ODMDataset subclasses from the DB
+# @todo(Tyler) for reconstructing ODMSample subclasses from the DB
 class MetaDataset:
     pass
