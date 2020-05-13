@@ -59,9 +59,9 @@ const Histogram = connect(({ data, name }) => {
 });
 
 const Charts = (props) => {
-  const { state } = props;
+  const { state, port } = props;
   const hasDataset = Boolean(state && state.dataset);
-  const socket = getSocket(5151, "state");
+  const socket = getSocket(port, "state");
   const [initialLoad, setInitialLoad] = useState(true);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
