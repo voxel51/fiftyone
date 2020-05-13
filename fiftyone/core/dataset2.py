@@ -24,6 +24,7 @@ import numbers
 import os
 
 import eta.core.serial as etas
+
 # import eta.core.utils as etau
 
 import fiftyone as fo
@@ -244,11 +245,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a string representation of the samples
         """
-        return (
-            self.view()
-            .take(num_samples)
-            .head(num_samples=num_samples)
-        )
+        return self.view().take(num_samples).head(num_samples=num_samples)
 
     def distinct(self, field):
         return self._get_query_set().distinct(field)
