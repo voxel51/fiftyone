@@ -8,7 +8,8 @@ import CodeBlock from "../components/CodeBlock";
 import PortForm from "../components/PortForm";
 
 function Setup(props) {
-  const { connected } = props;
+  const { connected, port } = props;
+  const [portFromForm, setPortFromForm] = useState(port);
   if (connected) {
     return <Redirect to={routes.DATASET} />;
   }
@@ -42,10 +43,9 @@ function Setup(props) {
       <Header as="h3">Port configuration</Header>
       <Divider />
       <p>
-        The default FiftyOne port is <code>5151</code>. You can configure it
-        below, and change it at anytime in the settings tab.
+        The default FiftyOne port is <code>5151</code>. You can configure at
+        anytime using the settings tab.
       </p>
-      <PortForm />
     </Segment>
   );
 }
