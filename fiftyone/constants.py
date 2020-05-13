@@ -112,6 +112,7 @@ START_SERVER = [
 STOP_SERVER = _STOP_SERVICE % SERVER_PORT
 
 # App setup
-FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
-START_APP = ["yarn", "background-dev"]
-STOP_APP = "; ".join([_STOP_SERVICE % 1212, _STOP_ELECTRON])
+try:
+    from fiftyone.gui import FIFTYONE_APP_DIR
+except ImportError:
+    FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
