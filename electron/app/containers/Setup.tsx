@@ -37,7 +37,7 @@ function Setup(props) {
         configure port forwarding on your local machine.
       </p>
       <CodeBlock language="bash">
-        ssh -L 5151:127.0.0.1:5151 username@remote_session_ip
+        ssh -N -L 5151:127.0.0.1:5151 username@remote_session_ip
       </CodeBlock>
 
       <Header as="h3">Port configuration</Header>
