@@ -41,10 +41,11 @@ class StateDescription(etas.Serializable):
         view: (optional) the current view
     """
 
-    def __init__(self, dataset=None, selected=None, view=None):
+    def __init__(self, close=False, dataset=None, selected=None, view=None):
         """Creates a StateDescription instance.
 
         Args:
+            close: (optional) whether to close the app
             dataset: (optional) the current dataset
             selected: (optional) the currently selected samples
             view: (optional) the current view
@@ -53,6 +54,7 @@ class StateDescription(etas.Serializable):
         self.view = view
         self.selected = selected or []
         self.count = len(dataset) if dataset is not None else 0
+        self.close = close
         super(StateDescription, self).__init__()
 
     @classmethod
@@ -65,6 +67,8 @@ class StateDescription(etas.Serializable):
         Returns:
             a ``StateDescription``
         """
+        close = d.get("close", False)
+
         dataset = d.get("dataset", None)
         if dataset is not None:
             dataset = fod.Dataset(dataset.get("name"))
@@ -78,4 +82,4 @@ class StateDescription(etas.Serializable):
 
         selected = d.get("selected", [])
 
-        return cls(dataset=dataset, selected=selected, view=view)
+        return cls(close=close, dataset=dataset, selected=selected, view=view)
