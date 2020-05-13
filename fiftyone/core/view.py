@@ -26,7 +26,6 @@ from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
-import fiftyone.core.odm as foo
 
 
 class DatasetView(foc.SampleCollection):
@@ -42,7 +41,7 @@ class DatasetView(foc.SampleCollection):
     Example use::
 
         # Print the paths for 5 random samples in the dataset
-        view = dataset.default_view().sample(5)
+        view = dataset.default_view().take(5)
         for sample in view:
             print(sample.filepath)
 
@@ -65,7 +64,7 @@ class DatasetView(foc.SampleCollection):
 
     def __getitem__(self, sample_id):
         if isinstance(sample_id, numbers.Integral):
-            raise ValueError(
+            raise KeyError(
                 "Accessing samples by numeric index is not supported. "
                 "Use sample IDs or slices"
             )
@@ -91,12 +90,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        fields = self.get_sample_fields()
-        max_len = max([len(field_name) for field_name in fields])
-        fields_str = "\n".join(
-            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
-            for field_name, field in iteritems(fields)
-        )
+        fields_str = self._dataset._get_fields_str()
 
         pipeline_str = "\t" + "\n\t".join(
             [
@@ -115,6 +109,10 @@ class DatasetView(foc.SampleCollection):
                 "Pipeline stages:\n%s" % pipeline_str,
             ]
         )
+
+    def first(self):
+        """@todo(Tyler)"""
+        return next(self.iter_samples())
 
     def head(self, num_samples=3):
         """Returns a string representation of the first few samples in the
@@ -151,7 +149,7 @@ class DatasetView(foc.SampleCollection):
             {"$group": {"_id": "None", "all_tags": {"$addToSet": "$tags"}}},
         ]
         try:
-            return next(self._aggregate(pipeline))["all_tags"]
+            return next(self.aggregate(pipeline))["all_tags"]
         except StopIteration:
             pass
         return []
@@ -162,7 +160,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate():
+        for d in self.aggregate():
             yield self._deserialize_sample(d)
 
     def iter_samples_with_index(self):
@@ -180,41 +178,6 @@ class DatasetView(foc.SampleCollection):
         for idx, sample in enumerate(iterator, start=offset):
             yield idx, sample
 
-    def match_tag(self, tag):
-        """Filters the samples in the view to have the tag.
-
-        Args:
-            tag: a sample tag string
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.match({"tags": tag})
-
-    def match_insight(self, insight_group):
-        """Filters the samples in the view to have the insight group. Filtering
-        ensures that the insight exists on the sample.
-
-        Args:
-            insight_group: an insight group string
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.match({"insights.%s" % insight_group: {"$exists": True}})
-
-    def match_labels(self, label_group):
-        """Filters the samples in the view to have the label group. Filtering
-        ensures that the label exists on the sample.
-
-        Args:
-            label_group: a label group string
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.match({"labels.%s" % label_group: {"$exists": True}})
-
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
@@ -227,6 +190,18 @@ class DatasetView(foc.SampleCollection):
             a :class:`DatasetView`
         """
         return self._copy_with_new_stage({"$match": filter})
+
+    def exists(self, field):
+        """Filters the samples in the view to have the field. Filtering
+        ensures that the field exists on the sample.
+
+        Args:
+            field: a field string
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.match({field: {"$exists": True, "$ne": None}})
 
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
@@ -268,7 +243,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self._copy_with_new_stage({"$limit": limit})
 
-    def sample(self, size):
+    def take(self, size):
         """Randomly samples the given number of samples from the view.
 
         Args:
@@ -303,7 +278,7 @@ class DatasetView(foc.SampleCollection):
         sample_ids = [ObjectId(id) for id in sample_ids]
         return self.match({"_id": {"$not": {"$in": sample_ids}}})
 
-    def _aggregate(self, pipeline=None):
+    def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.
 
         Args:
@@ -316,7 +291,9 @@ class DatasetView(foc.SampleCollection):
         if pipeline is None:
             pipeline = []
 
-        return self._get_ds_qs().aggregate(self._pipeline + pipeline)
+        return self._dataset._get_query_set().aggregate(
+            self._pipeline + pipeline
+        )
 
     def serialize(self):
         """Serializes the view.
@@ -361,24 +338,18 @@ class DatasetView(foc.SampleCollection):
         return self.skip(start).limit(stop - start)
 
     def _get_label_distributions(self):
-        pipeline = self._pipeline + _LABEL_DISTRIBUTIONS_PIPELINE
-        return list(self._get_ds_qs().aggregate(pipeline))
+        return list(self.aggregate(_LABEL_DISTRIBUTIONS_PIPELINE))
 
     def _get_facets(self):
-        pipeline = self._pipeline + _FACETS_PIPELINE
-        return list(self._get_ds_qs().aggregate(pipeline))
-
-    def _get_ds_qs(self, **kwargs):
-        return self._dataset._get_query_set(**kwargs)
+        return list(self.aggregate(_FACETS_PIPELINE))
 
     def _deserialize_sample(self, d):
-        doc = foo.ODMSample.from_dict(d, created=False, extended=False)
-        return self._load_sample(doc)
+        return self._dataset._Doc.from_dict(d, created=False, extended=False)
 
     def _load_sample(self, doc):
-        sample = fos.Sample.from_doc(doc)
-        sample._set_dataset(self._dataset)
-        return sample
+        # @todo(Tyler) do samples need reference to the dataset?
+        # sample._set_dataset(self._dataset)
+        return doc
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)

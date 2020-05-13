@@ -32,7 +32,8 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
 
-# import fiftyone.core.view as fov
+import fiftyone.core.view as fov
+
 # import fiftyone.utils.data as foud
 
 
@@ -160,12 +161,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a string summary
         """
-        fields = self.get_sample_fields()
-        max_len = max([len(field_name) for field_name in fields])
-        fields_str = "\n".join(
-            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
-            for field_name, field in iteritems(fields)
-        )
+        fields_str = self._get_fields_str()
 
         return "\n".join(
             [
@@ -209,26 +205,22 @@ class Dataset(foc.SampleCollection):
         """
         sample = self._Doc(*args, **kwargs)
         sample.save()
-        return sample.id
+        return str(sample.id)
 
-    def add_samples(self, samples):
+    def add_samples(self, kwargs_list):
         """Adds the given samples to the dataset.
 
         Args:
-            samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances
+            kwargs_list: a list of kwargs dicts to be passed to
+                the sample init call.
 
         Returns:
             a list of sample IDs
         """
-        for sample in samples:
-            self._validate_sample(sample)
-            sample._set_dataset(self)
-
-        sample_docs = self._get_query_set().insert(
-            [s._backing_doc for s in samples]
+        samples = self._get_query_set().insert(
+            [self._Doc(**kwargs) for kwargs in kwargs_list]
         )
-        return [str(s.id) for s in sample_docs]
+        return [str(s.id) for s in samples]
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -237,9 +229,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        # @todo(Tyler) Dataset.view()
-        raise NotImplementedError("TODO")
-        # return fov.DatasetView(self)
+        return fov.DatasetView(self)
 
     def take(self, num_samples=3):
         """Returns a string summary of a few random samples from the dataset.
@@ -281,3 +271,12 @@ class Dataset(foc.SampleCollection):
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
         return self._Doc.objects(**kwargs)
+
+    def _get_fields_str(self):
+        """Pretty for printing"""
+        fields = self.get_sample_fields()
+        max_len = max([len(field_name) for field_name in fields])
+        return "\n".join(
+            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
+            for field_name, field in iteritems(fields)
+        )

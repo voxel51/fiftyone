@@ -23,7 +23,11 @@ def print_snippet(snippet_str, snippet):
 
 dataset = fo.Dataset("fiftyone_in_fifteen")
 sample_id = dataset.add_sample(filepath="/path/to/img1.jpg", tags=["train"])
-dataset.add_sample(filepath="/path/to/img2.jpg", tags=["train"])
+dataset.add_sample(
+    filepath="/path/to/img2.jpg",
+    tags=["train"],
+    metadata=fo.Metadata(size_bytes=1024, mime_type=".jpg"),
+)
 dataset.add_sample(filepath="/path/to/img3.jpg", tags=["test"])
 sample = dataset[sample_id]
 
@@ -66,6 +70,119 @@ print_snippet("dataset.summary()", dataset.summary())
 # Basics with DatasetViews
 ###############################################################################
 
+print_section("Basics with DatasetViews")
+
+view = dataset.view()
+
+print('view.sort_by("filepath", reverse=True)')
+for sample in view.sort_by("filepath", reverse=True):
+    print("\t", sample.filepath)
+print()
+
+print('view.sort_by("model_1_preds.confidence")')
+for sample in view.sort_by("model_1_preds.confidence", reverse=True):
+    print("\t", sample.filepath)
+print()
+
+print("view.skip(1).limit(1).first().filepath")
+print(view.skip(1).limit(1).first().filepath)
+print()
+print("view[1:2].first().filepath")
+print(view[1:2].first().filepath)
+print()
+
+view = dataset.view()
+print_snippet("view[str(sample.id)]", view[str(sample.id)])
+
+print("view[0]")
+try:
+    view[0]
+except Exception as e:
+    print("%s: %s" % (type(e), e))
+print()
+
+print_snippet(
+    'len(view.match({"tags": "train"}))', len(view.match({"tags": "train"}))
+)
+
+id = str(sample.id)
+print_snippet("len(view.select([id]))", len(view.select([id])))
+print_snippet("len(view.exclude([id]))", len(view.exclude([id])))
+
+# samples that have the `sample.metadata` field populated
+print_snippet(
+    '[s.metadata for s in dataset.view().exists("metadata")]',
+    [s.metadata for s in dataset.view().exists("metadata")],
+)
+
+print("chaining view operations:")
+snippet_str = """
+view = (
+    dataset
+    .view()
+    .match({"tags": "train"})
+    .exists("file_hash")
+    .sort_by("filepath")[10:20]
+    .sample(5)
+)
+"""
+view = (
+    dataset.view()
+    .match({"tags": "train"})
+    .exists("file_hash")
+    .sort_by("filepath")[10:20]
+    .sample(5)
+)
+print_snippet(snippet_str, view)
+
+# add one or more samples to a dataset
+print_snippet(
+    'dataset.add_sample(filepath="new1.jpg")',
+    dataset.add_sample(filepath="new1.jpg"),
+)
+
+snippet_str = """
+dataset.add_samples(
+    [
+        {"filepath": "new_batch1.jpg"},
+        {"filepath": "new_batch2.jpg"},
+        {"filepath": "new_batch3.jpg"},
+        {"filepath": "new_batch4.jpg"},
+    ]
+)
+"""
+snippet = dataset.add_samples(
+    [
+        {"filepath": "new_batch1.jpg"},
+        {"filepath": "new_batch2.jpg"},
+        {"filepath": "new_batch3.jpg"},
+        {"filepath": "new_batch4.jpg"},
+    ]
+)
+print_snippet(snippet_str, snippet)
+
+# samples can NOT be added to a view
+print('view.add_sample(filepath="new1.jpg")')
+try:
+    view.add_sample(filepath="new1.jpg")
+except Exception as e:
+    print("%s: %s" % (type(e), e))
+print()
+
+# @todo(Tyler)
+# # delete all matching samples
+# view.delete_samples()
+
+# delete a single sample
+sample = dataset[sample_id]
+print("del dataset[sample_id]")
+del dataset[sample_id]
+print("sample = dataset[sample_id]")
+try:
+    sample = dataset[sample_id]
+except Exception as e:
+    print("%s: %s" % (type(e), e))
+print()
 
 ###############################################################################
 # Fields of Samples
