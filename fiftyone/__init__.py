@@ -37,7 +37,7 @@ _database_service = fos.DatabaseService()
 _server_service = fos.ServerService()
 config = foc.load_config()
 
-from .core.dataset2 import (
+from .core.dataset import (
     Dataset,
     list_dataset_names,
     load_dataset,

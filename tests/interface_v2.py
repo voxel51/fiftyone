@@ -10,7 +10,7 @@ $ mongo51
 import os
 from pprint import pprint
 
-import fiftyone.core.dataset2 as fod
+import fiftyone.core.dataset as fod
 
 # Dataset is a per-name singleton
 dataset = fod.Dataset("my_dataset")
