@@ -42,6 +42,16 @@ from .core.dataset import (
     list_dataset_names,
     load_dataset,
 )
+from .core.field import (
+    Metadata,
+    ImageMetadata,
+    Label,
+    ImageLabel,
+    Classification,
+    Detection,
+    Detections,
+    ImageLabels,
+)
 
 # from .core.insights import (
 #     Insight,

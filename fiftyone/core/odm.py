@@ -27,6 +27,8 @@ from bson import json_util
 from mongoengine import *
 from mongoengine.fields import BaseField
 
+import fiftyone.core.field as fof
+
 
 _DEFAULT_DATABASE = "fiftyone"
 
@@ -161,11 +163,13 @@ class ODMDataset(ODMDocument):
     meta = {"abstract": True}
 
     # the path to the data on disk
+    # @todo(Tyler)
     filepath = StringField()
+    # filepath = StringField(unique=True)
     # the set of tags associated with the sample
     tags = ListField(StringField())
-    # @todo(Tyler) metadata should be something structured
-    metadata = DictField()
+    # metadata about the sample media
+    metadata = EmbeddedDocumentField(fof.Metadata, null=True)
 
     @classmethod
     def get_fields(cls, field_type=None):
@@ -258,8 +262,8 @@ class ODMDataset(ODMDocument):
 
             kwargs = {"db_field": key}
 
-            if isinstance(value, BaseField):
-                field = type(value)(**kwargs)
+            if isinstance(value, EmbeddedDocument):
+                field = EmbeddedDocumentField(type(value), null=True, **kwargs)
             elif isinstance(value, bool):
                 field = BooleanField(**kwargs)
             elif isinstance(value, six.integer_types):
@@ -267,6 +271,8 @@ class ODMDataset(ODMDocument):
             elif isinstance(value, six.string_types):
                 field = StringField(**kwargs)
             elif isinstance(value, list) or isinstance(value, tuple):
+                # @todo(Tyler) set the containing field type of ListField and
+                #   ensure all elements are of this type
                 field = ListField(**kwargs)
             elif isinstance(value, dict):
                 field = DictField(**kwargs)

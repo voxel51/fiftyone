@@ -93,5 +93,26 @@ sample["my_dict"] = {"fifty": 50, "one": "uno"}
 print_snippet('sample["my_dict"]', sample["my_dict"])
 print_snippet("sample.my_dict", sample.my_dict)
 
+sample["my_label"] = fo.Classification(label="cow", confidence=0.98)
+print_snippet('sample["my_label"]', sample["my_label"])
+print_snippet("sample.my_label", sample.my_label)
+
 print_snippet("sample", sample)
 print_snippet("dataset.get_sample_fields()", dataset.get_sample_fields())
+
+print("sample.my_list = 67")
+try:
+    sample.my_list = 67
+except Exception as e:
+    print("%s: %s" % (type(e), e))
+print()
+
+# @todo(Tyler)
+# ListFields only contain elements of one Field type
+# sample.my_list = [1, 2]
+# ValidationError: StringField only accepts string values: ['my_field']
+
+# @todo(Tyler)
+# dataset.delete_field("my_list")
+# sample["my_list"] = 9
+# print_snippet("dataset.get_sample_fields()", dataset.get_sample_fields())
