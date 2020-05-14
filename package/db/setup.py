@@ -38,6 +38,7 @@ setup(
     license="",
     packages=["fiftyone.db"],
     package_dir={"fiftyone.db": "src"},
+    # TODO: respect the target platform to allow "cross-compiling" wheels
     package_data={"fiftyone.db": ["bin/mongo", "bin/mongod"]},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",

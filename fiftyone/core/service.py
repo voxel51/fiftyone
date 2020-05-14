@@ -101,6 +101,7 @@ class AppService(Service):
                 # dev build
                 args = ["yarn", "dev"]
             else:
+                # TODO: support macOS, etc
                 raise RuntimeError(
                     "Could not find FiftyOne dashboard in %r"
                     % foc.FIFTYONE_APP_DIR

@@ -31,6 +31,7 @@ class CustomBdistWheel(bdist_wheel):
         if self.plat_name.startswith("linux"):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
         else:
+            # TODO: support macOS, etc
             raise OSError("Unsupported target platform: %r" % self.plat_name)
         if not apps:
             raise RuntimeError(

@@ -18,6 +18,7 @@ class BdistWheelCustom(bdist_wheel):
         # site-packages/ETA-x.y.z.dist-info, which is not created when we bundle
         # ETA with fiftyone. This is a workaround to make ETA use fiftyone's
         # version information instead.
+        # TODO: package ETA separately to avoid this
         constants_path = os.path.join(self.bdist_dir, "eta", "constants.py")
         with open(constants_path, "r") as constants_file:
             contents = constants_file.read()
