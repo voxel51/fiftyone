@@ -42,9 +42,11 @@ from .core.dataset import (
     list_dataset_names,
     load_dataset,
 )
-from .core.field import (
+from .core.metadata import (
     Metadata,
     ImageMetadata,
+)
+from .core.labels import (
     Label,
     ImageLabel,
     Classification,

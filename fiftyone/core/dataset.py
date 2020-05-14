@@ -30,7 +30,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.odm as foo
+import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 import fiftyone.utils.data as foud
 
@@ -122,7 +122,7 @@ class Dataset(foc.SampleCollection):
         self._name = name
 
         # @todo(Tyler) use MetaDataset to load this class from the DB
-        self._Doc = type(self._name, (foo.ODMSample,), {})
+        self._Doc = type(self._name, (fos.ODMSample,), {})
 
     def __len__(self):
         return self._get_query_set().count()
