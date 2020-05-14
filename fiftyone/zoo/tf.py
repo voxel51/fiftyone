@@ -74,6 +74,44 @@ class MNISTDataset(foz.ZooDataset):
         )
 
 
+class FashionMNISTDataset(foz.ZooDataset):
+    """The Fashion-MNIST database of Zalando's fashion article images.
+
+    The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
+    There are 60000 training images and 10000 test images.
+
+    Dataset size:
+        36.42 MiB
+
+    Source:
+        https://github.com/zalandoresearch/fashion-mnist
+    """
+
+    @property
+    def name(self):
+        return "fashion-mnist"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train")
+
+    @property
+    def default_split(self):
+        return "test"
+
+    def _download_and_prepare(self, dataset_dir, split):
+        get_class_labels_fcn = lambda info: info.features["label"].names
+        sample_parser = _TFDSImageClassificationSampleParser()
+        return _download_and_prepare(
+            self,
+            split,
+            "fashion_mnist",
+            dataset_dir,
+            get_class_labels_fcn,
+            sample_parser,
+        )
+
+
 class CIFAR10Dataset(foz.ZooDataset):
     """The CIFAR-10 dataset of images.
 
@@ -106,6 +144,44 @@ class CIFAR10Dataset(foz.ZooDataset):
             self,
             split,
             "cifar10",
+            dataset_dir,
+            get_class_labels_fcn,
+            sample_parser,
+        )
+
+
+class CIFAR100Dataset(foz.ZooDataset):
+    """The CIFAR-100 dataset of images.
+
+    The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
+    images per class. There are 50000 training images and 10000 test images.
+
+    Dataset size:
+        132.03 MiB
+
+    Source:
+        https://www.cs.toronto.edu/~kriz/cifar.html
+    """
+
+    @property
+    def name(self):
+        return "cifar100"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train")
+
+    @property
+    def default_split(self):
+        return "test"
+
+    def _download_and_prepare(self, dataset_dir, split):
+        get_class_labels_fcn = lambda info: info.features["label"].names
+        sample_parser = _TFDSImageClassificationSampleParser()
+        return _download_and_prepare(
+            self,
+            split,
+            "cifar100",
             dataset_dir,
             get_class_labels_fcn,
             sample_parser,
@@ -177,7 +253,7 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
             both splits: ILSVRC2012_devkit_t12.tar.gz
             train split: ILSVRC2012_img_train.tar
-             test split: ILSVRC2012_img_val.tar
+       validation split: ILSVRC2012_img_val.tar
 
     You need to register on http://www.image-net.org/download-images in
     order to get the link to download the dataset.
@@ -457,8 +533,10 @@ class VOC2012Dataset(foz.ZooDataset):
 foz.AVAILABLE_DATASETS.update(
     {
         "mnist": MNISTDataset,
+        "fashion-mnist": FashionMNISTDataset,
         "caltech101": Caltech101Dataset,
         "cifar10": CIFAR10Dataset,
+        "cifar100": CIFAR100Dataset,
         "imagenet-2012": ImageNet2012Dataset,
         "coco-2014": COCO2014Dataset,
         "coco-2017": COCO2017Dataset,

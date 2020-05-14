@@ -81,6 +81,51 @@ class MNISTDataset(foz.ZooDataset):
         )
 
 
+class FashionMNISTDataset(foz.ZooDataset):
+    """The Fashion-MNIST database of Zalando's fashion article images.
+
+    The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
+    There are 60000 training images and 10000 test images.
+
+    Dataset size:
+        36.42 MiB
+
+    Source:
+        https://github.com/zalandoresearch/fashion-mnist
+    """
+
+    @property
+    def name(self):
+        return "fashion-mnist"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train")
+
+    @property
+    def default_split(self):
+        return "test"
+
+    def _download_and_prepare(self, dataset_dir, split):
+        train = split == "train"
+
+        def download_fcn(dataset_dir):
+            return torchvision.datasets.FashionMNIST(
+                dataset_dir, train=train, download=True
+            )
+
+        get_class_labels_fcn = _parse_classification_labels_map
+        sample_parser = foud.ImageClassificationSampleParser()
+        return _download_and_prepare(
+            self,
+            split,
+            download_fcn,
+            dataset_dir,
+            get_class_labels_fcn,
+            sample_parser,
+        )
+
+
 class CIFAR10Dataset(foz.ZooDataset):
     """The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
     classes, with 6000 images per class. There are 50000 training images and
@@ -110,6 +155,51 @@ class CIFAR10Dataset(foz.ZooDataset):
 
         def download_fcn(dataset_dir):
             return torchvision.datasets.CIFAR10(
+                dataset_dir, train=train, download=True
+            )
+
+        get_class_labels_fcn = _parse_classification_labels_map
+        sample_parser = foud.ImageClassificationSampleParser()
+        return _download_and_prepare(
+            self,
+            split,
+            download_fcn,
+            dataset_dir,
+            get_class_labels_fcn,
+            sample_parser,
+        )
+
+
+class CIFAR100Dataset(foz.ZooDataset):
+    """The CIFAR-100 dataset of images.
+
+    The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
+    images per class. There are 50000 training images and 10000 test images.
+
+    Dataset size:
+        132.03 MiB
+
+    Source:
+        https://www.cs.toronto.edu/~kriz/cifar.html
+    """
+
+    @property
+    def name(self):
+        return "cifar100"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train")
+
+    @property
+    def default_split(self):
+        return "test"
+
+    def _download_and_prepare(self, dataset_dir, split):
+        train = split == "train"
+
+        def download_fcn(dataset_dir):
+            return torchvision.datasets.CIFAR100(
                 dataset_dir, train=train, download=True
             )
 
@@ -247,7 +337,9 @@ class COCO2017Dataset(foz.ZooDataset):
 foz.AVAILABLE_DATASETS.update(
     {
         "mnist": MNISTDataset,
+        "fashion-mnist": FashionMNISTDataset,
         "cifar10": CIFAR10Dataset,
+        "cifar100": CIFAR100Dataset,
         "imagenet-2012": ImageNet2012Dataset,
         "coco-2017": COCO2017Dataset,
     }
