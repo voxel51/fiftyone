@@ -184,6 +184,11 @@ class ZooDatasetInfo(etas.Serializable):
         self._dataset_type = format
 
     @property
+    def has_split(self):
+        """Whether the dataset has a split."""
+        return self.split is not None
+
+    @property
     def dataset_type(self):
         """The :class:`fiftyone.types.DatasetType` of the dataset."""
         return self._dataset_type
