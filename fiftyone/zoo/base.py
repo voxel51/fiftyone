@@ -128,6 +128,11 @@ def load_zoo_dataset(
 
     dataset_type = info.dataset_type
 
+    if info.has_split:
+        name = "%s-%s" % (info.name, info.split)
+    else:
+        name = info.name
+
     if issubclass(dataset_type, fot.ImageClassificationDataset):
         return fo.Dataset.from_image_classification_dataset(
             dataset_dir, name=name
