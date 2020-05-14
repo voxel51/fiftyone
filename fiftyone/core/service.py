@@ -41,18 +41,20 @@ class Service(object):
     _SUPPRESS = {"stderr": _DEVNULL, "stdout": _DEVNULL}
 
     def __init__(self):
+        """Creates (starts) the Service."""
         self._system = os.system
         self.start()
 
     def __del__(self):
+        """Deletes (stops) the Service."""
         self.stop()
 
     def start(self):
-        """Starts the service."""
+        """Starts the Service."""
         raise NotImplementedError("subclasses must implement `start()`")
 
     def stop(self):
-        """Stops the service."""
+        """Stops the Service."""
         raise NotImplementedError("subclasses must implement `stop()`")
 
 
@@ -60,6 +62,7 @@ class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
 
     def start(self):
+        """Starts the DatabaseService."""
         etau.call(foc.START_DB, **self._SUPPRESS)
 
         # Drop the entire database (lightweight!)
@@ -68,6 +71,7 @@ class DatabaseService(Service):
         foo.drop_database()
 
     def stop(self):
+        """Stops the DatabaseService."""
         self._system(foc.STOP_DB)
 
 
@@ -75,10 +79,12 @@ class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
     def start(self):
+        """Starts the ServerService."""
         with etau.WorkingDir(foc.SERVER_DIR):
             etau.call(foc.START_SERVER, **self._SUPPRESS)
 
     def stop(self):
+        """Stops the ServerService."""
         self._system(foc.STOP_SERVER)
 
 
@@ -86,6 +92,7 @@ class AppService(Service):
     """Service that controls the FiftyOne app."""
 
     def start(self):
+        """Starts the AppService."""
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             if os.path.isfile("FiftyOne.AppImage"):
                 # linux
@@ -107,6 +114,7 @@ class AppService(Service):
         )
 
     def stop(self):
+        """Stops the AppService."""
         # TODO: python <3.3 compat
         self.process.send_signal(signal.SIGINT)
         try:

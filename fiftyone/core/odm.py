@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from copy import deepcopy
 import json
 
 from bson import json_util
@@ -53,6 +54,19 @@ class ODMDocument(Document):
                 indent=4,
             )
         )
+
+    def __copy__(self):
+        return self.copy()
+
+    def copy(self):
+        """Returns a copy of the document that does not have its `id` set.
+
+        Returns:
+            a :class:`ODMDocument`
+        """
+        doc = deepcopy(self)
+        doc.id = None
+        return doc
 
     def to_dict(self, extended=False):
         """Serializes this document to a JSON dictionary.

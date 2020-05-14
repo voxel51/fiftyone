@@ -212,35 +212,69 @@ class Dataset(foc.SampleCollection):
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
 
+        If the sample belongs to another dataset, a copy is created and added
+        to this dataset.
+
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
 
         Returns:
-            the ID of the sample
+            the ID of the sample in the dataset
         """
-        self._validate_sample(sample)
-        sample._set_dataset(self)
+        sample = self._ingest_sample(sample)
         sample._save()
         return sample.id
 
     def add_samples(self, samples):
         """Adds the given samples to the dataset.
 
+        If a sample belongs to another dataset, a copy is created and added to
+        this dataset.
+
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances
+                instances. For example, ``samples`` may be another
+                :class:`Dataset` or a :class:`fiftyone.core.views.DatasetView`
 
         Returns:
-            a list of sample IDs
+            a list of IDs of the samples in the dataset
         """
-        for sample in samples:
-            self._validate_sample(sample)
-            sample._set_dataset(self)
-
+        samples = [self._ingest_sample(s) for s in samples]
         sample_docs = self._get_query_set().insert(
             [s._backing_doc for s in samples]
         )
         return [str(s.id) for s in sample_docs]
+
+    def delete_sample(self, sample_or_id):
+        """Deletes the given sample from the dataset.
+
+        Args:
+            sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
+                ID to delete
+        """
+        if isinstance(sample_or_id, fos.Sample):
+            sample_id = sample_or_id.id
+        else:
+            sample_id = sample_or_id
+
+        del self[sample_id]
+
+    def delete_samples(self, samples_or_ids):
+        """Deletes the given samples from the dataset.
+
+        Args:
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
+                instances or sample IDs. For example, ``samples`` may be a
+                :class:`fiftyone.core.views.DatasetView`
+        """
+        # @todo optimize with bulk deletion?
+        for sample_or_id in samples_or_ids:
+            self.delete_sample(sample_or_id)
+
+    def clear(self):
+        """Deletes all samples from the dataset."""
+        # @todo optimize by deleteing the entire collection
+        self.delete_samples(self)
 
     def default_view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -730,6 +764,12 @@ class Dataset(foc.SampleCollection):
             pipeline = []
 
         return self._get_query_set().aggregate(pipeline)
+
+    def _ingest_sample(self, sample):
+        self._validate_sample(sample)
+        sample = sample.copy() if sample.in_dataset else sample
+        sample._set_dataset(self)
+        return sample
 
     def _load_sample(self, doc):
         sample = fos.Sample.from_doc(doc)

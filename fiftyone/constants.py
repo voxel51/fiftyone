@@ -77,19 +77,11 @@ STOP_DB = " ".join(
 if sys.platform.startswith("linux"):
     _STOP_SERVICE = "fuser -k %d/tcp >/dev/null 2>&1"
 
-    # @todo this is a hack
-    _STOP_ELECTRON = (
-        "ps -c | grep ' Electron$' | awk '{print $1}' | xargs -r kill"
-    )
 elif sys.platform == "darwin":
     _STOP_SERVICE = (
         "lsof -i tcp:%d | grep -v PID | awk '{print $2}' | xargs kill"
     )
 
-    # @todo this is a hack
-    _STOP_ELECTRON = (
-        "ps -c | grep ' Electron$' | awk '{print $1}' | xargs kill"
-    )
 else:
     raise OSError("Unsupported OS: %s" % sys.platform)
 

@@ -1,3 +1,4 @@
+import { remote } from "electron";
 import React, { ReactNode, useState } from "react";
 
 import Sidebar from "../components/Sidebar";
@@ -24,6 +25,9 @@ function App(props: Props) {
   });
   useSubscribe(socket, "disconnect", () => console.log("disconnected"));
   useSubscribe(socket, "update", (data) => {
+    if (data.close) {
+      remote.getCurrentWindow().close();
+    }
     dispatch(updateState(data));
   });
 
