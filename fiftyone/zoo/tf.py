@@ -271,13 +271,16 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
     @property
     def supported_splits(self):
-        return ("train", "val")
+        return ("train", "validation")
 
     @property
     def default_split(self):
-        return "val"
+        return "validation"
 
     def _download_and_prepare(self, dataset_dir, split):
+        if split == "validation":
+            split = "val"
+
         get_class_labels_fcn = lambda info: info.features["label"].names
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(

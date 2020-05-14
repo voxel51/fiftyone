@@ -257,13 +257,16 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
     @property
     def supported_splits(self):
-        return ("train", "val")
+        return ("train", "validation")
 
     @property
     def default_split(self):
-        return "val"
+        return "validation"
 
     def _download_and_prepare(self, dataset_dir, split):
+        if split == "validation":
+            split = "val"
+
         def download_fcn(_):
             return torchvision.datasets.ImageNet(dataset_dir, split=split)
 
