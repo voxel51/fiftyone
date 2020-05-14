@@ -46,6 +46,32 @@ class Timer():
             self.total_time += delta_t
         return delta_t
 
+default_table_formats = {float: '{:{w}.4f}', str: '{:>{w}s}', 'default': '{:{w}}', 'title': '{:>{w}s}'}
+
+def table_formatter(val, is_title=False, col_width=12, formats=None):
+    formats = formats or default_table_formats
+    type_ = lambda val: float if isinstance(val, (float, np.float)) else type(val)
+    return (formats['title'] if is_title else formats.get(type_(val), formats['default'])).format(val, w=col_width)
+
+def every(n, col):
+    return lambda data: data[col] % n == 0
+
+class Table():
+    def __init__(self, keys=None, report=(lambda data: True), formatter=table_formatter):
+        self.keys, self.report, self.formatter = keys, report, formatter
+        self.log = []
+
+    def append(self, data):
+        self.log.append(data)
+        data = {' '.join(p): v for p,v in path_iter(data)}
+        self.keys = self.keys or data.keys()
+        if len(self.log) is 1:
+            print(*(self.formatter(k, True) for k in self.keys))
+        if self.report(data):
+            print(*(self.formatter(data[k]) for k in self.keys))
+
+    def df(self):
+        return pd.DataFrame([{'_'.join(p): v for p,v in path_iter(row)} for row in self.log])
 
 def path_iter(nested_dict, pfx=()):
     for name, val in nested_dict.items():

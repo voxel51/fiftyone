@@ -96,13 +96,13 @@ timer = Timer()
 #whole_dataset = cifar10(root=DATA_DIR)
 #
 
-if train_dataset is None:
+if train_view is None:
     raise ValueError(
-        "train expects 'train_dataset' in the global namespace. See README.md"
+        "train expects 'train_view' in the global namespace. See README.md"
     )
-if valid_dataset is None:
+if valid_view is None:
     raise ValueError(
-        "train expects 'valid_dataset' in the global namespace. See README.md"
+        "train expects 'valid_view' in the global namespace. See README.md"
     )
 
 def update_progress(progress):
@@ -113,31 +113,46 @@ def update_progress(progress):
     print("\r[%s%s] %.1f%%" % ("#"*i, " "*r,  progress*100), end="")
 
 print("Caching the data in memory to support faster training.")
+
+if config.take:
+    _train_view = train_view.sample(config.take)
+    print(f"using a subset of the data for the model training")
+    print(f"train set: {len(_train_view)} samples")
+else:
+    _train_view = train_view
+
+_mistakes_used_in_training = _train_view.match_tag("mistake")
+print(f"{len(_mistakes_used_in_training)} samples with bad labels " +
+      "will be used in training")
+
+_valid_view = valid_view
+
 print("Training images")
 _train_images = []
 _train_labels = []
-for index, sample in enumerate(train_dataset.default_view().iter_samples()):
+for index, sample in enumerate(_train_view.iter_samples()):
     image = np.array(spm.imread(sample.filepath))
     label = cifar10_rev[sample.get_label("ground_truth").label]
     _train_images.append(image)
     _train_labels.append(label)
 
     if index % 100 == 0:
-        update_progress(index / len(train_dataset))
+        update_progress(index / len(_train_view))
 update_progress(1)
 print()
+
 
 print("Validation images")
 _valid_images = []
 _valid_labels = []
-for index, sample in enumerate(valid_dataset.default_view().iter_samples()):
+for index, sample in enumerate(_valid_view.iter_samples()):
     image = np.array(spm.imread(sample.filepath))
     label = cifar10_rev[sample.get_label("ground_truth").label]
     _valid_images.append(image)
     _valid_labels.append(label)
 
     if index % 100 == 0:
-        update_progress(index / len(train_dataset))
+        update_progress(index / len(_valid_view))
 update_progress(1)
 print()
 
@@ -164,12 +179,6 @@ print(f"Finished loading and preprocessing in {timer():.2f} seconds")
 print(f"train set: {len(whole_train_set)} samples")
 print(f"valid set: {len(valid_set)} samples")
 
-if config.take:
-    whole_train_set = whole_train_set[:config.take]
-    valid_set = whole_train_set[:config.take]
-    print(f"using a subset of the data for the model training")
-    print(f"train set: {len(whole_train_set)} samples")
-    print(f"valid set: {len(valid_set)} samples")
 
 # set up the variables for training the model in each increment of the dataset size
 lr_schedule = PiecewiseLinear([0, 5, config.epochs], [0, 0.4, 0])
@@ -184,8 +193,6 @@ start_N = round(config.p_initial * total_N)
 incr_N = ( 0 if config.n_rounds == 1 else
     round((total_N-start_N) / (config.n_rounds-1))
 )
-
-corrupt_N = round(config.p_corrupt * total_N)
 
 print(f'Setting up the experiment: {total_N} training samples.')
 print(f'- starting with {start_N}')
@@ -206,16 +213,8 @@ whole_train_set_use = whole_train_set[0:inuse_N]
 whole_train_set_avail = whole_train_set[inuse_N:]
 print(f'Split training set into two; using {len(whole_train_set_use)}, available {len(whole_train_set_avail)}')
 
-sm = torch.nn.Softmax(dim=1)
-
-stats = {}
-
 for iteration in range(config.n_rounds):
     print(f'beginning next round of training, using {inuse_N} samples')
-
-    if config.cold_start:
-        model = Network(simple_resnet()).to(device).half()
-        logs, state = Table(), {MODEL: model, LOSS: x_ent_loss}
 
     train_batches = DataLoader(
             Transform(whole_train_set_use, train_transforms),
@@ -232,46 +231,38 @@ for iteration in range(config.n_rounds):
         logs.append(union({'epoch': epoch+1}, train_epoch(state, Timer(torch.cuda.synchronize), train_batches, valid_batches)))
     logs.df().query(f'epoch=={config.epochs}')[['train_acc', 'valid_acc']].describe()
 
-    model.train(False) # == model.eval()
-
-    # record scores for this iteration
-    iteration_stats = {}
-    iteration_stats["in_use"] = inuse_N
-
-    correct = 0
-    total = 0
-    class_correct = list(0. for i in range(10))
-    class_total = list(0. for i in range(10))
-    with torch.no_grad():
-        for data in valid_batches.dataloader:
-            images, labels = data
-            inputs = dict(input=images.cuda().half())
-            outputs = model(inputs)
-            y = outputs['logits']
-            _, predicted = torch.max(y, 1)
-            total += labels.size(0)
-            labels_gpu = labels.cuda().half()
-            correct += (predicted == labels_gpu).sum().item()
-            c = (predicted == labels_gpu).squeeze()
-            for i in range(min(config.batch_size, len(labels))):
-                label = labels[i]
-                class_correct[label] += c[i].item()
-                class_total[label] += 1
-
-    iteration_stats["validation_accuracy"] = correct / total
-
-    model.train(True)
+    #model.train(False) # == model.eval()
+    #
+    #correct = 0
+    #total = 0
+    #class_correct = list(0. for i in range(10))
+    #class_total = list(0. for i in range(10))
+    #with torch.no_grad():
+    #    for data in valid_batches.dataloader:
+    #        images, labels = data
+    #        inputs = dict(input=images.cuda().half())
+    #        outputs = model(inputs)
+    #        y = outputs['logits']
+    #        _, predicted = torch.max(y, 1)
+    #        total += labels.size(0)
+    #        labels_gpu = labels.cuda().half()
+    #        correct += (predicted == labels_gpu).sum().item()
+    #        c = (predicted == labels_gpu).squeeze()
+    #        for i in range(min(config.batch_size, len(labels))):
+    #            label = labels[i]
+    #            class_correct[label] += c[i].item()
+    #            class_total[label] += 1
+    #
+    #iteration_stats["validation_accuracy"] = correct / total
+    #
+    #model.train(True)
 
     # extend the corr_train_set_use with that from avail
-    whole_train_set_use.extend(whole_train_set_avail[0:incr_N])
-    whole_train_set_avail = whole_train_set_avail[incr_N:]
-    inuse_N += incr_N
-    assert inuse_N == len(whole_train_set_use)
-
-    stats[inuse_N] = iteration_stats
-
-print(f'finished the full training; stats to follow')
-print(stats)
+    if incr_N > 0:
+        whole_train_set_use.extend(whole_train_set_avail[0:incr_N])
+        whole_train_set_avail = whole_train_set_avail[incr_N:]
+        inuse_N += incr_N
+        assert inuse_N == len(whole_train_set_use)
 
 if config.model_path:
     torch.save(model.state_dict(),config.model_path)
