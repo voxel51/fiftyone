@@ -142,7 +142,7 @@ class Dataset(foc.SampleCollection):
 
         # @todo(Tyler) this could be optimized with
         #    sample = self._get_query_set().get(id=sample_id)
-        #   but it seems to raise an uncatachble error?
+        #   but it seems to raise an uncatchable error?
         samples = self._get_query_set(id=sample_id)
         if not samples:
             raise ValueError("No sample found with ID '%s'" % sample_id)
@@ -198,6 +198,11 @@ class Dataset(foc.SampleCollection):
     def add_sample(self, *args, **kwargs):
         """Adds the given sample to the dataset.
 
+        @todo(Tyler) this is definitely not true, need to support once sample
+          class is created
+        If the sample belongs to another dataset, a copy is created and added
+        to this dataset.
+
         Args:
             args and kwargs used to initialize a sample (this varies depending
                 on what fields the dataset has)
@@ -212,9 +217,19 @@ class Dataset(foc.SampleCollection):
     def add_samples(self, kwargs_list):
         """Adds the given samples to the dataset.
 
+        @todo(Tyler) this is definitely not true, need to support once sample
+          class is created
+        If a sample belongs to another dataset, a copy is created and added to
+        this dataset.
+
         Args:
             kwargs_list: a list of kwargs dicts to be passed to
                 the sample init call.
+
+            @todo(Tyler) get rid of kwargs_list and replace with this
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
+                instances. For example, ``samples`` may be another
+                :class:`Dataset` or a :class:`fiftyone.core.views.DatasetView`
 
         Returns:
             a list of IDs of the samples in the dataset
