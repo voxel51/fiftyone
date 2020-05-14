@@ -69,6 +69,11 @@ class Classification(ImageLabel):
 
     See :class:`fiftyone.utils.data.ImageClassificationSampleParser` for a
     convenient way to build labels of this type for your existing datasets.
+
+    Args:
+        label: the label string
+        confidence (None): a confidence in ``[0, 1]`` for the label
+        logits (None): logits associated with the labels
     """
 
     label = StringField()
@@ -98,6 +103,14 @@ class Classification(ImageLabel):
 class Detection(foo.ODMEmbeddedDocument):
     """Backing document for individual detections stored in
     :class:`fiftyone.core.labels.DetectionLabels`instances.
+
+    Args:
+        label: the label string
+        bounding_box: a list of relative bounding box coordinates in ``[0, 1]``
+
+            [ <top-left-x>, <top-right-y>, <width>, <height> ]
+
+        confidence (None): a confidence in ``[0, 1]`` for the label
     """
 
     label = StringField()
