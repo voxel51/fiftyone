@@ -27,6 +27,16 @@ several minutes to complete. Once the Electron app is built, switch to the
 `package/gui` folder and follow the packaging instructions for `fiftyone`
 above.
 
+## Testing with built wheels locally
+
+Once you have built the wheels you want to test with, you can simply run
+`pip install /path/to/dist/fiftyone-something.whl` in a separate environment to
+install them manually. Note that the main `fiftyone` package currently depends
+on the other packages, so they will need to be installed first. You may be able
+to work around this requirement with `pip install --no-deps` and installing
+`fiftyone`'s dependencies manually (i.e.
+`pip install /path/to/fiftyone/requirements.txt`).
+
 ## Testing package uploads locally
 
 You can spin up a local PyPI server instance (in this example, accessible at
