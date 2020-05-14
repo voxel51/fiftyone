@@ -40,6 +40,27 @@ def drop_database():
 
 
 class ODMDocument(Document, fof.SerializableDocumentMixin):
+    """
+
+    ODMDocument.id implementation details:
+
+        - the ID of a document is automatically populated when it is added
+          to the database
+
+        - the ID is of a document is ``None`` if it has not been added to
+          the database
+
+        - the ID is a 12 byte value consisting of the concatentation of the
+          following:
+
+            - a 4 byte timestamp representing the document's commit time,
+              measured in seconds since epoch
+
+            - a 5 byte random value
+
+            - a 3 byte incrementing counter, initialized to a random value
+    """
+
     meta = {"abstract": True}
 
     def __str__(self):
@@ -51,32 +72,6 @@ class ODMDocument(Document, fof.SerializableDocumentMixin):
                 indent=4,
             )
         )
-
-    @property
-    def ID(self):
-        """The ID of the document.
-
-        Implementation details:
-
-            - the ID of a document is automatically populated when it is added
-              to the database
-
-            - the ID is of a document is ``None`` if it has not been added to
-              the database
-
-            - the ID is a 12 byte value consisting of the concatentation of the
-              following:
-
-                - a 4 byte timestamp representing the document's commit time,
-                  measured in seconds since epoch
-
-                - a 5 byte random value
-
-                - a 3 byte incrementing counter, initialized to a random value
-        """
-        # @todo(Tyler) This is just here for documentation ATM. Very
-        #   frustrating that `id` is an attribute, not a property...
-        return self.id
 
     @property
     def ingest_time(self):

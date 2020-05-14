@@ -1,4 +1,9 @@
-# Interface
+# Interface V2
+
+This docs assess existing interfaces relevant to fiftyone and/or familiar to
+data scientists in order inspire the fiftyone interface design.
+
+Separate files for each package are similar to "10 minutes to <X>" tutorials.
 
 Existing Interfaces:
 
@@ -15,7 +20,7 @@ Objects to consider:
 -   `Label`
 -   `Insight`
 
-## python `dict`
+## python primitives (`dict`)
 
 ```python
 d = {}
@@ -27,3 +32,7 @@ for sample in d.values():
 for sample_id, sample in d.items():
     ...
 ```
+
+##
+
+Tyler Ganter, tyler@voxel51.com

@@ -54,17 +54,10 @@ print_snippet(
 
 print_snippet("dataset.summary()", dataset.summary())
 
-# @todo(Tyler)
-# dataset.view()  # -> fiftyone.core.view.DatasetView
+print_snippet("dataset.view()", dataset.view())
 
-# @todo(Tyler)
-# grab 5 random samples
-# dataset.view.take(5)  # -> fiftyone.core.view.DatasetView
-
-# @todo(Tyler)
-# all methods on views are also valid on datasets. The dataset merely creates
-# a view and calls the method on that view:
-# dataset.take(5)  # -> fiftyone.core.view.DatasetView
+print_snippet("dataset.view().take(5)", dataset.view().take(5))
+print_snippet("len(dataset.view().take(5))", len(dataset.view().take(5)))
 
 ###############################################################################
 # Basics with DatasetViews
