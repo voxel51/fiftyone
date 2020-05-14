@@ -97,6 +97,15 @@ class ODMSample(foo.ODMDocument):
         return d
 
     @property
+    def in_dataset(self):
+        """Whether the sample has been added to a dataset."""
+        # @todo(Tyler) I don't want this function to be lost in the changes
+        #   I'm making so I'm leaving it here. May become irrelevant or change
+        #   so I'll worry about it later
+        raise NotImplementedError("TODO")
+        # return self._dataset is not None
+
+    @property
     def dataset_name(self):
         """The name of the dataset to which this sample belongs, or ``None`` if
         it has not been added to a dataset.
