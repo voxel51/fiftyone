@@ -1,4 +1,4 @@
-# FiftyOne Finding Labeling Mistake Walkthrough
+# Finding Label Mistakes with FiftyOne
 
 This walkthrough provides an example of how FiftyOne can be used to help you
 find mistakes in your labels. It covers the following concepts:
