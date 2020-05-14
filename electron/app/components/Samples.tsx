@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Card,
   Grid,
@@ -28,33 +28,127 @@ function chunkArray(array, size) {
   return result;
 }
 
-function Sample({ sample, port, setSelected, selected, setView }) {
-  const host = `http://127.0.0.1:${port}`;
-  const src = `${host}?path=${sample.filepath}`;
-  const socket = getSocket(port, "state");
-  const id = sample._id.$oid;
+const noop = () => {};
+
+const delay = (n) => new Promise((resolve) => setTimeout(resolve, n));
+
+const cancellablePromise = (promise) => {
+  let isCanceled = false;
+
+  const wrappedPromise = new Promise((resolve, reject) => {
+    promise.then(
+      (value) => (isCanceled ? reject({ isCanceled, value }) : resolve(value)),
+      (error) => reject({ isCanceled, error })
+    );
+  });
+
+  return {
+    promise: wrappedPromise,
+    cancel: () => (isCanceled = true),
+  };
+};
+
+const useCancellablePromises = () => {
+  const pendingPromises = useRef([]);
+
+  const appendPendingPromise = (promise) =>
+    (pendingPromises.current = [...pendingPromises.current, promise]);
+
+  const removePendingPromise = (promise) =>
+    (pendingPromises.current = pendingPromises.current.filter(
+      (p) => p !== promise
+    ));
+
+  const clearPendingPromises = () =>
+    pendingPromises.current.map((p) => p.cancel());
+
+  const api = {
+    appendPendingPromise,
+    removePendingPromise,
+    clearPendingPromises,
+  };
+
+  return api;
+};
+
+const useClickPreventionOnDoubleClick = (onClick, onDoubleClick) => {
+  const api = useCancellablePromises();
+
+  const handleClick = () => {
+    api.clearPendingPromises();
+    const waitForClick = cancellablePromise(delay(300));
+    api.appendPendingPromise(waitForClick);
+
+    return waitForClick.promise
+      .then(() => {
+        api.removePendingPromise(waitForClick);
+        onClick();
+      })
+      .catch((errorInfo) => {
+        api.removePendingPromise(waitForClick);
+        if (!errorInfo.isCanceled) {
+          throw errorInfo.error;
+        }
+      });
+  };
+
+  const handleDoubleClick = () => {
+    api.clearPendingPromises();
+    onDoubleClick();
+  };
+
+  return [handleClick, handleDoubleClick];
+};
+
+const Sample = connect(
+  ({ dispatch, sample, port, setSelected, selected, setView }) => {
+    const host = `http://127.0.0.1:${port}`;
+    const src = `${host}?path=${sample.filepath}`;
+    const socket = getSocket(port, "state");
+    const id = sample._id.$oid;
+
+    const handleClick = () => {
+      const newSelected = { ...selected };
+      const event = newSelected[id] ? "remove_selection" : "add_selection";
+      newSelected[id] = newSelected[id] ? false : true;
+      setSelected(newSelected);
+      socket.emit(event, id, (data) => {
+        dispatch(updateState(data));
+      });
+    };
+
+    return (
+      <SpecialImage
+        src={src}
+        style={{
+          width: "100%",
+          border: selected[id] ? "1px solid black" : "none",
+        }}
+        onClick={() => handleClick()}
+        onDoubleClick={() => setView({ visible: true, sample })}
+      />
+    );
+  }
+);
+
+const SpecialImage = (props) => {
+  const { onClick, onDoubleClick, src, style } = props;
+  const [handleClick, handleDoubleClick] = useClickPreventionOnDoubleClick(
+    onClick,
+    onDoubleClick
+  );
   return (
     <Image
       src={src}
-      style={{
-        width: "100%",
-        border: selected[id] ? "1px solid black" : "none",
-      }}
-      onClick={() => {
-        const newSelected = { ...selected };
-        const event = newSelected[id] ? "remove_selection" : "add_selection";
-        newSelected[id] = newSelected[id] ? false : true;
-        setSelected(newSelected);
-        socket.emit(event, id, (data) => {
-          dispatch(updateState(data));
-        });
-      }}
+      style={style}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
     />
   );
-}
+};
 
 function SampleList(props) {
-  const { state, setView, port } = props;
+  const { state, setView, port, dispatch } = props;
   const hasDataset = Boolean(state && state.dataset);
   const socket = getSocket(port, "state");
   const [selected, setSelected] = useState({});
@@ -87,7 +181,7 @@ function SampleList(props) {
   useSubscribe(socket, "update", (data) => {
     setScrollState({
       iniitialLoad: true,
-      hasMore: false,
+      hasMore: true,
       images: [],
       pageToLoad: 1,
     });
@@ -109,7 +203,6 @@ function SampleList(props) {
           return (
             <Grid.Column style={{ padding: "0 0.25rem" }}>
               <Sample
-                port={port}
                 sample={img}
                 selected={selected}
                 setSelected={setSelected}
@@ -133,7 +226,6 @@ function SampleList(props) {
         useWindow={true}
       >
         <Grid columns={4} style={{ margin: "-0.25rem" }}>
-          {" "}
           {content}
         </Grid>
       </InfiniteScroll>

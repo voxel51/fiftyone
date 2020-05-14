@@ -17,14 +17,14 @@ import connect from "../utils/connect";
 
 function Dataset(props) {
   const { path, url } = useRouteMatch();
-  const { connected, loading } = props;
+  const { connected, loading, port } = props;
   const stickyRef = createRef();
   const tabs = ["samples", "labels"];
   const [view, setView] = useState({ visible: false, sample: null });
   let src = null;
   if (view.sample) {
     const path = view.sample.filepath;
-    const host = "http://127.0.0.1:5151/";
+    const host = `http://127.0.0.1:${port}/`;
     src = `${host}?path=${path}`;
   }
 
