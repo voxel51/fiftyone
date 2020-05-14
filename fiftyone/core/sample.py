@@ -21,7 +21,6 @@ import six
 import warnings
 
 from mongoengine import (
-    connect,
     EmbeddedDocument,
     BooleanField,
     IntField,
@@ -34,12 +33,6 @@ from mongoengine.fields import BaseField
 
 import fiftyone.core.odm as foo
 import fiftyone.core.metadata as fom
-
-
-_DEFAULT_DATABASE = "fiftyone"
-
-
-_db = connect(_DEFAULT_DATABASE)
 
 
 class ODMSample(foo.ODMDocument):
