@@ -132,6 +132,7 @@ class Session(foc.HasClient):
             raise ValueError("Only one session is permitted")
 
         self._app_service = fos.AppService()
+        self._close = False
         self._dataset = None
         self._view = None
 
@@ -154,6 +155,8 @@ class Session(foc.HasClient):
 
         This terminates the FiftyOne Dashboard, if necessary.
         """
+        self._close = True
+        self._update_state()
         self._app_service.stop()
 
     # GETTERS #################################################################
@@ -220,6 +223,7 @@ class Session(foc.HasClient):
     def _update_state(self):
         # pylint: disable=attribute-defined-outside-init
         self.state = StateDescription(
+            close=self._close,
             dataset=self._dataset,
             view=self._view,
             selected=self.state.selected,

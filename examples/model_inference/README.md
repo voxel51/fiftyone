@@ -1,4 +1,4 @@
-# FiftyOne Model Inference-in-the-Loop
+# Model Inference-in-the-Loop with FiftyOne
 
 This walkthrough provides a glimpse into the possibilities for integrating
 FiftyOne into your machine learning workflows. It covers the following
