@@ -15,6 +15,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from copy import deepcopy
 import json
 
 from bson import json_util
@@ -49,6 +50,19 @@ class SerializableDocument(object):
                 indent=4,
             )
         )
+
+    def __copy__(self):
+        return self.copy()
+
+    def copy(self):
+        """Returns a copy of the document that does not have its `id` set.
+
+        Returns:
+            a :class:`ODMDocument`
+        """
+        doc = deepcopy(self)
+        doc.id = None
+        return doc
 
     def to_dict(self, extended=False):
         """Serializes this document to a JSON dictionary.
@@ -104,13 +118,16 @@ class SerializableDocument(object):
 
 
 class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
-    """@todo(Tyler)"""
+    """Base class to inherit from for a document that isn't stored in its own
+    collection.
+    """
 
     meta = {"abstract": True}
 
 
 class ODMDocument(Document, SerializableDocument):
-    """
+    """Base class to inherit from for documents that are stored in a MongoDB
+    collection.
 
     ODMDocument.id implementation details:
 
