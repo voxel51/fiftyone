@@ -179,20 +179,21 @@ def load_zoo_dataset(
         )
         info = zoo_dataset.load_dataset_info(dataset_dir)
 
+    if info.has_split:
+        name = "%s-%s" % (info.name, info.split)
+    else:
+        name = info.name
+
     if issubclass(info.dataset_type, fot.ImageClassificationDataset):
         return fo.Dataset.from_image_classification_dataset(
-            dataset_dir, name=info.name
+            dataset_dir, name=name
         )
 
     if issubclass(info.dataset_type, fot.ImageDetectionDataset):
-        return fo.Dataset.from_image_detection_dataset(
-            dataset_dir, name=info.name
-        )
+        return fo.Dataset.from_image_detection_dataset(dataset_dir, name=name)
 
     if issubclass(info.dataset_type, fot.ImageLabelsDataset):
-        return fo.Dataset.from_image_labels_dataset(
-            dataset_dir, name=info.name
-        )
+        return fo.Dataset.from_image_labels_dataset(dataset_dir, name=name)
 
     raise ValueError(
         "Unsupported dataset type '%s'"
@@ -249,6 +250,11 @@ class ZooDatasetInfo(etas.Serializable):
         self.labels_map = labels_map
 
         self._dataset_type = format
+
+    @property
+    def has_split(self):
+        """Whether the dataset has a split."""
+        return self.split is not None
 
     @property
     def dataset_type(self):
