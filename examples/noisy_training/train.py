@@ -6,6 +6,7 @@ so everything is available during the next steps in the walkthrough.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from __future__ import print_function
 from functools import partial
 import json
 import os
@@ -104,25 +105,51 @@ if valid_dataset is None:
         "train expects 'valid_dataset' in the global namespace. See README.md"
     )
 
+def update_progress(progress):
+    # progress is [0,1]
+    t = 51
+    i = int(progress*t)
+    r = t-i
+    print("\r[%s%s] %.1f%%" % ("#"*i, " "*r,  progress*100), end="")
+
+print("Caching the data in memory to support faster training.")
+print("Training images")
 _train_images = []
 _train_labels = []
-for sample in train_dataset.default_view().iter_samples():
-    image = spm.imread(sample.filepath)
+for index, sample in enumerate(train_dataset.default_view().iter_samples()):
+    image = np.array(spm.imread(sample.filepath))
     label = cifar10_rev[sample.get_label("ground_truth").label]
     _train_images.append(image)
     _train_labels.append(label)
 
+    if index % 100 == 0:
+        update_progress(index / len(train_dataset))
+update_progress(1)
+print()
+
+print("Validation images")
 _valid_images = []
 _valid_labels = []
-for sample in valid_dataset.default_view().iter_samples():
-    image = spm.imread(sample.filepath)
+for index, sample in enumerate(valid_dataset.default_view().iter_samples()):
+    image = np.array(spm.imread(sample.filepath))
     label = cifar10_rev[sample.get_label("ground_truth").label]
     _valid_images.append(image)
     _valid_labels.append(label)
 
+    if index % 100 == 0:
+        update_progress(index / len(train_dataset))
+update_progress(1)
+print()
+
 whole_dataset = {
-    'train': {'data': _train_images, 'targets': _train_labels},
-    'valid': {'data': _valid_images, 'targets': _valid_labels},
+    'train': {
+        'data': np.asarray(_train_images),
+        'targets': np.asarray(_train_labels)
+    },
+    'valid': {
+        'data': np.asarray(_valid_images),
+        'targets': np.asarray(_valid_labels)
+    }
 }
 
 print("Preprocessing training data")
@@ -152,14 +179,10 @@ train_transforms = [Crop(32, 32), FlipLR(), Cutout(8, 8)]
 # provided config.
 total_N = len(whole_train_set)
 
-# should be cleaner
-if(config.n_max < 0):
-    config.n_max = total_N
-
 start_N = round(config.p_initial * total_N)
 
 incr_N = ( 0 if config.n_rounds == 1 else
-    round((config.n_max-start_N) / (config.n_rounds-1))
+    round((total_N-start_N) / (config.n_rounds-1))
 )
 
 corrupt_N = round(config.p_corrupt * total_N)
