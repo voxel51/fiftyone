@@ -40,8 +40,9 @@ with open("requirements/common.txt") as reqs, open(
     requirements = eta_reqs.readlines() + reqs.readlines()
 
 requirements += [
-    "fiftyone-gui",
+    "fiftyone-brain",
     "fiftyone-db",
+    "fiftyone-gui",
 ]
 
 setup(
