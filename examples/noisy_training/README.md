@@ -94,9 +94,11 @@ XXX
 
 ## Run predictions on the dataset
 
-Using an off-the-shelf, model let's now add predictions to the dataset, which 
-are necessary for us to deduce some understanding of the possible label 
-mistakes.
+Using the model we just trained, let's now add predictions to the dataset so 
+that we can explore some of FiftyOne's capabilities in identifying hard samples 
+and possible mistakes in the labels, which we know are there because we added 
+them!
+
 
 ```py
 import sys
@@ -107,9 +109,6 @@ import torchvision
 from torch.utils.data import DataLoader
 
 import fiftyone.utils.torch as fout
-
-sys.path.insert(1, "PyTorch_CIFAR10")
-from cifar10_models import *
 
 
 def make_cifar10_data_loader(image_paths, sample_ids, batch_size):
@@ -136,27 +135,11 @@ def predict(model, imgs):
 
 
 #
-# Load a model
-#
-# Choices here are:
-#   vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn, resnet18, resnet34, resnet50
-#   densenet121, densenet161, densenet169, mobilenet_v2, googlenet
-#   inception_v3
-#
-# Model performance numbers are available at:
-#   https://github.com/huyvnphan/PyTorch_CIFAR10
-#
-
-model = resnet50(pretrained=True)
-model_name = "resnet50"
-
-#
 # Extract a few images to process (some of these will have been manipulated above)
 #
-
 num_samples = 1000
 batch_size = 20
-view = dataset.default_view().sample(num_samples)
+view = train_view.sample(num_samples)
 image_paths, sample_ids = zip(
     *[(s.filepath, s.id) for s in view.iter_samples()]
 )
@@ -165,6 +148,31 @@ data_loader = make_cifar10_data_loader(image_paths, sample_ids, batch_size)
 #
 # Perform prediction and store results in dataset
 #
+
+    #model.train(False) # == model.eval()
+    #
+    #correct = 0
+    #total = 0
+    #class_correct = list(0. for i in range(10))
+    #class_total = list(0. for i in range(10))
+    #with torch.no_grad():
+    #    for data in valid_batches.dataloader:
+    #        images, labels = data
+    #        inputs = dict(input=images.cuda().half())
+    #        outputs = model(inputs)
+    #        y = outputs['logits']
+    #        _, predicted = torch.max(y, 1)
+    #        total += labels.size(0)
+    #        labels_gpu = labels.cuda().half()
+    #        correct += (predicted == labels_gpu).sum().item()
+    #        c = (predicted == labels_gpu).squeeze()
+    #        for i in range(min(config.batch_size, len(labels))):
+    #            label = labels[i]
+    #            class_correct[label] += c[i].item()
+    #            class_total[label] += 1
+    #
+    #iteration_stats["validation_accuracy"] = correct / total
+    #
 
 for imgs, sample_ids in data_loader:
     predictions, _, logits = predict(model, imgs)
