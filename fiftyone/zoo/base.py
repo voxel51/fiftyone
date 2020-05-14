@@ -179,25 +179,26 @@ def load_zoo_dataset(
         )
         info = zoo_dataset.load_dataset_info(dataset_dir)
 
+    dataset_type = info.dataset_type
+
     if info.has_split:
         name = "%s-%s" % (info.name, info.split)
     else:
         name = info.name
 
-    if issubclass(info.dataset_type, fot.ImageClassificationDataset):
+    if issubclass(dataset_type, fot.ImageClassificationDataset):
         return fo.Dataset.from_image_classification_dataset(
             dataset_dir, name=name
         )
 
-    if issubclass(info.dataset_type, fot.ImageDetectionDataset):
+    if issubclass(dataset_type, fot.ImageDetectionDataset):
         return fo.Dataset.from_image_detection_dataset(dataset_dir, name=name)
 
-    if issubclass(info.dataset_type, fot.ImageLabelsDataset):
+    if issubclass(dataset_type, fot.ImageLabelsDataset):
         return fo.Dataset.from_image_labels_dataset(dataset_dir, name=name)
 
     raise ValueError(
-        "Unsupported dataset type '%s'"
-        % etau.get_class_name(info.dataset_type)
+        "Unsupported dataset type '%s'" % etau.get_class_name(dataset_type)
     )
 
 
