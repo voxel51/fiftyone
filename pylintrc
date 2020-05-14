@@ -292,7 +292,7 @@ ignored-classes=optparse.Values,thread._local,_thread._local
 # expressions are accepted.
 # @todo(Tyler/Brian) the disable for `cls` and  `self` are not the right way
 #                    of doing this...
-generated-members=torch.*,cls._fields_ordered,cls._fields,self._fields,self.id
+generated-members=torch.*,cls._fields_ordered,cls._fields,self._fields,self.id,self.to_json,cls.to_json,cls._from_son,cls.from_json
 
 # List of decorators that produce context managers, such as
 # contextlib.contextmanager. Add to this list to register other decorators that

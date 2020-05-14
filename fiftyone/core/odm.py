@@ -35,7 +35,9 @@ def drop_database():
     _db.drop_database(_DEFAULT_DATABASE)
 
 
-class SerializableDocumentMixin(object):
+class SerializableDocument(object):
+    """Mixin for documents to support serializing and de-serializing"""
+
     meta = {"abstract": True}
 
     def __str__(self):
@@ -101,13 +103,13 @@ class SerializableDocumentMixin(object):
         return cls.from_json(json_util.dumps(d), created=created)
 
 
-class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocumentMixin):
+class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
     """@todo(Tyler)"""
 
     meta = {"abstract": True}
 
 
-class ODMDocument(Document, SerializableDocumentMixin):
+class ODMDocument(Document, SerializableDocument):
     """
 
     ODMDocument.id implementation details:
