@@ -168,12 +168,15 @@ class ODMSample(ODMDocument):
         return os.path.basename(self.filepath)
 
     def __setattr__(self, name, value):
+        # all attrs starting with "_" or that exist and are not fields are
+        # deferred to super
         if name.startswith("_") or (
             hasattr(self, name) and name not in self._fields
         ):
             return super(ODMSample, self).__setattr__(name, value)
 
-        cls = type(self)
+        cls = self.__class__
+
         if hasattr(cls, name):
             if value is not None:
                 getattr(cls, name).validate(value)
@@ -184,25 +187,19 @@ class ODMSample(ODMDocument):
                 and isinstance(getattr(cls, name), BaseField)
                 and self._in_db
             ):
+                # autosave the change to existing attrs
                 self.save()
             return result
 
         warnings.warn(
-            "Pandas doesn't allow columns to be "
-            "created via a new attribute name - see "
-            "https://pandas.pydata.org/pandas-docs/"
-            "stable/indexing.html#attribute-access",
+            "Fiftyone doesn't allow fields to be "
+            "created via a new attribute name",
             stacklevel=2,
         )
-        result = super(ODMSample, self).__setattr__(name, value)
-        if name not in ["_cls", "id"] and isinstance(
-            getattr(cls, name), BaseField
-        ):
-            self.save()
-        return result
+        return super(ODMSample, self).__setattr__(name, value)
 
     def __getitem__(self, key):
-        if hasattr(self, key):
+        if isinstance(key, six.string_types) and hasattr(self, key):
             return self.__getattribute__(key)
         return super(ODMSample, self).__getitem__(key)
 
@@ -212,41 +209,72 @@ class ODMSample(ODMDocument):
                 "Invalid key: '%s'. Key cannot start with '_'" % key
             )
 
-        cls = type(self)
-
-        if hasattr(self, key) and key not in cls._fields:
+        if hasattr(self, key) and key not in self._fields:
             raise KeyError("Cannot set reserve word '%s'" % key)
 
-        # if not hasattr(self, key):
-        if key not in cls._fields:
-            # Mimicking setting a DynamicField from this code:
-            # >>> https://github.com/MongoEngine/mongoengine/blob/3db9d58dac138dd0e838c524f616ebe3d23db2ff/mongoengine/base/document.py#L170
-
-            kwargs = {"db_field": key}
-
+        if key not in self._fields:
             if isinstance(value, EmbeddedDocument):
-                field = EmbeddedDocumentField(type(value), null=True, **kwargs)
+                self.add_field(
+                    key, EmbeddedDocumentField, embedded_doc_type=type(value)
+                )
             elif isinstance(value, bool):
-                field = BooleanField(**kwargs)
+                self.add_field(key, BooleanField)
             elif isinstance(value, six.integer_types):
-                field = IntField(**kwargs)
+                self.add_field(key, IntField)
             elif isinstance(value, six.string_types):
-                field = StringField(**kwargs)
+                self.add_field(key, StringField)
             elif isinstance(value, list) or isinstance(value, tuple):
-                # @todo(Tyler) set the containing field type of ListField and
+                # @todo(Tyler) set the subfield of ListField and
                 #   ensure all elements are of this type
-                field = ListField(**kwargs)
+                self.add_field(key, ListField)
             elif isinstance(value, dict):
-                field = DictField(**kwargs)
+                self.add_field(key, DictField)
             else:
                 raise TypeError(
                     "Invalid type: '%s' could not be cast to Field"
                     % type(value)
                 )
 
-            field.name = key
-            cls._fields[key] = field
-            cls._fields_ordered += (key,)
-            setattr(cls, key, field)
-
         return self.__setattr__(key, value)
+
+    @classmethod
+    def add_field(
+        cls, field_name, field_type, embedded_doc_type=None, subfield=None
+    ):
+        """Add a new field to the dataset
+
+        Args:
+            field_name: the string name of the field to add
+            field_type: the type (subclass of BaseField) of the field to create
+            embedded_doc_type (None): the EmbeddedDocument type, used if
+                    field_type=EmbeddedDocumentField
+                ignored otherwise
+            subfield (None): the optional contained field for lists and dicts, if provided
+
+        """
+        if field_name in cls._fields:
+            raise ValueError("Field '%s' already exists" % field_name)
+
+        if not issubclass(field_type, BaseField):
+            raise ValueError(
+                "Invalid field type '%s' is not a subclass of '%s'"
+                % (field_type, BaseField)
+            )
+
+        kwargs = {"db_field": field_name}
+
+        if issubclass(field_type, EmbeddedDocumentField):
+            kwargs.update(
+                {"document_type": embedded_doc_type, "null": True,}
+            )
+        elif any(issubclass(field_type, ft) for ft in [ListField, DictField]):
+            if subfield is not None:
+                kwargs["field"] = subfield
+
+        # Mimicking setting a DynamicField from this code:
+        #   https://github.com/MongoEngine/mongoengine/blob/3db9d58dac138dd0e838c524f616ebe3d23db2ff/mongoengine/base/document.py#L170
+        field = field_type(**kwargs)
+        field.name = field_name
+        cls._fields[field_name] = field
+        cls._fields_ordered += (field_name,)
+        setattr(cls, field_name, field)
