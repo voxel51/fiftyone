@@ -79,7 +79,7 @@ them!
 XXX -> predict.py
 
 
-## Find the Mistakes
+## Analyze the Data 
 
 Now we can run a method from FiftyOne that estimate the hardness of the samples 
 we processed.  We can use this to find possible label mistakes both in the code 
@@ -87,9 +87,11 @@ and in the visualization.
 
 ```
 import fiftyone.brain.hardness as fbh
+import fiftyone.brain.mistakenness as fbm
 
 h_view = dataset.default_view().match_tag("processed")
-fbh.compute_hardness(h_view, model_name, "hardness")
+fbh.compute_hardness(h_view, "walkthrough", "hardness")
+fbm.compute_mistakenness(h_view, "walkthrough", key_insight="mistakenness")
 
 # Launch the FiftyOne dashboard
 session = fo.launch_dashboard()
@@ -106,11 +108,21 @@ view = dataset.default_view().match_tag("mistake")
 session.view = view
 
 # Show the samples we processed in rank order by the hardness
-mistake_view = (dataset.default_view()
-    .match_tag("processed")
+hardness_view = (h_view
     .sort_by("insights.hardness.scalar", reverse=True)
 )
-session.view = mistake_view
+session.view = hardness_view
+
+# Show the samples we processed in rank order by the hardness
+mistakennness_view = (h_view
+    .sort_by("insights.mistakenness.scalar", reverse=True)
+)
+session.view = mistakenness_view
+
+You could easily drop these findings into an iterative loop that attempts to 
+sequentially fix the mistakes, or remove them from training.  FiftyOne lets you 
+do this by integrating within your model training loop or via an export 
+procedure.
 
 ```
 
