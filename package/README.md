@@ -26,3 +26,45 @@ your target platform. To do this, switch to the `electron` folder and run
 several minutes to complete. Once the Electron app is built, switch to the
 `package/gui` folder and follow the packaging instructions for `fiftyone`
 above.
+
+## Testing package uploads locally
+
+You can spin up a local PyPI server instance (in this example, accessible at
+`localhost:5159`) with:
+
+```
+docker run --rm -d -p 5159:8080 pypiserver/pypiserver:latest -a . -P . /data/packages
+```
+
+Note that `-a . -P .` allows **unauthenticated uploads**, so do not use this in
+production!
+
+If you want to save packages across runs, you can bind `/data/packages` in the
+container to a local folder by adding `-v /path/to/local/folder:/data/packages`
+before `pypiserver/pypiserver:latest` in the above command. Note that this
+folder's permissions need to be set properly or you will run into 500 server
+errors when uploading packages.
+
+Before uploading packages to this instance, create `~/.pypirc` with:
+
+```
+[distutils]
+index-servers =
+    local
+
+[local]
+repository: http://localhost:5159
+username:
+password:
+```
+
+If you have a `~/.pypirc` file already, add the `[local]` section and `local`
+under `index-servers`. The `local` name can be changed as long as you are
+consistent.
+
+To upload a package to this instance, run the following command in the folder
+where you built the package:
+
+```
+python setup.py bdist_wheel upload -r local
+```
