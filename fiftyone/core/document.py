@@ -33,7 +33,9 @@ class BackedByDocument(object):
     New instances of :class:`BackedByDocument` subclasses can be created via
     the class's :func:`BackedByDocument.create` method.
 
-    Use :func:`BackedByDocument.copy`
+    Use :func:`BackedByDocument.copy` to create a copy of a
+    :class:`BackedByDocument` instance that has (or has not) been added to the
+    database.
 
     Args:
         document: an instance of the :class:`fiftyone.core.odm.ODMDocument`
