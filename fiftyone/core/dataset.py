@@ -203,7 +203,7 @@ class Dataset(foc.SampleCollection):
                 on what fields the dataset has)
 
         Returns:
-            the ID of the sample
+            the ID of the sample in the dataset
         """
         sample = self._Doc(*args, **kwargs)
         sample.save()
@@ -217,7 +217,7 @@ class Dataset(foc.SampleCollection):
                 the sample init call.
 
         Returns:
-            a list of sample IDs
+            a list of IDs of the samples in the dataset
         """
         samples = self._get_query_set().insert(
             [self._Doc(**kwargs) for kwargs in kwargs_list]
@@ -228,6 +228,37 @@ class Dataset(foc.SampleCollection):
         # @todo(Tyler) making this a TODO. Jason wants to add a tag to all
         #   samples in a view
         raise NotImplementedError("TODO")
+
+    def delete_sample(self, sample_or_id):
+        """Deletes the given sample from the dataset.
+
+        Args:
+            sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
+                ID to delete
+        """
+        if isinstance(sample_or_id, fos.ODMSample):
+            sample_id = sample_or_id.id
+        else:
+            sample_id = sample_or_id
+
+        del self[sample_id]
+
+    def delete_samples(self, samples_or_ids):
+        """Deletes the given samples from the dataset.
+
+        Args:
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
+                instances or sample IDs. For example, ``samples`` may be a
+                :class:`fiftyone.core.views.DatasetView`
+        """
+        # @todo(Tyler) optimize with bulk deletion
+        for sample_or_id in samples_or_ids:
+            self.delete_sample(sample_or_id)
+
+    def clear(self):
+        """Deletes all samples from the dataset."""
+        # @todo(Tyler) optimize by deleting the entire collection
+        self.delete_samples(self)
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
