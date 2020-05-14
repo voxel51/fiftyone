@@ -197,7 +197,7 @@ and in the visualization.
 import fiftyone.brain.mistakenness as fbm
 
 h_view = dataset.default_view().match_tag("processed")
-fbm.compute_mistakenness(h_view, model_name, "mistakenness")
+fbm.compute_mistakenness(h_view, model_name, key_insight="mistakenness")
 
 # Launch the FiftyOne dashboard
 session = fo.launch_dashboard()
