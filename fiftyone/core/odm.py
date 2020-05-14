@@ -58,10 +58,9 @@ class SerializableDocument(object):
         """Returns a copy of the document that does not have its `id` set.
 
         Returns:
-            a :class:`ODMDocument`
+            a :class:`SerializableDocument`
         """
         doc = deepcopy(self)
-        doc.id = None
         return doc
 
     def to_dict(self, extended=False):
@@ -117,7 +116,7 @@ class SerializableDocument(object):
         return cls.from_json(json_util.dumps(d), created=created)
 
 
-class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
+class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
     """Base class to inherit from for a document that isn't stored in its own
     collection.
     """
@@ -125,7 +124,7 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
     meta = {"abstract": True}
 
 
-class ODMDocument(Document, SerializableDocument):
+class ODMDocument(SerializableDocument, Document):
     """Base class to inherit from for documents that are stored in a MongoDB
     collection.
 
@@ -150,15 +149,15 @@ class ODMDocument(Document, SerializableDocument):
 
     meta = {"abstract": True}
 
-    def __str__(self):
-        return str(
-            json.dumps(
-                self.to_dict(extended=True),
-                separators=(",", ": "),
-                ensure_ascii=False,
-                indent=4,
-            )
-        )
+    def copy(self):
+        """Returns a copy of the document that does not have its `id` set.
+
+        Returns:
+            a :class:`ODMDocument`
+        """
+        doc = super(ODMDocument, self).copy()
+        doc.id = None
+        return doc
 
     @property
     def ingest_time(self):
