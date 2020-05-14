@@ -49,7 +49,7 @@ class SerializableDocumentMixin(object):
         )
 
     def to_dict(self, extended=False):
-        """Serializes this document to a JSON dictionary. TYPO
+        """Serializes this document to a JSON dictionary.
 
         Args:
             extended (False): whether to return extended JSON, i.e.,
