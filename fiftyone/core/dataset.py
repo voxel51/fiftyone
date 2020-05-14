@@ -24,6 +24,8 @@ import logging
 import numbers
 import os
 
+from mongoengine import EmbeddedDocumentField
+
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -477,14 +479,13 @@ class Dataset(foc.SampleCollection):
         )
         dataset = cls(name)
 
-        # @todo(Tyler) CONTINUE HERE
         # @todo(Tyler) make this more user friendly
-        label_type = type(_kwargs_list[0][group])
-        from mongoengine import EmbeddedDocumentField
-
-        print(label_type)
-        setattr(dataset._Doc, group, EmbeddedDocumentField(label_type))
-        assert False, "ASDF"
+        # add the ground_truth label field to the dataset
+        dataset._Doc.add_field(
+            field_name="ground_truth",
+            field_type=EmbeddedDocumentField,
+            embedded_doc_type=type(_kwargs_list[0][group]),
+        )
 
         dataset.add_samples(_kwargs_list)
         return dataset
