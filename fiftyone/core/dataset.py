@@ -137,7 +137,7 @@ class Dataset(foc.SampleCollection):
                 "obtain a DatasetView if you want to slice your samples"
             )
 
-        samples = self._get_query_set(id=sample_id)
+        samples = self._get_query_set().get(id=sample_id)
         if not samples:
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
