@@ -224,6 +224,11 @@ class Dataset(foc.SampleCollection):
         )
         return [str(s.id) for s in samples]
 
+    def update_samples(self):
+        # @todo(Tyler) making this a TODO. Jason wants to add a tag to all
+        #   samples in a view
+        raise NotImplementedError("TODO")
+
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
         entire dataset.

@@ -153,38 +153,7 @@ class ODMSample(foo.ODMDocument):
         return super(ODMSample, self).__getitem__(key)
 
     def __setitem__(self, key, value):
-        if key.startswith("_"):
-            raise KeyError(
-                "Invalid key: '%s'. Key cannot start with '_'" % key
-            )
-
-        if hasattr(self, key) and key not in self._fields:
-            raise KeyError("Cannot set reserve word '%s'" % key)
-
-        if key not in self._fields:
-            if isinstance(value, EmbeddedDocument):
-                self.add_field(
-                    key, EmbeddedDocumentField, embedded_doc_type=type(value)
-                )
-            elif isinstance(value, bool):
-                self.add_field(key, BooleanField)
-            elif isinstance(value, six.integer_types):
-                self.add_field(key, IntField)
-            elif isinstance(value, six.string_types):
-                self.add_field(key, StringField)
-            elif isinstance(value, list) or isinstance(value, tuple):
-                # @todo(Tyler) set the subfield of ListField and
-                #   ensure all elements are of this type
-                self.add_field(key, ListField)
-            elif isinstance(value, dict):
-                self.add_field(key, DictField)
-            else:
-                raise TypeError(
-                    "Invalid type: '%s' could not be cast to Field"
-                    % type(value)
-                )
-
-        return self.__setattr__(key, value)
+        return self.set_field(field_name=key, value=value, create=True)
 
     @classmethod
     def add_field(
@@ -228,3 +197,66 @@ class ODMSample(foo.ODMDocument):
         cls._fields[field_name] = field
         cls._fields_ordered += (field_name,)
         setattr(cls, field_name, field)
+
+    def set_field(self, field_name, value, create=False):
+        """Set the value of a field for a sample
+
+        Args:
+            field_name: the string name of the field to add
+            value: the value to set the field to
+            create (False): If True and field_name is not set on the dataset,
+                create a field on the dataset of a type implied by value
+
+        Raises:
+            ValueError: if:
+                the field_name is invalid
+                the field_name does not exist and create=False
+        """
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name: '%s'. Field name cannot start with '_'"
+                % field_name
+            )
+
+        if hasattr(self, field_name) and field_name not in self._fields:
+            raise ValueError("Cannot set reserve word '%s'" % field_name)
+
+        if field_name not in self._fields:
+            if create:
+                self._add_implied_field(field_name, value)
+            else:
+                raise ValueError(
+                    "Sample does not have field '%s'. Use `create=True` to create a new field."
+                )
+
+        return self.__setattr__(field_name, value)
+
+    @classmethod
+    def _add_implied_field(cls, field_name, value):
+        """Determine the field type from the value type"""
+        assert (
+            field_name not in cls._fields
+        ), "Attempting to add field that already exists"
+
+        if isinstance(value, EmbeddedDocument):
+            cls.add_field(
+                field_name,
+                EmbeddedDocumentField,
+                embedded_doc_type=type(value),
+            )
+        elif isinstance(value, bool):
+            cls.add_field(field_name, BooleanField)
+        elif isinstance(value, six.integer_types):
+            cls.add_field(field_name, IntField)
+        elif isinstance(value, six.string_types):
+            cls.add_field(field_name, StringField)
+        elif isinstance(value, list) or isinstance(value, tuple):
+            # @todo(Tyler) set the subfield of ListField and
+            #   ensure all elements are of this type
+            cls.add_field(field_name, ListField)
+        elif isinstance(value, dict):
+            cls.add_field(field_name, DictField)
+        else:
+            raise TypeError(
+                "Invalid type: '%s' could not be cast to Field" % type(value)
+            )
