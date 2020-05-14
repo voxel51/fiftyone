@@ -1,6 +1,6 @@
-# FiftyOne Finding Labeling Mistake Walkthrough
+# Finding Label Mistakes with FiftyOne
 
-This walkthrough provides an example of how FiftyOne can be used to help you 
+This walkthrough provides an example of how FiftyOne can be used to help you
 find mistakes in your labels. It covers the following concepts:
 
 -   Loading your existing dataset in FiftyOne
@@ -8,20 +8,19 @@ find mistakes in your labels. It covers the following concepts:
 -   Computing insights into your dataset relating to possible mistakes
 -   Visualizing the mistake in the FiftyOne dashboard
 
-This walkthrough is self-contained.  If you have already completed the Model 
-Inference walkthrough, then you can skip the setup and data download sections. 
+This walkthrough is self-contained. If you have already completed the Model
+Inference walkthrough, then you can skip the setup and data download sections.
 
 ## Setup
 
--   Install `torch` and `torchvision`, if necessary:
+Install `torch` and `torchvision`, if necessary:
 
 ```
 pip install torch
 pip install torchvision
 ```
 
--   Download the test split of the CIFAR-10 dataset to
-    `~/fiftyone/cifar10/test`:
+Download the test split of the CIFAR-10 dataset to `~/fiftyone/cifar10/test`:
 
 ```py
 import fiftyone.zoo as foz
@@ -34,7 +33,7 @@ foz.load_zoo_dataset("cifar10")
 foo.drop_database()
 ```
 
--   Download some pretrained CIFAR-10 PyTorch models
+Download some pretrained CIFAR-10 PyTorch models
 
 ```
 # Download the software
@@ -51,8 +50,8 @@ rm cifar10_models/models.zip
 
 ## Manipulating the data
 
-For this walkthrough, we will artificially perturb an existing dataset with 
-mistakes on the labels.  Of course, in your normal workflow, you would not add 
+For this walkthrough, we will artificially perturb an existing dataset with
+mistakes on the labels. Of course, in your normal workflow, you would not add
 labeling mistakes; this is only for the sake of the walkthrough.
 
 Let's use the CIFAR-10 dataset in the zoo and work with a subset of it.
@@ -83,8 +82,8 @@ for sample in dataset.default_view().sample(1000).iter_samples():
 
 ## Run predictions on the dataset
 
-Using an off-the-shelf, model let's now add predictions to the dataset, which 
-are necessary for us to deduce some understanding of the possible label 
+Using an off-the-shelf, model let's now add predictions to the dataset, which
+are necessary for us to deduce some understanding of the possible label
 mistakes.
 
 ```py
@@ -140,7 +139,8 @@ model = resnet50(pretrained=True)
 model_name = "resnet50"
 
 #
-# Extract a few images to process (some of these will have been manipulated above)
+# Extract a few images to process
+# (some of these will have been manipulated above)
 #
 
 num_samples = 1000
@@ -160,36 +160,44 @@ for imgs, sample_ids in data_loader:
 
     # Add predictions to your FiftyOne dataset
     for the_sample_id, the_prediction, the_logits in zip(
-        sample_ids, predictions, logits 
+        sample_ids, predictions, logits
     ):
         sample = dataset[the_sample_id]
         sample.add_tag("processed")
         sample.add_label(
-            model_name, fo.ClassificationLabel.create(labels_map[the_prediction], 
-                                                      logits=the_logits)
+            model_name,
+            fo.ClassificationLabel.create(
+                labels_map[the_prediction], logits=the_logits
+            )
         )
 
 #
-# Print some information about the Predictions
+# Print some information about the predictions
 #
-num_processed = len(dataset.default_view().match_tag("processed"))
-num_mistaken = len(dataset.default_view().match_tag("processed").match_tag("mistake"))
-print("%d processed and %d of these have artificially corrupted labels" %
-    (num_processed, num_mistaken))
+
+num_processed = len(
+    dataset.default_view().match_tag("processed")
+)
+num_corrupted = len(
+    dataset.default_view().match_tag("processed").match_tag("mistake")
+)
+print(
+    "Processed %d images and %d of these have artificially corrupted labels" %
+    (num_processed, num_corrupted)
+)
 ```
 
+## Find the mistakes
 
-## Find the Mistakes
-
-Now we can run a method from FiftyOne that estimate the hardness of the samples 
-we processed.  We can use this to find possible label mistakes both in the code 
+Now we can run a method from FiftyOne that estimate the hardness of the samples
+we processed. We can use this to find possible label mistakes both in the code
 and in the visualization.
 
-```
-import fiftyonebrain.hardness as fbh
+```py
+import fiftyone.brain.mistakenness as fbm
 
 h_view = dataset.default_view().match_tag("processed")
-fbh.compute_hardness(h_view, model_name, "hardness")
+fbm.compute_mistakenness(h_view, model_name, key_insight="mistakenness")
 
 # Launch the FiftyOne dashboard
 session = fo.launch_dashboard()
@@ -208,10 +216,9 @@ session.view = view
 # Show the samples we processed in rank order by the hardness
 mistake_view = (dataset.default_view()
     .match_tag("processed")
-    .sort_by("insights.hardness.scalar", reverse=True)
+    .sort_by("insights.mistakenness.scalar", reverse=True)
 )
 session.view = mistake_view
-
 ```
 
 ## Copyright

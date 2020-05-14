@@ -112,6 +112,47 @@ class CIFAR10Dataset(foz.ZooDataset):
         )
 
 
+class Caltech101Dataset(foz.ZooDataset):
+    """The Caltech-101 dataset of images.
+
+    The dataset consists of pictures of objects belonging to 101 classes, plus
+    one background clutter class. Each image is labelled with a single object.
+    Each class contains roughly 40 to 800 images, totalling around 9k images.
+    Images are of variable sizes, with typical edge lengths of 200-300 pixels.
+    This version contains image-level labels only.
+
+    Dataset size:
+        125.64 MiB
+
+    Source:
+        http://www.vision.caltech.edu/Image_Datasets/Caltech101
+    """
+
+    @property
+    def name(self):
+        return "caltech101"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train")
+
+    @property
+    def default_split(self):
+        return "test"
+
+    def _download_and_prepare(self, dataset_dir, split):
+        get_class_labels_fcn = lambda info: info.features["label"].names
+        sample_parser = _TFDSImageClassificationSampleParser()
+        return _download_and_prepare(
+            self,
+            split,
+            "caltech101",
+            dataset_dir,
+            get_class_labels_fcn,
+            sample_parser,
+        )
+
+
 class ImageNet2012Dataset(foz.ZooDataset):
     """The ImageNet 2012 dataset.
 
@@ -416,6 +457,7 @@ class VOC2012Dataset(foz.ZooDataset):
 foz.AVAILABLE_DATASETS.update(
     {
         "mnist": MNISTDataset,
+        "caltech101": Caltech101Dataset,
         "cifar10": CIFAR10Dataset,
         "imagenet": ImageNet2012Dataset,  # default ImageNet
         "imagenet-2012": ImageNet2012Dataset,
