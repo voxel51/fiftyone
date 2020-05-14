@@ -15,6 +15,8 @@ import copy
 # @todo support Python 2.7 by handling singledispatch properly
 from functools import partial, singledispatch
 from itertools import chain
+import time
+
 import numpy as np
 import torch
 from torch import nn
@@ -23,7 +25,28 @@ from torch import nn
 # This is a small model with a fixed size, so let cudnn optimize
 torch.backends.cudnn.benchmark = True
 
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+cpu = torch.device("cpu")
+
+
 ## Utils; should they be moved elsewhere?
+class Timer():
+    def __init__(self, synch=None):
+        self.synch = synch or (lambda: None)
+        self.synch()
+        self.times = [time.perf_counter()]
+        self.total_time = 0.0
+
+    def __call__(self, include_in_total=True):
+        self.synch()
+        self.times.append(time.perf_counter())
+        delta_t = self.times[-1] - self.times[-2]
+        if include_in_total:
+            self.total_time += delta_t
+        return delta_t
+
+
 def path_iter(nested_dict, pfx=()):
     for name, val in nested_dict.items():
         if isinstance(val, dict): yield from path_iter(val, (*pfx, name))

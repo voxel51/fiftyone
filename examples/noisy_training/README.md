@@ -4,13 +4,13 @@ This walkthrough provides an example of how FiftyOne can be used to help you
 find mistakes in your labels during a model-training procedure. It covers the 
 following concepts:
 
--   Integrating your existing model-training loop into FiftyOne
+-   Integrating your existing model-training loop with FiftyOne
 -   Adding predictions from your model to your FiftyOne dataset
--   Computing insights into your dataset relating to possible mistakes
--   Visualizing the mistakes in the FiftyOne dashboard
+-   Computing insights into your dataset relating to possible problems with the 
+    datasets
+-   Visualizing the problems in the FiftyOne dashboard
 
-This walkthrough is self-contained.  If you have already completed the Model 
-Inference walkthrough, then you can skip the setup section. 
+This walkthrough is self-contained.  
 
 ## Setup
 
@@ -39,14 +39,19 @@ foz.load_zoo_dataset("cifar10", split="test")
 foo.drop_database()
 ```
 
+We use CIFAR-10 here as an illustrative example and use it via the FiftyOne 
+zoo.  However, this is not a requirement for using FiftyOne.  You can use your 
+datasets no matter where they are.  Refer to the other, data-related 
+walkthroughs for more examples.
+
 
 ## Manipulating the data
 
-For this walkthrough, we will artificially perturb an existing dataset with 
-mistakes on the labels.  Of course, in your normal workflow, you would not add 
-labeling mistakes; this is only for the sake of the walkthrough.  So, let's 
-manipulate the dataset and then we will actually train the model using the bad 
-labels.
+For this walkthrough, we will artificially perturb the existing dataset with 
+mistakes on the labels to create a noisy-training scenario.  Of course, in your 
+normal workflow, you would not add labeling mistakes; this is only for the sake 
+of the walkthrough.  So, let's manipulate the dataset and then we will actually 
+train the model using the bad labels.
 
 Let's continue to use the CIFAR-10 dataset in the FiftyOne zoo for ease, but 
 without loss of generality
@@ -61,8 +66,8 @@ valid_dataset = foz.load_zoo_dataset("cifar10", split="test")
 
 labels_map = "airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck".split(', ')
 
-# make 10% samples artificially be mistakes
-artificial_mistakes = 0.1
+# make 20% samples artificially be mistakes
+artificial_mistakes = 0.2
 num_mistakes = len(train_dataset)*artificial_mistakes
 
 mistake_label = fo.ClassificationLabel.create("yes")
@@ -83,7 +88,7 @@ for sample in train_dataset.default_view().sample(num_mistakes).iter_samples():
 
 ## Train and save a model
 
-Using the simple model provided in `./simple_resnet.py`, let's now train a model and save it to disk.  We will train the model using the FiftyOne dataset we made above.  This is a lightweight wrapper around the original dataset.  Of course, in your work, you might choose to interact with your data prior to it being wrapped by FiftyOne; that's good, FiftyOne will work with you on your terms.
+Using the simple model provided in `./simple_resnet.py`, let's now train a model and save it to disk.  We will train the model using the FiftyOne dataset we made above.  This is a lightweight wrapper around the original dataset.  Of course, in your work, you might choose to interact with your data prior to it being wrapped by FiftyOne; all good, FiftyOne will work with you on your terms.
 
 XXX
 

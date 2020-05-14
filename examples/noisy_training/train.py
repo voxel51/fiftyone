@@ -1,6 +1,6 @@
 """
-Trains a clean model using the simple_resnet code.  Drops everything into the
-global namespace for the sake of the walkthrough.
+Trains a clean model using the simple_resnet code and uses the global namespace
+so everything is available during the next steps in the walkthrough.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -10,19 +10,22 @@ from functools import partial
 import json
 import os
 import random
+import scipy.misc as spm
 import sys
 import time
 
-from .simple_resnet import *
+from simple_resnet import *
 
-from datasets import *
-from utils import Timer
 
 # Settings; defaults are fine if you have a GPU.  Otherwise, you'll want to
 # reduce some values just to get the gist of the walkthrough
 settings = {}
-# May need to reduce these for your system
-settings['batch_size'] = 512
+# These settings are for a powerful GPU with more than 6GBs Memory
+#settings['batch_size'] = 512
+#settings['take'] = None
+# These will work on GPU's with 4GB RAM
+# You may need to lower further to run the walkthrough
+settings['batch_size'] = 36
 settings['take'] = 10000
 # 24 gets us to a good point in this setup
 settings['epochs'] = 24
@@ -43,20 +46,26 @@ class Config:
         self.batch_size = d["batch_size"]
         self.epochs = d["epochs"]
         self.model_path = d["model_path"]
-        self.n_rounds = d["num_rounds"]
-        self.p_initial = d["percent_initial"]
+        self.n_rounds = d["n_rounds"]
+        self.p_initial = d["p_initial"]
         self.take = d["take"]
 
     def __str__(self):
         return str(vars(self))
 
+
 config = Config(settings)
+
 
 ##  Dataset Setup
 cifar10_mean, cifar10_std = [
     (125.31, 122.95, 113.87), # equals np.mean(cifar10()['train']['data'], axis=(0,1,2))
     (62.99, 62.09, 66.70), # equals np.std(cifar10()['train']['data'], axis=(0,1,2))
 ]
+
+cifar10_map = "airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck".split(', ')
+cifar10_rev = {name: index for index, name in enumerate(cifar10_map)}
+N_labels = 10
 
 class DataLoader():
     def __init__(self, dataset, batch_size, shuffle, set_random_choices=False, num_workers=0, drop_last=False):
@@ -73,7 +82,7 @@ class DataLoader():
         return ({'input': x.to(device).half(), 'target': y.to(device).long()} for (x,y) in self.dataloader)
 
     def __len__(self):
-
+        return len(self.dataloader)
 
 ## Initial Data Input
 # We are going to cache the data in memory to make model training faster.
@@ -82,7 +91,40 @@ class DataLoader():
 
 # Produces train_set and valid_set that are lists of tuples: (image, label)
 timer = Timer()
-whole_dataset = cifar10(root=DATA_DIR)
+# remove
+#whole_dataset = cifar10(root=DATA_DIR)
+#
+
+if train_dataset is None:
+    raise ValueError(
+        "train expects 'train_dataset' in the global namespace. See README.md"
+    )
+if valid_dataset is None:
+    raise ValueError(
+        "train expects 'valid_dataset' in the global namespace. See README.md"
+    )
+
+_train_images = []
+_train_labels = []
+for sample in train_dataset.default_view().iter_samples():
+    image = spm.imread(sample.filepath)
+    label = cifar10_rev[sample.get_label("ground_truth").label]
+    _train_images.append(image)
+    _train_labels.append(label)
+
+_valid_images = []
+_valid_labels = []
+for sample in valid_dataset.default_view().iter_samples():
+    image = spm.imread(sample.filepath)
+    label = cifar10_rev[sample.get_label("ground_truth").label]
+    _valid_images.append(image)
+    _valid_labels.append(label)
+
+whole_dataset = {
+    'train': {'data': _train_images, 'targets': _train_labels},
+    'valid': {'data': _valid_images, 'targets': _valid_labels},
+}
+
 print("Preprocessing training data")
 transforms = [
     partial(normalise, mean=np.array(cifar10_mean, dtype=np.float32), std=np.array(cifar10_std, dtype=np.float32)),
@@ -101,9 +143,6 @@ if config.take:
     print(f"using a subset of the data for the model training")
     print(f"train set: {len(whole_train_set)} samples")
     print(f"valid set: {len(valid_set)} samples")
-
-# function of dataset
-N_labels = 10
 
 # set up the variables for training the model in each increment of the dataset size
 lr_schedule = PiecewiseLinear([0, 5, config.epochs], [0, 0.4, 0])
