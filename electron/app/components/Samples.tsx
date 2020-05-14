@@ -28,16 +28,36 @@ function chunkArray(array, size) {
   return result;
 }
 
-function Sample({ sample, port }) {
+function Sample({ sample, port, setSelected, selected, setView }) {
   const host = `http://127.0.0.1:${port}`;
   const src = `${host}?path=${sample.filepath}`;
-  return <img src={src} style={{ width: "100%" }} />;
+  const socket = getSocket(port, "state");
+  const id = sample._id.$oid;
+  return (
+    <Image
+      src={src}
+      style={{
+        width: "100%",
+        border: selected[id] ? "1px solid black" : "none",
+      }}
+      onClick={() => {
+        const newSelected = { ...selected };
+        const event = newSelected[id] ? "remove_selection" : "add_selection";
+        newSelected[id] = newSelected[id] ? false : true;
+        setSelected(newSelected);
+        socket.emit(event, id, (data) => {
+          dispatch(updateState(data));
+        });
+      }}
+    />
+  );
 }
 
 function SampleList(props) {
   const { state, setView, port } = props;
   const hasDataset = Boolean(state && state.dataset);
   const socket = getSocket(port, "state");
+  const [selected, setSelected] = useState({});
   const [scrollState, setScrollState] = useState({
     initialLoad: true,
     hasMore: true,
@@ -84,11 +104,17 @@ function SampleList(props) {
   const chunkedImages = chunkArray(scrollState.images, 4);
   const content = chunkedImages.map((imgs) => {
     return (
-      <Grid.Row>
+      <Grid.Row style={{ padding: "0.25rem 0" }}>
         {imgs.map((img) => {
           return (
-            <Grid.Column>
-              <Sample port={port} sample={img} />
+            <Grid.Column style={{ padding: "0 0.25rem" }}>
+              <Sample
+                port={port}
+                sample={img}
+                selected={selected}
+                setSelected={setSelected}
+                setView={setView}
+              />
             </Grid.Column>
           );
         })}
@@ -106,7 +132,10 @@ function SampleList(props) {
         loader={<Loader />}
         useWindow={true}
       >
-        <Grid columns={4}> {content}</Grid>
+        <Grid columns={4} style={{ margin: "-0.25rem" }}>
+          {" "}
+          {content}
+        </Grid>
       </InfiniteScroll>
       {scrollState.hasMore ? <Loader /> : ""}
     </>
