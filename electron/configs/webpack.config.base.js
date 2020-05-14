@@ -12,7 +12,7 @@ export default {
   module: {
     rules: [
       {
-        test: /\.tsx?$/,
+        test: /\.(tsx|js|jsx|ts)$/,
         exclude: /node_modules/,
         use: {
           loader: "babel-loader",
@@ -36,6 +36,9 @@ export default {
   resolve: {
     extensions: [".js", ".jsx", ".json", ".ts", ".tsx"],
     modules: [path.join(__dirname, "..", "app"), "node_modules"],
+    alias: {
+      player51: path.join(__dirname, "../app/player51/"),
+    },
   },
 
   plugins: [

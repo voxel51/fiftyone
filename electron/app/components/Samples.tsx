@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Card,
   Grid,
@@ -14,6 +14,8 @@ import {
 } from "semantic-ui-react";
 import InfiniteScroll from "react-infinite-scroller";
 import { Dimmer, Loader } from "semantic-ui-react";
+
+import Player51 from "../player51/build/cjs/player51.min.js";
 
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
@@ -122,8 +124,10 @@ const Sample = connect(
         src={src}
         style={{
           width: "100%",
+          position: "relative",
           border: selected[id] ? "1px solid black" : "none",
         }}
+        sample={sample}
         onClick={() => handleClick()}
         onDoubleClick={() => setView({ visible: true, sample })}
       />
@@ -131,15 +135,61 @@ const Sample = connect(
   }
 );
 
+const loadOverlay = (labels) => {
+  const objects = [];
+  for (const i in labels) {
+    const label = labels[i];
+    for (const j in label.detections) {
+      const detection = label.detections[j];
+      const bb = detection.bounding_box;
+      objects.push({
+        label: detection.label,
+        bounding_box: {
+          top_left: { x: bb[0], y: bb[1] },
+          bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
+        },
+      });
+    }
+  }
+  return { objects: { objects: objects } };
+};
+
 const SpecialImage = (props) => {
-  const { onClick, onDoubleClick, src, style } = props;
+  const { onClick, onDoubleClick, src, style, sample } = props;
+  const [player, setPlayer] = useState(undefined);
+  const [isLoading, setIsLoading] = useState(true);
   const [handleClick, handleDoubleClick] = useClickPreventionOnDoubleClick(
     onClick,
     onDoubleClick
   );
+  const overlay = loadOverlay(sample.labels);
+  const loadPlayer = () => {
+    let player;
+    player = new Player51(
+      {
+        media: {
+          src,
+          type: "image/jpg",
+        },
+      },
+      overlay
+    );
+    player.thumbnailMode();
+    setPlayer(player);
+    player.render(document.getElementById(`${src}`));
+    if (player.renderer.eleImage) {
+      player.renderer.eleImage.addEventListener("load", function () {
+        setIsLoading(false);
+      });
+    }
+  };
+
+  useEffect(() => {
+    loadPlayer();
+  }, []);
   return (
-    <Image
-      src={src}
+    <div
+      id={src}
       style={style}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
