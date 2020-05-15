@@ -9,10 +9,11 @@ import {
   Sticky,
 } from "semantic-ui-react";
 
-import routes from "../constants/routes.json";
-import Samples from "../components/Samples";
 import Labels from "../components/Labels";
+import Player51 from "../components/Player51";
+import Samples from "../components/Samples";
 import Search from "../components/Search";
+import routes from "../constants/routes.json";
 import connect from "../utils/connect";
 
 function Dataset(props) {
@@ -41,7 +42,7 @@ function Dataset(props) {
       <Sidebar
         target={stickyRef}
         onHide={() => setView({ visible: false, sample: null })}
-        style={{ background: "black", zIndex: 10000 }}
+        style={{ background: "black", zIndex: 10000, width: "50%" }}
         as={Menu}
         animation="overlay"
         direction="right"
@@ -51,7 +52,14 @@ function Dataset(props) {
       >
         {view.sample ? (
           <>
-            <Image style={{ width: "100%" }} src={src} />
+            <Player51
+              src={src}
+              style={{
+                width: "100%",
+                position: "relative",
+              }}
+              sample={view.sample}
+            />
             <pre style={{ color: "white" }}>
               {JSON.stringify(view.sample, null, 2)}
             </pre>
