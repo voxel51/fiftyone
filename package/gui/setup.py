@@ -19,6 +19,16 @@ class CustomBdistWheel(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # not pure Python
         self.root_is_pure = False
+        # rewrite platform name to match what Electron supports
+        # https://www.electronjs.org/docs/tutorial/support#supported-platforms
+        if self.plat_name.startswith("mac"):
+            self.plat_name = "macosx_10_10_x86_64"
+        elif self.plat_name.startswith("linux"):
+            # we only distribute 64-bit Linux binaries, even though Electron
+            # also provides 32-bit binaries
+            self.plat_name = "linux_x86_64"
+        else:
+            raise ValueError("Unsupported platform: %r" % self.plat_name)
 
     def get_tag(self):
         impl, abi_tag, plat_name = bdist_wheel.get_tag(self)
