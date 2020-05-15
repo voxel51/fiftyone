@@ -1,7 +1,11 @@
 """
-FiftyOne meta-datasets. The MetaDataset is a database collection used to
-keep track of all persistent datasets. Also relevant without persistence
-for actions like: `list_dataset_names()`
+FiftyOne meta-datasets.
+
+The MetaDataset is a database collection used to keep track of all persistent
+datasets. Also relevant without persistence for actions like:
+
+        list_dataset_names()
+
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

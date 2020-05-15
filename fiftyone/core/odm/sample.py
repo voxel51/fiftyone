@@ -1,5 +1,9 @@
 """
+Backing Document classes for samples.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 # pragma pylint: disable=redefined-builtin
 # pragma pylint: disable=unused-wildcard-import
@@ -46,6 +50,13 @@ class SampleBackingDocument(object):
     def add_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
+        raise NotImplementedError("Subclass must implement")
+
+    @property
+    def dataset_name(self):
+        """The name of the dataset to which this sample belongs, or ``None`` if
+        it has not been added to a dataset.
+        """
         raise NotImplementedError("Subclass must implement")
 
     def get_field(self, field_name):
@@ -170,21 +181,9 @@ class ODMSample(ODMDocument, SampleBackingDocument):
         setattr(cls, field_name, field)
 
     @property
-    def in_dataset(self):
-        """Whether the sample has been added to a dataset."""
-        # @todo(Tyler) I don't want this function to be lost in the changes
-        #   I'm making so I'm leaving it here. May become irrelevant or change
-        #   so I'll worry about it later
-        raise NotImplementedError("TODO")
-        # return self._dataset is not None
-
-    @property
     def dataset_name(self):
-        """The name of the dataset to which this sample belongs, or ``None`` if
-        it has not been added to a dataset.
-        """
-        # @todo(Tyler) maybe get rid of this?
-        raise NotImplementedError("TODO")
+        """The name of the dataset to which this sample belongs"""
+        return self.__class__.__name__
 
     def __setattr__(self, name, value):
         # all attrs starting with "_" or that exist and are not fields are

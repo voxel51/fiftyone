@@ -221,12 +221,20 @@ class Dataset(foc.SampleCollection):
             args and kwargs used to initialize a sample (this varies depending
                 on what fields the dataset has)
 
+            # @todo(Tyler) ingest samples, not kwargs
+            sample: a :class:`fiftyone.core.sample.Sample`
+
         Returns:
             the ID of the sample in the dataset
         """
         doc = self._Doc(*args, **kwargs)
         doc.save()
         return str(doc.id)
+
+        # @todo(Tyler) ingest samples, not kwargs
+        # sample = self._ingest_sample(sample)
+        # sample._save()
+        # return sample.id
 
     def add_samples(self, kwargs_list):
         """Adds the given samples to the dataset.
@@ -253,6 +261,13 @@ class Dataset(foc.SampleCollection):
         )
         return [str(doc.id) for doc in docs]
 
+        # @todo(Tyler) ingest samples, not kwargs
+        # samples = [self._ingest_sample(s) for s in samples]
+        # sample_docs = self._get_query_set().insert(
+        #     [s._backing_doc for s in samples]
+        # )
+        # return [str(s.id) for s in sample_docs]
+
     def update_samples(self):
         # @todo(Tyler) making this a TODO. Jason wants to add a tag to all
         #   samples in a view
@@ -265,7 +280,7 @@ class Dataset(foc.SampleCollection):
             sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
                 ID to delete
         """
-        if isinstance(sample_or_id, foo.ODMSample):
+        if isinstance(sample_or_id, fos.Sample):
             sample_id = sample_or_id.id
         else:
             sample_id = sample_or_id

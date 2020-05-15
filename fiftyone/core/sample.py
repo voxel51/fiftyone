@@ -89,18 +89,14 @@ class Sample(object):
     @property
     def in_dataset(self):
         """Whether the sample has been added to a dataset."""
-        # @todo(Tyler)
-        raise NotImplementedError("TODO")
-        return self._dataset is not None
+        return self.dataset_name is not None
 
     @property
     def dataset_name(self):
         """The name of the dataset to which this sample belongs, or ``None`` if
         it has not been added to a dataset.
         """
-        # @todo(Tyler)
-        raise NotImplementedError("TODO")
-        return self._dataset.name if self.in_dataset else None
+        return self._doc.dataset_name
 
     def get_field_schema(self, ftype=None):
         """@todo(Tyler)"""
@@ -224,3 +220,12 @@ class Sample(object):
         been inserted into the database.
         """
         return self._doc.in_db
+
+    @property
+    def _dataset(self):
+        if self._in_db:
+            # @todo(Tyler) should this import be cached?
+            from fiftyone.core.dataset import load_dataset
+
+            return load_dataset(self.dataset_name)
+        return None
