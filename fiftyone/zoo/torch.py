@@ -239,7 +239,7 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
             both splits: ILSVRC2012_devkit_t12.tar.gz
             train split: ILSVRC2012_img_train.tar
-             test split: ILSVRC2012_img_val.tar
+       validation split: ILSVRC2012_img_val.tar
 
     You need to register on http://www.image-net.org/download-images in
     order to get the link to download the dataset.
