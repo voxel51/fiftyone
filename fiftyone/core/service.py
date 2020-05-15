@@ -100,6 +100,12 @@ class AppService(Service):
             elif os.path.isfile("package.json"):
                 # dev build
                 args = ["yarn", "dev"]
+            elif os.path.isdir("FiftyOne.app"):
+                # -W: wait for the app to terminate
+                # -n: open a new instance of the app
+                # TODO: the app doesn't run as a subprocess of `open`, so it
+                # won't get killed by stop()
+                args = ["open", "-W", "-n", "./FiftyOne.app"]
             else:
                 # TODO: support macOS, etc
                 raise RuntimeError(
@@ -117,6 +123,8 @@ class AppService(Service):
     def stop(self):
         """Stops the AppService."""
         # TODO: python <3.3 compat
+        if not getattr(self, "process", None):
+            return
         self.process.send_signal(signal.SIGINT)
         try:
             self.process.wait(timeout=5)
