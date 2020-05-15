@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { createRef, useState, useRef, useEffect } from "react";
 import {
   Card,
   Grid,
@@ -20,6 +20,7 @@ import Player51 from "../player51/build/cjs/player51.min.js";
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
+import oov from "../player51/test/data/test.json";
 
 function chunkArray(array, size) {
   let result = [];
@@ -120,7 +121,7 @@ const Sample = connect(
     };
 
     return (
-      <SpecialImage
+      <PlayerFiftyOne
         src={src}
         style={{
           width: "100%",
@@ -154,48 +155,38 @@ const loadOverlay = (labels) => {
   return { objects: { objects: objects } };
 };
 
-const SpecialImage = (props) => {
-  const { onClick, onDoubleClick, src, style, sample } = props;
-  const [player, setPlayer] = useState(undefined);
-  const [isLoading, setIsLoading] = useState(true);
-  const [handleClick, handleDoubleClick] = useClickPreventionOnDoubleClick(
-    onClick,
-    onDoubleClick
-  );
-  const overlay = loadOverlay(sample.labels);
-  const loadPlayer = () => {
-    let player;
-    player = new Player51(
-      {
-        media: {
-          src,
-          type: "image/jpg",
-        },
+class PlayerFiftyOne extends React.Component {
+  constructor(props) {
+    super(props);
+    this.props = props;
+    const overlay = loadOverlay(props.sample.labels);
+    this.id = props.sample._id.$oid;
+    this.player = new Player51({
+      media: {
+        src: props.src,
+        type: "image/jpg",
       },
-      overlay
+      overlay: overlay,
+    });
+    this.src = props.src;
+    this.selected = props.selected;
+  }
+  componentDidMount() {
+    this.player.thumbnailMode();
+    this.player.render(this.el);
+  }
+  render() {
+    return (
+      <div
+        id={this.id}
+        ref={(el) => (this.el = el)}
+        style={this.props.style}
+        onClick={this.props.onClick}
+        onDoubleClick={this.props.onDoubleClick}
+      />
     );
-    player.thumbnailMode();
-    setPlayer(player);
-    player.render(document.getElementById(`${src}`));
-    if (player.renderer.eleImage) {
-      player.renderer.eleImage.addEventListener("load", function () {
-        setIsLoading(false);
-      });
-    }
-  };
-
-  useEffect(() => {
-    loadPlayer();
-  }, []);
-  return (
-    <div
-      id={src}
-      style={style}
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-    />
-  );
-};
+  }
+}
 
 function SampleList(props) {
   const { state, setView, port, dispatch } = props;
@@ -248,10 +239,10 @@ function SampleList(props) {
   const chunkedImages = chunkArray(scrollState.images, 4);
   const content = chunkedImages.map((imgs) => {
     return (
-      <Grid.Row style={{ padding: "0.25rem 0" }}>
+      <Grid.Row style={{}}>
         {imgs.map((img) => {
           return (
-            <Grid.Column style={{ padding: "0 0.25rem" }}>
+            <Grid.Column style={{}}>
               <Sample
                 sample={img}
                 selected={selected}
@@ -275,7 +266,7 @@ function SampleList(props) {
         loader={<Loader />}
         useWindow={true}
       >
-        <Grid columns={4} style={{ margin: "-0.25rem" }}>
+        <Grid columns={4} style={{}}>
           {content}
         </Grid>
       </InfiniteScroll>
