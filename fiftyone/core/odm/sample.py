@@ -204,7 +204,7 @@ class ODMSample(ODMDocument, SampleBackingDocument):
             if (
                 name not in ["_cls", "id"]
                 and isinstance(getattr(cls, name), BaseField)
-                and self._in_db
+                and self.in_db
             ):
                 # autosave the change to existing attrs
                 self.save()
