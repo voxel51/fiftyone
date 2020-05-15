@@ -92,12 +92,14 @@ class CustomBdistWheel(bdist_wheel):
                 raise IOError(
                     "Could not find %r in MongoDB archive" % filename
                 )
+            tar_entry = mongo_tar.getmember(tar_entry_name)
             print("copying %r" % tar_entry_name)
             dest_path = os.path.join(bin_dir, filename)
-            with mongo_tar.extractfile(tar_entry_name) as src, open(
+            with mongo_tar.extractfile(tar_entry) as src, open(
                 dest_path, "wb"
             ) as dest:
                 shutil.copyfileobj(src, dest)
+            os.chmod(dest_path, tar_entry.mode)
 
 
 cmdclass = {
