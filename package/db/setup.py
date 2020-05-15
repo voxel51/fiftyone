@@ -27,7 +27,7 @@ MONGODB_DOWNLOAD_URLS = {
     "mac": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz",
 }
 # mongodb binaries to distribute
-MONGODB_BINARIES = ["mongo", "mongod"]
+MONGODB_BINARIES = ["mongod"]
 
 
 class CustomBdistWheel(bdist_wheel):
