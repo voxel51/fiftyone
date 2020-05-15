@@ -265,10 +265,12 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
     def _download_and_prepare(self, dataset_dir, split):
         if split == "validation":
-            split = "val"
+            _split = "val"
+        else:
+            _split = split
 
         def download_fcn(_):
-            return torchvision.datasets.ImageNet(dataset_dir, split=split)
+            return torchvision.datasets.ImageNet(dataset_dir, split=_split)
 
         get_class_labels_fcn = _parse_classification_labels_map
         sample_parser = foud.ImageClassificationSampleParser()
@@ -336,6 +338,112 @@ class COCO2017Dataset(foz.ZooDataset):
         )
 
 
+class VOC2007Dataset(foz.ZooDataset):
+    """The dataset for the PASCAL Visual Object Classes Challenge 2007
+    (VOC2007) for the classification and detection competitions.
+
+    A total of 9963 images are included in this dataset, where each image
+    contains a set of objects, out of 20 different classes, making a total of
+    24640 annotated objects. In the classification competition, the goal is to
+    predict the set of labels contained in the image, while in the detection
+    competition the goal is to predict the bounding box and label of each
+    individual object.
+
+    Dataset size:
+        868.85 MiB
+
+    Source:
+        http://host.robots.ox.ac.uk/pascal/VOC/voc2007
+    """
+
+    @property
+    def name(self):
+        return "voc-2007"
+
+    @property
+    def supported_splits(self):
+        return ("train", "validation")
+
+    @property
+    def default_split(self):
+        return "validation"
+
+    def _download_and_prepare(self, dataset_dir, split):
+        if split == "validation":
+            image_set = "val"
+        else:
+            image_set = split
+
+        def download_fcn(dataset_dir):
+            return torchvision.datasets.VOCDetection(
+                dataset_dir, year="2007", image_set=image_set, download=True,
+            )
+
+        get_class_labels_fcn = None  # @todo implement this
+        sample_parser = foud.ImageDetectionSampleParser()
+        return _download_and_prepare(
+            self,
+            split,
+            download_fcn,
+            dataset_dir,
+            get_class_labels_fcn,
+            sample_parser,
+        )
+
+
+class VOC2012Dataset(foz.ZooDataset):
+    """The dataset for the PASCAL Visual Object Classes Challenge 2012
+    (VOC2012) for the Classification and Detection competitions.
+
+    A total of 11540 images are included in this dataset, where each image
+    contains a set of objects, out of 20 different classes, making a total of
+    27450 annotated objects. In the classification competition, the goal is to
+    predict the set of labels contained in the image, while in the detection
+    competition the goal is to predict the bounding box and label of each
+    individual object.
+
+    Dataset size:
+        3.59 GiB
+
+    Source:
+        http://host.robots.ox.ac.uk/pascal/VOC/voc2012
+    """
+
+    @property
+    def name(self):
+        return "voc-2012"
+
+    @property
+    def supported_splits(self):
+        return ("train", "validation")
+
+    @property
+    def default_split(self):
+        return "validation"
+
+    def _download_and_prepare(self, dataset_dir, split):
+        if split == "validation":
+            image_set = "val"
+        else:
+            image_set = split
+
+        def download_fcn(dataset_dir):
+            return torchvision.datasets.VOCDetection(
+                dataset_dir, year="2012", image_set=image_set, download=True,
+            )
+
+        get_class_labels_fcn = None  # @todo implement this
+        sample_parser = foud.ImageDetectionSampleParser()
+        return _download_and_prepare(
+            self,
+            split,
+            download_fcn,
+            dataset_dir,
+            get_class_labels_fcn,
+            sample_parser,
+        )
+
+
 # Register datasets in the zoo
 foz.AVAILABLE_DATASETS.update(
     {
@@ -345,6 +453,8 @@ foz.AVAILABLE_DATASETS.update(
         "cifar100": CIFAR100Dataset,
         "imagenet-2012": ImageNet2012Dataset,
         "coco-2017": COCO2017Dataset,
+        "voc-2007": VOC2007Dataset,
+        "voc-2012": VOC2012Dataset,
     }
 )
 
