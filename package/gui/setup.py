@@ -15,6 +15,18 @@ from wheel.bdist_wheel import bdist_wheel
 
 
 class CustomBdistWheel(bdist_wheel):
+    def finalize_options(self):
+        bdist_wheel.finalize_options(self)
+        # not pure Python
+        self.root_is_pure = False
+
+    def get_tag(self):
+        impl, abi_tag, plat_name = bdist_wheel.get_tag(self)
+        # no dependency on a specific CPython version
+        impl = "py2.py3"
+        abi_tag = "none"
+        return impl, abi_tag, plat_name
+
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
         release_dir = os.path.join(
@@ -52,18 +64,6 @@ class CustomBdistWheel(bdist_wheel):
             shutil.copy2(app_path, os.path.join(bin_dir, "FiftyOne.AppImage"))
         else:
             raise RuntimeError("Unsupported file type: %r" % app_path)
-
-    def finalize_options(self):
-        bdist_wheel.finalize_options(self)
-        # not pure Python
-        self.root_is_pure = False
-
-    def get_tag(self):
-        impl, abi_tag, plat_name = bdist_wheel.get_tag(self)
-        # no dependency on a specific CPython version
-        impl = "py2.py3"
-        abi_tag = "none"
-        return impl, abi_tag, plat_name
 
 
 cmdclass = {
