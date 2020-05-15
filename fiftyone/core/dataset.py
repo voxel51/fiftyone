@@ -111,6 +111,7 @@ class Dataset(foc.SampleCollection):
             if it does not already exist
     """
 
+    # @todo(Tyler) destroy instance once count->0 using __del__
     _instances = {}
 
     def __new__(cls, name, *args, **kwargs):
@@ -176,7 +177,19 @@ class Dataset(foc.SampleCollection):
         )
 
     def get_sample_fields(self, field_type=None):
+        """@todo(Tyler)"""
         return self._Doc.get_fields(field_type=field_type)
+
+    def add_sample_field(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        """@todo(Tyler)"""
+        return self._Doc.add_field(
+            field_name=field_name,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+        )
 
     def get_tags(self):
         """Returns the list of tags in the dataset.
