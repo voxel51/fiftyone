@@ -26,6 +26,7 @@ from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
+import fiftyone.core.sample as fos
 
 
 class DatasetView(foc.SampleCollection):
@@ -344,12 +345,8 @@ class DatasetView(foc.SampleCollection):
         return list(self.aggregate(_FACETS_PIPELINE))
 
     def _deserialize_sample(self, d):
-        return self._dataset._Doc.from_dict(d, created=False, extended=False)
-
-    def _load_sample(self, doc):
-        # @todo(Tyler) do samples need reference to the dataset?
-        # sample._set_dataset(self._dataset)
-        return doc
+        doc = self._dataset._Doc.from_dict(d, created=False, extended=False)
+        return fos.Sample.from_doc(doc)
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)

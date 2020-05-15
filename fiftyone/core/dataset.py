@@ -31,6 +31,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
+import fiftyone.core.sample as fos
 import fiftyone.core.view as fov
 import fiftyone.utils.data as foud
 
@@ -144,14 +145,14 @@ class Dataset(foc.SampleCollection):
         # @todo(Tyler) this could be optimized with
         #    sample = self._get_query_set().get(id=sample_id)
         #   but it seems to raise an uncatchable error?
-        samples = self._get_query_set(id=sample_id)
-        if not samples:
+        docs = self._get_query_set(id=sample_id)
+        if not docs:
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
-        return samples[0]
+        return fos.Sample.from_doc(docs[0])
 
     def __delitem__(self, sample_id):
-        self[sample_id].delete()
+        self[sample_id]._delete()
 
     @property
     def name(self):
@@ -176,9 +177,9 @@ class Dataset(foc.SampleCollection):
             ]
         )
 
-    def get_sample_fields(self, field_type=None):
+    def get_sample_fields(self, ftype=None):
         """@todo(Tyler)"""
-        return self._Doc.get_fields(field_type=field_type)
+        return self._Doc.get_field_schema(ftype=ftype)
 
     def add_sample_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -206,7 +207,7 @@ class Dataset(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for doc in self._get_query_set():
-            yield doc
+            yield fos.Sample.from_doc(doc)
 
     def add_sample(self, *args, **kwargs):
         """Adds the given sample to the dataset.
@@ -223,9 +224,9 @@ class Dataset(foc.SampleCollection):
         Returns:
             the ID of the sample in the dataset
         """
-        sample = self._Doc(*args, **kwargs)
-        sample.save()
-        return str(sample.id)
+        doc = self._Doc(*args, **kwargs)
+        doc.save()
+        return str(doc.id)
 
     def add_samples(self, kwargs_list):
         """Adds the given samples to the dataset.
@@ -247,10 +248,10 @@ class Dataset(foc.SampleCollection):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        samples = self._get_query_set().insert(
+        docs = self._get_query_set().insert(
             [self._Doc(**kwargs) for kwargs in kwargs_list]
         )
-        return [str(s.id) for s in samples]
+        return [str(doc.id) for doc in docs]
 
     def update_samples(self):
         # @todo(Tyler) making this a TODO. Jason wants to add a tag to all
@@ -546,9 +547,9 @@ class Dataset(foc.SampleCollection):
 
         # @todo(Tyler) make this more user friendly
         # add the ground_truth label field to the dataset
-        dataset._Doc.add_field(
+        dataset.add_sample_field(
             field_name="ground_truth",
-            field_type=EmbeddedDocumentField,
+            ftype=EmbeddedDocumentField,
             embedded_doc_type=type(_kwargs_list[0][group]),
         )
 

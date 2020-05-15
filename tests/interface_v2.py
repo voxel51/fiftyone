@@ -10,12 +10,12 @@ $ mongo51
 import os
 from pprint import pprint
 
-import fiftyone.core.dataset as fod
+import fiftyone as fo
 
 # Dataset is a per-name singleton
-dataset = fod.Dataset("my_dataset")
-dataset2 = fod.Dataset("my_dataset")
-dataset3 = fod.Dataset("another_dataset")
+dataset = fo.Dataset("my_dataset")
+dataset2 = fo.Dataset("my_dataset")
+dataset3 = fo.Dataset("another_dataset")
 print("Datasets are per-name singletons: %s" % (dataset is dataset2))
 print(
     "Datasets with different names are different: %s"
@@ -25,6 +25,9 @@ print()
 
 print(dataset.summary())
 print()
+
+# sample = fo.Sample(filepath="/path/to/img.jpg", tags=["train"])
+# print(sample)
 
 sample = dataset.add_sample(filepath="/path/to/img.jpg", tags=["train"])
 print(dataset.summary())

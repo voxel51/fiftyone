@@ -16,7 +16,6 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 from collections import OrderedDict
-import os
 import six
 import warnings
 
@@ -36,7 +35,33 @@ import fiftyone.core.metadata as fom
 from .document import ODMDocument
 
 
-class ODMSample(ODMDocument):
+class SampleBackingDocument(object):
+    @property
+    def fields(self):
+        raise NotImplementedError("Subclass must implement")
+
+    def get_field_schema(self, ftype=None):
+        raise NotImplementedError("Subclass must implement")
+
+    def add_field(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        raise NotImplementedError("Subclass must implement")
+
+    def get_field(self, field_name):
+        raise NotImplementedError("Subclass must implement")
+
+    def set_field(self, field_name, value, create=False):
+        raise NotImplementedError("Subclass must implement")
+
+    def save(self):
+        raise NotImplementedError("Subclass must implement")
+
+    def delete(self):
+        raise NotImplementedError("Subclass must implement")
+
+
+class ODMSample(ODMDocument, SampleBackingDocument):
     """Abstract ODMSample class that all
     :class:`fiftyone.core.dataset.Dataset._Doc` classes inherit from.
     Instances of the subclasses are samples. I.e.:
@@ -58,29 +83,33 @@ class ODMSample(ODMDocument):
     # metadata about the sample media
     metadata = EmbeddedDocumentField(fom.Metadata, null=True)
 
+    @property
+    def fields(self):
+        return self._fields
+
     @classmethod
-    def get_fields(cls, field_type=None):
+    def get_field_schema(cls, ftype=None):
         """Gets a dictionary of all document fields on elements of this
         collection.
 
         Args:
-            field_type (None): the subclass of ``BaseField`` for primitives
+            ftype (None): the subclass of ``BaseField`` for primitives
                 or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
                 filter by
 
 
         Returns:
              a dictionary of (field name: field type) per field that is a
-             subclass of ``field_type``
+             subclass of ``ftype``
         """
-        if field_type is None:
-            field_type = BaseField
+        if ftype is None:
+            ftype = BaseField
 
-        if not issubclass(field_type, BaseField) and not issubclass(
-            field_type, EmbeddedDocument
+        if not issubclass(ftype, BaseField) and not issubclass(
+            ftype, EmbeddedDocument
         ):
             raise ValueError(
-                "field_type must be subclass of %s or %s" % BaseField,
+                "ftype must be subclass of %s or %s" % BaseField,
                 EmbeddedDocument,
             )
 
@@ -88,14 +117,57 @@ class ODMSample(ODMDocument):
 
         for field_name in cls._fields_ordered:
             field = cls._fields[field_name]
-            if issubclass(field_type, BaseField):
-                if isinstance(field, field_type):
+            if issubclass(ftype, BaseField):
+                if isinstance(field, ftype):
                     d[field_name] = field
             elif isinstance(field, EmbeddedDocumentField):
-                if issubclass(field.document_type, field_type):
+                if issubclass(field.document_type, ftype):
                     d[field_name] = field
 
         return d
+
+    @classmethod
+    def add_field(
+        cls, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        """Add a new field to the dataset
+
+        Args:
+            field_name: the string name of the field to add
+            ftype: the type (subclass of BaseField) of the field to create
+            embedded_doc_type (None): the EmbeddedDocument type, used if
+                    ftype=EmbeddedDocumentField
+                ignored otherwise
+            subfield (None): the optional contained field for lists and dicts,
+                if provided
+
+        """
+        if field_name in cls._fields:
+            raise ValueError("Field '%s' already exists" % field_name)
+
+        if not issubclass(ftype, BaseField):
+            raise ValueError(
+                "Invalid field type '%s' is not a subclass of '%s'"
+                % (ftype, BaseField)
+            )
+
+        kwargs = {"db_field": field_name}
+
+        if issubclass(ftype, EmbeddedDocumentField):
+            kwargs.update(
+                {"document_type": embedded_doc_type, "null": True,}
+            )
+        elif any(issubclass(ftype, ft) for ft in [ListField, DictField]):
+            if subfield is not None:
+                kwargs["field"] = subfield
+
+        # Mimicking setting a DynamicField from this code:
+        #   https://github.com/MongoEngine/mongoengine/blob/3db9d58dac138dd0e838c524f616ebe3d23db2ff/mongoengine/base/document.py#L170
+        field = ftype(**kwargs)
+        field.name = field_name
+        cls._fields[field_name] = field
+        cls._fields_ordered += (field_name,)
+        setattr(cls, field_name, field)
 
     @property
     def in_dataset(self):
@@ -113,11 +185,6 @@ class ODMSample(ODMDocument):
         """
         # @todo(Tyler) maybe get rid of this?
         raise NotImplementedError("TODO")
-
-    @property
-    def filename(self):
-        """The name of the raw data file on disk."""
-        return os.path.basename(self.filepath)
 
     def __setattr__(self, name, value):
         # all attrs starting with "_" or that exist and are not fields are
@@ -150,56 +217,19 @@ class ODMSample(ODMDocument):
         )
         return super(ODMSample, self).__setattr__(name, value)
 
-    def __getitem__(self, key):
-        if isinstance(key, six.string_types) and hasattr(self, key):
-            return self.__getattribute__(key)
-        return super(ODMSample, self).__getitem__(key)
-
-    def __setitem__(self, key, value):
-        return self.set_field(field_name=key, value=value, create=True)
-
-    @classmethod
-    def add_field(
-        cls, field_name, field_type, embedded_doc_type=None, subfield=None
-    ):
-        """Add a new field to the dataset
-
-        Args:
-            field_name: the string name of the field to add
-            field_type: the type (subclass of BaseField) of the field to create
-            embedded_doc_type (None): the EmbeddedDocument type, used if
-                    field_type=EmbeddedDocumentField
-                ignored otherwise
-            subfield (None): the optional contained field for lists and dicts,
-                if provided
-
-        """
-        if field_name in cls._fields:
-            raise ValueError("Field '%s' already exists" % field_name)
-
-        if not issubclass(field_type, BaseField):
-            raise ValueError(
-                "Invalid field type '%s' is not a subclass of '%s'"
-                % (field_type, BaseField)
+    def get_field(self, field_name):
+        if (
+            isinstance(field_name, six.string_types)
+            and field_name in self._fields
+        ):
+            if hasattr(self, field_name):
+                return self.__getattribute__(field_name)
+            # @todo(Tyler)
+            raise NotImplementedError(
+                "TODO: This could return None, but it should be found in the"
+                " document as `null` instead"
             )
-
-        kwargs = {"db_field": field_name}
-
-        if issubclass(field_type, EmbeddedDocumentField):
-            kwargs.update(
-                {"document_type": embedded_doc_type, "null": True,}
-            )
-        elif any(issubclass(field_type, ft) for ft in [ListField, DictField]):
-            if subfield is not None:
-                kwargs["field"] = subfield
-
-        # Mimicking setting a DynamicField from this code:
-        #   https://github.com/MongoEngine/mongoengine/blob/3db9d58dac138dd0e838c524f616ebe3d23db2ff/mongoengine/base/document.py#L170
-        field = field_type(**kwargs)
-        field.name = field_name
-        cls._fields[field_name] = field
-        cls._fields_ordered += (field_name,)
-        setattr(cls, field_name, field)
+        raise KeyError("Invalid field '%s'" % field_name)
 
     def set_field(self, field_name, value, create=False):
         """Set the value of a field for a sample
@@ -229,7 +259,8 @@ class ODMSample(ODMDocument):
                 self._add_implied_field(field_name, value)
             else:
                 raise ValueError(
-                    "Sample does not have field '%s'. Use `create=True` to create a new field."
+                    "Sample does not have field '%s'. Use `create=True` to"
+                    " create a new field."
                 )
 
         return self.__setattr__(field_name, value)

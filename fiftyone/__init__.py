@@ -42,10 +42,6 @@ from .core.dataset import (
     list_dataset_names,
     load_dataset,
 )
-from .core.metadata import (
-    Metadata,
-    ImageMetadata,
-)
 from .core.labels import (
     Label,
     ImageLabel,
@@ -54,6 +50,11 @@ from .core.labels import (
     Detections,
     ImageLabels,
 )
+from .core.metadata import (
+    Metadata,
+    ImageMetadata,
+)
+from .core.sample import Sample
 from .core.session import (
     launch_dashboard,
     close_dashboard,
