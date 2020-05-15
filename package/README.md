@@ -10,6 +10,9 @@ Simply run `python setup.py bdist_wheel` in the root of each repository. This
 will generate an appropriately-named `.whl` file in the `dist` folder, which
 can be uploaded to a PyPI registry.
 
+The `fiftyone` wheel works on any platform. The `fiftyone-brain` wheel
+currently must be built on the target platform.
+
 ## Packaging `fiftyone-db`
 
 This package uses the same build process as `fiftyone` above. By default, it
