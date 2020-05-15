@@ -82,11 +82,16 @@ class Sample(fod.BackedByDocument):
         return sample_cls(document)
 
     @property
+    def in_dataset(self):
+        """Whether the sample has been added to a dataset."""
+        return self._dataset is not None
+
+    @property
     def dataset_name(self):
         """The name of the dataset to which this sample belongs, or ``None`` if
         it has not been added to a dataset.
         """
-        return self._dataset.name if self._dataset is not None else None
+        return self._dataset.name if self.in_dataset else None
 
     @property
     def filepath(self):

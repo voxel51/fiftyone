@@ -30,8 +30,12 @@ class BackedByDocument(object):
     which is the :class:`fiftyone.core.odm.ODMDocument` describing the
     serialized content of the instance.
 
-    New instances of this class that have not yet been serialized to the
-    database can be created by
+    New instances of :class:`BackedByDocument` subclasses can be created via
+    the class's :func:`BackedByDocument.create` method.
+
+    Use :func:`BackedByDocument.copy` to create a copy of a
+    :class:`BackedByDocument` instance that has (or has not) been added to the
+    database.
 
     Args:
         document: an instance of the :class:`fiftyone.core.odm.ODMDocument`
@@ -47,27 +51,25 @@ class BackedByDocument(object):
     def __str__(self):
         return str(self._doc)
 
+    def __copy__(self):
+        return self.copy()
+
     @property
     def id(self):
-        """The ID of the document.
+        """The ID of the document, or ``None`` if it has not been added to the
+        database.
 
-        Implementation details:
+        **Implementation details**
 
-            - the ID of a document is automatically populated when it is added
-              to the database
+        The ID is a 12 byte value consisting of the concatentation of the
+        following:
 
-            - the ID is of a document is ``None`` if it has not been added to
-              the database
+        - a 4 byte timestamp representing the document's commit time,
+          measured in seconds since epoch
 
-            - the ID is a 12 byte value consisting of the concatentation of the
-              following:
+        - a 5 byte random value
 
-                - a 4 byte timestamp representing the document's commit time,
-                  measured in seconds since epoch
-
-                - a 5 byte random value
-
-                - a 3 byte incrementing counter, initialized to a random value
+        - a 3 byte incrementing counter, initialized to a random value
         """
         return str(self._doc.id) if self._in_db else None
 
@@ -90,6 +92,15 @@ class BackedByDocument(object):
         been inserted into the database.
         """
         return self._doc.id is not None
+
+    def copy(self):
+        """Returns a copy of the document that has not been added to the
+        database.
+
+        Returns:
+            a :class:`BackedByDocument`
+        """
+        return self.__class__(self._backing_doc.copy())
 
     def get_backing_doc_dict(self, extended=False):
         """Returns a JSON dict representation of the document.
@@ -144,5 +155,5 @@ class BackedByDocument(object):
         self._doc.save()
 
     def _delete(self):
-        """Deletes the document from the dataset."""
+        """Deletes the document from the database."""
         self._doc.delete()
