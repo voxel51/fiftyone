@@ -17,11 +17,11 @@ const PARSERS = {
   ],
   ODMDetectionLabels: [
     "objects",
-    (obj) => {
+    (g, obj) => {
       const bb = obj.bounding_box;
       return {
         type: "eta.core.objects.DetectedObject",
-        label: obj.label,
+        label: `${g}:${obj.label}`,
         confidence: obj.confidence,
         bounding_box: {
           top_left: { x: bb[0], y: bb[1] },
@@ -40,7 +40,7 @@ const loadOverlay = (labels) => {
       for (const j in label.detections) {
         const detection = label.detections[j];
         const [key, fn] = PARSERS[label._cls];
-        imgLabels[key][key].push(fn(detection));
+        imgLabels[key][key].push(fn(i, detection));
       }
       continue;
     }
