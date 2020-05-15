@@ -69,8 +69,7 @@ class CustomBdistWheel(bdist_wheel):
         mongo_zip_filename = os.path.basename(mongo_zip_url)
         mongo_zip_dest = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "src",
-            "bin",
+            "cache",
             mongo_zip_filename,
         )
         if not os.path.exists(mongo_zip_dest):

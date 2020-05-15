@@ -18,7 +18,7 @@ or `--plat-name linux` to the `bdist_wheel` command to change the target
 platform.
 
 As part of the build process, MongoDB is downloaded and cached in
-`package/db/src/bin`. If you have already downloaded MongoDB and would like to
+`package/db/cache`. If you have already downloaded MongoDB and would like to
 avoid a second download, you can copy the archive here - refer to
 `package/db/setup.py` for the expected filename (which should match the
 download URL).
