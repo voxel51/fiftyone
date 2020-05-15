@@ -3,6 +3,22 @@ import Player51 from "../player51/build/cjs/player51.min.js";
 
 import clickHandler from "../utils/click.ts";
 
+const PARSERS = {
+  ODMClassificationLabel: [
+    "attrs",
+    (name, obj) => {
+      return {
+        type: "eta.core.data.CategoricalAttribute",
+        name: name,
+        confidence: obj.confidence,
+        label: obj.label,
+      };
+    },
+  ],
+  ODMDetectionLabels: null,
+  ODMDetectionLabel: null,
+};
+
 const loadOverlay = (labels) => {
   const objects = [];
   for (const i in labels) {
