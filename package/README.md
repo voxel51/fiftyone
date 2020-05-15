@@ -12,11 +12,16 @@ can be uploaded to a PyPI registry.
 
 ## Packaging `fiftyone-db`
 
-To build this package, you need the appropriate MongoDB binaries (`mongo` and
-`mongod`) installed in `package/db/src/bin`. See `install.bash` for download
-links if you don't already have these binaries. Once the binaries are in the
-right location, switch to the `package/db` folder and follow the packaging
-instructions for `fiftyone` above.
+This package uses the same build process as `fiftyone` above. By default, it
+will build a wheel for your current platform, but you can add `--plat-name mac`
+or `--plat-name linux` to the `bdist_wheel` command to change the target
+platform.
+
+As part of the build process, MongoDB is downloaded and cached in
+`package/db/src/bin`. If you have already downloaded MongoDB and would like to
+avoid a second download, you can copy the archive here - refer to
+`package/db/setup.py` for the expected filename (which should match the
+download URL).
 
 ## Packaging `fiftyone-gui`
 
