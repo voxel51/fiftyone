@@ -21,6 +21,16 @@ class CustomBdistWheel(bdist_wheel):
         # no dependency on a specific CPython version
         impl = "py2.py3"
         abi_tag = "none"
+        if plat_name.startswith("mac"):
+            # mongodb 4.2.6 supports macOS 10.12 or later
+            # https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/#platform-support
+            # also, we only distribute 64-bit binaries
+            plat_name = "macosx_10_12_x86_64"
+        elif plat_name.startswith("linux"):
+            # we only distribute 64-bit binaries
+            plat_name = "linux_x86_64"
+        else:
+            raise ValueError("Unsupported platform: %r" % plat_name)
         return impl, abi_tag, plat_name
 
 
