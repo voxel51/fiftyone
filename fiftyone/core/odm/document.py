@@ -20,20 +20,9 @@ import json
 
 from bson import json_util
 from mongoengine import (
-    connect,
     Document,
     EmbeddedDocument,
 )
-
-_DEFAULT_DATABASE = "fiftyone"
-
-
-_db = connect(_DEFAULT_DATABASE)
-
-
-def drop_database():
-    """Drops the database."""
-    _db.drop_database(_DEFAULT_DATABASE)
 
 
 class SerializableDocument(object):

@@ -30,7 +30,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.sample as fos
+import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 import fiftyone.utils.data as foud
 
@@ -122,7 +122,7 @@ class Dataset(foc.SampleCollection):
         self._name = name
 
         # @todo(Tyler) use MetaDataset to load this class from the DB
-        self._Doc = type(self._name, (fos.ODMSample,), {})
+        self._Doc = type(self._name, (foo.ODMSample,), {})
 
     def __len__(self):
         return self._get_query_set().count()
@@ -251,7 +251,7 @@ class Dataset(foc.SampleCollection):
             sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
                 ID to delete
         """
-        if isinstance(sample_or_id, fos.ODMSample):
+        if isinstance(sample_or_id, foo.ODMSample):
             sample_id = sample_or_id.id
         else:
             sample_id = sample_or_id

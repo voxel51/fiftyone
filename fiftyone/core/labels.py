@@ -30,10 +30,10 @@ import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
 
-import fiftyone.core.odm as foo
+from fiftyone.core.odm.document import ODMEmbeddedDocument
 
 
-class Label(foo.ODMEmbeddedDocument):
+class Label(ODMEmbeddedDocument):
     """A label for a sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Label instances represent an atomic collection of labels associated with a
@@ -100,7 +100,7 @@ class Classification(ImageLabel):
         return image_labels
 
 
-class Detection(foo.ODMEmbeddedDocument):
+class Detection(ODMEmbeddedDocument):
     """Backing document for individual detections stored in
     :class:`fiftyone.core.labels.DetectionLabels`instances.
 

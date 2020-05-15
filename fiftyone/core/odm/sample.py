@@ -31,11 +31,12 @@ from mongoengine import (
 )
 from mongoengine.fields import BaseField
 
-import fiftyone.core.odm as foo
 import fiftyone.core.metadata as fom
 
+from .document import ODMDocument
 
-class ODMSample(foo.ODMDocument):
+
+class ODMSample(ODMDocument):
     """Abstract ODMSample class that all
     :class:`fiftyone.core.dataset.Dataset._Doc` classes inherit from.
     Instances of the subclasses are samples. I.e.:

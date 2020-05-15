@@ -19,10 +19,10 @@ from future.utils import iteritems, itervalues
 
 from mongoengine import IntField, StringField
 
-import fiftyone.core.odm as foo
+from fiftyone.core.odm.document import ODMEmbeddedDocument
 
 
-class Metadata(foo.ODMEmbeddedDocument):
+class Metadata(ODMEmbeddedDocument):
     """Base class for storing metadata about raw data."""
 
     size_bytes = IntField()
