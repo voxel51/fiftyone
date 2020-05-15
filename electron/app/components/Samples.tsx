@@ -17,7 +17,6 @@ import InfiniteScroll from "react-infinite-scroller";
 import { Dimmer, Loader } from "semantic-ui-react";
 
 import Sample from "./Sample";
-import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+
+import { updateState } from "../actions/update";
+import Player51 from "./Player51";
 import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
-import Player51 from "./Player51";
 
 const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
   const host = `http://127.0.0.1:${port}`;

@@ -25,6 +25,7 @@ const loadOverlay = (labels) => {
 export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
   const overlay = loadOverlay(sample.labels);
   const id = sample._id.$oid;
+
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [player, setPlayer] = useState(
     new Player51({
@@ -35,18 +36,14 @@ export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
       overlay: overlay,
     })
   );
+  const props = thumbnail
+    ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
+    : {};
   useEffect(() => {
     if (thumbnail) {
       player.thumbnailMode();
     }
     player.render(id);
   }, []);
-  return (
-    <div
-      id={id}
-      style={style}
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-    />
-  );
+  return <div id={id} style={style} {...props} />;
 };
