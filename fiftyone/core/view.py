@@ -29,6 +29,32 @@ import fiftyone.core.collections as foc
 import fiftyone.core.sample as fos
 
 
+def _makeRegistrar():
+    """Makes a decorator that keeps a registry of all functions decorated by
+    it.
+
+    Usage:
+        my_decorator = _makeRegistrar()
+        my_decorator.all -> dictionary of (name: function) pairs
+
+    Returns:
+        a decorator function
+    """
+    registry = {}
+
+    def registrar(func):
+        registry[func.__name__] = func
+        # normally a decorator returns a wrapped function,
+        # but here we return func unmodified, after registering it
+        return func
+
+    registrar.all = registry
+    return registrar
+
+
+operation = _makeRegistrar()
+
+
 class DatasetView(foc.SampleCollection):
     """A view into a :class:`fiftyone.core.dataset.Dataset`.
 
@@ -179,6 +205,14 @@ class DatasetView(foc.SampleCollection):
         for idx, sample in enumerate(iterator, start=offset):
             yield idx, sample
 
+    @classmethod
+    def get_operation_names(cls):
+        """Get a list of method names for all :class:`DatasetView` operations
+        that return a :class:`DatasetView`.
+        """
+        return list(operation.all)
+
+    @operation
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
@@ -192,6 +226,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self._copy_with_new_stage({"$match": filter})
 
+    @operation
     def exists(self, field):
         """Filters the samples in the view to have the field. Filtering
         ensures that the field exists on the sample.
@@ -204,6 +239,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self.match({field: {"$exists": True, "$ne": None}})
 
+    @operation
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
 
@@ -222,6 +258,7 @@ class DatasetView(foc.SampleCollection):
         order = DESCENDING if reverse else ASCENDING
         return self._copy_with_new_stage({"$sort": {field: order}})
 
+    @operation
     def skip(self, skip):
         """Omits the given number of samples from the head of the view.
 
@@ -233,6 +270,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self._copy_with_new_stage({"$skip": skip})
 
+    @operation
     def limit(self, limit):
         """Limits the view to the given number of samples.
 
@@ -244,6 +282,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self._copy_with_new_stage({"$limit": limit})
 
+    @operation
     def take(self, size):
         """Randomly samples the given number of samples from the view.
 
@@ -255,6 +294,7 @@ class DatasetView(foc.SampleCollection):
         """
         return self._copy_with_new_stage({"$sample": {"size": size}})
 
+    @operation
     def select(self, sample_ids):
         """Selects the samples with the given IDs from the view.
 
@@ -267,6 +307,7 @@ class DatasetView(foc.SampleCollection):
         sample_ids = [ObjectId(id) for id in sample_ids]
         return self.match({"_id": {"$in": sample_ids}})
 
+    @operation
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the view.
 

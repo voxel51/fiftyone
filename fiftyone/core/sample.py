@@ -20,13 +20,7 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 import os
-import six
 
-from mongoengine.errors import InvalidDocumentError
-
-import eta.core.image as etai
-
-import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 
 
