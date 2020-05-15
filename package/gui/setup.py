@@ -52,8 +52,9 @@ class CustomBdistWheel(bdist_wheel):
 
         if self.plat_name.startswith("linux"):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
+        elif self.plat_name.startswith("mac"):
+            apps = glob.glob(os.path.join(release_dir, "mac", "FiftyOne*.app"))
         else:
-            # TODO: support macOS, etc
             raise OSError("Unsupported target platform: %r" % self.plat_name)
         if not apps:
             raise RuntimeError(
@@ -72,6 +73,9 @@ class CustomBdistWheel(bdist_wheel):
         if os.path.isfile(app_path):
             # use copy2 to maintain executable permission
             shutil.copy2(app_path, os.path.join(bin_dir, "FiftyOne.AppImage"))
+        elif os.path.isdir(app_path):
+            # Mac app bundle
+            shutil.copytree(app_path, os.path.join(bin_dir, "FiftyOne.app"))
         else:
             raise RuntimeError("Unsupported file type: %r" % app_path)
 
