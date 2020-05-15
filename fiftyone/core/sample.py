@@ -45,12 +45,9 @@ class Sample(object):
             metadata (None): @todo(Tyler)
             kwargs: @todo(Tyler)
         """
-        self._doc = {
-            "filepath": filepath,
-            "tags": tags,
-            "metadata": metadata,
-        }
-        self._doc.update(kwargs)
+        self._doc = foo.ODMNoDatasetSample(
+            filepath=filepath, tags=tags, metadata=metadata, **kwargs
+        )
 
     def __str__(self):
         return str(self._doc)
@@ -84,7 +81,7 @@ class Sample(object):
         """The time the document was added to the database, or ``None`` if it
         has not been added to the database.
         """
-        return self._doc.id.generation_time if self._in_db else None
+        return self._doc.ingest_time
 
     @property
     def in_dataset(self):
@@ -113,7 +110,7 @@ class Sample(object):
         return self._doc.set_field(field_name, value, create=create)
 
     def __getattr__(self, name):
-        if name not in dir(self) and name in self._doc.fields:
+        if name not in dir(self) and name in self.get_field_schema():
             return self._doc.__getattribute__(name)
         return super(Sample, self).__getattribute__(name)
 
@@ -198,9 +195,9 @@ class Sample(object):
         class backed by the given document.
 
         Args:
-            document: an :class:`fiftyone.core.odm.ODMSample` instance
+            document: an :class:`fiftyone.core.odm.ODMDatasetSample` instance
         """
-        if not isinstance(doc, foo.ODMSample):
+        if not isinstance(doc, foo.ODMDatasetSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
         sample = cls.__new__(cls)
         sample._doc = doc

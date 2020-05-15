@@ -20,6 +20,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 from collections import OrderedDict
+from copy import deepcopy
 import six
 import warnings
 
@@ -39,17 +40,75 @@ import fiftyone.core.metadata as fom
 from .document import ODMDocument
 
 
-class SampleBackingDocument(object):
-    @property
-    def fields(self):
-        raise NotImplementedError("Subclass must implement")
+def nodataset(func):
+    """Decorator that provides a more informative error when attempting to call
+    a class method on an ODMNoDatasetSample instance that should only be
+    called on individual instances.
+
+    This is necessary because fields are shared across all samples in a dataset
+    but samples outside of a dataset have their own schema.
+
+    e.g.
+            ODMNoDatasetSample.get_field_schema         -> NoDatasetError
+            ODMNoDatasetSample().get_field_schema       -> OKAY
+            ODMDatasetSample.get_field_schema           -> OKAY
+            ODMDatasetSample().get_field_schema         -> OKAY
+
+    """
+
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except TypeError:
+            raise NoDatasetError(
+                "You are trying to call a dataset method on a sample that has"
+                " not been added to a dataset."
+            )
+
+    return wrapper
+
+
+class ODMSample(ODMDocument):
+    meta = {"abstract": True}
+
+    # the path to the data on disk
+    filepath = StringField(unique=True)
+    # the set of tags associated with the sample
+    tags = ListField(StringField())
+    # metadata about the sample media
+    metadata = EmbeddedDocumentField(fom.Metadata, null=True)
 
     def get_field_schema(self, ftype=None):
+        """Gets a dictionary of all document fields on elements of this
+        collection.
+
+        Args:
+            ftype (None): the subclass of ``BaseField`` for primitives
+                or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
+                filter by
+
+
+        Returns:
+             a dictionary of (field name: field type) per field that is a
+             subclass of ``ftype``
+        """
         raise NotImplementedError("Subclass must implement")
 
     def add_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
+        """Add a new field to the dataset
+
+        Args:
+            field_name: the string name of the field to add
+            ftype: the type (subclass of BaseField) of the field to create
+            embedded_doc_type (None): the EmbeddedDocument type, used if
+                    ftype=EmbeddedDocumentField
+                ignored otherwise
+            subfield (None): the optional contained field for lists and dicts,
+                if provided
+
+        """
         raise NotImplementedError("Subclass must implement")
 
     @property
@@ -65,54 +124,17 @@ class SampleBackingDocument(object):
     def set_field(self, field_name, value, create=False):
         raise NotImplementedError("Subclass must implement")
 
-    def save(self):
+    def _get_fields(self):
         raise NotImplementedError("Subclass must implement")
 
-    def delete(self):
+    def _get_fields_ordered(self):
         raise NotImplementedError("Subclass must implement")
 
+    def _set_fields_ordered(self, value):
+        raise NotImplementedError("Subclass must implement")
 
-class ODMSample(ODMDocument, SampleBackingDocument):
-    """Abstract ODMSample class that all
-    :class:`fiftyone.core.dataset.Dataset._Doc` classes inherit from.
-    Instances of the subclasses are samples. I.e.:
-
-        sample = dataset._Doc(...)
-
-    Samples store all information associated with a particular piece of data in
-    a dataset, including basic metadata about the data, one or more sets of
-    labels (ground truth, user-provided, or FiftyOne-generated), and additional
-    features associated with subsets of the data and/or label sets.
-    """
-
-    meta = {"abstract": True}
-
-    # the path to the data on disk
-    filepath = StringField(unique=True)
-    # the set of tags associated with the sample
-    tags = ListField(StringField())
-    # metadata about the sample media
-    metadata = EmbeddedDocumentField(fom.Metadata, null=True)
-
-    @property
-    def fields(self):
-        return self._fields
-
-    @classmethod
-    def get_field_schema(cls, ftype=None):
-        """Gets a dictionary of all document fields on elements of this
-        collection.
-
-        Args:
-            ftype (None): the subclass of ``BaseField`` for primitives
-                or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
-                filter by
-
-
-        Returns:
-             a dictionary of (field name: field type) per field that is a
-             subclass of ``ftype``
-        """
+    @staticmethod
+    def _get_field_schema(cls_or_self, ftype=None):
         if ftype is None:
             ftype = BaseField
 
@@ -124,10 +146,13 @@ class ODMSample(ODMDocument, SampleBackingDocument):
                 EmbeddedDocument,
             )
 
+        fields = cls_or_self._get_fields()
+        fields_ordered = cls_or_self._get_fields_ordered()
+
         d = OrderedDict()
 
-        for field_name in cls._fields_ordered:
-            field = cls._fields[field_name]
+        for field_name in fields_ordered:
+            field = fields[field_name]
             if issubclass(ftype, BaseField):
                 if isinstance(field, ftype):
                     d[field_name] = field
@@ -137,9 +162,9 @@ class ODMSample(ODMDocument, SampleBackingDocument):
 
         return d
 
-    @classmethod
-    def add_field(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None
+    @staticmethod
+    def _add_field(
+        cls_or_self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
         """Add a new field to the dataset
 
@@ -153,7 +178,9 @@ class ODMSample(ODMDocument, SampleBackingDocument):
                 if provided
 
         """
-        if field_name in cls._fields:
+        fields = cls_or_self._get_fields()
+
+        if field_name in fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
         if not issubclass(ftype, BaseField):
@@ -176,9 +203,109 @@ class ODMSample(ODMDocument, SampleBackingDocument):
         #   https://github.com/MongoEngine/mongoengine/blob/3db9d58dac138dd0e838c524f616ebe3d23db2ff/mongoengine/base/document.py#L170
         field = ftype(**kwargs)
         field.name = field_name
-        cls._fields[field_name] = field
-        cls._fields_ordered += (field_name,)
-        setattr(cls, field_name, field)
+        fields[field_name] = field
+        cls_or_self._set_fields_ordered(
+            cls_or_self._get_fields_ordered() + (field_name,)
+        )
+        setattr(cls_or_self, field_name, field)
+
+
+class ODMNoDatasetSample(ODMSample):
+    # def __init__(self, **kwargs):
+    #     self._fields_ordered = list(kwargs)
+    #     self._data = kwargs
+
+    meta = {"abstract": True}
+
+    def __init__(self, *args, **kwargs):
+        super(ODMNoDatasetSample, self).__init__(*args, **kwargs)
+        self._nods_fields = deepcopy(self._fields)
+        self._nods_fields_ordered = deepcopy(self._fields_ordered)
+
+    @nodataset
+    def get_field_schema(self, ftype=None):
+        return self._get_field_schema(cls_or_self=self, ftype=ftype)
+
+    @nodataset
+    def add_field(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        self._add_field(
+            cls_or_self=self,
+            field_name=field_name,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+        )
+
+    @property
+    def dataset_name(self):
+        """The name of the dataset to which this sample belongs, or ``None`` if
+        it has not been added to a dataset.
+        """
+        return None
+
+    @property
+    def id(self):
+        """Samples not in a dataset never have an ID."""
+        return None
+
+    def get_field(self, field_name):
+        # @todo(Tyler)
+        raise NotImplementedError("TODO")
+
+    def set_field(self, field_name, value, create=False):
+        # @todo(Tyler)
+        raise NotImplementedError("TODO")
+
+    def _get_fields(self):
+        return self._nods_fields
+
+    def _get_fields_ordered(self):
+        return self._nods_fields_ordered
+
+    def _set_fields_ordered(self, value):
+        self._nods_fields_ordered = value
+
+
+class NoDatasetError(Exception):
+    """Exception raised by ODMNoDatasetSample when trying to do something that
+    only works for samples already added to a dataset.
+    """
+
+    pass
+
+
+class ODMDatasetSample(ODMSample):
+    """Abstract ODMSample class that all
+    :class:`fiftyone.core.dataset.Dataset._Doc` classes inherit from.
+    Instances of the subclasses are samples. I.e.:
+
+        sample = dataset._Doc(...)
+
+    Samples store all information associated with a particular piece of data in
+    a dataset, including basic metadata about the data, one or more sets of
+    labels (ground truth, user-provided, or FiftyOne-generated), and additional
+    features associated with subsets of the data and/or label sets.
+    """
+
+    meta = {"abstract": True}
+
+    @classmethod
+    def get_field_schema(cls, ftype=None):
+        return cls._get_field_schema(cls_or_self=cls, ftype=ftype)
+
+    @classmethod
+    def add_field(
+        cls, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        cls._add_field(
+            cls_or_self=cls,
+            field_name=field_name,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+        )
 
     @property
     def dataset_name(self):
@@ -191,7 +318,7 @@ class ODMSample(ODMDocument, SampleBackingDocument):
         if name.startswith("_") or (
             hasattr(self, name) and name not in self._fields
         ):
-            return super(ODMSample, self).__setattr__(name, value)
+            return super(ODMDatasetSample, self).__setattr__(name, value)
 
         cls = self.__class__
 
@@ -199,7 +326,7 @@ class ODMSample(ODMDocument, SampleBackingDocument):
             if value is not None:
                 getattr(cls, name).validate(value)
 
-            result = super(ODMSample, self).__setattr__(name, value)
+            result = super(ODMDatasetSample, self).__setattr__(name, value)
             if (
                 name not in ["_cls", "id"]
                 and isinstance(getattr(cls, name), BaseField)
@@ -214,7 +341,7 @@ class ODMSample(ODMDocument, SampleBackingDocument):
             "created via a new attribute name",
             stacklevel=2,
         )
-        return super(ODMSample, self).__setattr__(name, value)
+        return super(ODMDatasetSample, self).__setattr__(name, value)
 
     def get_field(self, field_name):
         if (
@@ -293,3 +420,15 @@ class ODMSample(ODMDocument, SampleBackingDocument):
             raise TypeError(
                 "Invalid type: '%s' could not be cast to Field" % type(value)
             )
+
+    @classmethod
+    def _get_fields(cls):
+        return cls._fields
+
+    @classmethod
+    def _get_fields_ordered(cls):
+        return cls._fields_ordered
+
+    @classmethod
+    def _set_fields_ordered(cls, value):
+        cls._fields_ordered = value

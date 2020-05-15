@@ -8,4 +8,4 @@ ODM package declaration.
 
 from .database import drop_database
 from .document import ODMDocument, ODMEmbeddedDocument
-from .sample import ODMSample
+from .sample import ODMNoDatasetSample, ODMDatasetSample
