@@ -11,31 +11,43 @@ const PARSERS = {
         type: "eta.core.data.CategoricalAttribute",
         name: name,
         confidence: obj.confidence,
-        label: obj.label,
+        value: obj.label,
       };
     },
   ],
-  ODMDetectionLabels: null,
-  ODMDetectionLabel: null,
-};
-
-const loadOverlay = (labels) => {
-  const objects = [];
-  for (const i in labels) {
-    const label = labels[i];
-    for (const j in label.detections) {
-      const detection = label.detections[j];
-      const bb = detection.bounding_box;
-      objects.push({
-        label: detection.label,
+  ODMDetectionLabels: [
+    "objects",
+    (obj) => {
+      const bb = obj.bounding_box;
+      return {
+        type: "eta.core.objects.DetectedObject",
+        label: obj.label,
+        confidence: obj.confidence,
         bounding_box: {
           top_left: { x: bb[0], y: bb[1] },
           bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
         },
-      });
+      };
+    },
+  ],
+};
+
+const loadOverlay = (labels) => {
+  const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
+  for (const i in labels) {
+    const label = labels[i];
+    if (label._cls === "ODMDetectionLabels") {
+      for (const j in label.detections) {
+        const detection = label.detections[j];
+        const [key, fn] = PARSERS[label._cls];
+        imgLabels[key][key].push(fn(detection));
+      }
+      continue;
     }
+    const [key, fn] = PARSERS[label._cls];
+    imgLabels[key][key].push(fn(i, label));
   }
-  return { objects: { objects: objects } };
+  return imgLabels;
 };
 
 export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
