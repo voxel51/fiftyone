@@ -137,7 +137,10 @@ class Sample(object):
                 the field_name is invalid
                 the field_name does not exist and create=False
         """
-        if hasattr(self, field_name):
+        if (
+            hasattr(self, field_name)
+            and field_name not in self._doc.field_names
+        ):
             raise ValueError("Cannot set reserve word '%s'" % field_name)
         return self._doc.set_field(field_name, value, create=create)
 
