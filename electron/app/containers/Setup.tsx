@@ -10,7 +10,6 @@ import PortForm from "../components/PortForm";
 function Setup(props) {
   const { connected, port } = props;
   const [portFromForm, setPortFromForm] = useState(port);
-  alert(connected);
   if (connected) {
     return <Redirect to={routes.DATASET} />;
   }

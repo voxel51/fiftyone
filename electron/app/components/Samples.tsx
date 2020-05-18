@@ -24,7 +24,15 @@ function Samples(props) {
   const { state, setView, port, dispatch } = props;
   const hasDataset = Boolean(state && state.dataset);
   const socket = getSocket(port, "state");
-  const [selected, setSelected] = useState({});
+  const initialSelected = hasDataset
+    ? state.selected.reduce((obj, id, i) => {
+        return {
+          ...obj,
+          [id]: true,
+        };
+      }, {})
+    : {};
+  const [selected, setSelected] = useState(initialSelected);
   const [scrollState, setScrollState] = useState({
     initialLoad: true,
     hasMore: true,
@@ -74,7 +82,7 @@ function Samples(props) {
       <Grid.Row style={{}}>
         {imgs.map((img) => {
           return (
-            <Grid.Column style={{}}>
+            <Grid.Column>
               <Sample
                 sample={img}
                 selected={selected}
@@ -98,9 +106,7 @@ function Samples(props) {
         loader={<Loader />}
         useWindow={true}
       >
-        <Grid columns={4} style={{}}>
-          {content}
-        </Grid>
+        <Grid columns={4}>{content}</Grid>
       </InfiniteScroll>
       {scrollState.hasMore ? <Loader /> : ""}
     </>
