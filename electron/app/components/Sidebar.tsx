@@ -14,11 +14,15 @@ const _Sidebar = (props) => {
       inverted
       vertical
       direction={"left"}
-      visible={connected && !loading}
+      visible={!loading}
     >
       <Menu.Item as="h2">FiftyOne</Menu.Item>
       <Menu.Item as="h3">
-        {hasDataset ? `Dataset: ${state.dataset.name}` : "No dataset loaded"}
+        {!connected
+          ? "Not connected"
+          : hasDataset
+          ? `Dataset: ${state.dataset.name}`
+          : "No dataset loaded"}
         {hasDataset ? (
           <Menu inverted vertical>
             <Menu.Item as="span">
@@ -36,7 +40,7 @@ const _Sidebar = (props) => {
           </Menu>
         ) : null}
       </Menu.Item>
-      <>
+      {hasDataset ? (
         <Menu.Item as="h4">
           View
           <Menu inverted vertical>
@@ -49,7 +53,7 @@ const _Sidebar = (props) => {
             </Menu.Item>
           </Menu>
         </Menu.Item>
-      </>
+      ) : null}
     </Sidebar>
   );
 };
