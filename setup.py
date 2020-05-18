@@ -12,6 +12,11 @@ from wheel.bdist_wheel import bdist_wheel
 
 
 class BdistWheelCustom(bdist_wheel):
+    def finalize_options(self):
+        bdist_wheel.finalize_options(self)
+        # pure Python, so build a wheel for any Python version
+        self.universal = True
+
     def write_wheelfile(self, wheelfile_base, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, wheelfile_base, *args, **kwargs)
         # ETA's constants.py looks up ETA's version information dynamically from
