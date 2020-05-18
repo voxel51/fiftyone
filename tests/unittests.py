@@ -8,7 +8,7 @@ Unit tests.
 import datetime
 import unittest
 
-from mongoengine import IntField
+from mongoengine import IntField, EmbeddedDocumentField
 from mongoengine.errors import (
     FieldDoesNotExist,
     NotUniqueError,
@@ -207,6 +207,40 @@ class CRUDTest(unittest.TestCase):
         # for sample in dataset.iter_samples():
         #     print(sample)
         # print()
+
+
+class ViewTest(unittest.TestCase):
+    def test_view(self):
+        dataset = fo.Dataset("test_dataset")
+        dataset.add_sample_field(
+            field_name="labels",
+            ftype=EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+
+        sample = fo.Sample(
+            "1.jpg", tags=["train"], labels=fo.Classification(label="label1")
+        )
+        dataset.add_sample(sample)
+
+        sample = fo.Sample(
+            "2.jpg", tags=["test"], labels=fo.Classification(label="label2")
+        )
+        dataset.add_sample(sample)
+
+        view = dataset.view()
+
+        self.assertEqual(len(view), len(dataset))
+
+        # tags
+        for sample in view.match({"tags": "train"}):
+            self.assertIn("train", sample.tags)
+        for sample in view.match({"tags": "test"}):
+            self.assertIn("test", sample.tags)
+
+        # labels
+        for sample in view.match({"labels.label": "label1"}):
+            self.assertEqual(sample.labels.label, "label1")
 
 
 if __name__ == "__main__":
