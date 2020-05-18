@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import React, { Component } from "react";
 import { Grid, Image, Menu, Sidebar, Statistic } from "semantic-ui-react";
 
+import logo from "../logo.png";
 import connect from "../utils/connect";
 
 const _Sidebar = (props) => {
@@ -16,7 +17,9 @@ const _Sidebar = (props) => {
       visible={!loading}
       color="background"
     >
-      <Menu.Item as="h2">FiftyOne</Menu.Item>
+      <Menu.Item as="h3">
+        <Image src={logo} alt="FiftyOne" />
+      </Menu.Item>
       <Menu.Item as="h3">
         {!connected
           ? "Not connected"
