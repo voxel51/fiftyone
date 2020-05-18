@@ -146,6 +146,8 @@ class LabelsTest(unittest.TestCase):
 
 
 class CRUDTest(unittest.TestCase):
+    """Create, Read, Update, Delete (CRUD)"""
+
     def test_create_sample(self):
         dataset_name = "crud_test"
         dataset = fo.Dataset(dataset_name)
