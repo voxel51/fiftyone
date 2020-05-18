@@ -11,10 +11,10 @@ const _Sidebar = (props) => {
     <Sidebar
       as={Menu}
       animation={"uncover"}
-      inverted
       vertical
       direction={"left"}
       visible={!loading}
+      color="background"
     >
       <Menu.Item as="h2">FiftyOne</Menu.Item>
       <Menu.Item as="h3">

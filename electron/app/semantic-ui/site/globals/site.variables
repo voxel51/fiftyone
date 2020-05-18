@@ -4,6 +4,28 @@
 
 @fontName: "Palanquin";
 
-@primaryColor: #e0e6eb;
-@secondaryColor: #a3b3c2;
-@pageBackground: #1f262e;
+@primaryColor: hsl(210, 20%, 90%);
+@secondaryColor: hsl(210, 20%, 70%);
+
+@lightPrimaryColor: hsl(210, 80%, 60%);
+@lightSecondaryColor: hsl(145, 80%, 70%);
+
+@containerBackground: hsl(210, 20%, 23%);
+@pageBackground: hsl(210, 20%, 15%);
+@inputBackground: @pageBackground;
+
+
+@focusedFormBorderColor: hsl(210, 20%, 33%);
+@focusedFormMutedBorderColor: hsl(210, 20%, 33%);
+
+@textColor: @primaryColor;
+@linkColor : @secondaryColor;
+@linkHoverColor: @primaryColor;
+
+@trackBackground: @primaryColor;
+@thumbBackground: @primaryColor;
+@thumbInactiveBackground: @secondaryColor;
+
+
+@inputHighlightBackground: @pageBackground;
+@inputHighlightColor: @secondaryColor;
