@@ -8,7 +8,11 @@ Unit tests.
 import unittest
 
 from mongoengine import IntField
-from mongoengine.errors import FieldDoesNotExist, ValidationError
+from mongoengine.errors import (
+    FieldDoesNotExist,
+    NotUniqueError,
+    ValidationError,
+)
 
 import fiftyone as fo
 import fiftyone.core.odm as foo
@@ -129,6 +133,72 @@ class TestLabels(unittest.TestCase):
 
         with self.assertRaises(ValidationError):
             fo.Classification(label=100)
+
+
+class CRUDTest(unittest.TestCase):
+    """CRUD (Create, Read, Update, Delete)"""
+
+    _DATASET_NAME = "crud_test"
+
+    def test_create(self):
+        dataset = fo.Dataset(self._DATASET_NAME)
+        filepath = "path/to/file.txt"
+        sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
+        self.assertEqual(len(dataset), 0)
+
+        dataset.add_sample(sample)
+        self.assertEqual(len(dataset), 1)
+
+        # add duplicate filepath
+        with self.assertRaises(NotUniqueError):
+            dataset.add_sample(fo.Sample(filepath=filepath))
+        self.assertEqual(len(dataset), 1)
+
+        # update assign
+        tag = "tag3"
+        sample.tags = [tag]
+        self.assertEqual(len(sample.tags), 1)
+        self.assertEqual(sample.tags[0], tag)
+        sample2 = dataset[sample.id]
+        self.assertEqual(len(sample2.tags), 1)
+        self.assertEqual(sample2.tags[0], tag)
+
+        # @todo(Tyler) I need to make child classes for these:
+        from mongoengine.base.datastructures import BaseList
+        from mongoengine.fields import ListField
+
+        # update append
+        tag = "tag4"
+        sample.tags.append(tag)
+        print(sample)
+        self.assertEqual(len(sample.tags), 3)
+        self.assertEqual(sample.tags[-1], tag)
+        sample2 = dataset[sample.id]
+        print(sample2)
+        self.assertEqual(len(sample2.tags), 3)
+        self.assertEqual(sample2.tags[-1], tag)
+
+        # print("Removing tag 'tag1'")
+        # sample.remove_tag("tag1")
+        # print("Num samples: %d" % len(dataset))
+        # for sample in dataset.iter_samples():
+        #     print(sample)
+        # print()
+        #
+        #
+        # print("Adding new tag: 'tag2'")
+        # sample.add_tag("tag2")
+        # print("Num samples: %d" % len(dataset))
+        # for sample in dataset.iter_samples():
+        #     print(sample)
+        # print()
+        #
+        # print("Deleting sample")
+        # del dataset[sample.id]
+        # print("Num samples: %d" % len(dataset))
+        # for sample in dataset.iter_samples():
+        #     print(sample)
+        # print()
 
 
 if __name__ == "__main__":
