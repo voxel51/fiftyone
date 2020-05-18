@@ -1,6 +1,37 @@
 """
 Backing Document classes for samples.
 
+Class Hierarchy:
+
+ODMDocument
+└── ODMSample
+    ├── ODMNoDatasetSample
+    └── ODMDatasetSample
+        ├── my_custom_dataset
+        ├── another_dataset
+        └── ...
+
+A sample always has a backing `sample._doc` which is an instance of a subclass
+of `ODMSample` and a dataset always has a backing `dataset._Doc` which is a
+subclass of `ODMSample`
+
+```python
+import fiftyone as fo
+
+# when a `Sample` is instantiated, the backing doc is of type
+# `ODMNoDatasetSample`
+sample = fo.Sample()  # -> sample._doc is a `ODMNoDatasetSample` instance
+
+# when a `Dataset` is created, a new subclass of `ODMDatasetSample` is created
+dataset = fo.Dataset(name="my_dataset")  # -> dataset._Doc is an
+#                                            `ODMDatasetSample` subclass called
+#                                            `my_dataset`
+
+# when a Sample is added to a Dataset, the `sample._doc` is changed from type
+# `ODMNoDatasetSample` to type `dataset._Doc`
+dataset.add_sample(sample)  # -> sample._doc is now a `my_dataset` instance
+```
+
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
