@@ -65,7 +65,7 @@ function Dataset(props) {
         ) : null}
       </Sidebar>
       <Ref innerRef={stickyRef}>
-        <Container fluid={true} style={{ padding: "0 2rem" }}>
+        <Container fluid={true}>
           <Sticky context={stickyRef}>
             <Container fluid={true}>
               <Search />

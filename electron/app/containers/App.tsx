@@ -55,12 +55,17 @@ function App(props: Props) {
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
-  const bodyStyle = { height: "100%", padding: "1em", marginLeft: 260 };
+  const bodyStyle = { height: "100%", marginLeft: 260 };
 
   return (
     <>
       <Modal
-        trigger={<Button style={{ display: "none" }} ref={portRef}></Button>}
+        trigger={
+          <Button
+            style={{ padding: "1rem", display: "none" }}
+            ref={portRef}
+          ></Button>
+        }
         size="tiny"
         onClose={() => {
           dispatch(updatePort(result.port));

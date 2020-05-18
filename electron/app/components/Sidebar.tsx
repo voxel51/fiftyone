@@ -24,7 +24,7 @@ const _Sidebar = (props) => {
           ? `Dataset: ${state.dataset.name}`
           : "No dataset loaded"}
         {hasDataset ? (
-          <Menu inverted vertical>
+          <Menu vertical>
             <Menu.Item as="span">
               Type &middot; <code>image</code>
             </Menu.Item>

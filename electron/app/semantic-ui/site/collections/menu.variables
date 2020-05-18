@@ -2,7 +2,7 @@
     User Variable Overrides
 *******************************/
 
-
 @verticalBackground: @containerBackground;
-@secondaryPointingActiveBorderColor: @secondaryColor;
+@secondaryPointingActiveBorderColor: @tertiaryColor;
+@secondaryPointingActiveTextColor: @tertiaryColor;
 @borderWidth: 0;
