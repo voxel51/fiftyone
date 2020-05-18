@@ -178,13 +178,34 @@ class Dataset(foc.SampleCollection):
         )
 
     def get_sample_fields(self, ftype=None):
-        """@todo(Tyler)"""
+        """Gets a dictionary of all fields on samples in this dataset.
+
+        Args:
+            ftype (None): the subclass of ``BaseField`` for primitives
+                or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
+                filter by
+
+        Returns:
+             a dictionary of (field name: field type) per field that is a
+             subclass of ``ftype``
+        """
         return self._Doc.get_field_schema(ftype=ftype)
 
     def add_sample_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
-        """@todo(Tyler)"""
+        """Add a new field to the dataset
+
+        Args:
+            field_name: the string name of the field to add
+            ftype: the type (subclass of BaseField) of the field to create
+            embedded_doc_type (None): the EmbeddedDocument type, used if
+                    ftype=EmbeddedDocumentField
+                ignored otherwise
+            subfield (None): the optional contained field for lists and dicts,
+                if provided
+
+        """
         return self._Doc.add_field(
             field_name=field_name,
             ftype=ftype,
@@ -209,46 +230,31 @@ class Dataset(foc.SampleCollection):
         for doc in self._get_query_set():
             yield fos.Sample.from_doc(doc)
 
-    def add_sample(self, *args, **kwargs):
+    def add_sample(self, sample):
         """Adds the given sample to the dataset.
 
-        @todo(Tyler) this is definitely not true, need to support once sample
-          class is created
-        If the sample belongs to another dataset, a copy is created and added
-        to this dataset.
+        If the sample belongs to a dataset, a copy is created and added to this
+        dataset.
 
         Args:
-            args and kwargs used to initialize a sample (this varies depending
-                on what fields the dataset has)
-
-            # @todo(Tyler) ingest samples, not kwargs
             sample: a :class:`fiftyone.core.sample.Sample`
 
         Returns:
             the ID of the sample in the dataset
         """
-        doc = self._Doc(*args, **kwargs)
-        doc.save()
-        return str(doc.id)
+        if sample._in_db:
+            sample = sample.copy()
+        sample._doc = self._Doc(**sample.to_dict())
+        sample._save()
+        return sample.id
 
-        # @todo(Tyler) ingest samples, not kwargs
-        # sample = self._ingest_sample(sample)
-        # sample._save()
-        # return sample.id
-
-    def add_samples(self, kwargs_list):
+    def add_samples(self, samples):
         """Adds the given samples to the dataset.
 
-        @todo(Tyler) this is definitely not true, need to support once sample
-          class is created
-        If a sample belongs to another dataset, a copy is created and added to
-        this dataset.
+        If a sample belongs to a dataset, a copy is created and added to this
+        dataset.
 
         Args:
-            kwargs_list: a list of kwargs dicts to be passed to
-                the sample init call.
-
-            @todo(Tyler) get rid of kwargs_list and replace with this
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
                 instances. For example, ``samples`` may be another
                 :class:`Dataset` or a :class:`fiftyone.core.views.DatasetView`
@@ -256,17 +262,19 @@ class Dataset(foc.SampleCollection):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        docs = self._get_query_set().insert(
-            [self._Doc(**kwargs) for kwargs in kwargs_list]
-        )
-        return [str(doc.id) for doc in docs]
+        # copy any samples in a dataset
+        samples = [s.copy() if s._in_db else s for s in samples]
 
-        # @todo(Tyler) ingest samples, not kwargs
-        # samples = [self._ingest_sample(s) for s in samples]
-        # sample_docs = self._get_query_set().insert(
-        #     [s._backing_doc for s in samples]
-        # )
-        # return [str(s.id) for s in sample_docs]
+        # insert into the dataset collection
+        docs = self._get_query_set().insert(
+            [self._Doc(**sample.to_dict()) for sample in samples]
+        )
+
+        # update the backing docs
+        for sample, doc in zip(samples, docs):
+            sample._doc = doc
+
+        return [str(doc.id) for doc in docs]
 
     def update_samples(self):
         # @todo(Tyler) making this a TODO. Jason wants to add a tag to all

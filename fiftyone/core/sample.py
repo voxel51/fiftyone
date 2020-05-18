@@ -20,6 +20,7 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 import os
+import warnings
 
 import fiftyone.core.odm as foo
 
@@ -42,8 +43,9 @@ class Sample(object):
         Args:
             filepath: the path to the data on disk
             tags (None): the set of tags associated with the sample
-            metadata (None): @todo(Tyler)
-            kwargs: @todo(Tyler)
+            metadata (None): a :class:`fiftyone.core.metadata.Metadata`
+                instance
+            kwargs: additional fields to be set on the sample
         """
         self._doc = foo.ODMNoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
@@ -96,7 +98,18 @@ class Sample(object):
         return self._doc.dataset_name
 
     def get_field_schema(self, ftype=None):
-        """@todo(Tyler)"""
+        """Gets a dictionary of all fields on this sample (and all samples in
+        the same dataset if applicable).
+
+        Args:
+            ftype (None): the subclass of ``BaseField`` for primitives
+                or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
+                filter by
+
+        Returns:
+             a dictionary of (field name: field type) per field that is a
+             subclass of ``ftype``
+        """
         return self._doc.get_field_schema(ftype=ftype)
 
     def get_field(self, field_name):
@@ -104,21 +117,50 @@ class Sample(object):
         return self._doc.get_field(field_name=field_name)
 
     def set_field(self, field_name, value, create=False):
-        """@todo(Tyler)"""
+        """Sets the value of a field for the sample.
+
+        Args:
+            field_name: the string name of the field to add
+            value: the value to set the field to
+            create (False): If True and field_name is not set on the dataset,
+                create a field on the dataset of a type implied by value
+
+        Raises:
+            ValueError: if:
+                the field_name is invalid
+                the field_name does not exist and create=False
+        """
         if hasattr(self, field_name):
             raise ValueError("Cannot set reserve word '%s'" % field_name)
         return self._doc.set_field(field_name, value, create=create)
 
     def __getattr__(self, name):
-        if name not in dir(self) and name in self.get_field_schema():
-            return self._doc.__getattribute__(name)
+        if name not in dir(self):
+            try:
+                return self._doc.get_field(field_name=name)
+            except Exception:
+                pass
         return super(Sample, self).__getattribute__(name)
 
     def __setattr__(self, name, value):
-        if name.startswith("_"):
-            return super(Sample, self).__setattr__(name, value)
-        # @todo(Tyler)
-        raise NotImplementedError("TODO")
+        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
+        # all attrs starting with "_" or that exist and are not fields are
+        # deferred to super
+        if name.startswith("_") or (
+            hasattr(self, name) and name not in self._doc.field_names
+        ):
+            return super().__setattr__(name, value)
+
+        if name not in self._doc.field_names:
+            warnings.warn(
+                "Fiftyone doesn't allow fields to be "
+                "created via a new attribute name",
+                stacklevel=2,
+            )
+            return super().__setattr__(name, value)
+        # @todo(Tyler) END NOT-DRY ############################################
+
+        self._doc.__setattr__(name, value)
 
     def __getitem__(self, key):
         return self.get_field(field_name=key)

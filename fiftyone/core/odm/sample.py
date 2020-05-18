@@ -34,6 +34,7 @@ from mongoengine import (
     EmbeddedDocumentField,
 )
 from mongoengine.fields import BaseField
+from mongoengine.errors import ValidationError
 
 import fiftyone.core.metadata as fom
 
@@ -118,6 +119,11 @@ class ODMSample(ODMDocument):
         """
         raise NotImplementedError("Subclass must implement")
 
+    @property
+    def field_names(self):
+        """Ordered list of the names of the fields of this sample."""
+        return self._fields_ordered
+
     def get_field(self, field_name):
         if not isinstance(field_name, six.string_types):
             raise TypeError("Field name must be of type string")
@@ -133,7 +139,7 @@ class ODMSample(ODMDocument):
         raise KeyError("Invalid field '%s'" % field_name)
 
     def set_field(self, field_name, value, create=False):
-        """Set the value of a field for a sample
+        """Sets the value of a field for the sample.
 
         Args:
             field_name: the string name of the field to add
@@ -272,16 +278,27 @@ class ODMSample(ODMDocument):
 
 
 class ODMNoDatasetSample(ODMSample):
-    # def __init__(self, **kwargs):
-    #     self._fields_ordered = list(kwargs)
-    #     self._data = kwargs
-
     meta = {"abstract": True}
 
     def __init__(self, *args, **kwargs):
-        super(ODMNoDatasetSample, self).__init__(*args, **kwargs)
+        # split kwargs into default and custom
+        default_kwargs = {
+            k: v for k, v in iteritems(kwargs) if k in self._fields
+        }
+        custom_kwargs = {
+            k: v for k, v in iteritems(kwargs) if k not in self._fields
+        }
+
+        # initialize with default kwargs
+        super(ODMNoDatasetSample, self).__init__(*args, **default_kwargs)
+
+        # make a local copy of the fields, independent of the class fields
         self._nods_fields = deepcopy(self._fields)
         self._nods_fields_ordered = deepcopy(self._fields_ordered)
+
+        # add the custom fields to the instance
+        for field_name, value in iteritems(custom_kwargs):
+            self.set_field(field_name, value, create=True)
 
     @nodataset
     def get_field_schema(self, ftype=None):
@@ -325,6 +342,33 @@ class ODMNoDatasetSample(ODMSample):
         # with their instance counterparts
         if name == "_fields_ordered" and hasattr(self, "_nods_fields_ordered"):
             return self.__setattr__("_nods_fields_ordered", value)
+
+        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
+        # all attrs starting with "_" or that exist and are not fields are
+        # deferred to super
+        if name.startswith("_") or (
+            hasattr(self, name) and name not in self.field_names
+        ):
+            return super().__setattr__(name, value)
+
+        if name not in self.field_names:
+            warnings.warn(
+                "Fiftyone doesn't allow fields to be "
+                "created via a new attribute name",
+                stacklevel=2,
+            )
+            return super().__setattr__(name, value)
+        # @todo(Tyler) END NOT-DRY ############################################
+
+        # @todo(Tyler) this should replace the field rather than validate
+        if value is not None:
+            try:
+                self._fields[name].validate(value)
+            except ValidationError:
+                raise ValidationError(
+                    "@todo(Tyler) changing a field type is"
+                    " not yet supported"
+                )
 
         result = super(ODMNoDatasetSample, self).__setattr__(name, value)
         if name in self._fields:
@@ -380,32 +424,36 @@ class ODMDatasetSample(ODMSample):
         return self.__class__.__name__
 
     def __setattr__(self, name, value):
+        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
         # all attrs starting with "_" or that exist and are not fields are
         # deferred to super
         if name.startswith("_") or (
-            hasattr(self, name) and name not in self._fields
+            hasattr(self, name) and name not in self.field_names
         ):
-            return super(ODMDatasetSample, self).__setattr__(name, value)
+            return super().__setattr__(name, value)
 
-        cls = self.__class__
+        if name not in self.field_names:
+            warnings.warn(
+                "Fiftyone doesn't allow fields to be "
+                "created via a new attribute name",
+                stacklevel=2,
+            )
+            return super().__setattr__(name, value)
+        # @todo(Tyler) END NOT-DRY ############################################
 
-        if hasattr(cls, name):
-            if value is not None:
-                getattr(cls, name).validate(value)
+        # @todo(Tyler) does validate work when value is None?
+        if value is not None:
+            self._fields[name].validate(value)
 
-            result = super(ODMDatasetSample, self).__setattr__(name, value)
-            if (
-                name not in ["_cls", "id"]
-                and isinstance(getattr(cls, name), BaseField)
-                and self.in_db
-            ):
-                # autosave the change to existing attrs
-                self.save()
-            return result
-
-        warnings.warn(
-            "Fiftyone doesn't allow fields to be "
-            "created via a new attribute name",
-            stacklevel=2,
-        )
-        return super(ODMDatasetSample, self).__setattr__(name, value)
+        result = super(ODMDatasetSample, self).__setattr__(name, value)
+        if (
+            # don't save '_cls' or 'id'
+            name not in ["_cls", "id"]
+            # @todo(Tyler) could this be removed?
+            and isinstance(getattr(self.__class__, name), BaseField)
+            # don't save before it has been added to the database
+            and self.in_db
+        ):
+            # autosave the change to existing attrs
+            self.save()
+        return result
