@@ -43,9 +43,9 @@ const _Sidebar = (props) => {
       {hasDataset ? (
         <Menu.Item as="h4">
           View
-          <Menu inverted vertical>
+          <Menu vertical>
             <Menu.Item as="div" style={{ overflowX: "auto" }}>
-              <pre>
+              <pre style={{ color: "white" }}>
                 {state && state.view
                   ? JSON.stringify(JSON.parse(state.view.view), null, 2)
                   : "Empty view"}

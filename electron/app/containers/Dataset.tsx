@@ -65,9 +65,12 @@ function Dataset(props) {
         ) : null}
       </Sidebar>
       <Ref innerRef={stickyRef}>
-        <Container fluid={true}>
-          <Sticky context={stickyRef}>
-            <Container fluid={true}>
+        <Container fluid={true} style={{ padding: "2rem" }}>
+          <Sticky context={stickyRef} style={{ marginTop: "-2rem" }}>
+            <Container
+              fluid={true}
+              style={{ background: "hsl(210, 20%, 15%)", paddingTop: "2rem" }}
+            >
               <Search />
               <Menu pointing secondary>
                 {tabs.map((v, i) => {
