@@ -42,7 +42,7 @@ function Dataset(props) {
       <Sidebar
         target={stickyRef}
         onHide={() => setView({ visible: false, sample: null })}
-        style={{ background: "black", zIndex: 10000, width: "50%" }}
+        style={{ zIndex: 10000, width: "50%" }}
         as={Menu}
         animation="overlay"
         direction="right"
@@ -60,19 +60,14 @@ function Dataset(props) {
               }}
               sample={view.sample}
             />
-            <pre style={{ color: "white" }}>
-              {JSON.stringify(view.sample, null, 2)}
-            </pre>
+            <pre>{JSON.stringify(view.sample, null, 2)}</pre>
           </>
         ) : null}
       </Sidebar>
       <Ref innerRef={stickyRef}>
         <Container fluid={true} style={{ padding: "0 2rem" }}>
           <Sticky context={stickyRef}>
-            <Container
-              fluid={true}
-              style={{ background: "white", paddingTop: "2rem" }}
-            >
+            <Container fluid={true}>
               <Search />
               <Menu pointing secondary>
                 {tabs.map((v, i) => {

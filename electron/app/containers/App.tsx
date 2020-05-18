@@ -22,7 +22,6 @@ function App(props: Props) {
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
-
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
     if (loading) {

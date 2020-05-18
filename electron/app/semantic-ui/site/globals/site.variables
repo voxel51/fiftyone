@@ -1,22 +1,27 @@
 /*******************************
-     User Global Variables
+         Site Settings
 *******************************/
 
-@fontName: "Palanquin";
-
+@containerBackground: hsl(210, 20%, 23%);
 @primaryColor: hsl(210, 20%, 90%);
 @secondaryColor: hsl(210, 20%, 70%);
+@tertiaryColor: hsl(210, 20%, 50%);
+@borderColor: @tertiaryColor;
+@focusedFormBorderColor; @secondaryColor;
 
 @lightPrimaryColor: hsl(210, 80%, 60%);
 @lightSecondaryColor: hsl(145, 80%, 70%);
+@secondaryPointingActiveBorderColor: @white;
 
 @containerBackground: hsl(210, 20%, 23%);
 @pageBackground: hsl(210, 20%, 15%);
 @inputBackground: @pageBackground;
+@selectedBorderColor: @secondaryColor;
+@selectedTextColor: @secondaryColor;
 
 
-@focusedFormBorderColor: hsl(210, 20%, 33%);
-@focusedFormMutedBorderColor: hsl(210, 20%, 33%);
+@focusedFormBorderColor: @tertiaryColor;
+@focusedFormMutedBorderColor: @tertiaryColor;
 
 @textColor: @primaryColor;
 @linkColor : @secondaryColor;
@@ -26,6 +31,16 @@
 @thumbBackground: @primaryColor;
 @thumbInactiveBackground: @secondaryColor;
 
-
-@inputHighlightBackground: @pageBackground;
+@inputHighlightBackground: @tertiaryColor;
 @inputHighlightColor: @secondaryColor;
+
+
+
+@relativeMini    : unit( round(@miniSize * @emSize) / @emSize, rem);
+@relativeTiny    : unit( round(@tinySize * @emSize) / @emSize, rem);
+@relativeSmall   : unit( round(@smallSize * @emSize) / @emSize, rem);
+@relativeMedium  : unit( round(@mediumSize * @emSize) / @emSize, rem);
+@relativeLarge   : unit( round(@largeSize * @emSize) / @emSize, rem);
+@relativeBig     : unit( round(@bigSize * @emSize) / @emSize, rem);
+@relativeHuge    : unit( round(@hugeSize * @emSize) / @emSize, rem);
+@relativeMassive : unit( round(@massiveSize * @emSize) / @emSize, rem);

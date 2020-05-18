@@ -4,3 +4,5 @@
 
 
 @verticalBackground: @containerBackground;
+@secondaryPointingActiveBorderColor: @secondaryColor;
+@borderWidth: 0;

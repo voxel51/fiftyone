@@ -3,3 +3,4 @@
 *******************************/
 
 @background: @containerBackground;
+@borderWidth: 0;
