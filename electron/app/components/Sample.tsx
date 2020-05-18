@@ -22,18 +22,20 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
   };
 
   return (
-    <Player51
-      src={src}
-      style={{
-        width: "100%",
-        position: "relative",
-        border: selected[id] ? "1px solid black" : "none",
-      }}
-      sample={sample}
-      onClick={() => handleClick()}
-      onDoubleClick={() => setView({ visible: true, sample })}
-      thumbnail={true}
-    />
+    <div style={{ margin: selected[id] ? 0 : "2px 0" }}>
+      <Player51
+        src={src}
+        style={{
+          width: "100%",
+          position: "relative",
+          border: selected[id] ? "2px solid rgb(255, 109, 4)" : "none",
+        }}
+        sample={sample}
+        onClick={() => handleClick()}
+        onDoubleClick={() => setView({ visible: true, sample })}
+        thumbnail={true}
+      />
+    </div>
   );
 };
 
