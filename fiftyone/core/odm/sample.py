@@ -474,15 +474,4 @@ class ODMDatasetSample(ODMSample):
         if value is not None:
             self._fields[name].validate(value)
 
-        result = super(ODMDatasetSample, self).__setattr__(name, value)
-        if (
-            # don't save '_cls' or 'id'
-            name not in ["_cls", "id"]
-            # @todo(Tyler) could this be removed?
-            and isinstance(getattr(self.__class__, name), BaseField)
-            # don't save before it has been added to the database
-            and self.in_db
-        ):
-            # autosave the change to existing attrs
-            self.save()
-        return result
+        return super(ODMDatasetSample, self).__setattr__(name, value)
