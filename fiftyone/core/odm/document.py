@@ -116,6 +116,10 @@ class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
 
     meta = {"abstract": True}
 
+    def __init__(self, *args, **kwargs):
+        super(ODMEmbeddedDocument, self).__init__(*args, **kwargs)
+        self.validate()
+
 
 class ODMDocument(SerializableDocument, Document):
     """Base class to inherit from for documents that are stored in a MongoDB
