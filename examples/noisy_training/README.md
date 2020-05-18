@@ -119,12 +119,12 @@ mistakennness_view = (h_view
 )
 session.view = mistakenness_view
 
+```
+
 You could easily drop these findings into an iterative loop that attempts to 
 sequentially fix the mistakes, or remove them from training.  FiftyOne lets you 
 do this by integrating within your model training loop or via an export 
 procedure.
-
-```
 
 ## Copyright
 
