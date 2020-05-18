@@ -113,11 +113,18 @@ class Sample(object):
         return self._doc.get_field_schema(ftype=ftype)
 
     def get_field(self, field_name):
-        """@todo(Tyler)"""
+        """Accesses the value of a field of the sample.
+
+        Args:
+            field_name: the string name of the field to add
+
+        Raises:
+            KeyError: if the field name is not valid
+        """
         return self._doc.get_field(field_name=field_name)
 
     def set_field(self, field_name, value, create=False):
-        """Sets the value of a field for the sample.
+        """Sets the value of a field of the sample.
 
         Args:
             field_name: the string name of the field to add
