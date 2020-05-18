@@ -5,6 +5,7 @@ Unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 import unittest
 
 from mongoengine import IntField
@@ -18,7 +19,7 @@ import fiftyone as fo
 import fiftyone.core.odm as foo
 
 
-class TestDataset(unittest.TestCase):
+class DatasetTest(unittest.TestCase):
     def test_pername_singleton(self):
         dataset1 = fo.Dataset("test_dataset")
         dataset2 = fo.Dataset("test_dataset")
@@ -31,7 +32,7 @@ class TestDataset(unittest.TestCase):
         self.assertTrue(issubclass(dataset._Doc, foo.ODMDatasetSample))
 
 
-class TestSample(unittest.TestCase):
+class SampleTest(unittest.TestCase):
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
         self.assertIsInstance(sample._doc, foo.ODMNoDatasetSample)
@@ -112,18 +113,27 @@ class TestSample(unittest.TestCase):
         self.assertEqual(sample.test_field, value)
 
 
-class TestSampleInDataset(unittest.TestCase):
-    def test_id(self):
-        dataset = fo.Dataset(name="test_dataset")
+class SampleInDatasetTest(unittest.TestCase):
+    def test_autopopulated_fields(self):
+        dataset_name = "test_dataset"
+        dataset = fo.Dataset(name=dataset_name)
         sample = fo.Sample(filepath="path/to/file.jpg")
+
         self.assertIsNone(sample.id)
+        self.assertIsNone(sample.ingest_time)
+        self.assertFalse(sample.in_dataset)
+        self.assertIsNone(sample.dataset_name)
 
         dataset.add_sample(sample)
+
         self.assertIsNotNone(sample.id)
         self.assertIsInstance(sample.id, str)
+        self.assertIsInstance(sample.ingest_time, datetime.datetime)
+        self.assertTrue(sample.in_dataset)
+        self.assertEqual(sample.dataset_name, dataset_name)
 
 
-class TestLabels(unittest.TestCase):
+class LabelsTest(unittest.TestCase):
     def test_create(self):
         labels = fo.Classification(label="cow", confidence=0.98)
         self.assertIsInstance(labels, fo.Classification)
@@ -136,12 +146,9 @@ class TestLabels(unittest.TestCase):
 
 
 class CRUDTest(unittest.TestCase):
-    """CRUD (Create, Read, Update, Delete)"""
-
-    _DATASET_NAME = "crud_test"
-
-    def test_create(self):
-        dataset = fo.Dataset(self._DATASET_NAME)
+    def test_create_sample(self):
+        dataset_name = "crud_test"
+        dataset = fo.Dataset(dataset_name)
         filepath = "path/to/file.txt"
         sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
         self.assertEqual(len(dataset), 0)
@@ -163,20 +170,19 @@ class CRUDTest(unittest.TestCase):
         self.assertEqual(len(sample2.tags), 1)
         self.assertEqual(sample2.tags[0], tag)
 
-        # @todo(Tyler) I need to make child classes for these:
-        from mongoengine.base.datastructures import BaseList
-        from mongoengine.fields import ListField
-
         # update append
-        tag = "tag4"
-        sample.tags.append(tag)
-        print(sample)
-        self.assertEqual(len(sample.tags), 3)
-        self.assertEqual(sample.tags[-1], tag)
-        sample2 = dataset[sample.id]
-        print(sample2)
-        self.assertEqual(len(sample2.tags), 3)
-        self.assertEqual(sample2.tags[-1], tag)
+        # @todo(Tyler) I need to make child classes for these:
+        # from mongoengine.base.datastructures import BaseList
+        # from mongoengine.fields import ListField
+        # tag = "tag4"
+        # sample.tags.append(tag)
+        # print(sample)
+        # self.assertEqual(len(sample.tags), 3)
+        # self.assertEqual(sample.tags[-1], tag)
+        # sample2 = dataset[sample.id]
+        # print(sample2)
+        # self.assertEqual(len(sample2.tags), 3)
+        # self.assertEqual(sample2.tags[-1], tag)
 
         # print("Removing tag 'tag1'")
         # sample.remove_tag("tag1")
