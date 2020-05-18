@@ -2,6 +2,8 @@
      User Global Variables
 *******************************/
 
+@fontName: "Palanquin";
+
 @primaryColor: #e0e6eb;
 @secondaryColor: #a3b3c2;
 @pageBackground: #1f262e;
