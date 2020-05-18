@@ -231,6 +231,7 @@ class ViewTest(unittest.TestCase):
         view = dataset.view()
 
         self.assertEqual(len(view), len(dataset))
+        self.assertIsInstance(view.first(), fo.Sample)
 
         # tags
         for sample in view.match({"tags": "train"}):
