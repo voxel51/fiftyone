@@ -122,11 +122,14 @@ class ODMSample(ODMDocument):
         if not isinstance(field_name, six.string_types):
             raise TypeError("Field name must be of type string")
 
-        if field_name in self._get_fields():
+        if field_name in self._fields:
             if hasattr(self, field_name):
                 return self.__getattribute__(field_name)
             # you should never get here!
-            raise KeyError("Field set but object does not have attribute: '%s'" % field_name)
+            raise KeyError(
+                "Field set but object does not have attribute: '%s'"
+                % field_name
+            )
         raise KeyError("Invalid field '%s'" % field_name)
 
     def set_field(self, field_name, value, create=False):
@@ -149,10 +152,10 @@ class ODMSample(ODMDocument):
                 % field_name
             )
 
-        if hasattr(self, field_name) and field_name not in self._get_fields():
+        if hasattr(self, field_name) and field_name not in self._fields:
             raise ValueError("Cannot set reserve word '%s'" % field_name)
 
-        if field_name not in self._get_fields():
+        if field_name not in self._fields:
             if create:
                 self._add_implied_field(field_name, value)
             else:
@@ -162,15 +165,6 @@ class ODMSample(ODMDocument):
                 )
 
         return self.__setattr__(field_name, value)
-
-    def _get_fields(self):
-        raise NotImplementedError("Subclass must implement")
-
-    def _get_fields_ordered(self):
-        raise NotImplementedError("Subclass must implement")
-
-    def _set_fields_ordered(self, value):
-        raise NotImplementedError("Subclass must implement")
 
     @staticmethod
     def _get_field_schema(cls_or_self, ftype=None):
@@ -185,13 +179,10 @@ class ODMSample(ODMDocument):
                 EmbeddedDocument,
             )
 
-        fields = cls_or_self._get_fields()
-        fields_ordered = cls_or_self._get_fields_ordered()
-
         d = OrderedDict()
 
-        for field_name in fields_ordered:
-            field = fields[field_name]
+        for field_name in cls_or_self._fields_ordered:
+            field = cls_or_self._fields[field_name]
             if issubclass(ftype, BaseField):
                 if isinstance(field, ftype):
                     d[field_name] = field
@@ -217,9 +208,7 @@ class ODMSample(ODMDocument):
                 if provided
 
         """
-        fields = cls_or_self._get_fields()
-
-        if field_name in fields:
+        if field_name in cls_or_self._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
         if not issubclass(ftype, BaseField):
@@ -242,16 +231,20 @@ class ODMSample(ODMDocument):
         #   https://github.com/MongoEngine/mongoengine/blob/3db9d58dac138dd0e838c524f616ebe3d23db2ff/mongoengine/base/document.py#L170
         field = ftype(**kwargs)
         field.name = field_name
-        fields[field_name] = field
-        cls_or_self._set_fields_ordered(
-            cls_or_self._get_fields_ordered() + (field_name,)
-        )
-        setattr(cls_or_self, field_name, field)
+        cls_or_self._fields[field_name] = field
+        cls_or_self._fields_ordered += (field_name,)
+        try:
+            if issubclass(cls_or_self, ODMSample):
+                # only set the attribute if it is a class
+                setattr(cls_or_self, field_name, field)
+        except TypeError:
+            # instance, not class, so do not setattr
+            pass
 
     def _add_implied_field(self, field_name, value):
         """Determine the field type from the value type"""
         assert (
-            field_name not in self._get_fields()
+            field_name not in self._fields
         ), "Attempting to add field that already exists"
 
         if isinstance(value, EmbeddedDocument):
@@ -318,18 +311,28 @@ class ODMNoDatasetSample(ODMSample):
         """Samples not in a dataset never have an ID."""
         return None
 
-    # def __iter__(self):
-    #     # @todo(Tyler)
-    #     return iter(self._get_fields_ordered())
+    def __getattribute__(self, name):
+        # override class attributes '_fields' and '_fields_ordered'
+        # with their instance counterparts
+        if name == "_fields" and hasattr(self, "_nods_fields"):
+            return self._nods_fields
+        if name == "_fields_ordered" and hasattr(self, "_nods_fields_ordered"):
+            return self._nods_fields_ordered
+        return super(ODMNoDatasetSample, self).__getattribute__(name)
 
-    def _get_fields(self):
-        return self._nods_fields
+    def __setattr__(self, name, value):
+        # override class attributes '_fields' and '_fields_ordered'
+        # with their instance counterparts
+        if name == "_fields_ordered" and hasattr(self, "_nods_fields_ordered"):
+            return self.__setattr__("_nods_fields_ordered", value)
 
-    def _get_fields_ordered(self):
-        return self._nods_fields_ordered
-
-    def _set_fields_ordered(self, value):
-        self._nods_fields_ordered = value
+        result = super(ODMNoDatasetSample, self).__setattr__(name, value)
+        if name in self._fields:
+            # __set__() is not called because the field is not a class
+            # attribute so we must explicitly call it
+            field = self._fields[name]
+            field.__set__(self, value)
+        return result
 
 
 class NoDatasetError(Exception):
@@ -406,15 +409,3 @@ class ODMDatasetSample(ODMSample):
             stacklevel=2,
         )
         return super(ODMDatasetSample, self).__setattr__(name, value)
-
-    @classmethod
-    def _get_fields(cls):
-        return cls._fields
-
-    @classmethod
-    def _get_fields_ordered(cls):
-        return cls._fields_ordered
-
-    @classmethod
-    def _set_fields_ordered(cls, value):
-        cls._fields_ordered = value
