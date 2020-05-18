@@ -27,16 +27,27 @@ from fiftyone.core.odm.document import ODMEmbeddedDocument
 
 
 class Metadata(ODMEmbeddedDocument):
-    """Base class for storing metadata about raw data."""
+    """Base class for storing metadata about raw data.
+
+    Args:
+        size_bytes: integer size of the media in bytes
+        mime_type: the MIME type of the media
+    """
+
+    meta = {"allow_inheritance": True}
 
     size_bytes = IntField()
     mime_type = StringField()
 
-    meta = {"allow_inheritance": True}
-
 
 class ImageMetadata(Metadata):
-    """Base class for storing metadata about raw images."""
+    """Base class for storing metadata about raw images.
+
+    Args:
+        width: integer width of the image in pixels
+        height: integer height of the image in pixels
+        num_channels: integer number of channels of the image
+    """
 
     width = IntField()
     height = IntField()
