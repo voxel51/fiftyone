@@ -83,8 +83,13 @@ under `index-servers`. The `local` name can be changed as long as you are
 consistent.
 
 To upload a package to this instance, run the following command in the folder
-where you built the package:
+where you built the package. Note that this uses
+[`twine`](https://pypi.org/project/twine/), which is installed as a dev
+requirement in this project.
 
 ```
-python setup.py bdist_wheel upload -r local
+twine upload -r local dist/*.whl
 ```
+
+You can also explicitly pass the paths of one or more wheels to `twine upload`
+if there are some that you don't want to upload.
