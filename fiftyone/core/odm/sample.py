@@ -119,10 +119,49 @@ class ODMSample(ODMDocument):
         raise NotImplementedError("Subclass must implement")
 
     def get_field(self, field_name):
-        raise NotImplementedError("Subclass must implement")
+        if not isinstance(field_name, six.string_types):
+            raise TypeError("Field name must be of type string")
+
+        if field_name in self._get_fields():
+            if hasattr(self, field_name):
+                return self.__getattribute__(field_name)
+            # you should never get here!
+            raise KeyError("Field set but object does not have attribute: '%s'" % field_name)
+        raise KeyError("Invalid field '%s'" % field_name)
 
     def set_field(self, field_name, value, create=False):
-        raise NotImplementedError("Subclass must implement")
+        """Set the value of a field for a sample
+
+        Args:
+            field_name: the string name of the field to add
+            value: the value to set the field to
+            create (False): If True and field_name is not set on the dataset,
+                create a field on the dataset of a type implied by value
+
+        Raises:
+            ValueError: if:
+                the field_name is invalid
+                the field_name does not exist and create=False
+        """
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name: '%s'. Field name cannot start with '_'"
+                % field_name
+            )
+
+        if hasattr(self, field_name) and field_name not in self._get_fields():
+            raise ValueError("Cannot set reserve word '%s'" % field_name)
+
+        if field_name not in self._get_fields():
+            if create:
+                self._add_implied_field(field_name, value)
+            else:
+                raise ValueError(
+                    "Sample does not have field '%s'. Use `create=True` to"
+                    " create a new field."
+                )
+
+        return self.__setattr__(field_name, value)
 
     def _get_fields(self):
         raise NotImplementedError("Subclass must implement")
@@ -189,7 +228,7 @@ class ODMSample(ODMDocument):
                 % (ftype, BaseField)
             )
 
-        kwargs = {"db_field": field_name}
+        kwargs = {"db_field": field_name, "null": True}
 
         if issubclass(ftype, EmbeddedDocumentField):
             kwargs.update(
@@ -208,6 +247,35 @@ class ODMSample(ODMDocument):
             cls_or_self._get_fields_ordered() + (field_name,)
         )
         setattr(cls_or_self, field_name, field)
+
+    def _add_implied_field(self, field_name, value):
+        """Determine the field type from the value type"""
+        assert (
+            field_name not in self._get_fields()
+        ), "Attempting to add field that already exists"
+
+        if isinstance(value, EmbeddedDocument):
+            self.add_field(
+                field_name,
+                EmbeddedDocumentField,
+                embedded_doc_type=type(value),
+            )
+        elif isinstance(value, bool):
+            self.add_field(field_name, BooleanField)
+        elif isinstance(value, six.integer_types):
+            self.add_field(field_name, IntField)
+        elif isinstance(value, six.string_types):
+            self.add_field(field_name, StringField)
+        elif isinstance(value, list) or isinstance(value, tuple):
+            # @todo(Tyler) set the subfield of ListField and
+            #   ensure all elements are of this type
+            self.add_field(field_name, ListField)
+        elif isinstance(value, dict):
+            self.add_field(field_name, DictField)
+        else:
+            raise TypeError(
+                "Invalid type: '%s' could not be cast to Field" % type(value)
+            )
 
 
 class ODMNoDatasetSample(ODMSample):
@@ -250,13 +318,9 @@ class ODMNoDatasetSample(ODMSample):
         """Samples not in a dataset never have an ID."""
         return None
 
-    def get_field(self, field_name):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO")
-
-    def set_field(self, field_name, value, create=False):
-        # @todo(Tyler)
-        raise NotImplementedError("TODO")
+    # def __iter__(self):
+    #     # @todo(Tyler)
+    #     return iter(self._get_fields_ordered())
 
     def _get_fields(self):
         return self._nods_fields
@@ -342,84 +406,6 @@ class ODMDatasetSample(ODMSample):
             stacklevel=2,
         )
         return super(ODMDatasetSample, self).__setattr__(name, value)
-
-    def get_field(self, field_name):
-        if (
-            isinstance(field_name, six.string_types)
-            and field_name in self._fields
-        ):
-            if hasattr(self, field_name):
-                return self.__getattribute__(field_name)
-            # @todo(Tyler)
-            raise NotImplementedError(
-                "TODO: This could return None, but it should be found in the"
-                " document as `null` instead"
-            )
-        raise KeyError("Invalid field '%s'" % field_name)
-
-    def set_field(self, field_name, value, create=False):
-        """Set the value of a field for a sample
-
-        Args:
-            field_name: the string name of the field to add
-            value: the value to set the field to
-            create (False): If True and field_name is not set on the dataset,
-                create a field on the dataset of a type implied by value
-
-        Raises:
-            ValueError: if:
-                the field_name is invalid
-                the field_name does not exist and create=False
-        """
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name: '%s'. Field name cannot start with '_'"
-                % field_name
-            )
-
-        if hasattr(self, field_name) and field_name not in self._fields:
-            raise ValueError("Cannot set reserve word '%s'" % field_name)
-
-        if field_name not in self._fields:
-            if create:
-                self._add_implied_field(field_name, value)
-            else:
-                raise ValueError(
-                    "Sample does not have field '%s'. Use `create=True` to"
-                    " create a new field."
-                )
-
-        return self.__setattr__(field_name, value)
-
-    @classmethod
-    def _add_implied_field(cls, field_name, value):
-        """Determine the field type from the value type"""
-        assert (
-            field_name not in cls._fields
-        ), "Attempting to add field that already exists"
-
-        if isinstance(value, EmbeddedDocument):
-            cls.add_field(
-                field_name,
-                EmbeddedDocumentField,
-                embedded_doc_type=type(value),
-            )
-        elif isinstance(value, bool):
-            cls.add_field(field_name, BooleanField)
-        elif isinstance(value, six.integer_types):
-            cls.add_field(field_name, IntField)
-        elif isinstance(value, six.string_types):
-            cls.add_field(field_name, StringField)
-        elif isinstance(value, list) or isinstance(value, tuple):
-            # @todo(Tyler) set the subfield of ListField and
-            #   ensure all elements are of this type
-            cls.add_field(field_name, ListField)
-        elif isinstance(value, dict):
-            cls.add_field(field_name, DictField)
-        else:
-            raise TypeError(
-                "Invalid type: '%s' could not be cast to Field" % type(value)
-            )
 
     @classmethod
     def _get_fields(cls):
