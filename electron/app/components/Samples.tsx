@@ -77,12 +77,12 @@ function Samples(props) {
   }
 
   const chunkedImages = _.chunk(scrollState.images, 4);
-  const content = chunkedImages.map((imgs) => {
+  const content = chunkedImages.map((imgs, i) => {
     return (
-      <Grid.Row style={{}}>
-        {imgs.map((img) => {
+      <Grid.Row key={i}>
+        {imgs.map((img, j) => {
           return (
-            <Grid.Column>
+            <Grid.Column key={j}>
               <Sample
                 sample={img}
                 selected={selected}
@@ -103,7 +103,7 @@ function Samples(props) {
         initialLoad={true}
         loadMore={() => loadMore()}
         hasMore={scrollState.hasMore}
-        loader={<Loader />}
+        loader={<Loader key={0} />}
         useWindow={true}
       >
         <Grid columns={4}>{content}</Grid>

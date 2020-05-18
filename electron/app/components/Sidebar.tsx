@@ -15,7 +15,6 @@ const _Sidebar = (props) => {
       vertical
       direction={"left"}
       visible={!loading}
-      color="background"
     >
       <Menu.Item as="h3">
         <Image src={logo} alt="FiftyOne" />

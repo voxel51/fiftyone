@@ -9,7 +9,7 @@ import {
   Sticky,
 } from "semantic-ui-react";
 
-import Labels from "../components/Labels";
+import Fields from "../components/Fields";
 import Player51 from "../components/Player51";
 import Samples from "../components/Samples";
 import Search from "../components/Search";
@@ -20,7 +20,7 @@ function Dataset(props) {
   const { path, url } = useRouteMatch();
   const { connected, loading, port } = props;
   const stickyRef = createRef();
-  const tabs = ["samples", "labels"];
+  const tabs = ["samples", "fields"];
   const [view, setView] = useState({ visible: false, sample: null });
   let src = null;
   if (view.sample) {
@@ -93,10 +93,9 @@ function Dataset(props) {
             <Route path={`${path}samples`}>
               <Samples {...props.socket} setView={setView} />
             </Route>
-            <Route path={`${path}labels`}>
-              <Labels data={[]} />
+            <Route path={`${path}fields`}>
+              <Fields data={[]} />
             </Route>
-            <Route path={`${path}insights`}>Hello</Route>
           </Switch>
         </Container>
       </Ref>
