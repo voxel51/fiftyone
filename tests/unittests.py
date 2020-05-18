@@ -1,6 +1,14 @@
 """
 Unit tests.
 
+To run a single test, modify the main code to:
+
+```
+singletest = unittest.TestSuite()
+singletest.addTest(<TEST CASE>('<TEST METHOD NAME>'))
+unittest.TextTestRunner().run(singletest)
+```
+
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -166,6 +174,7 @@ class CRUDTest(unittest.TestCase):
         # update assign
         tag = "tag3"
         sample.tags = [tag]
+        sample.save()
         self.assertEqual(len(sample.tags), 1)
         self.assertEqual(sample.tags[0], tag)
         sample2 = dataset[sample.id]
@@ -173,18 +182,35 @@ class CRUDTest(unittest.TestCase):
         self.assertEqual(sample2.tags[0], tag)
 
         # update append
-        # @todo(Tyler) I need to make child classes for these:
-        # from mongoengine.base.datastructures import BaseList
-        # from mongoengine.fields import ListField
-        # tag = "tag4"
-        # sample.tags.append(tag)
-        # print(sample)
-        # self.assertEqual(len(sample.tags), 3)
-        # self.assertEqual(sample.tags[-1], tag)
-        # sample2 = dataset[sample.id]
-        # print(sample2)
-        # self.assertEqual(len(sample2.tags), 3)
-        # self.assertEqual(sample2.tags[-1], tag)
+        tag = "tag4"
+        sample.tags.append(tag)
+        sample.save()
+        self.assertEqual(len(sample.tags), 2)
+        self.assertEqual(sample.tags[-1], tag)
+        sample2 = dataset[sample.id]
+        self.assertEqual(len(sample2.tags), 2)
+        self.assertEqual(sample2.tags[-1], tag)
+
+        # update add new field
+        dataset.add_sample_field(
+            field_name="test_label",
+            ftype=EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        sample.test_label = fo.Classification(label="cow")
+        self.assertEqual(sample.test_label.label, "cow")
+        sample.save()
+        self.assertEqual(sample.test_label.label, "cow")
+        sample2 = dataset[sample.id]
+        self.assertEqual(sample2.test_label.label, "cow")
+
+        # update modify embedded document
+        sample.test_label.label = "chicken"
+        self.assertEqual(sample.test_label.label, "chicken")
+        sample.save()
+        self.assertEqual(sample.test_label.label, "chicken")
+        sample2 = dataset[sample.id]
+        self.assertEqual(sample2.test_label.label, "chicken")
 
         # print("Removing tag 'tag1'")
         # sample.remove_tag("tag1")

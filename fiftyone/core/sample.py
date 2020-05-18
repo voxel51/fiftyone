@@ -255,7 +255,7 @@ class Sample(object):
         sample._doc = doc
         return sample
 
-    def _save(self):
+    def save(self):
         """Saves the document to the database."""
         self._doc.save()
 

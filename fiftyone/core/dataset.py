@@ -245,7 +245,7 @@ class Dataset(foc.SampleCollection):
         if sample._in_db:
             sample = sample.copy()
         sample._doc = self._Doc(**sample.to_dict())
-        sample._save()
+        sample.save()
         return sample.id
 
     def add_samples(self, samples):

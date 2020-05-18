@@ -257,9 +257,7 @@ class ODMSample(ODMDocument):
         kwargs = {"db_field": field_name, "null": True}
 
         if issubclass(ftype, EmbeddedDocumentField):
-            kwargs.update(
-                {"document_type": embedded_doc_type, "null": True,}
-            )
+            kwargs.update({"document_type": embedded_doc_type})
         elif any(issubclass(ftype, ft) for ft in [ListField, DictField]):
             if subfield is not None:
                 kwargs["field"] = subfield
