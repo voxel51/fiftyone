@@ -8,3 +8,4 @@
 @borderWidth: 0;
 @boxShadow: none;
 @subMenuMargin: @subMenuDistance 0em 0em;
+@subMenuTextColor: @textColor;

@@ -45,7 +45,7 @@ const _Sidebar = (props) => {
           View
           <Menu vertical>
             <Menu.Item as="div" style={{ overflowX: "auto" }}>
-              <pre style={{ color: "white" }}>
+              <pre>
                 {state && state.view
                   ? JSON.stringify(JSON.parse(state.view.view), null, 2)
                   : "Empty view"}
