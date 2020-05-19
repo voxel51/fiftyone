@@ -469,21 +469,20 @@ class Dataset(foc.SampleCollection):
         if name is None:
             name = get_default_dataset_name()
 
-        # @todo add a progress bar here? Note that `len(samples)` may not work
-        # for some iterables
         logger.info("Parsing samples...")
         _samples = []
-        for sample in samples:
-            if sample_parser is not None:
-                label = sample_parser.parse_label(sample)
-            else:
-                label = sample[1]
+        with etau.ProgressBar() as bar:
+            for sample in bar(samples):
+                if sample_parser is not None:
+                    label = sample_parser.parse_label(sample)
+                else:
+                    label = sample[1]
 
-            filepath = os.path.abspath(os.path.expanduser(sample[0]))
-            _sample = fos.Sample.create(filepath)
+                filepath = os.path.abspath(os.path.expanduser(sample[0]))
+                _sample = fos.Sample.create(filepath)
 
-            _sample.add_label(group, label)
-            _samples.append(_sample)
+                _sample.add_label(group, label)
+                _samples.append(_sample)
 
         logger.info(
             "Creating dataset '%s' containing %d samples", name, len(_samples)
