@@ -82,7 +82,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement aggregate()")
 
-    def export(self, label_field_name, export_dir):
+    def export(self, label_field, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,
         using the given label field as labels.
 
@@ -91,14 +91,14 @@ class SampleCollection(object):
         specified group.
 
         Args:
-            label_field_name: the name of the label field to export
+            label_field: the name of the label field to export
             export_dir: the directory to which to export
         """
         data_paths = []
         labels = []
         for sample in self:
             data_paths.append(sample.filepath)
-            labels.append(sample[label_field_name])
+            labels.append(sample[label_field])
 
         if not labels:
             logger.warning("No samples to export; returning now")

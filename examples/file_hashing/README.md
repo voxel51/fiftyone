@@ -217,9 +217,7 @@ to delete.
 But we have a very small dataset here, so we could just export a copy:
 
 ```python
-dataset.export(
-    label_field_name="ground_truth", export_dir="/tmp/fiftyone/export"
-)
+dataset.export(label_field="ground_truth", export_dir="/tmp/fiftyone/export")
 ```
 
 ## Copyright
