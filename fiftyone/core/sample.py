@@ -20,9 +20,12 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 import os
-import warnings
+import logging
 
 import fiftyone.core.odm as foo
+
+
+logger = logging.getLogger(__name__)
 
 
 class Sample(object):
@@ -34,19 +37,13 @@ class Sample(object):
     features associated with subsets of the data and/or label sets.
 
     Args:
-        document: a :class:`fiftyone.core.odm.ODMSample`
+        filepath: the path to the data on disk
+        tags (None): the set of tags associated with the sample
+        metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
+        **kwargs: additional fields to be set on the sample
     """
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        """Creates a :class:`Sample` instance.
-
-        Args:
-            filepath: the path to the data on disk
-            tags (None): the set of tags associated with the sample
-            metadata (None): a :class:`fiftyone.core.metadata.Metadata`
-                instance
-            kwargs: additional fields to be set on the sample
-        """
         self._doc = foo.ODMNoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
@@ -54,27 +51,58 @@ class Sample(object):
     def __str__(self):
         return str(self._doc)
 
+    def __getattr__(self, name):
+        if name not in dir(self):
+            try:
+                return self._doc.get_field(field_name=name)
+            except Exception:
+                pass
+        return super(Sample, self).__getattribute__(name)
+
+    def __setattr__(self, name, value):
+        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
+        # all attrs starting with "_" or that exist and are not fields are
+        # deferred to super
+        if name.startswith("_") or (
+            hasattr(self, name) and name not in self._doc.field_names
+        ):
+            return super(Sample, self).__setattr__(name, value)
+
+        if name not in self._doc.field_names:
+            logger.warning(
+                "FiftyOne does not allow fields to be dynamically created via "
+                "__setattr__"
+            )
+            return super(Sample, self).__setattr__(name, value)
+        # @todo(Tyler) END NOT-DRY ############################################
+
+        self._doc.__setattr__(name, value)
+
+    def __delattr__(self, name):
+        # @todo(Tyler)
+        raise NotImplementedError("TODO")
+
+    def __getitem__(self, key):
+        return self.get_field(field_name=key)
+
+    def __setitem__(self, key, value):
+        return self.set_field(field_name=key, value=value, create=True)
+
+    def __delitem__(self, key):
+        return self.clear_field(field_name=key)
+
+    def __copy__(self):
+        return self.copy()
+
     @property
     def filename(self):
-        """The name of the raw data file on disk."""
+        """The basename of the data filepath."""
         return os.path.basename(self.filepath)
 
     @property
     def id(self):
         """The ID of the document, or ``None`` if it has not been added to the
         database.
-
-        **Implementation details**
-
-        The ID is a 12 byte value consisting of the concatenation of the
-        following:
-
-        - a 4 byte timestamp representing the document's commit time,
-          measured in seconds since epoch
-
-        - a 5 byte random value
-
-        - a 3 byte incrementing counter, initialized to a random value
         """
         return str(self._doc.id) if self._in_db else None
 
@@ -102,13 +130,11 @@ class Sample(object):
         the same dataset if applicable).
 
         Args:
-            ftype (None): the subclass of ``BaseField`` for primitives
-                or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
-                filter by
+            ftype (None): the subclass of ``BaseField`` for primitives or
+                ``EmbeddedDocument`` for ``EmbeddedDocumentField`` types
 
         Returns:
-             a dictionary of (field name: field type) per field that is a
-             subclass of ``ftype``
+             a dictionary mapping field names to field types
         """
         return self._doc.get_field_schema(ftype=ftype)
 
@@ -117,6 +143,9 @@ class Sample(object):
 
         Args:
             field_name: the string name of the field to add
+
+        Returns:
+            the field value
 
         Raises:
             KeyError: if the field name is not valid
@@ -127,59 +156,32 @@ class Sample(object):
         """Sets the value of a field of the sample.
 
         Args:
-            field_name: the string name of the field to add
-            value: the value to set the field to
-            create (False): If True and field_name is not set on the dataset,
-                create a field on the dataset of a type implied by value
+            field_name: the name of the field to set
+            value: the field value
+            create (False): whether to create the field if it does not exist
 
         Raises:
-            ValueError: if:
-                the field_name is invalid
-                the field_name does not exist and create=False
+            ValueError: if ``field_name`` is not an allowed field name or does
+                not exist and ``create == False``
         """
         if (
             hasattr(self, field_name)
             and field_name not in self._doc.field_names
         ):
-            raise ValueError("Cannot set reserve word '%s'" % field_name)
+            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
+
         return self._doc.set_field(field_name, value, create=create)
 
-    def __getattr__(self, name):
-        if name not in dir(self):
-            try:
-                return self._doc.get_field(field_name=name)
-            except Exception:
-                pass
-        return super(Sample, self).__getattribute__(name)
+    def clear_field(self, field_name):
+        """Clears the value of a field of the sample.
 
-    def __setattr__(self, name, value):
-        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
-        # all attrs starting with "_" or that exist and are not fields are
-        # deferred to super
-        if name.startswith("_") or (
-            hasattr(self, name) and name not in self._doc.field_names
-        ):
-            return super().__setattr__(name, value)
+        Args:
+            field_name: the name of the field to clear
 
-        if name not in self._doc.field_names:
-            warnings.warn(
-                "Fiftyone doesn't allow fields to be "
-                "created via a new attribute name",
-                stacklevel=2,
-            )
-            return super().__setattr__(name, value)
-        # @todo(Tyler) END NOT-DRY ############################################
-
-        self._doc.__setattr__(name, value)
-
-    def __getitem__(self, key):
-        return self.get_field(field_name=key)
-
-    def __setitem__(self, key, value):
-        return self.set_field(field_name=key, value=value, create=True)
-
-    def __copy__(self):
-        return self.copy()
+        Raises:
+            KeyError: if the given field does not exist
+        """
+        return self._doc.clear_field(field_name=field_name)
 
     def copy(self):
         """Returns a copy of the sample that has not been added to the
@@ -191,7 +193,7 @@ class Sample(object):
         return self.__class__(**self._doc.copy().to_dict())
 
     def to_dict(self, extended=False):
-        """Serializes this document to a JSON dictionary.
+        """Serializes the sample to a JSON dictionary.
 
         Args:
             extended (False): whether to return extended JSON, i.e.,
@@ -204,11 +206,11 @@ class Sample(object):
 
     @classmethod
     def from_dict(cls, doc_class, d, created=False, extended=False):
-        """Loads the document from a JSON dictionary.
+        """Loads the sample from a JSON dictionary.
 
         Args:
+            doc_class:
             d: a JSON dictionary
-            doc_class
             created (False): whether to consider the newly instantiated
                 document as brand new or as persisted already. The following
                 cases exist:
@@ -228,13 +230,13 @@ class Sample(object):
                 expected to already be loaded
 
         Returns:
-            a :class:`ODMDocument`
+            a :class:`Sample`
         """
         doc = doc_class.from_dict(d, created=created, extended=extended)
         return cls.from_doc(doc)
 
     def to_json(self):
-        """Returns a JSON string representation of the document.
+        """Returns a JSON string representation of the sample.
 
         Returns:
             a JSON string

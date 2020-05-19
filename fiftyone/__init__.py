@@ -54,5 +54,9 @@ from .core.metadata import (
     ImageMetadata,
 )
 from .core.sample import Sample
-from .core.session import close_dashboard, launch_dashboard, Session
+from .core.session import (
+    close_dashboard,
+    launch_dashboard,
+    Session,
+)
 from .core.view import DatasetView

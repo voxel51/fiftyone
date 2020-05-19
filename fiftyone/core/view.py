@@ -29,30 +29,29 @@ import fiftyone.core.collections as foc
 import fiftyone.core.sample as fos
 
 
-def _makeRegistrar():
+def _make_registrar():
     """Makes a decorator that keeps a registry of all functions decorated by
     it.
 
-    Usage:
-        my_decorator = _makeRegistrar()
-        my_decorator.all -> dictionary of (name: function) pairs
+    Usage::
 
-    Returns:
-        a decorator function
+        my_decorator = _make_registrar()
+        my_decorator.all  # dictionary mapping names to functions
     """
     registry = {}
 
     def registrar(func):
         registry[func.__name__] = func
-        # normally a decorator returns a wrapped function,
-        # but here we return func unmodified, after registering it
+        # Normally a decorator returns a wrapped function, but here we return
+        # `func` unmodified, after registering it
         return func
 
     registrar.all = registry
     return registrar
 
 
-operation = _makeRegistrar()
+# Keeps track of all DatasetView operations
+operation = _make_registrar()
 
 
 class DatasetView(foc.SampleCollection):
@@ -119,7 +118,7 @@ class DatasetView(foc.SampleCollection):
         """
         fields_str = self._dataset._get_fields_str()
 
-        pipeline_str = "\t" + "\n\t".join(
+        pipeline_str = "    " + "\n    ".join(
             [
                 "%d. %s" % (idx, str(d))
                 for idx, d in enumerate(self._pipeline, start=1)
@@ -131,15 +130,12 @@ class DatasetView(foc.SampleCollection):
                 "Dataset:        %s" % self._dataset.name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
-                "Sample Fields:",
+                "Sample fields:",
                 fields_str,
-                "Pipeline stages:\n%s" % pipeline_str,
+                "Pipeline stages:",
+                pipeline_str,
             ]
         )
-
-    def first(self):
-        """@todo(Tyler)"""
-        return next(self.iter_samples())
 
     def head(self, num_samples=3):
         """Returns a string representation of the first few samples in the
@@ -164,6 +160,17 @@ class DatasetView(foc.SampleCollection):
         """
         return "\n".join(str(s) for s in self[-num_samples:])
 
+    def first(self):
+        """Returns the first :class:`fiftyone.core.sample.Sample` in the view.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        try:
+            return next(self.iter_samples())
+        except StopIteration:
+            raise ValueError("View is empty")
+
     def get_tags(self):
         """Returns the list of tags in the collection.
 
@@ -179,6 +186,7 @@ class DatasetView(foc.SampleCollection):
             return next(self.aggregate(pipeline))["all_tags"]
         except StopIteration:
             pass
+
         return []
 
     def iter_samples(self):
@@ -188,7 +196,7 @@ class DatasetView(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self.aggregate():
-            yield self._deserialize_sample(d)
+            yield self._dataset._load_sample_from_dict(d)
 
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
@@ -207,8 +215,11 @@ class DatasetView(foc.SampleCollection):
 
     @classmethod
     def get_operation_names(cls):
-        """Get a list of method names for all :class:`DatasetView` operations
-        that return a :class:`DatasetView`.
+        """Returns a list of all available :class:`DatasetView` operations,
+        i.e., operations that return another :class:`DatasetView`.
+
+        Returns:
+            a list of method names
         """
         return list(operation.all)
 
@@ -227,12 +238,42 @@ class DatasetView(foc.SampleCollection):
         return self._copy_with_new_stage({"$match": filter})
 
     @operation
-    def exists(self, field):
-        """Filters the samples in the view to have the field. Filtering
-        ensures that the field exists on the sample.
+    def match_tag(self, tag):
+        """Returns a view containing the samples that have the given tag.
 
         Args:
-            field: a field string
+            tag: a tag
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage({"$match": {"tags": tag}})
+
+    @operation
+    def match_tags(self, tags):
+        """Returns a view containing the samples that have any of the given
+        tags.
+
+        To match samples that contain multiple tags, simply chain
+        :func:`match_tag` or :func:`match_tags` calls together.
+
+        Args:
+            tags: an iterable of tags
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage(
+            {"$match": {"tags": {"$in": list(tags)}}}
+        )
+
+    @operation
+    def exists(self, field):
+        """Returns a view containing the samples that have a non-``None`` value
+        for the given field.
+
+        Args:
+            field: the field
 
         Returns:
             a :class:`DatasetView`
@@ -384,10 +425,6 @@ class DatasetView(foc.SampleCollection):
 
     def _get_facets(self):
         return list(self.aggregate(_FACETS_PIPELINE))
-
-    def _deserialize_sample(self, d):
-        doc = self._dataset._Doc.from_dict(d, created=False, extended=False)
-        return fos.Sample.from_doc(doc)
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)

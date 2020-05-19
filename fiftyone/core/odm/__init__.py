@@ -7,5 +7,6 @@ ODM package declaration.
 """
 
 from .database import drop_database
+from .dataset import SampleField, ODMDataset
 from .document import ODMDocument, ODMEmbeddedDocument
 from .sample import ODMNoDatasetSample, ODMDatasetSample

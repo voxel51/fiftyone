@@ -24,7 +24,8 @@ import logging
 import numbers
 import os
 
-from mongoengine import EmbeddedDocumentField
+from mongoengine import ListField, DictField, EmbeddedDocumentField
+from mongoengine.errors import DoesNotExist
 
 import eta.core.utils as etau
 
@@ -45,10 +46,7 @@ def list_dataset_names():
     Returns:
         a list of :class:`Dataset` names
     """
-    # pylint: disable=no-member
-    # @todo(Tyler) list_dataset_names()
-    #   this won't work until MetaDataset is implemented
-    raise NotImplementedError("TODO")
+    return list(foo.ODMDataset.objects.distinct("name"))
 
 
 def load_dataset(name):
@@ -121,10 +119,70 @@ class Dataset(foc.SampleCollection):
         return cls._instances[name]
 
     def __init__(self, name, create_empty=True):
+        if hasattr(self, "_name"):
+            # Only initialize once!
+            return
+
         self._name = name
 
-        # @todo(Tyler) use MetaDataset to load this class from the DB
+        if create_empty:
+            try:
+                self._load_dataset(name=name)
+            except DoesNotExist:
+                self._initialize_dataset(name=name)
+        else:
+            self._load_dataset(name=name)
+
+    def _initialize_dataset(self, name):
+        # create ODMDatasetSample subclass
         self._Doc = type(self._name, (foo.ODMDatasetSample,), {})
+
+        # create dataset meta document
+        self._meta = foo.ODMDataset(
+            name=name,
+            sample_fields=foo.SampleField.list_from_field_schema(
+                self.get_sample_fields()
+            ),
+        )
+
+        # save dataset meta document
+        self._meta.save()
+
+    def _load_dataset(self, name):
+        self._meta = foo.ODMDataset.objects.get(name=name)
+
+        self._Doc = type(self._name, (foo.ODMDatasetSample,), {})
+
+        fields = self.get_sample_fields()
+        fields.pop("id")
+
+        for idx, field in enumerate(itervalues(fields)):
+            sample_field = self._meta.sample_fields[idx]
+            if not sample_field.matches_field(field):
+                # @todo(Tyler) handle deleted default fields
+                raise ValueError(
+                    "@todo a default field has been deleted and needs"
+                    " to be handled appropriately"
+                )
+
+        for sample_field in self._meta.sample_fields[len(fields) : :]:
+            subfield = (
+                etau.get_class(sample_field.subfield)
+                if sample_field.subfield
+                else None
+            )
+            embedded_doc_type = (
+                etau.get_class(sample_field.embedded_doc_type)
+                if sample_field.embedded_doc_type
+                else None
+            )
+
+            self.add_sample_field(
+                field_name=sample_field.name,
+                ftype=etau.get_class(sample_field.ftype),
+                subfield=subfield,
+                embedded_doc_type=embedded_doc_type,
+            )
 
     def __len__(self):
         return self._get_query_set().count()
@@ -149,7 +207,7 @@ class Dataset(foc.SampleCollection):
         if not docs:
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
-        return fos.Sample.from_doc(docs[0])
+        return self._load_sample_from_doc(docs[0])
 
     def __delitem__(self, sample_id):
         self[sample_id]._delete()
@@ -165,15 +223,13 @@ class Dataset(foc.SampleCollection):
         Returns:
             a string summary
         """
-        fields_str = self._get_fields_str()
-
         return "\n".join(
             [
                 "Name:           %s" % self.name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
-                "Sample Fields:",
-                fields_str,
+                "Sample fields:",
+                self._get_fields_str(),
             ]
         )
 
@@ -206,12 +262,33 @@ class Dataset(foc.SampleCollection):
                 if provided
 
         """
-        return self._Doc.add_field(
+        # update sample class
+        self._Doc.add_field(
             field_name=field_name,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
         )
+
+        # update dataset meta class
+        field = self.get_sample_fields()[field_name]
+        sample_field = foo.SampleField.from_field(field)
+        self._meta.sample_fields.append(sample_field)
+        self._meta.save()
+
+    def delete_sample_field(self, field_name):
+        """Delete an existing field from the dataset
+
+        Args:
+            field_name: the string name of the field to delete
+        """
+        self._Doc.delete_field(field_name=field_name)
+
+        # update dataset meta class
+        self._meta.sample_fields = [
+            sf for sf in self._meta.sample_fields if sf.name != field_name
+        ]
+        self._meta.save()
 
     def get_tags(self):
         """Returns the list of tags in the dataset.
@@ -228,9 +305,9 @@ class Dataset(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for doc in self._get_query_set():
-            yield fos.Sample.from_doc(doc)
+            yield self._load_sample_from_doc(doc)
 
-    def add_sample(self, sample):
+    def add_sample(self, sample, expand_schema=False):
         """Adds the given sample to the dataset.
 
         If the sample belongs to a dataset, a copy is created and added to this
@@ -238,17 +315,41 @@ class Dataset(foc.SampleCollection):
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
+            expand_schema: If True, when a field is encountered on a sample
+                that is not in the dataset schema, the field is added to the
+                dataset. If False, an error is raised.
 
         Returns:
             the ID of the sample in the dataset
+
+        Raises:
+            :class:`mongoengine.errors.ValidationError` if:
+                sample["some_field"] type is inconsistent with dataset schema
+
+                    OR
+
+                "some_field" is not in the dataset schema and
+                `expand_schema` == False
         """
         if sample._in_db:
             sample = sample.copy()
+
+        if expand_schema:
+            fields = self.get_sample_fields()
+            for field_name, field in iteritems(sample.get_field_schema()):
+                if field_name not in fields:
+                    self._Doc.add_implied_field(
+                        field_name=field_name, value=sample[field_name]
+                    )
+
+                    # update
+                    fields = self.get_sample_fields()
+
         sample._doc = self._Doc(**sample.to_dict())
         sample.save()
         return sample.id
 
-    def add_samples(self, samples):
+    def add_samples(self, samples, expand_schema=False):
         """Adds the given samples to the dataset.
 
         If a sample belongs to a dataset, a copy is created and added to this
@@ -258,10 +359,34 @@ class Dataset(foc.SampleCollection):
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
                 instances. For example, ``samples`` may be another
                 :class:`Dataset` or a :class:`fiftyone.core.views.DatasetView`
+            expand_schema: If True, when a field is encountered on a sample
+                that is not in the dataset schema, the field is added to the
+                dataset. If False, an error is raised.
 
         Returns:
             a list of IDs of the samples in the dataset
+
+        Raises:
+            :class:`mongoengine.errors.ValidationError` if:
+                sample["some_field"] type is inconsistent with dataset schema
+
+                    OR
+
+                "some_field" is not in the dataset schema and
+                `expand_schema` == False
         """
+        if expand_schema:
+            fields = self.get_sample_fields()
+            for sample in samples:
+                for field_name, field in iteritems(sample.get_field_schema()):
+                    if field_name not in fields:
+                        self._Doc.add_implied_field(
+                            field_name=field_name, value=sample[field_name]
+                        )
+
+                        # update
+                        fields = self.get_sample_fields()
+
         # copy any samples in a dataset
         samples = [s.copy() if s._in_db else s for s in samples]
 
@@ -333,7 +458,18 @@ class Dataset(foc.SampleCollection):
         return self.view().take(num_samples).head(num_samples=num_samples)
 
     def distinct(self, field):
-        return self._get_query_set().distinct(field)
+        """Finds all distinct values of a sample field across the dataset.
+        If the field is a list, the distinct values will be distinct elements
+        across all sample field lists.
+
+        Args:
+            field: a sample field or subfield string, e.g.:
+                - "tags"
+                - "ground_truth.label"
+        Returns:
+            a set of distinct values of the field
+        """
+        return set(self._get_query_set().distinct(field))
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the dataset.
@@ -782,18 +918,16 @@ class Dataset(foc.SampleCollection):
             name = get_default_dataset_name()
 
         logger.info("Parsing image paths...")
-        kwargs_list = []
+        _samples = []
         for image_path in image_paths:
             filepath = os.path.abspath(os.path.expanduser(image_path))
-            kwargs_list.append({"filepath": filepath})
+            _samples.append(filepath=filepath)
 
         logger.info(
-            "Creating dataset '%s' containing %d samples",
-            name,
-            len(kwargs_list),
+            "Creating dataset '%s' containing %d samples", name, len(_samples),
         )
         dataset = cls(name)
-        dataset.add_samples(kwargs_list)
+        dataset.add_samples(_samples)
         return dataset
 
     @classmethod
@@ -852,15 +986,35 @@ class Dataset(foc.SampleCollection):
 
         return cls.from_images(image_paths, name=name)
 
+    def _load_sample_from_dict(self, d):
+        doc = self._Doc.from_dict(d, created=False, extended=False)
+        return self._load_sample_from_doc(doc)
+
+    def _load_sample_from_doc(self, doc):
+        return fos.Sample.from_doc(doc)
+
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
         return self._Doc.objects(**kwargs)
 
     def _get_fields_str(self):
-        """Pretty for printing"""
         fields = self.get_sample_fields()
-        max_len = max([len(field_name) for field_name in fields])
+        max_len = max([len(field_name) for field_name in fields]) + 1
         return "\n".join(
-            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
+            "    %s %s"
+            % ((field_name + ":").ljust(max_len), self._field_to_str(field))
             for field_name, field in iteritems(fields)
         )
+
+    @staticmethod
+    def _field_to_str(field):
+        field_str = etau.get_class_name(field)
+
+        if any(isinstance(field, cls) for cls in [ListField, DictField]):
+            field_str += "(field=%s)" % etau.get_class_name(field.field)
+        elif isinstance(field, EmbeddedDocumentField):
+            field_str += "(document_type=%s)" % etau.get_class_name(
+                field.document_type
+            )
+
+        return field_str
