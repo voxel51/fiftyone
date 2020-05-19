@@ -41,8 +41,7 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages() + ["eta"],
-    package_dir={"eta": "eta/eta"},
+    packages=find_packages(),
     include_package_data=True,
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
