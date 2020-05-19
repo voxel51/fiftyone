@@ -14,7 +14,7 @@ function Setup(props) {
     return <Redirect to={routes.DATASET} />;
   }
   return (
-    <Segment>
+    <Segment style={{ margin: "2rem" }}>
       <Header as="h1">Hi there! Welcome to FiftyOne</Header>
       <Divider />
       <p>It looks like you are not connected to a session.</p>

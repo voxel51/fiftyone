@@ -44,7 +44,9 @@ function App(props: Props) {
       dispatch(updateLoading(false));
     }
   }, 250);
-  useSubscribe(socket, "disconnect", () => console.log("disconnected"));
+  useSubscribe(socket, "disconnect", () => {
+    dispatch(updateConnected(false));
+  });
   useSubscribe(socket, "update", (data) => {
     if (data.close) {
       remote.getCurrentWindow().close();
