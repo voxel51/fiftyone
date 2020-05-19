@@ -213,6 +213,14 @@ class Dataset(foc.SampleCollection):
             subfield=subfield,
         )
 
+    def delete_sample_field(self, field_name):
+        """Delete an existing field from the dataset
+
+        Args:
+            field_name: the string name of the field to delete
+        """
+        return self._Doc.delete_field(field_name=field_name)
+
     def get_tags(self):
         """Returns the list of tags in the dataset.
 

@@ -282,14 +282,48 @@ class FieldTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.add_sample_field(field_name="filepath", ftype=StringField)
 
-        # add field (new)
+        # delete default field
+        # @todo(Tyler) should the user just be allowed to do this?
+
         field_name = "field1"
         ftype = StringField
+        field_test_value = "test_field_value"
+
+        # access non-existent field
+        with self.assertRaises(KeyError):
+            dataset.get_sample_fields()[field_name]
+        for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
+            with self.assertRaises(KeyError):
+                sample.get_field_schema()[field_name]
+            with self.assertRaises(KeyError):
+                sample.get_field(field_name)
+            with self.assertRaises(KeyError):
+                sample[field_name]
+            with self.assertRaises(AttributeError):
+                getattr(sample, field_name)
+            with self.assertRaises(KeyError):
+                sample.to_dict()[field_name]
+
+        # add field (new)
         dataset.add_sample_field(field_name=field_name, ftype=ftype)
+        setattr(sample1, field_name, field_test_value)
+        sample1.save()
+
         # check field exists and is of correct type
         field = dataset.get_sample_fields()[field_name]
         self.assertIsInstance(field, ftype)
-        for sample in [sample1, sample2]:
+        for sample in [sample1, dataset[id1]]:
+            # check field exists and is of correct type
+            field = sample.get_field_schema()[field_name]
+            self.assertIsInstance(field, ftype)
+            # check field exists on sample and is set correctly
+            self.assertEqual(
+                sample.get_field(field_name=field_name), field_test_value
+            )
+            self.assertEqual(sample[field_name], field_test_value)
+            self.assertEqual(getattr(sample, field_name), field_test_value)
+            self.assertEqual(sample.to_dict()[field_name], field_test_value)
+        for sample in [sample2, dataset[id2]]:
             # check field exists and is of correct type
             field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
@@ -304,8 +338,53 @@ class FieldTest(unittest.TestCase):
             dataset.add_sample_field(field_name=field_name, ftype=ftype)
 
         # delete field
+        dataset.delete_sample_field(field_name=field_name)
 
-        # add deleted field
+        # access non-existent field
+        with self.assertRaises(KeyError):
+            dataset.get_sample_fields()[field_name]
+        for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
+            with self.assertRaises(KeyError):
+                sample.get_field_schema()[field_name]
+            with self.assertRaises(KeyError):
+                sample.get_field(field_name)
+            with self.assertRaises(KeyError):
+                sample[field_name]
+            with self.assertRaises(AttributeError):
+                getattr(sample, field_name)
+            with self.assertRaises(KeyError):
+                sample.to_dict()[field_name]
+
+        # add deleted field with new type
+        ftype = IntField
+        field_test_value = 51
+        dataset.add_sample_field(field_name=field_name, ftype=ftype)
+        setattr(sample1, field_name, field_test_value)
+        sample1.save()
+
+        # check field exists and is of correct type
+        field = dataset.get_sample_fields()[field_name]
+        self.assertIsInstance(field, ftype)
+        for sample in [sample1, dataset[id1]]:
+            # check field exists and is of correct type
+            field = sample.get_field_schema()[field_name]
+            self.assertIsInstance(field, ftype)
+            # check field exists on sample and is set correctly
+            self.assertEqual(
+                sample.get_field(field_name=field_name), field_test_value
+            )
+            self.assertEqual(sample[field_name], field_test_value)
+            self.assertEqual(getattr(sample, field_name), field_test_value)
+            self.assertEqual(sample.to_dict()[field_name], field_test_value)
+        for sample in [sample2, dataset[id2]]:
+            # check field exists and is of correct type
+            field = sample.get_field_schema()[field_name]
+            self.assertIsInstance(field, ftype)
+            # check field exists on sample and is None
+            self.assertIsNone(sample.get_field(field_name=field_name))
+            self.assertIsNone(sample[field_name])
+            self.assertIsNone(getattr(sample, field_name))
+            self.assertIsNone(sample.to_dict()[field_name])
 
     def test_field_GetSetClear_no_dataset(self):
         sample = fo.Sample("1.jpg")

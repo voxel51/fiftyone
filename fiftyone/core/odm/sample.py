@@ -364,6 +364,11 @@ class ODMNoDatasetSample(ODMSample):
             subfield=subfield,
         )
 
+    @nodataset
+    def delete_field(self, field_name):
+        # @todo(Tyler) ODMNoDatasetSample.delete_field
+        raise NotImplementedError("TODO TYLER")
+
     @property
     def dataset_name(self):
         """The name of the dataset to which this sample belongs, or ``None`` if
@@ -465,6 +470,18 @@ class ODMDatasetSample(ODMSample):
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
         )
+
+    @classmethod
+    def delete_field(cls, field_name):
+        # delete from all samples
+        cls.objects().update(**{"unset__%s" % field_name: None})
+
+        # remove from dataset
+        del cls._fields[field_name]
+        cls._fields_ordered = tuple(
+            fn for fn in cls._fields_ordered if fn != field_name
+        )
+        delattr(cls, field_name)
 
     @property
     def dataset_name(self):
