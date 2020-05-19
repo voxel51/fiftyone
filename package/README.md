@@ -55,17 +55,26 @@ You can spin up a local PyPI server instance (in this example, accessible at
 `localhost:5159`) with:
 
 ```
+cd package/pypi-server/local
+chmod a+w packages
+docker-compose up -d
+```
+
+Note that this instance (as well as the command with `-a . -P .` below) allows
+**unauthenticated uploads**, so do not use this in production!
+
+An alternative `docker` command if you don't have `docker-compose` installed:
+
+```
 docker run --rm -d -p 5159:8080 pypiserver/pypiserver:latest -a . -P . /data/packages
 ```
 
-Note that `-a . -P .` allows **unauthenticated uploads**, so do not use this in
-production!
-
-If you want to save packages across runs, you can bind `/data/packages` in the
-container to a local folder by adding `-v /path/to/local/folder:/data/packages`
-before `pypiserver/pypiserver:latest` in the above command. Note that this
-folder's permissions need to be set properly or you will run into 500 server
-errors when uploading packages.
+In this case, if you want to save packages across runs, you can bind
+`/data/packages` in the container to a local folder by adding
+`-v /path/to/local/folder:/data/packages` before `pypiserver/pypiserver:latest`
+in the above command. Note that this folder's permissions need to be set
+properly (`chmod a+w`) or you will run into 500 server errors when uploading
+packages.
 
 Before uploading packages to this instance, create `~/.pypirc` with:
 
