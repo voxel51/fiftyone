@@ -63,9 +63,6 @@ def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
     close_dashboard()
 
     session = Session(dataset=dataset, view=view, port=port, remote=remote)
-    # Ensure that the session (and therefore the app) is closed whenever the
-    # Python process exits
-    _close_on_exit(session)
 
     return session
 
@@ -151,6 +148,7 @@ class Session(foc.HasClient):
 
         if not self._remote:
             self._app_service = fos.AppService()
+            _close_on_exit(self)
         else:
             logger.info(
                 "You have launched a remote session and will need to configure "
@@ -175,6 +173,9 @@ class Session(foc.HasClient):
 
         This terminates the FiftyOne Dashboard, if necessary.
         """
+        if self._remote:
+            return
+
         self._close = True
         self._update_state()
 
