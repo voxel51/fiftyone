@@ -166,7 +166,10 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`fiftyone.core.sample.Sample`
         """
-        return next(self.iter_samples())
+        try:
+            return next(self.iter_samples())
+        except StopIteration:
+            raise ValueError("View is empty")
 
     def get_tags(self):
         """Returns the list of tags in the collection.
