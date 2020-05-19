@@ -238,12 +238,42 @@ class DatasetView(foc.SampleCollection):
         return self._copy_with_new_stage({"$match": filter})
 
     @operation
-    def exists(self, field):
-        """Filters the samples in the view to have the field. Filtering
-        ensures that the field exists on the sample.
+    def match_tag(self, tag):
+        """Returns a view containing the samples that have the given tag.
 
         Args:
-            field: a field string
+            tag: a tag
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage({"$match": {"tags": tag}})
+
+    @operation
+    def match_tags(self, tags):
+        """Returns a view containing the samples that have any of the given
+        tags.
+
+        To match samples that contain multiple tags, simply chain
+        :func:`match_tag` or :func:`match_tags` calls together.
+
+        Args:
+            tags: an iterable of tags
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._copy_with_new_stage(
+            {"$match": {"tags": {"$in": list(tags)}}}
+        )
+
+    @operation
+    def exists(self, field):
+        """Returns a view containing the samples that have a non-``None`` value
+        for the given field.
+
+        Args:
+            field: the field
 
         Returns:
             a :class:`DatasetView`

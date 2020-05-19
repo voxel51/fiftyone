@@ -61,6 +61,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
 from future.utils import iteritems, itervalues
+import six
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -69,16 +70,17 @@ from future.utils import iteritems, itervalues
 from collections import OrderedDict
 from copy import deepcopy
 import logging
-import six
+import numbers
 
 from mongoengine import (
-    EmbeddedDocument,
     BooleanField,
-    IntField,
-    StringField,
-    ListField,
     DictField,
+    EmbeddedDocument,
     EmbeddedDocumentField,
+    FloatField,
+    IntField,
+    ListField,
+    StringField,
 )
 from mongoengine.fields import BaseField
 from mongoengine.errors import ValidationError
@@ -281,16 +283,6 @@ class ODMSample(ODMDocument):
     def _add_field(
         cls_or_self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
-        """Adds a new field to the dataset.
-
-        Args:
-            field_name: the name of the field to add
-            ftype: the type (subclass of BaseField) of the field to create
-            embedded_doc_type (None): the EmbeddedDocument type. Used only when
-                ``ftype == EmbeddedDocumentField``
-            subfield (None): the optional contained field for lists and dicts,
-                if provided
-        """
         if field_name in cls_or_self._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
@@ -344,6 +336,8 @@ class ODMSample(ODMDocument):
             cls_or_self.add_field(field_name, BooleanField)
         elif isinstance(value, six.integer_types):
             cls_or_self.add_field(field_name, IntField)
+        elif isinstance(value, numbers.Number):
+            cls_or_self.add_field(field_name, FloatField)
         elif isinstance(value, six.string_types):
             cls_or_self.add_field(field_name, StringField)
         elif isinstance(value, list) or isinstance(value, tuple):
@@ -362,24 +356,20 @@ class ODMNoDatasetSample(ODMSample):
     meta = {"abstract": True}
 
     def __init__(self, *args, **kwargs):
-        # Split kwargs into default and custom
-        default_kwargs = {
+        # Initialize with existing fields
+        existing_fields = {
             k: v for k, v in iteritems(kwargs) if k in self._fields
         }
-        custom_kwargs = {
-            k: v for k, v in iteritems(kwargs) if k not in self._fields
-        }
-
-        # Initialize with default kwargs
-        super(ODMNoDatasetSample, self).__init__(*args, **default_kwargs)
+        super(ODMNoDatasetSample, self).__init__(*args, **existing_fields)
 
         # Make a local copy of the fields, independent of the class fields
         self._nods_fields = deepcopy(self._fields)
         self._nods_fields_ordered = deepcopy(self._fields_ordered)
 
-        # Add the custom fields to the instance
-        for field_name, value in iteritems(custom_kwargs):
-            self.set_field(field_name, value, create=True)
+        # Add new fields to the instance
+        for field_name, value in iteritems(kwargs):
+            if field_name not in self._fields:
+                self.set_field(field_name, value, create=True)
 
     def __getattribute__(self, name):
         # Override class attributes '_fields' and '_fields_ordered'
@@ -404,14 +394,14 @@ class ODMNoDatasetSample(ODMSample):
         if name.startswith("_") or (
             hasattr(self, name) and name not in self.field_names
         ):
-            return super().__setattr__(name, value)
+            return super(ODMNoDatasetSample, self).__setattr__(name, value)
 
         if name not in self.field_names:
             logger.warning(
                 "FiftyOne does not allow new fields to be dynamically created "
                 "by setting them"
             )
-            return super().__setattr__(name, value)
+            return super(ODMNoDatasetSample, self).__setattr__(name, value)
         # @todo(Tyler) END NOT-DRY ############################################
 
         # @todo(Tyler) this should replace the field rather than validate
@@ -499,14 +489,14 @@ class ODMDatasetSample(ODMSample):
         if name.startswith("_") or (
             hasattr(self, name) and name not in self.field_names
         ):
-            return super().__setattr__(name, value)
+            return super(ODMDatasetSample, self).__setattr__(name, value)
 
         if name not in self.field_names:
             logger.warning(
                 "FiftyOne does not allow new fields to be dynamically created "
                 "by setting them"
             )
-            return super().__setattr__(name, value)
+            return super(ODMDatasetSample, self).__setattr__(name, value)
         # @todo(Tyler) END NOT-DRY ############################################
 
         # @todo(Tyler) does validate work when value is None?
@@ -514,6 +504,10 @@ class ODMDatasetSample(ODMSample):
             self._fields[name].validate(value)
 
         return super(ODMDatasetSample, self).__setattr__(name, value)
+
+    @property
+    def dataset_name(self):
+        return self.__class__.__name__
 
     @classmethod
     def get_field_schema(cls, ftype=None):
@@ -539,16 +533,13 @@ class ODMDatasetSample(ODMSample):
 
     @classmethod
     def delete_field(cls, field_name):
-        # delete from all samples
+        # Delete from all samples
+        # pylint: disable=no-member
         cls.objects.update(**{"unset__%s" % field_name: None})
 
-        # remove from dataset
+        # Remove from dataset
         del cls._fields[field_name]
         cls._fields_ordered = tuple(
             fn for fn in cls._fields_ordered if fn != field_name
         )
         delattr(cls, field_name)
-
-    @property
-    def dataset_name(self):
-        return self.__class__.__name__
