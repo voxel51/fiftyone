@@ -165,15 +165,13 @@ class Dataset(foc.SampleCollection):
         Returns:
             a string summary
         """
-        fields_str = self._get_fields_str()
-
         return "\n".join(
             [
                 "Name:           %s" % self.name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
-                "Sample Fields:",
-                fields_str,
+                "Sample fields:",
+                self._get_fields_str(),
             ]
         )
 
@@ -830,10 +828,9 @@ class Dataset(foc.SampleCollection):
         return self._Doc.objects(**kwargs)
 
     def _get_fields_str(self):
-        """Pretty for printing"""
         fields = self.get_sample_fields()
-        max_len = max([len(field_name) for field_name in fields])
+        max_len = max([len(field_name) for field_name in fields]) + 1
         return "\n".join(
-            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
+            "    %s %s" % ((field_name + ":").ljust(max_len), field.__class__)
             for field_name, field in iteritems(fields)
         )
