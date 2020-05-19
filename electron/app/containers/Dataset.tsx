@@ -76,10 +76,10 @@ function Dataset(props) {
       </Sidebar>
       <Ref innerRef={stickyRef}>
         <Container fluid={true} style={{ padding: "2rem" }}>
-          <Sticky context={stickyRef} style={{ marginTop: "-2rem" }}>
+          <Sticky context={stickyRef}>
             <Container
               fluid={true}
-              style={{ background: "hsl(210, 20%, 15%)", paddingTop: "2rem" }}
+              style={{ background: "hsl(210, 20%, 15%)" }}
             >
               <Search />
               <Menu pointing secondary>

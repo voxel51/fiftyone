@@ -17,13 +17,13 @@ function Setup(props) {
     return <Redirect to={routes.DATASET} />;
   }
   return (
-    <>
-      <Segment style={{ margin: "2rem" }}>
+    <Container style={{ padding: "2rem" }}>
+      <Segment>
         <Header as="h1">Hi there! Welcome to FiftyOne</Header>
         <Divider />
         <p>It looks like you are not connected to a session.</p>
       </Segment>
-      <Menu pointing secondary style={{ margin: "2rem" }}>
+      <Menu pointing secondary style={{ margin: "2rem 0" }}>
         <Menu.Item
           name="Local sessions"
           active={activeTab === "local"}
@@ -35,14 +35,14 @@ function Setup(props) {
           onClick={() => setActiveTab("remote")}
         />
       </Menu>
-      <Segment style={{ margin: "2rem" }}>
+      <Segment>
         {activeTab === "remote" ? (
           <RemoteInstructions />
         ) : (
           <LocalInstructions />
         )}
       </Segment>
-    </>
+    </Container>
   );
 }
 
