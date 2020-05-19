@@ -196,7 +196,7 @@ class DatasetView(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self.aggregate():
-            yield self._deserialize_sample(d)
+            yield self._dataset._load_sample_from_dict(d)
 
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
@@ -395,10 +395,6 @@ class DatasetView(foc.SampleCollection):
 
     def _get_facets(self):
         return list(self.aggregate(_FACETS_PIPELINE))
-
-    def _deserialize_sample(self, d):
-        doc = self._dataset._Doc.from_dict(d, created=False, extended=False)
-        return fos.Sample.from_doc(doc)
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)
