@@ -128,7 +128,7 @@ dataset = fo.Dataset.from_image_classification_samples(
 )
 
 # Print a few samples from the dataset
-print(dataset.sample())
+print(dataset.take())
 ```
 
 ## Working with views into your dataset
@@ -140,9 +140,9 @@ Here's an example operation:
 
 ```py
 # Gets five random airplanes from the dataset
-view = (dataset.default_view()
-    .filter(filter={"labels.ground_truth.label": "airplane"})
-    .sample(5)
+view = (dataset.view()
+    .match(filter={"ground_truth.label": "airplane"})
+    .take(5)
 )
 
 # Print some information about the entire dataset
@@ -225,7 +225,7 @@ model_name = "inception_v3"
 
 num_samples = 25
 batch_size = 5
-view = dataset.default_view().sample(num_samples)
+view = dataset.view().take(num_samples)
 image_paths, sample_ids = zip(
     *[(s.filepath, s.id) for s in view.iter_samples()]
 )
@@ -243,18 +243,15 @@ for imgs, sample_ids in data_loader:
         sample_ids, predictions, confidences
     ):
         sample = dataset[sample_id]
-        sample.add_label(
-            model_name, fo.ClassificationLabel.create(labels_map[prediction])
-        )
-        sample.add_insight(
-            model_name, fo.ScalarInsight.create("confidence", confidence)
-        )
+        sample[model_name] = fo.Classification(label=labels_map[prediction])
+        sample["confidence"] = float(confidence)
+        sample.save()
 
 #
 # Get the last batch of samples for which we added predictions
 #
 
-view = dataset.default_view().select(sample_ids)
+view = dataset.view().select(sample_ids)
 print(view.head(batch_size))
 
 #
@@ -262,9 +259,9 @@ print(view.head(batch_size))
 # confidence
 #
 
-pred_view = (dataset.default_view()
-    .filter(filter={"insights.inception_v3.name": "confidence"})
-    .sort_by("insights.inception_v3.scalar", reverse=True)
+pred_view = (dataset.view()
+    .exists("confidence")
+    .sort_by("confidence", reverse=True)
 )
 print(len(pred_view))
 print(pred_view.head())
@@ -286,7 +283,7 @@ session = fo.launch_dashboard()
 session.dataset = dataset
 
 # Show five random samples in the dashboard
-view = dataset.default_view().limit(5)
+view = dataset.view().limit(5)
 session.view = view
 
 # Show the samples for which we previously added pre
@@ -296,7 +293,7 @@ session.view = pred_view
 session.view = None
 
 # Print details about the selected samples
-selected_view = dataset.default_view().select(session.selected)
+selected_view = dataset.view().select(session.selected)
 print(selected_view.summary())
 print(selected_view.head())
 ```
