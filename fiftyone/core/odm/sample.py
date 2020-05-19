@@ -143,6 +143,14 @@ class ODMSample(ODMDocument):
         """
         raise NotImplementedError("Subclass must implement")
 
+    def delete_field(self, field_name):
+        """Delete an existing field from the dataset
+
+        Args:
+            field_name: the string name of the field to delete
+        """
+        raise NotImplementedError("Subclass must implement")
+
     @property
     def dataset_name(self):
         """The name of the dataset to which this sample belongs, or ``None`` if
@@ -202,6 +210,17 @@ class ODMSample(ODMDocument):
                 )
 
         return self.__setattr__(field_name, value)
+
+    def clear_field(self, field_name):
+        """Clears the value of a field of the sample.
+
+        Args:
+            field_name: the string name of the field to clear
+
+        Raises:
+            KeyError: if the field name is not valid
+        """
+        raise NotImplementedError("Subclass must implement")
 
     @staticmethod
     def _get_field_schema(cls_or_self, ftype=None):
