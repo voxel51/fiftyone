@@ -37,11 +37,14 @@ class Service(object):
     def __init__(self):
         """Creates (starts) the Service."""
         self._system = os.system
-        self.start()
+        self._is_server = os.environ.get("FIFTYONE_SERVER", False)
+        if not self._is_server:
+            self.start()
 
     def __del__(self):
         """Deletes (stops) the Service."""
-        self.stop()
+        if not self._is_server:
+            self.stop()
 
     def start(self):
         """Starts the Service."""
