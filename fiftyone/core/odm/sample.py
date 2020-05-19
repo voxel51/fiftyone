@@ -318,7 +318,7 @@ class ODMSample(ODMDocument):
         """Adds the field to the sample, inferring the field type from the
         provided value.
         """
-        if field_name not in self._fields:
+        if field_name in self._fields:
             raise ValueError(
                 "Attempting to add field '%s' that already exists" % field_name
             )

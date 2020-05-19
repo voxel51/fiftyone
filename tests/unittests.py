@@ -94,8 +94,9 @@ class SampleTest(unittest.TestCase):
         self.assertEqual(sample.field3, value)
 
         # __setattr__
-        with self.assertWarns(UserWarning):
-            sample.field4 = value
+        # @todo(Tyler) logger.warning(...)
+        # with self.assertWarns():
+        sample.field4 = value
         with self.assertRaises(KeyError):
             sample.get_field("field4")
         with self.assertRaises(KeyError):
@@ -237,7 +238,7 @@ class CRUDTest(unittest.TestCase):
 
 class ViewTest(unittest.TestCase):
     def test_view(self):
-        dataset = fo.Dataset("test_dataset")
+        dataset = fo.Dataset("view_test_dataset")
         dataset.add_sample_field(
             field_name="labels",
             ftype=EmbeddedDocumentField,
@@ -272,6 +273,7 @@ class ViewTest(unittest.TestCase):
 
 class FieldTest(unittest.TestCase):
     def test_field_AddDelete_in_dataset(self):
+        foo.drop_database()
         dataset = fo.Dataset(name="field_test")
         id1 = dataset.add_sample(fo.Sample("1.jpg"))
         id2 = dataset.add_sample(fo.Sample("2.jpg"))
@@ -400,6 +402,7 @@ class FieldTest(unittest.TestCase):
         # add deleted field
 
     def test_field_GetSetClear_in_dataset(self):
+        foo.drop_database()
         dataset = fo.Dataset(name="field_test")
         dataset.add_sample(fo.Sample("1.jpg"))
         dataset.add_sample(fo.Sample("2.jpg"))
