@@ -410,7 +410,18 @@ class Dataset(foc.SampleCollection):
         return self.view().take(num_samples).head(num_samples=num_samples)
 
     def distinct(self, field):
-        return self._get_query_set().distinct(field)
+        """Finds all distinct values of a sample field across the dataset.
+        If the field is a list, the distinct values will be distinct elements
+        across all sample field lists.
+
+        Args:
+            field: a sample field or subfield string, e.g.:
+                - "tags"
+                - "ground_truth.label"
+        Returns:
+            a set of distinct values of the field
+        """
+        return set(self._get_query_set().distinct(field))
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the dataset.
@@ -859,18 +870,16 @@ class Dataset(foc.SampleCollection):
             name = get_default_dataset_name()
 
         logger.info("Parsing image paths...")
-        kwargs_list = []
+        _samples = []
         for image_path in image_paths:
             filepath = os.path.abspath(os.path.expanduser(image_path))
-            kwargs_list.append({"filepath": filepath})
+            _samples.append(filepath=filepath)
 
         logger.info(
-            "Creating dataset '%s' containing %d samples",
-            name,
-            len(kwargs_list),
+            "Creating dataset '%s' containing %d samples", name, len(_samples),
         )
         dataset = cls(name)
-        dataset.add_samples(kwargs_list)
+        dataset.add_samples(_samples)
         return dataset
 
     @classmethod
