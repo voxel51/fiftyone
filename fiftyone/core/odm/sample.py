@@ -1,36 +1,52 @@
 """
-Backing Document classes for samples.
+Backing document classes for :class:`fiftyone.core.sample.Sample` instances.
 
-Class Hierarchy:
+Class hierarchy::
 
-ODMDocument
-└── ODMSample
-    ├── ODMNoDatasetSample
-    └── ODMDatasetSample
-        ├── my_custom_dataset
-        ├── another_dataset
-        └── ...
+    ODMDocument
+    └── ODMSample
+        ├── ODMNoDatasetSample
+        └── ODMDatasetSample
+            ├── my_custom_dataset
+            ├── another_dataset
+            └── ...
 
-A sample always has a backing `sample._doc` which is an instance of a subclass
-of `ODMSample` and a dataset always has a backing `dataset._Doc` which is a
-subclass of `ODMSample`
+Design invariants:
 
-```python
-import fiftyone as fo
+-   a :class:`fiftyone.core.sample.Sample` always has a backing
+    ``sample._doc``, which is an instance of a subclass of :class:`ODMSample`
 
-# when a `Sample` is instantiated, the backing doc is of type
-# `ODMNoDatasetSample`
-sample = fo.Sample()  # -> sample._doc is a `ODMNoDatasetSample` instance
+-   a :class:`fiftyone.core.dataset.Dataset` always has a backing
+    ``dataset._Doc`` which is a subclass of ``ODMSample``.
 
-# when a `Dataset` is created, a new subclass of `ODMDatasetSample` is created
-dataset = fo.Dataset(name="my_dataset")  # -> dataset._Doc is an
-#                                            `ODMDatasetSample` subclass called
-#                                            `my_dataset`
+Backing documents explained::
 
-# when a Sample is added to a Dataset, the `sample._doc` is changed from type
-# `ODMNoDatasetSample` to type `dataset._Doc`
-dataset.add_sample(sample)  # -> sample._doc is now a `my_dataset` instance
-```
+    import fiftyone as fo
+
+    #
+    # When a sample is instantiated, its `_doc` attribute is an instance
+    # of `ODMNoDatasetSample`
+    #
+    # `sample._doc` is an instance of `ODMNoDatasetSample`
+    #
+    sample = fo.Sample()
+
+    #
+    # When a dataset is created, its `_Doc` attribute holds a dynamically
+    # created subclass of `ODMDatasetSample` whose name matches the name of
+    # the dataset
+    #
+    # `dataset._Doc` is a `my_dataset` class
+    #
+    dataset = fo.Dataset(name="my_dataset")
+
+    #
+    # When a sample is added to a dataset, its `sample._doc` is changed from
+    # type `ODMNoDatasetSample` to type `dataset._Doc`
+    #
+    # `sample._doc` is now an instance of `my_dataset`
+    #
+    dataset.add_sample(sample)
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
