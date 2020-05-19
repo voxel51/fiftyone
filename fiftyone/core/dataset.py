@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -22,6 +23,8 @@ import datetime
 import logging
 import numbers
 import os
+
+from mongoengine import EmbeddedDocumentField
 
 import eta.core.utils as etau
 
@@ -43,7 +46,9 @@ def list_dataset_names():
         a list of :class:`Dataset` names
     """
     # pylint: disable=no-member
-    return foo.ODMSample.objects.distinct("dataset")
+    # @todo(Tyler) list_dataset_names()
+    #   this won't work until MetaDataset is implemented
+    raise NotImplementedError("TODO")
 
 
 def load_dataset(name):
@@ -88,11 +93,6 @@ def get_default_dataset_dir(name, split=None):
     return dataset_dir
 
 
-#
-# @todo datasets should be registered in the DB even if they are empty
-# Currently they only "appear" in the DB when they have their first sample
-# added
-#
 class Dataset(foc.SampleCollection):
     """A FiftyOne dataset.
 
@@ -112,14 +112,19 @@ class Dataset(foc.SampleCollection):
             if it does not already exist
     """
 
+    # @todo(Tyler) destroy instance once count->0 using __del__
+    _instances = {}
+
+    def __new__(cls, name, *args, **kwargs):
+        if name not in cls._instances:
+            cls._instances[name] = super(Dataset, cls).__new__(cls)
+        return cls._instances[name]
+
     def __init__(self, name, create_empty=True):
         self._name = name
 
-        # @todo populate this when reading an existing collection from the DB
-        self._label_types = {}
-
-        if not create_empty and not self:
-            raise ValueError("Dataset '%s' not found" % name)
+        # @todo(Tyler) use MetaDataset to load this class from the DB
+        self._Doc = type(self._name, (foo.ODMDatasetSample,), {})
 
     def __len__(self):
         return self._get_query_set().count()
@@ -133,18 +138,18 @@ class Dataset(foc.SampleCollection):
 
         if isinstance(sample_id, slice):
             raise ValueError(
-                "Slicing datasets is not supported. Use `default_view()` to "
+                "Slicing datasets is not supported. Use `view()` to "
                 "obtain a DatasetView if you want to slice your samples"
             )
 
-        if isinstance(sample_id, slice):
-            return self.default_view()[sample_id]
-
-        samples = self._get_query_set(id=sample_id)
-        if not samples:
+        # @todo(Tyler) this could be optimized with
+        #    sample = self._get_query_set().get(id=sample_id)
+        #   but it seems to raise an uncatchable error?
+        docs = self._get_query_set(id=sample_id)
+        if not docs:
             raise ValueError("No sample found with ID '%s'" % sample_id)
 
-        return self._load_sample(samples[0])
+        return fos.Sample.from_doc(docs[0])
 
     def __delitem__(self, sample_id):
         self[sample_id]._delete()
@@ -154,42 +159,58 @@ class Dataset(foc.SampleCollection):
         """The name of the dataset."""
         return self._name
 
-    @property
-    def _sample_cls(self):
-        """The :class:`fiftyone.core.sample.Sample` class that this dataset
-        can contain.
-        """
-        return fos.Sample
-
     def summary(self):
         """Returns a string summary of the dataset.
 
         Returns:
             a string summary
         """
+        fields_str = self._get_fields_str()
+
         return "\n".join(
             [
                 "Name:           %s" % self.name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
-                "Label groups:   %s" % self.get_label_groups(),
-                "Insight groups: %s" % self.get_insight_groups(),
+                "Sample Fields:",
+                fields_str,
             ]
         )
 
-    def sample(self, num_samples=3):
-        """Returns a string summary of a few random samples from the dataset.
+    def get_sample_fields(self, ftype=None):
+        """Gets a dictionary of all fields on samples in this dataset.
 
         Args:
-            num_samples (3): the number of samples
+            ftype (None): the subclass of ``BaseField`` for primitives
+                or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
+                filter by
 
         Returns:
-            a string representation of the samples
+             a dictionary of (field name: field type) per field that is a
+             subclass of ``ftype``
         """
-        return (
-            self.default_view()
-            .sample(num_samples)
-            .head(num_samples=num_samples)
+        return self._Doc.get_field_schema(ftype=ftype)
+
+    def add_sample_field(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        """Add a new field to the dataset
+
+        Args:
+            field_name: the string name of the field to add
+            ftype: the type (subclass of BaseField) of the field to create
+            embedded_doc_type (None): the EmbeddedDocument type, used if
+                    ftype=EmbeddedDocumentField
+                ignored otherwise
+            subfield (None): the optional contained field for lists and dicts,
+                if provided
+
+        """
+        return self._Doc.add_field(
+            field_name=field_name,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
         )
 
     def get_tags(self):
@@ -198,7 +219,7 @@ class Dataset(foc.SampleCollection):
         Returns:
             a list of tags
         """
-        return self._get_query_set().distinct("tags")
+        return self.distinct("tags")
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -207,13 +228,13 @@ class Dataset(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for doc in self._get_query_set():
-            yield self._load_sample(doc)
+            yield fos.Sample.from_doc(doc)
 
     def add_sample(self, sample):
         """Adds the given sample to the dataset.
 
-        If the sample belongs to another dataset, a copy is created and added
-        to this dataset.
+        If the sample belongs to a dataset, a copy is created and added to this
+        dataset.
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
@@ -221,15 +242,17 @@ class Dataset(foc.SampleCollection):
         Returns:
             the ID of the sample in the dataset
         """
-        sample = self._ingest_sample(sample)
-        sample._save()
+        if sample._in_db:
+            sample = sample.copy()
+        sample._doc = self._Doc(**sample.to_dict())
+        sample.save()
         return sample.id
 
     def add_samples(self, samples):
         """Adds the given samples to the dataset.
 
-        If a sample belongs to another dataset, a copy is created and added to
-        this dataset.
+        If a sample belongs to a dataset, a copy is created and added to this
+        dataset.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -239,11 +262,24 @@ class Dataset(foc.SampleCollection):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        samples = [self._ingest_sample(s) for s in samples]
-        sample_docs = self._get_query_set().insert(
-            [s._backing_doc for s in samples]
+        # copy any samples in a dataset
+        samples = [s.copy() if s._in_db else s for s in samples]
+
+        # insert into the dataset collection
+        docs = self._get_query_set().insert(
+            [self._Doc(**sample.to_dict()) for sample in samples]
         )
-        return [str(s.id) for s in sample_docs]
+
+        # update the backing docs
+        for sample, doc in zip(samples, docs):
+            sample._doc = doc
+
+        return [str(doc.id) for doc in docs]
+
+    def update_samples(self):
+        # @todo(Tyler) making this a TODO. Jason wants to add a tag to all
+        #   samples in a view
+        raise NotImplementedError("TODO")
 
     def delete_sample(self, sample_or_id):
         """Deletes the given sample from the dataset.
@@ -267,16 +303,16 @@ class Dataset(foc.SampleCollection):
                 instances or sample IDs. For example, ``samples`` may be a
                 :class:`fiftyone.core.views.DatasetView`
         """
-        # @todo optimize with bulk deletion?
+        # @todo(Tyler) optimize with bulk deletion
         for sample_or_id in samples_or_ids:
             self.delete_sample(sample_or_id)
 
     def clear(self):
         """Deletes all samples from the dataset."""
-        # @todo optimize by deleteing the entire collection
+        # @todo(Tyler) optimize by deleting the entire collection
         self.delete_samples(self)
 
-    def default_view(self):
+    def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
         entire dataset.
 
@@ -284,6 +320,43 @@ class Dataset(foc.SampleCollection):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return fov.DatasetView(self)
+
+    def take(self, num_samples=3):
+        """Returns a string summary of a few random samples from the dataset.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a string representation of the samples
+        """
+        return self.view().take(num_samples).head(num_samples=num_samples)
+
+    def distinct(self, field):
+        return self._get_query_set().distinct(field)
+
+    def aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the dataset.
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._get_query_set().aggregate(pipeline)
+
+    def serialize(self):
+        """Serializes the dataset.
+
+        Returns:
+            a JSON representation of the dataset
+        """
+        return {"name": self.name}
 
     @classmethod
     def from_image_classification_samples(
@@ -472,7 +545,7 @@ class Dataset(foc.SampleCollection):
         # @todo add a progress bar here? Note that `len(samples)` may not work
         # for some iterables
         logger.info("Parsing samples...")
-        _samples = []
+        _kwargs_list = []
         for sample in samples:
             if sample_parser is not None:
                 label = sample_parser.parse_label(sample)
@@ -480,16 +553,30 @@ class Dataset(foc.SampleCollection):
                 label = sample[1]
 
             filepath = os.path.abspath(os.path.expanduser(sample[0]))
-            _sample = fos.Sample.create(filepath)
 
-            _sample.add_label(group, label)
-            _samples.append(_sample)
+            _sample_kwargs = {
+                "filepath": filepath,
+                group: label,
+            }
+
+            _kwargs_list.append(_sample_kwargs)
 
         logger.info(
-            "Creating dataset '%s' containing %d samples", name, len(_samples)
+            "Creating dataset '%s' containing %d samples",
+            name,
+            len(_kwargs_list),
         )
         dataset = cls(name)
-        dataset.add_samples(_samples)
+
+        # @todo(Tyler) make this more user friendly
+        # add the ground_truth label field to the dataset
+        dataset.add_sample_field(
+            field_name="ground_truth",
+            ftype=EmbeddedDocumentField,
+            embedded_doc_type=type(_kwargs_list[0][group]),
+        )
+
+        dataset.add_samples(_kwargs_list)
         return dataset
 
     @classmethod
@@ -674,16 +761,18 @@ class Dataset(foc.SampleCollection):
             name = get_default_dataset_name()
 
         logger.info("Parsing image paths...")
-        samples = []
+        kwargs_list = []
         for image_path in image_paths:
             filepath = os.path.abspath(os.path.expanduser(image_path))
-            samples.append(fos.Sample.create(filepath))
+            kwargs_list.append({"filepath": filepath})
 
         logger.info(
-            "Creating dataset '%s' containing %d samples", name, len(samples)
+            "Creating dataset '%s' containing %d samples",
+            name,
+            len(kwargs_list),
         )
         dataset = cls(name)
-        dataset.add_samples(samples)
+        dataset.add_samples(kwargs_list)
         return dataset
 
     @classmethod
@@ -742,64 +831,15 @@ class Dataset(foc.SampleCollection):
 
         return cls.from_images(image_paths, name=name)
 
-    def serialize(self):
-        """Serializes the dataset.
-
-        Returns:
-            a JSON representation of the dataset
-        """
-        return {"name": self.name}
-
-    def _aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the dataset.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to aggregate on
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        if pipeline is None:
-            pipeline = []
-
-        return self._get_query_set().aggregate(pipeline)
-
-    def _ingest_sample(self, sample):
-        self._validate_sample(sample)
-        sample = sample.copy() if sample.in_dataset else sample
-        sample._set_dataset(self)
-        return sample
-
-    def _load_sample(self, doc):
-        sample = fos.Sample.from_doc(doc)
-        sample._set_dataset(self)
-        return sample
-
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
-        return foo.ODMSample.objects(dataset=self.name, **kwargs)
+        return self._Doc.objects(**kwargs)
 
-    def _validate_sample(self, sample):
-        if not isinstance(sample, self._sample_cls):
-            raise ValueError(
-                "Expected sample to be an instance of '%s'; found '%s'"
-                % (
-                    etau.get_class_name(self._sample_cls),
-                    etau.get_class_name(sample),
-                )
-            )
-
-    def _validate_label(self, group, label):
-        if group not in self._label_types:
-            self._label_types[group] = label.__class__
-        else:
-            label_cls = self._label_types[group]
-            if not isinstance(label, label_cls):
-                raise ValueError(
-                    "Expected label to be an instance of '%s'; found '%s'"
-                    % (
-                        etau.get_class_name(label_cls),
-                        etau.get_class_name(label),
-                    )
-                )
+    def _get_fields_str(self):
+        """Pretty for printing"""
+        fields = self.get_sample_fields()
+        max_len = max([len(field_name) for field_name in fields])
+        return "\n".join(
+            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
+            for field_name, field in iteritems(fields)
+        )

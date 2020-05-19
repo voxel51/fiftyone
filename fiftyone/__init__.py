@@ -41,19 +41,18 @@ from .core.dataset import (
     list_dataset_names,
     load_dataset,
 )
-from .core.insights import (
-    Insight,
-    ScalarInsight,
-    FileHashInsight,
-)
 from .core.labels import (
     Label,
-    ClassificationLabel,
-    DetectionLabels,
+    ImageLabel,
+    Classification,
+    Detection,
+    Detections,
     ImageLabels,
 )
-from .core.sample import (
-    Sample,
-    ImageSample,
+from .core.metadata import (
+    Metadata,
+    ImageMetadata,
 )
+from .core.sample import Sample
 from .core.session import launch_dashboard, Session
+from .core.view import DatasetView

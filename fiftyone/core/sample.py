@@ -20,18 +20,12 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 import os
+import warnings
 
-from mongoengine.errors import InvalidDocumentError
-
-import eta.core.image as etai
-
-import fiftyone.core.document as fod
-import fiftyone.core.insights as foi
-import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 
 
-class Sample(fod.BackedByDocument):
+class Sample(object):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -43,237 +37,244 @@ class Sample(fod.BackedByDocument):
         document: a :class:`fiftyone.core.odm.ODMSample`
     """
 
-    _ODM_DOCUMENT_CLS = foo.ODMSample
-
-    def __init__(self, document):
-        super(Sample, self).__init__(document)
-        self._dataset = None
-
-    @classmethod
-    def create(cls, filepath, tags=None, labels=None):
+    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         """Creates a :class:`Sample` instance.
 
         Args:
             filepath: the path to the data on disk
             tags (None): the set of tags associated with the sample
-            labels (None): a dict mapping group names to
-                :class:`fiftyone.core.labels.Label` instances
+            metadata (None): a :class:`fiftyone.core.metadata.Metadata`
+                instance
+            kwargs: additional fields to be set on the sample
         """
-        if labels is not None:
-            _labels = {g: l._backing_doc for g, l in iteritems(labels)}
-        else:
-            _labels = None
-
-        return cls._create(
-            filepath=os.path.abspath(os.path.expanduser(filepath)),
-            tags=tags,
-            labels=_labels,
+        self._doc = foo.ODMNoDatasetSample(
+            filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
-    @classmethod
-    def from_doc(cls, document):
-        """Creates an instance of the :class:`fiftyone.core.sample.Sample`
-        class backed by the given document.
-
-        Args:
-            document: an :class:`fiftyone.core.odm.ODMSample` instance
-        """
-        sample_cls = _SAMPLE_CLS_MAP[document.__class__]
-        return sample_cls(document)
-
-    @property
-    def in_dataset(self):
-        """Whether the sample has been added to a dataset."""
-        return self._dataset is not None
-
-    @property
-    def dataset_name(self):
-        """The name of the dataset to which this sample belongs, or ``None`` if
-        it has not been added to a dataset.
-        """
-        return self._dataset.name if self.in_dataset else None
-
-    @property
-    def filepath(self):
-        """The path to the raw data on disk."""
-        return self._backing_doc.filepath
+    def __str__(self):
+        return str(self._doc)
 
     @property
     def filename(self):
         """The name of the raw data file on disk."""
         return os.path.basename(self.filepath)
 
-    def get_tags(self):
-        """Returns the set of tags attached to the sample."""
-        return set(self._backing_doc.tags)
+    @property
+    def id(self):
+        """The ID of the document, or ``None`` if it has not been added to the
+        database.
 
-    def add_tag(self, tag):
-        """Adds the given tag to the sample, if it does not already exist.
+        **Implementation details**
 
-        Args:
-            tag: the tag
+        The ID is a 12 byte value consisting of the concatenation of the
+        following:
+
+        - a 4 byte timestamp representing the document's commit time,
+          measured in seconds since epoch
+
+        - a 5 byte random value
+
+        - a 3 byte incrementing counter, initialized to a random value
         """
-        try:
-            if not self._backing_doc.modify(add_to_set__tags=tag):
-                # This will raise an error if the sample does not exist
-                self._backing_doc.reload()
-        except InvalidDocumentError:
-            # Sample is not yet in the database
-            if tag not in self._backing_doc.tags:
-                self._backing_doc.tags.append(tag)
-
-        return True
-
-    def remove_tag(self, tag):
-        """Removes the given tag from the sample.
-
-        Args:
-            tag: the tag
-        """
-        try:
-            if not self._backing_doc.modify(pull__tags=tag):
-                # This will raise an error if the sample does not exist
-                self._backing_doc.reload()
-        except InvalidDocumentError:
-            # Sample is not yet in the database
-            self._backing_doc.tags.remove(tag)
-
-    def get_label(self, group):
-        """Gets the label with the given group for the sample.
-
-        Args:
-            group: the group name
-
-        Returns:
-            a :class:`fiftyone.core.labels.Label` instance
-        """
-        return fol.Label.from_doc(self._backing_doc.labels[group])
-
-    def get_labels(self):
-        """Returns the labels for the sample.
-
-        Returns:
-            a dict mapping group names to :class:`fiftyone.core.labels.Label`
-            instances
-        """
-        return {
-            g: fol.Label.from_doc(ld)
-            for g, ld in iteritems(self._backing_doc.labels)
-        }
-
-    def add_label(self, group, label):
-        """Adds the given label to the sample.
-
-        Args:
-            group: the group name for the label
-            label: a :class:`fiftyone.core.labels.Label`
-        """
-        if self._in_db:
-            self._dataset._validate_label(group, label)
-
-        self._backing_doc.labels[group] = label._backing_doc
-
-        if self._in_db:
-            self._save()
-
-    def get_insight(self, group):
-        """Gets the insight with the given group for the sample.
-
-        Args:
-            group: the group name
-
-        Returns:
-            a :class:`fiftyone.core.insights.Insight` instance
-        """
-        return foi.Insight.from_doc(self._backing_doc.insights[group])
-
-    def get_insights(self):
-        """Returns the insights for the sample.
-
-        Returns:
-            a dict mapping group names to
-            :class:`fiftyone.core.insights.Insight` instances
-        """
-        return {
-            g: foi.Insight.from_doc(id)
-            for g, id in iteritems(self._backing_doc.insights)
-        }
-
-    def add_insight(self, group, insight):
-        """Adds the given insight to the sample.
-
-        Args:
-            group: the group name for the label
-            insight: a :class:`fiftyone.core.insights.Insight`
-        """
-        self._backing_doc.insights[group] = insight._backing_doc
-
-        if self._in_db:
-            self._save()
-
-    def _set_dataset(self, dataset):
-        self._backing_doc.dataset = dataset.name
-        self._dataset = dataset
-
-
-class ImageSample(Sample):
-    """An image sample in a :class:`fiftyone.core.dataset.Dataset`.
-
-    The data associated with ``ImageSample`` instances are images.
-    """
-
-    _ODM_DOCUMENT_CLS = foo.ODMImageSample
-
-    @classmethod
-    def create(cls, filepath, tags=None, labels=None, metadata=None):
-        """Creates an :class:`ImageSample` instance.
-
-        Args:
-            filepath: the path to the image on disk
-            tags (None): a set of tags
-            labels (None): a dict mapping group names to
-                :class:`fiftyone.core.labels.Label` instances
-            metadata (None): an ``eta.core.image.ImageMetadata`` instance
-        """
-        if labels is not None:
-            _labels = {g: l._backing_doc for g, l in iteritems(labels)}
-        else:
-            _labels = None
-
-        if metadata is not None:
-            _metadata = foo.ODMImageMetadata(
-                size_bytes=metadata.size_bytes,
-                mime_type=metadata.mime_type,
-                width=metadata.frame_size[0],
-                height=metadata.frame_size[1],
-                num_channels=metadata.num_channels,
-            )
-        else:
-            _metadata = None
-
-        return cls._create(
-            filepath=os.path.abspath(os.path.expanduser(filepath)),
-            tags=tags,
-            labels=_labels,
-            metadata=_metadata,
-        )
+        return str(self._doc.id) if self._in_db else None
 
     @property
-    def metadata(self):
-        """The image metadata."""
-        # @todo(Tyler) this should NOT return the ODMDocument
-        return self._backing_doc.metadata
+    def ingest_time(self):
+        """The time the document was added to the database, or ``None`` if it
+        has not been added to the database.
+        """
+        return self._doc.ingest_time
 
-    def load_image(self):
-        """Loads the image for the sample.
+    @property
+    def in_dataset(self):
+        """Whether the sample has been added to a dataset."""
+        return self.dataset_name is not None
+
+    @property
+    def dataset_name(self):
+        """The name of the dataset to which this sample belongs, or ``None`` if
+        it has not been added to a dataset.
+        """
+        return self._doc.dataset_name
+
+    def get_field_schema(self, ftype=None):
+        """Gets a dictionary of all fields on this sample (and all samples in
+        the same dataset if applicable).
+
+        Args:
+            ftype (None): the subclass of ``BaseField`` for primitives
+                or ``EmbeddedDocument`` for ``EmbeddedDocumentField``s to
+                filter by
 
         Returns:
-            a numpy image
+             a dictionary of (field name: field type) per field that is a
+             subclass of ``ftype``
         """
-        return etai.read(self.filepath)
+        return self._doc.get_field_schema(ftype=ftype)
 
+    def get_field(self, field_name):
+        """Accesses the value of a field of the sample.
 
-_SAMPLE_CLS_MAP = {
-    foo.ODMSample: Sample,
-    foo.ODMImageSample: ImageSample,
-}
+        Args:
+            field_name: the string name of the field to add
+
+        Raises:
+            KeyError: if the field name is not valid
+        """
+        return self._doc.get_field(field_name=field_name)
+
+    def set_field(self, field_name, value, create=False):
+        """Sets the value of a field of the sample.
+
+        Args:
+            field_name: the string name of the field to add
+            value: the value to set the field to
+            create (False): If True and field_name is not set on the dataset,
+                create a field on the dataset of a type implied by value
+
+        Raises:
+            ValueError: if:
+                the field_name is invalid
+                the field_name does not exist and create=False
+        """
+        if (
+            hasattr(self, field_name)
+            and field_name not in self._doc.field_names
+        ):
+            raise ValueError("Cannot set reserve word '%s'" % field_name)
+        return self._doc.set_field(field_name, value, create=create)
+
+    def __getattr__(self, name):
+        if name not in dir(self):
+            try:
+                return self._doc.get_field(field_name=name)
+            except Exception:
+                pass
+        return super(Sample, self).__getattribute__(name)
+
+    def __setattr__(self, name, value):
+        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
+        # all attrs starting with "_" or that exist and are not fields are
+        # deferred to super
+        if name.startswith("_") or (
+            hasattr(self, name) and name not in self._doc.field_names
+        ):
+            return super().__setattr__(name, value)
+
+        if name not in self._doc.field_names:
+            warnings.warn(
+                "Fiftyone doesn't allow fields to be "
+                "created via a new attribute name",
+                stacklevel=2,
+            )
+            return super().__setattr__(name, value)
+        # @todo(Tyler) END NOT-DRY ############################################
+
+        self._doc.__setattr__(name, value)
+
+    def __getitem__(self, key):
+        return self.get_field(field_name=key)
+
+    def __setitem__(self, key, value):
+        return self.set_field(field_name=key, value=value, create=True)
+
+    def __copy__(self):
+        return self.copy()
+
+    def copy(self):
+        """Returns a copy of the sample that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Sample`
+        """
+        return self.__class__(**self._doc.copy().to_dict())
+
+    def to_dict(self, extended=False):
+        """Serializes this document to a JSON dictionary.
+
+        Args:
+            extended (False): whether to return extended JSON, i.e.,
+                ObjectIDs, Datetimes, etc. are serialized
+
+        Returns:
+            a JSON dict
+        """
+        return self._doc.to_dict(extended=extended)
+
+    @classmethod
+    def from_dict(cls, doc_class, d, created=False, extended=False):
+        """Loads the document from a JSON dictionary.
+
+        Args:
+            d: a JSON dictionary
+            doc_class
+            created (False): whether to consider the newly instantiated
+                document as brand new or as persisted already. The following
+                cases exist:
+
+                    * If ``True``, consider the document as brand new, no
+                      matter what data it is loaded with (i.e., even if an ID
+                      is loaded)
+
+                    * If ``False`` and an ID is NOT provided, consider the
+                      document as brand new
+
+                    * If ``False`` and an ID is provided, assume that the
+                      object has already been persisted (this has an impact on
+                      the subsequent call to ``.save()``)
+
+            extended (False): if ``False``, ObjectIDs, Datetimes, etc. are
+                expected to already be loaded
+
+        Returns:
+            a :class:`ODMDocument`
+        """
+        doc = doc_class.from_dict(d, created=created, extended=extended)
+        return cls.from_doc(doc)
+
+    def to_json(self):
+        """Returns a JSON string representation of the document.
+
+        Returns:
+            a JSON string
+        """
+        return self._doc.to_json()
+
+    @classmethod
+    def from_doc(cls, doc):
+        """Creates an instance of the :class:`fiftyone.core.sample.Sample`
+        class backed by the given document.
+
+        Args:
+            document: an :class:`fiftyone.core.odm.ODMDatasetSample` instance
+        """
+        if not isinstance(doc, foo.ODMDatasetSample):
+            raise TypeError("Unexpected doc type: %s" % type(doc))
+        sample = cls.__new__(cls)
+        sample._doc = doc
+        return sample
+
+    def save(self):
+        """Saves the document to the database."""
+        self._doc.save()
+
+    def _delete(self):
+        """Deletes the document from the database."""
+        self._doc.delete()
+
+    @property
+    def _in_db(self):
+        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
+        been inserted into the database.
+        """
+        return self._doc.in_db
+
+    @property
+    def _dataset(self):
+        if self._in_db:
+            # @todo(Tyler) should this import be cached?
+            from fiftyone.core.dataset import load_dataset
+
+            return load_dataset(self.dataset_name)
+        return None

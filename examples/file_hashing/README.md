@@ -44,7 +44,6 @@ import os
 import fiftyone as fo
 from fiftyone.utils.data import parse_image_classification_dir_tree
 import fiftyone.core.features as fof
-import fiftyone.core.insights as foi
 ```
 
 ### 1. Create a `fiftyone.Dataset`
