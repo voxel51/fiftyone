@@ -272,6 +272,8 @@
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
     "react-grid-gallery": "^0.5.5",
+    "react-highlight": "^0.12.0",
+    "react-highlight.js": "^1.0.7",
     "react-hot-loader": "^4.12.19",
     "react-infinite-scroller": "^1.2.4",
     "react-redux": "^7.1.3",

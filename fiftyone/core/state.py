@@ -41,20 +41,29 @@ class StateDescription(etas.Serializable):
         view: (optional) the current view
     """
 
-    def __init__(self, close=False, dataset=None, selected=None, view=None):
+    def __init__(
+        self,
+        close=False,
+        connected=False,
+        dataset=None,
+        selected=None,
+        view=None,
+    ):
         """Creates a StateDescription instance.
 
         Args:
             close: (optional) whether to close the app
+            connected: (optional) whether the session is connected to an app
             dataset: (optional) the current dataset
             selected: (optional) the currently selected samples
             view: (optional) the current view
         """
+        self.close = close
+        self.connect = connected
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
         self.count = len(dataset) if dataset is not None else 0
-        self.close = close
         super(StateDescription, self).__init__()
 
     @classmethod
@@ -68,6 +77,7 @@ class StateDescription(etas.Serializable):
             a ``StateDescription``
         """
         close = d.get("close", False)
+        connected = d.get("connected", False)
 
         dataset = d.get("dataset", None)
         if dataset is not None:
@@ -82,4 +92,10 @@ class StateDescription(etas.Serializable):
 
         selected = d.get("selected", [])
 
-        return cls(close=close, dataset=dataset, selected=selected, view=view)
+        return cls(
+            close=close,
+            connected=connected,
+            dataset=dataset,
+            selected=selected,
+            view=view,
+        )

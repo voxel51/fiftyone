@@ -7,14 +7,14 @@ import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
 
 export default connect(function (props) {
-  const { dispatch } = props;
+  const { dispatch, port } = props;
   const [initialLoad, setInitialLoad] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sValue, setValue] = useState("");
   const [results, setResults] = useState([]);
   const [facets, setFacets] = useState({});
   const [facetsLoading, setFacetsLoading] = useState(true);
-  const socket = getSocket("state");
+  const socket = getSocket(port, "state");
 
   const getFacets = () => {
     socket.emit("get_facets", "", (data) => {

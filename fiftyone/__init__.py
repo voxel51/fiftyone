@@ -34,7 +34,6 @@ import fiftyone.core.config as foc
 import fiftyone.core.service as fos
 
 _database_service = fos.DatabaseService()
-_server_service = fos.ServerService()
 config = foc.load_config()
 
 from .core.dataset import (
@@ -56,7 +55,8 @@ from .core.metadata import (
 )
 from .core.sample import Sample
 from .core.session import (
-    launch_dashboard,
     close_dashboard,
+    launch_dashboard,
+    Session,
 )
 from .core.view import DatasetView

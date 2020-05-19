@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import atexit
+import logging
 import signal
 
 import fiftyone.core.client as foc
@@ -28,9 +29,10 @@ from fiftyone.core.state import StateDescription
 
 # Global session singleton
 session = None
+logger = logging.getLogger(__name__)
 
 
-def launch_dashboard(dataset=None, view=None):
+def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
     """Launches the FiftyOne Dashboard.
 
     Only one dashboard instance can be opened at a time. If this method is
@@ -41,12 +43,13 @@ def launch_dashboard(dataset=None, view=None):
             load
         view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
             load
+        port (5151): the port number of the server
+        remote (False): whether this is a remote session
 
     Returns:
         a :class:`Session`
     """
     global session  # pylint: disable=global-statement
-
     #
     # Note, we always `close_dashboard()` here rather than just calling
     # `session.open()` if a session already exists, because the app may have
@@ -59,24 +62,20 @@ def launch_dashboard(dataset=None, view=None):
     #
     close_dashboard()
 
-    session = Session(dataset=dataset, view=view)
-
-    # Ensure that the session (and therefore the app) is closed whenever the
-    # Python process exits
-    _close_on_exit(session)
+    session = Session(dataset=dataset, view=view, port=port, remote=remote)
 
     return session
 
 
 def close_dashboard():
     """Closes the FiftyOne Dashboard, if necessary.
-
     If no dashboard is currently open, this method has no effect.
     """
     global session  # pylint: disable=global-statement
 
     if session is not None:
         session.close()
+        session = None
 
 
 def _update_state(func):
@@ -121,33 +120,52 @@ class Session(foc.HasClient):
             load
         view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
             load
+        port (5151): the port to use to connect the FiftyOne app.
+        remote (False): whether this is a remote session. Remote sessions do not
+            launch the FiftyOne app
     """
 
     _HC_NAMESPACE = "state"
     _HC_ATTR_NAME = "state"
     _HC_ATTR_TYPE = StateDescription
 
-    def __init__(self, dataset=None, view=None):
+    def __init__(self, dataset=None, view=None, port=5151, remote=False):
         if session is not None:
             raise ValueError("Only one session is permitted")
 
-        self._app_service = fos.AppService()
         self._close = False
         self._dataset = None
         self._view = None
+        self._port = port
+        self._remote = remote
 
-        super(Session, self).__init__()
+        super(Session, self).__init__(self._port)
 
         if view is not None:
             self.view = view
         elif dataset is not None:
             self.dataset = dataset
 
+        if not self._remote:
+            self._app_service = fos.AppService()
+            _close_on_exit(self)
+        else:
+            logger.info(
+                "You have launched a remote session and will need to configure "
+                "port forwarding. The current port number is %d.\n\n"
+                "Runnning the following command forwards this session to the default"
+                " port of 5151 on your local machine.\n"
+                "ssh -N -L %d:127.0.0.1:5151 username@this_machine_ip\n"
+                % (self.server_port, self.server_port)
+            )
+
     def open(self):
         """Opens the session.
 
         This opens the FiftyOne Dashboard, if necessary.
         """
+        if self._remote:
+            raise ValueError("Remote sessions cannot launch the FiftyOne app")
         self._app_service.start()
 
     def close(self):
@@ -155,9 +173,11 @@ class Session(foc.HasClient):
 
         This terminates the FiftyOne Dashboard, if necessary.
         """
+        if self._remote:
+            return
+
         self._close = True
         self._update_state()
-        self._app_service.stop()
 
     # GETTERS #################################################################
 
