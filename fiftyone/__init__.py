@@ -56,4 +56,4 @@ from .core.sample import (
     Sample,
     ImageSample,
 )
-from .core.session import launch_dashboard, Session
+from .core.session import close_dashboard, launch_dashboard, Session

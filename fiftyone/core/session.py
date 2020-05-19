@@ -50,13 +50,35 @@ def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
         a :class:`Session`
     """
     global session  # pylint: disable=global-statement
+    #
+    # Note, we always `close_dashboard()` here rather than just calling
+    # `session.open()` if a session already exists, because the app may have
+    # been closed in some way other than `session.close()` --- e.g., the user
+    # closing the GUI --- in which case the underlying Electron process may
+    # still exist; in this case, `session.open()` does not seem to reopen the
+    # app
+    #
+    # @todo this can probably be improved
+    #
+    close_dashboard()
+
+    session = Session(dataset=dataset, view=view, port=port, remote=remote)
+    # Ensure that the session (and therefore the app) is closed whenever the
+    # Python process exits
+    _close_on_exit(session)
+
+    return session
+
+
+def close_dashboard():
+    """Closes the FiftyOne Dashboard, if necessary.
+    If no dashboard is currently open, this method has no effect.
+    """
+    global session  # pylint: disable=global-statement
 
     if session is not None:
         session.close()
-
-    session = Session(dataset=dataset, view=view, port=port, remote=remote)
-
-    return session
+        session = None
 
 
 def _update_state(func):
@@ -228,3 +250,15 @@ class Session(foc.HasClient):
             view=self._view,
             selected=self.state.selected,
         )
+
+
+def _close_on_exit(session):
+    def handle_exit():
+        try:
+            session.close()
+        except:
+            pass
+
+    atexit.register(handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
+    signal.signal(signal.SIGINT, handle_exit)
