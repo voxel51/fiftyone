@@ -10,7 +10,6 @@ import RemoteInstructions from "../components/RemoteInstructions";
 import LocalInstructions from "../components/LocalInstructions";
 
 function Setup(props) {
-  console.log("asgsa");
   const { connected, port } = props;
   const [activeTab, setActiveTab] = useState("local");
   if (connected) {

@@ -11,14 +11,12 @@ import connect from "../utils/connect";
 function Samples(props) {
   const { state, setView, port, dispatch } = props;
   const socket = getSocket(port, "state");
-  const initialSelected = hasDataset
-    ? state.selected.reduce((obj, id, i) => {
-        return {
-          ...obj,
-          [id]: true,
-        };
-      }, {})
-    : {};
+  const initialSelected = state.selected.reduce((obj, id, i) => {
+    return {
+      ...obj,
+      [id]: true,
+    };
+  }, {});
   const [selected, setSelected] = useState(initialSelected);
   const [scrollState, setScrollState] = useState({
     initialLoad: true,
