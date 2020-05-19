@@ -4,6 +4,7 @@
 
 @fontName: "Palanquin";
 
+@brandColor: rgb(255, 109, 4);
 @containerBackground: hsl(210, 20%, 23%);
 @primaryColor: hsl(210, 20%, 90%);
 @secondaryColor: hsl(210, 20%, 70%);
@@ -48,3 +49,4 @@
 @relativeBig     : unit( round(@bigSize * @emSize) / @emSize, rem);
 @relativeHuge    : unit( round(@hugeSize * @emSize) / @emSize, rem);
 @relativeMassive : unit( round(@massiveSize * @emSize) / @emSize, rem);
+
