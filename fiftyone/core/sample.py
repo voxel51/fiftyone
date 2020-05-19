@@ -69,14 +69,14 @@ class Sample(object):
         if name.startswith("_") or (
             hasattr(self, name) and name not in self._doc.field_names
         ):
-            return super().__setattr__(name, value)
+            return super(Sample, self).__setattr__(name, value)
 
         if name not in self._doc.field_names:
             logger.warning(
                 "FiftyOne does not allow fields to be dynamically created via "
                 "__setattr__"
             )
-            return super().__setattr__(name, value)
+            return super(Sample, self).__setattr__(name, value)
         # @todo(Tyler) END NOT-DRY ############################################
 
         self._doc.__setattr__(name, value)
@@ -99,25 +99,13 @@ class Sample(object):
 
     @property
     def filename(self):
-        """The name of the raw data file on disk."""
+        """The basename of the data filepath."""
         return os.path.basename(self.filepath)
 
     @property
     def id(self):
         """The ID of the document, or ``None`` if it has not been added to the
         database.
-
-        **Implementation details**
-
-        The ID is a 12 byte value consisting of the concatenation of the
-        following:
-
-        - a 4 byte timestamp representing the document's commit time,
-          measured in seconds since epoch
-
-        - a 5 byte random value
-
-        - a 3 byte incrementing counter, initialized to a random value
         """
         return str(self._doc.id) if self._in_db else None
 
