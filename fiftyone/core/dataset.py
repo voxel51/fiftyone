@@ -24,7 +24,7 @@ import logging
 import numbers
 import os
 
-from mongoengine import EmbeddedDocumentField
+from mongoengine import ListField, DictField, EmbeddedDocumentField
 
 import eta.core.utils as etau
 
@@ -861,6 +861,19 @@ class Dataset(foc.SampleCollection):
         fields = self.get_sample_fields()
         max_len = max([len(field_name) for field_name in fields])
         return "\n".join(
-            "\t%s: %s" % (field_name.ljust(max_len), field.__class__)
+            "\t%s: %s" % (field_name.ljust(max_len), self._field_to_str(field))
             for field_name, field in iteritems(fields)
         )
+
+    @staticmethod
+    def _field_to_str(field):
+        field_str = etau.get_class_name(field)
+
+        if any(isinstance(field, cls) for cls in [ListField, DictField]):
+            field_str += "(field=%s)" % etau.get_class_name(field.field)
+        elif isinstance(field, EmbeddedDocumentField):
+            field_str += "(document_type=%s)" % etau.get_class_name(
+                field.document_type
+            )
+
+        return field_str
