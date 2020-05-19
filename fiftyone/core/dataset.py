@@ -25,6 +25,7 @@ import numbers
 import os
 
 from mongoengine import ListField, DictField, EmbeddedDocumentField
+from mongoengine.errors import DoesNotExist
 
 import eta.core.utils as etau
 
@@ -45,10 +46,7 @@ def list_dataset_names():
     Returns:
         a list of :class:`Dataset` names
     """
-    # pylint: disable=no-member
-    # @todo(Tyler) list_dataset_names()
-    #   this won't work until MetaDataset is implemented
-    raise NotImplementedError("TODO")
+    return list(foo.ODMDataset.objects.distinct("name"))
 
 
 def load_dataset(name):
@@ -121,10 +119,70 @@ class Dataset(foc.SampleCollection):
         return cls._instances[name]
 
     def __init__(self, name, create_empty=True):
+        if hasattr(self, "_name"):
+            # Only initialize once!
+            return
+
         self._name = name
 
-        # @todo(Tyler) use MetaDataset to load this class from the DB
+        if create_empty:
+            try:
+                self._load_dataset(name=name)
+            except DoesNotExist:
+                self._initialize_dataset(name=name)
+        else:
+            self._load_dataset(name=name)
+
+    def _initialize_dataset(self, name):
+        # create ODMDatasetSample subclass
         self._Doc = type(self._name, (foo.ODMDatasetSample,), {})
+
+        # create dataset meta document
+        self._meta = foo.ODMDataset(
+            name=name,
+            sample_fields=foo.SampleField.list_from_field_schema(
+                self.get_sample_fields()
+            ),
+        )
+
+        # save dataset meta document
+        self._meta.save()
+
+    def _load_dataset(self, name):
+        self._meta = foo.ODMDataset.objects.get(name=name)
+
+        self._Doc = type(self._name, (foo.ODMDatasetSample,), {})
+
+        fields = self.get_sample_fields()
+        fields.pop("id")
+
+        for idx, field in enumerate(itervalues(fields)):
+            sample_field = self._meta.sample_fields[idx]
+            if not sample_field.matches_field(field):
+                # @todo(Tyler) handle deleted default fields
+                raise ValueError(
+                    "@todo a default field has been deleted and needs"
+                    " to be handled appropriately"
+                )
+
+        for sample_field in self._meta.sample_fields[len(fields) : :]:
+            subfield = (
+                etau.get_class(sample_field.subfield)
+                if sample_field.subfield
+                else None
+            )
+            embedded_doc_type = (
+                etau.get_class(sample_field.embedded_doc_type)
+                if sample_field.embedded_doc_type
+                else None
+            )
+
+            self.add_sample_field(
+                field_name=sample_field.name,
+                ftype=etau.get_class(sample_field.ftype),
+                subfield=subfield,
+                embedded_doc_type=embedded_doc_type,
+            )
 
     def __len__(self):
         return self._get_query_set().count()
@@ -204,12 +262,19 @@ class Dataset(foc.SampleCollection):
                 if provided
 
         """
-        return self._Doc.add_field(
+        # update sample class
+        self._Doc.add_field(
             field_name=field_name,
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
         )
+
+        # update dataset meta class
+        field = self.get_sample_fields()[field_name]
+        sample_field = foo.SampleField.from_field(field)
+        self._meta.sample_fields.append(sample_field)
+        self._meta.save()
 
     def delete_sample_field(self, field_name):
         """Delete an existing field from the dataset
@@ -217,7 +282,13 @@ class Dataset(foc.SampleCollection):
         Args:
             field_name: the string name of the field to delete
         """
-        return self._Doc.delete_field(field_name=field_name)
+        self._Doc.delete_field(field_name=field_name)
+
+        # update dataset meta class
+        self._meta.sample_fields = [
+            sf for sf in self._meta.sample_fields if sf.name != field_name
+        ]
+        self._meta.save()
 
     def get_tags(self):
         """Returns the list of tags in the dataset.

@@ -514,7 +514,7 @@ class ODMDatasetSample(ODMSample):
     def delete_field(cls, field_name):
         # Delete from all samples
         # pylint: disable=no-member
-        cls.objects().update(**{"unset__%s" % field_name: None})
+        cls.objects.update(**{"unset__%s" % field_name: None})
 
         # Remove from dataset
         del cls._fields[field_name]

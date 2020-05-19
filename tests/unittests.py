@@ -5,7 +5,7 @@ To run a single test, modify the main code to:
 
 ```
 singletest = unittest.TestSuite()
-singletest.addTest(<TEST CASE>("<TEST METHOD NAME>"))
+singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
 unittest.TextTestRunner().run(singletest)
 ```
 
@@ -28,6 +28,9 @@ import fiftyone.core.odm as foo
 
 
 class DatasetTest(unittest.TestCase):
+    def test_list_dataset_names(self):
+        self.assertIsInstance(fo.list_dataset_names(), list)
+
     def test_pername_singleton(self):
         dataset1 = fo.Dataset("test_dataset")
         dataset2 = fo.Dataset("test_dataset")
@@ -38,6 +41,34 @@ class DatasetTest(unittest.TestCase):
     def test_backing_doc_class(self):
         dataset = fo.Dataset("test_dataset")
         self.assertTrue(issubclass(dataset._Doc, foo.ODMDatasetSample))
+
+    def test_meta_dataset(self):
+        dataset_name = "test_dataset"
+        dataset1 = fo.Dataset(name=dataset_name)
+
+        field_name = "field1"
+        ftype = IntField
+
+        dataset1.add_sample_field(field_name=field_name, ftype=ftype)
+        fields = dataset1.get_sample_fields()
+        self.assertIsInstance(fields[field_name], ftype)
+        dataset_copy = fo.load_dataset(name=dataset_name)
+        fields = dataset_copy.get_sample_fields()
+        self.assertIsInstance(fields[field_name], ftype)
+
+        dataset1.delete_sample_field("field1")
+        with self.assertRaises(KeyError):
+            fields = dataset1.get_sample_fields()
+            fields[field_name], ftype
+        with self.assertRaises(KeyError):
+            dataset_copy = fo.load_dataset(name=dataset_name)
+            fields = dataset_copy.get_sample_fields()
+            fields[field_name]
+
+        dataset2 = fo.Dataset(name=dataset_name)
+        self.assertIs(dataset2, dataset1)
+        dataset2 = fo.load_dataset(name=dataset_name)
+        self.assertIs(dataset2, dataset1)
 
 
 class SampleTest(unittest.TestCase):
