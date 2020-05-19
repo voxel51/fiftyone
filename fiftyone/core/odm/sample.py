@@ -519,7 +519,7 @@ class ODMDatasetSample(ODMSample):
     @classmethod
     def delete_field(cls, field_name):
         # delete from all samples
-        cls.objects().update(**{"unset__%s" % field_name: None})
+        cls.objects.update(**{"unset__%s" % field_name: None})
 
         # remove from dataset
         del cls._fields[field_name]
