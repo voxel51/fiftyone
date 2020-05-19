@@ -29,16 +29,14 @@ import fiftyone.core.collections as foc
 import fiftyone.core.sample as fos
 
 
-def _makeRegistrar():
+def _make_registrar():
     """Makes a decorator that keeps a registry of all functions decorated by
     it.
 
-    Usage:
-        my_decorator = _makeRegistrar()
-        my_decorator.all -> dictionary of (name: function) pairs
+    Usage::
 
-    Returns:
-        a decorator function
+        my_decorator = _make_registrar()
+        my_decorator.all  # dictionary mapping names to functions
     """
     registry = {}
 
@@ -52,7 +50,8 @@ def _makeRegistrar():
     return registrar
 
 
-operation = _makeRegistrar()
+# Keeps track of all DatasetView operations
+operation = _make_registrar()
 
 
 class DatasetView(foc.SampleCollection):
@@ -119,7 +118,7 @@ class DatasetView(foc.SampleCollection):
         """
         fields_str = self._dataset._get_fields_str()
 
-        pipeline_str = "\t" + "\n\t".join(
+        pipeline_str = "    " + "\n    ".join(
             [
                 "%d. %s" % (idx, str(d))
                 for idx, d in enumerate(self._pipeline, start=1)
@@ -131,15 +130,12 @@ class DatasetView(foc.SampleCollection):
                 "Dataset:        %s" % self._dataset.name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
-                "Sample Fields:",
+                "Sample fields:",
                 fields_str,
-                "Pipeline stages:\n%s" % pipeline_str,
+                "Pipeline stages:",
+                pipeline_str,
             ]
         )
-
-    def first(self):
-        """@todo(Tyler)"""
-        return next(self.iter_samples())
 
     def head(self, num_samples=3):
         """Returns a string representation of the first few samples in the
@@ -164,6 +160,14 @@ class DatasetView(foc.SampleCollection):
         """
         return "\n".join(str(s) for s in self[-num_samples:])
 
+    def first(self):
+        """Returns the first :class:`fiftyone.core.sample.Sample` in the view.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        return next(self.iter_samples())
+
     def get_tags(self):
         """Returns the list of tags in the collection.
 
@@ -179,6 +183,7 @@ class DatasetView(foc.SampleCollection):
             return next(self.aggregate(pipeline))["all_tags"]
         except StopIteration:
             pass
+
         return []
 
     def iter_samples(self):
@@ -207,8 +212,11 @@ class DatasetView(foc.SampleCollection):
 
     @classmethod
     def get_operation_names(cls):
-        """Get a list of method names for all :class:`DatasetView` operations
-        that return a :class:`DatasetView`.
+        """Returns a list of all available :class:`DatasetView` operations,
+        i.e., operations that return another :class:`DatasetView`.
+
+        Returns:
+            a list of method names
         """
         return list(operation.all)
 
