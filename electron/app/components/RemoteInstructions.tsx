@@ -20,7 +20,7 @@ export default () => (
     <Divider />
     <CodeBlock language="bash">{bashSnippet}</CodeBlock>
 
-    <Header as="h3">Port configuration</Header>
+    <Header as="h4">Port configuration</Header>
     <Divider />
     <p>
       The default FiftyOne port is <code>5151</code>. You can configure at
