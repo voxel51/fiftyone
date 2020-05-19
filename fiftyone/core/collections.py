@@ -20,10 +20,10 @@ from builtins import *
 
 import logging
 
-# import eta.core.utils as etau
+import eta.core.utils as etau
 
-# import fiftyone.core.labels as fol
-# import fiftyone.utils.data as foud
+import fiftyone.core.labels as fol
+import fiftyone.utils.data as foud
 
 
 logger = logging.getLogger(__name__)
@@ -82,41 +82,38 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement aggregate()")
 
-    def export(self, group, export_dir):
+    def export(self, label_field, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,
-        using the given label group as labels.
+        using the given label field as labels.
 
         The format of the dataset on disk will depend on the
         :class:`fiftyone.core.labels.Label` class of the labels in the
         specified group.
 
         Args:
-            group: the label group to use
+            label_field: the name of the label field to export
             export_dir: the directory to which to export
         """
-        # @todo(Tyler) SampleCollection.export()
-        # @todo(Tyler) remove everything with groups
-        raise NotImplementedError("TODO")
-        # data_paths = []
-        # labels = []
-        # for sample in self.iter_samples():
-        #     data_paths.append(sample.filepath)
-        #     labels.append(sample.get_label(group))
-        #
-        # if not labels:
-        #     logger.warning("No samples to export; returning now")
-        #     return
-        #
-        # if isinstance(labels[0], fol.ClassificationLabel):
-        #     foud.export_image_classification_dataset(
-        #         data_paths, labels, export_dir
-        #     )
-        # elif isinstance(labels[0], fol.DetectionLabels):
-        #     foud.export_image_detection_dataset(data_paths, labels, export_dir)
-        # elif isinstance(labels[0], fol.ImageLabels):
-        #     foud.export_image_labels_dataset(data_paths, labels, export_dir)
-        # else:
-        #     raise ValueError(
-        #         "Cannot export labels of type '%s'"
-        #         % etau.get_class_name(labels[0])
-        #     )
+        data_paths = []
+        labels = []
+        for sample in self:
+            data_paths.append(sample.filepath)
+            labels.append(sample[label_field])
+
+        if not labels:
+            logger.warning("No samples to export; returning now")
+            return
+
+        if isinstance(labels[0], fol.Classification):
+            foud.export_image_classification_dataset(
+                data_paths, labels, export_dir
+            )
+        elif isinstance(labels[0], fol.Detections):
+            foud.export_image_detection_dataset(data_paths, labels, export_dir)
+        elif isinstance(labels[0], fol.ImageLabels):
+            foud.export_image_labels_dataset(data_paths, labels, export_dir)
+        else:
+            raise ValueError(
+                "Cannot export labels of type '%s'"
+                % etau.get_class_name(labels[0])
+            )

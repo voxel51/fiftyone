@@ -4,7 +4,7 @@ Examples of using FiftyOne.
 
 | Directory              | Description                                                       |
 | ---------------------- | ----------------------------------------------------------------- |
-| `fifteen_to_fiftyone/` | `fiftyone`'s installment in the "10 minutes to python" series     |
+| `fifteen_to_fiftyone/` | FiftyOne's installment in the "10 minutes to python" series       |
 | `dataset_creation/`    | Examples of the many ways of easily creating FiftyOne datasets    |
 | `file_hashing/`        | Example of using FiftyOne to detect duplicate images in a dataset |
 | `label_mistakes/`      | Example of finding label errors using FiftyOne's hardness measure |
