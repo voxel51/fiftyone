@@ -161,9 +161,6 @@ class Session(foc.HasClient):
                 % (self.server_port, self.server_port)
             )
 
-    def __del__(self, *args):
-        self.close()
-
     def open(self):
         """Opens the session.
 
