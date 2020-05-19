@@ -1,12 +1,13 @@
 import React, { createRef, useState } from "react";
 import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
 import {
-  Image,
   Sidebar,
   Container,
   Menu,
   Ref,
   Sticky,
+  Message,
+  Segment,
 } from "semantic-ui-react";
 
 import Fields from "../components/Fields";
@@ -18,7 +19,8 @@ import connect from "../utils/connect";
 
 function Dataset(props) {
   const { path, url } = useRouteMatch();
-  const { connected, loading, port } = props;
+  const { connected, loading, port, state } = props;
+  const hasDataset = Boolean(state && state.dataset);
   const stickyRef = createRef();
   const tabs = ["samples", "fields"];
   const [view, setView] = useState({ visible: false, sample: null });
@@ -86,17 +88,23 @@ function Dataset(props) {
               </Menu>
             </Container>
           </Sticky>
-          <Switch>
-            <Route exact path={path}>
-              <Redirect to={`${path}samples`} />
-            </Route>
-            <Route path={`${path}samples`}>
-              <Samples {...props.socket} setView={setView} />
-            </Route>
-            <Route path={`${path}fields`}>
-              <Fields data={[]} />
-            </Route>
-          </Switch>
+          {hasDataset ? (
+            <Switch>
+              <Route exact path={path}>
+                <Redirect to={`${path}samples`} />
+              </Route>
+              <Route path={`${path}samples`}>
+                <Samples {...props.socket} setView={setView} />
+              </Route>
+              <Route path={`${path}fields`}>
+                <Fields data={[]} />
+              </Route>
+            </Switch>
+          ) : (
+            <Segment>
+              <Message>No dataset loaded</Message>
+            </Segment>
+          )}
         </Container>
       </Ref>
     </>

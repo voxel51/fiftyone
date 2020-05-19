@@ -1,18 +1,6 @@
 import _ from "lodash";
 import React, { createRef, useState, useRef, useEffect } from "react";
-import {
-  Card,
-  Grid,
-  Image,
-  Label,
-  Header,
-  Icon,
-  Menu,
-  Message,
-  Segment,
-  Sidebar,
-  Divider,
-} from "semantic-ui-react";
+import { Card, Grid } from "semantic-ui-react";
 import InfiniteScroll from "react-infinite-scroller";
 import { Dimmer, Loader } from "semantic-ui-react";
 
@@ -22,7 +10,6 @@ import connect from "../utils/connect";
 
 function Samples(props) {
   const { state, setView, port, dispatch } = props;
-  const hasDataset = Boolean(state && state.dataset);
   const socket = getSocket(port, "state");
   const initialSelected = hasDataset
     ? state.selected.reduce((obj, id, i) => {
@@ -40,23 +27,14 @@ function Samples(props) {
     pageToLoad: 1,
   });
   const loadMore = () => {
-    if (hasDataset) {
-      socket.emit("page", scrollState.pageToLoad, (data) => {
-        setScrollState({
-          initialLoad: false,
-          hasMore: scrollState.pageToLoad * 20 < state.count,
-          images: [...scrollState.images, ...data],
-          pageToLoad: scrollState.pageToLoad + 1,
-        });
-      });
-    } else {
+    socket.emit("page", scrollState.pageToLoad, (data) => {
       setScrollState({
-        initialLoad: true,
-        hasMore: false,
-        images: [],
-        pageToLoad: 1,
+        initialLoad: false,
+        hasMore: scrollState.pageToLoad * 20 < state.count,
+        images: [...scrollState.images, ...data],
+        pageToLoad: scrollState.pageToLoad + 1,
       });
-    }
+    });
   };
 
   useSubscribe(socket, "update", (data) => {
@@ -67,14 +45,6 @@ function Samples(props) {
       pageToLoad: 1,
     });
   });
-
-  if (!hasDataset) {
-    return (
-      <Segment>
-        <Message>No dataset loaded</Message>
-      </Segment>
-    );
-  }
 
   const chunkedImages = _.chunk(scrollState.images, 4);
   const content = chunkedImages.map((imgs, i) => {
