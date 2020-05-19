@@ -42,8 +42,8 @@ def _make_registrar():
 
     def registrar(func):
         registry[func.__name__] = func
-        # normally a decorator returns a wrapped function,
-        # but here we return func unmodified, after registering it
+        # Normally a decorator returns a wrapped function, but here we return
+        # `func` unmodified, after registering it
         return func
 
     registrar.all = registry
