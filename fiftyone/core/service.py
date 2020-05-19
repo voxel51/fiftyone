@@ -18,11 +18,17 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import logging
 import os
+import signal
+import subprocess
 
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+
+
+logger = logging.getLogger(__name__)
 
 
 class Service(object):
@@ -99,16 +105,45 @@ class AppService(Service):
     """Service that controls the FiftyOne app."""
 
     def start(self):
-        """Starts the AppService.
-
-        TODO: Add production call to start the app
-        """
+        """Starts the AppService."""
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
-            etau.call(foc.START_APP, **self._SUPPRESS)
+            if os.path.isfile("FiftyOne.AppImage"):
+                # linux
+                args = ["./FiftyOne.AppImage"]
+            elif os.path.isfile("package.json"):
+                # dev build
+                args = ["yarn", "dev"]
+            elif os.path.isdir("FiftyOne.app"):
+                # -W: wait for the app to terminate
+                # -n: open a new instance of the app
+                # TODO: the app doesn't run as a subprocess of `open`, so it
+                # won't get killed by stop()
+                args = ["open", "-W", "-n", "./FiftyOne.app"]
+            else:
+                # TODO: support macOS, etc
+                raise RuntimeError(
+                    "Could not find FiftyOne dashboard in %r"
+                    % foc.FIFTYONE_APP_DIR
+                )
+        # TODO: python <3.3 compat
+        self.process = subprocess.Popen(
+            args,
+            cwd=foc.FIFTYONE_APP_DIR,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     def stop(self):
-        """Stops the AppService.
-
-        Noop as the session requests the app to close itself.
-        """
-        pass
+        """Stops the AppService."""
+        # TODO: python <3.3 compat
+        if not getattr(self, "process", None):
+            return
+        self.process.send_signal(signal.SIGINT)
+        try:
+            self.process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                "Dashboard exit timed out; killing (PID = %i)",
+                self.process.pid,
+            )
+            self.process.kill()
