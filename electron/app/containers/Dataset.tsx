@@ -17,6 +17,14 @@ import Search from "../components/Search";
 import routes from "../constants/routes.json";
 import connect from "../utils/connect";
 
+function NoDataset() {
+  return (
+    <Segment>
+      <Message>No dataset loaded</Message>
+    </Segment>
+  );
+}
+
 function Dataset(props) {
   const { path, url } = useRouteMatch();
   const { connected, loading, port, state } = props;
@@ -88,23 +96,23 @@ function Dataset(props) {
               </Menu>
             </Container>
           </Sticky>
-          {hasDataset ? (
-            <Switch>
-              <Route exact path={path}>
-                <Redirect to={`${path}samples`} />
-              </Route>
-              <Route path={`${path}samples`}>
-                <Samples {...props.socket} setView={setView} />
-              </Route>
-              <Route path={`${path}fields`}>
-                <Fields data={[]} />
-              </Route>
-            </Switch>
-          ) : (
-            <Segment>
-              <Message>No dataset loaded</Message>
-            </Segment>
-          )}
+          <Switch>
+            <Route exact path={path}>
+              <Redirect to={`${path}samples`} />
+            </Route>
+            {hasDataset ? (
+              <>
+                <Route path={`${path}samples`}>
+                  <Samples {...props.socket} setView={setView} />
+                </Route>
+                <Route path={`${path}fields`}>
+                  <Fields data={[]} />
+                </Route>
+              </>
+            ) : (
+              <NoDataset />
+            )}
+          </Switch>
         </Container>
       </Ref>
     </>
