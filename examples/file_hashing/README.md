@@ -29,8 +29,8 @@ The dataset is organized on disk as follows:
     └── ...
 ```
 
-As we will soon come to discover, some of these samples are duplicates and
-we have no clue which they are!
+As we will soon come to discover, some of these samples are duplicates and we
+have no clue which they are!
 
 ## Walkthrough
 
@@ -89,12 +89,10 @@ print(sample)
 Create a view that sorts labels reverse-alphabetically
 
 ```python
-view = dataset.default_view().sort_by(
-    "labels.ground_truth.label", reverse=True
-)
+view = dataset.view().sort_by("ground_truth.label", reverse=True)
 print(view.summary())
 
-sample = next(view.iter_samples())
+sample = view.first()
 print(sample)
 ```
 
@@ -109,7 +107,7 @@ session = fo.launch_dashboard(dataset=dataset)
 Narrow your scope to 10 random samples
 
 ```python
-session.view = dataset.default_view().sample(10)
+session.view = dataset.view().sample(10)
 ```
 
 Select some samples in the GUI and see how this field updates instantly!
@@ -158,8 +156,8 @@ session.dataset = dataset
 
 ### 5. Check for duplicates
 
-We are using a more powerful query here to search for all file hashes with
-more than sample:
+We are using a more powerful query here to search for all file hashes with more
+than sample:
 
 ```python
 pipeline = [
@@ -218,14 +216,14 @@ print("Length of dataset after: %d" % len(dataset))
 ```
 
 Alternatively, it also would be possible to create a view with all of the
-duplicates "to be deleted" and then iterate over our own non-`fiftyone` code
-to delete these files from the original dataset.
+duplicates "to be deleted" and then iterate over our own non-`fiftyone` code to
+delete these files from the original dataset.
 
 ### 7. Export
 
-In this lightweight workflow none of the work down with `fiftyone` persists.
-As mentioned above we could have used fiftyone to tell us which samples we
-needed to delete.
+In this lightweight workflow none of the work down with `fiftyone` persists. As
+mentioned above we could have used fiftyone to tell us which samples we needed
+to delete.
 
 But we have a very small dataset here, so we could just export a copy:
 
@@ -235,5 +233,4 @@ dataset.export(group="ground_truth", export_dir="/tmp/fiftyone/export")
 
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

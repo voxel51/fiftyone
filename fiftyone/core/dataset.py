@@ -545,7 +545,7 @@ class Dataset(foc.SampleCollection):
         # @todo add a progress bar here? Note that `len(samples)` may not work
         # for some iterables
         logger.info("Parsing samples...")
-        _kwargs_list = []
+        _samples = []
         for sample in samples:
             if sample_parser is not None:
                 label = sample_parser.parse_label(sample)
@@ -554,29 +554,23 @@ class Dataset(foc.SampleCollection):
 
             filepath = os.path.abspath(os.path.expanduser(sample[0]))
 
-            _sample_kwargs = {
-                "filepath": filepath,
-                group: label,
-            }
-
-            _kwargs_list.append(_sample_kwargs)
+            _samples.append(fo.Sample(filepath=filepath, **{group: label}))
 
         logger.info(
-            "Creating dataset '%s' containing %d samples",
-            name,
-            len(_kwargs_list),
+            "Creating dataset '%s' containing %d samples", name, len(_samples),
         )
         dataset = cls(name)
 
-        # @todo(Tyler) make this more user friendly
-        # add the ground_truth label field to the dataset
-        dataset.add_sample_field(
-            field_name="ground_truth",
-            ftype=EmbeddedDocumentField,
-            embedded_doc_type=type(_kwargs_list[0][group]),
-        )
+        if samples:
+            # @todo(Tyler) make this more user friendly
+            # add the ground_truth label field to the dataset
+            dataset.add_sample_field(
+                field_name="ground_truth",
+                ftype=EmbeddedDocumentField,
+                embedded_doc_type=type(_samples[0][group]),
+            )
+            dataset.add_samples(_samples)
 
-        dataset.add_samples(_kwargs_list)
         return dataset
 
     @classmethod
