@@ -46,7 +46,6 @@ function Dataset(props) {
   if (!connected) {
     return <Redirect to={routes.SETUP} />;
   }
-
   return (
     <>
       <Sidebar
@@ -85,7 +84,7 @@ function Dataset(props) {
               <Menu pointing secondary>
                 {tabs.map((v, i) => {
                   return (
-                    <Link key={i} to={`${url}${v}`}>
+                    <Link key={i} to={`${routes.DATASET}${v}`}>
                       <Menu.Item
                         name={v}
                         active={`/${v}` === props.location.pathname}
@@ -97,15 +96,15 @@ function Dataset(props) {
             </Container>
           </Sticky>
           <Switch>
-            <Route exact path={path}>
-              <Redirect to={`${path}samples`} />
+            <Route exact path={routes.DATASET}>
+              <Redirect to={routes.SAMPLES} />
             </Route>
             {hasDataset ? (
               <>
-                <Route path={`${path}samples`}>
+                <Route path={routes.SAMPLES}>
                   <Samples {...props.socket} setView={setView} />
                 </Route>
-                <Route path={`${path}fields`}>
+                <Route path={routes.FIELDS}>
                   <Fields data={[]} />
                 </Route>
               </>
