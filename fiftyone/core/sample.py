@@ -51,6 +51,9 @@ class Sample(object):
     def __str__(self):
         return str(self._doc)
 
+    def __repr__(self):
+        return repr(self._doc)
+
     def __getattr__(self, name):
         if name not in dir(self):
             try:
