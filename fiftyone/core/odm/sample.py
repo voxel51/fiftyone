@@ -173,6 +173,16 @@ class ODMSample(ODMDocument):
         """
         raise NotImplementedError("Subclass must implement add_field()")
 
+    def add_implied_field(self, field_name, value):
+        """Adds the field to the sample, inferring the field type from the
+        provided value.
+
+        Args:
+            field_name: the name of the field to add
+            value: the value to infer the field type from
+        """
+        raise NotImplementedError("Subclass must implement add_field()")
+
     def delete_field(self, field_name):
         """Deletes the field from the dataset.
 
@@ -221,7 +231,7 @@ class ODMSample(ODMDocument):
 
         if field_name not in self._fields:
             if create:
-                self._add_implied_field(field_name, value)
+                self.add_implied_field(field_name, value)
             else:
                 raise ValueError(
                     "Sample does not have field '%s'. Use `create=True` to "
@@ -314,33 +324,32 @@ class ODMSample(ODMDocument):
             # instance, not class, so do not setattr
             pass
 
-    def _add_implied_field(self, field_name, value):
+    @staticmethod
+    def _add_implied_field(cls_or_self, field_name, value):
         """Adds the field to the sample, inferring the field type from the
         provided value.
         """
-        if field_name in self._fields:
+        if field_name in cls_or_self._fields:
             raise ValueError(
                 "Attempting to add field '%s' that already exists" % field_name
             )
 
         if isinstance(value, EmbeddedDocument):
-            self.add_field(
+            cls_or_self.add_field(
                 field_name,
                 EmbeddedDocumentField,
                 embedded_doc_type=type(value),
             )
         elif isinstance(value, bool):
-            self.add_field(field_name, BooleanField)
+            cls_or_self.add_field(field_name, BooleanField)
         elif isinstance(value, six.integer_types):
-            self.add_field(field_name, IntField)
+            cls_or_self.add_field(field_name, IntField)
         elif isinstance(value, six.string_types):
-            self.add_field(field_name, StringField)
+            cls_or_self.add_field(field_name, StringField)
         elif isinstance(value, list) or isinstance(value, tuple):
-            # @todo(Tyler) set the subfield of ListField and
-            #   ensure all elements are of this type
-            self.add_field(field_name, ListField)
+            cls_or_self.add_field(field_name, ListField)
         elif isinstance(value, dict):
-            self.add_field(field_name, DictField)
+            cls_or_self.add_field(field_name, DictField)
         else:
             raise TypeError(
                 "Invalid type '%s'; could not be cast to Field" % type(value)
@@ -449,6 +458,12 @@ class ODMNoDatasetSample(ODMSample):
         )
 
     @nodataset
+    def add_implied_field(self, field_name, value):
+        self._add_implied_field(
+            cls_or_self=self, field_name=field_name, value=value,
+        )
+
+    @nodataset
     def delete_field(self, field_name):
         # @todo(Tyler) ODMNoDatasetSample.delete_field
         raise NotImplementedError("TODO TYLER")
@@ -514,6 +529,12 @@ class ODMDatasetSample(ODMSample):
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+        )
+
+    @classmethod
+    def add_implied_field(cls, field_name, value):
+        cls._add_implied_field(
+            cls_or_self=cls, field_name=field_name, value=value,
         )
 
     @classmethod

@@ -307,7 +307,7 @@ class Dataset(foc.SampleCollection):
         for doc in self._get_query_set():
             yield self._load_sample_from_doc(doc)
 
-    def add_sample(self, sample):
+    def add_sample(self, sample, expand_schema=False):
         """Adds the given sample to the dataset.
 
         If the sample belongs to a dataset, a copy is created and added to this
@@ -315,17 +315,41 @@ class Dataset(foc.SampleCollection):
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
+            expand_schema: If True, when a field is encountered on a sample
+                that is not in the dataset schema, the field is added to the
+                dataset. If False, an error is raised.
 
         Returns:
             the ID of the sample in the dataset
+
+        Raises:
+            :class:`mongoengine.errors.ValidationError` if:
+                sample["some_field"] type is inconsistent with dataset schema
+
+                    OR
+
+                "some_field" is not in the dataset schema and
+                `expand_schema` == False
         """
         if sample._in_db:
             sample = sample.copy()
+
+        if expand_schema:
+            fields = self.get_sample_fields()
+            for field_name, field in iteritems(sample.get_field_schema()):
+                if field_name not in fields:
+                    self._Doc.add_implied_field(
+                        field_name=field_name, value=sample[field_name]
+                    )
+
+                    # update
+                    fields = self.get_sample_fields()
+
         sample._doc = self._Doc(**sample.to_dict())
         sample.save()
         return sample.id
 
-    def add_samples(self, samples):
+    def add_samples(self, samples, expand_schema=False):
         """Adds the given samples to the dataset.
 
         If a sample belongs to a dataset, a copy is created and added to this
@@ -335,10 +359,34 @@ class Dataset(foc.SampleCollection):
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
                 instances. For example, ``samples`` may be another
                 :class:`Dataset` or a :class:`fiftyone.core.views.DatasetView`
+            expand_schema: If True, when a field is encountered on a sample
+                that is not in the dataset schema, the field is added to the
+                dataset. If False, an error is raised.
 
         Returns:
             a list of IDs of the samples in the dataset
+
+        Raises:
+            :class:`mongoengine.errors.ValidationError` if:
+                sample["some_field"] type is inconsistent with dataset schema
+
+                    OR
+
+                "some_field" is not in the dataset schema and
+                `expand_schema` == False
         """
+        if expand_schema:
+            fields = self.get_sample_fields()
+            for sample in samples:
+                for field_name, field in iteritems(sample.get_field_schema()):
+                    if field_name not in fields:
+                        self._Doc.add_implied_field(
+                            field_name=field_name, value=sample[field_name]
+                        )
+
+                        # update
+                        fields = self.get_sample_fields()
+
         # copy any samples in a dataset
         samples = [s.copy() if s._in_db else s for s in samples]
 

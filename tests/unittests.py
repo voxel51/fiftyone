@@ -39,11 +39,12 @@ class DatasetTest(unittest.TestCase):
         self.assertIsNot(dataset1, dataset3)
 
     def test_backing_doc_class(self):
-        dataset = fo.Dataset("test_dataset")
+        dataset_name = self.test_backing_doc_class.__name__
+        dataset = fo.Dataset(dataset_name)
         self.assertTrue(issubclass(dataset._Doc, foo.ODMDatasetSample))
 
     def test_meta_dataset(self):
-        dataset_name = "test_dataset"
+        dataset_name = self.test_meta_dataset.__name__
         dataset1 = fo.Dataset(name=dataset_name)
 
         field_name = "field1"
@@ -155,7 +156,7 @@ class SampleTest(unittest.TestCase):
 
 class SampleInDatasetTest(unittest.TestCase):
     def test_autopopulated_fields(self):
-        dataset_name = "test_dataset"
+        dataset_name = self.test_autopopulated_fields.__name__
         dataset = fo.Dataset(name=dataset_name)
         sample = fo.Sample(filepath="path/to/file.jpg")
 
@@ -171,6 +172,46 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertIsInstance(sample.ingest_time, datetime.datetime)
         self.assertTrue(sample.in_dataset)
         self.assertEqual(sample.dataset_name, dataset_name)
+
+    def test_new_fields(self):
+        dataset_name = self.test_new_fields.__name__
+        dataset = fo.Dataset(name=dataset_name)
+        sample = fo.Sample(filepath="path/to/file.jpg")
+
+        field_name = "field1"
+        value = 51
+
+        sample[field_name] = value
+
+        with self.assertRaises(FieldDoesNotExist):
+            dataset.add_sample(sample)
+
+        dataset.add_sample(sample, expand_schema=True)
+        fields = dataset.get_sample_fields()
+        self.assertIsInstance(fields[field_name], IntField)
+        self.assertEqual(sample[field_name], value)
+        self.assertEqual(dataset[sample.id][field_name], value)
+
+    def test_new_fields_multi(self):
+        dataset_name = self.test_new_fields_multi.__name__
+        dataset = fo.Dataset(name=dataset_name)
+        sample = fo.Sample(filepath="path/to/file.jpg")
+
+        field_name = "field1"
+        value = 51
+
+        sample[field_name] = value
+
+        with self.assertRaises(FieldDoesNotExist):
+            dataset.add_samples([sample])
+
+        dataset.add_samples([sample], expand_schema=True)
+        fields = dataset.get_sample_fields()
+        self.assertIsInstance(fields[field_name], IntField)
+        self.assertEqual(sample[field_name], value)
+        self.assertEqual(dataset[sample.id][field_name], value)
+
+
 
 
 class LabelsTest(unittest.TestCase):
@@ -189,7 +230,7 @@ class CRUDTest(unittest.TestCase):
     """Create, Read, Update, Delete (CRUD)"""
 
     def test_create_sample(self):
-        dataset_name = "crud_test"
+        dataset_name = self.test_create_sample.__name__
         dataset = fo.Dataset(dataset_name)
         filepath = "path/to/file.txt"
         sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
@@ -269,7 +310,8 @@ class CRUDTest(unittest.TestCase):
 
 class ViewTest(unittest.TestCase):
     def test_view(self):
-        dataset = fo.Dataset("view_test_dataset")
+        dataset_name = self.test_view.__name__
+        dataset = fo.Dataset(dataset_name)
         dataset.add_sample_field(
             field_name="labels",
             ftype=EmbeddedDocumentField,
@@ -304,8 +346,8 @@ class ViewTest(unittest.TestCase):
 
 class FieldTest(unittest.TestCase):
     def test_field_AddDelete_in_dataset(self):
-        foo.drop_database()
-        dataset = fo.Dataset(name="field_test")
+        dataset_name = self.test_field_AddDelete_in_dataset.__name__
+        dataset = fo.Dataset(name=dataset_name)
         id1 = dataset.add_sample(fo.Sample("1.jpg"))
         id2 = dataset.add_sample(fo.Sample("2.jpg"))
         sample1 = dataset[id1]
@@ -433,8 +475,8 @@ class FieldTest(unittest.TestCase):
         # add deleted field
 
     def test_field_GetSetClear_in_dataset(self):
-        foo.drop_database()
-        dataset = fo.Dataset(name="field_test")
+        dataset_name = self.test_field_GetSetClear_in_dataset.__name__
+        dataset = fo.Dataset(name=dataset_name)
         dataset.add_sample(fo.Sample("1.jpg"))
         dataset.add_sample(fo.Sample("2.jpg"))
 
