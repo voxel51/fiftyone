@@ -17,15 +17,23 @@ import connect from "../utils/connect";
 
 function Dataset(props) {
   const { path, url } = useRouteMatch();
+  const { connected, loading } = props;
   const stickyRef = createRef();
   const tabs = ["samples", "labels"];
   const [view, setView] = useState({ visible: false, sample: null });
-  console.log(view);
   let src = null;
   if (view.sample) {
     const path = view.sample.filepath;
     const host = "http://127.0.0.1:5151/";
     src = `${host}?path=${path}`;
+  }
+
+  if (loading) {
+    return <Redirect to={routes.LOADING} />;
+  }
+
+  if (!connected) {
+    return <Redirect to={routes.SETUP} />;
   }
 
   return (
@@ -59,11 +67,10 @@ function Dataset(props) {
             >
               <Search />
               <Menu pointing secondary>
-                {tabs.map((v) => {
+                {tabs.map((v, i) => {
                   return (
-                    <Link to={`${url}${v}`}>
+                    <Link key={i} to={`${url}${v}`}>
                       <Menu.Item
-                        key={v}
                         name={v}
                         active={`/${v}` === props.location.pathname}
                       />

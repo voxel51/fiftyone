@@ -5,17 +5,16 @@ import { Grid, Image, Menu, Sidebar, Statistic } from "semantic-ui-react";
 import connect from "../utils/connect";
 
 const _Sidebar = (props) => {
-  const { state } = props;
+  const { state, connected, loading } = props;
   const hasDataset = Boolean(state && state.dataset);
-  console.log(state);
   return (
     <Sidebar
       as={Menu}
-      animation={"overlay"}
+      animation={"uncover"}
       inverted
       vertical
       direction={"left"}
-      visible={true}
+      visible={connected && !loading}
     >
       <Menu.Item as="h2">FiftyOne</Menu.Item>
       <Menu.Item as="h3">
