@@ -1,6 +1,7 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
 import { Button, Modal, Label } from "semantic-ui-react";
+import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
 
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
@@ -18,6 +19,7 @@ type Props = {
 };
 
 function App(props: Props) {
+  const { path, url } = useRouteMatch();
   const { loading, children, dispatch, update, connected, port } = props;
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });

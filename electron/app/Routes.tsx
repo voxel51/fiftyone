@@ -14,8 +14,6 @@ export default function Routes() {
         <Route path={routes.LOADING} exact component={Loading} />
         <Route path={routes.SETUP} exact component={Setup} />
         <Route path={routes.DATASET} exact component={Dataset} />
-        <Route path={routes.LIST} exact component={Dataset} />
-        <Route path={routes.CHARTS} exact component={Dataset} />
       </Switch>
     </App>
   );
