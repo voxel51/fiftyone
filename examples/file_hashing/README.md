@@ -64,36 +64,32 @@ dataset = fo.Dataset.from_image_classification_samples(
 We can poke around in the dataset:
 
 ```python
+# Print summary information about the dataset
 print(dataset.summary())
-```
 
-Grab a sample:
-
-```python
-sample = next(dataset.iter_samples())
-print(sample)
+# Print a random sample
+print(dataset.take(1))
 ```
 
 Create a view that filters only `mountain`
 
 ```python
-view = dataset.default_view().filter(
-    filter={"labels.ground_truth.label": "mountain"}
-)
+view = dataset.view().match({"ground_truth.label": "mountain"})
+
+# Print summary information about the view
 print(view.summary())
 
-sample = next(view.iter_samples())
-print(sample)
+# Print the first sample in the view
+print(view.first())
 ```
 
 Create a view that sorts labels reverse-alphabetically
 
 ```python
 view = dataset.view().sort_by("ground_truth.label", reverse=True)
-print(view.summary())
 
-sample = view.first()
-print(sample)
+print(view.summary())
+print(view.first())
 ```
 
 ### 3. Visualize the dataset
@@ -104,25 +100,32 @@ Start browsing the dataset:
 session = fo.launch_dashboard(dataset=dataset)
 ```
 
-Narrow your scope to 10 random samples
+Narrow your scope to 10 random samples:
 
 ```python
-session.view = dataset.view().sample(10)
+session.view = dataset.view().take(10)
 ```
 
-Select some samples in the GUI and see how this field updates instantly!
+Select some samples in the GUI and access their IDs from code!
 
 ```python
-session.selected
+# Get the IDs of the currently selected samples in the dashboard
+sample_ids = session.selected
 ```
 
-Create a view on the samples you selected:
+Create a view that contains your currently selected samples:
 
 ```python
-session.view = dataset.view().select(session.selected)
+selected_view = dataset.view().select(session.selected)
 ```
 
-### 4. Compute File Hashes
+Update the dashboard to only show your selected samples:
+
+```python
+session.view = selected_view
+```
+
+### 4. Compute file hashes
 
 Iterate over the samples and compute file hash:
 
@@ -134,16 +137,16 @@ for sample in dataset:
 print(dataset.summary())
 ```
 
-We have two ways to look at a sample:
+We have two ways to visualize this new information:
 
-1. In the `ipython` terminal:
+1. From your terminal:
 
 ```python
-sample = next(dataset.iter_samples())
+sample = dataset.view().first()
 print(sample)
 ```
 
-2. By refreshing the GUI:
+2. By refreshing the dashboard:
 
 ```python
 session.dataset = dataset
@@ -151,70 +154,70 @@ session.dataset = dataset
 
 ### 5. Check for duplicates
 
-We are using a more powerful query here to search for all file hashes with more
-than sample:
+Now let's use a more powerful query to search for duplicate files, i.e., those
+with the same file hashses:
 
 ```python
 pipeline = [
-    # find all unique file hashes
+    # Find all unique file hashes
     {"$group": {"_id": "$file_hash", "count": {"$sum": 1}}},
-    # filter out file hashes with a count of 1
+    # Filter out file hashes with a count of 1
     {"$match": {"count": {"$gt": 1}}},
 ]
 
 dup_filehashes = [d["_id"] for d in dataset.aggregate(pipeline)]
+
+print("Number of duplicate file hashes: %d" % len(dup_filehashes))
 ```
 
-We can look at the list of file hashes, and we can create a view on the dataset
-that contrains to only samples with these file hashes:
+Now let's create a view that contains only the samples with these duplicate
+file hashes:
 
 ```python
-print("Number of unique images that are duplicated: %d" % len(dup_filehashes))
+dup_view = (
+    dataset.view()
+    # Extract samples with duplicate file hashes
+    .match({"file_hash": {"$in": dup_filehashes}})
+    # Sort by file hash so duplicates will be adjacent
+    .sort_by("file_hash")
+)
 
-view = dataset.view().match({"file_hash": {"$in": dup_filehashes}})
+print("Number of images that have a duplicate: %d" % len(dup_view))
 
-print("Number of images that have a duplicate: %d" % len(view))
-
-print("Number of duplicates: %d" % (len(view) - len(dup_filehashes)))
+print("Number of duplicates: %d" % (len(dup_view) - len(dup_filehashes)))
 ```
 
-And we can always visualize views!
+Of course, we can always use the dashboard to visualize our work!
 
 ```python
-session.view = view.sort_by("file_hash")
+session.view = dup_view
 ```
 
 ### 6. Delete duplicates
 
-This snippet iterates over the duplicate file hashes and deletes `count - 1`
-samples with each file hash.
+Now let's delete the duplicate samples from the dataset using our `dup_view` to
+restrict our attention to known duplicates:
 
 ```python
 print("Length of dataset before: %d" % len(dataset))
 
-for d in dataset.aggregate(pipeline):
-    file_hash = d["_id"]
-    count = d["count"]
+_dup_filehashes = set()
+for sample in dup_view:
+    if sample.file_hash not in _dup_filehashes:
+        _dup_filehashes.add(sample.file_hash)
+        continue
 
-    view = dataset.view().match({"file_hash": file_hash}).limit(count - 1)
-
-    for sample in view:
-        del dataset[sample.id]
+    del dataset[sample.id]
 
 print("Length of dataset after: %d" % len(dataset))
-```
 
-Alternatively, it also would be possible to create a view with all of the
-duplicates "to be deleted" and then iterate over our own non-`fiftyone` code to
-delete these files from the original dataset.
+# Verify that the dataset no longer contains any duplicates
+print("Number of unique file hashes: %d" % len({s.file_hash for s in dataset}))
+```
 
 ### 7. Export
 
-In this lightweight workflow none of the work down with `fiftyone` persists. As
-mentioned above we could have used fiftyone to tell us which samples we needed
-to delete.
-
-But we have a very small dataset here, so we could just export a copy:
+Finally, let's export a fresh copy of our now-duplicate-free dataset:
 
 ```python
 dataset.export(label_field="ground_truth", export_dir="/tmp/fiftyone/export")
