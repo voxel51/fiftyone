@@ -119,7 +119,7 @@ session.selected
 Create a view on the samples you selected:
 
 ```python
-session.view = dataset.default_view().select(session.selected)
+session.view = dataset.view().select(session.selected)
 ```
 
 ### 4. Compute File Hashes
