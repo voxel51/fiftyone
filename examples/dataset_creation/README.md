@@ -20,7 +20,7 @@ print(foz.list_zoo_datasets())
 dataset = foz.load_zoo_dataset("cifar10")
 
 # Print a few samples from the dataset
-print(dataset.sample())
+print(dataset.take())
 ```
 
 Behind the scenes, FiftyOne uses the
@@ -78,31 +78,33 @@ provides the ability for you to construct your own dataset from scratch by
 creating your own samples, if desired.
 
 The following example demonstrates the construction of a dataset with ground
-truth labels stored in the `ground_truth` group:
+truth labels stored in a `ground_truth` field:
 
 ```py
 import fiftyone as fo
 
 # Dict mapping int targets to label strings
-labels_map = ...
+labels_map = {0: "cat", 1: "dog"}
 
 # A list of `(image_path, target)` tuples
-samples = ...
+samples = [("/path/to/cat.jpg", 0), ("/path/to/dog.png", 1)]
 
 # Construct your dataset manually
 _samples = []
 for image_path, target in samples:
-    _sample = fo.Sample.create(image_path, tags={"train"})
-    _sample.add_label(
-        "ground_truth", fo.ClassificationLabel.create(labels_map[target])
+    _samples.append(
+        fo.Sample(
+            filepath=image_path,
+            tags=["train"],
+            ground_truth=fo.Classification(label=labels_map[target]),
+        )
     )
-    _samples.append(_sample)
 
-dataset = fo.Dataset("my-dataset")
-dataset.add_samples(samples)
+dataset = fo.Dataset("catdog")
+dataset.add_samples(_samples)
 
 # Print a few samples from the dataset
-print(dataset.sample())
+print(dataset.take())
 ```
 
 ## Working with image classification samples
@@ -273,6 +275,7 @@ class MyLabeledImageSampleParser(LabeledImageSampleParser):
             a :class:`fiftyone.core.labels.Label` instance
         """
         # @todo: parse the sample and return the label in the correct format
+        pass
 
 
 # A list of `(image_path, your_custom_labels)` tuples
@@ -374,7 +377,7 @@ import fiftyone as fo
 dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
 
 # Print a few samples from the dataset
-print(dataset.sample())
+print(dataset.take())
 ```
 
 ## Working with image detection datasets stored on disk
@@ -436,7 +439,7 @@ import fiftyone as fo
 dataset = fo.Dataset.from_image_detection_dataset(dataset_dir)
 
 # Print a few samples from the dataset
-print(dataset.sample())
+print(dataset.take())
 ```
 
 ## Working with multitask image prediction datasets stored on disk
@@ -490,7 +493,7 @@ import fiftyone as fo
 dataset = fo.Dataset.from_image_labels_dataset(dataset_dir)
 
 # Print a few samples from the dataset
-print(dataset.sample())
+print(dataset.take())
 ```
 
 ## Copyright
