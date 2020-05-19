@@ -15,6 +15,10 @@ export default {
   module: {
     rules: [
       {
+        test: /\.(txt|py|bash)$/,
+        use: "raw-loader",
+      },
+      {
         test: /\.(tsx|js|jsx|ts)$/,
         exclude: /node_modules/,
         use: {
