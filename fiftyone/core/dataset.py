@@ -24,7 +24,7 @@ import logging
 import numbers
 import os
 
-from mongoengine import EmbeddedDocumentField
+from mongoengine import ListField, DictField, EmbeddedDocumentField
 
 import eta.core.utils as etau
 
@@ -358,7 +358,7 @@ class Dataset(foc.SampleCollection):
 
     @classmethod
     def from_image_classification_samples(
-        cls, samples, name=None, group="ground_truth", labels_map=None,
+        cls, samples, name=None, label_field="ground_truth", labels_map=None,
     ):
         """Creates a :class:`Dataset` for the given image classification
         samples.
@@ -387,7 +387,8 @@ class Dataset(foc.SampleCollection):
             samples: an iterable of samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            group ("ground_truth"): the group name to use for the labels
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
             labels_map (None): an optional dict mapping class IDs to label
                 strings. If provided, it is assumed that ``target`` is a class
                 ID that should be mapped to a label string via
@@ -400,12 +401,15 @@ class Dataset(foc.SampleCollection):
             labels_map=labels_map
         )
         return cls.from_labeled_image_samples(
-            samples, name=name, group=group, sample_parser=sample_parser
+            samples,
+            name=name,
+            label_field=label_field,
+            sample_parser=sample_parser,
         )
 
     @classmethod
     def from_image_detection_samples(
-        cls, samples, name=None, group="ground_truth", labels_map=None,
+        cls, samples, name=None, label_field="ground_truth", labels_map=None,
     ):
         """Creates a :class:`Dataset` for the given image detection samples.
 
@@ -447,7 +451,8 @@ class Dataset(foc.SampleCollection):
             samples: an iterable of samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            group ("ground_truth"): the group name to use for the labels
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
             labels_map (None): an optional dict mapping class IDs to label
                 strings. If provided, it is assumed that the ``label`` values
                 in ``target`` are class IDs that should be mapped to label
@@ -458,12 +463,15 @@ class Dataset(foc.SampleCollection):
         """
         sample_parser = foud.ImageDetectionSampleParser(labels_map=labels_map)
         return cls.from_labeled_image_samples(
-            samples, name=name, group=group, sample_parser=sample_parser
+            samples,
+            name=name,
+            label_field=label_field,
+            sample_parser=sample_parser,
         )
 
     @classmethod
     def from_image_labels_samples(
-        cls, samples, name=None, group="ground_truth"
+        cls, samples, name=None, label_field="ground_truth"
     ):
         """Creates a :class:`Dataset` for the given image labels samples.
 
@@ -490,19 +498,23 @@ class Dataset(foc.SampleCollection):
             samples: an iterable of samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            group ("ground_truth"): the group name to use for the labels
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
 
         Returns:
             a :class:`Dataset`
         """
         sample_parser = foud.ImageLabelsSampleParser()
         return cls.from_labeled_image_samples(
-            samples, name=name, group=group, sample_parser=sample_parser
+            samples,
+            name=name,
+            label_field=label_field,
+            sample_parser=sample_parser,
         )
 
     @classmethod
     def from_labeled_image_samples(
-        cls, samples, name=None, group="ground_truth", sample_parser=None
+        cls, samples, name=None, label_field="ground_truth", sample_parser=None
     ):
         """Creates a :class:`Dataset` for the given labeled image samples.
 
@@ -528,7 +540,8 @@ class Dataset(foc.SampleCollection):
             samples: an iterable of samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            group ("ground_truth"): the group name to use for the labels
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
             sample_parser (None): a
                 :class:`fiftyone.utils.data.LabeledImageSampleParser` instance
                 whose :func:`fiftyone.utils.data.LabeledImageSampleParser.parse_label`
@@ -552,7 +565,9 @@ class Dataset(foc.SampleCollection):
 
             filepath = os.path.abspath(os.path.expanduser(sample[0]))
 
-            _samples.append(fo.Sample(filepath=filepath, **{group: label}))
+            _samples.append(
+                fo.Sample(filepath=filepath, **{label_field: label})
+            )
 
         logger.info(
             "Creating dataset '%s' containing %d samples", name, len(_samples),
@@ -565,7 +580,7 @@ class Dataset(foc.SampleCollection):
             dataset.add_sample_field(
                 field_name="ground_truth",
                 ftype=EmbeddedDocumentField,
-                embedded_doc_type=type(_samples[0][group]),
+                embedded_doc_type=type(_samples[0][label_field]),
             )
             dataset.add_samples(_samples)
 
@@ -576,7 +591,7 @@ class Dataset(foc.SampleCollection):
         cls,
         samples,
         name=None,
-        group="ground_truth",
+        label_field="ground_truth",
         dataset_dir=None,
         sample_parser=None,
         image_format=fo.config.default_image_ext,
@@ -606,7 +621,8 @@ class Dataset(foc.SampleCollection):
             samples: an iterable of images
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            group ("ground_truth"): the group name to use for the labels
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
             sample_parser (None): a
@@ -632,11 +648,13 @@ class Dataset(foc.SampleCollection):
             image_format=image_format,
         )
 
-        return cls.from_labeled_image_samples(_samples, name=name, group=group)
+        return cls.from_labeled_image_samples(
+            _samples, name=name, label_field=label_field
+        )
 
     @classmethod
     def from_image_classification_dataset(
-        cls, dataset_dir, name=None, group="ground_truth"
+        cls, dataset_dir, name=None, label_field="ground_truth"
     ):
         """Creates a :class:`Dataset` for the given image classification
         dataset stored on disk.
@@ -648,17 +666,20 @@ class Dataset(foc.SampleCollection):
             dataset_dir: the directory containing the dataset
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            group ("ground_truth"): the group name to use for the labels
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
 
         Returns:
             a :class:`Dataset`
         """
         samples = foud.parse_image_classification_dataset(dataset_dir)
-        return cls.from_labeled_image_samples(samples, name=name, group=group)
+        return cls.from_labeled_image_samples(
+            samples, name=name, label_field=label_field
+        )
 
     @classmethod
     def from_image_detection_dataset(
-        cls, dataset_dir, name=None, group="ground_truth"
+        cls, dataset_dir, name=None, label_field="ground_truth"
     ):
         """Creates a :class:`Dataset` for the given image detection dataset
         stored on disk.
@@ -669,17 +690,20 @@ class Dataset(foc.SampleCollection):
             dataset_dir: the directory containing the dataset
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            group ("ground_truth"): the group name to use for the labels
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
 
         Returns:
             a :class:`Dataset`
         """
         samples = foud.parse_image_detection_dataset(dataset_dir)
-        return cls.from_labeled_image_samples(samples, name=name, group=group)
+        return cls.from_labeled_image_samples(
+            samples, name=name, label_field=label_field
+        )
 
     @classmethod
     def from_image_labels_dataset(
-        cls, dataset_dir, name=None, group="ground_truth"
+        cls, dataset_dir, name=None, label_field="ground_truth"
     ):
         """Creates a :class:`Dataset` for the given image labels dataset stored
         on disk.
@@ -690,13 +714,16 @@ class Dataset(foc.SampleCollection):
             dataset_dir: the directory containing the dataset
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            group ("ground_truth"): the group name to use for the labels
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
 
         Returns:
             a :class:`Dataset`
         """
         samples = foud.parse_image_labels_dataset(dataset_dir)
-        return cls.from_labeled_image_samples(samples, name=name, group=group)
+        return cls.from_labeled_image_samples(
+            samples, name=name, label_field=label_field
+        )
 
     @classmethod
     def from_images_dir(cls, images_dir, recursive=False, name=None):
@@ -831,6 +858,20 @@ class Dataset(foc.SampleCollection):
         fields = self.get_sample_fields()
         max_len = max([len(field_name) for field_name in fields]) + 1
         return "\n".join(
-            "    %s %s" % ((field_name + ":").ljust(max_len), field.__class__)
+            "    %s %s"
+            % ((field_name + ":").ljust(max_len), self._field_to_str(field))
             for field_name, field in iteritems(fields)
         )
+
+    @staticmethod
+    def _field_to_str(field):
+        field_str = etau.get_class_name(field)
+
+        if any(isinstance(field, cls) for cls in [ListField, DictField]):
+            field_str += "(field=%s)" % etau.get_class_name(field.field)
+        elif isinstance(field, EmbeddedDocumentField):
+            field_str += "(document_type=%s)" % etau.get_class_name(
+                field.document_type
+            )
+
+        return field_str

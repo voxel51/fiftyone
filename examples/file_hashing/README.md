@@ -128,13 +128,8 @@ Iterate over the samples and compute file hash:
 
 ```python
 for sample in dataset:
-    # compute the insight
-    file_hash = fof.compute_filehash(sample.filepath)
-
-    # add the insight to the sample
-    sample.add_insight(
-        "file_hash", foi.FileHashInsight.create(file_hash=file_hash)
-    )
+    sample["file_hash"] = fof.compute_filehash(sample.filepath)
+    sample.save()
 
 print(dataset.summary())
 ```
@@ -162,7 +157,7 @@ than sample:
 ```python
 pipeline = [
     # find all unique file hashes
-    {"$group": {"_id": "$insights.file_hash.file_hash", "count": {"$sum": 1}}},
+    {"$group": {"_id": "$file_hash", "count": {"$sum": 1}}},
     # filter out file hashes with a count of 1
     {"$match": {"count": {"$gt": 1}}},
 ]
@@ -176,9 +171,7 @@ that contrains to only samples with these file hashes:
 ```python
 print("Number of unique images that are duplicated: %d" % len(dup_filehashes))
 
-view = dataset.default_view().filter(
-    filter={"insights.file_hash.file_hash": {"$in": dup_filehashes}}
-)
+view = dataset.view().match({"file_hash": {"$in": dup_filehashes}})
 
 print("Number of images that have a duplicate: %d" % len(view))
 
@@ -188,7 +181,7 @@ print("Number of duplicates: %d" % (len(view) - len(dup_filehashes)))
 And we can always visualize views!
 
 ```python
-session.view = view.sort_by("insights.file_hash.file_hash")
+session.view = view.sort_by("file_hash")
 ```
 
 ### 6. Delete duplicates
@@ -203,11 +196,7 @@ for d in dataset.aggregate(pipeline):
     file_hash = d["_id"]
     count = d["count"]
 
-    view = (
-        dataset.default_view()
-        .filter(filter={"insights.file_hash.file_hash": file_hash})
-        .limit(count - 1)
-    )
+    view = dataset.view().match({"file_hash": file_hash}).limit(count - 1)
 
     for sample in view:
         del dataset[sample.id]
@@ -228,7 +217,7 @@ to delete.
 But we have a very small dataset here, so we could just export a copy:
 
 ```python
-dataset.export(group="ground_truth", export_dir="/tmp/fiftyone/export")
+dataset.export(label_field="ground_truth", export_dir="/tmp/fiftyone/export")
 ```
 
 ## Copyright

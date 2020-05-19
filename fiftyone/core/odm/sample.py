@@ -204,23 +204,42 @@ class ODMSample(ODMDocument):
         """
         if field_name.startswith("_"):
             raise ValueError(
-                "Invalid field name: '%s'. Field name cannot start with '_'"
+                "Invalid field name: '%s'. Field names cannot start with '_'"
                 % field_name
             )
 
         if hasattr(self, field_name) and field_name not in self._fields:
-            raise ValueError("Cannot set reserve word '%s'" % field_name)
+            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
         if field_name not in self._fields:
             if create:
                 self._add_implied_field(field_name, value)
             else:
                 raise ValueError(
-                    "Sample does not have field '%s'. Use `create=True` to"
-                    " create a new field."
+                    "Sample does not have field '%s'. Use `create=True` to "
+                    "create a new field"
                 )
 
         return self.__setattr__(field_name, value)
+
+    def clear_field(self, field_name):
+        """Clears the value of a field of the sample.
+
+        Args:
+            field_name: the name of the field to clear
+
+        Raises:
+            KeyError: if the field name is not valid
+        """
+        raise NotImplementedError("Subclass must implement clear_field()")
+
+    def delete_field(self, field_name):
+        """Deletes the field from the dataset.
+
+        Args:
+            field_name: the name of the field to delete
+        """
+        raise NotImplementedError("Subclass must implement delete_field()")
 
     @staticmethod
     def _get_field_schema(cls_or_self, ftype=None):

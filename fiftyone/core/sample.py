@@ -57,7 +57,6 @@ class Sample(object):
                 return self._doc.get_field(field_name=name)
             except Exception:
                 pass
-
         return super(Sample, self).__getattribute__(name)
 
     def __setattr__(self, name, value):
@@ -79,11 +78,18 @@ class Sample(object):
 
         self._doc.__setattr__(name, value)
 
+    def __delattr__(self, name):
+        # @todo(Tyler)
+        raise NotImplementedError("TODO")
+
     def __getitem__(self, key):
         return self.get_field(field_name=key)
 
     def __setitem__(self, key, value):
         return self.set_field(field_name=key, value=value, create=True)
+
+    def __delitem__(self, key):
+        return self.clear_field(field_name=key)
 
     def __copy__(self):
         return self.copy()
@@ -177,6 +183,17 @@ class Sample(object):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
         return self._doc.set_field(field_name, value, create=create)
+
+    def clear_field(self, field_name):
+        """Clears the value of a field of the sample.
+
+        Args:
+            field_name: the name of the field to clear
+
+        Raises:
+            KeyError: if the given field does not exist
+        """
+        return self._doc.clear_field(field_name=field_name)
 
     def copy(self):
         """Returns a copy of the sample that has not been added to the

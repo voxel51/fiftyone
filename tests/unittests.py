@@ -5,7 +5,7 @@ To run a single test, modify the main code to:
 
 ```
 singletest = unittest.TestSuite()
-singletest.addTest(<TEST CASE>('<TEST METHOD NAME>'))
+singletest.addTest(<TEST CASE>("<TEST METHOD NAME>"))
 unittest.TextTestRunner().run(singletest)
 ```
 
@@ -16,7 +16,7 @@ unittest.TextTestRunner().run(singletest)
 import datetime
 import unittest
 
-from mongoengine import IntField, EmbeddedDocumentField
+from mongoengine import IntField, StringField, EmbeddedDocumentField
 from mongoengine.errors import (
     FieldDoesNotExist,
     NotUniqueError,
@@ -268,6 +268,72 @@ class ViewTest(unittest.TestCase):
         # labels
         for sample in view.match({"labels.label": "label1"}):
             self.assertEqual(sample.labels.label, "label1")
+
+
+class FieldTest(unittest.TestCase):
+    def test_field_AddDelete_in_dataset(self):
+        dataset = fo.Dataset(name="field_test")
+        id1 = dataset.add_sample(fo.Sample("1.jpg"))
+        id2 = dataset.add_sample(fo.Sample("2.jpg"))
+        sample1 = dataset[id1]
+        sample2 = dataset[id2]
+
+        # add field (default duplicate)
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field(field_name="filepath", ftype=StringField)
+
+        # add field (new)
+        field_name = "field1"
+        ftype = StringField
+        dataset.add_sample_field(field_name=field_name, ftype=ftype)
+        # check field exists and is of correct type
+        field = dataset.get_sample_fields()[field_name]
+        self.assertIsInstance(field, ftype)
+        for sample in [sample1, sample2]:
+            # check field exists and is of correct type
+            field = sample.get_field_schema()[field_name]
+            self.assertIsInstance(field, ftype)
+            # check field exists on sample and is None
+            self.assertIsNone(sample.get_field(field_name=field_name))
+            self.assertIsNone(sample[field_name])
+            self.assertIsNone(getattr(sample, field_name))
+            self.assertIsNone(sample.to_dict()[field_name])
+
+        # add field (duplicate)
+        with self.assertRaises(ValueError):
+            dataset.add_sample_field(field_name=field_name, ftype=ftype)
+
+        # delete field
+
+        # add deleted field
+
+    def test_field_GetSetClear_no_dataset(self):
+        sample = fo.Sample("1.jpg")
+
+        # set field (default duplicate)
+
+        # add field (new)
+
+        # add field (duplicate)
+
+        # delete field
+
+        # add deleted field
+
+    def test_field_GetSetClear_in_dataset(self):
+        dataset = fo.Dataset(name="field_test")
+        dataset.add_sample(fo.Sample("1.jpg"))
+        dataset.add_sample(fo.Sample("2.jpg"))
+
+        # add field (default duplicate)
+
+        # add field (new)
+
+        # add field (duplicate)
+
+        # delete field
+
+        # add deleted field
 
 
 if __name__ == "__main__":
