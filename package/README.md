@@ -31,8 +31,10 @@ download URL).
 Before building this package, you need to have built a native Electron app for
 your target platform. To do this, switch to the `electron` folder and run
 `yarn package-linux` or `yarn package-mac`. This may take several minutes to
-complete. Once the Electron app is built, switch to the `package/gui` folder
-and follow the packaging instructions for `fiftyone` above.
+complete, and may require additional system packages - see
+[this page](https://www.electron.build/multi-platform-build) for details. Once
+the Electron app is built, switch to the `package/gui` folder and follow the
+packaging instructions for `fiftyone` above.
 
 As with `fiftyone-db`, if you are building a wheel for another platform,
 specify the target platform with `--plat-name`.
