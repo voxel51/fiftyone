@@ -23,16 +23,6 @@ cmdclass = {
 }
 
 
-with open("requirements/common.txt") as reqs:
-    requirements = reqs.readlines()
-
-requirements += [
-    "fiftyone-brain",
-    "fiftyone-db",
-    "fiftyone-gui",
-    "voxel51-eta",
-]
-
 setup(
     name="fiftyone",
     version="0.1.0",
@@ -43,6 +33,24 @@ setup(
     license="",
     packages=find_packages(),
     include_package_data=True,
+    install_requires=[
+        # third-party packages
+        "argcomplete",
+        "eventlet",
+        "Flask",
+        "flask-socketio",
+        "gunicorn",
+        "mongoengine",
+        "pymongo",
+        "python-socketio[client]",
+        "setuptools",
+        "tabulate",
+        # internal packages
+        "fiftyone-brain",
+        "fiftyone-db",
+        "fiftyone-gui",
+        "voxel51-eta",
+    ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
@@ -51,6 +59,5 @@ setup(
     ],
     scripts=["fiftyone/fiftyone"],
     python_requires=">=2.7",
-    install_requires=requirements,
     cmdclass=cmdclass,
 )

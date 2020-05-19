@@ -120,7 +120,6 @@ class AppService(Service):
                 # won't get killed by stop()
                 args = ["open", "-W", "-n", "./FiftyOne.app"]
             else:
-                # TODO: support macOS, etc
                 raise RuntimeError(
                     "Could not find FiftyOne dashboard in %r"
                     % foc.FIFTYONE_APP_DIR
