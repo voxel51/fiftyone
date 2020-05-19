@@ -96,7 +96,7 @@ class SampleCollection(object):
         """
         # @todo(Tyler) SampleCollection.export()
         # @todo(Tyler) remove everything with groups
-        raise NotImplementedError("TODO")
+        raise NotImplementedError("Not yet implemented")
         # data_paths = []
         # labels = []
         # for sample in self.iter_samples():
