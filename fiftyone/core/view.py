@@ -128,7 +128,7 @@ class DatasetView(foc.SampleCollection):
             [
                 "Dataset:        %s" % self._dataset.name,
                 "Num samples:    %d" % len(self),
-                "Tags:           %s" % self.get_tags(),
+                "Tags:           %s" % list(self.get_tags()),
                 "Sample fields:",
                 fields_str,
                 "Pipeline stages:",

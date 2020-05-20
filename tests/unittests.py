@@ -211,7 +211,34 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
 
+    def test_dataset_clear(self):
+        dataset_name = self.test_dataset_clear.__name__
+        dataset = fo.Dataset(name=dataset_name)
 
+        # add some samples
+        num_samples = 10
+        samples = [
+            fo.Sample(filepath="path/to/file_%d.jpg" % i)
+            for i in range(num_samples)
+        ]
+        dataset.add_samples(samples)
+        self.assertEqual(len(dataset), num_samples)
+        print(dataset.summary())
+
+        # delete all samples
+        dataset.clear()
+        self.assertEqual(len(dataset), 0)
+        print(dataset.summary())
+
+        # add some new samples
+        num_samples = 5
+        samples = [
+            fo.Sample(filepath="path/to/file_%d.jpg" % i)
+            for i in range(num_samples)
+        ]
+        dataset.add_samples(samples)
+        self.assertEqual(len(dataset), num_samples)
+        print(dataset.summary())
 
 
 class LabelsTest(unittest.TestCase):

@@ -227,7 +227,7 @@ class Dataset(foc.SampleCollection):
             [
                 "Name:           %s" % self.name,
                 "Num samples:    %d" % len(self),
-                "Tags:           %s" % self.get_tags(),
+                "Tags:           %s" % list(self.get_tags()),
                 "Sample fields:",
                 self._get_fields_str(),
             ]
@@ -434,8 +434,7 @@ class Dataset(foc.SampleCollection):
 
     def clear(self):
         """Deletes all samples from the dataset."""
-        # @todo(Tyler) optimize by deleting the entire collection
-        self.delete_samples(self)
+        self._Doc.drop_collection()
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
