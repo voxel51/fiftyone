@@ -33,7 +33,7 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-from fiftyone.core.singletons import DatasetSingleton
+from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.utils.data as foud
 
@@ -111,7 +111,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """
 
     def __init__(self, name, create_empty=True):
-
         self._name = name
 
         if create_empty:
