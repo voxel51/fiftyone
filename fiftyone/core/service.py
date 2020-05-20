@@ -66,6 +66,10 @@ class DatabaseService(Service):
 
     def start(self):
         """Starts the DatabaseService."""
+        for folder in (foc.DB_PATH, os.path.dirname(foc.DB_LOG_PATH)):
+            if not os.path.isdir(folder):
+                os.makedirs(folder)
+
         etau.call(foc.START_DB, **self._SUPPRESS)
 
         # Drop the entire database (lightweight!)
@@ -120,7 +124,6 @@ class AppService(Service):
                 # won't get killed by stop()
                 args = ["open", "-W", "-n", "./FiftyOne.app"]
             else:
-                # TODO: support macOS, etc
                 raise RuntimeError(
                     "Could not find FiftyOne dashboard in %r"
                     % foc.FIFTYONE_APP_DIR
