@@ -56,7 +56,7 @@ class Sample(object):
 
     def __setattr__(self, name, value):
         if name.startswith("_") or (
-            hasattr(self, name) and name not in self._doc.field_names
+            hasattr(self, name) and not self._doc.has_field(name)
         ):
             super(Sample, self).__setattr__(name, value)
         else:
@@ -158,10 +158,7 @@ class Sample(object):
             ValueError: if ``field_name`` is not an allowed field name or does
                 not exist and ``create == False``
         """
-        if (
-            hasattr(self, field_name)
-            and field_name not in self._doc.field_names
-        ):
+        if hasattr(self, field_name) and not self._doc.has_field(field_name):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
         return self._doc.set_field(field_name, value, create=create)
