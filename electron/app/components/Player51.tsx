@@ -5,7 +5,7 @@ import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
 
 const PARSERS = {
-  ODMClassificationLabel: [
+  Classification: [
     "attrs",
     (name, obj) => {
       return {
@@ -16,7 +16,7 @@ const PARSERS = {
       };
     },
   ],
-  ODMDetectionLabels: [
+  Detection: [
     "objects",
     (g, obj) => {
       const bb = obj.bounding_box;
@@ -40,14 +40,16 @@ const loadOverlay = (sample) => {
       continue;
     }
     const field = sample[i];
-    if (field.detections) {
+    if (field._cls === "Detections") {
       for (const j in field.detections) {
         const detection = field.detections[j];
-        const [key, fn] = PARSERS.ODMDetectionLabels;
+        const [key, fn] = PARSERS[detection._cls];
         imgLabels[key][key].push(fn(i, detection));
       }
       continue;
     }
+    const [key, fn] = PARSERS[field._cls];
+    imgLabels[key][key].push(fn(i, field));
   }
   return imgLabels;
 };
