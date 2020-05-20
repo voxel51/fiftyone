@@ -36,6 +36,7 @@ sudo certbot run --nginx -d pypi.voxel51.com
 
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo cp pypi.voxel51.com.conf /etc/nginx/sites-enabled
+sudo service nginx reload
 
 # set up docker permissions - if this fails, log out, log in, and try again
 sudo usermod -a -G docker "$username"
