@@ -27,7 +27,6 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
       dispatch(updateState(data));
     });
   };
-  console.log(sample);
   return (
     <div
       className="sample"
@@ -54,7 +53,6 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
           </Menu.Item>
           {Object.keys(sample).map((k, i) => {
             const s = sample;
-            console.log(k);
             if (s[k] && s[k]._cls === "Classification") {
               return <InfoItem k={k} v={[k].label} />;
             } else if (k === "tags") {

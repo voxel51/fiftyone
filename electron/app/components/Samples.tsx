@@ -48,7 +48,7 @@ function Samples(props) {
   const chunkedImages = _.chunk(scrollState.images, 4);
   const content = chunkedImages.map((imgs, i) => {
     return (
-      <Grid.Row key={i}>
+      <>
         {imgs.map((img, j) => {
           return (
             <Grid.Column key={j}>
@@ -61,7 +61,7 @@ function Samples(props) {
             </Grid.Column>
           );
         })}
-      </Grid.Row>
+      </>
     );
   });
 
@@ -83,7 +83,9 @@ function Samples(props) {
         loader={<Loader key={0} />}
         useWindow={true}
       >
-        <Grid columns={4}>{content}</Grid>
+        <Grid columns={4} doubling stackable>
+          {content}
+        </Grid>
       </InfiniteScroll>
       {scrollState.hasMore ? <Loader /> : ""}
     </>
