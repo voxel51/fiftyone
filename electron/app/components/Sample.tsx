@@ -24,18 +24,20 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
 
   return (
     <Card>
-      <Player51
-        src={src}
-        style={{
-          width: "100%",
-          position: "relative",
-          border: selected[id] ? "2px solid rgb(255, 109, 4)" : "none",
-        }}
-        sample={sample}
-        onClick={() => handleClick()}
-        onDoubleClick={() => setView({ visible: true, sample })}
-        thumbnail={true}
-      />
+      <div style={{ marginTop: selected[id] ? 0 : "2px" }}>
+        <Player51
+          src={src}
+          style={{
+            width: "100%",
+            position: "relative",
+            border: selected[id] ? "2px solid rgb(255, 109, 4)" : "none",
+          }}
+          sample={sample}
+          onClick={() => handleClick()}
+          onDoubleClick={() => setView({ visible: true, sample })}
+          thumbnail={true}
+        />
+      </div>
       <Card.Content>
         <Card.Header>{sample._id.$oid}</Card.Header>
       </Card.Content>
