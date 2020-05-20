@@ -79,7 +79,7 @@ class Sample(object):
         self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
-        # @todo(Tyler)
+        # @todo(Tyler) __delattr__
         raise NotImplementedError("TODO")
 
     def __getitem__(self, key):
