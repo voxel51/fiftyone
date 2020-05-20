@@ -275,6 +275,45 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
 
+    def test_scoped_schema_changes(self):
+        dataset_name = self.test_scoped_schema_changes.__name__
+
+        field_name = "field1"
+
+        def add_to_dataset():
+            dataset = fo.Dataset(name=dataset_name)
+            dataset.add_sample_field(field_name=field_name, ftype=IntField)
+
+        add_to_dataset()
+
+        def check_add_to_dataset():
+            dataset = fo.Dataset(name=dataset_name)
+            fields = dataset.get_sample_fields()
+            self.assertIn(field_name, fields)
+
+        check_add_to_dataset()
+
+        field_name = "field2"
+        value = 51
+
+        def add_to_sample():
+            dataset = fo.Dataset(name=dataset_name)
+            sample = fo.Sample(filepath="path/to/file.jpg")
+            dataset.add_sample(sample)
+            sample[field_name] = value
+            sample.save()
+
+        add_to_sample()
+
+        def check_add_to_sample():
+            dataset = fo.Dataset(name=dataset_name)
+            sample = dataset.view().first()
+            fields = dataset.get_sample_fields()
+            self.assertIn(field_name, fields)
+            self.assertEqual(sample[field_name], value)
+
+        check_add_to_sample()
+
 
 class LabelsTest(unittest.TestCase):
     def test_create(self):

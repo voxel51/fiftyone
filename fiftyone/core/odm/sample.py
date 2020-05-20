@@ -69,7 +69,6 @@ import six
 
 from collections import OrderedDict
 from copy import deepcopy
-import logging
 import numbers
 
 from mongoengine import (
@@ -83,10 +82,10 @@ from mongoengine import (
     StringField,
 )
 from mongoengine.fields import BaseField
-from mongoengine.errors import ValidationError
 
 import fiftyone.core.metadata as fom
 
+from .dataset import SampleField
 from .document import ODMDocument
 
 
@@ -476,7 +475,12 @@ class ODMDatasetSample(ODMSample):
 
     @classmethod
     def add_field(
-        cls, field_name, ftype, embedded_doc_type=None, subfield=None
+        cls,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        save=True,
     ):
         cls._add_field(
             cls,
@@ -486,6 +490,17 @@ class ODMDatasetSample(ODMSample):
             subfield=subfield,
         )
 
+        if save:
+            from fiftyone.core.dataset import Dataset
+
+            dataset = Dataset(name=cls.__name__)
+
+            # Update dataset meta class
+            field = cls._fields[field_name]
+            sample_field = SampleField.from_field(field)
+            dataset._meta.sample_fields.append(sample_field)
+            dataset._meta.save()
+
     @classmethod
     def add_implied_field(cls, field_name, value):
         cls._add_implied_field(
@@ -493,7 +508,7 @@ class ODMDatasetSample(ODMSample):
         )
 
     @classmethod
-    def delete_field(cls, field_name):
+    def delete_field(cls, field_name, save=True):
         # Delete from all samples
         # pylint: disable=no-member
         cls.objects.update(**{"unset__%s" % field_name: None})
@@ -504,3 +519,16 @@ class ODMDatasetSample(ODMSample):
             fn for fn in cls._fields_ordered if fn != field_name
         )
         delattr(cls, field_name)
+
+        if save:
+            from fiftyone.core.dataset import Dataset
+
+            dataset = Dataset(name=cls.__name__)
+
+            # Update dataset meta class
+            dataset._meta.sample_fields = [
+                sf
+                for sf in dataset._meta.sample_fields
+                if sf.name != field_name
+            ]
+            dataset._meta.save()

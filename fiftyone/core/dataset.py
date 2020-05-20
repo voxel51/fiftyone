@@ -33,6 +33,7 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.utils.data as foud
 
@@ -92,7 +93,7 @@ def get_default_dataset_dir(name, split=None):
     return dataset_dir
 
 
-class Dataset(foc.SampleCollection):
+class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """A FiftyOne dataset.
 
     Datasets represent a homogeneous collection of
@@ -109,19 +110,7 @@ class Dataset(foc.SampleCollection):
             if it does not already exist
     """
 
-    # @todo(Tyler) destroy instance once count->0 using __del__
-    _instances = {}
-
-    def __new__(cls, name, *args, **kwargs):
-        if name not in cls._instances:
-            cls._instances[name] = super(Dataset, cls).__new__(cls)
-
-        return cls._instances[name]
-
     def __init__(self, name, create_empty=True):
-        if hasattr(self, "_name"):
-            # Only initialize once!
-            return
 
         self._name = name
 
@@ -220,12 +209,6 @@ class Dataset(foc.SampleCollection):
             subfield=subfield,
         )
 
-        # Update dataset meta class
-        field = self.get_sample_fields()[field_name]
-        sample_field = foo.SampleField.from_field(field)
-        self._meta.sample_fields.append(sample_field)
-        self._meta.save()
-
     def delete_sample_field(self, field_name):
         """Delete an existing field from the dataset
 
@@ -233,12 +216,6 @@ class Dataset(foc.SampleCollection):
             field_name: the field name
         """
         self._sample_doc.delete_field(field_name=field_name)
-
-        # Update dataset meta class
-        self._meta.sample_fields = [
-            sf for sf in self._meta.sample_fields if sf.name != field_name
-        ]
-        self._meta.save()
 
     def get_tags(self):
         """Returns the set of tags in the dataset.
@@ -936,11 +913,12 @@ class Dataset(foc.SampleCollection):
                 else None
             )
 
-            self.add_sample_field(
+            self._sample_doc.add_field(
                 sample_field.name,
                 etau.get_class(sample_field.ftype),
                 subfield=subfield,
                 embedded_doc_type=embedded_doc_type,
+                save=False,
             )
 
     def _expand_schema(self, samples):
