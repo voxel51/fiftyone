@@ -27,7 +27,7 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
       dispatch(updateState(data));
     });
   };
-
+  console.log(sample);
   return (
     <div
       className="sample"
@@ -53,11 +53,13 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
             ID &middot; <code>{sample._id.$oid}</code>
           </Menu.Item>
           {Object.keys(sample).map((k, i) => {
-            sample[k] && sample[k]._cls === "Classification" ? (
-              <InfoItem k={k} v={sample[k].label} />
-            ) : k === "tags" ? (
-              <InfoItem k={k} v={sample[k].join(" ")} />
-            ) : null;
+            const s = sample;
+            console.log(k);
+            if (s[k] && s[k]._cls === "Classification") {
+              return <InfoItem k={k} v={[k].label} />;
+            } else if (k === "tags") {
+              return <InfoItem k={k} v={s[k].join(" ")} />;
+            }
           })}
         </Menu>
       </div>

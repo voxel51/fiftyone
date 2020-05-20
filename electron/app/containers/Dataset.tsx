@@ -84,7 +84,6 @@ function Dataset(props) {
                 zIndex: 1000000,
               }}
             >
-              <Search />
               <Menu pointing secondary>
                 {tabs.map((v, i) => {
                   return (
