@@ -46,6 +46,7 @@ def list_dataset_names():
     Returns:
         a list of :class:`Dataset` names
     """
+    # pylint: disable=no-member
     return list(foo.ODMDataset.objects.distinct("name"))
 
 
@@ -149,6 +150,7 @@ class Dataset(foc.SampleCollection):
         self._meta.save()
 
     def _load_dataset(self, name):
+        # pylint: disable=no-member
         self._meta = foo.ODMDataset.objects.get(name=name)
 
         self._Doc = type(self._name, (foo.ODMDatasetSample,), {})
@@ -307,95 +309,68 @@ class Dataset(foc.SampleCollection):
         for doc in self._get_query_set():
             yield self._load_sample_from_doc(doc)
 
-    def add_sample(self, sample, expand_schema=False):
+    def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
 
-        If the sample belongs to a dataset, a copy is created and added to this
-        dataset.
+        If the sample belongs to another dataset, a copy is created and added
+        to this dataset.
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
-            expand_schema: If True, when a field is encountered on a sample
-                that is not in the dataset schema, the field is added to the
-                dataset. If False, an error is raised.
+            expand_schema (True): whether to dynamically add new sample fields
+                encountered to the dataset schema. If False, an error is raised
+                if the sample's schema is not a subset of the dataset schema
 
         Returns:
             the ID of the sample in the dataset
 
         Raises:
-            :class:`mongoengine.errors.ValidationError` if:
-                sample["some_field"] type is inconsistent with dataset schema
-
-                    OR
-
-                "some_field" is not in the dataset schema and
-                `expand_schema` == False
+            :class:`mongoengine.errors.ValidationError` if a field of the
+            sample has a type that is inconsistent with the dataset schema, or
+            if ``expand_schema == False`` and a new field is encountered
         """
+        if expand_schema:
+            self._expand_schema([sample])
+
         if sample._in_db:
             sample = sample.copy()
-
-        if expand_schema:
-            fields = self.get_sample_fields()
-            for field_name, field in iteritems(sample.get_field_schema()):
-                if field_name not in fields:
-                    self._Doc.add_implied_field(
-                        field_name=field_name, value=sample[field_name]
-                    )
-
-                    # update
-                    fields = self.get_sample_fields()
 
         sample._doc = self._Doc(**sample.to_dict())
         sample.save()
         return sample.id
 
-    def add_samples(self, samples, expand_schema=False):
+    def add_samples(self, samples, expand_schema=True):
         """Adds the given samples to the dataset.
 
-        If a sample belongs to a dataset, a copy is created and added to this
-        dataset.
+        If a sample belongs to another dataset, a copy is created and added to
+        this dataset.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances. For example, ``samples`` may be another
-                :class:`Dataset` or a :class:`fiftyone.core.views.DatasetView`
-            expand_schema: If True, when a field is encountered on a sample
-                that is not in the dataset schema, the field is added to the
-                dataset. If False, an error is raised.
+                instances. For example, ``samples`` may be a :class:`Dataset`
+                or a :class:`fiftyone.core.views.DatasetView`
+            expand_schema (True): whether to dynamically add new sample fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
 
         Returns:
             a list of IDs of the samples in the dataset
 
         Raises:
-            :class:`mongoengine.errors.ValidationError` if:
-                sample["some_field"] type is inconsistent with dataset schema
-
-                    OR
-
-                "some_field" is not in the dataset schema and
-                `expand_schema` == False
+            :class:`mongoengine.errors.ValidationError` if a field of a sample
+            has a type that is inconsistent with the dataset schema, or if
+            ``expand_schema == False`` and a new field is encountered
         """
-        if expand_schema:
-            fields = self.get_sample_fields()
-            for sample in samples:
-                for field_name, field in iteritems(sample.get_field_schema()):
-                    if field_name not in fields:
-                        self._Doc.add_implied_field(
-                            field_name=field_name, value=sample[field_name]
-                        )
-
-                        # update
-                        fields = self.get_sample_fields()
-
-        # copy any samples in a dataset
+        # Create copies of any samples already in datasets
         samples = [s.copy() if s._in_db else s for s in samples]
 
-        # insert into the dataset collection
+        if expand_schema:
+            self._expand_schema(samples)
+
         docs = self._get_query_set().insert(
             [self._Doc(**sample.to_dict()) for sample in samples]
         )
 
-        # update the backing docs
         for sample, doc in zip(samples, docs):
             sample._doc = doc
 
@@ -985,6 +960,16 @@ class Dataset(foc.SampleCollection):
         )
 
         return cls.from_images(image_paths, name=name)
+
+    def _expand_schema(self, samples):
+        fields = self.get_sample_fields()
+        for sample in samples:
+            for field_name, field in iteritems(sample.get_field_schema()):
+                if field_name not in fields:
+                    self._Doc.add_implied_field(
+                        field_name=field_name, value=sample[field_name]
+                    )
+                    fields = self.get_sample_fields()
 
     def _load_sample_from_dict(self, d):
         doc = self._Doc.from_dict(d, created=False, extended=False)
