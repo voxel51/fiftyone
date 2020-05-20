@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Card } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
 import Player51 from "./Player51";
@@ -22,7 +23,7 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
   };
 
   return (
-    <div style={{ margin: selected[id] ? 0 : "2px 0" }}>
+    <Card>
       <Player51
         src={src}
         style={{
@@ -35,7 +36,10 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
         onDoubleClick={() => setView({ visible: true, sample })}
         thumbnail={true}
       />
-    </div>
+      <Card.Content>
+        <Card.Header>{sample._id.$oid}</Card.Header>
+      </Card.Content>
+    </Card>
   );
 };
 
