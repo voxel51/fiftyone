@@ -200,14 +200,15 @@ class Dataset(foc.SampleCollection):
                 "obtain a DatasetView if you want to slice your samples"
             )
 
-        # @todo(Tyler) this could be optimized with
-        #    sample = self._get_query_set().get(id=sample_id)
-        #   but it seems to raise an uncatchable error?
-        docs = self._get_query_set(id=sample_id)
-        if not docs:
-            raise ValueError("No sample found with ID '%s'" % sample_id)
+        doc = None
+        try:
+            doc = self._get_query_set().get(id=sample_id)
+        except DoesNotExist:
+            pass
+        if not doc:
+            raise KeyError("No sample found with ID '%s'" % sample_id)
 
-        return self._load_sample_from_doc(docs[0])
+        return self._load_sample_from_doc(doc)
 
     def __delitem__(self, sample_id):
         self[sample_id]._delete()
