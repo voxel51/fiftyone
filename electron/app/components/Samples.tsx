@@ -1,6 +1,6 @@
 import _ from "lodash";
 import React, { createRef, useState, useRef, useEffect } from "react";
-import { Card, Grid } from "semantic-ui-react";
+import { Card, Checkbox, Grid } from "semantic-ui-react";
 import InfiniteScroll from "react-infinite-scroller";
 import { Dimmer, Loader } from "semantic-ui-react";
 
@@ -11,6 +11,7 @@ import connect from "../utils/connect";
 function Samples(props) {
   const { state, setView, port, dispatch } = props;
   const socket = getSocket(port, "state");
+  const [showInfo, setShowInfo] = useState(true);
   const initialSelected = state.selected.reduce((obj, id, i) => {
     return {
       ...obj,
@@ -66,7 +67,15 @@ function Samples(props) {
 
   return (
     <>
+      <Checkbox
+        style={{ padding: "1rem" }}
+        toggle
+        label={<label>Overlay sample info</label>}
+        onClick={() => setShowInfo(!showInfo)}
+        checked={showInfo}
+      />
       <InfiniteScroll
+        className={showInfo ? "" : "hide-info"}
         pageStart={1}
         initialLoad={true}
         loadMore={() => loadMore()}

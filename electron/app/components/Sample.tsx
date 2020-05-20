@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { Card } from "semantic-ui-react";
+import { Menu } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
 import Player51 from "./Player51";
 import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
+
+const InfoItem = ({ k, v }) => (
+  <Menu.Item as="span">
+    {k} &middot; <code>{v}</code>
+  </Menu.Item>
+);
 
 const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
   const host = `http://127.0.0.1:${port}`;
@@ -23,25 +29,39 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
   };
 
   return (
-    <Card>
-      <div style={{ marginTop: selected[id] ? 0 : "2px" }}>
-        <Player51
-          src={src}
-          style={{
-            width: "100%",
-            position: "relative",
-            border: selected[id] ? "2px solid rgb(255, 109, 4)" : "none",
-          }}
-          sample={sample}
-          onClick={() => handleClick()}
-          onDoubleClick={() => setView({ visible: true, sample })}
-          thumbnail={true}
-        />
+    <div
+      className="sample"
+      style={{
+        marginTop: selected[id] ? 0 : "2px",
+        border: selected[id] ? "2px solid rgb(255, 109, 4)" : "none",
+      }}
+    >
+      <Player51
+        src={src}
+        style={{
+          width: "100%",
+          position: "relative",
+        }}
+        sample={sample}
+        onClick={() => handleClick()}
+        onDoubleClick={() => setView({ visible: true, sample })}
+        thumbnail={true}
+      />
+      <div className="sample-info">
+        <Menu vertical style={{ width: "100%", height: "100%" }}>
+          <Menu.Item as="span">
+            ID &middot; <code>{sample._id.$oid}</code>
+          </Menu.Item>
+          {Object.keys(sample).map((k, i) => {
+            sample[k] && sample[k]._cls === "Classification" ? (
+              <InfoItem k={k} v={sample[k].label} />
+            ) : k === "tags" ? (
+              <InfoItem k={k} v={sample[k].join(" ")} />
+            ) : null;
+          })}
+        </Menu>
       </div>
-      <Card.Content>
-        <Card.Header>{sample._id.$oid}</Card.Header>
-      </Card.Content>
-    </Card>
+    </div>
   );
 };
 

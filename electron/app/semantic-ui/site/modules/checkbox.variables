@@ -1,3 +1,10 @@
 /*******************************
     User Variable Overrides
 *******************************/
+
+@checkboxBorder: none;
+@handleBackground: @brandColor @subtleGradient;
+@handleBoxShadow: none;
+@toggleLaneBackground: @primaryColor;
+@sliderLineColor: @primaryColor;
+@toggleFocusColor: @primaryColor;

@@ -9,3 +9,4 @@
 @boxShadow: none;
 @subMenuMargin: @subMenuDistance 0em 0em;
 @subMenuTextColor: @textColor;
+@borderRadius: 0;

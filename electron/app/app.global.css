@@ -20,3 +20,28 @@ body {
 .search > .ui.input {
   width: 100%;
 }
+
+.sample {
+  position: relative;
+}
+
+.sample-info {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  height: 100%;
+  display: block;
+  z-index: 100;
+}
+
+.sample:hover > .sample-info {
+  display: none;
+}
+
+.sample-info > .menu {
+  background: hsla(210, 20%, 23%, 0.6) !important;
+}
+
+.hide-info .sample-info {
+  display: none !important;
+}

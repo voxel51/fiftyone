@@ -51,7 +51,7 @@ function Dataset(props) {
       <Sidebar
         target={stickyRef}
         onHide={() => setView({ visible: false, sample: null })}
-        style={{ zIndex: 10000, width: "50%" }}
+        style={{ zIndex: 100001, width: "50%" }}
         as={Menu}
         animation="overlay"
         direction="right"
@@ -78,7 +78,11 @@ function Dataset(props) {
           <Sticky context={stickyRef}>
             <Container
               fluid={true}
-              style={{ background: "hsl(210, 20%, 15%)", paddingTop: "2rem" }}
+              style={{
+                background: "hsl(210, 20%, 15%)",
+                paddingTop: "2rem",
+                zIndex: 1000000,
+              }}
             >
               <Search />
               <Menu pointing secondary>
