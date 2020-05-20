@@ -36,9 +36,10 @@ const PARSERS = {
 const loadOverlay = (sample) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   for (const i in sample) {
-    if (_.indexOf(["metadata", "_id", "tags", "filepath"], i) >= 0) continue;
+    if (_.indexOf(["metadata", "_id", "tags", "filepath"], i) >= 0) {
+      continue;
+    }
     const field = sample[i];
-    console.log(field);
     if (field.detections) {
       for (const j in field.detections) {
         const detection = field.detections[j];
