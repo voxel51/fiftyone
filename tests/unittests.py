@@ -288,7 +288,6 @@ class SampleInDatasetTest(unittest.TestCase):
 
         def check_add_to_dataset():
             dataset = fo.Dataset(name=dataset_name)
-            print(dataset.summary())
             fields = dataset.get_sample_fields()
             self.assertIn(field_name, fields)
 
