@@ -197,6 +197,9 @@ class ODMSample(ODMDocument):
 
         Returns:
             the field value
+
+        Raises:
+            AttributeError: if the field does not exist
         """
         return self.__getattribute__(field_name)
 
@@ -237,6 +240,9 @@ class ODMSample(ODMDocument):
 
         Args:
             field_name: the field name
+
+        Raises:
+            AttributeError: if the field does not exist
         """
         raise NotImplementedError("Subclass must implement clear_field()")
 
@@ -245,6 +251,9 @@ class ODMSample(ODMDocument):
 
         Args:
             field_name: the field name
+
+        Raises:
+            AttributeError: if the field does not exist
         """
         raise NotImplementedError("Subclass must implement delete_field()")
 
