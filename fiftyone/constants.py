@@ -47,11 +47,16 @@ LICENSE = _META["license"]
 VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
 
 # MongoDB setup
+try:
+    from fiftyone.db import FIFTYONE_DB_BIN_DIR
+except ImportError:
+    # development installation
+    FIFTYONE_DB_BIN_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
 DB_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
-DB_BIN_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "bin", "mongod")
-DB_CLIENT_BIN_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "bin", "mongo")
+DB_BIN_PATH = os.path.join(FIFTYONE_DB_BIN_DIR, "mongod")
+DB_CLIENT_BIN_PATH = os.path.join(FIFTYONE_DB_BIN_DIR, "mongo")
 DB_LOG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/log/mongodb/mongo.log")
-os.environ["PATH"] = ":".join([FIFTYONE_CONFIG_DIR, os.environ["PATH"]])
+os.environ["PATH"] = os.pathsep.join([FIFTYONE_CONFIG_DIR, os.environ["PATH"]])
 START_DB = [
     DB_BIN_PATH,
     "--dbpath",
@@ -69,7 +74,7 @@ STOP_DB = " ".join(
     ]
 )
 
-if sys.platform == "linux":
+if sys.platform.startswith("linux"):
     _STOP_SERVICE = "fuser -k %d/tcp >/dev/null 2>&1"
 
 elif sys.platform == "darwin":
@@ -99,5 +104,7 @@ START_SERVER = [
 STOP_SERVER = _STOP_SERVICE
 
 # App setup
-FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
-START_APP = ["yarn", "background-dev"]
+try:
+    from fiftyone.gui import FIFTYONE_APP_DIR
+except ImportError:
+    FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")

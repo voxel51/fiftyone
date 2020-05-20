@@ -14,7 +14,9 @@ __pycache__
 
 /eta/
 
+build/
 data/
+dist/
 out/
 tmp/
 
