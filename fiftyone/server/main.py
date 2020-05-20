@@ -149,7 +149,7 @@ class StateController(Namespace):
             return []
 
         view = view.skip((page - 1) * page_length).limit(page_length)
-        return [s.get_backing_doc_dict(extended=True) for s in view]
+        return [s.to_dict(extended=True) for s in view]
 
     def on_get_label_distributions(self, _):
         """Gets the labels distributions for the current state.

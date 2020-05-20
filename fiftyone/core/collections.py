@@ -62,52 +62,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_tags()")
 
-    def get_label_groups(self):
-        """Returns the list of label groups attached to at least one sample
-        in the collection.
-
-        Returns:
-            a list of groups
-        """
-        pipeline = [
-            {"$project": {"arrayofkeyvalue": {"$objectToArray": "$labels"}}},
-            {"$unwind": "$arrayofkeyvalue"},
-            {
-                "$group": {
-                    "_id": None,
-                    "all_groups": {"$addToSet": "$arrayofkeyvalue.k"},
-                }
-            },
-        ]
-        try:
-            return next(self._aggregate(pipeline))["all_groups"]
-        except StopIteration:
-            pass
-        return []
-
-    def get_insight_groups(self):
-        """Returns the list of insight groups attached to at least one sample
-        in the collection.
-
-        Returns:
-            a list of groups
-        """
-        pipeline = [
-            {"$project": {"arrayofkeyvalue": {"$objectToArray": "$insights"}}},
-            {"$unwind": "$arrayofkeyvalue"},
-            {
-                "$group": {
-                    "_id": None,
-                    "all_groups": {"$addToSet": "$arrayofkeyvalue.k"},
-                }
-            },
-        ]
-        try:
-            return next(self._aggregate(pipeline))["all_groups"]
-        except StopIteration:
-            pass
-        return []
-
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.
 
@@ -116,7 +70,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def _aggregate(self, pipeline=None):
+    def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the collection.
 
         Args:
@@ -126,35 +80,35 @@ class SampleCollection(object):
         Returns:
             an iterable over the aggregation result
         """
-        raise NotImplementedError("Subclass must implement _aggregate()")
+        raise NotImplementedError("Subclass must implement aggregate()")
 
-    def export(self, group, export_dir):
+    def export(self, label_field, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,
-        using the given label group as labels.
+        using the given label field as labels.
 
         The format of the dataset on disk will depend on the
         :class:`fiftyone.core.labels.Label` class of the labels in the
         specified group.
 
         Args:
-            group: the label group to use
+            label_field: the name of the label field to export
             export_dir: the directory to which to export
         """
         data_paths = []
         labels = []
-        for sample in self.iter_samples():
+        for sample in self:
             data_paths.append(sample.filepath)
-            labels.append(sample.get_label(group))
+            labels.append(sample[label_field])
 
         if not labels:
             logger.warning("No samples to export; returning now")
             return
 
-        if isinstance(labels[0], fol.ClassificationLabel):
+        if isinstance(labels[0], fol.Classification):
             foud.export_image_classification_dataset(
                 data_paths, labels, export_dir
             )
-        elif isinstance(labels[0], fol.DetectionLabels):
+        elif isinstance(labels[0], fol.Detections):
             foud.export_image_detection_dataset(data_paths, labels, export_dir)
         elif isinstance(labels[0], fol.ImageLabels):
             foud.export_image_labels_dataset(data_paths, labels, export_dir)
