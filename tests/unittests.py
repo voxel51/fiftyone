@@ -153,6 +153,23 @@ class SampleTest(unittest.TestCase):
 
 
 class SampleInDatasetTest(unittest.TestCase):
+    def test_sample_singletons(self):
+        dataset_name = self.test_sample_singletons.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        filepath = "test1.png"
+        sample = fo.Sample(filepath=filepath)
+        dataset.add_sample(sample)
+        sample2 = dataset[sample.id]
+        self.assertIs(sample2, sample)
+
+        sample3 = fo.Sample(filepath="test2.png")
+        dataset.add_sample(sample3)
+        self.assertIsNot(sample3, sample)
+
+        sample4 = dataset.view().match({"filepath": filepath}).first()
+        self.assertIs(sample4, sample)
+
     def test_dataset_clear(self):
         dataset_name = self.test_dataset_clear.__name__
         dataset = fo.Dataset(name=dataset_name)

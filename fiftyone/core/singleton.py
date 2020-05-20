@@ -41,8 +41,8 @@ class DatasetSingleton(type):
     def __call__(cls, name, *args, **kwargs):
         if name in cls._instances:
             # de-reference the weakref
-            inst = cls._instances[name]
-            inst = inst and inst()
+            ref = cls._instances[name]
+            inst = ref and ref()
         else:
             inst = None
 
