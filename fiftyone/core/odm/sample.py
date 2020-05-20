@@ -448,16 +448,10 @@ class NoDatasetError(Exception):
 
 
 class ODMDatasetSample(ODMSample):
-    """Abstract ODMSample class that all
-    :class:`fiftyone.core.dataset.Dataset._sample_doc` classes inherit from.
-    Instances of the subclasses are samples, i.e.::
+    """Abstract base class for dataset sample classes.
 
-        sample = dataset._sample_doc(...)
-
-    Samples store all information associated with a particular piece of data in
-    a dataset, including basic metadata about the data, one or more sets of
-    labels (ground truth, user-provided, or FiftyOne-generated), and additional
-    features associated with subsets of the data and/or label sets.
+    All :class:`fiftyone.core.dataset.Dataset._sample_doc_cls` classes inherit
+    from this class.
     """
 
     meta = {"abstract": True}
