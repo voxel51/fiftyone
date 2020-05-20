@@ -41,7 +41,7 @@ class DatasetTest(unittest.TestCase):
     def test_backing_doc_class(self):
         dataset_name = self.test_backing_doc_class.__name__
         dataset = fo.Dataset(dataset_name)
-        self.assertTrue(issubclass(dataset._Doc, foo.ODMDatasetSample))
+        self.assertTrue(issubclass(dataset._sample_doc, foo.ODMDatasetSample))
 
     def test_meta_dataset(self):
         dataset_name = self.test_meta_dataset.__name__

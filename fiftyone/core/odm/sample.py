@@ -17,7 +17,7 @@ Design invariants:
     ``sample._doc``, which is an instance of a subclass of :class:`ODMSample`
 
 -   a :class:`fiftyone.core.dataset.Dataset` always has a backing
-    ``dataset._Doc`` which is a subclass of ``ODMSample``.
+    ``dataset._sample_doc`` which is a subclass of ``ODMSample``.
 
 Backing documents explained::
 
@@ -32,17 +32,17 @@ Backing documents explained::
     sample = fo.Sample()
 
     #
-    # When a dataset is created, its `_Doc` attribute holds a dynamically
-    # created subclass of `ODMDatasetSample` whose name matches the name of
-    # the dataset
+    # When a dataset is created, its `_sample_doc` attribute holds a
+    # dynamically created subclass of `ODMDatasetSample` whose name matches the
+    # name of the dataset
     #
-    # `dataset._Doc` is a `my_dataset` class
+    # `dataset._sample_doc` is a `my_dataset` class
     #
     dataset = fo.Dataset(name="my_dataset")
 
     #
     # When a sample is added to a dataset, its `sample._doc` is changed from
-    # type `ODMNoDatasetSample` to type `dataset._Doc`
+    # type `ODMNoDatasetSample` to type `dataset._sample_doc`
     #
     # `sample._doc` is now an instance of `my_dataset`
     #
@@ -456,10 +456,10 @@ class NoDatasetError(Exception):
 
 class ODMDatasetSample(ODMSample):
     """Abstract ODMSample class that all
-    :class:`fiftyone.core.dataset.Dataset._Doc` classes inherit from.
+    :class:`fiftyone.core.dataset.Dataset._sample_doc` classes inherit from.
     Instances of the subclasses are samples, i.e.::
 
-        sample = dataset._Doc(...)
+        sample = dataset._sample_doc(...)
 
     Samples store all information associated with a particular piece of data in
     a dataset, including basic metadata about the data, one or more sets of

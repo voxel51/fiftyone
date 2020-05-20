@@ -197,7 +197,7 @@ class Dataset(foc.SampleCollection):
         Returns:
              a dictionary mapping field names to field types
         """
-        return self._Doc.get_field_schema(ftype=ftype)
+        return self._sample_doc.get_field_schema(ftype=ftype)
 
     def add_sample_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -215,7 +215,7 @@ class Dataset(foc.SampleCollection):
                 `ftype` is a list or dict type
         """
         # Update sample class
-        self._Doc.add_field(
+        self._sample_doc.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -234,7 +234,7 @@ class Dataset(foc.SampleCollection):
         Args:
             field_name: the field name
         """
-        self._Doc.delete_field(field_name=field_name)
+        self._sample_doc.delete_field(field_name=field_name)
 
         # Update dataset meta class
         self._meta.sample_fields = [
@@ -285,7 +285,7 @@ class Dataset(foc.SampleCollection):
         if sample._in_db:
             sample = sample.copy()
 
-        sample._doc = self._Doc(**sample.to_dict())
+        sample._doc = self._sample_doc(**sample.to_dict())
         sample.save()
         return sample.id
 
@@ -318,7 +318,7 @@ class Dataset(foc.SampleCollection):
             self._expand_schema(samples)
 
         docs = self._get_query_set().insert(
-            [self._Doc(**sample.to_dict()) for sample in samples]
+            [self._sample_doc(**sample.to_dict()) for sample in samples]
         )
 
         for sample, doc in zip(samples, docs):
@@ -363,7 +363,7 @@ class Dataset(foc.SampleCollection):
 
     def clear(self):
         """Deletes all samples from the dataset."""
-        self._Doc.drop_collection()
+        self._sample_doc.drop_collection()
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -898,7 +898,7 @@ class Dataset(foc.SampleCollection):
 
     def _initialize_dataset(self, name):
         # Create ODMDatasetSample subclass
-        self._Doc = type(self._name, (foo.ODMDatasetSample,), {})
+        self._sample_doc = type(self._name, (foo.ODMDatasetSample,), {})
 
         # Create dataset meta document
         self._meta = foo.ODMDataset(
@@ -915,7 +915,7 @@ class Dataset(foc.SampleCollection):
         # pylint: disable=no-member
         self._meta = foo.ODMDataset.objects.get(name=name)
 
-        self._Doc = type(self._name, (foo.ODMDatasetSample,), {})
+        self._sample_doc = type(self._name, (foo.ODMDatasetSample,), {})
 
         fields = self.get_sample_fields()
         fields.pop("id")
@@ -950,13 +950,13 @@ class Dataset(foc.SampleCollection):
         for sample in samples:
             for field_name, field in iteritems(sample.get_field_schema()):
                 if field_name not in fields:
-                    self._Doc.add_implied_field(
+                    self._sample_doc.add_implied_field(
                         field_name=field_name, value=sample[field_name]
                     )
                     fields = self.get_sample_fields()
 
     def _load_sample_from_dict(self, d):
-        doc = self._Doc.from_dict(d, created=False, extended=False)
+        doc = self._sample_doc.from_dict(d, created=False, extended=False)
         return self._load_sample_from_doc(doc)
 
     def _load_sample_from_doc(self, doc):
@@ -964,7 +964,7 @@ class Dataset(foc.SampleCollection):
 
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
-        return self._Doc.objects(**kwargs)
+        return self._sample_doc.objects(**kwargs)
 
     def _get_fields_str(self):
         fields = self.get_sample_fields()
