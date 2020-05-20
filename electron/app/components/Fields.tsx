@@ -75,7 +75,6 @@ const Charts = (props) => {
 
   const getData = () => {
     socket.emit("get_field_distributions", "", (data) => {
-      console.log(data);
       setInitialLoad(false);
       setLoading(false);
       setData(data);
