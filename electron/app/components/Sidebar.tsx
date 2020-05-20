@@ -36,9 +36,6 @@ const _Sidebar = (props) => {
             <Menu.Item as="span">
               Selected &middot; <code>{state.selected.length}</code>
             </Menu.Item>
-            <Menu.Item as="span">
-              Shape &middot; <code>({state.count},32,32,3)</code>
-            </Menu.Item>
           </Menu>
         ) : null}
       </Menu.Item>

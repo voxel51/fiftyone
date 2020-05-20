@@ -1,3 +1,4 @@
+import _ from "lodash";
 import React, { useState, useEffect } from "react";
 import Player51 from "../player51/build/cjs/player51.min.js";
 
@@ -32,26 +33,26 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (labels) => {
+const loadOverlay = (sample) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
-  for (const i in labels) {
-    const label = labels[i];
-    if (label._cls === "ODMDetectionLabels") {
-      for (const j in label.detections) {
-        const detection = label.detections[j];
-        const [key, fn] = PARSERS[label._cls];
+  for (const i in sample) {
+    if (_.indexOf(["metadata", "_id", "tags", "filepath"], i) >= 0) continue;
+    const field = sample[i];
+    console.log(field);
+    if (field.detections) {
+      for (const j in field.detections) {
+        const detection = field.detections[j];
+        const [key, fn] = PARSERS.ODMDetectionLabels;
         imgLabels[key][key].push(fn(i, detection));
       }
       continue;
     }
-    const [key, fn] = PARSERS[label._cls];
-    imgLabels[key][key].push(fn(i, label));
   }
   return imgLabels;
 };
 
 export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
-  const overlay = loadOverlay(sample.labels);
+  const overlay = loadOverlay(sample);
   const id = sample._id.$oid;
 
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
