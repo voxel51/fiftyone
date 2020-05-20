@@ -80,6 +80,8 @@ class Classification(ImageLabel):
         logits (None): logits associated with the labels
     """
 
+    meta = {"allow_inheritance": True}
+
     label = StringField()
     confidence = FloatField(null=True)
     # @todo convert to a numeric array representation somehow?
@@ -117,6 +119,8 @@ class Detection(ODMEmbeddedDocument):
         confidence (None): a confidence in ``[0, 1]`` for the label
     """
 
+    meta = {"allow_inheritance": True}
+
     label = StringField()
     bounding_box = ListField(FloatField())
     confidence = FloatField(null=True)
@@ -149,6 +153,8 @@ class Detections(ImageLabel):
             ``confidence`` is an optional confidence ``[0, 1]`` for the
             label
     """
+
+    meta = {"allow_inheritance": True}
 
     detections = ListField(EmbeddedDocumentField(Detection))
 
@@ -185,6 +191,8 @@ class ImageLabels(ImageLabel):
     See :class:`fiftyone.utils.data.ImageLabelsSampleParser` for a
     convenient way to build labels of this type for your existing datasets.
     """
+
+    meta = {"allow_inheritance": True}
 
     labels = DictField()
 
