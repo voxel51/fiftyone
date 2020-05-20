@@ -90,7 +90,7 @@ class SampleTest(unittest.TestCase):
         # get missing
         with self.assertRaises(AttributeError):
             sample.get_field("missing_field")
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(KeyError):
             sample["missing_field"]
         with self.assertRaises(AttributeError):
             sample.missing_field
@@ -105,7 +105,7 @@ class SampleTest(unittest.TestCase):
             sample.set_field("field1", value, create=False)
         with self.assertRaises(AttributeError):
             sample.get_field("field1")
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(KeyError):
             sample["field1"]
         with self.assertRaises(AttributeError):
             sample.field1
@@ -130,7 +130,7 @@ class SampleTest(unittest.TestCase):
             sample.field4 = value
         with self.assertRaises(AttributeError):
             sample.get_field("field4")
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(KeyError):
             sample["field4"]
 
     def test_change_value(self):
@@ -434,7 +434,7 @@ class FieldTest(unittest.TestCase):
                 sample.get_field_schema()[field_name]
             with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
-            with self.assertRaises(AttributeError):
+            with self.assertRaises(KeyError):
                 sample[field_name]
             with self.assertRaises(AttributeError):
                 getattr(sample, field_name)
@@ -483,7 +483,7 @@ class FieldTest(unittest.TestCase):
                 sample.get_field_schema()[field_name]
             with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
-            with self.assertRaises(AttributeError):
+            with self.assertRaises(KeyError):
                 sample[field_name]
             with self.assertRaises(AttributeError):
                 getattr(sample, field_name)

@@ -67,13 +67,19 @@ class Sample(object):
         raise NotImplementedError("Not yet implemented")
 
     def __getitem__(self, key):
-        return self.get_field(key)
+        try:
+            return self.get_field(key)
+        except AttributeError:
+            raise KeyError("Sample has no field '%s'" % key)
 
     def __setitem__(self, key, value):
         return self.set_field(key, value=value, create=True)
 
     def __delitem__(self, key):
-        return self.clear_field(key)
+        try:
+            return self.clear_field(key)
+        except AttributeError:
+            raise KeyError("Sample has no field '%s'" % key)
 
     def __copy__(self):
         return self.copy()
