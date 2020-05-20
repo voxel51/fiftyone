@@ -112,14 +112,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def __init__(self, name, create_empty=True):
         self._name = name
+        self._sample_doc_cls = None
+        self._meta = None
 
-        if create_empty:
-            try:
-                self._load_dataset(name=name)
-            except DoesNotExist:
-                self._initialize_dataset(name=name)
-        else:
+        try:
             self._load_dataset(name=name)
+        except DoesNotExist:
+            if create_empty:
+                self._initialize_dataset(name=name)
+            else:
+                raise ValueError("Dataset '%s' not found" % name)
 
     def __len__(self):
         return self._get_query_set().count()
@@ -183,7 +185,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
              a dictionary mapping field names to field types
         """
-        return self._sample_doc.get_field_schema(ftype=ftype)
+        return self._sample_doc_cls.get_field_schema(ftype=ftype)
 
     def add_sample_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -201,7 +203,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 `ftype` is a list or dict type
         """
         # Update sample class
-        self._sample_doc.add_field(
+        self._sample_doc_cls.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -214,7 +216,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field_name: the field name
         """
-        self._sample_doc.delete_field(field_name=field_name)
+        self._sample_doc_cls.delete_field(field_name=field_name)
 
     def get_tags(self):
         """Returns the set of tags in the dataset.
@@ -259,7 +261,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample._in_db:
             sample = sample.copy()
 
-        sample._doc = self._sample_doc(**sample.to_dict())
+        sample._doc = self._sample_doc_cls(**sample.to_dict())
         sample.save()
         return sample.id
 
@@ -292,7 +294,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._expand_schema(samples)
 
         docs = self._get_query_set().insert(
-            [self._sample_doc(**sample.to_dict()) for sample in samples]
+            [self._sample_doc_cls(**sample.to_dict()) for sample in samples]
         )
 
         for sample, doc in zip(samples, docs):
@@ -337,7 +339,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def clear(self):
         """Deletes all samples from the dataset."""
-        self._sample_doc.drop_collection()
+        self._sample_doc_cls.drop_collection()
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -872,7 +874,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _initialize_dataset(self, name):
         # Create ODMDatasetSample subclass
-        self._sample_doc = type(self._name, (foo.ODMDatasetSample,), {})
+        self._sample_doc_cls = type(self._name, (foo.ODMDatasetSample,), {})
 
         # Create dataset meta document
         self._meta = foo.ODMDataset(
@@ -889,7 +891,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # pylint: disable=no-member
         self._meta = foo.ODMDataset.objects.get(name=name)
 
-        self._sample_doc = type(self._name, (foo.ODMDatasetSample,), {})
+        self._sample_doc_cls = type(self._name, (foo.ODMDatasetSample,), {})
 
         fields = self.get_sample_fields()
         fields.pop("id")
@@ -912,7 +914,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 else None
             )
 
-            self._sample_doc.add_field(
+            self._sample_doc_cls.add_field(
                 sample_field.name,
                 etau.get_class(sample_field.ftype),
                 subfield=subfield,
@@ -925,13 +927,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample in samples:
             for field_name, field in iteritems(sample.get_field_schema()):
                 if field_name not in fields:
-                    self._sample_doc.add_implied_field(
+                    self._sample_doc_cls.add_implied_field(
                         field_name=field_name, value=sample[field_name]
                     )
                     fields = self.get_sample_fields()
 
     def _load_sample_from_dict(self, d):
-        doc = self._sample_doc.from_dict(d, created=False, extended=False)
+        doc = self._sample_doc_cls.from_dict(d, created=False, extended=False)
         return self._load_sample_from_doc(doc)
 
     def _load_sample_from_doc(self, doc):
@@ -939,7 +941,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
-        return self._sample_doc.objects(**kwargs)
+        return self._sample_doc_cls.objects(**kwargs)
 
     def _get_fields_str(self):
         fields = self.get_sample_fields()
