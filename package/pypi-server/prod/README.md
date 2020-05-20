@@ -1,10 +1,11 @@
 # Production PyPI Server Setup
 
-These steps were performed on an Ubuntu 20.04 machine, but should also work in
-similar environments without significant changes.
+This setup has been tested on a fresh Ubuntu 20.04 machine.
 
-1. Install system packages:
-   `sudo apt install certbot docker.io docker-compose nginx python3-certbot-nginx`
-2. Copy `pypi.voxel51.com.conf` from this folder to `/etc/nginx/sites-enabled`
-3. Run `sudo certbot --nginx -d pypi.voxel51.com` - use `dev@voxel51.com` as
-   the email address if prompted
+1. SSH into the server and clone this repo. `ssh -A` will allow you to clone
+   the repo on the server using your local credentials.
+2. Run `server-setup.bash` on the server to set up the server. During
+   certificate installation, use `dev@voxel51.com` and enable HTTP-to-HTTPS
+   forwarding if prompted.
+3. Run `add-user.bash` on the server to set up an account for uploading
+   packages.
