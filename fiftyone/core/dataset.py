@@ -33,6 +33,7 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.utils.data as foud
 
@@ -92,7 +93,7 @@ def get_default_dataset_dir(name, split=None):
     return dataset_dir
 
 
-class Dataset(foc.SampleCollection):
+class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """A FiftyOne dataset.
 
     Datasets represent a homogeneous collection of
@@ -109,19 +110,7 @@ class Dataset(foc.SampleCollection):
             if it does not already exist
     """
 
-    # @todo(Tyler) destroy instance once count->0 using __del__
-    _instances = {}
-
-    def __new__(cls, name, *args, **kwargs):
-        if name not in cls._instances:
-            cls._instances[name] = super(Dataset, cls).__new__(cls)
-
-        return cls._instances[name]
-
     def __init__(self, name, create_empty=True):
-        if hasattr(self, "_name"):
-            # Only initialize once!
-            return
 
         self._name = name
 
