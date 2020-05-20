@@ -26,7 +26,6 @@ from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
-import fiftyone.core.sample as fos
 
 
 def _make_registrar():

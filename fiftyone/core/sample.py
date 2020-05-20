@@ -126,8 +126,11 @@ class Sample(object):
         return self._doc.dataset_name
 
     def get_field_schema(self, ftype=None):
-        """Gets a dictionary of all fields on this sample (and all samples in
-        the same dataset if applicable).
+        """Gets a dictionary of all fields on this sample.
+
+        If the sample is in a dataset, this is equivalent to the fields of
+        every sample in the dataset. The fields are synchronized across all
+        samples in a dataset and default to `None` if not explicitly set.
 
         Args:
             ftype (None): the subclass of ``BaseField`` for primitives or
