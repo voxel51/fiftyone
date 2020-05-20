@@ -50,7 +50,7 @@ class DatasetTest(unittest.TestCase):
         field_name = "field1"
         ftype = IntField
 
-        dataset1.add_sample_field(field_name=field_name, ftype=ftype)
+        dataset1.add_sample_field(field_name, ftype)
         fields = dataset1.get_sample_fields()
         self.assertIsInstance(fields[field_name], ftype)
         dataset_copy = fo.load_dataset(name=dataset_name)
@@ -60,7 +60,7 @@ class DatasetTest(unittest.TestCase):
         dataset1.delete_sample_field("field1")
         with self.assertRaises(KeyError):
             fields = dataset1.get_sample_fields()
-            fields[field_name], ftype
+            fields[field_name]
         with self.assertRaises(KeyError):
             dataset_copy = fo.load_dataset(name=dataset_name)
             fields = dataset_copy.get_sample_fields()
@@ -88,9 +88,9 @@ class SampleTest(unittest.TestCase):
         self.assertEqual(sample.filepath, filepath)
 
         # get missing
-        with self.assertRaises(KeyError):
+        with self.assertRaises(AttributeError):
             sample.get_field("missing_field")
-        with self.assertRaises(KeyError):
+        with self.assertRaises(AttributeError):
             sample["missing_field"]
         with self.assertRaises(AttributeError):
             sample.missing_field
@@ -103,15 +103,15 @@ class SampleTest(unittest.TestCase):
         # set_field create=False
         with self.assertRaises(ValueError):
             sample.set_field("field1", value, create=False)
-        with self.assertRaises(KeyError):
+        with self.assertRaises(AttributeError):
             sample.get_field("field1")
-        with self.assertRaises(KeyError):
+        with self.assertRaises(AttributeError):
             sample["field1"]
         with self.assertRaises(AttributeError):
             sample.field1
 
         # set_field create=True
-        sample.set_field(field_name="field2", value=value, create=True)
+        sample.set_field("field2", value, create=True)
         fields = sample.get_field_schema()
         self.assertIsInstance(fields["field2"], IntField)
         self.assertIsInstance(sample.field2, int)
@@ -126,14 +126,12 @@ class SampleTest(unittest.TestCase):
         self.assertEqual(sample.field3, value)
 
         # __setattr__
-        # @todo(Tyler) logger.warning(...)
-        # with self.assertWarns():
-        sample.field4 = value
-        with self.assertRaises(KeyError):
+        with self.assertRaises(ValueError):
+            sample.field4 = value
+        with self.assertRaises(AttributeError):
             sample.get_field("field4")
-        with self.assertRaises(KeyError):
+        with self.assertRaises(AttributeError):
             sample["field4"]
-        self.assertEqual(sample.field4, value)
 
     def test_change_value(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
@@ -184,9 +182,9 @@ class SampleInDatasetTest(unittest.TestCase):
         sample[field_name] = value
 
         with self.assertRaises(FieldDoesNotExist):
-            dataset.add_sample(sample)
+            dataset.add_sample(sample, expand_schema=False)
 
-        dataset.add_sample(sample, expand_schema=True)
+        dataset.add_sample(sample)
         fields = dataset.get_sample_fields()
         self.assertIsInstance(fields[field_name], IntField)
         self.assertEqual(sample[field_name], value)
@@ -203,15 +201,13 @@ class SampleInDatasetTest(unittest.TestCase):
         sample[field_name] = value
 
         with self.assertRaises(FieldDoesNotExist):
-            dataset.add_samples([sample])
+            dataset.add_samples([sample], expand_schema=False)
 
-        dataset.add_samples([sample], expand_schema=True)
+        dataset.add_samples([sample])
         fields = dataset.get_sample_fields()
         self.assertIsInstance(fields[field_name], IntField)
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
-
-
 
 
 class LabelsTest(unittest.TestCase):
@@ -266,8 +262,8 @@ class CRUDTest(unittest.TestCase):
 
         # update add new field
         dataset.add_sample_field(
-            field_name="test_label",
-            ftype=EmbeddedDocumentField,
+            "test_label",
+            EmbeddedDocumentField,
             embedded_doc_type=fo.Classification,
         )
         sample.test_label = fo.Classification(label="cow")
@@ -313,8 +309,8 @@ class ViewTest(unittest.TestCase):
         dataset_name = self.test_view.__name__
         dataset = fo.Dataset(dataset_name)
         dataset.add_sample_field(
-            field_name="labels",
-            ftype=EmbeddedDocumentField,
+            "labels",
+            EmbeddedDocumentField,
             embedded_doc_type=fo.Classification,
         )
 
@@ -355,7 +351,7 @@ class FieldTest(unittest.TestCase):
 
         # add field (default duplicate)
         with self.assertRaises(ValueError):
-            dataset.add_sample_field(field_name="filepath", ftype=StringField)
+            dataset.add_sample_field("filepath", StringField)
 
         # delete default field
         # @todo(Tyler) should the user just be allowed to do this?
@@ -370,9 +366,9 @@ class FieldTest(unittest.TestCase):
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
             with self.assertRaises(KeyError):
                 sample.get_field_schema()[field_name]
-            with self.assertRaises(KeyError):
+            with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
-            with self.assertRaises(KeyError):
+            with self.assertRaises(AttributeError):
                 sample[field_name]
             with self.assertRaises(AttributeError):
                 getattr(sample, field_name)
@@ -380,7 +376,7 @@ class FieldTest(unittest.TestCase):
                 sample.to_dict()[field_name]
 
         # add field (new)
-        dataset.add_sample_field(field_name=field_name, ftype=ftype)
+        dataset.add_sample_field(field_name, ftype)
         setattr(sample1, field_name, field_test_value)
         sample1.save()
 
@@ -392,9 +388,7 @@ class FieldTest(unittest.TestCase):
             field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is set correctly
-            self.assertEqual(
-                sample.get_field(field_name=field_name), field_test_value
-            )
+            self.assertEqual(sample.get_field(field_name), field_test_value)
             self.assertEqual(sample[field_name], field_test_value)
             self.assertEqual(getattr(sample, field_name), field_test_value)
             self.assertEqual(sample.to_dict()[field_name], field_test_value)
@@ -403,17 +397,17 @@ class FieldTest(unittest.TestCase):
             field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is None
-            self.assertIsNone(sample.get_field(field_name=field_name))
+            self.assertIsNone(sample.get_field(field_name))
             self.assertIsNone(sample[field_name])
             self.assertIsNone(getattr(sample, field_name))
             self.assertIsNone(sample.to_dict()[field_name])
 
         # add field (duplicate)
         with self.assertRaises(ValueError):
-            dataset.add_sample_field(field_name=field_name, ftype=ftype)
+            dataset.add_sample_field(field_name, ftype)
 
         # delete field
-        dataset.delete_sample_field(field_name=field_name)
+        dataset.delete_sample_field(field_name)
 
         # access non-existent field
         with self.assertRaises(KeyError):
@@ -421,9 +415,9 @@ class FieldTest(unittest.TestCase):
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
             with self.assertRaises(KeyError):
                 sample.get_field_schema()[field_name]
-            with self.assertRaises(KeyError):
+            with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
-            with self.assertRaises(KeyError):
+            with self.assertRaises(AttributeError):
                 sample[field_name]
             with self.assertRaises(AttributeError):
                 getattr(sample, field_name)
@@ -433,7 +427,7 @@ class FieldTest(unittest.TestCase):
         # add deleted field with new type
         ftype = IntField
         field_test_value = 51
-        dataset.add_sample_field(field_name=field_name, ftype=ftype)
+        dataset.add_sample_field(field_name, ftype)
         setattr(sample1, field_name, field_test_value)
         sample1.save()
 
@@ -445,9 +439,7 @@ class FieldTest(unittest.TestCase):
             field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is set correctly
-            self.assertEqual(
-                sample.get_field(field_name=field_name), field_test_value
-            )
+            self.assertEqual(sample.get_field(field_name), field_test_value)
             self.assertEqual(sample[field_name], field_test_value)
             self.assertEqual(getattr(sample, field_name), field_test_value)
             self.assertEqual(sample.to_dict()[field_name], field_test_value)
@@ -456,7 +448,7 @@ class FieldTest(unittest.TestCase):
             field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is None
-            self.assertIsNone(sample.get_field(field_name=field_name))
+            self.assertIsNone(sample.get_field(field_name))
             self.assertIsNone(sample[field_name])
             self.assertIsNone(getattr(sample, field_name))
             self.assertIsNone(sample.to_dict()[field_name])
