@@ -4,7 +4,7 @@ services:
     command: ["-a", ".", "-P", ".", "-v", "/data/packages"]
     image: pypiserver/pypiserver:latest
     ports:
-      - "127.0.0.1:${PORT}:8080"
+      - "${HOST}:${PORT}:8080"
     restart: always
     volumes:
       - type: bind
