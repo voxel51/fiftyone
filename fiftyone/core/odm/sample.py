@@ -194,6 +194,9 @@ class ODMSample(ODMDocument):
         Raises:
             AttributeError: if the field does not exist
         """
+        if not self.has_field(field_name):
+            raise AttributeError("Sample has no field '%s'" % field_name)
+
         return self.__getattribute__(field_name)
 
     def add_field(
