@@ -66,6 +66,10 @@ class DatabaseService(Service):
 
     def start(self):
         """Starts the DatabaseService."""
+        for folder in (foc.DB_PATH, os.path.dirname(foc.DB_LOG_PATH)):
+            if not os.path.isdir(folder):
+                os.makedirs(folder)
+
         etau.call(foc.START_DB, **self._SUPPRESS)
 
         # Drop the entire database (lightweight!)
