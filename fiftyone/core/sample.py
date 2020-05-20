@@ -25,9 +25,6 @@ import logging
 import fiftyone.core.odm as foo
 
 
-logger = logging.getLogger(__name__)
-
-
 class Sample(object):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
@@ -40,7 +37,7 @@ class Sample(object):
         filepath: the path to the data on disk
         tags (None): the set of tags associated with the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
-        **kwargs: additional fields to be set on the sample
+        **kwargs: additional fields to dynamically set on the sample
     """
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
@@ -52,44 +49,31 @@ class Sample(object):
         return str(self._doc)
 
     def __getattr__(self, name):
-        if name not in dir(self):
-            try:
-                return self._doc.get_field(field_name=name)
-            except Exception:
-                pass
-        return super(Sample, self).__getattribute__(name)
+        try:
+            return super(Sample, self).__getattribute__(name)
+        except AttributeError:
+            return self._doc.get_field(name)
 
     def __setattr__(self, name, value):
-        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
-        # all attrs starting with "_" or that exist and are not fields are
-        # deferred to super
         if name.startswith("_") or (
             hasattr(self, name) and name not in self._doc.field_names
         ):
-            return super(Sample, self).__setattr__(name, value)
-
-        if name not in self._doc.field_names:
-            logger.warning(
-                "FiftyOne does not allow fields to be dynamically created via "
-                "__setattr__"
-            )
-            return super(Sample, self).__setattr__(name, value)
-        # @todo(Tyler) END NOT-DRY ############################################
-
-        self._doc.__setattr__(name, value)
+            super(Sample, self).__setattr__(name, value)
+        else:
+            self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
         # @todo(Tyler) __delattr__
-        raise NotImplementedError("TODO")
+        raise NotImplementedError("Not yet implemented")
 
     def __getitem__(self, key):
-        return self.get_field(field_name=key)
+        return self.get_field(key)
 
     def __setitem__(self, key, value):
-        return self.set_field(field_name=key, value=value, create=True)
+        return self.set_field(key, value=value, create=True)
 
     def __delitem__(self, key):
-        return self.clear_field(field_name=key)
+        return self.clear_field(key)
 
     def __copy__(self):
         return self.copy()
@@ -126,15 +110,16 @@ class Sample(object):
         return self._doc.dataset_name
 
     def get_field_schema(self, ftype=None):
-        """Gets a dictionary of all fields on this sample.
+        """Returns a schema dictionary describing the fields of this sample.
 
-        If the sample is in a dataset, this is equivalent to the fields of
-        every sample in the dataset. The fields are synchronized across all
-        samples in a dataset and default to `None` if not explicitly set.
+        If the sample belongs to a dataset, the schema applies to all samples
+        in the dataset. Sample fields are synchronized across all samples in a
+        dataset and default to `None` if not explicitly set.
 
         Args:
-            ftype (None): the subclass of ``BaseField`` for primitives or
-                ``EmbeddedDocument`` for ``EmbeddedDocumentField`` types
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                ``mongoengine.fields.BaseField``
 
         Returns:
              a dictionary mapping field names to field types
@@ -145,21 +130,21 @@ class Sample(object):
         """Accesses the value of a field of the sample.
 
         Args:
-            field_name: the string name of the field to add
+            field_name: the field name
 
         Returns:
             the field value
 
         Raises:
-            KeyError: if the field name is not valid
+            AttributeError: if the field does not exist
         """
-        return self._doc.get_field(field_name=field_name)
+        return self._doc.get_field(field_name)
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the sample.
 
         Args:
-            field_name: the name of the field to set
+            field_name: the field name
             value: the field value
             create (False): whether to create the field if it does not exist
 
@@ -182,7 +167,7 @@ class Sample(object):
             field_name: the name of the field to clear
 
         Raises:
-            KeyError: if the given field does not exist
+            AttributeError: if the field does not exist
         """
         return self._doc.clear_field(field_name=field_name)
 
@@ -248,14 +233,18 @@ class Sample(object):
 
     @classmethod
     def from_doc(cls, doc):
-        """Creates an instance of the :class:`fiftyone.core.sample.Sample`
-        class backed by the given document.
+        """Creates an instance of the :class:`Sample` class backed by the given
+        document.
 
         Args:
-            document: an :class:`fiftyone.core.odm.ODMDatasetSample` instance
+            document: a :class:`fiftyone.core.odm.ODMDatasetSample`
+
+        Returns:
+            a :class:`Sample`
         """
         if not isinstance(doc, foo.ODMDatasetSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
+
         sample = cls.__new__(cls)
         sample._doc = doc
         return sample

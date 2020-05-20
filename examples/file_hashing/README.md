@@ -34,26 +34,29 @@ have no clue which they are!
 
 ## Walkthrough
 
-Open an ipython session in your terminal by typing: `ipython`
+### 0. Import FiftyOne
 
-### 0. Imports
+Importing the main FiftyOne package is easy:
+
+```python
+import fiftyone as fo
+```
+
+### 1. Create a dataset
+
+Let's use a utililty method provided by FiftyOne to load the image
+classification dataset from disk:
 
 ```python
 import os
 
-import fiftyone as fo
-from fiftyone.utils.data import parse_image_classification_dir_tree
-import fiftyone.core.features as fof
-```
+import fiftyone.utils.data as foud
 
-### 1. Create a `fiftyone.Dataset`
-
-```python
 dataset_name = "cifar100_with_duplicates"
 
 src_data_dir = os.path.join("/tmp/fiftyone", dataset_name)
 
-samples, _ = parse_image_classification_dir_tree(src_data_dir)
+samples, _ = foud.parse_image_classification_dir_tree(src_data_dir)
 dataset = fo.Dataset.from_image_classification_samples(
     samples, name=dataset_name
 )
@@ -68,7 +71,7 @@ We can poke around in the dataset:
 print(dataset.summary())
 
 # Print a random sample
-print(dataset.take(1))
+print(dataset.view().take(1).first())
 ```
 
 Create a view that filters only `mountain`
@@ -127,9 +130,11 @@ session.view = selected_view
 
 ### 4. Compute file hashes
 
-Iterate over the samples and compute file hash:
+Iterate over the samples and compute their file hashes:
 
 ```python
+import fiftyone.core.features as fof
+
 for sample in dataset:
     sample["file_hash"] = fof.compute_filehash(sample.filepath)
     sample.save()
@@ -215,7 +220,7 @@ print("Length of dataset after: %d" % len(dataset))
 print("Number of unique file hashes: %d" % len({s.file_hash for s in dataset}))
 ```
 
-### 7. Export
+### 7. Export the deduplicated dataset
 
 Finally, let's export a fresh copy of our now-duplicate-free dataset:
 
