@@ -128,7 +128,7 @@ dataset = fo.Dataset.from_image_classification_samples(
 )
 
 # Print a few samples from the dataset
-print(dataset.take())
+print(dataset.view().head())
 ```
 
 ## Working with views into your dataset
