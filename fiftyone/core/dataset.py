@@ -220,12 +220,6 @@ class Dataset(foc.SampleCollection):
             subfield=subfield,
         )
 
-        # Update dataset meta class
-        field = self.get_sample_fields()[field_name]
-        sample_field = foo.SampleField.from_field(field)
-        self._meta.sample_fields.append(sample_field)
-        self._meta.save()
-
     def delete_sample_field(self, field_name):
         """Delete an existing field from the dataset
 
@@ -233,12 +227,6 @@ class Dataset(foc.SampleCollection):
             field_name: the field name
         """
         self._sample_doc.delete_field(field_name=field_name)
-
-        # Update dataset meta class
-        self._meta.sample_fields = [
-            sf for sf in self._meta.sample_fields if sf.name != field_name
-        ]
-        self._meta.save()
 
     def get_tags(self):
         """Returns the set of tags in the dataset.
@@ -936,11 +924,12 @@ class Dataset(foc.SampleCollection):
                 else None
             )
 
-            self.add_sample_field(
+            self._sample_doc.add_field(
                 sample_field.name,
                 etau.get_class(sample_field.ftype),
                 subfield=subfield,
                 embedded_doc_type=embedded_doc_type,
+                save=False,
             )
 
     def _expand_schema(self, samples):
