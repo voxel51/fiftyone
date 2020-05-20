@@ -26,7 +26,6 @@ from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
-import fiftyone.core.sample as fos
 
 
 def _make_registrar():
@@ -129,7 +128,7 @@ class DatasetView(foc.SampleCollection):
             [
                 "Dataset:        %s" % self._dataset.name,
                 "Num samples:    %d" % len(self),
-                "Tags:           %s" % self.get_tags(),
+                "Tags:           %s" % list(self.get_tags()),
                 "Sample fields:",
                 fields_str,
                 "Pipeline stages:",

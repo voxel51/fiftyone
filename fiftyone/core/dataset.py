@@ -151,14 +151,15 @@ class Dataset(foc.SampleCollection):
                 "obtain a DatasetView if you want to slice your samples"
             )
 
-        # @todo(Tyler) this could be optimized with
-        #    sample = self._get_query_set().get(id=sample_id)
-        #   but it seems to raise an uncatchable error?
-        docs = self._get_query_set(id=sample_id)
-        if not docs:
-            raise ValueError("No sample found with ID '%s'" % sample_id)
+        doc = None
+        try:
+            doc = self._get_query_set().get(id=sample_id)
+        except DoesNotExist:
+            pass
+        if not doc:
+            raise KeyError("No sample found with ID '%s'" % sample_id)
 
-        return self._load_sample_from_doc(docs[0])
+        return self._load_sample_from_doc(doc)
 
     def __delitem__(self, sample_id):
         self[sample_id]._delete()
@@ -178,7 +179,7 @@ class Dataset(foc.SampleCollection):
             [
                 "Name:           %s" % self.name,
                 "Num samples:    %d" % len(self),
-                "Tags:           %s" % self.get_tags(),
+                "Tags:           %s" % list(self.get_tags()),
                 "Sample fields:",
                 self._get_fields_str(),
             ]
@@ -352,14 +353,17 @@ class Dataset(foc.SampleCollection):
                 instances or sample IDs. For example, ``samples`` may be a
                 :class:`fiftyone.core.views.DatasetView`
         """
-        # @todo(Tyler) optimize with bulk deletion
-        for sample_or_id in samples_or_ids:
-            self.delete_sample(sample_or_id)
+        sample_ids = [
+            sample_or_id.id
+            if isinstance(sample_or_id, fos.Sample)
+            else sample_or_id
+            for sample_or_id in samples_or_ids
+        ]
+        self._get_query_set(id__in=sample_ids).delete()
 
     def clear(self):
         """Deletes all samples from the dataset."""
-        # @todo(Tyler) optimize by deleting the entire collection
-        self.delete_samples(self)
+        self._Doc.drop_collection()
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the

@@ -112,8 +112,9 @@ class Sample(object):
     def get_field_schema(self, ftype=None):
         """Returns a schema dictionary describing the fields of this sample.
 
-        If the sample belongs to a dataset, the schema will apply to all
-        samples in the dataset.
+        If the sample belongs to a dataset, the schema applies to all samples
+        in the dataset. Sample fields are synchronized across all samples in a
+        dataset and default to `None` if not explicitly set.
 
         Args:
             ftype (None): an optional field type to which to restrict the

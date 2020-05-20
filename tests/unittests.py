@@ -153,6 +153,72 @@ class SampleTest(unittest.TestCase):
 
 
 class SampleInDatasetTest(unittest.TestCase):
+    def test_dataset_clear(self):
+        dataset_name = self.test_dataset_clear.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        # add some samples
+        num_samples = 10
+        samples = [
+            fo.Sample(filepath="path/to/file_%d.jpg" % i)
+            for i in range(num_samples)
+        ]
+        dataset.add_samples(samples)
+        self.assertEqual(len(dataset), num_samples)
+
+        # delete all samples
+        dataset.clear()
+        self.assertEqual(len(dataset), 0)
+
+        # add some new samples
+        num_samples = 5
+        samples = [
+            fo.Sample(filepath="path/to/file_%d.jpg" % i)
+            for i in range(num_samples)
+        ]
+        dataset.add_samples(samples)
+        self.assertEqual(len(dataset), num_samples)
+
+    def test_dataset_delete_samples(self):
+        dataset_name = self.test_dataset_delete_samples.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        # add some samples
+        num_samples = 10
+        samples = [
+            fo.Sample(filepath="path/to/file_%d.jpg" % i)
+            for i in range(num_samples)
+        ]
+        ids = dataset.add_samples(samples)
+        self.assertEqual(len(dataset), num_samples)
+
+        # delete all samples
+        num_delete = 7
+        dataset.delete_samples(ids[:num_delete])
+        self.assertEqual(len(dataset), num_samples - num_delete)
+
+    def test_getitem(self):
+        dataset_name = self.test_getitem.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        # add some samples
+        samples = [
+            fo.Sample(filepath="path/to/file_%d.jpg" % i) for i in range(10)
+        ]
+        sample_ids = dataset.add_samples(samples)
+
+        sample_id = sample_ids[0]
+        self.assertIsInstance(sample_id, str)
+        sample = dataset[sample_id]
+        self.assertIsInstance(sample, fo.Sample)
+        self.assertEqual(sample.id, sample_id)
+
+        with self.assertRaises(ValueError):
+            dataset[0]
+
+        with self.assertRaises(KeyError):
+            dataset["F" * 24]
+
     def test_autopopulated_fields(self):
         dataset_name = self.test_autopopulated_fields.__name__
         dataset = fo.Dataset(name=dataset_name)
