@@ -97,10 +97,8 @@ class Dataset(foc.SampleCollection):
 
     Datasets represent a homogeneous collection of
     :class:`fiftyone.core.sample.Sample` instances that describe a particular
-    type of raw media (e.g., images) together with one or more sets of
-    :class:`fiftyone.core.labels.Label` instances (e.g., ground truth
-    annotations or model predictions) and metadata associated with those
-    labels.
+    type of raw media (e.g., images) together with a user-defined set of
+    fields.
 
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
