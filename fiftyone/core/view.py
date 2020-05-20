@@ -439,7 +439,6 @@ class DatasetView(foc.SampleCollection):
 
 
 _FIELD_DISTRIBUTIONS_PIPELINE = [
-    {"$unset": ["filepath", "metadata"]},
     {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
     {"$unwind": "$field"},
     {"$project": {"field": "$field.k", "detection": "$field.v.detections"}},
