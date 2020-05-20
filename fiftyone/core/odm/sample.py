@@ -132,6 +132,24 @@ class ODMSample(ODMDocument):
     # Metadata about the sample media
     metadata = EmbeddedDocumentField(fom.Metadata, null=True)
 
+    def __setattr__(self, name, value):
+        has_field = self.has_field(name)
+
+        if name.startswith("_") or (hasattr(self, name) and not has_field):
+            super(ODMSample, self).__setattr__(name, value)
+            return
+
+        if not has_field:
+            raise ValueError(
+                "Adding sample fields using the `sample.field = value` syntax "
+                "is not allowed; use `sample['field'] = value` instead"
+            )
+
+        if value is not None:
+            self._fields[name].validate(value)
+
+        super(ODMSample, self).__setattr__(name, value)
+
     @property
     def dataset_name(self):
         """The name of the dataset to which this sample belongs, or ``None`` if
@@ -159,6 +177,31 @@ class ODMSample(ODMDocument):
              a dictionary mapping field names to field types
         """
         raise NotImplementedError("Subclass must implement get_field_schema()")
+
+    def has_field(self, field_name):
+        """Determines whether the sample has a field of the given name.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False
+        """
+        return field_name in self._fields
+
+    def get_field(self, field_name):
+        """Gets the field of the sample.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            the field value
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        return self.__getattribute__(field_name)
 
     def add_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -189,20 +232,6 @@ class ODMSample(ODMDocument):
             "Subclass must implement add_implied_field()"
         )
 
-    def get_field(self, field_name):
-        """Gets the field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            the field value
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        return self.__getattribute__(field_name)
-
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the sample.
 
@@ -221,10 +250,10 @@ class ODMSample(ODMDocument):
                 % field_name
             )
 
-        if hasattr(self, field_name) and field_name not in self._fields:
+        if hasattr(self, field_name) and not self.has_field(field_name):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
-        if field_name not in self._fields:
+        if not self.has_field(field_name):
             if create:
                 self.add_implied_field(field_name, value)
             else:
@@ -269,7 +298,7 @@ class ODMSample(ODMDocument):
             )
 
         d = OrderedDict()
-        for field_name in cls_or_self._fields_ordered:
+        for field_name in cls_or_self._fields:
             field = cls_or_self._fields[field_name]
             if issubclass(ftype, BaseField):
                 if isinstance(field, ftype):
@@ -353,62 +382,30 @@ class ODMNoDatasetSample(ODMSample):
     meta = {"abstract": True}
 
     def __init__(self, *args, **kwargs):
-        # Initialize default fields
-        default_fields = {
-            k: v for k, v in iteritems(kwargs) if k in self._fields
-        }
-        super(ODMNoDatasetSample, self).__init__(*args, **default_fields)
+        fields = set(self.field_names)
 
-        # Make a local copy of the fields, independent of the class fields
-        self._nods_fields = deepcopy(self._fields)
-        self._nods_fields_ordered = deepcopy(self._fields_ordered)
+        # Initialize existing fields
+        existing_fields = {k: v for k, v in iteritems(kwargs) if k in fields}
+        super(ODMNoDatasetSample, self).__init__(*args, **existing_fields)
 
-        # Add dynamic fields to the instance
+        # Convert fields to instance attributes
+        # This allows each sample to have bespoke attributes
+        self._fields = deepcopy(self._fields)
+        self._fields_ordered = deepcopy(self._fields_ordered)
+
+        # Add new fields
         for field_name, value in iteritems(kwargs):
-            if field_name not in self._fields:
+            if field_name not in fields:
                 self.set_field(field_name, value, create=True)
 
-    def __getattribute__(self, name):
-        # Override class attributes `_fields` and `_fields_ordered`
-        # with their instance counterparts
-        if name == "_fields" and hasattr(self, "_nods_fields"):
-            return self._nods_fields
-
-        if name == "_fields_ordered" and hasattr(self, "_nods_fields_ordered"):
-            return self._nods_fields_ordered
-
-        return super(ODMNoDatasetSample, self).__getattribute__(name)
-
     def __setattr__(self, name, value):
-        # Override class attributes `_fields` and `_fields_ordered`
-        # with their instance counterparts
-        if name == "_fields_ordered" and hasattr(self, "_nods_fields_ordered"):
-            self.__setattr__("_nods_fields_ordered", value)
-            return
-
-        if name.startswith("_") or (
-            hasattr(self, name) and name not in self.field_names
-        ):
-            super(ODMNoDatasetSample, self).__setattr__(name, value)
-            return
-
-        if name not in self.field_names:
-            raise ValueError(
-                "Adding sample fields using the `sample.%s = value` syntax is "
-                'not allowed; use `sample["%s"] = value` syntax instead'
-                % (name, name)
-            )
-
-        if value is not None:
-            self._fields[name].validate(value)
-
         super(ODMNoDatasetSample, self).__setattr__(name, value)
 
-        if name in self._fields:
-            # __set__() has not yet been called because the field is not a
-            # class attribute; so we must explicitly call it
+        try:
             field = self._fields[name]
             field.__set__(self, value)
+        except KeyError:
+            pass
 
     @property
     def dataset_name(self):
@@ -468,25 +465,6 @@ class ODMDatasetSample(ODMSample):
     """
 
     meta = {"abstract": True}
-
-    def __setattr__(self, name, value):
-        if name.startswith("_") or (
-            hasattr(self, name) and name not in self.field_names
-        ):
-            super(ODMDatasetSample, self).__setattr__(name, value)
-            return
-
-        if name not in self.field_names:
-            raise ValueError(
-                "Adding sample fields using the `sample.%s = value` syntax is "
-                'not allowed; use `sample["%s"] = value` syntax instead'
-                % (name, name)
-            )
-
-        if value is not None:
-            self._fields[name].validate(value)
-
-        super(ODMDatasetSample, self).__setattr__(name, value)
 
     @property
     def dataset_name(self):
