@@ -32,14 +32,21 @@ body {
   height: 100%;
   display: block;
   z-index: 100;
+  overflow-y: hidden;
 }
 
 .sample:hover > .sample-info {
-  display: none;
+  top: 100%;
+  z-index: 2000;
+  height: auto;
 }
 
 .sample-info > .menu {
   background: hsla(210, 20%, 23%, 0.6) !important;
+}
+
+.sample:hover > .sample-info {
+  background: hsla(210, 20%, 23%, 1);
 }
 
 .hide-info .sample-info {

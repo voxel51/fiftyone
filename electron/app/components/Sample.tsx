@@ -17,6 +17,7 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
   const src = `${host}?path=${sample.filepath}`;
   const socket = getSocket(port, "state");
   const id = sample._id.$oid;
+  const s = sample;
 
   const handleClick = () => {
     const newSelected = { ...selected };
@@ -52,9 +53,8 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
             ID &middot; <code>{sample._id.$oid}</code>
           </Menu.Item>
           {Object.keys(sample).map((k, i) => {
-            const s = sample;
             if (s[k] && s[k]._cls === "Classification") {
-              return <InfoItem k={k} v={[k].label} />;
+              return <InfoItem k={k} v={s[k].label} />;
             } else if (k === "tags") {
               return <InfoItem k={k} v={s[k].join(" ")} />;
             }
