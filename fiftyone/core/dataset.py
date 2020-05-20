@@ -259,8 +259,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample._in_db:
             sample = sample.copy()
 
-        sample._doc = self._sample_doc(**sample.to_dict())
-        sample.save()
+        sample._set_backing_doc(self._sample_doc(**sample.to_dict()))
+
         return sample.id
 
     def add_samples(self, samples, expand_schema=True):
@@ -296,7 +296,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         for sample, doc in zip(samples, docs):
-            sample._doc = doc
+            sample._set_backing_doc(doc)
 
         return [str(doc.id) for doc in docs]
 

@@ -13,14 +13,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import os
-import logging
+import weakref
 
 import fiftyone.core.odm as foo
 
@@ -249,7 +249,8 @@ class Sample(object):
             raise TypeError("Unexpected doc type: %s" % type(doc))
 
         sample = cls.__new__(cls)
-        sample._doc = doc
+        sample._set_backing_doc(doc)
+
         return sample
 
     def save(self):
@@ -275,3 +276,15 @@ class Sample(object):
 
             return load_dataset(self.dataset_name)
         return None
+
+    def _set_backing_doc(self, doc):
+        """Swap the backing doc when adding to a dataset. This should only
+        ever be called by :class:`Dataset`.
+        """
+
+        self._doc = doc
+
+        # ensure the doc is saved to the database
+        if not doc.id:
+            doc.save()
+
