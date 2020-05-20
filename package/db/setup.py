@@ -45,7 +45,9 @@ class CustomBdistWheel(bdist_wheel):
             # we only distribute 64-bit binaries
             self.plat_name = "linux_x86_64"
         else:
-            raise ValueError("Unsupported platform: %r" % self.plat_name)
+            raise ValueError(
+                "Unsupported target platform: %r" % self.plat_name
+            )
 
     def get_tag(self):
         impl, abi_tag, plat_name = bdist_wheel.get_tag(self)

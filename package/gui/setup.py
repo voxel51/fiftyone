@@ -28,7 +28,9 @@ class CustomBdistWheel(bdist_wheel):
             # also provides 32-bit binaries
             self.plat_name = "linux_x86_64"
         else:
-            raise ValueError("Unsupported platform: %r" % self.plat_name)
+            raise ValueError(
+                "Unsupported target platform: %r" % self.plat_name
+            )
 
     def get_tag(self):
         impl, abi_tag, plat_name = bdist_wheel.get_tag(self)
@@ -55,7 +57,9 @@ class CustomBdistWheel(bdist_wheel):
         elif self.plat_name.startswith("mac"):
             apps = glob.glob(os.path.join(release_dir, "mac", "FiftyOne*.app"))
         else:
-            raise OSError("Unsupported target platform: %r" % self.plat_name)
+            raise ValueError(
+                "Unsupported target platform: %r" % self.plat_name
+            )
         if not apps:
             raise RuntimeError(
                 "Could not find any built Electron apps in %r. "
