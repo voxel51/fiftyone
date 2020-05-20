@@ -110,12 +110,15 @@ class Sample(object):
         return self._doc.dataset_name
 
     def get_field_schema(self, ftype=None):
-        """Gets a dictionary of all fields on this sample (and all samples in
-        the same dataset if applicable).
+        """Returns a schema dictionary describing the fields of this sample.
+
+        If the sample belongs to a dataset, the schema will apply to all
+        samples in the dataset.
 
         Args:
-            ftype (None): the subclass of ``BaseField`` for primitives or
-                ``EmbeddedDocument`` for ``EmbeddedDocumentField`` types
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                ``mongoengine.fields.BaseField``
 
         Returns:
              a dictionary mapping field names to field types
@@ -132,7 +135,7 @@ class Sample(object):
             the field value
 
         Raises:
-            KeyError: if the field name is not valid
+            AttributeError: if the field does not exist
         """
         return self._doc.get_field(field_name)
 
@@ -163,7 +166,7 @@ class Sample(object):
             field_name: the name of the field to clear
 
         Raises:
-            KeyError: if the given field does not exist
+            AttributeError: if the field does not exist
         """
         return self._doc.clear_field(field_name=field_name)
 
@@ -229,14 +232,18 @@ class Sample(object):
 
     @classmethod
     def from_doc(cls, doc):
-        """Creates an instance of the :class:`fiftyone.core.sample.Sample`
-        class backed by the given document.
+        """Creates an instance of the :class:`Sample` class backed by the given
+        document.
 
         Args:
-            document: an :class:`fiftyone.core.odm.ODMDatasetSample` instance
+            document: a :class:`fiftyone.core.odm.ODMDatasetSample`
+
+        Returns:
+            a :class:`Sample`
         """
         if not isinstance(doc, foo.ODMDatasetSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
+
         sample = cls.__new__(cls)
         sample._doc = doc
         return sample
