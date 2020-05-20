@@ -428,9 +428,13 @@ class Dataset(foc.SampleCollection):
                 instances or sample IDs. For example, ``samples`` may be a
                 :class:`fiftyone.core.views.DatasetView`
         """
-        # @todo(Tyler) optimize with bulk deletion
-        for sample_or_id in samples_or_ids:
-            self.delete_sample(sample_or_id)
+        sample_ids = [
+            sample_or_id.id
+            if isinstance(sample_or_id, fos.Sample)
+            else sample_or_id
+            for sample_or_id in samples_or_ids
+        ]
+        self._get_query_set(id__in=sample_ids).delete()
 
     def clear(self):
         """Deletes all samples from the dataset."""

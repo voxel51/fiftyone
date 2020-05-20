@@ -223,12 +223,10 @@ class SampleInDatasetTest(unittest.TestCase):
         ]
         dataset.add_samples(samples)
         self.assertEqual(len(dataset), num_samples)
-        print(dataset.summary())
 
         # delete all samples
         dataset.clear()
         self.assertEqual(len(dataset), 0)
-        print(dataset.summary())
 
         # add some new samples
         num_samples = 5
@@ -238,7 +236,24 @@ class SampleInDatasetTest(unittest.TestCase):
         ]
         dataset.add_samples(samples)
         self.assertEqual(len(dataset), num_samples)
-        print(dataset.summary())
+
+    def test_dataset_delete_samples(self):
+        dataset_name = self.test_dataset_delete_samples.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        # add some samples
+        num_samples = 10
+        samples = [
+            fo.Sample(filepath="path/to/file_%d.jpg" % i)
+            for i in range(num_samples)
+        ]
+        ids = dataset.add_samples(samples)
+        self.assertEqual(len(dataset), num_samples)
+
+        # delete all samples
+        num_delete = 7
+        dataset.delete_samples(ids[:num_delete])
+        self.assertEqual(len(dataset), num_samples - num_delete)
 
 
 class LabelsTest(unittest.TestCase):
