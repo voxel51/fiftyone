@@ -69,7 +69,6 @@ import six
 
 from collections import OrderedDict
 from copy import deepcopy
-import logging
 import numbers
 
 from mongoengine import (
@@ -83,7 +82,6 @@ from mongoengine import (
     StringField,
 )
 from mongoengine.fields import BaseField
-from mongoengine.errors import ValidationError
 
 import fiftyone.core.metadata as fom
 
