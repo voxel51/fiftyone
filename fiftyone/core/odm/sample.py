@@ -90,9 +90,6 @@ import fiftyone.core.metadata as fom
 from .document import ODMDocument
 
 
-logger = logging.getLogger(__name__)
-
-
 def nodataset(func):
     """Decorator that provides a more informative error when attempting to call
     a class method on an ODMNoDatasetSample instance that should only be
@@ -148,12 +145,15 @@ class ODMSample(ODMDocument):
         return self._fields_ordered
 
     def get_field_schema(self, ftype=None):
-        """Gets a dictionary of all fields on this sample (and all samples in
-        the same dataset if applicable).
+        """Returns a schema dictionary describing the fields of this sample.
+
+        If the sample belongs to a dataset, the schema will apply to all
+        samples in the dataset.
 
         Args:
-            ftype (None): the subclass of ``BaseField`` for primitives or
-                ``EmbeddedDocument`` for ``EmbeddedDocumentField`` types
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                ``mongoengine.fields.BaseField``
 
         Returns:
              a dictionary mapping field names to field types
@@ -166,12 +166,14 @@ class ODMSample(ODMDocument):
         """Adds a new field to the dataset.
 
         Args:
-            field_name: the name of the field to add
-            ftype: the type (subclass of ``BaseField``) of the field to create
-            embedded_doc_type (None): the ``EmbeddedDocument`` type. Used only
-                when ``ftype == EmbeddedDocumentField``
-            subfield (None): the optional contained field for lists and dicts,
-                if provided
+            field_name: the field name
+            ftype: the field type to create. Must be a subclass of
+                ``mongoengine.fields.BaseField``
+            embedded_doc_type (None): the
+                ``mongoengine.fields.EmbeddedDocument`` type of the field. Used
+                only when ``ftype == EmbeddedDocumentField``
+            subfield (None): the type of the contained field. Used only when
+                `ftype` is a list or dict type
         """
         raise NotImplementedError("Subclass must implement add_field()")
 
@@ -180,41 +182,29 @@ class ODMSample(ODMDocument):
         provided value.
 
         Args:
-            field_name: the name of the field to add
-            value: the value to infer the field type from
+            field_name: the field name
+            value: the field value
         """
-        raise NotImplementedError("Subclass must implement add_field()")
-
-    def delete_field(self, field_name):
-        """Deletes the field from the dataset.
-
-        Args:
-            field_name: the name of the field to delete
-        """
-        raise NotImplementedError("Subclass must implement delete_field()")
+        raise NotImplementedError(
+            "Subclass must implement add_implied_field()"
+        )
 
     def get_field(self, field_name):
-        """Gets the field for the sample.
+        """Gets the field of the sample.
 
         Args:
-            field_name: the name of the field to add
+            field_name: the field name
 
         Returns:
             the field value
         """
-        if not isinstance(field_name, six.string_types):
-            raise TypeError("Field name must be a string")
-
-        if field_name in self._fields:
-            return self.__getattribute__(field_name)
-
-        raise KeyError("Invalid field '%s'" % field_name)
+        return self.__getattribute__(field_name)
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the sample.
 
         Args:
-            field_name: the name of the field to set
+            field_name: the field name
             value: the field value
             create (False): whether to create the field if it does not exist
 
@@ -240,34 +230,36 @@ class ODMSample(ODMDocument):
                     "create a new field"
                 )
 
-        return self.__setattr__(field_name, value)
+        self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
         """Clears the value of a field of the sample.
 
         Args:
-            field_name: the name of the field to clear
-
-        Raises:
-            KeyError: if the field name is not valid
+            field_name: the field name
         """
         raise NotImplementedError("Subclass must implement clear_field()")
+
+    def delete_field(self, field_name):
+        """Deletes the field from the dataset.
+
+        Args:
+            field_name: the field name
+        """
+        raise NotImplementedError("Subclass must implement delete_field()")
 
     @staticmethod
     def _get_field_schema(cls_or_self, ftype=None):
         if ftype is None:
             ftype = BaseField
 
-        if not issubclass(ftype, BaseField) and not issubclass(
-            ftype, EmbeddedDocument
-        ):
+        if not issubclass(ftype, (BaseField, EmbeddedDocument)):
             raise ValueError(
-                "ftype must be subclass of %s or %s" % BaseField,
-                EmbeddedDocument,
+                "Field type %s must be subclass of %s or %s"
+                % (ftype, BaseField, EmbeddedDocument)
             )
 
         d = OrderedDict()
-
         for field_name in cls_or_self._fields_ordered:
             field = cls_or_self._fields[field_name]
             if issubclass(ftype, BaseField):
@@ -288,7 +280,7 @@ class ODMSample(ODMDocument):
 
         if not issubclass(ftype, BaseField):
             raise ValueError(
-                "Invalid field type '%s' is not a subclass of '%s'"
+                "Invalid field type '%s'; must be a subclass of '%s'"
                 % (ftype, BaseField)
             )
 
@@ -310,10 +302,10 @@ class ODMSample(ODMDocument):
         cls_or_self._fields_ordered += (field_name,)
         try:
             if issubclass(cls_or_self, ODMSample):
-                # only set the attribute if it is a class
+                # Only set the attribute if it is a class
                 setattr(cls_or_self, field_name, field)
         except TypeError:
-            # instance, not class, so do not setattr
+            # Instance, not class, so do not `setattr`
             pass
 
     @staticmethod
@@ -322,9 +314,7 @@ class ODMSample(ODMDocument):
         provided value.
         """
         if field_name in cls_or_self._fields:
-            raise ValueError(
-                "Attempting to add field '%s' that already exists" % field_name
-            )
+            raise ValueError("Field '%s' already exists" % field_name)
 
         if isinstance(value, EmbeddedDocument):
             cls_or_self.add_field(
@@ -345,9 +335,7 @@ class ODMSample(ODMDocument):
         elif isinstance(value, dict):
             cls_or_self.add_field(field_name, DictField)
         else:
-            raise TypeError(
-                "Invalid type '%s'; could not be cast to Field" % type(value)
-            )
+            raise TypeError("Unsupported field value '%s'" % type(value))
 
 
 class ODMNoDatasetSample(ODMSample):
@@ -356,23 +344,23 @@ class ODMNoDatasetSample(ODMSample):
     meta = {"abstract": True}
 
     def __init__(self, *args, **kwargs):
-        # Initialize with existing fields
-        existing_fields = {
+        # Initialize default fields
+        default_fields = {
             k: v for k, v in iteritems(kwargs) if k in self._fields
         }
-        super(ODMNoDatasetSample, self).__init__(*args, **existing_fields)
+        super(ODMNoDatasetSample, self).__init__(*args, **default_fields)
 
         # Make a local copy of the fields, independent of the class fields
         self._nods_fields = deepcopy(self._fields)
         self._nods_fields_ordered = deepcopy(self._fields_ordered)
 
-        # Add new fields to the instance
+        # Add dynamic fields to the instance
         for field_name, value in iteritems(kwargs):
             if field_name not in self._fields:
                 self.set_field(field_name, value, create=True)
 
     def __getattribute__(self, name):
-        # Override class attributes '_fields' and '_fields_ordered'
+        # Override class attributes `_fields` and `_fields_ordered`
         # with their instance counterparts
         if name == "_fields" and hasattr(self, "_nods_fields"):
             return self._nods_fields
@@ -383,45 +371,35 @@ class ODMNoDatasetSample(ODMSample):
         return super(ODMNoDatasetSample, self).__getattribute__(name)
 
     def __setattr__(self, name, value):
-        # Override class attributes '_fields' and '_fields_ordered'
+        # Override class attributes `_fields` and `_fields_ordered`
         # with their instance counterparts
         if name == "_fields_ordered" and hasattr(self, "_nods_fields_ordered"):
-            return self.__setattr__("_nods_fields_ordered", value)
+            self.__setattr__("_nods_fields_ordered", value)
+            return
 
-        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
-        # all attrs starting with "_" or that exist and are not fields are
-        # deferred to super
         if name.startswith("_") or (
             hasattr(self, name) and name not in self.field_names
         ):
-            return super(ODMNoDatasetSample, self).__setattr__(name, value)
+            super(ODMNoDatasetSample, self).__setattr__(name, value)
+            return
 
         if name not in self.field_names:
-            logger.warning(
-                "FiftyOne does not allow new fields to be dynamically created "
-                "by setting them"
+            raise ValueError(
+                "Adding sample fields using the `sample.%s = value` syntax is "
+                'not allowed; use `sample["%s"] = value` syntax instead'
+                % (name, name)
             )
-            return super(ODMNoDatasetSample, self).__setattr__(name, value)
-        # @todo(Tyler) END NOT-DRY ############################################
 
-        # @todo(Tyler) this should replace the field rather than validate
         if value is not None:
-            try:
-                self._fields[name].validate(value)
-            except ValidationError:
-                # @todo(Tyler)
-                raise ValidationError(
-                    "Changing a field type is not yet supported"
-                )
+            self._fields[name].validate(value)
 
-        result = super(ODMNoDatasetSample, self).__setattr__(name, value)
+        super(ODMNoDatasetSample, self).__setattr__(name, value)
+
         if name in self._fields:
-            # __set__() is not called because the field is not a class
-            # attribute so we must explicitly call it
+            # __set__() has not yet been called because the field is not a
+            # class attribute; so we must explicitly call it
             field = self._fields[name]
             field.__set__(self, value)
-
-        return result
 
     @property
     def dataset_name(self):
@@ -440,9 +418,9 @@ class ODMNoDatasetSample(ODMSample):
         self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
         self._add_field(
-            cls_or_self=self,
-            field_name=field_name,
-            ftype=ftype,
+            self,
+            field_name,
+            ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
         )
@@ -456,7 +434,7 @@ class ODMNoDatasetSample(ODMSample):
     @nodataset
     def delete_field(self, field_name):
         # @todo(Tyler) ODMNoDatasetSample.delete_field
-        raise NotImplementedError("TODO TYLER")
+        raise NotImplementedError("Not yet implemented")
 
 
 class NoDatasetError(Exception):
@@ -483,27 +461,23 @@ class ODMDatasetSample(ODMSample):
     meta = {"abstract": True}
 
     def __setattr__(self, name, value):
-        # @todo(Tyler) this code is not DRY...occurs in 3 spots :( ############
-        # all attrs starting with "_" or that exist and are not fields are
-        # deferred to super
         if name.startswith("_") or (
             hasattr(self, name) and name not in self.field_names
         ):
-            return super(ODMDatasetSample, self).__setattr__(name, value)
+            super(ODMDatasetSample, self).__setattr__(name, value)
+            return
 
         if name not in self.field_names:
-            logger.warning(
-                "FiftyOne does not allow new fields to be dynamically created "
-                "by setting them"
+            raise ValueError(
+                "Adding sample fields using the `sample.%s = value` syntax is "
+                'not allowed; use `sample["%s"] = value` syntax instead'
+                % (name, name)
             )
-            return super(ODMDatasetSample, self).__setattr__(name, value)
-        # @todo(Tyler) END NOT-DRY ############################################
 
-        # @todo(Tyler) does validate work when value is None?
         if value is not None:
             self._fields[name].validate(value)
 
-        return super(ODMDatasetSample, self).__setattr__(name, value)
+        super(ODMDatasetSample, self).__setattr__(name, value)
 
     @property
     def dataset_name(self):
@@ -518,9 +492,9 @@ class ODMDatasetSample(ODMSample):
         cls, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
         cls._add_field(
-            cls_or_self=cls,
-            field_name=field_name,
-            ftype=ftype,
+            cls,
+            field_name,
+            ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
         )
