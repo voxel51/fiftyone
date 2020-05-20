@@ -374,17 +374,6 @@ class Dataset(foc.SampleCollection):
         """
         return fov.DatasetView(self)
 
-    def take(self, num_samples=3):
-        """Returns a string summary of a few random samples from the dataset.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return self.view().take(num_samples).head(num_samples=num_samples)
-
     def distinct(self, field):
         """Finds all distinct values of a sample field across the dataset.
         If the field is a list, the distinct values will be distinct elements
