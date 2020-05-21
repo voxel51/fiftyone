@@ -13,13 +13,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-
-# pylint: disable=wildcard-import,unused-wildcard-import
 
 from mongoengine import (
     FloatField,
