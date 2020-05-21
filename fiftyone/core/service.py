@@ -155,7 +155,7 @@ class AppService(Service):
 
 
 def _close_on_exit(service):
-    def handle_exit():
+    def handle_exit(*args):
         try:
             service.stop()
         except:
