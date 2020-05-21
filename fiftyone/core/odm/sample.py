@@ -68,7 +68,6 @@ import numbers
 from mongoengine import (
     BooleanField,
     DictField,
-    EmbeddedDocument,
     EmbeddedDocumentField,
     FloatField,
     IntField,
@@ -81,7 +80,7 @@ from mongoengine.errors import InvalidQueryError
 import fiftyone.core.metadata as fom
 
 from .dataset import SampleField
-from .document import ODMDocument
+from .document import ODMDocument, ODMEmbeddedDocument
 
 
 def nodataset(func):
@@ -227,8 +226,8 @@ class ODMSample(ODMDocument):
             ftype: the field type to create. Must be a subclass of
                 ``mongoengine.fields.BaseField``
             embedded_doc_type (None): the
-                ``mongoengine.fields.EmbeddedDocument`` type of the field. Used
-                only when ``ftype == EmbeddedDocumentField``
+                ``fiftyone.core.odm.ODMEmbeddedDocument`` type of the field.
+                Used only when ``ftype == EmbeddedDocumentField``
             subfield (None): the type of the contained field. Used only when
                 `ftype` is a list or dict type
         """
@@ -305,10 +304,10 @@ class ODMSample(ODMDocument):
         if ftype is None:
             ftype = BaseField
 
-        if not issubclass(ftype, (BaseField, EmbeddedDocument)):
+        if not issubclass(ftype, (BaseField, ODMEmbeddedDocument)):
             raise ValueError(
                 "Field type %s must be subclass of %s or %s"
-                % (ftype, BaseField, EmbeddedDocument)
+                % (ftype, BaseField, ODMEmbeddedDocument)
             )
 
         d = OrderedDict()
@@ -368,7 +367,7 @@ class ODMSample(ODMDocument):
         if field_name in cls_or_self._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        if isinstance(value, EmbeddedDocument):
+        if isinstance(value, ODMEmbeddedDocument):
             cls_or_self.add_field(
                 field_name,
                 EmbeddedDocumentField,
