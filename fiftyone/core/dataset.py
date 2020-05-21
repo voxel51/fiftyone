@@ -139,15 +139,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "obtain a DatasetView if you want to slice your samples"
             )
 
-        doc = None
         try:
             doc = self._get_query_set().get(id=sample_id)
+            return self._load_sample_from_doc(doc)
         except DoesNotExist:
-            pass
-        if not doc:
             raise KeyError("No sample found with ID '%s'" % sample_id)
-
-        return self._load_sample_from_doc(doc)
 
     def __delitem__(self, sample_id):
         self[sample_id]._delete()
