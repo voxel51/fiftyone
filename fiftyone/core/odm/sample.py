@@ -381,9 +381,13 @@ class ODMNoDatasetSample(ODMSample):
     def __init__(self, *args, **kwargs):
         fields = set(self.field_names)
 
-        # Initialize existing fields
-        existing_fields = {k: v for k, v in iteritems(kwargs) if k in fields}
-        super(ODMNoDatasetSample, self).__init__(*args, **existing_fields)
+        # Pull the new fields before calling init of super
+        new_fields = {}
+        for k in list(kwargs.keys()):
+            if k not in fields and not k.startswith("_"):
+                new_fields[k] = kwargs.pop(k)
+
+        super(ODMNoDatasetSample, self).__init__(*args, **kwargs)
 
         # Convert fields to instance attributes
         # This allows each sample to have bespoke attributes
@@ -391,7 +395,7 @@ class ODMNoDatasetSample(ODMSample):
         self._fields_ordered = deepcopy(self._fields_ordered)
 
         # Add new fields
-        for field_name, value in iteritems(kwargs):
+        for field_name, value in iteritems(new_fields):
             if field_name not in fields:
                 self.set_field(field_name, value, create=True)
 
