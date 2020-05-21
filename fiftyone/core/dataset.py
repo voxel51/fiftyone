@@ -320,8 +320,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         del self[sample_id]
 
-        fos.Sample._unset_backing_doc(
-            dataset_name=self.name, sample_id=sample_id
+        # unset the dataset for the sample
+        fos.Sample._reset_backing_docs(
+            dataset_name=self.name, sample_ids=[sample_id]
         )
 
     def delete_samples(self, samples_or_ids):
@@ -340,9 +341,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
         self._get_query_set(id__in=sample_ids).delete()
 
+        # unset the dataset for the samples
+        fos.Sample._reset_backing_docs(
+            dataset_name=self.name, sample_ids=sample_ids
+        )
+
     def clear(self):
         """Deletes all samples from the dataset."""
         self._sample_doc_cls.drop_collection()
+
+        # unset the dataset for all samples
+        fos.Sample._reset_all_backing_docs(dataset_name=self.name)
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the

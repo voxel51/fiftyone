@@ -17,6 +17,7 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+from future.utils import itervalues
 
 from collections import defaultdict
 import os
@@ -314,9 +315,26 @@ class Sample(object):
             dataset_instances[self.id] = self
 
     @classmethod
-    def _unset_backing_doc(cls, dataset_name, sample_id):
-        print("Sample._unset_backing_doc")
+    def _reset_backing_docs(cls, dataset_name, sample_ids):
+        """Resets the sample's backing document to a
+        :class:`fiftyone.core.odm.ODMNoDatasetSample` instance.
+
+        For use **only** when removing samples from a dataset.
+        """
         dataset_instances = cls._instances[dataset_name]
-        if sample_id in dataset_instances:
-            sample = dataset_instances.pop(sample_id)
+        for sample_id in sample_ids:
+            sample = dataset_instances.pop(sample_id, None)
+            if sample is not None:
+                sample._doc = sample.copy()._doc
+
+    @classmethod
+    def _reset_all_backing_docs(cls, dataset_name):
+        """Resets the sample's backing document to a
+        :class:`fiftyone.core.odm.ODMNoDatasetSample` instance for all samples
+        in a dataset.
+
+        For use **only** when clearing a dataset.
+        """
+        dataset_instances = cls._instances.pop(dataset_name)
+        for sample in itervalues(dataset_instances):
             sample._doc = sample.copy()._doc

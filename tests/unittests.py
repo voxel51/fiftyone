@@ -118,16 +118,51 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset_name = self.test_dataset_delete_samples.__name__
         dataset = fo.Dataset(name=dataset_name)
 
+        # add 1 sample
         sample = fo.Sample(filepath="test1.png")
         dataset.add_sample(sample)
         self.assertTrue(sample.in_dataset)
         self.assertIsNotNone(sample.id)
         self.assertEqual(sample.dataset_name, dataset.name)
 
+        # delete 1 sample
         dataset.delete_sample(sample)
         self.assertFalse(sample.in_dataset)
         self.assertIsNone(sample.id)
         self.assertIsNone(sample.dataset_name)
+
+        # add multiple samples
+        filepath_template = "test%d.png"
+        num_samples = 10
+        samples = [
+            fo.Sample(filepath=filepath_template % i)
+            for i in range(num_samples)
+        ]
+        dataset.add_samples(samples)
+        for sample in samples:
+            self.assertTrue(sample.in_dataset)
+            self.assertIsNotNone(sample.id)
+            self.assertEqual(sample.dataset_name, dataset.name)
+
+        # delete some
+        num_delete = 7
+        dataset.delete_samples([sample.id for sample in samples[:num_delete]])
+        for i, sample in enumerate(samples):
+            if i < num_delete:
+                self.assertFalse(sample.in_dataset)
+                self.assertIsNone(sample.id)
+                self.assertIsNone(sample.dataset_name)
+            else:
+                self.assertTrue(sample.in_dataset)
+                self.assertIsNotNone(sample.id)
+                self.assertEqual(sample.dataset_name, dataset.name)
+
+        # clear dataset
+        dataset.clear()
+        for sample in samples:
+            self.assertFalse(sample.in_dataset)
+            self.assertIsNone(sample.id)
+            self.assertIsNone(sample.dataset_name)
 
     def test_sample_set_field(self):
         """Test when a field is added to the dataset schema via implicit adding
