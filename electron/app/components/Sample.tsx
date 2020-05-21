@@ -49,14 +49,13 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
       />
       <div className="sample-info">
         <Menu vertical style={{ width: "100%", height: "100%" }}>
-          <Menu.Item as="span">
-            ID &middot; <code>{sample._id.$oid}</code>
-          </Menu.Item>
+          <InfoItem k="id" v={s._id.$oid} />
+          <InfoItem k="filepath" v={s.filepath} />
+          <InfoItem k="tags" v={JSON.stringify(s.tags, 2)} />
+          <InfoItem k="metadata" v={JSON.stringify(s.metadata, 2)} />
           {Object.keys(sample).map((k, i) => {
             if (s[k] && s[k]._cls === "Classification") {
-              return <InfoItem k={k} v={s[k].label} />;
-            } else if (k === "tags") {
-              return <InfoItem k={k} v={s[k].join(" ")} />;
+              return <InfoItem key={i} k={k} v={s[k].label} />;
             }
           })}
         </Menu>

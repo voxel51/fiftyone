@@ -37,7 +37,6 @@ body {
 
 .sample:hover > .sample-info {
   top: 100%;
-  z-index: 2000;
   height: auto;
 }
 
@@ -45,8 +44,18 @@ body {
   background: hsla(210, 20%, 23%, 0.6) !important;
 }
 
+.sample-info > .menu > .item {
+  white-space: nowrap;
+  overflow-x: hidden;
+}
+
+.sample:hover > .sample-info > .menu > .item {
+  overflow-x: auto;
+}
+
 .sample:hover > .sample-info {
   background: hsla(210, 20%, 23%, 1);
+  z-index: 101;
 }
 
 .hide-info .sample:not(:hover) .sample-info {
