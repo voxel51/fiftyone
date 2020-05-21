@@ -33,7 +33,7 @@ def make_cifar10_data_loader(image_paths, sample_ids, batch_size):
 def predict(model, imgs):
     inputs = dict(input=imgs.cuda().half())
     outputs = model(inputs)
-    logits = outputs['logits'].detach().cpu().numpy()
+    logits = outputs["logits"].detach().cpu().numpy()
     predictions = np.argmax(logits, axis=1)
     odds = np.exp(logits)
     confidences = np.max(odds, axis=1) / np.sum(odds, axis=1)
@@ -41,8 +41,9 @@ def predict(model, imgs):
 
 
 #
-# Extract a few images to process (some of these will have been manipulated above)
+# Extract a few images to process
 #
+
 num_samples = 1000
 batch_size = 20
 view = train_view.sample(num_samples)
@@ -54,26 +55,29 @@ data_loader = make_cifar10_data_loader(image_paths, sample_ids, batch_size)
 #
 # Perform prediction and store results in dataset
 #
+
 model.train(False)
 with torch.no_grad():
     for imgs, sample_ids in data_loader:
-        predictions, _, logits = predict(model, imgs)
+        predictions, _, logits_ = predict(model, imgs)
 
         # Add predictions to the FiftyOne dataset
-        for the_sample_id, the_prediction, the_logits in zip(
-            sample_ids, predictions, logits
+        for sample_id, prediction, logits in zip(
+            sample_ids, predictions, logits_
         ):
-            sample = dataset[the_sample_id]
+            sample = dataset[sample_id]
             sample.add_tag("processed")
-            sample.add_label(
-                "walkthrough", fo.ClassificationLabel.create(cifar10_map[the_prediction],
-                                                             logits=the_logits)
+            sample["walkthrough"] = fo.Classification(
+                label=cifar10_map[prediction], logits=logits,
             )
+            sample.save()
 
 #
 # Print some information about the Predictions
 #
 num_processed = len(train_view.match_tag("processed"))
 num_mistaken = len(train_view.match_tag("processed").match_tag("mistake"))
-print("%d processed and %d of these have artificially corrupted labels" %
-    (num_processed, num_mistaken))
+print(
+    "%d processed and %d of these have artificially corrupted labels"
+    % (num_processed, num_mistaken)
+)

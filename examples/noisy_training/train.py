@@ -22,27 +22,28 @@ from simple_resnet import *
 # reduce some values just to get the gist of the walkthrough
 settings = {}
 # These settings are for a powerful GPU with more than 6GBs Memory
-#settings['batch_size'] = 512
-#settings['take'] = None
+# settings['batch_size'] = 512
+# settings['take'] = None
 # These will work on GPU's with 4GB RAM
 # You may need to lower further to run the walkthrough
-settings['batch_size'] = 36
-settings['take'] = 10000
+settings["batch_size"] = 36
+settings["take"] = 10000
 # 24 gets us to a good point in this setup
-settings['epochs'] = 24
+settings["epochs"] = 24
 # Where to save the model
-settings['model_path'] = './model.pth'
+settings["model_path"] = "./model.pth"
 # Should not need to change these
-settings['n_rounds'] = 1
-settings['p_initial'] = 1.0
+settings["n_rounds"] = 1
+settings["p_initial"] = 1.0
 
-localtime = lambda: time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+localtime = lambda: time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
 
 class Config:
-    '''A configuration for the training.'''
+    """A configuration for the training."""
 
     def __init__(self, d):
-        '''d is a dictionary of arguments from command-line.'''
+        """d is a dictionary of arguments from command-line."""
 
         self.batch_size = d["batch_size"]
         self.epochs = d["epochs"]
@@ -60,30 +61,58 @@ config = Config(settings)
 
 ##  Dataset Setup
 cifar10_mean, cifar10_std = [
-    (125.31, 122.95, 113.87), # equals np.mean(cifar10()['train']['data'], axis=(0,1,2))
-    (62.99, 62.09, 66.70), # equals np.std(cifar10()['train']['data'], axis=(0,1,2))
+    (
+        125.31,
+        122.95,
+        113.87,
+    ),  # equals np.mean(cifar10()['train']['data'], axis=(0,1,2))
+    (
+        62.99,
+        62.09,
+        66.70,
+    ),  # equals np.std(cifar10()['train']['data'], axis=(0,1,2))
 ]
 
-cifar10_map = "airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck".split(', ')
+cifar10_map = "airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck".split(
+    ", "
+)
 cifar10_rev = {name: index for index, name in enumerate(cifar10_map)}
 N_labels = 10
 
-class DataLoader():
-    def __init__(self, dataset, batch_size, shuffle, set_random_choices=False, num_workers=0, drop_last=False):
+
+class DataLoader:
+    def __init__(
+        self,
+        dataset,
+        batch_size,
+        shuffle,
+        set_random_choices=False,
+        num_workers=0,
+        drop_last=False,
+    ):
         self.dataset = dataset
         self.batch_size = batch_size
         self.set_random_choices = set_random_choices
         self.dataloader = torch.utils.data.DataLoader(
-            dataset, batch_size=batch_size, num_workers=num_workers, pin_memory=True, shuffle=shuffle, drop_last=drop_last
+            dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            pin_memory=True,
+            shuffle=shuffle,
+            drop_last=drop_last,
         )
 
     def __iter__(self):
         if self.set_random_choices:
             self.dataset.set_random_choices()
-        return ({'input': x.to(device).half(), 'target': y.to(device).long()} for (x,y) in self.dataloader)
+        return (
+            {"input": x.to(device).half(), "target": y.to(device).long()}
+            for (x, y) in self.dataloader
+        )
 
     def __len__(self):
         return len(self.dataloader)
+
 
 ## Initial Data Input
 # We are going to cache the data in memory to make model training faster.
@@ -93,7 +122,7 @@ class DataLoader():
 # Produces train_set and valid_set that are lists of tuples: (image, label)
 timer = Timer()
 # remove
-#whole_dataset = cifar10(root=DATA_DIR)
+# whole_dataset = cifar10(root=DATA_DIR)
 #
 
 if train_view is None:
@@ -105,12 +134,14 @@ if valid_view is None:
         "train expects 'valid_view' in the global namespace. See README.md"
     )
 
+
 def update_progress(progress):
     # progress is [0,1]
     t = 51
-    i = int(progress*t)
-    r = t-i
-    print("\r[%s%s] %.1f%%" % ("#"*i, " "*r,  progress*100), end="")
+    i = int(progress * t)
+    r = t - i
+    print("\r[%s%s] %.1f%%" % ("#" * i, " " * r, progress * 100), end="")
+
 
 print("Caching the data in memory to support faster training.")
 
@@ -122,8 +153,10 @@ else:
     _train_view = train_view
 
 _mistakes_used_in_training = _train_view.match_tag("mistake")
-print(f"{len(_mistakes_used_in_training)} samples with bad labels " +
-      "will be used in training")
+print(
+    f"{len(_mistakes_used_in_training)} samples with bad labels "
+    + "will be used in training"
+)
 
 _valid_view = valid_view
 
@@ -157,23 +190,33 @@ update_progress(1)
 print()
 
 whole_dataset = {
-    'train': {
-        'data': np.asarray(_train_images),
-        'targets': np.asarray(_train_labels)
+    "train": {
+        "data": np.asarray(_train_images),
+        "targets": np.asarray(_train_labels),
     },
-    'valid': {
-        'data': np.asarray(_valid_images),
-        'targets': np.asarray(_valid_labels)
-    }
+    "valid": {
+        "data": np.asarray(_valid_images),
+        "targets": np.asarray(_valid_labels),
+    },
 }
 
 print("Preprocessing training data")
 transforms = [
-    partial(normalise, mean=np.array(cifar10_mean, dtype=np.float32), std=np.array(cifar10_std, dtype=np.float32)),
-    partial(transpose, source='NHWC', target='NCHW'),
+    partial(
+        normalise,
+        mean=np.array(cifar10_mean, dtype=np.float32),
+        std=np.array(cifar10_std, dtype=np.float32),
+    ),
+    partial(transpose, source="NHWC", target="NCHW"),
 ]
-whole_train_set = list(zip(*preprocess(whole_dataset['train'], [partial(pad, border=4)] + transforms).values()))
-valid_set = list(zip(*preprocess(whole_dataset['valid'], transforms).values()))
+whole_train_set = list(
+    zip(
+        *preprocess(
+            whole_dataset["train"], [partial(pad, border=4)] + transforms
+        ).values()
+    )
+)
+valid_set = list(zip(*preprocess(whole_dataset["valid"], transforms).values()))
 print(f"Finished loading and preprocessing in {timer():.2f} seconds")
 
 print(f"train set: {len(whole_train_set)} samples")
@@ -190,54 +233,83 @@ total_N = len(whole_train_set)
 
 start_N = round(config.p_initial * total_N)
 
-incr_N = ( 0 if config.n_rounds == 1 else
-    round((total_N-start_N) / (config.n_rounds-1))
+incr_N = (
+    0
+    if config.n_rounds == 1
+    else round((total_N - start_N) / (config.n_rounds - 1))
 )
 
-print(f'Setting up the experiment: {total_N} training samples.')
-print(f'- starting with {start_N}')
-print(f'- incrementing by {incr_N} for each of {config.n_rounds-1} rounds')
-print(f'- total rounds: {config.n_rounds}')
+print(f"Setting up the experiment: {total_N} training samples.")
+print(f"- starting with {start_N}")
+print(f"- incrementing by {incr_N} for each of {config.n_rounds-1} rounds")
+print(f"- total rounds: {config.n_rounds}")
 
-print(f'Starting the model training at {localtime()}')
+print(f"Starting the model training at {localtime()}")
 
 inuse_N = start_N
 
 model = Network(simple_resnet()).to(device).half()
 logs, state = Table(), {MODEL: model, LOSS: x_ent_loss}
 
-valid_batches = DataLoader(valid_set, config.batch_size, shuffle=False, drop_last=False)
+valid_batches = DataLoader(
+    valid_set, config.batch_size, shuffle=False, drop_last=False
+)
 
 # initially randomly shuffle the dataset and take the initial number of samples
 whole_train_set_use = whole_train_set[0:inuse_N]
 whole_train_set_avail = whole_train_set[inuse_N:]
-print(f'Split training set into two; using {len(whole_train_set_use)}, available {len(whole_train_set_avail)}')
+print(
+    f"Split training set into two; using {len(whole_train_set_use)}, available {len(whole_train_set_avail)}"
+)
 
 for iteration in range(config.n_rounds):
-    print(f'beginning next round of training, using {inuse_N} samples')
+    print(f"beginning next round of training, using {inuse_N} samples")
 
     train_batches = DataLoader(
-            Transform(whole_train_set_use, train_transforms),
-            config.batch_size, shuffle=True, set_random_choices=True, drop_last=True
+        Transform(whole_train_set_use, train_transforms),
+        config.batch_size,
+        shuffle=True,
+        set_random_choices=True,
+        drop_last=True,
     )
-    lr = lambda step: lr_schedule(step/len(train_batches))/config.batch_size
+    lr = (
+        lambda step: lr_schedule(step / len(train_batches)) / config.batch_size
+    )
     opts = [
-        SGD(trainable_params(model).values(),
-        {'lr': lr, 'weight_decay': Const(5e-4*config.batch_size), 'momentum': Const(0.9)})
+        SGD(
+            trainable_params(model).values(),
+            {
+                "lr": lr,
+                "weight_decay": Const(5e-4 * config.batch_size),
+                "momentum": Const(0.9),
+            },
+        )
     ]
     state[OPTS] = opts
 
     for epoch in range(config.epochs):
-        logs.append(union({'epoch': epoch+1}, train_epoch(state, Timer(torch.cuda.synchronize), train_batches, valid_batches)))
-    logs.df().query(f'epoch=={config.epochs}')[['train_acc', 'valid_acc']].describe()
+        logs.append(
+            union(
+                {"epoch": epoch + 1},
+                train_epoch(
+                    state,
+                    Timer(torch.cuda.synchronize),
+                    train_batches,
+                    valid_batches,
+                ),
+            )
+        )
+    logs.df().query(f"epoch=={config.epochs}")[
+        ["train_acc", "valid_acc"]
+    ].describe()
 
-    #model.train(False) # == model.eval()
+    # model.train(False) # == model.eval()
     #
-    #correct = 0
-    #total = 0
-    #class_correct = list(0. for i in range(10))
-    #class_total = list(0. for i in range(10))
-    #with torch.no_grad():
+    # correct = 0
+    # total = 0
+    # class_correct = list(0. for i in range(10))
+    # class_total = list(0. for i in range(10))
+    # with torch.no_grad():
     #    for data in valid_batches.dataloader:
     #        images, labels = data
     #        inputs = dict(input=images.cuda().half())
@@ -253,9 +325,9 @@ for iteration in range(config.n_rounds):
     #            class_correct[label] += c[i].item()
     #            class_total[label] += 1
     #
-    #iteration_stats["validation_accuracy"] = correct / total
+    # iteration_stats["validation_accuracy"] = correct / total
     #
-    #model.train(True)
+    # model.train(True)
 
     # extend the corr_train_set_use with that from avail
     if incr_N > 0:
@@ -265,4 +337,4 @@ for iteration in range(config.n_rounds):
         assert inuse_N == len(whole_train_set_use)
 
 if config.model_path:
-    torch.save(model.state_dict(),config.model_path)
+    torch.save(model.state_dict(), config.model_path)

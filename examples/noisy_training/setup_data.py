@@ -1,5 +1,7 @@
 """
-Sets up the data for the walkthrough.  Loads CIFAR-10 both splits and adds some
+Loads the train and test splits of the CIFAR-10 dataset
+Sets up the data for the walkthrough:
+-   Loads CIFAR-10 both splits and adds some
 label noise. Uses the global namespace so everything is available during the
 next steps in the walkthrough.
 
@@ -7,42 +9,51 @@ next steps in the walkthrough.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-import fiftyone as fo
-import fiftyone.zoo as foz
 import random
 
+import fiftyone as fo
+import fiftyone.core.odm as foo
+import fiftyone.zoo as foz
 
-# This is the current way to load a both splits of the CIFAR-10 dataset and tag
-# each sample by its split.
-# THIS NEEDS TO CHANGE AFTER PR#70 is merged
-dataset = foz.load_zoo_dataset("cifar10", split="train")
-for sample in dataset.iter_samples():
-    sample.add_tag("train")
-foz.load_zoo_dataset("cifar10", split="test")
 
-train_view = dataset.default_view().match_tag("train")
-valid_view = dataset.default_view().match({"tags": { "$ne": "train" } })
-for sample in valid_view.iter_samples():
-    sample.add_tag("valid")
+def load_zoo_samples(zoo_dataset_name, split):
+    samples = []
+    for sample in foz.load_zoo_dataset(zoo_dataset_name, split=split):
+        sample.tags.append(split)
+        samples.append(sample)
 
-cifar10_map = "airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck".split(', ')
+    foo.drop_database()
+    return samples
 
-# make 20% samples artificially be mistakes
-artificial_mistakes = 0.2
-num_mistakes = len(train_view)*artificial_mistakes
 
-mistake_label = fo.ClassificationLabel.create("yes")
-for sample in train_view.sample(num_mistakes).iter_samples():
-    sample.add_tag("mistake")
-    label = sample.get_labels()["ground_truth"].label
+# Load `train` and `test` splits of CIFAR-10 into a FiftyOne dataset
+# @todo update after zoo is upgraded
+dataset = fo.Dataset("cifar10")
+dataset.add_samples(load_zoo_samples("cifar10", "train"))
+dataset.add_samples(load_zoo_samples("cifar10", "test"))
 
-    mistaker = random.randint(0, 9)
-    while cifar10_map[mistaker] == label:
-        mistaker = random.randint(0, 9)
+print(dataset.summary())
+print(dataset.view().first())
 
-    bad_label = fo.ClassificationLabel.create(cifar10_map[mistaker])
-    sample.add_label("ground_truth", bad_label)
-    # This is just for the ability to easily render labels in the visualization
-    # since rendering tags is currently not supported.
-    sample.add_label("label_mistake", mistake_label)
+labels = "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(
+    ","
+)
+
+# Artificially corrupt 20% of the training labels
+train_view = dataset.view().match_tag("train")
+num_mistakes = 0.2 * len(train_view)
+for sample in train_view.take(num_mistakes):
+    # Mark the sample as a mistake
+    sample.tags.append("mistake")
+
+    # @todo remove when visualizing tags is supported
+    sample["mistake"] = fo.Classification(label="yes")
+
+    # Pick a new incorrect label
+    mistake = random.randint(0, 9)
+    while labels[mistake] == sample.ground_truth.label:
+        mistake = random.randint(0, 9)
+
+    # Corrupt the ground truth label
+    sample.ground_truth = fo.Classification(label=labels[mistake])
+    sample.save()
