@@ -39,10 +39,9 @@ class Label(ODMEmbeddedDocument):
 
     Label instances represent an atomic collection of labels associated with a
     sample in a dataset. Label instances may represent concrete tasks such as
-    image classification (:class:`ClassificationLabel`) or image object
-    detection (:class:`DetectionLabels`), or they may represent higher-level
-    constructs such as a collection of labels for a particular sample
-    (:class:`ImageLabels`).
+    image classification (:class:`Classification`) or image object detection
+    (:class:`Detections`), or they may represent higher-level constructs such
+    as a collection of labels for a particular sample (:class:`ImageLabels`).
     """
 
     meta = {"allow_inheritance": True}
@@ -105,7 +104,7 @@ class Classification(ImageLabel):
 
 class Detection(ODMEmbeddedDocument):
     """Backing document for individual detections stored in
-    :class:`fiftyone.core.labels.DetectionLabels`instances.
+    :class:`fiftyone.core.labels.Detections`instances.
 
     Args:
         label: the label string
