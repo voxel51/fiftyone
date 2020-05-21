@@ -11,6 +11,7 @@ import {
 } from "semantic-ui-react";
 
 import Fields from "../components/Fields";
+import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
 import Samples from "../components/Samples";
 import Search from "../components/Search";
@@ -33,10 +34,12 @@ function Dataset(props) {
   const tabs = ["samples", "fields"];
   const [view, setView] = useState({ visible: false, sample: null });
   let src = null;
+  let s = null;
   if (view.sample) {
     const path = view.sample.filepath;
     const host = `http://127.0.0.1:${port}/`;
     src = `${host}?path=${path}`;
+    s = view.sample;
   }
 
   if (loading) {
@@ -46,6 +49,7 @@ function Dataset(props) {
   if (!connected) {
     return <Redirect to={routes.SETUP} />;
   }
+
   return (
     <>
       <Sidebar
@@ -59,7 +63,7 @@ function Dataset(props) {
         visible={view.visible}
         width="very wide"
       >
-        {view.sample ? (
+        {s ? (
           <>
             <Player51
               src={src}
@@ -69,7 +73,36 @@ function Dataset(props) {
               }}
               sample={view.sample}
             />
-            <pre>{JSON.stringify(view.sample, null, 2)}</pre>
+            <InfoItem k="id" v={s._id.$oid} />
+            <InfoItem k="filepath" v={s.filepath} />
+            <InfoItem k="tags" v={JSON.stringify(s.tags, 2)} />
+            <InfoItem k="metadata" v={JSON.stringify(s.metadata, 2)} />
+            {Object.keys(s).map((k, i) => {
+              if (s[k] && s[k]._cls === "Classification") {
+                return (
+                  <>
+                    <InfoItem key={i} k={k} v={s[k].label} />
+                    <pre style={{ padding: "1rem" }}>
+                      {JSON.stringify(s[k], null, 2)}
+                    </pre>
+                  </>
+                );
+              } else if (s[k] && s[k]._cls === "Detections") {
+                const l = s[k].detections.length;
+                return (
+                  <>
+                    <InfoItem
+                      key={i}
+                      k={k}
+                      v={`${l} detection${l === 1 ? "" : "s"}`}
+                    />
+                    <pre style={{ padding: "1rem" }}>
+                      {JSON.stringify(s[k], null, 2)}
+                    </pre>
+                  </>
+                );
+              }
+            })}
           </>
         ) : null}
       </Sidebar>

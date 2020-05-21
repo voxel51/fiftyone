@@ -2,15 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Menu } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
+import InfoItem from "./InfoItem";
 import Player51 from "./Player51";
 import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
-
-const InfoItem = ({ k, v }) => (
-  <Menu.Item as="span">
-    {k} &middot; <code>{v}</code>
-  </Menu.Item>
-);
 
 const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
   const host = `http://127.0.0.1:${port}`;
@@ -28,6 +23,7 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
       dispatch(updateState(data));
     });
   };
+
   return (
     <div
       className="sample"
@@ -53,9 +49,18 @@ const Sample = ({ dispatch, sample, port, setSelected, selected, setView }) => {
           <InfoItem k="filepath" v={s.filepath} />
           <InfoItem k="tags" v={JSON.stringify(s.tags, 2)} />
           <InfoItem k="metadata" v={JSON.stringify(s.metadata, 2)} />
-          {Object.keys(sample).map((k, i) => {
+          {Object.keys(s).map((k, i) => {
             if (s[k] && s[k]._cls === "Classification") {
               return <InfoItem key={i} k={k} v={s[k].label} />;
+            } else if (s[k] && s[k]._cls === "Detections") {
+              const l = s[k].detections.length;
+              return (
+                <InfoItem
+                  key={i}
+                  k={k}
+                  v={`${l} detection${l === 1 ? "" : "s"}`}
+                />
+              );
             }
           })}
         </Menu>
