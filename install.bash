@@ -51,10 +51,6 @@ cd ..
 
 echo "***** INSTALLING PLAYER51 *****"
 git submodule update --init
-cd electron/app/player51
-yarn install
-bash build.bash
-cd -
 
 echo "***** INSTALLING MONGODB *****"
 mkdir -p ~/.fiftyone/bin
