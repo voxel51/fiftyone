@@ -12,6 +12,7 @@ import {
 import InfoItem from "./InfoItem";
 import logo from "../logo.png";
 import connect from "../utils/connect";
+import Rendering from "./Rendering";
 
 const _Sidebar = (props) => {
   const { state, connected, loading, showInfo, setShowInfo } = props;
@@ -23,23 +24,11 @@ const _Sidebar = (props) => {
       vertical
       direction={"left"}
       visible={!loading}
+      width="wide"
     >
       <Menu.Item as="h3">
         <Image src={logo} alt="FiftyOne" />
       </Menu.Item>
-      {hasDataset ? (
-        <Menu.Item as="h3">
-          <label style={{ color: "hsl(210, 20%, 90%) !important" }}>
-            Overlay sample info
-          </label>
-          <Checkbox
-            toggle
-            style={{ padding: "none", float: "right" }}
-            onClick={() => setShowInfo(!showInfo)}
-            checked={showInfo}
-          />
-        </Menu.Item>
-      ) : null}
       <Menu.Item as="h3">
         {!connected
           ? "Not connected"
@@ -54,6 +43,7 @@ const _Sidebar = (props) => {
           </Menu>
         ) : null}
       </Menu.Item>
+      <Rendering />
       {hasDataset ? (
         <Menu.Item as="h4">
           View

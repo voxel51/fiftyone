@@ -60,7 +60,7 @@ function App(props: Props) {
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
-  const bodyStyle = { height: "100%", marginLeft: 260 };
+  const bodyStyle = { height: "100%", marginLeft: 350 };
 
   return (
     <>
