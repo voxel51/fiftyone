@@ -1,8 +1,15 @@
-import { remote } from "electron";
-import React, { ReactNode, useState } from "react";
+import { remote, ipcRenderer } from "electron";
+import React, { ReactNode, useState, useRef } from "react";
+import { Button, Modal, Label } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
-import { updateState } from "../actions/update";
+import PortForm from "../components/PortForm";
+import {
+  updateState,
+  updateConnected,
+  updatePort,
+  updateLoading,
+} from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
@@ -11,18 +18,33 @@ type Props = {
 };
 
 function App(props: Props) {
-  const { children, dispatch, update } = props;
-  const [connectionEstablished, setConnectionEstablished] = useState(false);
-  const socket = getSocket("state");
+  const { loading, children, dispatch, update, connected, port } = props;
+  const portRef = useRef();
+  const [result, setResultFromForm] = useState({ port, connected });
+  const [socket, setSocket] = useState(getSocket(result.port, "state"));
+
   useSubscribe(socket, "connect", () => {
-    console.log("connected");
-    if (!connectionEstablished) {
+    dispatch(updateConnected(true));
+    if (loading) {
       socket.emit("get_current_state", "", (data) => {
         dispatch(updateState(data));
+        dispatch(updateLoading(false));
       });
-      setConnectionEstablished(true);
     }
   });
+  if (socket.connected && !connected) {
+    dispatch(updateConnected(true));
+    dispatch(updateLoading(true));
+    socket.emit("get_current_state", "", (data) => {
+      dispatch(updateState(data));
+      dispatch(updateLoading(false));
+    });
+  }
+  setTimeout(() => {
+    if (loading && !connected) {
+      dispatch(updateLoading(false));
+    }
+  }, 250);
   useSubscribe(socket, "disconnect", () => console.log("disconnected"));
   useSubscribe(socket, "update", (data) => {
     if (data.close) {
@@ -31,10 +53,36 @@ function App(props: Props) {
     dispatch(updateState(data));
   });
 
+  ipcRenderer.on("update-session-config", (event, message) => {
+    portRef.current.ref.current.click();
+  });
+  const bodyStyle = { height: "100%", padding: "1em" };
+  if (connected) bodyStyle.marginLeft = 260;
+
   return (
     <>
+      <Modal
+        trigger={<Button style={{ display: "none" }} ref={portRef}></Button>}
+        size="tiny"
+        onClose={() => {
+          dispatch(updatePort(result.port));
+          setSocket(getSocket(result.port, "state"));
+        }}
+      >
+        <Modal.Header>Port number</Modal.Header>
+        <Modal.Content>
+          <Modal.Description>
+            <PortForm
+              setResult={setResultFromForm}
+              connected={connected}
+              port={port}
+              invalid={false}
+            />
+          </Modal.Description>
+        </Modal.Content>
+      </Modal>
       <Sidebar />
-      <div style={{ marginLeft: 260, height: "100%" }}>{children}</div>
+      <div style={bodyStyle}>{children}</div>
     </>
   );
 }

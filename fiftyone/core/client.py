@@ -19,12 +19,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+from retrying import retry
 import threading
 
 import socketio
 
 import fiftyone.constants as foc
-
+import fiftyone.core.service as fos
 
 logging.getLogger("socketio").setLevel(logging.ERROR)
 logging.getLogger("engineio").setLevel(logging.ERROR)
@@ -79,6 +80,11 @@ class BaseClient(socketio.ClientNamespace):
         self.emit("update", data.serialize())
 
 
+@retry(wait_fixed=500, stop_max_attempt_number=5)
+def _connect(sio, addr):
+    sio.connect(addr)
+
+
 class HasClient(object):
     """Mixin that supports maintaining a shared state of data using web
     sockets.
@@ -96,7 +102,8 @@ class HasClient(object):
     _HC_ATTR_NAME = None
     _HC_ATTR_TYPE = None
 
-    def __init__(self):
+    def __init__(self, port):
+        self._server_service = fos.ServerService(port)
         self._hc_sio = socketio.Client()
         # the following is a monkey patch to set threads to daemon mode
         self._hc_sio.eio.start_background_task = _start_background_task
@@ -104,7 +111,7 @@ class HasClient(object):
             "/" + self._HC_NAMESPACE, self._HC_ATTR_TYPE
         )
         self._hc_sio.register_namespace(self._hc_client)
-        self._hc_sio.connect(foc.SERVER_ADDR)
+        _connect(self._hc_sio, foc.SERVER_ADDR % port)
 
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
@@ -126,6 +133,13 @@ class HasClient(object):
             self._hc_client.update(value)
         else:
             super(HasClient, self).__setattr__(name, value)
+
+    @property
+    def server_port(self):
+        """Getter for the port number the :class:`ServerService` is listening
+        on.
+        """
+        return self._server_service.port
 
 
 def _start_background_task(target, *args, **kwargs):

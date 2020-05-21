@@ -19,10 +19,12 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import os
 
 from flask import Flask, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
 
+os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.core.state as fos
 
 
@@ -147,7 +149,7 @@ class StateController(Namespace):
             return []
 
         view = view.skip((page - 1) * page_length).limit(page_length)
-        return [s.get_backing_doc_dict(extended=True) for s in view]
+        return [s.to_dict(extended=True) for s in view]
 
     def on_get_label_distributions(self, _):
         """Gets the labels distributions for the current state.
