@@ -146,7 +146,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise KeyError("No sample found with ID '%s'" % sample_id)
 
     def __delitem__(self, sample_id):
-        self[sample_id]._delete()
+        self.remove_sample(sample_id)
 
     @property
     def name(self):
@@ -306,27 +306,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         #   samples in a view
         raise NotImplementedError("Not yet implemented")
 
-    def delete_sample(self, sample_or_id):
-        """Deletes the given sample from the dataset.
+    def remove_sample(self, sample_or_id):
+        """Removes the given sample from the dataset.
+
+        If a reference to the sample exists in memory, the sample's dataset
+        will be "unset" such that `sample.in_dataset == False`
 
         Args:
             sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
-                ID to delete
+                ID to remove
         """
-        if isinstance(sample_or_id, fos.Sample):
-            sample_id = sample_or_id.id
-        else:
+        if not isinstance(sample_or_id, fos.Sample):
             sample_id = sample_or_id
+            sample = self[sample_id]
+        else:
+            sample = sample_or_id
+            sample_id = sample.id
 
-        del self[sample_id]
+        sample._delete()
 
         # unset the dataset for the sample
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=[sample_id]
         )
 
-    def delete_samples(self, samples_or_ids):
-        """Deletes the given samples from the dataset.
+    def remove_samples(self, samples_or_ids):
+        """Removes the given samples from the dataset.
+
+        If reference to a sample exists in memory, the sample's dataset
+        will be "unset" such that `sample.in_dataset == False`
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -347,7 +355,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def clear(self):
-        """Deletes all samples from the dataset."""
+        """Removes all samples from the dataset.
+
+        If reference to a sample exists in memory, the sample's dataset
+        will be "unset" such that `sample.in_dataset == False`
+        """
         self._sample_doc_cls.drop_collection()
 
         # unset the dataset for all samples

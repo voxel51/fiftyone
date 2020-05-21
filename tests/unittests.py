@@ -126,7 +126,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         self.assertEqual(sample.dataset_name, dataset.name)
 
         # delete 1 sample
-        dataset.delete_sample(sample)
+        dataset.remove_sample(sample)
         self.assertFalse(sample.in_dataset)
         self.assertIsNone(sample.id)
         self.assertIsNone(sample.dataset_name)
@@ -146,7 +146,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
 
         # delete some
         num_delete = 7
-        dataset.delete_samples([sample.id for sample in samples[:num_delete]])
+        dataset.remove_samples([sample.id for sample in samples[:num_delete]])
         for i, sample in enumerate(samples):
             if i < num_delete:
                 self.assertFalse(sample.in_dataset)
@@ -350,7 +350,7 @@ class SampleInDatasetTest(unittest.TestCase):
 
         # delete all samples
         num_delete = 7
-        dataset.delete_samples(ids[:num_delete])
+        dataset.remove_samples(ids[:num_delete])
         self.assertEqual(len(dataset), num_samples - num_delete)
 
     def test_getitem(self):
