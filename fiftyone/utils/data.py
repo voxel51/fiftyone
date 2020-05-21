@@ -338,8 +338,8 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
 
     Args:
         image_paths: an iterable of image paths
-        labels: an iterable of
-            :class:`fiftyone.core.labels.ClassificationLabel` instances
+        labels: an iterable of :class:`fiftyone.core.labels.Classification`
+            instances
         dataset_dir: the directory to which to write the dataset
     """
     num_samples = len(image_paths)
@@ -395,7 +395,7 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
 
     Args:
         image_paths: an iterable of image paths
-        labels: an iterable of :class:`fiftyone.core.labels.DetectionLabels`
+        labels: an iterable of :class:`fiftyone.core.labels.Detections`
             instances
         dataset_dir: the directory to which to write the dataset
     """
@@ -512,7 +512,7 @@ def parse_image_classification_dataset(dataset_dir, sample_parser=None):
 
     Returns:
         an iterable of ``(image_path, label)`` pairs, where ``label`` is an
-        instance of :class:`fiftyone.core.labels.ClassificationLabel`
+        instance of :class:`fiftyone.core.labels.Classification`
     """
     if sample_parser is None:
         sample_parser = ImageClassificationSampleParser()
@@ -552,7 +552,7 @@ def parse_image_detection_dataset(dataset_dir, sample_parser=None):
 
     Returns:
         an iterable of ``(image_path, label)`` pairs, where ``label`` is an
-        instance of :class:`fiftyone.core.labels.DetectionLabels`
+        instance of :class:`fiftyone.core.labels.Detections`
     """
     if sample_parser is None:
         sample_parser = ImageDetectionSampleParser()
@@ -771,7 +771,7 @@ class LabeledImageSampleParser(SampleParser):
 class ImageClassificationSampleParser(LabeledImageSampleParser):
     """Interface for parsing image classification samples emitted by dataset
     iterators whose labels are to be stored as
-    :class:`fiftyone.core.labels.ClassificationLabel` instances.
+    :class:`fiftyone.core.labels.Classification` instances.
 
     The default implementation provided by this class supports samples that are
     ``(image_or_path, target)`` tuples, where:
@@ -800,7 +800,7 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
             sample: the sample
 
         Returns:
-            a :class:`fiftyone.core.labels.ClassificationLabel` instance
+            a :class:`fiftyone.core.labels.Classification` instance
         """
         target = sample[1]
 
@@ -809,13 +809,13 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
         else:
             label = target
 
-        return fol.ClassificationLabel.create(label)
+        return fol.Classification(label=label)
 
 
 class ImageDetectionSampleParser(LabeledImageSampleParser):
     """Interface for parsing image detection samples emitted by dataset
     iterators whose labels are to be stored as
-    :class:`fiftyone.core.labels.DetectionLabels` instances.
+    :class:`fiftyone.core.labels.Detections` instances.
 
     The default implementation provided by this class supports samples that are
     ``(image_or_path, detections)`` tuples, where:
@@ -896,7 +896,7 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
             sample: the sample
 
         Returns:
-            a :class:`fiftyone.core.labels.DetectionLabels` instance
+            a :class:`fiftyone.core.labels.Detections` instance
         """
         target = sample[1]
 
@@ -917,7 +917,7 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
 
         Returns:
             img: a numpy image
-            label: a :class:`fiftyone.core.labels.DetectionLabels` instance
+            label: a :class:`fiftyone.core.labels.Detections` instance
         """
         img, target = sample
         img = self._parse_image(img)
@@ -953,7 +953,7 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
                 }
             )
 
-        return fol.DetectionLabels.create(detections)
+        return fol.Detections(detections=detections)
 
 
 class ImageLabelsSampleParser(LabeledImageSampleParser):
@@ -983,7 +983,7 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
             a :class:`fiftyone.core.labels.ImageLabels` instance
         """
         labels = sample[1]
-        return fol.ImageLabels.create(labels)
+        return fol.ImageLabels(labels=labels)
 
 
 def _to_rel_bounding_box(tlx, tly, w, h, img):

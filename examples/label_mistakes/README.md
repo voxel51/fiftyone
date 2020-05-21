@@ -57,27 +57,30 @@ labeling mistakes; this is only for the sake of the walkthrough.
 Let's use the CIFAR-10 dataset in the zoo and work with a subset of it.
 
 ```py
+import random
+
 import fiftyone as fo
 import fiftyone.zoo as foz
-import random
 
 dataset = foz.load_zoo_dataset("cifar10")
 
-labels_map = "airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck".split(', ')
+# @todo: load this from ZooDatasetInfo
+labels_map = (
+    "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(",")
+)
 
-# make 10% samples artificially be mistakes
-mistake_label = fo.ClassificationLabel.create("yes")
-for sample in dataset.default_view().sample(1000).iter_samples():
-    sample.add_tag("mistake")
-    label = sample.get_labels()["ground_truth"].label
+# Artificially make 10% of sample labels mistakes
+for sample in dataset.view().take(1000):
+    mistake = random.randint(0, 9)
+    while labels_map[mistake] == sample.ground_truth.label:
+        mistake = random.randint(0, 9)
 
-    mistaker = random.randint(0, 9)
-    while labels_map[mistaker] == label:
-        mistaker = random.randint(0, 9)
+    sample.tags.append("mistake")
+    sample["ground_truth"] = fo.Classification(label=labels_map[mistake])
+    sample["label_mistake"] = fo.Classification(label="yes")
+    sample.save()
 
-    bad_label = fo.ClassificationLabel.create(labels_map[mistaker])
-    sample.add_label("ground_truth", bad_label)
-    sample.add_label("label_mistake", mistake_label)
+print(dataset.summary())
 ```
 
 ## Run predictions on the dataset
@@ -145,7 +148,7 @@ model_name = "resnet50"
 
 num_samples = 1000
 batch_size = 20
-view = dataset.default_view().sample(num_samples)
+view = dataset.view().take(num_samples)
 image_paths, sample_ids = zip(
     *[(s.filepath, s.id) for s in view.iter_samples()]
 )
@@ -156,31 +159,23 @@ data_loader = make_cifar10_data_loader(image_paths, sample_ids, batch_size)
 #
 
 for imgs, sample_ids in data_loader:
-    predictions, _, logits = predict(model, imgs)
+    predictions, _, logits_ = predict(model, imgs)
 
     # Add predictions to your FiftyOne dataset
-    for the_sample_id, the_prediction, the_logits in zip(
-        sample_ids, predictions, logits
-    ):
-        sample = dataset[the_sample_id]
-        sample.add_tag("processed")
-        sample.add_label(
-            model_name,
-            fo.ClassificationLabel.create(
-                labels_map[the_prediction], logits=the_logits
-            )
+    for sample_id, prediction, logits in zip(sample_ids, predictions, logits_):
+        sample = dataset[sample_id]
+        sample.tags.append("processed")
+        sample[model_name] = fo.Classification(
+            label=labels_map[prediction], logits=logits,
         )
+        sample.save()
 
 #
 # Print some information about the predictions
 #
 
-num_processed = len(
-    dataset.default_view().match_tag("processed")
-)
-num_corrupted = len(
-    dataset.default_view().match_tag("processed").match_tag("mistake")
-)
+num_processed = len(dataset.view().match_tag("processed"))
+num_corrupted = len(dataset.view().match_tag("processed").match_tag("mistake"))
 print(
     "Processed %d images and %d of these have artificially corrupted labels" %
     (num_processed, num_corrupted)
@@ -196,8 +191,8 @@ and in the visualization.
 ```py
 import fiftyone.brain.mistakenness as fbm
 
-h_view = dataset.default_view().match_tag("processed")
-fbm.compute_mistakenness(h_view, model_name, key_insight="mistakenness")
+h_view = dataset.view().match_tag("processed")
+fbm.compute_mistakenness(h_view, model_name)
 
 # Launch the FiftyOne dashboard
 session = fo.launch_dashboard()
@@ -206,17 +201,17 @@ session = fo.launch_dashboard()
 session.dataset = dataset
 
 # Show only the samples that were processed
-view = dataset.default_view().match_tag("processed")
+view = dataset.view().match_tag("processed")
 session.view = view
 
 # Show only the samples for which we added label mistakes
-view = dataset.default_view().match_tag("mistake")
+view = dataset.view().match_tag("mistake")
 session.view = view
 
 # Show the samples we processed in rank order by the hardness
-mistake_view = (dataset.default_view()
+mistake_view = (dataset.view()
     .match_tag("processed")
-    .sort_by("insights.mistakenness.scalar", reverse=True)
+    .sort_by("mistakenness", reverse=True)
 )
 session.view = mistake_view
 ```
