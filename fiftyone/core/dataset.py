@@ -198,7 +198,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             subfield (None): the type of the contained field. Used only when
                 `ftype` is a list or dict type
         """
-        # Update sample class
         self._sample_doc_cls.add_field(
             field_name,
             ftype,
@@ -207,12 +206,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def delete_sample_field(self, field_name):
-        """Delete an existing field from the dataset
+        """Deletes the field from all samples in the dataset.
 
         Args:
             field_name: the field name
+
+        Raises:
+            AttributeError: if the field does not exist
         """
-        self._sample_doc_cls.delete_field(field_name=field_name)
+        self._sample_doc_cls.delete_field(field_name)
 
     def get_tags(self):
         """Returns the set of tags in the dataset.
@@ -924,7 +926,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for field_name, field in iteritems(sample.get_field_schema()):
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
-                        field_name=field_name, value=sample[field_name]
+                        field_name, sample[field_name]
                     )
                     fields = self.get_sample_fields()
 
