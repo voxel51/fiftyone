@@ -482,6 +482,7 @@ class ODMDatasetSample(ODMSample):
             subfield=subfield,
         )
 
+        # @todo(Tyler) refactor to avoid local import here
         if save:
             from fiftyone.core.dataset import Dataset
 
