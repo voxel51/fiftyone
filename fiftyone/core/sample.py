@@ -13,14 +13,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
 import os
-import logging
+import weakref
 
 import fiftyone.core.odm as foo
 
@@ -39,6 +39,9 @@ class Sample(object):
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample
     """
+
+    # Instance references keyed by [dataset_name][sample_id]
+    _instances = defaultdict(dict)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         self._doc = foo.ODMNoDatasetSample(
@@ -248,8 +251,23 @@ class Sample(object):
         if not isinstance(doc, foo.ODMDatasetSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
 
-        sample = cls.__new__(cls)
-        sample._doc = doc
+        if not doc.id:
+            raise ValueError("`doc` is not saved to the database.")
+
+        try:
+            # get instance if exists
+            ref = cls._instances[doc.dataset_name][str(doc.id)]
+
+            # de-reference the weakref
+            sample = ref and ref()
+        except KeyError:
+            sample = None
+
+        if sample is None:
+            sample = cls.__new__(cls)
+            sample._doc = None  # set to prevent RecursionError
+            sample._set_backing_doc(doc)
+
         return sample
 
     def save(self):
@@ -275,3 +293,32 @@ class Sample(object):
 
             return load_dataset(self.dataset_name)
         return None
+
+    def _set_backing_doc(self, doc):
+        """Updates the backing doc for the sample.
+
+        For use **only** when adding a sample to a dataset.
+        """
+        if isinstance(self._doc, foo.ODMDatasetSample):
+            raise TypeError("Sample already belongs to a dataset")
+
+        if not isinstance(doc, foo.ODMDatasetSample):
+            raise TypeError(
+                "Backing doc must be an instance of %s; found %s"
+                % (foo.ODMDatasetSample, type(doc))
+            )
+
+        self._doc = doc
+
+        # ensure the doc is saved to the database
+        if not doc.id:
+            doc.save()
+
+        try:
+            ref = self._instances[self.dataset_name][self.id]
+            if ref() is None:
+                # ref is stale, overwrite
+                self._instances[self.dataset_name][self.id] = weakref.ref(self)
+        except KeyError:
+            # ref does not exist, so add it
+            self._instances[self.dataset_name][self.id] = weakref.ref(self)
