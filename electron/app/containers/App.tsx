@@ -20,6 +20,7 @@ type Props = {
 
 function App(props: Props) {
   const { path, url } = useRouteMatch();
+  const [showInfo, setShowInfo] = useState(true);
   const { loading, children, dispatch, update, connected, port } = props;
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
@@ -88,8 +89,10 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
-      <Sidebar />
-      <div style={bodyStyle}>{children}</div>
+      <Sidebar showInfo={showInfo} setShowInfo={setShowInfo} />
+      <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
+        {children}
+      </div>
     </>
   );
 }
