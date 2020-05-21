@@ -41,7 +41,7 @@ class Sample(object):
     """
 
     # Instance references keyed by [dataset_name][sample_id]
-    _instances = defaultdict(dict)
+    _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         self._doc = foo.ODMNoDatasetSample(
@@ -256,14 +256,8 @@ class Sample(object):
 
         try:
             # get instance if exists
-            ref = cls._instances[doc.dataset_name][str(doc.id)]
-
-            # de-reference the weakref
-            sample = ref and ref()
+            sample = cls._instances[doc.dataset_name][str(doc.id)]
         except KeyError:
-            sample = None
-
-        if sample is None:
             sample = cls.__new__(cls)
             sample._doc = None  # set to prevent RecursionError
             sample._set_backing_doc(doc)
@@ -314,11 +308,7 @@ class Sample(object):
         if not doc.id:
             doc.save()
 
-        try:
-            ref = self._instances[self.dataset_name][self.id]
-            if ref() is None:
-                # ref is stale, overwrite
-                self._instances[self.dataset_name][self.id] = weakref.ref(self)
-        except KeyError:
-            # ref does not exist, so add it
-            self._instances[self.dataset_name][self.id] = weakref.ref(self)
+        # save weak reference
+        dataset_instances = self._instances[doc.dataset_name]
+        if self.id not in dataset_instances:
+            dataset_instances[self.id] = self
