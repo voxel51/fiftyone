@@ -312,3 +312,11 @@ class Sample(object):
         dataset_instances = self._instances[doc.dataset_name]
         if self.id not in dataset_instances:
             dataset_instances[self.id] = self
+
+    @classmethod
+    def _unset_backing_doc(cls, dataset_name, sample_id):
+        print("Sample._unset_backing_doc")
+        dataset_instances = cls._instances[dataset_name]
+        if sample_id in dataset_instances:
+            sample = dataset_instances.pop(sample_id)
+            sample._doc = sample.copy()._doc

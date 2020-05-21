@@ -320,6 +320,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         del self[sample_id]
 
+        fos.Sample._unset_backing_doc(
+            dataset_name=self.name, sample_id=sample_id
+        )
+
     def delete_samples(self, samples_or_ids):
         """Deletes the given samples from the dataset.
 

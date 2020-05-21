@@ -27,16 +27,135 @@ import fiftyone as fo
 import fiftyone.core.odm as foo
 
 
-class DatasetTest(unittest.TestCase):
-    def test_list_dataset_names(self):
-        self.assertIsInstance(fo.list_dataset_names(), list)
+class SingleProcessSynchronizationTest(unittest.TestCase):
+    """Tests ensuring that when a dataset or samples in a dataset are modified
+    all relevant objects are instantly in sync within the same process.
+    """
 
     def test_pername_singleton(self):
+        """Test datasets are always in sync with themselves"""
         dataset1 = fo.Dataset("test_dataset")
         dataset2 = fo.Dataset("test_dataset")
         dataset3 = fo.Dataset("another_dataset")
         self.assertIs(dataset1, dataset2)
         self.assertIsNot(dataset1, dataset3)
+
+    def test_sample_singletons(self):
+        """Test samples are always in sync with themselves"""
+        dataset_name = self.test_sample_singletons.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        filepath = "test1.png"
+        sample = fo.Sample(filepath=filepath)
+        dataset.add_sample(sample)
+        sample2 = dataset[sample.id]
+        self.assertIs(sample2, sample)
+
+        sample3 = fo.Sample(filepath="test2.png")
+        dataset.add_sample(sample3)
+        self.assertIsNot(sample3, sample)
+
+        sample4 = dataset.view().match({"filepath": filepath}).first()
+        self.assertIs(sample4, sample)
+
+    def test_dataset_add_delete_field(self):
+        """Test when fields are added or removed from a dataset field schema,
+        those changes are reflected on the samples in the dataset.
+        """
+        dataset_name = self.test_dataset_add_delete_field.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        sample = fo.Sample(filepath="test1.png")
+        dataset.add_sample(sample)
+
+        field_name = "field1"
+        ftype = IntField
+
+        # Field not in schema
+        with self.assertRaises(AttributeError):
+            sample.get_field(field_name=field_name)
+        with self.assertRaises(KeyError):
+            sample[field_name]
+        with self.assertRaises(AttributeError):
+            getattr(sample, field_name)
+
+        # Field added to dataset
+        dataset.add_sample_field(field_name=field_name, ftype=ftype)
+        self.assertIsNone(sample.get_field(field_name=field_name))
+        self.assertIsNone(sample[field_name])
+        self.assertIsNone(getattr(sample, field_name))
+
+        # Field removed from dataset
+        dataset.delete_sample_field(field_name=field_name)
+        with self.assertRaises(AttributeError):
+            sample.get_field(field_name=field_name)
+        with self.assertRaises(KeyError):
+            sample[field_name]
+        with self.assertRaises(AttributeError):
+            getattr(sample, field_name)
+
+        # Field added to dataset and sample value set
+        value = 51
+        dataset.add_sample_field(field_name=field_name, ftype=ftype)
+        sample[field_name] = value
+        self.assertEqual(sample.get_field(field_name=field_name), value)
+        self.assertEqual(sample[field_name], value)
+        self.assertEqual(getattr(sample, field_name), value)
+
+        # Field removed from dataset
+        dataset.delete_sample_field(field_name=field_name)
+        with self.assertRaises(AttributeError):
+            sample.get_field(field_name=field_name)
+        with self.assertRaises(KeyError):
+            sample[field_name]
+        with self.assertRaises(AttributeError):
+            getattr(sample, field_name)
+
+    def test_dataset_delete_samples(self):
+        """Test when a sample is deleted from a dataset, the sample is
+        disconnected from the dataset.
+        """
+        dataset_name = self.test_dataset_delete_samples.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        sample = fo.Sample(filepath="test1.png")
+        dataset.add_sample(sample)
+        self.assertTrue(sample.in_dataset)
+        self.assertIsNotNone(sample.id)
+        self.assertEqual(sample.dataset_name, dataset.name)
+
+        dataset.delete_sample(sample)
+        self.assertFalse(sample.in_dataset)
+        self.assertIsNone(sample.id)
+        self.assertIsNone(sample.dataset_name)
+
+    def test_sample_set_field(self):
+        """Test when a field is added to the dataset schema via implicit adding
+        on a sample, that change is reflected in the dataset.
+        """
+        dataset_name = self.test_sample_set_field.__name__
+        dataset = fo.Dataset(name=dataset_name)
+        sample = fo.Sample(filepath="test1.png")
+        dataset.add_sample(sample)
+
+        field_name = "field1"
+        ftype = IntField
+        value = 51
+
+        # field not in schema
+        with self.assertRaises(KeyError):
+            fields = dataset.get_sample_fields()
+            fields[field_name]
+
+        # added to sample
+        sample[field_name] = value
+        fields = dataset.get_sample_fields()
+        self.assertIsInstance(fields[field_name], ftype)
+
+
+class DatasetTest(unittest.TestCase):
+    def test_list_dataset_names(self):
+        self.assertIsInstance(fo.list_dataset_names(), list)
 
     def test_backing_doc_class(self):
         dataset_name = self.test_backing_doc_class.__name__
@@ -155,23 +274,6 @@ class SampleTest(unittest.TestCase):
 
 
 class SampleInDatasetTest(unittest.TestCase):
-    def test_sample_singletons(self):
-        dataset_name = self.test_sample_singletons.__name__
-        dataset = fo.Dataset(name=dataset_name)
-
-        filepath = "test1.png"
-        sample = fo.Sample(filepath=filepath)
-        dataset.add_sample(sample)
-        sample2 = dataset[sample.id]
-        self.assertIs(sample2, sample)
-
-        sample3 = fo.Sample(filepath="test2.png")
-        dataset.add_sample(sample3)
-        self.assertIsNot(sample3, sample)
-
-        sample4 = dataset.view().match({"filepath": filepath}).first()
-        self.assertIs(sample4, sample)
-
     def test_dataset_clear(self):
         dataset_name = self.test_dataset_clear.__name__
         dataset = fo.Dataset(name=dataset_name)
