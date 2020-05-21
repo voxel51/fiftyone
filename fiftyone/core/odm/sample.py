@@ -295,7 +295,7 @@ class ODMSample(ODMDocument):
             )
 
         d = OrderedDict()
-        for field_name in cls_or_self._fields:
+        for field_name in cls_or_self._fields_ordered:
             field = cls_or_self._fields[field_name]
             if issubclass(ftype, BaseField):
                 if isinstance(field, ftype):
