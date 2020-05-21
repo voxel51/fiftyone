@@ -49,6 +49,10 @@ body {
   overflow-x: hidden;
 }
 
+.sample:not(:hover) .sample-info > .menu > .item:before {
+  background: none !important;
+}
+
 .sample:hover > .sample-info > .menu > .item {
   overflow-x: auto;
 }

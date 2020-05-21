@@ -50,3 +50,20 @@
 @relativeHuge    : unit( round(@hugeSize * @emSize) / @emSize, rem);
 @relativeMassive : unit( round(@massiveSize * @emSize) / @emSize, rem);
 
+
+@borderColor               : @tertiaryColor;
+@strongBorderColor         : @tertiaryColor;
+@internalBorderColor       : @tertiaryColor;
+@selectedBorderColor       : @tertiaryColor;
+@strongSelectedBorderColor : @tertiaryColor;
+@disabledBorderColor       : @tertiaryColor;
+
+@solidInternalBorderColor  : @tertiaryColor;
+@solidBorderColor          : @tertiaryColor;
+@solidSelectedBorderColor  : @tertiaryColor;
+
+@whiteBorderColor          : @tertiaryColor;
+@selectedWhiteBorderColor      : @tertiaryColor;
+
+@solidWhiteBorderColor         : @tertiaryColor;
+@selectedSolidWhiteBorderColor : @tertiaryColor;
