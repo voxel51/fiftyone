@@ -40,7 +40,7 @@ class Sample(object):
         **kwargs: additional fields to dynamically set on the sample
     """
 
-    # dict of dicts, keyed on ["DATASET NAME"]["SAMPLE ID"]
+    # Instance references keyed by [dataset_name][sample_id]
     _instances = defaultdict(dict)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
@@ -295,16 +295,17 @@ class Sample(object):
         return None
 
     def _set_backing_doc(self, doc):
-        """Swap the backing doc when adding to a dataset. This should only
-        ever be called by :class:`Dataset`.
+        """Updates the backing doc for the sample.
+
+        For use **only** when adding a sample to a dataset.
         """
         if isinstance(self._doc, foo.ODMDatasetSample):
-            raise TypeError("Dataset has already been set.")
+            raise TypeError("Sample already belongs to a dataset")
 
         if not isinstance(doc, foo.ODMDatasetSample):
             raise TypeError(
-                "Unexpected doc type '%s' != '%s'"
-                % (type(doc), foo.ODMDatasetSample)
+                "Backing doc must be an instance of %s; found %s"
+                % (foo.ODMDatasetSample, type(doc))
             )
 
         self._doc = doc
@@ -319,5 +320,5 @@ class Sample(object):
                 # ref is stale, overwrite
                 self._instances[self.dataset_name][self.id] = weakref.ref(self)
         except KeyError:
-            # ref does not exist, so add
+            # ref does not exist, so add it
             self._instances[self.dataset_name][self.id] = weakref.ref(self)

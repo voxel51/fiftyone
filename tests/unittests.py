@@ -333,6 +333,41 @@ class SampleInDatasetTest(unittest.TestCase):
 
         check_add_to_sample()
 
+    def test_add_from_another_dataset(self):
+        dataset_name = self.test_scoped_schema_changes.__name__ + "_%d"
+        dataset1 = fo.Dataset(name=dataset_name % 1)
+        dataset2 = fo.Dataset(name=dataset_name % 2)
+
+        sample = fo.Sample(filepath="test.png")
+
+        sample_id = dataset1.add_sample(sample)
+        self.assertIs(dataset1[sample_id], sample)
+        self.assertEqual(sample.dataset_name, dataset1.name)
+
+        sample_id = dataset2.add_sample(sample)
+        sample2 = dataset2[sample_id]
+        self.assertIs(dataset1[sample.id], sample)
+        self.assertIsNot(dataset2[sample_id], sample)
+        self.assertEqual(sample2.dataset_name, dataset2.name)
+
+    def test_copy_sample(self):
+        dataset_name = self.test_copy_sample.__name__
+        dataset = fo.Dataset(name=dataset_name)
+
+        sample = fo.Sample(filepath="test.png")
+
+        sample_copy = sample.copy()
+        self.assertIsNot(sample_copy, sample)
+        self.assertIsNone(sample_copy.id)
+        self.assertIsNone(sample_copy.dataset_name)
+
+        dataset.add_sample(sample)
+
+        sample_copy = sample.copy()
+        self.assertIsNot(sample_copy, sample)
+        self.assertIsNone(sample_copy.id)
+        self.assertIsNone(sample_copy.dataset_name)
+
 
 class LabelsTest(unittest.TestCase):
     def test_create(self):
