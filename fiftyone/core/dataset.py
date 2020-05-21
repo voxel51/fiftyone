@@ -917,16 +917,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._sample_doc_cls = type(self._name, (foo.ODMDatasetSample,), {})
 
-        fields = self.get_sample_fields()
-        fields.pop("id")
+        # -1 for "id"
+        num_default_fields = len(self.get_sample_fields()) - 1
 
-        for idx, field in enumerate(itervalues(fields)):
-            sample_field = self._meta.sample_fields[idx]
-            if not sample_field.matches_field(field):
-                # @todo(Tyler) handle deleted default fields
-                raise ValueError("Deleting default fields is not supported")
-
-        for sample_field in self._meta.sample_fields[len(fields) :]:
+        for sample_field in self._meta.sample_fields[num_default_fields:]:
             subfield = (
                 etau.get_class(sample_field.subfield)
                 if sample_field.subfield

@@ -650,7 +650,8 @@ class FieldTest(unittest.TestCase):
             dataset.add_sample_field("filepath", StringField)
 
         # delete default field
-        # @todo(Tyler) should the user just be allowed to do this?
+        with self.assertRaises(ValueError):
+            dataset.delete_sample_field("filepath")
 
         field_name = "field1"
         ftype = StringField
