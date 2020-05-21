@@ -65,22 +65,22 @@ import fiftyone.zoo as foz
 dataset = foz.load_zoo_dataset("cifar10")
 
 # @todo: load this from ZooDatasetInfo
-labels_map = "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(",")
+labels_map = (
+    "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(",")
+)
 
 # Artificially make 10% of sample labels mistakes
-mistake_label = fo.Classification(label="yes")
 for sample in dataset.view().take(1000):
+    mistake = random.randint(0, 9)
+    while labels_map[mistake] == sample.ground_truth.label:
+        mistake = random.randint(0, 9)
+
     sample.tags.append("mistake")
-    label = sample.ground_truth.label
-
-    mistaker = random.randint(0, 9)
-    while labels_map[mistaker] == label:
-        mistaker = random.randint(0, 9)
-
-    bad_label = fo.Classification(label=labels_map[mistaker])
-    sample["ground_truth"] = bad_label
-    sample["label_mistake"] = mistake_label
+    sample["ground_truth"] = fo.Classification(label=labels_map[mistake])
+    sample["label_mistake"] = fo.Classification(label="yes")
     sample.save()
+
+print(dataset.summary())
 ```
 
 ## Run predictions on the dataset
@@ -192,7 +192,7 @@ and in the visualization.
 import fiftyone.brain.mistakenness as fbm
 
 h_view = dataset.view().match_tag("processed")
-fbm.compute_mistakenness(h_view, model_name, key_insight="mistakenness")
+fbm.compute_mistakenness(h_view, model_name)
 
 # Launch the FiftyOne dashboard
 session = fo.launch_dashboard()
