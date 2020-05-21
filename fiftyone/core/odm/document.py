@@ -153,7 +153,8 @@ class ODMDocument(SerializableDocument, Document):
             a :class:`ODMDocument`
         """
         doc = super(ODMDocument, self).copy()
-        doc.id = None
+        if doc.id is not None:
+            doc.id = None
         return doc
 
     @property
