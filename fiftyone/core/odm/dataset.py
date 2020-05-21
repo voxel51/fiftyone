@@ -53,16 +53,8 @@ class SampleField(ODMEmbeddedDocument):
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
-            subfield=(
-                etau.get_class_name(field.field)
-                if hasattr(field, "field")
-                else None
-            ),
-            embedded_doc_type=(
-                etau.get_class_name(field.document_type)
-                if hasattr(field, "document_type")
-                else None
-            ),
+            subfield=cls._get_class_name(field, "field"),
+            embedded_doc_type=cls._get_class_name(field, "document_type"),
         )
 
     @classmethod
@@ -110,12 +102,14 @@ class SampleField(ODMEmbeddedDocument):
 
         return True
 
+    @staticmethod
+    def _get_class_name(field, attr_name):
+        attr = getattr(field, attr_name, None)
+        return etau.get_class_name(attr) if attr else None
+
 
 class ODMDataset(ODMDocument):
     """Meta-collection that tracks and persists datasets."""
 
-    # The dataset name
     name = StringField(unique=True)
-
-    # List of :class:`SampleField`, one for each field of the dataset.
     sample_fields = EmbeddedDocumentListField(document_type=SampleField)

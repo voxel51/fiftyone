@@ -76,6 +76,7 @@ from mongoengine import (
     StringField,
 )
 from mongoengine.fields import BaseField
+from mongoengine.errors import InvalidQueryError
 
 import fiftyone.core.metadata as fom
 
@@ -322,7 +323,7 @@ class ODMSample(ODMDocument):
 
         if issubclass(ftype, EmbeddedDocumentField):
             kwargs.update({"document_type": embedded_doc_type})
-        elif any(issubclass(ftype, ft) for ft in [ListField, DictField]):
+        elif issubclass(ftype, (ListField, DictField)):
             if subfield is not None:
                 kwargs["field"] = subfield
 
@@ -364,7 +365,7 @@ class ODMSample(ODMDocument):
             cls_or_self.add_field(field_name, FloatField)
         elif isinstance(value, six.string_types):
             cls_or_self.add_field(field_name, StringField)
-        elif isinstance(value, list) or isinstance(value, tuple):
+        elif isinstance(value, (list, tuple)):
             cls_or_self.add_field(field_name, ListField)
         elif isinstance(value, dict):
             cls_or_self.add_field(field_name, DictField)
@@ -481,6 +482,7 @@ class ODMDatasetSample(ODMSample):
             subfield=subfield,
         )
 
+        # @todo(Tyler) refactor to avoid local import here
         if save:
             from fiftyone.core.dataset import Dataset
 
@@ -500,9 +502,12 @@ class ODMDatasetSample(ODMSample):
 
     @classmethod
     def delete_field(cls, field_name, save=True):
-        # Delete from all samples
-        # pylint: disable=no-member
-        cls.objects.update(**{"unset__%s" % field_name: None})
+        try:
+            # Delete from all samples
+            # pylint: disable=no-member
+            cls.objects.update(**{"unset__%s" % field_name: None})
+        except InvalidQueryError:
+            raise AttributeError("Sample has no field '%s'" % field_name)
 
         # Remove from dataset
         del cls._fields[field_name]
