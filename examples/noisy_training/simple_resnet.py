@@ -1,15 +1,14 @@
 """
-Definition and Implementation of a Simple Resnet.
-Only suitable for smallish data and customized for this walkthrough.
+Implementation of a simple Resnet that is suitable only for smallish data.
 
-Based on the implementation of this is from David Page's work on fast model
-training with resnets.  <https://github.com/davidcpage/cifar10-fast/>
+The original implementation of this is from David Page's work on fast model
+training with resnets at https://github.com/davidcpage/cifar10-fast.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from os.path import normpath, sep
+import os
 from collections import namedtuple, defaultdict
 import copy
 
@@ -26,7 +25,6 @@ from torch import nn
 
 # This is a small model with a fixed size, so let cudnn optimize
 torch.backends.cudnn.benchmark = True
-
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 cpu = torch.device("cpu")
@@ -283,7 +281,9 @@ has_inputs = lambda node: type(node) is tuple
 def build_graph(net):
     flattened = pipeline(net)
     resolve_input = (
-        lambda rel_path, path, idx: normpath(sep.join((path, "..", rel_path)))
+        lambda rel_path, path, idx: os.path.normpath(
+            os.path.join((path, "..", rel_path))
+        )
         if isinstance(rel_path, str)
         else flattened[idx + rel_path][0]
     )
@@ -298,7 +298,7 @@ def build_graph(net):
 
 def pipeline(net):
     return [
-        (sep.join(path), (node if has_inputs(node) else (node, [-1])))
+        (os.path.join(path), (node if has_inputs(node) else (node, [-1])))
         for (path, node) in path_iter(net)
     ]
 
