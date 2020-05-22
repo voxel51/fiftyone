@@ -8,7 +8,7 @@ The walkthrough is provided as a [Jupyter Notebook](https://jupyter.org). The
 easiest way to run it is by installing IPython:
 
 ```shell
-pip install ipython
+pip install jupyter
 ```
 
 ## Running the walkthrough
