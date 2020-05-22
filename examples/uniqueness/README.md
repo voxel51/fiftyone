@@ -97,9 +97,9 @@ for sample in dups_view:
 session.view = dups_view
 ```
 
-And the GUI will only show these samples now. We can, of course access the
-filepaths and other information about these samples programmatically so you can
-act on the findings. But, let's do that at the end of Part 2 below!
+And the dashboard will only show these samples now. We can, of course access
+the filepaths and other information about these samples programmatically so you
+can act on the findings. But, let's do that at the end of Part 2 below!
 
 ## Part 2: Finding unique samples
 
