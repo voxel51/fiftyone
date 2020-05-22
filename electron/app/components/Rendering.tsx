@@ -41,6 +41,7 @@ const Rendering = ({ displayProps, port }) => {
           start={tStart}
         />
         <Header as="h4">Other supported fields</Header>
+        <br />
         <Labels
           lengths={lengths}
           colors={colors}

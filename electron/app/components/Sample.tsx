@@ -29,6 +29,9 @@ const Sample = ({
     lengths,
   } = displayProps;
 
+  const isFloat = (n) => {
+    return Number(n) === n && n % 1 !== 0;
+  };
   const handleClick = () => {
     const newSelected = { ...selected };
     const event = newSelected[id] ? "remove_selection" : "add_selection";
@@ -38,7 +41,6 @@ const Sample = ({
       dispatch(updateState(data));
     });
   };
-  console.log(lengths.mapping);
   return (
     <div
       className="sample"
@@ -69,11 +71,14 @@ const Sample = ({
             <Tag name={t} color={colors[lengths.mapping[t]]} />
           ) : null
         )}
-        {Object.keys(s).map((l, i) =>
-          activeOther[l] ? (
-            <Tag name={s[l]} color={colors[lengths.mapping[l]]} />
-          ) : null
-        )}
+        {Object.keys(s).map((l, i) => {
+          return activeOther[l] ? (
+            <Tag
+              name={isFloat(s[l]) ? s[l].toFixed(3) : s[l]}
+              color={colors[lengths.mapping[l]]}
+            />
+          ) : null;
+        })}
       </div>
     </div>
   );

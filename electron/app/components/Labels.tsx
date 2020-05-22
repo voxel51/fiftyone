@@ -25,6 +25,10 @@ const Labels = (props) => {
     setActiveLabels({ ...activeLabels, [l]: !Boolean(activeLabels[l]) });
   };
 
+  const isFloat = (n) => {
+    return Number(n) === n && n % 1 !== 0;
+  };
+
   let content;
   if (initialLoad) {
     socket.emit("labels", "", (data) => {
@@ -51,7 +55,6 @@ const Labels = (props) => {
     );
   } else if (labels.length) {
     const styles = (t, i) => {
-      console.log(colors[lengths.mapping[t]]);
       if (activeLabels[t]) {
         return { background: colors[lengths.mapping[t]] };
       }
@@ -66,7 +69,7 @@ const Labels = (props) => {
             onClick={() => onClick(l)}
             style={styles(l, i)}
           >
-            {l}
+            {isFloat(l) ? l.toFixed(3) : l}
           </div>
         ))}
       </Container>

@@ -30,7 +30,6 @@ function App(props: Props) {
     port,
     displayProps,
   } = props;
-  console.log(props);
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
