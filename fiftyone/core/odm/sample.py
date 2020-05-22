@@ -86,8 +86,8 @@ from .document import ODMDocument
 
 def nodataset(func):
     """Decorator that provides a more informative error when attempting to call
-    a class method on an ODMNoDatasetSample instance that should only be
-    called on individual instances.
+    a class method on an :class:``ODMNoDatasetSample`` instance that should
+    only be called on individual instances.
 
     This is necessary because fields are shared across all samples in a dataset
     but samples outside of a dataset have their own schema.
@@ -108,6 +108,23 @@ def nodataset(func):
                 "You are trying to call a dataset method on a sample that has"
                 " not been added to a dataset."
             )
+
+    return wrapper
+
+
+def no_delete_default_field(func):
+    """Wrapper for :class:``ODMSample.delete_field`` that prevents deleting
+    default fields :class:``of ODMSample``.
+
+    This is a decorator because the subclasses implement this as either an
+    instance or class method.
+    """
+
+    def wrapper(cls_or_self, field_name, *args, **kwargs):
+        # pylint: disable=no-member
+        if field_name in ODMSample._fields_ordered:
+            raise ValueError("Cannot delete default field '%s'" % field_name)
+        return func(cls_or_self, field_name, *args, **kwargs)
 
     return wrapper
 
@@ -439,6 +456,7 @@ class ODMNoDatasetSample(ODMSample):
         )
 
     @nodataset
+    @no_delete_default_field
     def delete_field(self, field_name):
         # @todo(Tyler) ODMNoDatasetSample.delete_field
         raise NotImplementedError("Not yet implemented")
@@ -478,6 +496,8 @@ class ODMDatasetSample(ODMSample):
         subfield=None,
         save=True,
     ):
+        # Additional arg `save` is to prevent saving the fields when reloading
+        # a dataset from the database.
         cls._add_field(
             cls,
             field_name,
@@ -505,7 +525,8 @@ class ODMDatasetSample(ODMSample):
         )
 
     @classmethod
-    def delete_field(cls, field_name, save=True):
+    @no_delete_default_field
+    def delete_field(cls, field_name):
         try:
             # Delete from all samples
             # pylint: disable=no-member
@@ -520,15 +541,14 @@ class ODMDatasetSample(ODMSample):
         )
         delattr(cls, field_name)
 
-        if save:
-            from fiftyone.core.dataset import Dataset
+        # save Dataset meta
+        # @todo(Tyler) refactor to avoid local import here
+        from fiftyone.core.dataset import Dataset
 
-            dataset = Dataset(name=cls.__name__)
+        dataset = Dataset(name=cls.__name__)
 
-            # Update dataset meta class
-            dataset._meta.sample_fields = [
-                sf
-                for sf in dataset._meta.sample_fields
-                if sf.name != field_name
-            ]
-            dataset._meta.save()
+        # Update dataset meta class
+        dataset._meta.sample_fields = [
+            sf for sf in dataset._meta.sample_fields if sf.name != field_name
+        ]
+        dataset._meta.save()
