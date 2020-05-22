@@ -39,6 +39,7 @@ setup(
         "gunicorn",
         "mongoengine",
         "numpy",
+        "packaging",
         "Pillow<7,>=6.2",
         "pymongo",
         "python-engineio[client]<3.12;python_version<'3'",
