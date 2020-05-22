@@ -20,7 +20,6 @@ from builtins import *
 
 import logging
 import resource
-import sys
 
 import packaging.version
 
@@ -65,19 +64,16 @@ def _ensure_package(package_name, min_version=None):
 
     try:
         pkg = __import__(package_name)
-    except ImportError:
+    except ImportError as e:
         if has_min_ver:
             pkg_str = "%s>=%s" % (package_name, min_version)
         else:
             pkg_str = package_name
 
-        logger.error(
-            "Failed to import '%s'", package_name, exc_info=sys.exc_info()
-        )
         raise ImportError(
             "The requested operation requires that '%s' is installed on your "
             "machine" % pkg_str
-        )
+        ) from e
 
     if has_min_ver:
         pkg_version = packaging.version.parse(pkg.__version__)
@@ -86,7 +82,7 @@ def _ensure_package(package_name, min_version=None):
                 "The requested operation requires that '%s>=%s' is installed "
                 "on your machine; found '%s==%s'"
                 % (package_name, min_version, package_name, pkg_version)
-            )
+            ) from e
 
 
 def parse_serializable(obj, cls):
