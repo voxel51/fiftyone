@@ -5,7 +5,7 @@ A 15 minute overview of using the FiftyOne tool.
 ## Setup
 
 The walkthrough is provided as a [Jupyter Notebook](https://jupyter.org). The
-easiest way to run it is by installing IPython:
+easiest way to run it is by installing Jupyter:
 
 ```shell
 pip install jupyter
