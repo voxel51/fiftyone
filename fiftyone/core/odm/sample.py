@@ -86,8 +86,8 @@ from .document import ODMDocument
 
 def nodataset(func):
     """Decorator that provides a more informative error when attempting to call
-    a class method on an ODMNoDatasetSample instance that should only be
-    called on individual instances.
+    a class method on an :class:``ODMNoDatasetSample`` instance that should
+    only be called on individual instances.
 
     This is necessary because fields are shared across all samples in a dataset
     but samples outside of a dataset have their own schema.
@@ -113,8 +113,8 @@ def nodataset(func):
 
 
 def no_delete_default_field(func):
-    """Wrapper for ODMSample.delete_field that prevents deleting default fields
-    of ODMSample.
+    """Wrapper for :class:``ODMSample.delete_field`` that prevents deleting
+    default fields :class:``of ODMSample``.
 
     This is a decorator because the subclasses implement this as either an
     instance or class method.
@@ -496,9 +496,8 @@ class ODMDatasetSample(ODMSample):
         subfield=None,
         save=True,
     ):
-        """Additional arg `save` is to prevent saving the fields when reloading
-        a dataset from the database.
-        """
+        # Additional arg `save` is to prevent saving the fields when reloading
+        # a dataset from the database.
         cls._add_field(
             cls,
             field_name,
