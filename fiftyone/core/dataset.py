@@ -806,7 +806,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _samples = []
         for image_path in image_paths:
             filepath = os.path.abspath(os.path.expanduser(image_path))
-            _samples.append(filepath=filepath)
+            _samples.append(fo.Sample(filepath=filepath))
 
         logger.info(
             "Creating dataset '%s' containing %d samples", name, len(_samples),
