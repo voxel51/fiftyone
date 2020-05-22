@@ -7,6 +7,7 @@ Installs FiftyOne.
 |
 """
 import os
+
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
@@ -16,11 +17,6 @@ class BdistWheelCustom(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # pure Python, so build a wheel for any Python version
         self.universal = True
-
-
-cmdclass = {
-    "bdist_wheel": BdistWheelCustom,
-}
 
 
 setup(
@@ -66,5 +62,5 @@ setup(
     ],
     scripts=["fiftyone/fiftyone"],
     python_requires=">=2.7",
-    cmdclass=cmdclass,
+    cmdclass={"bdist_wheel": BdistWheelCustom,},
 )
