@@ -32,19 +32,16 @@ foz.load_zoo_dataset("cifar10")
 foo.drop_database()
 ```
 
--   Download some pretrained CIFAR-10 PyTorch models
+-   Download a pretrained CIFAR-10 PyTorch model
 
-```
+```shell
 # Download the software
 git clone https://github.com/huyvnphan/PyTorch_CIFAR10
-cd PyTorch_CIFAR10
 
-# Download pretrained models
-eta http download \
-    https://rutgers.box.com/shared/static/hm73mc6t8ncy1z499fwukpn1xes9rswe.zip \
-    cifar10_models/models.zip
-unzip cifar10_models/models.zip -d cifar10_models/
-rm cifar10_models/models.zip
+# Download the pretrained model (90MB)
+eta gdrive download --public \
+    1dGfpeFK_QG0kV-U6QDHMX2EOGXPqaNzu \
+    PyTorch_CIFAR10/cifar10_models/state_dicts/resnet50.pt
 ```
 
 ## Importing FiftyOne
@@ -93,7 +90,7 @@ In your current workflow, you may parse this data into a list of
 import json
 import os
 
-# The location of the dataset on disk
+# The location of the dataset on disk that you downloaded above
 dataset_dir = os.path.expanduser("~/fiftyone/cifar10/test")
 
 # Maps image UUIDs to image paths
@@ -207,17 +204,12 @@ def predict(model, imgs):
 #
 # Load a model
 #
-# Choices here are:
-#   vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn, resnet18, resnet34, resnet50
-#   densenet121, densenet161, densenet169, mobilenet_v2, googlenet
-#   inception_v3
-#
 # Model performance numbers are available at:
 #   https://github.com/huyvnphan/PyTorch_CIFAR10
 #
 
-model = inception_v3(pretrained=True)
-model_name = "inception_v3"
+model = resnet50(pretrained=True)
+model_name = "resnet50"
 
 #
 # Extract a few images to process
