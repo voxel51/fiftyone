@@ -8,19 +8,17 @@ find mistakes in your labels. It covers the following concepts:
 -   Computing insights into your dataset relating to possible mistakes
 -   Visualizing the mistake in the FiftyOne dashboard
 
-This walkthrough is self-contained. If you have already completed the Model
-Inference walkthrough, then you can skip the setup and data download sections.
-
 ## Setup
 
-Install `torch` and `torchvision`, if necessary:
+-   Install `torch` and `torchvision`, if necessary:
 
 ```
 pip install torch
 pip install torchvision
 ```
 
-Download the test split of the CIFAR-10 dataset to `~/fiftyone/cifar10/test`:
+-   Download the test split of the CIFAR-10 dataset to
+    `~/fiftyone/cifar10/test`:
 
 ```py
 import fiftyone.zoo as foz
@@ -33,19 +31,16 @@ foz.load_zoo_dataset("cifar10")
 foo.drop_database()
 ```
 
-Download some pretrained CIFAR-10 PyTorch models
+-   Download a pretrained CIFAR-10 PyTorch model
 
-```
+```shell
 # Download the software
 git clone https://github.com/huyvnphan/PyTorch_CIFAR10
-cd PyTorch_CIFAR10
 
-# Download pretrained models
-eta http download \
-    https://rutgers.box.com/shared/static/hm73mc6t8ncy1z499fwukpn1xes9rswe.zip \
-    cifar10_models/models.zip
-unzip cifar10_models/models.zip -d cifar10_models/
-rm cifar10_models/models.zip
+# Download the pretrained model (90MB)
+eta gdrive download --public \
+    1dGfpeFK_QG0kV-U6QDHMX2EOGXPqaNzu \
+    PyTorch_CIFAR10/cifar10_models/state_dicts/resnet50.pt
 ```
 
 ## Manipulating the data
@@ -64,7 +59,7 @@ import fiftyone.zoo as foz
 
 dataset = foz.load_zoo_dataset("cifar10")
 
-# @todo: load this from ZooDatasetInfo
+# @todo load this from ZooDatasetInfo
 labels_map = (
     "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(",")
 )
@@ -128,11 +123,6 @@ def predict(model, imgs):
 
 #
 # Load a model
-#
-# Choices here are:
-#   vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn, resnet18, resnet34, resnet50
-#   densenet121, densenet161, densenet169, mobilenet_v2, googlenet
-#   inception_v3
 #
 # Model performance numbers are available at:
 #   https://github.com/huyvnphan/PyTorch_CIFAR10
