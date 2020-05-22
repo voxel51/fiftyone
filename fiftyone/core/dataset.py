@@ -30,7 +30,7 @@ from mongoengine.errors import DoesNotExist
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.collections as foc
+import fiftyone.core.collection as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
