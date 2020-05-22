@@ -42,7 +42,7 @@ class SampleField(ODMEmbeddedDocument):
 
     @classmethod
     def from_field(cls, field):
-        """Creates a :class`SampleField` from a MongoEngine field.
+        """Creates a :class:`SampleField` from a MongoEngine field.
 
         Args:
             field: a ``mongoengine.fields.BaseField`` instance
