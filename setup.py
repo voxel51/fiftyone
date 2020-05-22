@@ -20,6 +20,7 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
+            "fiftyone-brain",
             "fiftyone-gui",
             "fiftyone-db",
         ]
@@ -56,7 +57,6 @@ setup(
         "setuptools",
         "tabulate",
         # internal packages
-        "fiftyone-brain",
         "voxel51-eta",
     ],
     extras_require={
