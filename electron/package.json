@@ -77,6 +77,11 @@
         }
       ]
     },
+    "mac": {
+      "target": [
+        "dir"
+      ]
+    },
     "win": {
       "target": [
         "nsis",
@@ -85,8 +90,6 @@
     },
     "linux": {
       "target": [
-        "deb",
-        "rpm",
         "AppImage"
       ],
       "category": "Tool"

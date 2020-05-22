@@ -27,7 +27,7 @@ import eta.core.utils as etau
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
-fou.ensure_tensorflow()
+fou.ensure_tf()
 import tensorflow as tf
 
 

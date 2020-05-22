@@ -9,6 +9,7 @@ Examples of using FiftyOne.
 | `file_hashing/`        | Example of using FiftyOne to detect duplicate images in a dataset |
 | `label_mistakes/`      | Example of finding label errors using FiftyOne's hardness measure |
 | `model_inference/`     | Example of integrating FiftyOne in your model inference loop      |
+| `uniqueness/`          | Example of using FiftyOne's uniqueness tool to curate a dataset   |
 
 ## Copyright
 

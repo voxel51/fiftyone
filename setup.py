@@ -7,6 +7,7 @@ Installs FiftyOne.
 |
 """
 import os
+
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
@@ -16,11 +17,6 @@ class BdistWheelCustom(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # pure Python, so build a wheel for any Python version
         self.universal = True
-
-
-cmdclass = {
-    "bdist_wheel": BdistWheelCustom,
-}
 
 
 setup(
@@ -43,6 +39,7 @@ setup(
         "gunicorn",
         "mongoengine",
         "numpy",
+        "packaging",
         "Pillow<7,>=6.2",
         "pymongo",
         "python-engineio[client]<3.12;python_version<'3'",
@@ -58,6 +55,10 @@ setup(
         "fiftyone-gui",
         "voxel51-eta",
     ],
+    extras_require={
+        "tensorflow": ["tensorflow", "tensorflow-datasets"],
+        "pytorch": ["torch", "torchvision"],
+    },
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
@@ -66,5 +67,5 @@ setup(
     ],
     scripts=["fiftyone/fiftyone"],
     python_requires=">=2.7",
-    cmdclass=cmdclass,
+    cmdclass={"bdist_wheel": BdistWheelCustom},
 )
