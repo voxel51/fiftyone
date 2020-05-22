@@ -17,6 +17,7 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+from future.utils import itervalues
 
 from collections import defaultdict
 import os
@@ -41,7 +42,7 @@ class Sample(object):
     """
 
     # Instance references keyed by [dataset_name][sample_id]
-    _instances = defaultdict(dict)
+    _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         self._doc = foo.ODMNoDatasetSample(
@@ -256,14 +257,8 @@ class Sample(object):
 
         try:
             # get instance if exists
-            ref = cls._instances[doc.dataset_name][str(doc.id)]
-
-            # de-reference the weakref
-            sample = ref and ref()
+            sample = cls._instances[doc.dataset_name][str(doc.id)]
         except KeyError:
-            sample = None
-
-        if sample is None:
             sample = cls.__new__(cls)
             sample._doc = None  # set to prevent RecursionError
             sample._set_backing_doc(doc)
@@ -314,11 +309,32 @@ class Sample(object):
         if not doc.id:
             doc.save()
 
-        try:
-            ref = self._instances[self.dataset_name][self.id]
-            if ref() is None:
-                # ref is stale, overwrite
-                self._instances[self.dataset_name][self.id] = weakref.ref(self)
-        except KeyError:
-            # ref does not exist, so add it
-            self._instances[self.dataset_name][self.id] = weakref.ref(self)
+        # save weak reference
+        dataset_instances = self._instances[doc.dataset_name]
+        if self.id not in dataset_instances:
+            dataset_instances[self.id] = self
+
+    @classmethod
+    def _reset_backing_docs(cls, dataset_name, sample_ids):
+        """Resets the sample's backing document to a
+        :class:`fiftyone.core.odm.ODMNoDatasetSample` instance.
+
+        For use **only** when removing samples from a dataset.
+        """
+        dataset_instances = cls._instances[dataset_name]
+        for sample_id in sample_ids:
+            sample = dataset_instances.pop(sample_id, None)
+            if sample is not None:
+                sample._doc = sample.copy()._doc
+
+    @classmethod
+    def _reset_all_backing_docs(cls, dataset_name):
+        """Resets the sample's backing document to a
+        :class:`fiftyone.core.odm.ODMNoDatasetSample` instance for all samples
+        in a dataset.
+
+        For use **only** when clearing a dataset.
+        """
+        dataset_instances = cls._instances.pop(dataset_name)
+        for sample in itervalues(dataset_instances):
+            sample._doc = sample.copy()._doc

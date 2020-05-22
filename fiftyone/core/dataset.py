@@ -146,7 +146,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise KeyError("No sample found with ID '%s'" % sample_id)
 
     def __delitem__(self, sample_id):
-        self[sample_id]._delete()
+        self.remove_sample(sample_id)
 
     @property
     def name(self):
@@ -306,22 +306,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         #   samples in a view
         raise NotImplementedError("Not yet implemented")
 
-    def delete_sample(self, sample_or_id):
-        """Deletes the given sample from the dataset.
+    def remove_sample(self, sample_or_id):
+        """Removes the given sample from the dataset.
+
+        If a reference to the sample exists in memory, the sample's dataset
+        will be "unset" such that `sample.in_dataset == False`
 
         Args:
             sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
-                ID to delete
+                ID to remove
         """
-        if isinstance(sample_or_id, fos.Sample):
-            sample_id = sample_or_id.id
-        else:
+        if not isinstance(sample_or_id, fos.Sample):
             sample_id = sample_or_id
+            sample = self[sample_id]
+        else:
+            sample = sample_or_id
+            sample_id = sample.id
 
-        del self[sample_id]
+        sample._delete()
 
-    def delete_samples(self, samples_or_ids):
-        """Deletes the given samples from the dataset.
+        # unset the dataset for the sample
+        fos.Sample._reset_backing_docs(
+            dataset_name=self.name, sample_ids=[sample_id]
+        )
+
+    def remove_samples(self, samples_or_ids):
+        """Removes the given samples from the dataset.
+
+        If reference to a sample exists in memory, the sample's dataset
+        will be "unset" such that `sample.in_dataset == False`
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -336,9 +349,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
         self._get_query_set(id__in=sample_ids).delete()
 
+        # unset the dataset for the samples
+        fos.Sample._reset_backing_docs(
+            dataset_name=self.name, sample_ids=sample_ids
+        )
+
     def clear(self):
-        """Deletes all samples from the dataset."""
+        """Removes all samples from the dataset.
+
+        If reference to a sample exists in memory, the sample's dataset
+        will be "unset" such that `sample.in_dataset == False`
+        """
         self._sample_doc_cls.drop_collection()
+
+        # unset the dataset for all samples
+        fos.Sample._reset_all_backing_docs(dataset_name=self.name)
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -806,7 +831,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _samples = []
         for image_path in image_paths:
             filepath = os.path.abspath(os.path.expanduser(image_path))
-            _samples.append(filepath=filepath)
+            _samples.append(fo.Sample(filepath=filepath))
 
         logger.info(
             "Creating dataset '%s' containing %d samples", name, len(_samples),
@@ -892,16 +917,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._sample_doc_cls = type(self._name, (foo.ODMDatasetSample,), {})
 
-        fields = self.get_sample_fields()
-        fields.pop("id")
+        # -1 for "id"
+        num_default_fields = len(self.get_sample_fields()) - 1
 
-        for idx, field in enumerate(itervalues(fields)):
-            sample_field = self._meta.sample_fields[idx]
-            if not sample_field.matches_field(field):
-                # @todo(Tyler) handle deleted default fields
-                raise ValueError("Deleting default fields is not supported")
-
-        for sample_field in self._meta.sample_fields[len(fields) :]:
+        for sample_field in self._meta.sample_fields[num_default_fields:]:
             subfield = (
                 etau.get_class(sample_field.subfield)
                 if sample_field.subfield
