@@ -47,7 +47,7 @@ function Routes({ port }) {
     socket.emit("lengths", "", (data) => {
       console.log(data);
       const mapping = {};
-      const labelKeys = Object.keys(data.labels);
+      const labelKeys = data.labels ? Object.keys(data.labels) : [];
       let clen = 0;
       for (const i in data.labels) {
         if (data.labels[i]._id.cls !== "Classification") continue;
@@ -65,8 +65,8 @@ function Routes({ port }) {
       }
       console.log(mapping);
       setLengths({
-        tags: data.tags.length,
-        labels: data.labels.length,
+        tags: data.tags ? data.tags.length : 0,
+        labels: data.labels ? data.labels.length : 0,
         mapping: mapping,
       });
       setInitialLoad(false);
