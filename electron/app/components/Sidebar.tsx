@@ -21,8 +21,7 @@ const _Sidebar = (props) => {
     loading,
     showInfo,
     setShowInfo,
-    activeTags,
-    setActiveTags,
+    displayProps,
   } = props;
   const hasDataset = Boolean(state && state.dataset);
   return (
@@ -32,6 +31,7 @@ const _Sidebar = (props) => {
       vertical
       direction={"left"}
       visible={!loading}
+      className="fo-sidebar"
     >
       <Menu.Item as="h3">
         <Image src={logo} alt="FiftyOne" />
@@ -50,7 +50,7 @@ const _Sidebar = (props) => {
           </Menu>
         ) : null}
       </Menu.Item>
-      <Rendering activeTags={activeTags} setActiveTags={setActiveTags} />
+      <Rendering displayProps={displayProps} />
       {hasDataset ? (
         <Menu.Item as="h4">
           View

@@ -28,9 +28,9 @@ function App(props: Props) {
     update,
     connected,
     port,
-    activeTags,
-    setActiveTags,
+    displayProps,
   } = props;
+  console.log(props);
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
@@ -98,7 +98,7 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
-      <Sidebar activeTags={activeTags} setActiveTags={setActiveTags} />
+      <Sidebar displayProps={displayProps} />
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
         {children}
       </div>

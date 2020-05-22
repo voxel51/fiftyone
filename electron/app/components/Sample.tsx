@@ -8,7 +8,7 @@ import Player51 from "./Player51";
 import Tag from "./Tag";
 
 const Sample = ({
-  activeTags,
+  displayProps,
   dispatch,
   sample,
   port,
@@ -21,6 +21,13 @@ const Sample = ({
   const socket = getSocket(port, "state");
   const id = sample._id.$oid;
   const s = sample;
+  const {
+    activeLabels,
+    activeTags,
+    activeOther,
+    colors,
+    lengths,
+  } = displayProps;
 
   const handleClick = () => {
     const newSelected = { ...selected };
@@ -31,7 +38,7 @@ const Sample = ({
       dispatch(updateState(data));
     });
   };
-
+  console.log(lengths.mapping);
   return (
     <div
       className="sample"
@@ -52,7 +59,21 @@ const Sample = ({
         thumbnail={true}
       />
       <div className="sample-info">
-        {s.tags.map((t) => (activeTags[t] ? <Tag name={t} /> : null))}
+        {Object.keys(s).map((l, i) =>
+          activeLabels[l] ? (
+            <Tag name={s[l].label} color={colors[lengths.mapping[l]]} />
+          ) : null
+        )}
+        {s.tags.map((t, i) =>
+          activeTags[t] ? (
+            <Tag name={t} color={colors[lengths.mapping[t]]} />
+          ) : null
+        )}
+        {Object.keys(s).map((l, i) =>
+          activeOther[l] ? (
+            <Tag name={s[l]} color={colors[lengths.mapping[l]]} />
+          ) : null
+        )}
       </div>
     </div>
   );

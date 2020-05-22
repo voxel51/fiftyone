@@ -161,6 +161,26 @@ class StateController(Namespace):
             return []
         return view.get_tags()
 
+    def on_labels(self, _):
+        state = fos.StateDescription.from_dict(self.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.view()
+        else:
+            return []
+        return view.get_label_fields()
+
+    def on_lengths(self, _):
+        state = fos.StateDescription.from_dict(self.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.view()
+        else:
+            return []
+        return {"labels": view.get_label_fields(), "tags": view.get_tags()}
+
     def on_get_field_distributions(self, _):
         """Gets the labels distributions for the current state.
 
