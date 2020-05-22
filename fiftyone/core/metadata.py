@@ -21,9 +21,8 @@ from future.utils import iteritems, itervalues
 
 # pylint: disable=wildcard-import,unused-wildcard-import
 
-from mongoengine import IntField, StringField
-
 from fiftyone.core.odm.document import ODMEmbeddedDocument
+import fiftyone.core.field as fof
 
 
 class Metadata(ODMEmbeddedDocument):
@@ -36,8 +35,8 @@ class Metadata(ODMEmbeddedDocument):
 
     meta = {"allow_inheritance": True}
 
-    size_bytes = IntField()
-    mime_type = StringField()
+    size_bytes = fof.IntField()
+    mime_type = fof.StringField()
 
 
 class ImageMetadata(Metadata):
@@ -49,6 +48,6 @@ class ImageMetadata(Metadata):
         num_channels: integer number of channels of the image
     """
 
-    width = IntField()
-    height = IntField()
-    num_channels = IntField()
+    width = fof.IntField()
+    height = fof.IntField()
+    num_channels = fof.IntField()

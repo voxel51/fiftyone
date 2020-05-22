@@ -65,18 +65,9 @@ from collections import OrderedDict
 from copy import deepcopy
 import numbers
 
-from mongoengine import (
-    BooleanField,
-    DictField,
-    EmbeddedDocumentField,
-    FloatField,
-    IntField,
-    ListField,
-    StringField,
-)
-from mongoengine.fields import BaseField
 from mongoengine.errors import InvalidQueryError
 
+import fiftyone.core.field as fof
 import fiftyone.core.metadata as fom
 
 from .dataset import SampleField
@@ -134,13 +125,13 @@ class ODMSample(ODMDocument):
     meta = {"abstract": True}
 
     # The path to the data on disk
-    filepath = StringField(unique=True)
+    filepath = fof.StringField(unique=True)
 
     # The set of tags associated with the sample
-    tags = ListField(StringField())
+    tags = fof.ListField(fof.StringField())
 
     # Metadata about the sample media
-    metadata = EmbeddedDocumentField(fom.Metadata, null=True)
+    metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
     def __setattr__(self, name, value):
         has_field = self.has_field(name)
@@ -181,7 +172,7 @@ class ODMSample(ODMDocument):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                ``mongoengine.fields.BaseField``
+                :class:``fiftyone.core.field.Field``
 
         Returns:
              a dictionary mapping field names to field types
@@ -224,7 +215,7 @@ class ODMSample(ODMDocument):
         Args:
             field_name: the field name
             ftype: the field type to create. Must be a subclass of
-                ``mongoengine.fields.BaseField``
+                :class:``fiftyone.core.field.Field``
             embedded_doc_type (None): the
                 ``fiftyone.core.odm.ODMEmbeddedDocument`` type of the field.
                 Used only when ``ftype == EmbeddedDocumentField``
@@ -302,21 +293,21 @@ class ODMSample(ODMDocument):
     @staticmethod
     def _get_field_schema(cls_or_self, ftype=None):
         if ftype is None:
-            ftype = BaseField
+            ftype = fof.Field
 
-        if not issubclass(ftype, (BaseField, ODMEmbeddedDocument)):
+        if not issubclass(ftype, (fof.Field, ODMEmbeddedDocument)):
             raise ValueError(
                 "Field type %s must be subclass of %s or %s"
-                % (ftype, BaseField, ODMEmbeddedDocument)
+                % (ftype, fof.Field, ODMEmbeddedDocument)
             )
 
         d = OrderedDict()
         for field_name in cls_or_self._fields_ordered:
             field = cls_or_self._fields[field_name]
-            if issubclass(ftype, BaseField):
+            if issubclass(ftype, fof.Field):
                 if isinstance(field, ftype):
                     d[field_name] = field
-            elif isinstance(field, EmbeddedDocumentField):
+            elif isinstance(field, fof.EmbeddedDocumentField):
                 if issubclass(field.document_type, ftype):
                     d[field_name] = field
 
@@ -329,17 +320,17 @@ class ODMSample(ODMDocument):
         if field_name in cls_or_self._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        if not issubclass(ftype, BaseField):
+        if not issubclass(ftype, fof.Field):
             raise ValueError(
                 "Invalid field type '%s'; must be a subclass of '%s'"
-                % (ftype, BaseField)
+                % (ftype, fof.Field)
             )
 
         kwargs = {"db_field": field_name, "null": True}
 
-        if issubclass(ftype, EmbeddedDocumentField):
+        if issubclass(ftype, fof.EmbeddedDocumentField):
             kwargs.update({"document_type": embedded_doc_type})
-        elif issubclass(ftype, (ListField, DictField)):
+        elif issubclass(ftype, (fof.ListField, fof.DictField)):
             if subfield is not None:
                 kwargs["field"] = subfield
 
@@ -370,21 +361,21 @@ class ODMSample(ODMDocument):
         if isinstance(value, ODMEmbeddedDocument):
             cls_or_self.add_field(
                 field_name,
-                EmbeddedDocumentField,
+                fof.EmbeddedDocumentField,
                 embedded_doc_type=type(value),
             )
         elif isinstance(value, bool):
-            cls_or_self.add_field(field_name, BooleanField)
+            cls_or_self.add_field(field_name, fof.BooleanField)
         elif isinstance(value, six.integer_types):
-            cls_or_self.add_field(field_name, IntField)
+            cls_or_self.add_field(field_name, fof.IntField)
         elif isinstance(value, numbers.Number):
-            cls_or_self.add_field(field_name, FloatField)
+            cls_or_self.add_field(field_name, fof.FloatField)
         elif isinstance(value, six.string_types):
-            cls_or_self.add_field(field_name, StringField)
+            cls_or_self.add_field(field_name, fof.StringField)
         elif isinstance(value, (list, tuple)):
-            cls_or_self.add_field(field_name, ListField)
+            cls_or_self.add_field(field_name, fof.ListField)
         elif isinstance(value, dict):
-            cls_or_self.add_field(field_name, DictField)
+            cls_or_self.add_field(field_name, fof.DictField)
         else:
             raise TypeError("Unsupported field value '%s'" % type(value))
 

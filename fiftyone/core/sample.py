@@ -129,7 +129,7 @@ class Sample(object):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                ``mongoengine.fields.BaseField``
+                :class:``fiftyone.core.field.Field``
 
         Returns:
              a dictionary mapping field names to field types

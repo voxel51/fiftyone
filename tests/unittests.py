@@ -16,7 +16,6 @@ unittest.TextTestRunner().run(singletest)
 import datetime
 import unittest
 
-from mongoengine import IntField, StringField, EmbeddedDocumentField
 from mongoengine.errors import (
     FieldDoesNotExist,
     NotUniqueError,
@@ -69,7 +68,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset.add_sample(sample)
 
         field_name = "field1"
-        ftype = IntField
+        ftype = fo.IntField
 
         # Field not in schema
         with self.assertRaises(AttributeError):
@@ -111,11 +110,11 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         with self.assertRaises(AttributeError):
             getattr(sample, field_name)
 
-    def test_dataset_delete_samples(self):
+    def test_dataset_remove_samples(self):
         """Test when a sample is deleted from a dataset, the sample is
         disconnected from the dataset.
         """
-        dataset_name = self.test_dataset_delete_samples.__name__
+        dataset_name = self.test_dataset_remove_samples.__name__
         dataset = fo.Dataset(name=dataset_name)
 
         # add 1 sample
@@ -174,7 +173,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset.add_sample(sample)
 
         field_name = "field1"
-        ftype = IntField
+        ftype = fo.IntField
         value = 51
 
         # field not in schema
@@ -204,7 +203,7 @@ class DatasetTest(unittest.TestCase):
         dataset1 = fo.Dataset(name=dataset_name)
 
         field_name = "field1"
-        ftype = IntField
+        ftype = fo.IntField
 
         dataset1.add_sample_field(field_name, ftype)
         fields = dataset1.get_sample_fields()
@@ -269,7 +268,7 @@ class SampleTest(unittest.TestCase):
         # set_field create=True
         sample.set_field("field2", value, create=True)
         fields = sample.get_field_schema()
-        self.assertIsInstance(fields["field2"], IntField)
+        self.assertIsInstance(fields["field2"], fo.IntField)
         self.assertIsInstance(sample.field2, int)
         self.assertEqual(sample.get_field("field2"), value)
         self.assertEqual(sample["field2"], value)
@@ -408,7 +407,7 @@ class SampleInDatasetTest(unittest.TestCase):
 
         dataset.add_sample(sample)
         fields = dataset.get_sample_fields()
-        self.assertIsInstance(fields[field_name], IntField)
+        self.assertIsInstance(fields[field_name], fo.IntField)
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
 
@@ -427,7 +426,7 @@ class SampleInDatasetTest(unittest.TestCase):
 
         dataset.add_samples([sample])
         fields = dataset.get_sample_fields()
-        self.assertIsInstance(fields[field_name], IntField)
+        self.assertIsInstance(fields[field_name], fo.IntField)
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
 
@@ -438,7 +437,7 @@ class SampleInDatasetTest(unittest.TestCase):
 
         def add_to_dataset():
             dataset = fo.Dataset(name=dataset_name)
-            dataset.add_sample_field(field_name=field_name, ftype=IntField)
+            dataset.add_sample_field(field_name=field_name, ftype=fo.IntField)
 
         add_to_dataset()
 
@@ -559,7 +558,7 @@ class CRUDTest(unittest.TestCase):
         # update add new field
         dataset.add_sample_field(
             "test_label",
-            EmbeddedDocumentField,
+            fo.EmbeddedDocumentField,
             embedded_doc_type=fo.Classification,
         )
         sample.test_label = fo.Classification(label="cow")
@@ -606,7 +605,7 @@ class ViewTest(unittest.TestCase):
         dataset = fo.Dataset(dataset_name)
         dataset.add_sample_field(
             "labels",
-            EmbeddedDocumentField,
+            fo.EmbeddedDocumentField,
             embedded_doc_type=fo.Classification,
         )
 
@@ -647,14 +646,14 @@ class FieldTest(unittest.TestCase):
 
         # add field (default duplicate)
         with self.assertRaises(ValueError):
-            dataset.add_sample_field("filepath", StringField)
+            dataset.add_sample_field("filepath", fo.StringField)
 
         # delete default field
         with self.assertRaises(ValueError):
             dataset.delete_sample_field("filepath")
 
         field_name = "field1"
-        ftype = StringField
+        ftype = fo.StringField
         field_test_value = "test_field_value"
 
         # access non-existent field
@@ -722,7 +721,7 @@ class FieldTest(unittest.TestCase):
                 sample.to_dict()[field_name]
 
         # add deleted field with new type
-        ftype = IntField
+        ftype = fo.IntField
         field_test_value = 51
         dataset.add_sample_field(field_name, ftype)
         setattr(sample1, field_name, field_test_value)

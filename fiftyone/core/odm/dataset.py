@@ -45,7 +45,7 @@ class SampleField(ODMEmbeddedDocument):
         """Creates a :class:`SampleField` from a MongoEngine field.
 
         Args:
-            field: a ``mongoengine.fields.BaseField`` instance
+            field: a :class:``fiftyone.core.field.Field`` instance
 
         Returns:
             a :class:`SampleField`
@@ -79,7 +79,7 @@ class SampleField(ODMEmbeddedDocument):
         """Determines whether this sample field matches the given field.
 
         Args:
-            field: a ``mongoengine.fields.BaseField`` instance
+            field: a :class:``fiftyone.core.field.Field`` instance
 
         Returns:
             True/False

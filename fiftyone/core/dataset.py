@@ -24,13 +24,13 @@ import logging
 import numbers
 import os
 
-from mongoengine import ListField, DictField, EmbeddedDocumentField
 from mongoengine.errors import DoesNotExist
 
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collection as foc
+import fiftyone.core.field as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
@@ -176,7 +176,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                ``mongoengine.fields.BaseField``
+                :class:``fiftyone.core.field.Field``
 
         Returns:
              a dictionary mapping field names to field types
@@ -191,7 +191,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field_name: the field name
             ftype: the field type to create. Must be a subclass of
-                ``mongoengine.fields.BaseField``
+                :class:``fiftyone.core.field.Field``
             embedded_doc_type (None): the
                 ``mongoengine.fields.EmbeddedDocument`` type of the field. Used
                 only when ``ftype == EmbeddedDocumentField``
@@ -917,8 +917,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._sample_doc_cls = type(self._name, (foo.ODMDatasetSample,), {})
 
-        # -1 for "id"
-        num_default_fields = len(self.get_sample_fields()) - 1
+        num_default_fields = len(self.get_sample_fields())
 
         for sample_field in self._meta.sample_fields[num_default_fields:]:
             subfield = (
@@ -974,9 +973,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _field_to_str(field):
         field_str = etau.get_class_name(field)
 
-        if any(isinstance(field, cls) for cls in [ListField, DictField]):
+        if any(
+            isinstance(field, cls) for cls in [fof.ListField, fof.DictField]
+        ):
             field_str += "(field=%s)" % etau.get_class_name(field.field)
-        elif isinstance(field, EmbeddedDocumentField):
+        elif isinstance(field, fof.EmbeddedDocumentField):
             field_str += "(document_type=%s)" % etau.get_class_name(
                 field.document_type
             )
