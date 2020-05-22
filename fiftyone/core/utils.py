@@ -5,19 +5,6 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import resource
 
@@ -31,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 def ensure_tf():
     """Verifies that TensorFlow is installed on the host machine.
+
     Raises:
         ImportError: if ``tensorflow`` could not be imported
     """
@@ -40,6 +28,7 @@ def ensure_tf():
 def ensure_tfds():
     """Verifies that the ``tensorflow_datasets`` package is installed on the
     host machine.
+
     Raises:
         ImportError: if ``tensorflow_datasets`` could not be imported
     """
@@ -49,6 +38,7 @@ def ensure_tfds():
 
 def ensure_torch():
     """Verifies that PyTorch is installed on the host machine.
+
     Raises:
         ImportError: if ``torch`` or ``torchvision`` could not be imported
     """
