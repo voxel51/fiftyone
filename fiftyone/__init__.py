@@ -42,6 +42,7 @@ from .core.dataset import (
     load_dataset,
 )
 from .core.field import (
+    Field,
     BooleanField,
     IntField,
     FloatField,

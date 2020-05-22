@@ -169,19 +169,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
         )
 
-    def get_sample_fields(self, ftype=None):
-        """Returns a schema dictionary describing the fields of the samples
-        in the dataset.
+    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+        """Returns a schema dictionary describing the fields of this sample.
+
+        If the sample belongs to a dataset, the schema will apply to all
+        samples in the dataset.
 
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
                 :class:``fiftyone.core.field.Field``
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
 
         Returns:
              a dictionary mapping field names to field types
         """
-        return self._sample_doc_cls.get_field_schema(ftype=ftype)
+        return self._sample_doc_cls.get_field_schema(
+            ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
     def add_sample_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -193,8 +200,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype: the field type to create. Must be a subclass of
                 :class:``fiftyone.core.field.Field``
             embedded_doc_type (None): the
-                ``mongoengine.fields.EmbeddedDocument`` type of the field. Used
-                only when ``ftype == EmbeddedDocumentField``
+                ``fiftyone.core.odm.ODMEmbeddedDocument`` type of the field.
+                Used only when ``ftype`` is
+                :class:``fiftyone.core.field.EmbeddedDocumentField``
             subfield (None): the type of the contained field. Used only when
                 `ftype` is a list or dict type
         """
@@ -904,7 +912,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._meta = foo.ODMDataset(
             name=name,
             sample_fields=foo.SampleField.list_from_field_schema(
-                self.get_sample_fields()
+                self.get_field_schema()
             ),
         )
 
@@ -917,7 +925,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._sample_doc_cls = type(self._name, (foo.ODMDatasetSample,), {})
 
-        num_default_fields = len(self.get_sample_fields())
+        num_default_fields = len(self.get_field_schema())
 
         for sample_field in self._meta.sample_fields[num_default_fields:]:
             subfield = (
@@ -940,14 +948,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def _expand_schema(self, samples):
-        fields = self.get_sample_fields()
+        fields = self.get_field_schema()
         for sample in samples:
             for field_name, field in iteritems(sample.get_field_schema()):
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
                     )
-                    fields = self.get_sample_fields()
+                    fields = self.get_field_schema()
 
     def _load_sample_from_dict(self, d):
         doc = self._sample_doc_cls.from_dict(d, created=False, extended=False)
@@ -961,7 +969,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._sample_doc_cls.objects(**kwargs)
 
     def _get_fields_str(self):
-        fields = self.get_sample_fields()
+        fields = self.get_field_schema()
         max_len = max([len(field_name) for field_name in fields]) + 1
         return "\n".join(
             "    %s %s"

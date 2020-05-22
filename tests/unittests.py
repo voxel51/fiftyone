@@ -178,12 +178,12 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
 
         # field not in schema
         with self.assertRaises(KeyError):
-            fields = dataset.get_sample_fields()
+            fields = dataset.get_field_schema()
             fields[field_name]
 
         # added to sample
         sample[field_name] = value
-        fields = dataset.get_sample_fields()
+        fields = dataset.get_field_schema()
         self.assertIsInstance(fields[field_name], ftype)
 
 
@@ -206,19 +206,19 @@ class DatasetTest(unittest.TestCase):
         ftype = fo.IntField
 
         dataset1.add_sample_field(field_name, ftype)
-        fields = dataset1.get_sample_fields()
+        fields = dataset1.get_field_schema()
         self.assertIsInstance(fields[field_name], ftype)
         dataset_copy = fo.load_dataset(name=dataset_name)
-        fields = dataset_copy.get_sample_fields()
+        fields = dataset_copy.get_field_schema()
         self.assertIsInstance(fields[field_name], ftype)
 
         dataset1.delete_sample_field("field1")
         with self.assertRaises(KeyError):
-            fields = dataset1.get_sample_fields()
+            fields = dataset1.get_field_schema()
             fields[field_name]
         with self.assertRaises(KeyError):
             dataset_copy = fo.load_dataset(name=dataset_name)
-            fields = dataset_copy.get_sample_fields()
+            fields = dataset_copy.get_field_schema()
             fields[field_name]
 
         dataset2 = fo.Dataset(name=dataset_name)
@@ -406,7 +406,7 @@ class SampleInDatasetTest(unittest.TestCase):
             dataset.add_sample(sample, expand_schema=False)
 
         dataset.add_sample(sample)
-        fields = dataset.get_sample_fields()
+        fields = dataset.get_field_schema()
         self.assertIsInstance(fields[field_name], fo.IntField)
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
@@ -425,7 +425,7 @@ class SampleInDatasetTest(unittest.TestCase):
             dataset.add_samples([sample], expand_schema=False)
 
         dataset.add_samples([sample])
-        fields = dataset.get_sample_fields()
+        fields = dataset.get_field_schema()
         self.assertIsInstance(fields[field_name], fo.IntField)
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
@@ -443,7 +443,7 @@ class SampleInDatasetTest(unittest.TestCase):
 
         def check_add_to_dataset():
             dataset = fo.Dataset(name=dataset_name)
-            fields = dataset.get_sample_fields()
+            fields = dataset.get_field_schema()
             self.assertIn(field_name, fields)
 
         check_add_to_dataset()
@@ -463,7 +463,7 @@ class SampleInDatasetTest(unittest.TestCase):
         def check_add_to_sample():
             dataset = fo.Dataset(name=dataset_name)
             sample = dataset.view().first()
-            fields = dataset.get_sample_fields()
+            fields = dataset.get_field_schema()
             self.assertIn(field_name, fields)
             self.assertEqual(sample[field_name], value)
 
@@ -658,7 +658,7 @@ class FieldTest(unittest.TestCase):
 
         # access non-existent field
         with self.assertRaises(KeyError):
-            dataset.get_sample_fields()[field_name]
+            dataset.get_field_schema()[field_name]
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
             with self.assertRaises(KeyError):
                 sample.get_field_schema()[field_name]
@@ -677,7 +677,7 @@ class FieldTest(unittest.TestCase):
         sample1.save()
 
         # check field exists and is of correct type
-        field = dataset.get_sample_fields()[field_name]
+        field = dataset.get_field_schema()[field_name]
         self.assertIsInstance(field, ftype)
         for sample in [sample1, dataset[id1]]:
             # check field exists and is of correct type
@@ -707,7 +707,7 @@ class FieldTest(unittest.TestCase):
 
         # access non-existent field
         with self.assertRaises(KeyError):
-            dataset.get_sample_fields()[field_name]
+            dataset.get_field_schema()[field_name]
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
             with self.assertRaises(KeyError):
                 sample.get_field_schema()[field_name]
@@ -728,7 +728,7 @@ class FieldTest(unittest.TestCase):
         sample1.save()
 
         # check field exists and is of correct type
-        field = dataset.get_sample_fields()[field_name]
+        field = dataset.get_field_schema()[field_name]
         self.assertIsInstance(field, ftype)
         for sample in [sample1, dataset[id1]]:
             # check field exists and is of correct type

@@ -134,6 +134,7 @@ class ODMSample(ODMDocument):
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
     def __setattr__(self, name, value):
+        # pylint: disable=no-member
         has_field = self.has_field(name)
 
         if name.startswith("_") or (hasattr(self, name) and not has_field):
@@ -161,9 +162,10 @@ class ODMSample(ODMDocument):
     @property
     def field_names(self):
         """An ordered list of the names of the fields of this sample."""
+        # pylint: disable=no-member
         return self._fields_ordered
 
-    def get_field_schema(self, ftype=None):
+    def get_field_schema(self, ftype=None, embedded_doc_type=None):
         """Returns a schema dictionary describing the fields of this sample.
 
         If the sample belongs to a dataset, the schema will apply to all
@@ -173,6 +175,9 @@ class ODMSample(ODMDocument):
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
                 :class:``fiftyone.core.field.Field``
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
 
         Returns:
              a dictionary mapping field names to field types
@@ -188,6 +193,7 @@ class ODMSample(ODMDocument):
         Returns:
             True/False
         """
+        # pylint: disable=no-member
         return field_name in self._fields
 
     def get_field(self, field_name):
@@ -218,7 +224,8 @@ class ODMSample(ODMDocument):
                 :class:``fiftyone.core.field.Field``
             embedded_doc_type (None): the
                 ``fiftyone.core.odm.ODMEmbeddedDocument`` type of the field.
-                Used only when ``ftype == EmbeddedDocumentField``
+                Used only when ``ftype`` is
+                :class:``fiftyone.core.field.EmbeddedDocumentField``
             subfield (None): the type of the contained field. Used only when
                 `ftype` is a list or dict type
         """
@@ -291,25 +298,35 @@ class ODMSample(ODMDocument):
         raise NotImplementedError("Subclass must implement delete_field()")
 
     @staticmethod
-    def _get_field_schema(cls_or_self, ftype=None):
+    def _get_field_schema(cls_or_self, ftype=None, embedded_doc_type=None):
         if ftype is None:
             ftype = fof.Field
 
-        if not issubclass(ftype, (fof.Field, ODMEmbeddedDocument)):
+        if not issubclass(ftype, fof.Field):
             raise ValueError(
-                "Field type %s must be subclass of %s or %s"
-                % (ftype, fof.Field, ODMEmbeddedDocument)
+                "Field type %s must be subclass of %s" % (ftype, fof.Field)
+            )
+
+        if embedded_doc_type and not issubclass(
+            ftype, fof.EmbeddedDocumentField
+        ):
+            raise ValueError(
+                "embedded_doc_type should only be specified if ftype is a"
+                " subclass of %s" % fof.EmbeddedDocumentField
             )
 
         d = OrderedDict()
         for field_name in cls_or_self._fields_ordered:
             field = cls_or_self._fields[field_name]
-            if issubclass(ftype, fof.Field):
-                if isinstance(field, ftype):
-                    d[field_name] = field
-            elif isinstance(field, fof.EmbeddedDocumentField):
-                if issubclass(field.document_type, ftype):
-                    d[field_name] = field
+            if not isinstance(cls_or_self._fields[field_name], ftype):
+                continue
+
+            if embedded_doc_type and not issubclass(
+                field.document_type, embedded_doc_type
+            ):
+                continue
+
+            d[field_name] = field
 
         return d
 
@@ -424,8 +441,10 @@ class ODMNoDatasetSample(ODMSample):
         return None
 
     @nodataset
-    def get_field_schema(self, ftype=None):
-        return self._get_field_schema(cls_or_self=self, ftype=ftype)
+    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+        return self._get_field_schema(
+            cls_or_self=self, ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
     @nodataset
     def add_field(
@@ -474,8 +493,10 @@ class ODMDatasetSample(ODMSample):
         return self.__class__.__name__
 
     @classmethod
-    def get_field_schema(cls, ftype=None):
-        return cls._get_field_schema(cls_or_self=cls, ftype=ftype)
+    def get_field_schema(cls, ftype=None, embedded_doc_type=None):
+        return cls._get_field_schema(
+            cls_or_self=cls, ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
     @classmethod
     def add_field(
@@ -489,6 +510,7 @@ class ODMDatasetSample(ODMSample):
         """Additional arg `save` is to prevent saving the fields when reloading
         a dataset from the database.
         """
+        # pylint: disable=no-member
         cls._add_field(
             cls,
             field_name,
@@ -518,6 +540,7 @@ class ODMDatasetSample(ODMSample):
     @classmethod
     @no_delete_default_field
     def delete_field(cls, field_name):
+        # pylint: disable=no-member
         try:
             # Delete from all samples
             # pylint: disable=no-member
