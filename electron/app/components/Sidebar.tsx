@@ -15,7 +15,15 @@ import connect from "../utils/connect";
 import Rendering from "./Rendering";
 
 const _Sidebar = (props) => {
-  const { state, connected, loading, showInfo, setShowInfo } = props;
+  const {
+    state,
+    connected,
+    loading,
+    showInfo,
+    setShowInfo,
+    activeTags,
+    setActiveTags,
+  } = props;
   const hasDataset = Boolean(state && state.dataset);
   return (
     <Sidebar
@@ -24,7 +32,6 @@ const _Sidebar = (props) => {
       vertical
       direction={"left"}
       visible={!loading}
-      width="wide"
     >
       <Menu.Item as="h3">
         <Image src={logo} alt="FiftyOne" />
@@ -43,7 +50,7 @@ const _Sidebar = (props) => {
           </Menu>
         ) : null}
       </Menu.Item>
-      <Rendering />
+      <Rendering activeTags={activeTags} setActiveTags={setActiveTags} />
       {hasDataset ? (
         <Menu.Item as="h4">
           View

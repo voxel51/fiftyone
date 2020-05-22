@@ -21,7 +21,16 @@ type Props = {
 function App(props: Props) {
   const { path, url } = useRouteMatch();
   const [showInfo, setShowInfo] = useState(true);
-  const { loading, children, dispatch, update, connected, port } = props;
+  const {
+    loading,
+    children,
+    dispatch,
+    update,
+    connected,
+    port,
+    activeTags,
+    setActiveTags,
+  } = props;
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
@@ -60,7 +69,7 @@ function App(props: Props) {
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
-  const bodyStyle = { height: "100%", marginLeft: 350 };
+  const bodyStyle = { height: "100%", marginLeft: 260 };
 
   return (
     <>
@@ -89,7 +98,7 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
-      <Sidebar showInfo={showInfo} setShowInfo={setShowInfo} />
+      <Sidebar activeTags={activeTags} setActiveTags={setActiveTags} />
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
         {children}
       </div>

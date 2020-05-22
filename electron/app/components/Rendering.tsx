@@ -6,17 +6,15 @@ import { getSocket, useSubscribe } from "../utils/socket";
 import Labels from "./Labels";
 import Tags from "./Tags";
 
-const Rendering = (props) => (
+const Rendering = ({ activeTags, setActiveTags }) => (
   <Menu.Item as="h3">
-    Rendering
-    <br />
-    <Header as="h4">Labels</Header>
-    <br />
-    <Labels />
-    <br />
-    <Header as="h4">Tags</Header>
-    <br />
-    <Tags />
+    Display
+    <div style={{ paddingTop: "1rem" }}>
+      <Header as="h4">Labels</Header>
+      <Labels />
+      <Header as="h4">Tags</Header>
+      <Tags activeTags={activeTags} setActiveTags={setActiveTags} />
+    </div>
   </Menu.Item>
 );
 

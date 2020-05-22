@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Switch, Route } from "react-router-dom";
 
 import routes from "./constants/routes.json";
@@ -8,14 +8,18 @@ import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
 
 export default function Routes() {
+  const [activeTags, setActiveTags] = useState({});
+  const dataset = (props) => {
+    return <Dataset {...props} activeTags={activeTags} />;
+  };
   return (
-    <App>
+    <App activeTags={activeTags} setActiveTags={setActiveTags}>
       <Switch>
         <Route path={routes.LOADING} exact component={Loading} />
         <Route path={routes.SETUP} exact component={Setup} />
-        <Route path={routes.SAMPLES} exact component={Dataset} />
-        <Route path={routes.FIELDS} exact component={Dataset} />
-        <Route path={routes.DATASET} component={Dataset} />
+        <Route path={routes.SAMPLES} exact render={dataset} />
+        <Route path={routes.FIELDS} exact render={dataset} />
+        <Route path={routes.DATASET} render={dataset} />
       </Switch>
     </App>
   );
