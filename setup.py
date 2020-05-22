@@ -55,6 +55,10 @@ setup(
         "fiftyone-gui",
         "voxel51-eta",
     ],
+    extras_require={
+        "tensorflow": ["tensorflow", "tensorflow-datasets"],
+        "pytorch": ["torch", "torchvision"],
+    },
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
