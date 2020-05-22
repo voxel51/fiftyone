@@ -30,7 +30,7 @@ import fiftyone.types as fot
 import fiftyone.zoo as foz
 
 fou.ensure_torch()
-import torchvision  # pylint: disable=wrong-import-order
+import torchvision
 
 
 logger = logging.getLogger(__name__)
