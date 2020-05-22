@@ -1,6 +1,5 @@
 """
 Core utilities.
-
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -20,6 +19,9 @@ from builtins import *
 
 import logging
 import resource
+import sys
+
+import packaging.version
 
 import eta.core.utils as etau
 
@@ -27,51 +29,63 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-def ensure_tensorflow():
+def ensure_tf():
     """Verifies that TensorFlow is installed on the host machine.
-
     Raises:
         ImportError: if ``tensorflow`` could not be imported
     """
-    try:
-        import tensorflow  # pylint: disable=unused-import
-    except ImportError:
-        raise ImportError(
-            "The requested operation requires that 'tensorflow' is installed "
-            "on your machine"
-        )
+    _ensure_package("tensorflow")
 
 
-def ensure_tensorflow_datasets():
+def ensure_tfds():
     """Verifies that the ``tensorflow_datasets`` package is installed on the
     host machine.
-
     Raises:
         ImportError: if ``tensorflow_datasets`` could not be imported
     """
-    try:
-        import tensorflow_datasets  # pylint: disable=unused-import
-    except ImportError:
-        raise ImportError(
-            "The requested operation requires that 'tensorflow_datasets' is "
-            "installed on your machine"
-        )
+    _ensure_package("tensorflow", min_version="1.15")
+    _ensure_package("tensorflow_datasets")
 
 
 def ensure_torch():
     """Verifies that PyTorch is installed on the host machine.
-
     Raises:
         ImportError: if ``torch`` or ``torchvision`` could not be imported
     """
+    _ensure_package("torch")
+    _ensure_package("torchvision")
+
+
+def _ensure_package(package_name, min_version=None):
+    has_min_ver = min_version is not None
+
+    if has_min_ver:
+        min_version = packaging.version.parse(min_version)
+
     try:
-        import torch  # pylint: disable=unused-import
-        import torchvision  # pylint: disable=unused-import
+        pkg = __import__(package_name)
     except ImportError:
-        raise ImportError(
-            "The requested operation requires that 'torch' and 'torchvision' "
-            "are installed on your machine"
+        if has_min_ver:
+            pkg_str = "%s>=%s" % (package_name, min_version)
+        else:
+            pkg_str = package_name
+
+        logger.error(
+            "Failed to import '%s'", package_name, exc_info=sys.exc_info()
         )
+        raise ImportError(
+            "The requested operation requires that '%s' is installed on your "
+            "machine" % pkg_str
+        )
+
+    if has_min_ver:
+        pkg_version = packaging.version.parse(pkg.__version__)
+        if pkg_version < min_version:
+            raise ImportError(
+                "The requested operation requires that '%s>=%s' is installed "
+                "on your machine; found '%s==%s'"
+                % (package_name, min_version, package_name, pkg_version)
+            )
 
 
 def parse_serializable(obj, cls):

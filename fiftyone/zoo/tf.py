@@ -29,7 +29,7 @@ import fiftyone.utils.data as foud
 import fiftyone.types as fot
 import fiftyone.zoo as foz
 
-fou.ensure_tensorflow_datasets()
+fou.ensure_tfds()
 import tensorflow_datasets as tfds
 
 
