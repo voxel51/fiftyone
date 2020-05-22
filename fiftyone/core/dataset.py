@@ -642,7 +642,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field="ground_truth",
         dataset_dir=None,
         sample_parser=None,
-        image_format=fo.config.default_image_ext,
+        image_format=None,
     ):
         """Creates a :class:`Dataset` for the given iterable of samples, which
         contains images and their associated labels.
@@ -688,6 +688,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(name)
+
+        if image_format is None:
+            image_format = fo.config.default_image_ext
 
         _samples = foud.parse_labeled_images(
             samples,
@@ -847,7 +850,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         dataset_dir=None,
         sample_parser=None,
-        image_format=fo.config.default_image_ext,
+        image_format=None,
     ):
         """Creates a :class:`Dataset` for the given iterable of samples, which
         contains images that are read in-memory and written to the given
@@ -886,6 +889,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(name)
+
+        if image_format is None:
+            image_format = fo.config.default_image_ext
 
         image_paths = foud.to_images_dir(
             samples,
