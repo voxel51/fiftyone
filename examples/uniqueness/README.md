@@ -61,7 +61,8 @@ print(dataset.view().first())
 
 ### Visualize to find duplicate and near-duplicate images
 
-Now, let's visually inspect the output to see if we are able to identify
+Now, let's visually inspect the least unique images in the dataset to see if
+our dataset has any issues:
 
 ```py
 # Sort in increasing order of uniqueness (least unique first)
@@ -71,16 +72,16 @@ dups_view = dataset.view().sort_by("uniqueness")
 session = fo.launch_dashboard(view=dups_view)
 ```
 
-You will easily see some near-duplicates in the GUI. It surprised us that there
-are duplicates in CIFAR-10, too!
+You will easily see some near-duplicates in the dashboard. It surprised us that
+there are duplicates in CIFAR-10, too!
 
 Of course, in this scenario, near duplicates are identified from visual
 inspection. So, how do we get the information out of FiftyOne and back into
 your working environment. Easy! The `session` variable provides a bidirectional
-bridge between the GUI and your Python environment. In this case, we will use
-the `session.selected` bridge. So, in the GUI, click on the checkmark in the
-upper-left of some of the duplicates and near-duplicates. Then, execute the
-following code in the IPython shell.
+bridge between the dashboard and your Python environment. In this case, we will
+use the `session.selected` bridge. So, in the dashboard, click on some of the
+duplicates and near-duplicates. Then, execute the following code in the IPython
+shell.
 
 ```py
 # Get currently selected images from dashboard
@@ -89,7 +90,7 @@ dup_ids = session.selected
 # Mark as duplicates
 dups_view = dataset.view().select(dup_ids)
 for sample in dups_view:
-    sample.add_tag("dup")
+    sample.tags.append("dup")
     sample.save()
 
 # Visualize duplicates-only in dashboard
@@ -97,8 +98,8 @@ session.view = dups_view
 ```
 
 And the GUI will only show these samples now. We can, of course access the
-file-paths and other information about these samples programmatically so you
-can act on the findings. But, let's do that at the end of Part 2 below!
+filepaths and other information about these samples programmatically so you can
+act on the findings. But, let's do that at the end of Part 2 below!
 
 ## Part 2: Finding unique samples
 
