@@ -22,6 +22,11 @@ pip install torchvision
     `~/fiftyone/cifar10/test`:
 
 ```py
+#
+# This will soon be replaced with
+#   fiftyone zoo download cifar10 --split test
+#
+
 import fiftyone.zoo as foz
 import fiftyone.core.config as foc
 import fiftyone.core.odm as foo
