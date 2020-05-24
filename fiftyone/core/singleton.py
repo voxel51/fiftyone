@@ -35,20 +35,12 @@ class DatasetSingleton(type):
         cls = super(DatasetSingleton, metacls).__new__(
             metacls, *args, **kwargs
         )
-        cls._instances = {}
+        cls._instances = weakref.WeakValueDictionary()
         return cls
 
     def __call__(cls, name, *args, **kwargs):
-        if name in cls._instances:
-            # de-reference the weakref
-            ref = cls._instances[name]
-            inst = ref and ref()
-        else:
-            inst = None
-
-        if inst is None:
-            inst = cls.__new__(cls, name, *args, **kwargs)
-            inst.__init__(name, *args, **kwargs)
-            cls._instances[name] = weakref.ref(inst)
-
-        return inst
+        if name not in cls._instances:
+            instance = cls.__new__(cls, name, *args, **kwargs)
+            instance.__init__(name, *args, **kwargs)
+            cls._instances[name] = instance
+        return cls._instances[name]
