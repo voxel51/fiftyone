@@ -64,5 +64,5 @@ setup(
     ],
     scripts=["fiftyone/fiftyone"],
     python_requires=">=2.7",
-    cmdclass={"bdist_wheel": BdistWheelCustom,},
+    cmdclass={"bdist_wheel": BdistWheelCustom},
 )
