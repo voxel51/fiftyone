@@ -70,6 +70,7 @@ export default ({
   style,
   onClick,
   onDoubleClick,
+  activeLabels,
 }) => {
   const [overlay, colorMap] = loadOverlay(sample, colors);
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
@@ -93,9 +94,11 @@ export default ({
       if (thumbnail) {
         player.thumbnailMode();
       }
-      player.render(id);
+      player.render(id, activeLabels);
       setInitLoad(true);
+    } else {
+      player.renderer.processFrame(activeLabels);
     }
-  }, [player]);
+  }, [activeLabels]);
   return <div id={id} style={style} {...props} />;
 };

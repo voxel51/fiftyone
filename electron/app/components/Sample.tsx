@@ -60,10 +60,11 @@ const Sample = ({
         onClick={() => handleClick()}
         onDoubleClick={() => setView({ visible: true, sample })}
         thumbnail={true}
+        activeLabels={activeLabels}
       />
       <div className="sample-info">
         {Object.keys(s).map((l, i) =>
-          activeLabels[l] && s[l] ? (
+          activeLabels[l] && s[l] && s[l]._cls === "Classification" ? (
             <Tag name={String(s[l].label)} color={colors[i]} />
           ) : null
         )}

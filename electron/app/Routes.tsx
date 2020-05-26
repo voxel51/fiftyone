@@ -22,7 +22,6 @@ function Routes({ port }) {
   const [loading, setLoading] = useState(true);
   const [colorMap, setColorMap] = useState({});
   const socket = getSocket(port, "state");
-  console.log(colors);
   const appProps = {
     activeTags,
     setActiveTags,
