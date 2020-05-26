@@ -187,6 +187,52 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         self.assertIsInstance(fields[field_name], ftype)
 
 
+class ScopedObjectsSynchronizationTest(unittest.TestCase):
+    """Tests ensuring that when a dataset or samples in a dataset are modified,
+    those changes are passed on the the database and can be seen in different
+    scopes (or processes!).
+    """
+
+    def test_scoped_schema_changes(self):
+        dataset_name = self.test_scoped_schema_changes.__name__
+
+        field_name = "field1"
+
+        def add_to_dataset():
+            dataset = fo.Dataset(name=dataset_name)
+            dataset.add_sample_field(field_name=field_name, ftype=fo.IntField)
+
+        add_to_dataset()
+
+        def check_add_to_dataset():
+            dataset = fo.Dataset(name=dataset_name)
+            fields = dataset.get_field_schema()
+            self.assertIn(field_name, fields)
+
+        check_add_to_dataset()
+
+        field_name = "field2"
+        value = 51
+
+        def add_to_sample():
+            dataset = fo.Dataset(name=dataset_name)
+            sample = fo.Sample(filepath="path/to/file.jpg")
+            dataset.add_sample(sample)
+            sample[field_name] = value
+            sample.save()
+
+        add_to_sample()
+
+        def check_add_to_sample():
+            dataset = fo.Dataset(name=dataset_name)
+            sample = dataset.view().first()
+            fields = dataset.get_field_schema()
+            self.assertIn(field_name, fields)
+            self.assertEqual(sample[field_name], value)
+
+        check_add_to_sample()
+
+
 class DatasetTest(unittest.TestCase):
     def test_list_dataset_names(self):
         self.assertIsInstance(fo.list_dataset_names(), list)
@@ -430,47 +476,8 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
 
-    def test_scoped_schema_changes(self):
-        dataset_name = self.test_scoped_schema_changes.__name__
-
-        field_name = "field1"
-
-        def add_to_dataset():
-            dataset = fo.Dataset(name=dataset_name)
-            dataset.add_sample_field(field_name=field_name, ftype=fo.IntField)
-
-        add_to_dataset()
-
-        def check_add_to_dataset():
-            dataset = fo.Dataset(name=dataset_name)
-            fields = dataset.get_field_schema()
-            self.assertIn(field_name, fields)
-
-        check_add_to_dataset()
-
-        field_name = "field2"
-        value = 51
-
-        def add_to_sample():
-            dataset = fo.Dataset(name=dataset_name)
-            sample = fo.Sample(filepath="path/to/file.jpg")
-            dataset.add_sample(sample)
-            sample[field_name] = value
-            sample.save()
-
-        add_to_sample()
-
-        def check_add_to_sample():
-            dataset = fo.Dataset(name=dataset_name)
-            sample = dataset.view().first()
-            fields = dataset.get_field_schema()
-            self.assertIn(field_name, fields)
-            self.assertEqual(sample[field_name], value)
-
-        check_add_to_sample()
-
     def test_add_from_another_dataset(self):
-        dataset_name = self.test_scoped_schema_changes.__name__ + "_%d"
+        dataset_name = self.test_add_from_another_dataset.__name__ + "_%d"
         dataset1 = fo.Dataset(name=dataset_name % 1)
         dataset2 = fo.Dataset(name=dataset_name % 2)
 
