@@ -54,6 +54,17 @@ class SampleCollection(object):
     def __iter__(self):
         return self.iter_samples()
 
+    def __repr__(self):
+        return self.summary()
+
+    def summary(self):
+        """Returns a string summary of the collection.
+
+        Returns:
+            a string summary
+        """
+        raise NotImplementedError("Subclass must implement get_tags()")
+
     def get_tags(self):
         """Returns the list of tags in the collection.
 
