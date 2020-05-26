@@ -1,55 +1,69 @@
 import PropTypes from "prop-types";
 import React, { Component } from "react";
-import { Grid, Image, Menu, Sidebar, Statistic } from "semantic-ui-react";
+import {
+  Checkbox,
+  Grid,
+  Image,
+  Menu,
+  Sidebar,
+  Statistic,
+} from "semantic-ui-react";
 
+import InfoItem from "./InfoItem";
+import logo from "../logo.png";
 import connect from "../utils/connect";
+import Rendering from "./Rendering";
 
 const _Sidebar = (props) => {
-  const { state, connected, loading } = props;
+  const {
+    state,
+    connected,
+    loading,
+    showInfo,
+    setShowInfo,
+    displayProps,
+  } = props;
   const hasDataset = Boolean(state && state.dataset);
   return (
     <Sidebar
       as={Menu}
       animation={"uncover"}
-      inverted
       vertical
       direction={"left"}
-      visible={connected && !loading}
+      visible={!loading}
+      className="fo-sidebar"
     >
-      <Menu.Item as="h2">FiftyOne</Menu.Item>
       <Menu.Item as="h3">
-        {hasDataset ? `Dataset: ${state.dataset.name}` : "No dataset loaded"}
+        <Image src={logo} alt="FiftyOne" />
+      </Menu.Item>
+      <Menu.Item as="h3">
+        {!connected
+          ? "Not connected"
+          : hasDataset
+          ? "Dataset"
+          : "No dataset loaded"}
         {hasDataset ? (
-          <Menu inverted vertical>
-            <Menu.Item as="span">
-              Type &middot; <code>image</code>
-            </Menu.Item>
-            <Menu.Item as="span">
-              Samples &middot; <code>{state.count}</code>
-            </Menu.Item>
-            <Menu.Item as="span">
-              Selected &middot; <code>{state.selected.length}</code>
-            </Menu.Item>
-            <Menu.Item as="span">
-              Shape &middot; <code>({state.count},32,32,3)</code>
-            </Menu.Item>
+          <Menu vertical>
+            <InfoItem k="Name" v={state.dataset.name} />
+            <InfoItem k="Type" v="image" />
+            <InfoItem k="Samples" v={state.count} />
+            <InfoItem k="Selected" v={state.selected.length} />
           </Menu>
         ) : null}
       </Menu.Item>
-      <>
-        <Menu.Item as="h4">
+      {hasDataset ? <Rendering displayProps={displayProps} /> : null}
+      {hasDataset ? (
+        <Menu.Item as="h3">
           View
-          <Menu inverted vertical>
-            <Menu.Item as="div" style={{ overflowX: "auto" }}>
-              <pre>
-                {state && state.view
-                  ? JSON.stringify(JSON.parse(state.view.view), null, 2)
-                  : "Empty view"}
-              </pre>
+          <Menu vertical>
+            <Menu.Item as="span" style={{ overflowX: "auto" }}>
+              {state && state.view
+                ? JSON.stringify(JSON.parse(state.view.view), null, 2)
+                : "Empty view"}
             </Menu.Item>
           </Menu>
         </Menu.Item>
-      </>
+      ) : null}
     </Sidebar>
   );
 };

@@ -117,12 +117,15 @@ class DatasetView(foc.SampleCollection):
         """
         fields_str = self._dataset._get_fields_str()
 
-        pipeline_str = "    " + "\n    ".join(
-            [
-                "%d. %s" % (idx, str(d))
-                for idx, d in enumerate(self._pipeline, start=1)
-            ]
-        )
+        if self._pipeline:
+            pipeline_str = "    " + "\n    ".join(
+                [
+                    "%d. %s" % (idx, str(d))
+                    for idx, d in enumerate(self._pipeline, start=1)
+                ]
+            )
+        else:
+            pipeline_str = "    ---"
 
         return "\n".join(
             [
@@ -187,6 +190,19 @@ class DatasetView(foc.SampleCollection):
             pass
 
         return []
+
+    def get_label_fields(self):
+        """Returns the list of label fields in the collection.
+
+        Returns:
+            a list of field names
+        """
+        pipeline = [
+            {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+            {"$unwind": "$field"},
+            {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
+        ]
+        return [f for f in self.aggregate(pipeline)]
 
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
@@ -419,8 +435,8 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _get_label_distributions(self):
-        return list(self.aggregate(_LABEL_DISTRIBUTIONS_PIPELINE))
+    def _get_field_distributions(self):
+        return list(self.aggregate(_FIELD_DISTRIBUTIONS_PIPELINE))
 
     def _get_facets(self):
         return list(self.aggregate(_FACETS_PIPELINE))
@@ -438,19 +454,20 @@ class DatasetView(foc.SampleCollection):
         return 0
 
 
-_LABEL_DISTRIBUTIONS_PIPELINE = [
-    {"$project": {"label": {"$objectToArray": "$labels"}}},
-    {"$unwind": "$label"},
-    {"$project": {"group": "$label.k", "label": "$label.v.label"}},
+_FIELD_DISTRIBUTIONS_PIPELINE = [
+    {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+    {"$unwind": "$field"},
+    {"$project": {"field": "$field.k", "detection": "$field.v.detections"}},
+    {"$unwind": "$detection"},
     {
         "$group": {
-            "_id": {"group": "$group", "label": "$label"},
+            "_id": {"field": "$field", "label": "$detection.label"},
             "count": {"$sum": 1},
         }
     },
     {
         "$group": {
-            "_id": "$_id.group",
+            "_id": "$_id.field",
             "labels": {"$push": {"label": "$_id.label", "count": "$count"}},
         }
     },
@@ -470,33 +487,6 @@ _FACETS_PIPELINE = [
                 },
                 {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
                 {"$sort": {"_id": 1}},
-            ],
-            "labels": [
-                {"$project": {"label": {"$objectToArray": "$labels"}}},
-                {"$unwind": "$label"},
-                {
-                    "$project": {
-                        "group": "$label.k",
-                        "label": "$label.v.label",
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": {"group": "$group", "label": "$label"},
-                        "count": {"$sum": 1},
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": "$_id.group",
-                        "labels": {
-                            "$push": {
-                                "label": "$_id.label",
-                                "count": "$count",
-                            }
-                        },
-                    }
-                },
             ],
         }
     }

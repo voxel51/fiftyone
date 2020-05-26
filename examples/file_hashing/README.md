@@ -133,10 +133,10 @@ session.view = selected_view
 Iterate over the samples and compute their file hashes:
 
 ```python
-import fiftyone.core.features as fof
+import fiftyone.core.utils as fou
 
 for sample in dataset:
-    sample["file_hash"] = fof.compute_filehash(sample.filepath)
+    sample["file_hash"] = fou.compute_filehash(sample.filepath)
     sample.save()
 
 print(dataset.summary())

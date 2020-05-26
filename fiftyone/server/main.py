@@ -144,14 +144,24 @@ class StateController(Namespace):
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
-            view = state.dataset.default_view()
+            view = state.dataset.view()
         else:
             return []
 
         view = view.skip((page - 1) * page_length).limit(page_length)
         return [s.to_dict(extended=True) for s in view]
 
-    def on_get_label_distributions(self, _):
+    def on_lengths(self, _):
+        state = fos.StateDescription.from_dict(self.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.view()
+        else:
+            return []
+        return {"labels": view.get_label_fields(), "tags": view.get_tags()}
+
+    def on_get_field_distributions(self, _):
         """Gets the labels distributions for the current state.
 
         Args:
@@ -164,11 +174,11 @@ class StateController(Namespace):
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
-            view = state.dataset.default_view()
+            view = state.dataset.view()
         else:
             return []
 
-        return view._get_label_distributions()
+        return view._get_field_distributions()
 
     def on_get_facets(self, _):
         """Gets the facets for the current state.
@@ -183,7 +193,7 @@ class StateController(Namespace):
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
-            view = state.dataset.default_view()
+            view = state.dataset.view()
         else:
             return []
 
@@ -197,7 +207,7 @@ class StateController(Namespace):
         """
         _, value = facets.split(".")
         state = fos.StateDescription.from_dict(self.state)
-        state.view = state.dataset.default_view().match_tag(value)
+        state.view = state.dataset.view().match_tag(value)
         self.state = state.serialize()
         emit("update", self.state, broadcast=True, include_self=True)
 

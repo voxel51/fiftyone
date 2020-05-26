@@ -1,98 +1,74 @@
-import React, { useState, useEffect, useRef, PureComponent } from "react";
-import { Bar, BarChart, LabelList, XAxis, YAxis } from "recharts";
-import { Header, Loader, Segment } from "semantic-ui-react";
+import React, { useState } from "react";
+import { Dimmer, Loader, Container, Label } from "semantic-ui-react";
+import _ from "lodash";
 
-import { updateState } from "../actions/update";
-import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
+import { getSocket, useSubscribe } from "../utils/socket";
 
-class CustomizedAxisTick extends PureComponent {
-  render() {
-    const { x, y, stroke, payload } = this.props;
+const reserved = ["_id", "metadata", "filepath"];
 
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text
-          x={0}
-          y={0}
-          dy={16}
-          textAnchor="end"
-          fill="#666"
-          transform="rotate(-80)"
-        >
-          {payload.value}
-        </text>
-      </g>
-    );
-  }
-}
-
-const Histogram = connect(({ data, name }) => {
-  const barWidth = 30;
-  const [rightMargin, setRightMargin] = useState(0);
-  const container = useRef(null);
-
-  return (
-    <Segment style={{ overflowY: "auto" }}>
-      <Header as="h3">{name}</Header>
-      <BarChart
-        ref={container}
-        height={500}
-        width={data.length * (barWidth + 20)}
-        barCategoryGap={"20px"}
-        data={data}
-        margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
-      >
-        <XAxis
-          dataKey="label"
-          type="category"
-          interval={0}
-          height={150}
-          axisLine={false}
-          tick={<CustomizedAxisTick />}
-        />
-        <YAxis dataKey="count" axisLine={false} />
-        <Bar dataKey="count" fill="rgb(255, 109, 4)" barSize={barWidth} />
-      </BarChart>
-    </Segment>
-  );
-});
-
-const Charts = (props) => {
-  const { state, port } = props;
-  const hasDataset = Boolean(state && state.dataset);
+const Labels = (props) => {
+  const {
+    lengths,
+    port,
+    activeLabels,
+    setActiveLabels,
+    other,
+    colors,
+    start,
+  } = props;
   const socket = getSocket(port, "state");
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState([]);
-
-  const getData = () => {
-    socket.emit("get_label_distributions", "", (data) => {
-      setInitialLoad(false);
-      setLoading(false);
-      setData(data);
-    });
+  const onClick = (l) => {
+    setActiveLabels({ ...activeLabels, [l]: !Boolean(activeLabels[l]) });
   };
 
-  if (initialLoad) {
-    getData();
-  }
+  const isFloat = (n) => {
+    return Number(n) === n && n % 1 !== 0;
+  };
 
-  useSubscribe(socket, "update", (data) => {
-    setLoading(true);
-    getData();
-  });
-
-  if (loading) {
-    return <Loader />;
+  let content;
+  if (lengths.labels && lengths.labels.length) {
+    const { labels } = lengths;
+    const styles = (t, i) => {
+      if (activeLabels[t]) {
+        return { background: colors[lengths.mapping[t]] };
+      }
+      return { borderColor: colors[lengths.mapping[t]] };
+    };
+    let cnt = 0;
+    content = (
+      <>
+        {labels.map((l, i) => {
+          if (
+            (l._id.cls === "Classification" && !other) ||
+            (!l._id.cls && other && _.indexOf(reserved, l._id.field) < 0)
+          ) {
+            cnt += 1;
+            return (
+              <div
+                className={`tag clickable ${
+                  activeLabels[l._id.field] ? "active" : ""
+                }`}
+                key={i}
+                onClick={() => onClick(l._id.field)}
+                style={styles(l._id.field, i)}
+              >
+                {l._id.field}
+              </div>
+            );
+          } else {
+            return null;
+          }
+        })}
+      </>
+    );
+    if (cnt === 0) {
+      content = <pre className="pre-tag">None</pre>;
+    }
+  } else {
+    content = <pre className="pre-tag">None</pre>;
   }
-  return (
-    <>
-      {data.map((chart) => {
-        return <Histogram data={chart.labels} name={chart._id} />;
-      })}
-    </>
-  );
+  return <>{content}</>;
 };
 
-export default connect(Charts);
+export default connect(Labels);

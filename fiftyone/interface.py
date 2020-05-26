@@ -16,6 +16,16 @@ from .core.dataset import (
     list_dataset_names,
     load_dataset,
 )
+from .core.fields import (
+    Field,
+    BooleanField,
+    IntField,
+    FloatField,
+    StringField,
+    ListField,
+    DictField,
+    EmbeddedDocumentField,
+)
 from .core.labels import (
     Label,
     ImageLabel,

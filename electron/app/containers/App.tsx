@@ -1,6 +1,7 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
 import { Button, Modal, Label } from "semantic-ui-react";
+import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
 
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
@@ -18,11 +19,20 @@ type Props = {
 };
 
 function App(props: Props) {
-  const { loading, children, dispatch, update, connected, port } = props;
+  const { path, url } = useRouteMatch();
+  const [showInfo, setShowInfo] = useState(true);
+  const {
+    loading,
+    children,
+    dispatch,
+    update,
+    connected,
+    port,
+    displayProps,
+  } = props;
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
-
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
     if (loading) {
@@ -45,7 +55,9 @@ function App(props: Props) {
       dispatch(updateLoading(false));
     }
   }, 250);
-  useSubscribe(socket, "disconnect", () => console.log("disconnected"));
+  useSubscribe(socket, "disconnect", () => {
+    dispatch(updateConnected(false));
+  });
   useSubscribe(socket, "update", (data) => {
     if (data.close) {
       remote.getCurrentWindow().close();
@@ -56,13 +68,17 @@ function App(props: Props) {
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
-  const bodyStyle = { height: "100%", padding: "1em" };
-  if (connected) bodyStyle.marginLeft = 260;
+  const bodyStyle = { height: "100%", marginLeft: 260 };
 
   return (
     <>
       <Modal
-        trigger={<Button style={{ display: "none" }} ref={portRef}></Button>}
+        trigger={
+          <Button
+            style={{ padding: "1rem", display: "none" }}
+            ref={portRef}
+          ></Button>
+        }
         size="tiny"
         onClose={() => {
           dispatch(updatePort(result.port));
@@ -81,8 +97,10 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
-      <Sidebar />
-      <div style={bodyStyle}>{children}</div>
+      <Sidebar displayProps={displayProps} />
+      <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
+        {children}
+      </div>
     </>
   );
 }
