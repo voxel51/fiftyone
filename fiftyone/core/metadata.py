@@ -22,7 +22,7 @@ from future.utils import iteritems, itervalues
 # pylint: disable=wildcard-import,unused-wildcard-import
 
 from fiftyone.core.odm.document import ODMEmbeddedDocument
-import fiftyone.core.field as fof
+import fiftyone.core.fields as fof
 
 
 class Metadata(ODMEmbeddedDocument):

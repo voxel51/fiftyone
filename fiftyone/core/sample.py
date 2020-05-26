@@ -128,7 +128,7 @@ class Sample(object):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.field.Field``
+                :class:``fiftyone.core.fields.Field``
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.ODMEmbeddedDocument``

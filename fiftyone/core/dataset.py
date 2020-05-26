@@ -29,8 +29,8 @@ from mongoengine.errors import DoesNotExist
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.collection as foc
-import fiftyone.core.field as fof
+import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
@@ -178,7 +178,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.field.Field``
+                :class:``fiftyone.core.fields.Field``
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.ODMEmbeddedDocument``
@@ -198,11 +198,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field_name: the field name
             ftype: the field type to create. Must be a subclass of
-                :class:``fiftyone.core.field.Field``
+                :class:``fiftyone.core.fields.Field``
             embedded_doc_type (None): the
                 ``fiftyone.core.odm.ODMEmbeddedDocument`` type of the field.
                 Used only when ``ftype`` is
-                :class:``fiftyone.core.field.EmbeddedDocumentField``
+                :class:``fiftyone.core.fields.EmbeddedDocumentField``
             subfield (None): the type of the contained field. Used only when
                 `ftype` is a list or dict type
         """
