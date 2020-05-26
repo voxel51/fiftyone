@@ -22,7 +22,7 @@ function Routes({ port }) {
   const [loading, setLoading] = useState(true);
   const [colorMap, setColorMap] = useState({});
   const socket = getSocket(port, "state");
-
+  console.log(colors);
   const appProps = {
     activeTags,
     setActiveTags,
@@ -43,19 +43,18 @@ function Routes({ port }) {
   const dataset = (props) => {
     return <Dataset {...props} displayProps={datasetProps} />;
   };
-
   const loadData = () => {
     setNeedsLoad(false);
     setLoading(true);
     socket.emit("lengths", "", (data) => {
       const mapping = {};
-      const labelKeys = data.labels ? Object.keys(data.labels) : [];
+      const labelKeys = data.labels ? Object.keys(data.labels).sort() : [];
       let clen = 0;
-      for (const i in data.labels) {
-        mapping[data.labels[i]._id.field] = Number(i);
+      for (const i in labelKeys) {
+        mapping[data.labels[labelKeys[i]]._id.field] = i;
       }
       for (const i in data.tags) {
-        mapping[data.tags[i]] = data.labels.length + Number(i);
+        mapping[data.tags[i]] = data.labels.length + i;
       }
       setLengths({
         tags: data.tags,

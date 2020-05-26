@@ -28,12 +28,14 @@ const Labels = (props) => {
 
   let content;
   if (lengths.labels && lengths.labels.length) {
-    const { labels } = lengths;
+    let labels = lengths.labels.sort((a, b) =>
+      a._id.field > b._id.field ? 1 : -1
+    );
     const styles = (t, i) => {
       if (activeLabels[t]) {
-        return { background: colors[lengths.mapping[t]] };
+        return { background: colors[i] };
       }
-      return { borderColor: colors[lengths.mapping[t]] };
+      return { borderColor: colors[i] };
     };
     let cnt = 0;
     content = (
