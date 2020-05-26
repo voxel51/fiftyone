@@ -1,0 +1,7 @@
+/*******************************
+    User Variable Overrides
+*******************************/
+
+@background: @containerBackground;
+@borderWidth: 0;
+@boxShadow: none;

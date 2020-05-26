@@ -2,13 +2,11 @@
  * @NOTE: Prepend a `~` to css file paths that are in your node_modules
  *        See https://github.com/webpack-contrib/sass-loader#imports
  */
-@import "~semantic-ui-css/semantic.min.css";
+@import "./player51/src/css/player51.css";
 
 body {
   position: relative;
-  color: black;
   height: 100vh;
-  background-color: white;
 }
 
 #root {
@@ -21,4 +19,49 @@ body {
 
 .search > .ui.input {
   width: 100%;
+}
+
+.sample {
+  position: relative;
+}
+
+.sample-info {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  height: 100%;
+  display: block;
+  z-index: 100;
+  overflow-y: hidden;
+}
+
+.sample:hover > .sample-info {
+  top: 100%;
+  height: auto;
+}
+
+.sample-info > .menu {
+  background: hsla(210, 20%, 23%, 0.6) !important;
+}
+
+.sample-info > .menu > .item {
+  white-space: nowrap;
+  overflow-x: hidden;
+}
+
+.sample:not(:hover) .sample-info > .menu > .item:before {
+  background: none !important;
+}
+
+.sample:hover > .sample-info > .menu > .item {
+  overflow-x: auto;
+}
+
+.sample:hover > .sample-info {
+  background: hsla(210, 20%, 23%, 1);
+  z-index: 101;
+}
+
+.hide-info .sample:not(:hover) .sample-info {
+  display: none !important;
 }

@@ -1,0 +1,6 @@
+/*******************************
+    User Variable Overrides
+*******************************/
+
+@invertedLoaderFillColor: @primaryColor;
+@invertedLoaderLineColor: @brandColor;

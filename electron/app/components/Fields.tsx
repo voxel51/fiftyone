@@ -8,7 +8,7 @@ import connect from "../utils/connect";
 
 class CustomizedAxisTick extends PureComponent {
   render() {
-    const { x, y, stroke, payload } = this.props;
+    const { x, y, stroke, payload, fill } = this.props;
 
     return (
       <g transform={`translate(${x},${y})`}>
@@ -17,7 +17,7 @@ class CustomizedAxisTick extends PureComponent {
           y={0}
           dy={16}
           textAnchor="end"
-          fill="#666"
+          fill={fill}
           transform="rotate(-80)"
         >
           {payload.value}
@@ -31,6 +31,8 @@ const Histogram = connect(({ data, name }) => {
   const barWidth = 30;
   const [rightMargin, setRightMargin] = useState(0);
   const container = useRef(null);
+  const stroke = "hsl(210, 20%, 90%)";
+  const fill = stroke;
 
   return (
     <Segment style={{ overflowY: "auto" }}>
@@ -38,7 +40,7 @@ const Histogram = connect(({ data, name }) => {
       <BarChart
         ref={container}
         height={500}
-        width={data.length * (barWidth + 20)}
+        width={data.length * (barWidth + 20 + 36.5)}
         barCategoryGap={"20px"}
         data={data}
         margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
@@ -47,11 +49,17 @@ const Histogram = connect(({ data, name }) => {
           dataKey="label"
           type="category"
           interval={0}
-          height={150}
+          height={100}
           axisLine={false}
-          tick={<CustomizedAxisTick />}
+          tick={<CustomizedAxisTick {...{ fill }} />}
+          tickLine={{ stroke }}
         />
-        <YAxis dataKey="count" axisLine={false} />
+        <YAxis
+          dataKey="count"
+          axisLine={false}
+          tick={{ fill }}
+          tickLine={{ stroke }}
+        />
         <Bar dataKey="count" fill="rgb(255, 109, 4)" barSize={barWidth} />
       </BarChart>
     </Segment>
@@ -60,14 +68,13 @@ const Histogram = connect(({ data, name }) => {
 
 const Charts = (props) => {
   const { state, port } = props;
-  const hasDataset = Boolean(state && state.dataset);
   const socket = getSocket(port, "state");
   const [initialLoad, setInitialLoad] = useState(true);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
 
   const getData = () => {
-    socket.emit("get_label_distributions", "", (data) => {
+    socket.emit("get_field_distributions", "", (data) => {
       setInitialLoad(false);
       setLoading(false);
       setData(data);
@@ -86,10 +93,11 @@ const Charts = (props) => {
   if (loading) {
     return <Loader />;
   }
+
   return (
     <>
-      {data.map((chart) => {
-        return <Histogram data={chart.labels} name={chart._id} />;
+      {data.map((chart, i) => {
+        return <Histogram key={i} data={chart.labels} name={chart._id} />;
       })}
     </>
   );

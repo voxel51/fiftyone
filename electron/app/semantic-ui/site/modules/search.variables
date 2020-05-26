@@ -1,0 +1,6 @@
+/*******************************
+         Site Overrides
+*******************************/
+
+@resultsBackground: @containerBackground;
+@resultsWidth: 100%;

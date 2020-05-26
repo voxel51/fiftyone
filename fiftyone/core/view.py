@@ -419,8 +419,8 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _get_label_distributions(self):
-        return list(self.aggregate(_LABEL_DISTRIBUTIONS_PIPELINE))
+    def _get_field_distributions(self):
+        return list(self.aggregate(_FIELD_DISTRIBUTIONS_PIPELINE))
 
     def _get_facets(self):
         return list(self.aggregate(_FACETS_PIPELINE))
@@ -438,19 +438,20 @@ class DatasetView(foc.SampleCollection):
         return 0
 
 
-_LABEL_DISTRIBUTIONS_PIPELINE = [
-    {"$project": {"label": {"$objectToArray": "$labels"}}},
-    {"$unwind": "$label"},
-    {"$project": {"group": "$label.k", "label": "$label.v.label"}},
+_FIELD_DISTRIBUTIONS_PIPELINE = [
+    {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+    {"$unwind": "$field"},
+    {"$project": {"field": "$field.k", "detection": "$field.v.detections"}},
+    {"$unwind": "$detection"},
     {
         "$group": {
-            "_id": {"group": "$group", "label": "$label"},
+            "_id": {"field": "$field", "label": "$detection.label"},
             "count": {"$sum": 1},
         }
     },
     {
         "$group": {
-            "_id": "$_id.group",
+            "_id": "$_id.field",
             "labels": {"$push": {"label": "$_id.label", "count": "$count"}},
         }
     },
@@ -470,33 +471,6 @@ _FACETS_PIPELINE = [
                 },
                 {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
                 {"$sort": {"_id": 1}},
-            ],
-            "labels": [
-                {"$project": {"label": {"$objectToArray": "$labels"}}},
-                {"$unwind": "$label"},
-                {
-                    "$project": {
-                        "group": "$label.k",
-                        "label": "$label.v.label",
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": {"group": "$group", "label": "$label"},
-                        "count": {"$sum": 1},
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": "$_id.group",
-                        "labels": {
-                            "$push": {
-                                "label": "$_id.label",
-                                "count": "$count",
-                            }
-                        },
-                    }
-                },
             ],
         }
     }
