@@ -106,7 +106,7 @@ function Dataset(props) {
         ) : null}
       </Sidebar>
       <Ref innerRef={stickyRef}>
-        <Container fluid={true} style={{ padding: "0 2rem 2rem" }}>
+        <Container fluid={true} style={{ padding: "2rem 2rem 2rem" }}>
           <Sticky context={stickyRef}>
             <Container
               fluid={true}
@@ -114,6 +114,7 @@ function Dataset(props) {
                 background: "hsl(210, 20%, 15%)",
                 paddingTop: "2rem",
                 zIndex: 1000000,
+                display: "none",
               }}
             >
               <Menu pointing secondary>

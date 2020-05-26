@@ -40,10 +40,11 @@ const _Sidebar = (props) => {
         {!connected
           ? "Not connected"
           : hasDataset
-          ? `Dataset: ${state.dataset.name}`
+          ? "Dataset"
           : "No dataset loaded"}
         {hasDataset ? (
           <Menu vertical>
+            <InfoItem k="Name" v={state.dataset.name} />
             <InfoItem k="Type" v="image" />
             <InfoItem k="Samples" v={state.count} />
             <InfoItem k="Selected" v={state.selected.length} />
