@@ -30,6 +30,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.zoo as foz
 
 
 _TABLE_FORMAT = "simple"
@@ -208,23 +209,35 @@ class ZooListCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        import fiftyone.zoo as foz
-
-        foz.list_zoo_datasets()  # this loads the appropriate ML backend
-        available_datasets = foz.AVAILABLE_DATASETS
+        all_datasets = foz._get_zoo_datasets()
+        all_sources = foz._get_zoo_dataset_sources()
 
         base_dir = args.base_dir
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
 
-        _print_zoo_dataset_list(available_datasets, downloaded_datasets)
+        _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets)
 
 
-def _print_zoo_dataset_list(available_datasets, downloaded_datasets):
+def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
+    available_datasets = {}
+    for source in all_sources:
+        for name, zoo_dataset_cls in iteritems(all_datasets[source]):
+            if name not in available_datasets:
+                available_datasets[name] = (
+                    [source],
+                    zoo_dataset_cls(),
+                )
+            else:
+                available_datasets[name][0].append(source)
+
     records = []
-    for name, zoo_dataset_cls in iteritems(available_datasets):
-        zoo_dataset = zoo_dataset_cls()
+    for name in sorted(available_datasets):
+        sources, zoo_dataset = available_datasets[name]
+
+        # Prepare source list
+        srcs = tuple("\u2713" if s in sources else "" for s in all_sources)
 
         if zoo_dataset.supported_splits is not None:
             downloaded_splits = {}
@@ -238,21 +251,23 @@ def _print_zoo_dataset_list(available_datasets, downloaded_datasets):
                 if split in downloaded_splits:
                     records.append(
                         (name, split, "\u2713", downloaded_splits[split])
+                        + srcs
                     )
                 else:
-                    records.append((name, split, "", "-"))
+                    records.append((name, split, "", "-") + srcs)
         else:
             if name in downloaded_datasets:
                 dataset_dir, info = downloaded_datasets[name]
-                records.append((name, "", "\u2713", dataset_dir))
+                records.append((name, "", "\u2713", dataset_dir) + srcs)
             else:
-                records.append((name, "", "", "-"))
+                records.append((name, "", "", "-") + srcs)
 
-    table_str = tabulate(
-        records,
-        headers=["name", "split", "downloaded", "dataset_dir"],
-        tablefmt=_TABLE_FORMAT,
+    headers = (
+        ["name", "split", "downloaded", "dataset_dir"]
+        + ["%s (*)" % all_sources[0]]
+        + all_sources[1:]
     )
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 
 
@@ -285,8 +300,6 @@ class ZooInfoCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        import fiftyone.zoo as foz
-
         name = args.name
         base_dir = args.base_dir or None
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
@@ -352,8 +365,6 @@ class ZooDownloadCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        import fiftyone.zoo as foz
-
         name = args.name
         split = args.split
         dataset_dir = args.dataset_dir or None
