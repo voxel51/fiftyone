@@ -142,8 +142,8 @@ Note that you may want to install additional packages in the virtual
 environment (with `pip install` followed by the given package names):
 
 -   `ipython` to follow along with interactive examples more easily
--   `tensorflow` or `tensorflow-gpu` (depending on your system, other versions
-    may be required) for examples requiring TensorFlow
+-   `tensorflow` for examples requiring TensorFlow (depending on your system,
+    other versions may be required)
 -   `tensorflow-datasets` for examples that rely on loading TensorFlow datasets
 -   `torch` and `torchvision` for examples requiring PyTorch
 
