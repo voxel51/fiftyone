@@ -83,13 +83,12 @@ def parse_labeled_images(
     )
 
     _samples = []
-    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for idx, sample in enumerate(samples, 1):
+    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+        for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             image_path = images_patt % idx
             etai.write(img, image_path)
             _samples.append((image_path, label))
-            bar.update()
 
     logger.info("Parsing complete")
 
@@ -135,13 +134,12 @@ def to_images_dir(
     logger.info("Writing %d images to '%s'...", num_samples, dataset_dir)
 
     image_paths = []
-    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for idx, sample in enumerate(samples, 1):
+    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+        for idx, sample in enumerate(pb(samples), 1):
             img = sample_parser.parse(sample)
             image_path = images_patt % idx
             etai.write(img, image_path)
             image_paths.append(image_path)
-            bar.update()
 
     logger.info("Images written")
 
@@ -174,9 +172,13 @@ def to_image_classification_dataset(
     if sample_parser is None:
         sample_parser = ImageClassificationSampleParser()
 
-    # Store labels map separately, if provided
+    # If a labels map was provdied, write the dataset in raw labels + labels
+    # map format
     labels_map = sample_parser.labels_map
-    sample_parser.labels_map = None
+    if labels_map is not None:
+        labels_map_rev = {v: k for k, v in iteritems(labels_map)}
+    else:
+        labels_map_rev = None
 
     if num_samples is None:
         num_samples = len(samples)
@@ -198,12 +200,13 @@ def to_image_classification_dataset(
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for idx, sample in enumerate(samples, 1):
+    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+        for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             etai.write(img, images_patt % idx)
-            labels_dict[uuid_patt % idx] = label.label
-            bar.update()
+            labels_dict[uuid_patt % idx] = _parse_classification(
+                label, labels_map_rev=labels_map_rev
+            )
 
     logger.info("Writing labels to '%s'", labels_path)
     labels = {
@@ -241,9 +244,13 @@ def to_image_detection_dataset(
     if sample_parser is None:
         sample_parser = ImageDetectionSampleParser()
 
-    # Store labels map separately, if provided
+    # If a labels map was provdied, write the dataset in raw labels + labels
+    # map format
     labels_map = sample_parser.labels_map
-    sample_parser.labels_map = None
+    if labels_map is not None:
+        labels_map_rev = {v: k for k, v in iteritems(labels_map)}
+    else:
+        labels_map_rev = None
 
     if num_samples is None:
         num_samples = len(samples)
@@ -265,12 +272,13 @@ def to_image_detection_dataset(
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for idx, sample in enumerate(samples, 1):
+    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+        for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             etai.write(img, images_patt % idx)
-            labels_dict[uuid_patt % idx] = label.detections
-            bar.update()
+            labels_dict[uuid_patt % idx] = _parse_detections(
+                label, labels_map_rev=labels_map_rev
+            )
 
     logger.info("Writing labels to '%s'", labels_path)
     labels = {
@@ -327,13 +335,13 @@ def to_image_labels_dataset(
     )
 
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for idx, sample in enumerate(samples, 1):
+    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+        for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
+            image_labels = _parse_image_labels(label)
             lid.add_data(
-                img, label.labels, images_patt % idx, labels_patt % idx
+                img, image_labels, images_patt % idx, labels_patt % idx
             )
-            bar.update()
 
     logger.info("Writing manifest to '%s'", lid.manifest_path)
     lid.write_manifest()
@@ -372,8 +380,8 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for img_path, label in zip(image_paths, labels):
+    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+        for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -384,9 +392,7 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
             out_img_path = os.path.join(data_dir, name + ext)
             etau.copy_file(img_path, out_img_path)
 
-            labels_dict[name] = label.label
-
-            bar.update()
+            labels_dict[name] = _parse_classification(label)
 
     logger.info("Writing labels to '%s'", labels_path)
     labels = {
@@ -429,8 +435,8 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for img_path, label in zip(image_paths, labels):
+    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+        for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -441,9 +447,7 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
             out_img_path = os.path.join(data_dir, name + ext)
             etau.copy_file(img_path, out_img_path)
 
-            labels_dict[name] = label.detections
-
-            bar.update()
+            labels_dict[name] = _parse_detections(label)
 
     logger.info("Writing labels to '%s'", labels_path)
     labels = {
@@ -482,8 +486,8 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
     )
 
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-    with etau.ProgressBar(num_samples, show_remaining_time=True) as bar:
-        for img_path, label in zip(image_paths, labels):
+    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+        for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -495,7 +499,9 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
             new_labels_filename = name + ".json"
 
             image_labels_path = os.path.join(lid.labels_dir, name + ".json")
-            label.labels.write_json(image_labels_path)
+            image_labels = _parse_image_labels(label)
+
+            image_labels.write_json(image_labels_path)
 
             lid.add_file(
                 img_path,
@@ -503,7 +509,6 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
                 new_data_filename=new_img_filename,
                 new_labels_filename=new_labels_filename,
             )
-            bar.update()
 
     logger.info("Writing manifest to '%s'", lid.manifest_path)
     lid.write_manifest()
@@ -526,8 +531,8 @@ def parse_image_classification_dataset(dataset_dir, sample_parser=None):
             used
 
     Returns:
-        an iterable of ``(image_path, label)`` pairs, where ``label`` is an
-        instance of :class:`fiftyone.core.labels.Classification`
+        a list of ``(image_path, label)`` pairs, where ``label`` is an instance
+        of :class:`fiftyone.core.labels.Classification`
     """
     if sample_parser is None:
         sample_parser = ImageClassificationSampleParser()
@@ -546,10 +551,13 @@ def parse_image_classification_dataset(dataset_dir, sample_parser=None):
         labels_map = {int(k): v for k, v in iteritems(labels_map)}
         sample_parser.labels_map = labels_map
 
+    samples = []
     for uuid, target in iteritems(labels["labels"]):
         image_path = image_paths_map[uuid]
         label = sample_parser.parse_label((image_path, target))
-        yield image_path, label
+        samples.append((image_path, label))
+
+    return samples
 
 
 def parse_image_detection_dataset(dataset_dir, sample_parser=None):
@@ -566,8 +574,8 @@ def parse_image_detection_dataset(dataset_dir, sample_parser=None):
             :class:`ImageDetectionSampleParser` instance is used
 
     Returns:
-        an iterable of ``(image_path, label)`` pairs, where ``label`` is an
-        instance of :class:`fiftyone.core.labels.Detections`
+        a list of ``(image_path, label)`` pairs, where ``label`` is an instance
+        of :class:`fiftyone.core.labels.Detections`
     """
     if sample_parser is None:
         sample_parser = ImageDetectionSampleParser()
@@ -586,10 +594,13 @@ def parse_image_detection_dataset(dataset_dir, sample_parser=None):
         labels_map = {int(k): v for k, v in iteritems(labels_map)}
         sample_parser.labels_map = labels_map
 
+    samples = []
     for uuid, target in iteritems(labels["labels"]):
         image_path = image_paths_map[uuid]
         label = sample_parser.parse_label((image_path, target))
-        yield image_path, label
+        samples.append((image_path, label))
+
+    return samples
 
 
 def parse_image_labels_dataset(dataset_dir, sample_parser=None):
@@ -606,8 +617,8 @@ def parse_image_labels_dataset(dataset_dir, sample_parser=None):
             :class:`ImageLabelsSampleParser` instance is used
 
     Returns:
-        an iterable of ``(image_path, image_labels)`` pairs, where ``label`` is
-        an instance of :class:`fiftyone.core.labels.ImageLabels`
+        a generator that emits ``(image_path, image_labels)`` pairs, where
+        ``label`` is an instance of :class:`fiftyone.core.labels.ImageLabels`
     """
     if sample_parser is None:
         sample_parser = ImageLabelsSampleParser()
@@ -999,6 +1010,37 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
         """
         labels = sample[1]
         return fol.ImageLabels(labels=labels)
+
+
+def _parse_classification(classification, labels_map_rev=None):
+    label = classification.label
+    if labels_map_rev is not None:
+        label = labels_map_rev[label]
+
+    return label
+
+
+def _parse_detections(detections, labels_map_rev=None):
+    _detections = []
+    for detection in detections.detections:
+        label = detection.label
+        if labels_map_rev is not None:
+            label = labels_map_rev[label]
+
+        _detection = {
+            "label": label,
+            "bounding_box": detection.bounding_box,
+        }
+        if detection.confidence is not None:
+            _detection["confidence"] = detection.confidence
+
+        _detections.append(_detection)
+
+    return _detections
+
+
+def _parse_image_labels(label):
+    return label.labels
 
 
 def _to_rel_bounding_box(tlx, tly, w, h, img):
