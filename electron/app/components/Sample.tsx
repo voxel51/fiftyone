@@ -62,19 +62,19 @@ const Sample = ({
       />
       <div className="sample-info">
         {Object.keys(s).map((l, i) =>
-          activeLabels[l] ? (
-            <Tag name={s[l].label} color={colors[lengths.mapping[l]]} />
+          activeLabels[l] && s[l] ? (
+            <Tag name={String(s[l].label)} color={colors[lengths.mapping[l]]} />
           ) : null
         )}
         {s.tags.map((t, i) =>
           activeTags[t] ? (
-            <Tag name={t} color={colors[lengths.mapping[t]]} />
+            <Tag name={String(t)} color={colors[lengths.mapping[t]]} />
           ) : null
         )}
         {Object.keys(s).map((l, i) => {
-          return activeOther[l] ? (
+          return activeOther[l] && s[l] ? (
             <Tag
-              name={isFloat(s[l]) ? s[l].toFixed(3) : s[l]}
+              name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
               color={colors[lengths.mapping[l]]}
             />
           ) : null;
