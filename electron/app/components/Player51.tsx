@@ -40,6 +40,7 @@ const loadOverlay = (sample) => {
       continue;
     }
     const field = sample[i];
+    if (!field) continue;
     if (field._cls === "Detections") {
       for (const j in field.detections) {
         const detection = field.detections[j];
@@ -48,8 +49,10 @@ const loadOverlay = (sample) => {
       }
       continue;
     }
-    const [key, fn] = PARSERS[field._cls];
-    imgLabels[key][key].push(fn(i, field));
+    if (field._cls === "Classification") {
+      const [key, fn] = PARSERS[field._cls];
+      imgLabels[key][key].push(fn(i, field));
+    }
   }
   return imgLabels;
 };

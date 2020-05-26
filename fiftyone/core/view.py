@@ -117,12 +117,15 @@ class DatasetView(foc.SampleCollection):
         """
         fields_str = self._dataset._get_fields_str()
 
-        pipeline_str = "    " + "\n    ".join(
-            [
-                "%d. %s" % (idx, str(d))
-                for idx, d in enumerate(self._pipeline, start=1)
-            ]
-        )
+        if self._pipeline:
+            pipeline_str = "    " + "\n    ".join(
+                [
+                    "%d. %s" % (idx, str(d))
+                    for idx, d in enumerate(self._pipeline, start=1)
+                ]
+            )
+        else:
+            pipeline_str = "    ---"
 
         return "\n".join(
             [
@@ -187,6 +190,19 @@ class DatasetView(foc.SampleCollection):
             pass
 
         return []
+
+    def get_label_fields(self):
+        """Returns the list of label fields in the collection.
+
+        Returns:
+            a list of field names
+        """
+        pipeline = [
+            {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+            {"$unwind": "$field"},
+            {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
+        ]
+        return [f for f in self.aggregate(pipeline)]
 
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
