@@ -648,22 +648,19 @@ class VOC2012Dataset(foz.ZooDataset):
         )
 
 
-# Register datasets in the zoo
-foz.AVAILABLE_DATASETS.update(
-    {
-        "mnist": MNISTDataset,
-        "fashion-mnist": FashionMNISTDataset,
-        "caltech101": Caltech101Dataset,
-        "cifar10": CIFAR10Dataset,
-        "cifar100": CIFAR100Dataset,
-        "imagenet-2012": ImageNet2012Dataset,
-        "coco-2014": COCO2014Dataset,
-        "coco-2017": COCO2017Dataset,
-        "kitti": KITTIDataset,
-        "voc-2007": VOC2007Dataset,
-        "voc-2012": VOC2012Dataset,
-    }
-)
+AVAILABLE_DATASETS = {
+    "mnist": MNISTDataset,
+    "fashion-mnist": FashionMNISTDataset,
+    "caltech101": Caltech101Dataset,
+    "cifar10": CIFAR10Dataset,
+    "cifar100": CIFAR100Dataset,
+    "imagenet-2012": ImageNet2012Dataset,
+    "coco-2014": COCO2014Dataset,
+    "coco-2017": COCO2017Dataset,
+    "kitti": KITTIDataset,
+    "voc-2007": VOC2007Dataset,
+    "voc-2012": VOC2012Dataset,
+}
 
 
 class _TFDSImageClassificationSampleParser(

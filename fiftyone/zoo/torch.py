@@ -444,19 +444,16 @@ class VOC2012Dataset(foz.ZooDataset):
         )
 
 
-# Register datasets in the zoo
-foz.AVAILABLE_DATASETS.update(
-    {
-        "mnist": MNISTDataset,
-        "fashion-mnist": FashionMNISTDataset,
-        "cifar10": CIFAR10Dataset,
-        "cifar100": CIFAR100Dataset,
-        "imagenet-2012": ImageNet2012Dataset,
-        "coco-2017": COCO2017Dataset,
-        "voc-2007": VOC2007Dataset,
-        "voc-2012": VOC2012Dataset,
-    }
-)
+AVAILABLE_DATASETS = {
+    "mnist": MNISTDataset,
+    "fashion-mnist": FashionMNISTDataset,
+    "cifar10": CIFAR10Dataset,
+    "cifar100": CIFAR100Dataset,
+    "imagenet-2012": ImageNet2012Dataset,
+    "coco-2017": COCO2017Dataset,
+    "voc-2007": VOC2007Dataset,
+    "voc-2012": VOC2012Dataset,
+}
 
 
 def _download_coco_train_dataset(dataset_dir):
