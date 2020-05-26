@@ -79,6 +79,15 @@ $ which pip
 .../env/bin/pip
 ```
 
+Before you continue, you should upgrade `pip` and some related packages in the
+virtual environment. FiftyOne's packages rely on some newer pip features, so
+older pip versions may fail to locate a downloadable version of FiftyOne
+entirely. To upgrade, run the following command:
+
+```sh
+pip install --upgrade pip setuptools wheel
+```
+
 ### More virtual environment resources
 
 If you ever want to leave an activated virtual environment and return to using
