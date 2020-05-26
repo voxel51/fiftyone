@@ -52,18 +52,10 @@ function Routes({ port }) {
       const labelKeys = data.labels ? Object.keys(data.labels) : [];
       let clen = 0;
       for (const i in data.labels) {
-        if (data.labels[i]._id.cls !== "Classification") continue;
-        clen += 1;
-        mapping[data.labels[i]._id.field] = i;
+        mapping[data.labels[i]._id.field] = Number(i);
       }
       for (const i in data.tags) {
-        mapping[data.tags[i]] = clen + Number(i);
-      }
-      let olen = 0;
-      for (const i in data.labels) {
-        if (data.labels[i]._id.cls === "Classification") continue;
-        mapping[data.labels[i]._id.field] = clen + olen + data.tags.length;
-        olen += 1;
+        mapping[data.tags[i]] = data.labels.length + Number(i);
       }
       setLengths({
         tags: data.tags,

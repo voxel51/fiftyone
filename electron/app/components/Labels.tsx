@@ -40,7 +40,8 @@ const Labels = (props) => {
       <>
         {labels.map((l, i) => {
           if (
-            (l._id.cls === "Classification" && !other) ||
+            ((l._id.cls === "Classification" || l._id.cls === "Detections") &&
+              !other) ||
             (!l._id.cls && other && _.indexOf(reserved, l._id.field) < 0)
           ) {
             cnt += 1;

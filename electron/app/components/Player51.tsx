@@ -34,8 +34,10 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample) => {
+const loadOverlay = (sample, colors) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
+  const colorMap = {};
+  let idx = 0;
   for (const i in sample) {
     if (_.indexOf(["metadata", "_id", "tags", "filepath"], i) >= 0) {
       continue;
@@ -47,6 +49,7 @@ const loadOverlay = (sample) => {
         const detection = field.detections[j];
         const [key, fn] = PARSERS[detection._cls];
         imgLabels[key][key].push(fn(i, detection));
+        colorMap[`${i}:${detection.label}`] = colors[idx];
       }
       continue;
     }
@@ -54,12 +57,21 @@ const loadOverlay = (sample) => {
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(i, field));
     }
+    idx++;
   }
-  return imgLabels;
+  return [imgLabels, colorMap];
 };
 
-export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
-  const overlay = loadOverlay(sample);
+export default ({
+  colors,
+  thumbnail,
+  sample,
+  src,
+  style,
+  onClick,
+  onDoubleClick,
+}) => {
+  const [overlay, colorMap] = loadOverlay(sample, colors);
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
@@ -70,6 +82,7 @@ export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
         type: "image/jpg",
       },
       overlay: overlay,
+      colorMap: colorMap,
     })
   );
   const props = thumbnail

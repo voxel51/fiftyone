@@ -15,7 +15,6 @@ const Tags = (props) => {
   let content;
   if (lengths.tags && lengths.tags.length) {
     const { tags } = lengths;
-    console.log(lengths, activeTags);
     const styles = (t, i) => {
       if (activeTags[t]) {
         return { background: colors[lengths.mapping[t]] };

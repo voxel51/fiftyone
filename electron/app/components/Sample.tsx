@@ -55,6 +55,7 @@ const Sample = ({
           width: "100%",
           position: "relative",
         }}
+        colors={colors}
         sample={sample}
         onClick={() => handleClick()}
         onDoubleClick={() => setView({ visible: true, sample })}
