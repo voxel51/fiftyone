@@ -72,6 +72,7 @@ function Dataset(props) {
               }}
               sample={view.sample}
               colors={displayProps.colors}
+              activeLabels={displayProps.activeLabels}
             />
             <InfoItem k="id" v={s._id.$oid} />
             <InfoItem k="filepath" v={s.filepath} />
