@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { Dimmer, Loader, Container, Label } from "semantic-ui-react";
+import _ from "lodash";
 
 import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
+
+const reserved = ["_id", "metadata", "filepath"];
 
 const Labels = (props) => {
   const {
@@ -15,12 +18,6 @@ const Labels = (props) => {
     start,
   } = props;
   const socket = getSocket(port, "state");
-  const [renderingState, setRenderingState] = useState({
-    initialLoad: true,
-    loading: true,
-    labels: null,
-  });
-  const { initialLoad, loading, labels } = renderingState;
   const onClick = (l) => {
     setActiveLabels({ ...activeLabels, [l]: !Boolean(activeLabels[l]) });
   };
@@ -30,30 +27,8 @@ const Labels = (props) => {
   };
 
   let content;
-  if (initialLoad) {
-    socket.emit("labels", "", (data) => {
-      const fields = [];
-      for (const i in data) {
-        if (data[i]._id.cls === "Classification" && !other) {
-          fields.push(data[i]._id.field);
-        } else if (!data[i]._id.cls && other) {
-          if (["metadata", "filepath", "_id"].indexOf(data[i]._id.field) >= 0)
-            continue;
-          fields.push(data[i]._id.field);
-        }
-      }
-      setRenderingState({
-        ...renderingState,
-        initialLoad: false,
-        labels: fields,
-      });
-    });
-    content = (
-      <Dimmer active>
-        <Loader>Loading</Loader>
-      </Dimmer>
-    );
-  } else if (labels.length) {
+  if (lengths.labels && lengths.labels.length) {
+    const { labels } = lengths;
     const styles = (t, i) => {
       if (activeLabels[t]) {
         return { background: colors[lengths.mapping[t]] };
@@ -62,20 +37,25 @@ const Labels = (props) => {
     };
     content = (
       <Container>
-        {labels.map((l, i) => (
-          <div
-            className={`tag clickable ${activeLabels[l] ? "active" : ""}`}
-            key={i}
-            onClick={() => onClick(l)}
-            style={styles(l, i)}
-          >
-            {isFloat(l) ? l.toFixed(3) : l}
-          </div>
-        ))}
+        {labels.map((l, i) =>
+          (l._id.cls === "Classification" && !other) ||
+          (!l._id.cls && other && _.indexOf(reserved, l._id.field) < 0) ? (
+            <div
+              className={`tag clickable ${
+                activeLabels[l._id.field] ? "active" : ""
+              }`}
+              key={i}
+              onClick={() => onClick(l._id.field)}
+              style={styles(l._id.field, i)}
+            >
+              {l._id.field}
+            </div>
+          ) : null
+        )}
       </Container>
     );
   } else {
-    content = <pre class="pre-tag">None</pre>;
+    content = <pre className="pre-tag">None</pre>;
   }
   return <>{content}</>;
 };

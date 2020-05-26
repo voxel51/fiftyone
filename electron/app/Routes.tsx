@@ -8,7 +8,7 @@ import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
 import randomColor from "randomcolor";
-import { getSocket } from "./utils/socket";
+import { getSocket, useSubscribe } from "./utils/socket";
 import connect from "./utils/connect";
 
 const colors = randomColor({ count: 100, luminosity: "dark" });
@@ -17,8 +17,9 @@ function Routes({ port }) {
   const [activeTags, setActiveTags] = useState({});
   const [activeLabels, setActiveLabels] = useState({});
   const [activeOther, setActiveOther] = useState({});
-  const [initialLoad, setInitialLoad] = useState(true);
   const [lengths, setLengths] = useState({});
+  const [needsLoad, setNeedsLoad] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [colorMap, setColorMap] = useState({});
   const socket = getSocket(port, "state");
 
@@ -43,9 +44,10 @@ function Routes({ port }) {
     return <Dataset {...props} displayProps={datasetProps} />;
   };
 
-  if (initialLoad) {
+  const loadData = () => {
+    setNeedsLoad(false);
+    setLoading(true);
     socket.emit("lengths", "", (data) => {
-      console.log(data);
       const mapping = {};
       const labelKeys = data.labels ? Object.keys(data.labels) : [];
       let clen = 0;
@@ -55,7 +57,7 @@ function Routes({ port }) {
         mapping[data.labels[i]._id.field] = i;
       }
       for (const i in data.tags) {
-        mapping[data.tags[i]] = clen + i;
+        mapping[data.tags[i]] = clen + Number(i);
       }
       let olen = 0;
       for (const i in data.labels) {
@@ -63,14 +65,22 @@ function Routes({ port }) {
         mapping[data.labels[i]._id.field] = clen + olen + data.tags.length;
         olen += 1;
       }
-      console.log(mapping);
       setLengths({
-        tags: data.tags ? data.tags.length : 0,
-        labels: data.labels ? data.labels.length : 0,
+        tags: data.tags,
+        labels: data.labels,
         mapping: mapping,
       });
-      setInitialLoad(false);
+      setLoading(false);
     });
+  };
+
+  useSubscribe(socket, "update", () => {
+    setLoading(true);
+    loadData();
+  });
+
+  if (needsLoad) {
+    loadData();
     return (
       <Dimmer active>
         <Loader>Loading</Loader>

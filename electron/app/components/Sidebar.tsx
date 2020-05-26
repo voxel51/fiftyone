@@ -51,17 +51,15 @@ const _Sidebar = (props) => {
           </Menu>
         ) : null}
       </Menu.Item>
-      <Rendering displayProps={displayProps} />
+      {hasDataset ? <Rendering displayProps={displayProps} /> : null}
       {hasDataset ? (
         <Menu.Item as="h3">
           View
           <Menu vertical>
-            <Menu.Item as="div" style={{ overflowX: "auto" }}>
-              <pre>
-                {state && state.view
-                  ? JSON.stringify(JSON.parse(state.view.view), null, 2)
-                  : "Empty view"}
-              </pre>
+            <Menu.Item as="span" style={{ overflowX: "auto" }}>
+              {state && state.view
+                ? JSON.stringify(JSON.parse(state.view.view), null, 2)
+                : "Empty view"}
             </Menu.Item>
           </Menu>
         </Menu.Item>

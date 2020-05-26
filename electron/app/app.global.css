@@ -93,10 +93,11 @@ body {
   font-weight: bold !important;
 }
 
+.fo-sidebar span.item,
 .pre-tag {
-  background: none;
-  padding: 0.5em 1.33333333rem;
-  font-size: 0.85714286rem;
-  color: hsl(210, 20%, 90%);
-  font-weight: normal;
+  background: none !important;
+  padding: 0.5em 0 !important;
+  font-size: 0.85714286rem !important;
+  color: hsl(210, 20%, 90%) !important;
+  font-weight: normal !important;
 }

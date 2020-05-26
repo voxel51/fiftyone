@@ -23,7 +23,7 @@ const Rendering = ({ displayProps, port }) => {
     <Menu.Item as="h3">
       Display
       <Menu vertical>
-        <Menu.Item as="div" style={{ overflowX: "auto" }}>
+        <Menu.Item as="div" style={{ padding: "0.5rem 0" }}>
           <pre>Labels</pre>
         </Menu.Item>
       </Menu>
@@ -36,7 +36,7 @@ const Rendering = ({ displayProps, port }) => {
         start={0}
       />
       <Menu vertical>
-        <Menu.Item as="div" style={{ overflowX: "auto" }}>
+        <Menu.Item as="div" style={{ padding: "0.5rem 0" }}>
           <pre>Tags</pre>
         </Menu.Item>
       </Menu>
@@ -48,7 +48,7 @@ const Rendering = ({ displayProps, port }) => {
         start={tStart}
       />
       <Menu vertical>
-        <Menu.Item as="div" style={{ overflowX: "auto" }}>
+        <Menu.Item as="div" style={{ padding: "0.5rem 0" }}>
           <pre>Numerics and strings</pre>
         </Menu.Item>
       </Menu>

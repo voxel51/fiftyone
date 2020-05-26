@@ -151,26 +151,6 @@ class StateController(Namespace):
         view = view.skip((page - 1) * page_length).limit(page_length)
         return [s.to_dict(extended=True) for s in view]
 
-    def on_tags(self, _):
-        state = fos.StateDescription.from_dict(self.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.view()
-        else:
-            return []
-        return view.get_tags()
-
-    def on_labels(self, _):
-        state = fos.StateDescription.from_dict(self.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.view()
-        else:
-            return []
-        return view.get_label_fields()
-
     def on_lengths(self, _):
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:

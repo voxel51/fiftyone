@@ -7,28 +7,15 @@ import { getSocket, useSubscribe } from "../utils/socket";
 const Tags = (props) => {
   const { port, activeTags, setActiveTags, colors, start, lengths } = props;
   const socket = getSocket(port, "state");
-  const [renderingState, setRenderingState] = useState({
-    initialLoad: true,
-    loading: true,
-    tags: null,
-  });
-  const { initialLoad, loading, tags } = renderingState;
 
   const onClick = (t) => {
     setActiveTags({ ...activeTags, [t]: !Boolean(activeTags[t]) });
   };
 
   let content;
-  if (initialLoad) {
-    socket.emit("tags", "", (data) => {
-      setRenderingState({ ...renderingState, initialLoad: false, tags: data });
-    });
-    content = (
-      <Dimmer active>
-        <Loader>Loading</Loader>
-      </Dimmer>
-    );
-  } else if (tags.length) {
+  if (lengths.tags && lengths.tags.length) {
+    const { tags } = lengths;
+    console.log(lengths, activeTags);
     const styles = (t, i) => {
       if (activeTags[t]) {
         return { background: colors[lengths.mapping[t]] };
@@ -50,7 +37,7 @@ const Tags = (props) => {
       </Container>
     );
   } else {
-    content = <pre class="pre-tag">None</pre>;
+    content = <pre className="pre-tag">None</pre>;
   }
   return <>{content}</>;
 };
