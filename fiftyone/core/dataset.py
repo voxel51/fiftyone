@@ -618,8 +618,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         logger.info("Parsing samples...")
         _samples = []
-        with etau.ProgressBar() as bar:
-            for sample in bar(samples):
+        with etau.ProgressBar(iters_str="samples") as pb:
+            for sample in pb(samples):
                 if sample_parser is not None:
                     label = sample_parser.parse_label(sample)
                 else:
