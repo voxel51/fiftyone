@@ -63,7 +63,7 @@ class SampleCollection(object):
         Returns:
             a string summary
         """
-        raise NotImplementedError("Subclass must implement get_tags()")
+        raise NotImplementedError("Subclass must implement summary()")
 
     def get_tags(self):
         """Returns the list of tags in the collection.
