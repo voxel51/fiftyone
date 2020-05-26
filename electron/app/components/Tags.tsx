@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Dimmer, Loader, Container, Label } from "semantic-ui-react";
+import { Menu, Dimmer, Loader, Container, Label } from "semantic-ui-react";
 
 import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
@@ -50,7 +50,7 @@ const Tags = (props) => {
       </Container>
     );
   } else {
-    content = <>No tags</>;
+    content = <pre class="pre-tag">None</pre>;
   }
   return <>{content}</>;
 };

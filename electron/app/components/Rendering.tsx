@@ -22,34 +22,44 @@ const Rendering = ({ displayProps, port }) => {
   return (
     <Menu.Item as="h3">
       Display
-      <div style={{ paddingTop: "1rem" }}>
-        <Header as="h4">Labels</Header>
-        <Labels
-          lengths={lengths}
-          colors={colors}
-          activeLabels={activeLabels}
-          setActiveLabels={setActiveLabels}
-          other={false}
-          start={0}
-        />
-        <Header as="h4">Tags</Header>
-        <Tags
-          lengths={lengths}
-          colors={colors}
-          activeTags={activeTags}
-          setActiveTags={setActiveTags}
-          start={tStart}
-        />
-        <Header as="h4">Other supported fields</Header>
-        <Labels
-          lengths={lengths}
-          colors={colors}
-          activeLabels={activeOther}
-          setActiveLabels={setActiveOther}
-          other={true}
-          start={oStart}
-        />
-      </div>
+      <Menu vertical>
+        <Menu.Item as="div" style={{ overflowX: "auto" }}>
+          <pre>Labels</pre>
+        </Menu.Item>
+      </Menu>
+      <Labels
+        lengths={lengths}
+        colors={colors}
+        activeLabels={activeLabels}
+        setActiveLabels={setActiveLabels}
+        other={false}
+        start={0}
+      />
+      <Menu vertical>
+        <Menu.Item as="div" style={{ overflowX: "auto" }}>
+          <pre>Tags</pre>
+        </Menu.Item>
+      </Menu>
+      <Tags
+        lengths={lengths}
+        colors={colors}
+        activeTags={activeTags}
+        setActiveTags={setActiveTags}
+        start={tStart}
+      />
+      <Menu vertical>
+        <Menu.Item as="div" style={{ overflowX: "auto" }}>
+          <pre>Numerics and strings</pre>
+        </Menu.Item>
+      </Menu>
+      <Labels
+        lengths={lengths}
+        colors={colors}
+        activeLabels={activeOther}
+        setActiveLabels={setActiveOther}
+        other={true}
+        start={oStart}
+      />
     </Menu.Item>
   );
 };

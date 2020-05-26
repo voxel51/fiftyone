@@ -53,7 +53,7 @@ const _Sidebar = (props) => {
       </Menu.Item>
       <Rendering displayProps={displayProps} />
       {hasDataset ? (
-        <Menu.Item as="h4">
+        <Menu.Item as="h3">
           View
           <Menu vertical>
             <Menu.Item as="div" style={{ overflowX: "auto" }}>

@@ -75,7 +75,7 @@ const Labels = (props) => {
       </Container>
     );
   } else {
-    content = <>No labels</>;
+    content = <pre class="pre-tag">None</pre>;
   }
   return <>{content}</>;
 };
