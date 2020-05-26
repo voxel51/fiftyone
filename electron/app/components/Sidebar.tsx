@@ -12,9 +12,17 @@ import {
 import InfoItem from "./InfoItem";
 import logo from "../logo.png";
 import connect from "../utils/connect";
+import Rendering from "./Rendering";
 
 const _Sidebar = (props) => {
-  const { state, connected, loading, showInfo, setShowInfo } = props;
+  const {
+    state,
+    connected,
+    loading,
+    showInfo,
+    setShowInfo,
+    displayProps,
+  } = props;
   const hasDataset = Boolean(state && state.dataset);
   return (
     <Sidebar
@@ -23,47 +31,35 @@ const _Sidebar = (props) => {
       vertical
       direction={"left"}
       visible={!loading}
+      className="fo-sidebar"
     >
       <Menu.Item as="h3">
         <Image src={logo} alt="FiftyOne" />
       </Menu.Item>
-      {hasDataset ? (
-        <Menu.Item as="h3">
-          <label style={{ color: "hsl(210, 20%, 90%) !important" }}>
-            Overlay sample info
-          </label>
-          <Checkbox
-            toggle
-            style={{ padding: "none", float: "right" }}
-            onClick={() => setShowInfo(!showInfo)}
-            checked={showInfo}
-          />
-        </Menu.Item>
-      ) : null}
       <Menu.Item as="h3">
         {!connected
           ? "Not connected"
           : hasDataset
-          ? `Dataset: ${state.dataset.name}`
+          ? "Dataset"
           : "No dataset loaded"}
         {hasDataset ? (
           <Menu vertical>
+            <InfoItem k="Name" v={state.dataset.name} />
             <InfoItem k="Type" v="image" />
             <InfoItem k="Samples" v={state.count} />
             <InfoItem k="Selected" v={state.selected.length} />
           </Menu>
         ) : null}
       </Menu.Item>
+      {hasDataset ? <Rendering displayProps={displayProps} /> : null}
       {hasDataset ? (
-        <Menu.Item as="h4">
+        <Menu.Item as="h3">
           View
           <Menu vertical>
-            <Menu.Item as="div" style={{ overflowX: "auto" }}>
-              <pre>
-                {state && state.view
-                  ? JSON.stringify(JSON.parse(state.view.view), null, 2)
-                  : "Empty view"}
-              </pre>
+            <Menu.Item as="span" style={{ overflowX: "auto" }}>
+              {state && state.view
+                ? JSON.stringify(JSON.parse(state.view.view), null, 2)
+                : "Empty view"}
             </Menu.Item>
           </Menu>
         </Menu.Item>

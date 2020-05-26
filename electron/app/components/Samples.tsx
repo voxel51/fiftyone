@@ -9,7 +9,7 @@ import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
 function Samples(props) {
-  const { state, setView, port, dispatch } = props;
+  const { displayProps, state, setView, port, dispatch } = props;
   const socket = getSocket(port, "state");
   const initialSelected = state.selected.reduce((obj, id, i) => {
     return {
@@ -52,6 +52,7 @@ function Samples(props) {
           return (
             <Grid.Column key={j}>
               <Sample
+                displayProps={displayProps}
                 sample={img}
                 selected={selected}
                 setSelected={setSelected}

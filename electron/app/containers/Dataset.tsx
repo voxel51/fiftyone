@@ -28,7 +28,7 @@ function NoDataset() {
 
 function Dataset(props) {
   const { path, url } = useRouteMatch();
-  const { connected, loading, port, state } = props;
+  const { connected, loading, port, state, displayProps } = props;
   const hasDataset = Boolean(state && state.dataset);
   const stickyRef = createRef();
   const tabs = ["samples", "fields"];
@@ -61,7 +61,6 @@ function Dataset(props) {
         direction="right"
         vertical
         visible={view.visible}
-        width="very wide"
       >
         {s ? (
           <>
@@ -107,7 +106,7 @@ function Dataset(props) {
         ) : null}
       </Sidebar>
       <Ref innerRef={stickyRef}>
-        <Container fluid={true} style={{ padding: "0 2rem 2rem" }}>
+        <Container fluid={true} style={{ padding: "2rem 2rem 2rem" }}>
           <Sticky context={stickyRef}>
             <Container
               fluid={true}
@@ -115,6 +114,7 @@ function Dataset(props) {
                 background: "hsl(210, 20%, 15%)",
                 paddingTop: "2rem",
                 zIndex: 1000000,
+                display: "none",
               }}
             >
               <Menu pointing secondary>
@@ -138,7 +138,11 @@ function Dataset(props) {
             {hasDataset ? (
               <>
                 <Route path={routes.SAMPLES}>
-                  <Samples {...props.socket} setView={setView} />
+                  <Samples
+                    {...props.socket}
+                    setView={setView}
+                    displayProps={displayProps}
+                  />
                 </Route>
                 <Route path={routes.FIELDS}>
                   <Fields data={[]} />

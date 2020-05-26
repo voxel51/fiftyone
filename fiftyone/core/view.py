@@ -191,6 +191,19 @@ class DatasetView(foc.SampleCollection):
 
         return []
 
+    def get_label_fields(self):
+        """Returns the list of label fields in the collection.
+
+        Returns:
+            a list of field names
+        """
+        pipeline = [
+            {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+            {"$unwind": "$field"},
+            {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
+        ]
+        return [f for f in self.aggregate(pipeline)]
+
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
 
