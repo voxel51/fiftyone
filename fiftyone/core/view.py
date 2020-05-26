@@ -117,12 +117,15 @@ class DatasetView(foc.SampleCollection):
         """
         fields_str = self._dataset._get_fields_str()
 
-        pipeline_str = "    " + "\n    ".join(
-            [
-                "%d. %s" % (idx, str(d))
-                for idx, d in enumerate(self._pipeline, start=1)
-            ]
-        )
+        if self._pipeline:
+            pipeline_str = "    " + "\n    ".join(
+                [
+                    "%d. %s" % (idx, str(d))
+                    for idx, d in enumerate(self._pipeline, start=1)
+                ]
+            )
+        else:
+            pipeline_str = "    ---"
 
         return "\n".join(
             [
