@@ -17,6 +17,13 @@ class BdistWheelCustom(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # pure Python, so build a wheel for any Python version
         self.universal = True
+        # make just the wheel require these packages, since they aren't needed
+        # for a development installation
+        self.distribution.install_requires += [
+            "fiftyone-brain",
+            "fiftyone-gui",
+            "fiftyone-db",
+        ]
 
 
 setup(
@@ -51,9 +58,6 @@ setup(
         "setuptools",
         "tabulate",
         # internal packages
-        "fiftyone-brain",
-        "fiftyone-db",
-        "fiftyone-gui",
         "voxel51-eta",
     ],
     classifiers=[

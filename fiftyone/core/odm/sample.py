@@ -65,23 +65,13 @@ from collections import OrderedDict
 from copy import deepcopy
 import numbers
 
-from mongoengine import (
-    BooleanField,
-    DictField,
-    EmbeddedDocument,
-    EmbeddedDocumentField,
-    FloatField,
-    IntField,
-    ListField,
-    StringField,
-)
-from mongoengine.fields import BaseField
 from mongoengine.errors import InvalidQueryError
 
+import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 
 from .dataset import SampleField
-from .document import ODMDocument
+from .document import ODMDocument, ODMEmbeddedDocument
 
 
 def nodataset(func):
@@ -135,15 +125,16 @@ class ODMSample(ODMDocument):
     meta = {"abstract": True}
 
     # The path to the data on disk
-    filepath = StringField(unique=True)
+    filepath = fof.StringField(unique=True)
 
     # The set of tags associated with the sample
-    tags = ListField(StringField())
+    tags = fof.ListField(fof.StringField())
 
     # Metadata about the sample media
-    metadata = EmbeddedDocumentField(fom.Metadata, null=True)
+    metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
     def __setattr__(self, name, value):
+        # pylint: disable=no-member
         has_field = self.has_field(name)
 
         if name.startswith("_") or (hasattr(self, name) and not has_field):
@@ -171,9 +162,10 @@ class ODMSample(ODMDocument):
     @property
     def field_names(self):
         """An ordered list of the names of the fields of this sample."""
+        # pylint: disable=no-member
         return self._fields_ordered
 
-    def get_field_schema(self, ftype=None):
+    def get_field_schema(self, ftype=None, embedded_doc_type=None):
         """Returns a schema dictionary describing the fields of this sample.
 
         If the sample belongs to a dataset, the schema will apply to all
@@ -182,7 +174,10 @@ class ODMSample(ODMDocument):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                ``mongoengine.fields.BaseField``
+                :class:``fiftyone.core.fields.Field``
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
 
         Returns:
              a dictionary mapping field names to field types
@@ -198,6 +193,7 @@ class ODMSample(ODMDocument):
         Returns:
             True/False
         """
+        # pylint: disable=no-member
         return field_name in self._fields
 
     def get_field(self, field_name):
@@ -225,10 +221,11 @@ class ODMSample(ODMDocument):
         Args:
             field_name: the field name
             ftype: the field type to create. Must be a subclass of
-                ``mongoengine.fields.BaseField``
+                :class:``fiftyone.core.fields.Field``
             embedded_doc_type (None): the
-                ``mongoengine.fields.EmbeddedDocument`` type of the field. Used
-                only when ``ftype == EmbeddedDocumentField``
+                ``fiftyone.core.odm.ODMEmbeddedDocument`` type of the field.
+                Used only when ``ftype`` is
+                :class:``fiftyone.core.fields.EmbeddedDocumentField``
             subfield (None): the type of the contained field. Used only when
                 `ftype` is a list or dict type
         """
@@ -301,25 +298,35 @@ class ODMSample(ODMDocument):
         raise NotImplementedError("Subclass must implement delete_field()")
 
     @staticmethod
-    def _get_field_schema(cls_or_self, ftype=None):
+    def _get_field_schema(cls_or_self, ftype=None, embedded_doc_type=None):
         if ftype is None:
-            ftype = BaseField
+            ftype = fof.Field
 
-        if not issubclass(ftype, (BaseField, EmbeddedDocument)):
+        if not issubclass(ftype, fof.Field):
             raise ValueError(
-                "Field type %s must be subclass of %s or %s"
-                % (ftype, BaseField, EmbeddedDocument)
+                "Field type %s must be subclass of %s" % (ftype, fof.Field)
+            )
+
+        if embedded_doc_type and not issubclass(
+            ftype, fof.EmbeddedDocumentField
+        ):
+            raise ValueError(
+                "embedded_doc_type should only be specified if ftype is a"
+                " subclass of %s" % fof.EmbeddedDocumentField
             )
 
         d = OrderedDict()
-        for field_name in cls_or_self._fields:
+        for field_name in cls_or_self._fields_ordered:
             field = cls_or_self._fields[field_name]
-            if issubclass(ftype, BaseField):
-                if isinstance(field, ftype):
-                    d[field_name] = field
-            elif isinstance(field, EmbeddedDocumentField):
-                if issubclass(field.document_type, ftype):
-                    d[field_name] = field
+            if not isinstance(cls_or_self._fields[field_name], ftype):
+                continue
+
+            if embedded_doc_type and not issubclass(
+                field.document_type, embedded_doc_type
+            ):
+                continue
+
+            d[field_name] = field
 
         return d
 
@@ -330,17 +337,17 @@ class ODMSample(ODMDocument):
         if field_name in cls_or_self._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        if not issubclass(ftype, BaseField):
+        if not issubclass(ftype, fof.Field):
             raise ValueError(
                 "Invalid field type '%s'; must be a subclass of '%s'"
-                % (ftype, BaseField)
+                % (ftype, fof.Field)
             )
 
         kwargs = {"db_field": field_name, "null": True}
 
-        if issubclass(ftype, EmbeddedDocumentField):
+        if issubclass(ftype, fof.EmbeddedDocumentField):
             kwargs.update({"document_type": embedded_doc_type})
-        elif issubclass(ftype, (ListField, DictField)):
+        elif issubclass(ftype, (fof.ListField, fof.DictField)):
             if subfield is not None:
                 kwargs["field"] = subfield
 
@@ -368,24 +375,24 @@ class ODMSample(ODMDocument):
         if field_name in cls_or_self._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        if isinstance(value, EmbeddedDocument):
+        if isinstance(value, ODMEmbeddedDocument):
             cls_or_self.add_field(
                 field_name,
-                EmbeddedDocumentField,
+                fof.EmbeddedDocumentField,
                 embedded_doc_type=type(value),
             )
         elif isinstance(value, bool):
-            cls_or_self.add_field(field_name, BooleanField)
+            cls_or_self.add_field(field_name, fof.BooleanField)
         elif isinstance(value, six.integer_types):
-            cls_or_self.add_field(field_name, IntField)
+            cls_or_self.add_field(field_name, fof.IntField)
         elif isinstance(value, numbers.Number):
-            cls_or_self.add_field(field_name, FloatField)
+            cls_or_self.add_field(field_name, fof.FloatField)
         elif isinstance(value, six.string_types):
-            cls_or_self.add_field(field_name, StringField)
+            cls_or_self.add_field(field_name, fof.StringField)
         elif isinstance(value, (list, tuple)):
-            cls_or_self.add_field(field_name, ListField)
+            cls_or_self.add_field(field_name, fof.ListField)
         elif isinstance(value, dict):
-            cls_or_self.add_field(field_name, DictField)
+            cls_or_self.add_field(field_name, fof.DictField)
         else:
             raise TypeError("Unsupported field value '%s'" % type(value))
 
@@ -434,8 +441,10 @@ class ODMNoDatasetSample(ODMSample):
         return None
 
     @nodataset
-    def get_field_schema(self, ftype=None):
-        return self._get_field_schema(cls_or_self=self, ftype=ftype)
+    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+        return self._get_field_schema(
+            cls_or_self=self, ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
     @nodataset
     def add_field(
@@ -484,8 +493,10 @@ class ODMDatasetSample(ODMSample):
         return self.__class__.__name__
 
     @classmethod
-    def get_field_schema(cls, ftype=None):
-        return cls._get_field_schema(cls_or_self=cls, ftype=ftype)
+    def get_field_schema(cls, ftype=None, embedded_doc_type=None):
+        return cls._get_field_schema(
+            cls_or_self=cls, ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
     @classmethod
     def add_field(
@@ -496,6 +507,7 @@ class ODMDatasetSample(ODMSample):
         subfield=None,
         save=True,
     ):
+        # pylint: disable=no-member
         # Additional arg `save` is to prevent saving the fields when reloading
         # a dataset from the database.
         cls._add_field(
@@ -527,6 +539,7 @@ class ODMDatasetSample(ODMSample):
     @classmethod
     @no_delete_default_field
     def delete_field(cls, field_name):
+        # pylint: disable=no-member
         try:
             # Delete from all samples
             # pylint: disable=no-member

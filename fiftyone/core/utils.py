@@ -75,7 +75,7 @@ def _ensure_package(package_name, min_version=None):
                 "The requested operation requires that '%s>=%s' is installed "
                 "on your machine; found '%s==%s'"
                 % (package_name, min_version, package_name, pkg_version)
-            ) from e
+            )
 
 
 def parse_serializable(obj, cls):
@@ -152,3 +152,16 @@ class ResourceLimit(object):
                 logger.warning(e)
             else:
                 raise
+
+
+def compute_filehash(filepath):
+    """Computes the file hash of the given file.
+
+    Args:
+        filepath: the path to the file
+
+    Returns:
+        the file hash
+    """
+    with open(filepath, "rb") as f:
+        return hash(f.read())

@@ -30,33 +30,4 @@ from pkgutil import extend_path
 #
 __path__ = extend_path(__path__, __name__)
 
-import fiftyone.core.config as foc
-import fiftyone.core.service as fos
-
-_database_service = fos.DatabaseService()
-config = foc.load_config()
-
-from .core.dataset import (
-    Dataset,
-    list_dataset_names,
-    load_dataset,
-)
-from .core.labels import (
-    Label,
-    ImageLabel,
-    Classification,
-    Detection,
-    Detections,
-    ImageLabels,
-)
-from .core.metadata import (
-    Metadata,
-    ImageMetadata,
-)
-from .core.sample import Sample
-from .core.session import (
-    close_dashboard,
-    launch_dashboard,
-    Session,
-)
-from .core.view import DatasetView
+from fiftyone.__public__ import *

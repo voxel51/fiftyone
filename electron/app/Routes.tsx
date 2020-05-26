@@ -1,22 +1,104 @@
-import React from "react";
+import React, { useState } from "react";
 import { Switch, Route } from "react-router-dom";
+import { Dimmer, Loader } from "semantic-ui-react";
 
 import routes from "./constants/routes.json";
 import App from "./containers/App";
 import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
+import randomColor from "randomcolor";
+import { getSocket, useSubscribe } from "./utils/socket";
+import connect from "./utils/connect";
 
-export default function Routes() {
+const colors = randomColor({ count: 100, luminosity: "dark" });
+
+function Routes({ port }) {
+  const [activeTags, setActiveTags] = useState({});
+  const [activeLabels, setActiveLabels] = useState({});
+  const [activeOther, setActiveOther] = useState({});
+  const [lengths, setLengths] = useState({});
+  const [needsLoad, setNeedsLoad] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [colorMap, setColorMap] = useState({});
+  const socket = getSocket(port, "state");
+
+  const appProps = {
+    activeTags,
+    setActiveTags,
+    activeLabels,
+    setActiveLabels,
+    setActiveOther,
+    activeOther,
+    colors,
+    lengths,
+  };
+  const datasetProps = {
+    activeTags,
+    activeLabels,
+    activeOther,
+    colors,
+    lengths,
+  };
+  const dataset = (props) => {
+    return <Dataset {...props} displayProps={datasetProps} />;
+  };
+
+  const loadData = () => {
+    setNeedsLoad(false);
+    setLoading(true);
+    socket.emit("lengths", "", (data) => {
+      const mapping = {};
+      const labelKeys = data.labels ? Object.keys(data.labels) : [];
+      let clen = 0;
+      for (const i in data.labels) {
+        if (data.labels[i]._id.cls !== "Classification") continue;
+        clen += 1;
+        mapping[data.labels[i]._id.field] = i;
+      }
+      for (const i in data.tags) {
+        mapping[data.tags[i]] = clen + Number(i);
+      }
+      let olen = 0;
+      for (const i in data.labels) {
+        if (data.labels[i]._id.cls === "Classification") continue;
+        mapping[data.labels[i]._id.field] = clen + olen + data.tags.length;
+        olen += 1;
+      }
+      setLengths({
+        tags: data.tags,
+        labels: data.labels,
+        mapping: mapping,
+      });
+      setLoading(false);
+    });
+  };
+
+  useSubscribe(socket, "update", () => {
+    setLoading(true);
+    loadData();
+  });
+
+  if (needsLoad) {
+    loadData();
+    return (
+      <Dimmer active>
+        <Loader>Loading</Loader>
+      </Dimmer>
+    );
+  }
+
   return (
-    <App>
+    <App displayProps={appProps} colors={colors}>
       <Switch>
         <Route path={routes.LOADING} exact component={Loading} />
         <Route path={routes.SETUP} exact component={Setup} />
-        <Route path={routes.DATASET} exact component={Dataset} />
-        <Route path={routes.LIST} exact component={Dataset} />
-        <Route path={routes.CHARTS} exact component={Dataset} />
+        <Route path={routes.SAMPLES} exact render={dataset} />
+        <Route path={routes.FIELDS} exact render={dataset} />
+        <Route path={routes.DATASET} render={dataset} />
       </Switch>
     </App>
   );
 }
+
+export default connect(Routes);
