@@ -72,7 +72,7 @@ const Sample = ({
           ) : null
         )}
         {Object.keys(s).map((l, i) => {
-          return activeOther[l] && s[l] ? (
+          return activeOther[l] && (s[l] || typeof s[l] === "boolean") ? (
             <Tag
               name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
               color={colors[lengths.mapping[l]]}
