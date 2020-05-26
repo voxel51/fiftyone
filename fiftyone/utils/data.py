@@ -516,8 +516,8 @@ def parse_image_classification_dataset(dataset_dir, sample_parser=None):
             used
 
     Returns:
-        an iterable of ``(image_path, label)`` pairs, where ``label`` is an
-        instance of :class:`fiftyone.core.labels.Classification`
+        a list of ``(image_path, label)`` pairs, where ``label`` is an instance
+        of :class:`fiftyone.core.labels.Classification`
     """
     if sample_parser is None:
         sample_parser = ImageClassificationSampleParser()
@@ -536,10 +536,13 @@ def parse_image_classification_dataset(dataset_dir, sample_parser=None):
         labels_map = {int(k): v for k, v in iteritems(labels_map)}
         sample_parser.labels_map = labels_map
 
+    samples = []
     for uuid, target in iteritems(labels["labels"]):
         image_path = image_paths_map[uuid]
         label = sample_parser.parse_label((image_path, target))
-        yield image_path, label
+        samples.append((image_path, label))
+
+    return samples
 
 
 def parse_image_detection_dataset(dataset_dir, sample_parser=None):
@@ -556,8 +559,8 @@ def parse_image_detection_dataset(dataset_dir, sample_parser=None):
             :class:`ImageDetectionSampleParser` instance is used
 
     Returns:
-        an iterable of ``(image_path, label)`` pairs, where ``label`` is an
-        instance of :class:`fiftyone.core.labels.Detections`
+        a list of ``(image_path, label)`` pairs, where ``label`` is an instance
+        of :class:`fiftyone.core.labels.Detections`
     """
     if sample_parser is None:
         sample_parser = ImageDetectionSampleParser()
@@ -576,10 +579,13 @@ def parse_image_detection_dataset(dataset_dir, sample_parser=None):
         labels_map = {int(k): v for k, v in iteritems(labels_map)}
         sample_parser.labels_map = labels_map
 
+    samples = []
     for uuid, target in iteritems(labels["labels"]):
         image_path = image_paths_map[uuid]
         label = sample_parser.parse_label((image_path, target))
-        yield image_path, label
+        samples.append((image_path, label))
+
+    return samples
 
 
 def parse_image_labels_dataset(dataset_dir, sample_parser=None):
@@ -596,8 +602,8 @@ def parse_image_labels_dataset(dataset_dir, sample_parser=None):
             :class:`ImageLabelsSampleParser` instance is used
 
     Returns:
-        an iterable of ``(image_path, image_labels)`` pairs, where ``label`` is
-        an instance of :class:`fiftyone.core.labels.ImageLabels`
+        a generator that emits ``(image_path, image_labels)`` pairs, where
+        ``label`` is an instance of :class:`fiftyone.core.labels.ImageLabels`
     """
     if sample_parser is None:
         sample_parser = ImageLabelsSampleParser()
