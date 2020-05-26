@@ -72,7 +72,7 @@ def _ensure_package(package_name, min_version=None):
                 "The requested operation requires that '%s>=%s' is installed "
                 "on your machine; found '%s==%s'"
                 % (package_name, min_version, package_name, pkg_version)
-            ) from e
+            )
 
 
 def parse_serializable(obj, cls):
