@@ -35,25 +35,36 @@ const Labels = (props) => {
       }
       return { borderColor: colors[lengths.mapping[t]] };
     };
+    let cnt = 0;
     content = (
-      <Container>
-        {labels.map((l, i) =>
-          (l._id.cls === "Classification" && !other) ||
-          (!l._id.cls && other && _.indexOf(reserved, l._id.field) < 0) ? (
-            <div
-              className={`tag clickable ${
-                activeLabels[l._id.field] ? "active" : ""
-              }`}
-              key={i}
-              onClick={() => onClick(l._id.field)}
-              style={styles(l._id.field, i)}
-            >
-              {l._id.field}
-            </div>
-          ) : null
-        )}
-      </Container>
+      <>
+        {labels.map((l, i) => {
+          if (
+            (l._id.cls === "Classification" && !other) ||
+            (!l._id.cls && other && _.indexOf(reserved, l._id.field) < 0)
+          ) {
+            cnt += 1;
+            return (
+              <div
+                className={`tag clickable ${
+                  activeLabels[l._id.field] ? "active" : ""
+                }`}
+                key={i}
+                onClick={() => onClick(l._id.field)}
+                style={styles(l._id.field, i)}
+              >
+                {l._id.field}
+              </div>
+            );
+          } else {
+            return null;
+          }
+        })}
+      </>
     );
+    if (cnt === 0) {
+      content = <pre className="pre-tag">None</pre>;
+    }
   } else {
     content = <pre className="pre-tag">None</pre>;
   }
