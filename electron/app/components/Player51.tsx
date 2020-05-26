@@ -1,7 +1,8 @@
 import _ from "lodash";
 import React, { useState, useEffect } from "react";
-import Player51 from "../player51/build/cjs/player51.min.js";
+import uuid from "react-uuid";
 
+import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
 
 const PARSERS = {
@@ -59,9 +60,9 @@ const loadOverlay = (sample) => {
 
 export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
   const overlay = loadOverlay(sample);
-  const id = sample._id.$oid;
-
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
+  const [initLoad, setInitLoad] = useState(false);
+  const id = uuid();
   const [player, setPlayer] = useState(
     new Player51({
       media: {
@@ -75,10 +76,13 @@ export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
     ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
     : {};
   useEffect(() => {
-    if (thumbnail) {
-      player.thumbnailMode();
+    if (!initLoad) {
+      if (thumbnail) {
+        player.thumbnailMode();
+      }
+      player.render(id);
+      setInitLoad(true);
     }
-    player.render(id);
-  }, []);
+  }, [player]);
   return <div id={id} style={style} {...props} />;
 };
