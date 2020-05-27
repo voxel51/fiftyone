@@ -616,21 +616,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name is None:
             name = get_default_dataset_name()
 
-        # @todo add a progress bar here? Note that `len(samples)` may not work
-        # for some iterables
         logger.info("Parsing samples...")
         _samples = []
-        for sample in samples:
-            if sample_parser is not None:
-                label = sample_parser.parse_label(sample)
-            else:
-                label = sample[1]
+        with etau.ProgressBar(iters_str="samples") as pb:
+            for sample in pb(samples):
+                if sample_parser is not None:
+                    label = sample_parser.parse_label(sample)
+                else:
+                    label = sample[1]
 
-            filepath = os.path.abspath(os.path.expanduser(sample[0]))
+                filepath = os.path.abspath(os.path.expanduser(sample[0]))
 
-            _samples.append(
-                fo.Sample(filepath=filepath, **{label_field: label})
-            )
+                _samples.append(
+                    fo.Sample(filepath=filepath, **{label_field: label})
+                )
 
         logger.info(
             "Creating dataset '%s' containing %d samples", name, len(_samples),
