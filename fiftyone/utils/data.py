@@ -43,7 +43,7 @@ def parse_labeled_images(
     dataset_dir,
     sample_parser=None,
     num_samples=None,
-    image_format=fo.config.default_image_ext,
+    image_format=None,
 ):
     """Parses the given labeled image samples, writing the images to disk in
     the specified directory and returning their paths and associated
@@ -69,6 +69,9 @@ def parse_labeled_images(
 
     if num_samples is None:
         num_samples = len(samples)
+
+    if image_format is None:
+        image_format = fo.config.default_image_ext
 
     uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
     images_patt = os.path.join(dataset_dir, uuid_patt + image_format)
@@ -98,7 +101,7 @@ def to_images_dir(
     dataset_dir,
     sample_parser=None,
     num_samples=None,
-    image_format=fo.config.default_image_ext,
+    image_format=None,
 ):
     """Writes the given images to disk in the given directory.
 
@@ -122,6 +125,9 @@ def to_images_dir(
 
     if num_samples is None:
         num_samples = len(samples)
+
+    if image_format is None:
+        image_format = fo.config.default_image_ext
 
     uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
     images_patt = os.path.join(dataset_dir, uuid_patt + image_format)
@@ -147,7 +153,7 @@ def to_image_classification_dataset(
     dataset_dir,
     sample_parser=None,
     num_samples=None,
-    image_format=fo.config.default_image_ext,
+    image_format=None,
 ):
     """Writes the given samples to disk as an image classification dataset.
 
@@ -174,6 +180,9 @@ def to_image_classification_dataset(
 
     if num_samples is None:
         num_samples = len(samples)
+
+    if image_format is None:
+        image_format = fo.config.default_image_ext
 
     data_dir = os.path.join(dataset_dir, "data")
     uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
@@ -211,7 +220,7 @@ def to_image_detection_dataset(
     dataset_dir,
     sample_parser=None,
     num_samples=None,
-    image_format=fo.config.default_image_ext,
+    image_format=None,
 ):
     """Writes the given samples to disk as an image detection dataset.
 
@@ -238,6 +247,9 @@ def to_image_detection_dataset(
 
     if num_samples is None:
         num_samples = len(samples)
+
+    if image_format is None:
+        image_format = fo.config.default_image_ext
 
     data_dir = os.path.join(dataset_dir, "data")
     uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
@@ -275,7 +287,7 @@ def to_image_labels_dataset(
     dataset_dir,
     sample_parser=None,
     num_samples=None,
-    image_format=fo.config.default_image_ext,
+    image_format=None,
 ):
     """Writes the given samples to disk as a multitask image labels dataset.
 
@@ -299,6 +311,9 @@ def to_image_labels_dataset(
 
     if num_samples is None:
         num_samples = len(samples)
+
+    if image_format is None:
+        image_format = fo.config.default_image_ext
 
     int_patt = etau.get_int_pattern_with_capacity(num_samples)
     images_patt = int_patt + image_format
