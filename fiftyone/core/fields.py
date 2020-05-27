@@ -34,7 +34,19 @@ class IntField(mongoengine.IntField, Field):
 
 
 class FloatField(mongoengine.FloatField, Field):
-    pass
+    def validate(self, value):
+        try:
+            value = float(value)
+        except OverflowError:
+            self.error("The value is too large to be converted to float")
+        except (TypeError, ValueError):
+            self.error("%s could not be converted to float" % value)
+
+        if self.min_value is not None and value < self.min_value:
+            self.error("Float value is too small")
+
+        if self.max_value is not None and value > self.max_value:
+            self.error("Float value is too large")
 
 
 class StringField(mongoengine.StringField, Field):
