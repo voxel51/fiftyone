@@ -10,7 +10,7 @@ import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
 function Samples(props) {
-  const { displayProps, state, setView, port, dispatch, widthRef } = props;
+  const { displayProps, state, setView, port, dispatch } = props;
   const socket = getSocket(port, "state");
   const initialSelected = state.selected.reduce((obj, id, i) => {
     return {
@@ -87,22 +87,42 @@ function Samples(props) {
       if (row.length === 0) break;
       const baseHeight = row[0].height;
       const refWidth = row.reduce(
-        (acc, val) => acc + (baseHeight / val.height) * val.width
+        (acc, val) => acc + (baseHeight / val.height) * val.width,
+        0
       );
       for (const j in row) {
         const sample = row[j];
         const sampleWidth = (baseHeight * sample.width) / sample.height;
         columns.push(sampleWidth / refWidth);
       }
-      console.log(columns);
+      rowStyle = {
+        gridTemplateColumns: columns
+          .map((c) => (c * 100).toFixed(2) + "%")
+          .join(" "),
+      };
+      rowStyles.push(rowStyle);
     }
+    return rowStyles.map((r, i) => {
+      <Grid columns={sampleRows[i].length} style={{ r }} key={i}>
+        {sampleRows[i].map((s, j) => {
+          <Grid.Column key={j}>
+            <Sample
+              displayProps={displayProps}
+              sample={s}
+              selected={selected}
+              setSelected={setSelected}
+              setView={setView}
+            />
+          </Grid.Column>;
+        })}
+      </Grid>;
+    });
   };
+  let content = null;
 
   useEffect(() => {
-    if (widthRef) {
-      fitImages(scrollState.imageGroups, widthRef.current.offsetWidth);
-    }
-  }, [widthRef]);
+    content = fitImages(scrollState.imageGroups, widthRef.current.offsetWidth);
+  });
 
   return (
     <>
@@ -122,9 +142,7 @@ function Samples(props) {
         loader={<Loader key={0} />}
         useWindow={true}
       >
-        <Grid columns={4} doubling stackable>
-          {null}
-        </Grid>
+        {content}
       </InfiniteScroll>
       {scrollState.hasMore ? <Loader /> : ""}
     </>

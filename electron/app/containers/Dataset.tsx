@@ -144,7 +144,6 @@ function Dataset(props) {
                     {...props.socket}
                     setView={setView}
                     displayProps={displayProps}
-                    widthRef={stickyRef}
                   />
                 </Route>
                 <Route path={routes.FIELDS}>
