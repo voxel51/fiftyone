@@ -85,7 +85,7 @@ function Samples(props) {
   };
   fitImages(scrollState.imageGroups);
 
-  useEffect(() => console.log(stickyRef), [stickyRef]);
+  useEffect(() => console.log(widthRef), [widthRef]);
 
   return (
     <>
