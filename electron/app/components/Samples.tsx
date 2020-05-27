@@ -30,7 +30,7 @@ function Samples(props) {
     socket.emit("page", scrollState.pageToLoad, (data) => {
       setScrollState({
         initialLoad: false,
-        hasMore: false,
+        hasMore: scrollState.pageToLoad * 20 < state.count,
         imagePits: [...scrollState.imagePits, data],
         imageGroups: [...scrollState.imageGroups, null],
         pageToLoad: scrollState.pageToLoad + 1,
@@ -68,7 +68,7 @@ function Samples(props) {
           continue;
         }
 
-        if (currentWidth / currentHeight >= 4) {
+        if (currentWidth / currentHeight >= 5) {
           sampleRows.push(currentRow);
           currentRow = [sample];
           currentWidth = sample.width;
@@ -80,6 +80,7 @@ function Samples(props) {
         currentWidth += (currentHeight / sample.height) * sample.width;
       }
     }
+    if (currentRow.length) sampleRows.push(currentRow);
 
     for (const i in sampleRows) {
       const row = sampleRows[i];
@@ -96,6 +97,7 @@ function Samples(props) {
         columns.push(sampleWidth / refWidth);
       }
       const rowStyle = {
+        display: "grid",
         gridTemplateColumns: columns
           .map((c) => (c * 100).toFixed(2) + "%")
           .join(" "),
@@ -105,7 +107,7 @@ function Samples(props) {
     return rowStyles.map((r, i) => (
       <Grid columns={sampleRows[i].length} style={r} key={i}>
         {sampleRows[i].map((s, j) => (
-          <Grid.Column key={j}>
+          <Grid.Column key={j} style={{ padding: 0, width: "100%" }}>
             <Sample
               displayProps={displayProps}
               sample={s}
@@ -119,7 +121,7 @@ function Samples(props) {
     ));
   };
 
-  const content = fitImages(scrollState.imageGroups);
+  let content = fitImages(scrollState.imageGroups);
 
   return (
     <>

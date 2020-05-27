@@ -18,7 +18,7 @@ const PitImage = connect(({ port, sample, pitStore, setPitStore }) => {
   };
   return (
     <img
-      style={{ position: "absolute", left: -10000 }}
+      style={{ position: "fixed", left: -10000 }}
       ref={ref}
       src={src}
       onLoad={onLoad}
