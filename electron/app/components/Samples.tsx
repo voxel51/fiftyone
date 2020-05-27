@@ -48,8 +48,9 @@ function Samples(props) {
     });
   });
 
-  const fitImages = (groups) => {
-    const imageRows = [];
+  const fitImages = (groups, containerWidth) => {
+    const sampleRows = [];
+    const rowStyles = [];
     let currentRow = [];
     let currentWidth = null;
     let currentHeight = null;
@@ -68,7 +69,7 @@ function Samples(props) {
         }
 
         if (currentWidth / currentHeight >= 4) {
-          imageRows.push(currentRow);
+          sampleRows.push(currentRow);
           currentRow = [sample];
           currentWidth = sample.width;
           currentHeight = sample.height;
@@ -79,13 +80,29 @@ function Samples(props) {
         currentWidth += (currentHeight / sample.height) * sample.width;
       }
     }
-    for (const i in imageRows) {
-      console.log(imageRows[i]);
+
+    for (const i in sampleRows) {
+      const row = sampleRows[i];
+      const columns = [];
+      if (row.length === 0) break;
+      const baseHeight = row[0].height;
+      const refWidth = row.reduce(
+        (acc, val) => acc + (baseHeight / val.height) * val.width
+      );
+      for (const j in row) {
+        const sample = row[j];
+        const sampleWidth = (baseHeight * sample.width) / sample.height;
+        columns.push(sampleWidth / refWidth);
+      }
+      console.log(columns);
     }
   };
-  fitImages(scrollState.imageGroups);
 
-  useEffect(() => console.log(widthRef), [widthRef]);
+  useEffect(() => {
+    if (widthRef) {
+      fitImages(scrollState.imageGroups, widthRef.current.offsetWidth);
+    }
+  }, [widthRef]);
 
   return (
     <>
