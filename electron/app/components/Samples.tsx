@@ -10,7 +10,7 @@ import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 
 function Samples(props) {
-  const { displayProps, state, setView, port, dispatch } = props;
+  const { displayProps, state, setView, port, dispatch, widthRef } = props;
   const socket = getSocket(port, "state");
   const initialSelected = state.selected.reduce((obj, id, i) => {
     return {
@@ -49,31 +49,43 @@ function Samples(props) {
   });
 
   const fitImages = (groups) => {
-    let imgs = {};
-    console.log("groups", groups);
+    const imageRows = [];
+    let currentRow = [];
+    let currentWidth = null;
+    let currentHeight = null;
+    for (const i in groups) {
+      const group = groups[i];
+      if (group === null) {
+        break;
+      }
+      for (const j in group) {
+        const sample = group[j];
+        if (currentWidth === null) {
+          currentWidth = sample.width;
+          currentHeight = sample.height;
+          currentRow.push(sample);
+          continue;
+        }
+
+        if (currentWidth / currentHeight >= 4) {
+          imageRows.push(currentRow);
+          currentRow = [sample];
+          currentWidth = sample.width;
+          currentHeight = sample.height;
+          continue;
+        }
+
+        currentRow.push(sample);
+        currentWidth += (currentHeight / sample.height) * sample.width;
+      }
+    }
+    for (const i in imageRows) {
+      console.log(imageRows[i]);
+    }
   };
   fitImages(scrollState.imageGroups);
 
-  const chunkedImages = _.chunk(scrollState.images, 4);
-  const content = chunkedImages.map((imgs, i) => {
-    return (
-      <>
-        {imgs.map((img, j) => {
-          return (
-            <Grid.Column key={j}>
-              <Sample
-                displayProps={displayProps}
-                sample={img}
-                selected={selected}
-                setSelected={setSelected}
-                setView={setView}
-              />
-            </Grid.Column>
-          );
-        })}
-      </>
-    );
-  });
+  useEffect(() => console.log(stickyRef), [stickyRef]);
 
   return (
     <>
