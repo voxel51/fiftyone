@@ -28,19 +28,22 @@ const Labels = (props) => {
 
   let content;
   if (lengths.labels && lengths.labels.length) {
-    const { labels } = lengths;
+    let labels = lengths.labels.sort((a, b) =>
+      a._id.field > b._id.field ? 1 : -1
+    );
     const styles = (t, i) => {
       if (activeLabels[t]) {
-        return { background: colors[lengths.mapping[t]] };
+        return { background: colors[i] };
       }
-      return { borderColor: colors[lengths.mapping[t]] };
+      return { borderColor: colors[i] };
     };
     let cnt = 0;
     content = (
       <>
         {labels.map((l, i) => {
           if (
-            (l._id.cls === "Classification" && !other) ||
+            ((l._id.cls === "Classification" || l._id.cls === "Detections") &&
+              !other) ||
             (!l._id.cls && other && _.indexOf(reserved, l._id.field) < 0)
           ) {
             cnt += 1;
