@@ -22,8 +22,8 @@ function Samples(props) {
   const [scrollState, setScrollState] = useState({
     initialLoad: true,
     hasMore: true,
-    images: [],
-    imagePIt: [],
+    imageGroups: [],
+    imagePit: [],
     pageToLoad: 1,
   });
   const loadMore = () => {
@@ -32,6 +32,7 @@ function Samples(props) {
         initialLoad: false,
         hasMore: scrollState.pageToLoad * 20 < state.count,
         imagePits: [...scrollState.imagePits, data],
+        imageGroups: [...scrollState.imageGroups, null],
         pageToLoad: scrollState.pageToLoad + 1,
       });
     });
@@ -41,11 +42,18 @@ function Samples(props) {
     setScrollState({
       iniitialLoad: true,
       hasMore: true,
-      images: [],
+      imageGroups: [],
       imagePits: [],
       pageToLoad: 1,
     });
   });
+
+  const fitImages = (groups) => {
+    let imgs = {};
+    for (const i in groups) {
+      console.log(groups);
+    }
+  };
 
   const chunkedImages = _.chunk(scrollState.images, 4);
   const content = chunkedImages.map((imgs, i) => {
@@ -71,18 +79,18 @@ function Samples(props) {
   return (
     <>
       {scrollState.imagePits.map((p, i) => (
-        <ImagePit images={p} setScrollState={setScrollState} />
+        <ImagePit images={p} index={i} setScrollState={setScrollState} />
       ))}
       <InfiniteScroll
         pageStart={1}
         initialLoad={true}
         loadMore={() => loadMore()}
-        hasMore={scrollState.hasMore}
+        hasMore={false}
         loader={<Loader key={0} />}
         useWindow={true}
       >
         <Grid columns={4} doubling stackable>
-          {content}
+          {null}
         </Grid>
       </InfiniteScroll>
       {scrollState.hasMore ? <Loader /> : ""}

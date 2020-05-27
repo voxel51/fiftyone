@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 
-const PitImage = ({ sample, setPitStore }) => {
+const PitImage = ({ sample, pitStore, setPitStore }) => {
   const ref = useRef(null);
   const onLoad = () => {
     setPitStore({
@@ -14,7 +14,7 @@ const PitImage = ({ sample, setPitStore }) => {
   };
   return (
     <img
-      style={{ position: "absolute", left: 1000 }}
+      style={{ position: "absolute", left: -1000 }}
       ref={ref}
       src={sample.src}
       onLoad={onLoad}
@@ -22,8 +22,15 @@ const PitImage = ({ sample, setPitStore }) => {
   );
 };
 
-export default ({ images, setScrollState }) => {
+export default ({ images, setScrollState, index, scrollState }) => {
   const [pitStore, setPitStore] = useState({});
+
+  if (pitStore.length === images.length) {
+    const loadedImages = images.map((s) => pitStore[s._id.$oid]);
+    const imageGroups = [...scrollState.imageGroups];
+    imageGroups[index] = loadedImages;
+    setScrollState({ ...scrollState, imageGroups });
+  }
 
   return images.map((s, i) => {
     return (
