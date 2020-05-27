@@ -4,6 +4,7 @@ import { Card, Grid } from "semantic-ui-react";
 import InfiniteScroll from "react-infinite-scroller";
 import { Dimmer, Loader } from "semantic-ui-react";
 
+import ImagePit from "./ImagePit";
 import Sample from "./Sample";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
@@ -22,6 +23,7 @@ function Samples(props) {
     initialLoad: true,
     hasMore: true,
     images: [],
+    imagePIt: [],
     pageToLoad: 1,
   });
   const loadMore = () => {
@@ -29,7 +31,7 @@ function Samples(props) {
       setScrollState({
         initialLoad: false,
         hasMore: scrollState.pageToLoad * 20 < state.count,
-        images: [...scrollState.images, ...data],
+        imagePits: [...scrollState.imagePits, data],
         pageToLoad: scrollState.pageToLoad + 1,
       });
     });
@@ -40,6 +42,7 @@ function Samples(props) {
       iniitialLoad: true,
       hasMore: true,
       images: [],
+      imagePits: [],
       pageToLoad: 1,
     });
   });
@@ -67,6 +70,9 @@ function Samples(props) {
 
   return (
     <>
+      {scrollState.imagePits.map((p, i) => (
+        <ImagePit images={p} setScrollState={setScrollState} />
+      ))}
       <InfiniteScroll
         pageStart={1}
         initialLoad={true}
