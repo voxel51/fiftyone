@@ -30,7 +30,7 @@ function Samples(props) {
     socket.emit("page", scrollState.pageToLoad, (data) => {
       setScrollState({
         initialLoad: false,
-        hasMore: scrollState.pageToLoad * 20 < state.count,
+        hasMore: false,
         imagePits: [...scrollState.imagePits, data],
         imageGroups: [...scrollState.imageGroups, null],
         pageToLoad: scrollState.pageToLoad + 1,
@@ -50,12 +50,8 @@ function Samples(props) {
 
   const fitImages = (groups) => {
     let imgs = {};
-    console.log(groups);
-    for (const i in groups) {
-      console.log(i);
-    }
+    console.log("groups", groups);
   };
-
   fitImages(scrollState.imageGroups);
 
   const chunkedImages = _.chunk(scrollState.images, 4);
@@ -78,17 +74,22 @@ function Samples(props) {
       </>
     );
   });
-  console.log(scrollState.imagePits);
+
   return (
     <>
       {scrollState.imagePits.map((p, i) => (
-        <ImagePit images={p} index={i} setScrollState={setScrollState} />
+        <ImagePit
+          scrollState={scrollState}
+          images={p}
+          index={i}
+          setScrollState={setScrollState}
+        />
       ))}
       <InfiniteScroll
         pageStart={1}
         initialLoad={true}
         loadMore={() => loadMore()}
-        hasMore={false}
+        hasMore={scrollState.hasMore}
         loader={<Loader key={0} />}
         useWindow={true}
       >

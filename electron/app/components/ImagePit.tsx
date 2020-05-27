@@ -1,6 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
-const PitImage = ({ sample, pitStore, setPitStore }) => {
+import connect from "../utils/connect";
+
+const PitImage = connect(({ port, sample, pitStore, setPitStore }) => {
+  const host = `http://127.0.0.1:${port}`;
+  const src = `${host}?path=${sample.filepath}`;
   const ref = useRef(null);
   const onLoad = () => {
     setPitStore({
@@ -8,30 +12,30 @@ const PitImage = ({ sample, pitStore, setPitStore }) => {
       [sample._id.$oid]: {
         ...sample,
         width: ref.current.naturalWidth,
-        height: ref.current.naturalHeigh,
+        height: ref.current.naturalHeight,
       },
     });
   };
   return (
     <img
-      style={{ position: "absolute", left: -1000 }}
+      style={{ position: "absolute", left: -10000 }}
       ref={ref}
-      src={sample.src}
+      src={src}
       onLoad={onLoad}
     />
   );
-};
+});
 
 export default ({ images, setScrollState, index, scrollState }) => {
   const [pitStore, setPitStore] = useState({});
-  console.log(pitStore);
-  if (pitStore.length === images.length) {
-    const loadedImages = images.map((s) => pitStore[s._id.$oid]);
-    const imageGroups = [...scrollState.imageGroups];
-    imageGroups[index] = loadedImages;
-    setScrollState({ ...scrollState, imageGroups });
-  }
-
+  useEffect(() => {
+    if (Object.keys(pitStore).length === images.length) {
+      const loadedImages = images.map((s) => pitStore[s._id.$oid]);
+      const imageGroups = [...scrollState.imageGroups];
+      imageGroups[index] = loadedImages;
+      setScrollState({ ...scrollState, imageGroups });
+    }
+  }, [pitStore]);
   return images.map((s, i) => {
     return (
       <PitImage pitStore={pitStore} sample={s} setPitStore={setPitStore} />
