@@ -95,16 +95,16 @@ function Samples(props) {
         const sampleWidth = (baseHeight * sample.width) / sample.height;
         columns.push(sampleWidth / refWidth);
       }
-      rowStyle = {
+      const rowStyle = {
         gridTemplateColumns: columns
           .map((c) => (c * 100).toFixed(2) + "%")
           .join(" "),
       };
       rowStyles.push(rowStyle);
     }
-    return rowStyles.map((r, i) => {
+    return rowStyles.map((r, i) => (
       <Grid columns={sampleRows[i].length} style={r} key={i}>
-        {sampleRows[i].map((s, j) => {
+        {sampleRows[i].map((s, j) => (
           <Grid.Column key={j}>
             <Sample
               displayProps={displayProps}
@@ -113,16 +113,13 @@ function Samples(props) {
               setSelected={setSelected}
               setView={setView}
             />
-          </Grid.Column>;
-        })}
-      </Grid>;
-    });
+          </Grid.Column>
+        ))}
+      </Grid>
+    ));
   };
-  let content = null;
 
-  useEffect(() => {
-    content = fitImages(scrollState.imageGroups);
-  });
+  const content = fitImages(scrollState.imageGroups);
 
   return (
     <>
@@ -131,6 +128,7 @@ function Samples(props) {
           scrollState={scrollState}
           images={p}
           index={i}
+          key={i}
           setScrollState={setScrollState}
         />
       ))}
