@@ -8,6 +8,7 @@
 # voxel51.com
 #
 
+cd "$(dirname "$0")/.."
 echo "**** Generating documentation"
 
 #
@@ -21,4 +22,4 @@ make html
 cd ..
 
 echo "**** Documentation complete"
-printf "To view the docs, run:\n\nopen docs/build/html/index.html\n\n"
+printf "To view the docs, open:\n\ndocs/build/html/index.html\n\n"

@@ -1,7 +1,8 @@
 import _ from "lodash";
 import React, { useState, useEffect } from "react";
-import Player51 from "../player51/build/cjs/player51.min.js";
+import uuid from "react-uuid";
 
+import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
 
 const PARSERS = {
@@ -33,35 +34,48 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample) => {
+const loadOverlay = (sample, colors) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
-  for (const i in sample) {
-    if (_.indexOf(["metadata", "_id", "tags", "filepath"], i) >= 0) {
+  const colorMap = {};
+  const sampleKeys = Object.keys(sample).sort();
+  for (const i in sampleKeys) {
+    const e = sampleKeys[i];
+    if (_.indexOf(["metadata", "_id", "tags", "filepath"], e) >= 0) {
       continue;
     }
-    const field = sample[i];
+    const field = sample[e];
     if (!field) continue;
     if (field._cls === "Detections") {
       for (const j in field.detections) {
         const detection = field.detections[j];
         const [key, fn] = PARSERS[detection._cls];
-        imgLabels[key][key].push(fn(i, detection));
+        imgLabels[key][key].push(fn(e, detection));
+        colorMap[`${e}:${detection.label}`] = colors[i];
       }
       continue;
     }
     if (field._cls === "Classification") {
       const [key, fn] = PARSERS[field._cls];
-      imgLabels[key][key].push(fn(i, field));
+      imgLabels[key][key].push(fn(e, field));
     }
   }
-  return imgLabels;
+  return [imgLabels, colorMap];
 };
 
-export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
-  const overlay = loadOverlay(sample);
-  const id = sample._id.$oid;
-
+export default ({
+  colors,
+  thumbnail,
+  sample,
+  src,
+  style,
+  onClick,
+  onDoubleClick,
+  activeLabels,
+}) => {
+  const [overlay, colorMap] = loadOverlay(sample, colors);
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
+  const [initLoad, setInitLoad] = useState(false);
+  const id = uuid();
   const [player, setPlayer] = useState(
     new Player51({
       media: {
@@ -69,16 +83,22 @@ export default ({ thumbnail, sample, src, style, onClick, onDoubleClick }) => {
         type: "image/jpg",
       },
       overlay: overlay,
+      colorMap: colorMap,
     })
   );
   const props = thumbnail
     ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
     : {};
   useEffect(() => {
-    if (thumbnail) {
-      player.thumbnailMode();
+    if (!initLoad) {
+      if (thumbnail) {
+        player.thumbnailMode();
+      }
+      player.render(id, activeLabels);
+      setInitLoad(true);
+    } else {
+      player.renderer.processFrame(activeLabels);
     }
-    player.render(id);
-  }, []);
+  }, [activeLabels]);
   return <div id={id} style={style} {...props} />;
 };

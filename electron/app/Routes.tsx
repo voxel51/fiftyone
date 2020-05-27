@@ -22,7 +22,6 @@ function Routes({ port }) {
   const [loading, setLoading] = useState(true);
   const [colorMap, setColorMap] = useState({});
   const socket = getSocket(port, "state");
-
   const appProps = {
     activeTags,
     setActiveTags,
@@ -43,27 +42,18 @@ function Routes({ port }) {
   const dataset = (props) => {
     return <Dataset {...props} displayProps={datasetProps} />;
   };
-
   const loadData = () => {
     setNeedsLoad(false);
     setLoading(true);
     socket.emit("lengths", "", (data) => {
       const mapping = {};
-      const labelKeys = data.labels ? Object.keys(data.labels) : [];
-      let clen = 0;
-      for (const i in data.labels) {
-        if (data.labels[i]._id.cls !== "Classification") continue;
-        clen += 1;
-        mapping[data.labels[i]._id.field] = i;
+      const sortFn = (a, b) => (a._id.field > b._id.field ? 1 : -1);
+      const labelKeys = data.labels ? data.labels.sort(sortFn) : [];
+      for (const i in labelKeys) {
+        mapping[labelKeys[i]._id.field] = i;
       }
-      for (const i in data.tags) {
-        mapping[data.tags[i]] = clen + Number(i);
-      }
-      let olen = 0;
-      for (const i in data.labels) {
-        if (data.labels[i]._id.cls === "Classification") continue;
-        mapping[data.labels[i]._id.field] = clen + olen + data.tags.length;
-        olen += 1;
+      for (const i in data.tags.sort()) {
+        mapping[data.tags[i]] = data.labels.length + i;
       }
       setLengths({
         tags: data.tags,
@@ -87,7 +77,6 @@ function Routes({ port }) {
       </Dimmer>
     );
   }
-
   return (
     <App displayProps={appProps} colors={colors}>
       <Switch>
