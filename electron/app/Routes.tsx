@@ -47,12 +47,12 @@ function Routes({ port }) {
     setLoading(true);
     socket.emit("lengths", "", (data) => {
       const mapping = {};
-      const labelKeys = data.labels ? Object.keys(data.labels).sort() : [];
-      let clen = 0;
+      const sortFn = (a, b) => (a._id.field > b._id.field ? 1 : -1);
+      const labelKeys = data.labels ? data.labels.sort(sortFn) : [];
       for (const i in labelKeys) {
-        mapping[data.labels[labelKeys[i]]._id.field] = i;
+        mapping[labelKeys[i]._id.field] = i;
       }
-      for (const i in data.tags) {
+      for (const i in data.tags.sort()) {
         mapping[data.tags[i]] = data.labels.length + i;
       }
       setLengths({
@@ -77,7 +77,6 @@ function Routes({ port }) {
       </Dimmer>
     );
   }
-
   return (
     <App displayProps={appProps} colors={colors}>
       <Switch>
