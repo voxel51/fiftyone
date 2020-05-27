@@ -48,7 +48,7 @@ function Samples(props) {
     });
   });
 
-  const fitImages = (groups, containerWidth) => {
+  const fitImages = (groups) => {
     const sampleRows = [];
     const rowStyles = [];
     let currentRow = [];
@@ -103,7 +103,7 @@ function Samples(props) {
       rowStyles.push(rowStyle);
     }
     return rowStyles.map((r, i) => {
-      <Grid columns={sampleRows[i].length} style={{ r }} key={i}>
+      <Grid columns={sampleRows[i].length} style={r} key={i}>
         {sampleRows[i].map((s, j) => {
           <Grid.Column key={j}>
             <Sample
@@ -121,7 +121,7 @@ function Samples(props) {
   let content = null;
 
   useEffect(() => {
-    content = fitImages(scrollState.imageGroups, widthRef.current.offsetWidth);
+    content = fitImages(scrollState.imageGroups);
   });
 
   return (
