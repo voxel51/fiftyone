@@ -24,7 +24,7 @@ const PitImage = ({ sample, pitStore, setPitStore }) => {
 
 export default ({ images, setScrollState, index, scrollState }) => {
   const [pitStore, setPitStore] = useState({});
-
+  console.log(pitStore);
   if (pitStore.length === images.length) {
     const loadedImages = images.map((s) => pitStore[s._id.$oid]);
     const imageGroups = [...scrollState.imageGroups];

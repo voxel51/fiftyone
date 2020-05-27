@@ -23,7 +23,7 @@ function Samples(props) {
     initialLoad: true,
     hasMore: true,
     imageGroups: [],
-    imagePit: [],
+    imagePits: [],
     pageToLoad: 1,
   });
   const loadMore = () => {
@@ -50,10 +50,13 @@ function Samples(props) {
 
   const fitImages = (groups) => {
     let imgs = {};
+    console.log(groups);
     for (const i in groups) {
-      console.log(groups);
+      console.log(i);
     }
   };
+
+  fitImages(scrollState.imageGroups);
 
   const chunkedImages = _.chunk(scrollState.images, 4);
   const content = chunkedImages.map((imgs, i) => {
@@ -75,7 +78,7 @@ function Samples(props) {
       </>
     );
   });
-
+  console.log(scrollState.imagePits);
   return (
     <>
       {scrollState.imagePits.map((p, i) => (
