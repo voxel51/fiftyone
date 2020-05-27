@@ -55,27 +55,29 @@ const Sample = ({
           width: "100%",
           position: "relative",
         }}
+        colors={colors}
         sample={sample}
         onClick={() => handleClick()}
         onDoubleClick={() => setView({ visible: true, sample })}
         thumbnail={true}
+        activeLabels={activeLabels}
       />
       <div className="sample-info">
         {Object.keys(s).map((l, i) =>
-          activeLabels[l] && s[l] ? (
-            <Tag name={String(s[l].label)} color={colors[lengths.mapping[l]]} />
+          activeLabels[l] && s[l] && s[l]._cls === "Classification" ? (
+            <Tag name={String(s[l].label)} color={colors[i]} />
           ) : null
         )}
         {s.tags.map((t, i) =>
           activeTags[t] ? (
-            <Tag name={String(t)} color={colors[lengths.mapping[t]]} />
+            <Tag name={String(t)} color={colors[lengths.tags.length + i]} />
           ) : null
         )}
         {Object.keys(s).map((l, i) => {
-          return activeOther[l] && s[l] ? (
+          return activeOther[l] && (s[l] || typeof s[l] === "boolean") ? (
             <Tag
               name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
-              color={colors[lengths.mapping[l]]}
+              color={colors[i]}
             />
           ) : null;
         })}
