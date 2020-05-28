@@ -15,7 +15,7 @@ echo "**** Generating documentation"
 # The syntax here is:
 #   sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, …]
 #
-sphinx-apidoc -f --no-toc -o docs/source/api fiftyone fiftyone/experimental
+sphinx-apidoc -f --no-toc -o docs/api fiftyone fiftyone/experimental
 
 cd docs
 make html
