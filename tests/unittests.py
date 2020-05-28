@@ -632,9 +632,7 @@ class DatasetTest(unittest.TestCase):
     def test_backing_doc_class(self):
         dataset_name = self.test_backing_doc_class.__name__
         dataset = fo.Dataset(dataset_name)
-        self.assertTrue(
-            issubclass(dataset._sample_doc_cls, foo.ODMDatasetSample)
-        )
+        self.assertTrue(issubclass(dataset._sample_doc_cls, foo.ODMSample))
 
     @drop_database
     def test_meta_dataset(self):
@@ -670,7 +668,7 @@ class SampleTest(unittest.TestCase):
     @drop_database
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
-        self.assertIsInstance(sample._doc, foo.ODMNoDatasetSample)
+        self.assertIsInstance(sample._doc, foo.NoDatasetSample)
 
     @drop_database
     def test_get_field(self):

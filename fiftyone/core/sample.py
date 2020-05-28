@@ -45,7 +45,7 @@ class Sample(object):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.ODMNoDatasetSample(
+        self._doc = foo.NoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
@@ -307,12 +307,12 @@ class Sample(object):
         document.
 
         Args:
-            document: a :class:`fiftyone.core.odm.ODMDatasetSample`
+            document: a :class:`fiftyone.core.odm.ODMSample`
 
         Returns:
             a :class:`Sample`
         """
-        if not isinstance(doc, foo.ODMDatasetSample):
+        if not isinstance(doc, foo.ODMSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
 
         if not doc.id:
@@ -361,13 +361,13 @@ class Sample(object):
 
         For use **only** when adding a sample to a dataset.
         """
-        if isinstance(self._doc, foo.ODMDatasetSample):
+        if isinstance(self._doc, foo.ODMSample):
             raise TypeError("Sample already belongs to a dataset")
 
-        if not isinstance(doc, foo.ODMDatasetSample):
+        if not isinstance(doc, foo.ODMSample):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
-                % (foo.ODMDatasetSample, type(doc))
+                % (foo.ODMSample, type(doc))
             )
 
         # ensure the doc is saved to the database
