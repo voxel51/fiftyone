@@ -1009,6 +1009,9 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
             a :class:`fiftyone.core.labels.ImageLabels` instance
         """
         labels = sample[1]
+        if isinstance(labels, etai.ImageLabels):
+            labels = labels.serialize()
+
         return fol.ImageLabels(labels=labels)
 
 
