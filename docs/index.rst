@@ -18,4 +18,5 @@ documentation, feel free to reach out to us at support@voxel51.com.
    :maxdepth: 2
 
    install_guide
+   examples/index
    api/fiftyone
