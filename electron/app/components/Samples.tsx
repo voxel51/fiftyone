@@ -35,18 +35,15 @@ function Samples(props) {
   }, {});
 
   const [selected, setSelected] = useState(initialSelected);
+  const [loadMore, setLoadMore] = useState(false);
 
-  let scrollState = { hasMore: true, pageToLoad: 1, rows: [] };
-
-  const loadMore = () => {
-    scrollState = tile("g");
-  };
-
+  const scrollState = tile(loadMore);
+  console.log(scrollState);
   return (
     <InfiniteScroll
       pageStart={1}
       initialLoad={true}
-      loadMore={() => loadMore()}
+      loadMore={() => setLoadMore(true)}
       hasMore={scrollState.hasMore}
       loader={<Loader key={0} />}
       useWindow={true}

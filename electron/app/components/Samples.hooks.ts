@@ -4,29 +4,26 @@ import { useEffect, useState, useMemo } from "react";
 /**
  * Our hook that performs the calculation on the worker
  */
-export function tile(g) {
+export function tile(loadMore) {
   // We'll want to expose a wrapping object so we know when a calculation is in progress
-  const [data, setData] = useState({
+  const [state, setState] = useState({
     isLoading: true,
-    initialLoad: true,
     hasMore: true,
-    rows: [],
     pageToLoad: 1,
+    rows: [],
   });
 
   // acquire our worker
   const { workerApi } = useWorker();
 
   useEffect(() => {
-    // We're starting the calculation here
-    setData({ ...data, isLoading: true });
+    if (!loadMore) return;
+    setState({ ...state, isLoading: true });
 
-    workerApi
-      .tile(data)
-      .then((result) => setData({ ...result, isLoading: false })); // We receive the result here
-  }, [workerApi, setData]);
+    workerApi.tile(state).then((result) => setState(result)); // We receive the result here
+  }, [workerApi, setState, loadMore]);
 
-  return data;
+  return state;
 }
 
 function useWorker() {
