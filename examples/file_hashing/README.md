@@ -10,7 +10,7 @@ CIFAR100, a dataset of 32x32 pixel images with one of 100 different
 classification labels such as `apple`, `bicycle`, `porcupine`, etc.
 
 ```bash
-python download_dataset.py
+python -m fiftyone.examples.file_hashing.download_dataset
 ```
 
 The dataset is organized on disk as follows:
