@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 /**
  * Our hook that performs the calculation on the worker
  */
-export function tile() {
+export function tile(g) {
   // We'll want to expose a wrapping object so we know when a calculation is in progress
   const [data, setData] = useState({
     isLoading: true,

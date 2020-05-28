@@ -39,7 +39,7 @@ function Samples(props) {
   let scrollState = { hasMore: true, pageToLoad: 1, rows: [] };
 
   const loadMore = () => {
-    scrollState = tile();
+    scrollState = tile("g");
   };
 
   return (

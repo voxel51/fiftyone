@@ -1,10 +1,5 @@
 import { expose } from "comlink";
-
-function tile(state) {
-  console.log("working");
-  console.log(state);
-  return "hello";
-}
+import tile from "../../utils/tile";
 
 const exports = {
   tile,
