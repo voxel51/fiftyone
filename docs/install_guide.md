@@ -101,9 +101,9 @@ dealing with virtual environments frequently:
     [here](https://docs.python.org/3/library/venv.html), with information on
     additional arguments that the `venv` command accepts.
 -   There is a similar
-    [`virtualenv` package](https://pypi.org/project/virtualenv/) (installable
+    ["virtualenv" package](https://pypi.org/project/virtualenv/) (installable
     with `pip`) that supports older Python versions.
--   [`virtualenvwrapper`](https://virtualenvwrapper.readthedocs.io/en/latest/)
+-   [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/)
     adds some convenient shell support for creating and managing virtual
     environments.
 
