@@ -108,7 +108,7 @@ function Dataset(props) {
         ) : null}
       </Sidebar>
       <Ref innerRef={stickyRef}>
-        <Container fluid={true} style={{ padding: "2rem 2rem 2rem" }}>
+        <Container fluid={true}>
           <Sticky context={stickyRef}>
             <Container
               fluid={true}

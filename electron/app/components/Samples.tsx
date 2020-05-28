@@ -62,7 +62,7 @@ function Samples(props) {
       for (const j in group) {
         const sample = group[j];
         if (currentWidth === null) {
-          currentWidth = sample.width;
+          currentWidth = sample.width + 4;
           currentHeight = sample.height;
           currentRow.push(sample);
           continue;
@@ -71,13 +71,13 @@ function Samples(props) {
         if (currentWidth / currentHeight >= 5) {
           sampleRows.push(currentRow);
           currentRow = [sample];
-          currentWidth = sample.width;
+          currentWidth = sample.width + 4;
           currentHeight = sample.height;
           continue;
         }
 
         currentRow.push(sample);
-        currentWidth += (currentHeight / sample.height) * sample.width;
+        currentWidth += (currentHeight / sample.height) * (sample.width + 4);
       }
     }
     if (currentRow.length) sampleRows.push(currentRow);
@@ -88,12 +88,12 @@ function Samples(props) {
       if (row.length === 0) break;
       const baseHeight = row[0].height;
       const refWidth = row.reduce(
-        (acc, val) => acc + (baseHeight / val.height) * val.width,
+        (acc, val) => acc + (baseHeight / val.height) * (val.width + 4),
         0
       );
       for (const j in row) {
         const sample = row[j];
-        const sampleWidth = (baseHeight * sample.width) / sample.height;
+        const sampleWidth = (baseHeight * (sample.width + 4)) / sample.height;
         columns.push(sampleWidth / refWidth);
       }
       const rowStyle = {
@@ -101,6 +101,8 @@ function Samples(props) {
         gridTemplateColumns: columns
           .map((c) => (c * 100).toFixed(2) + "%")
           .join(" "),
+        gridColumnGap: 4,
+        margin: "2px 4px",
       };
       rowStyles.push(rowStyle);
     }

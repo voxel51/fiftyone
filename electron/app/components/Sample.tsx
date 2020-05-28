@@ -70,11 +70,12 @@ const Sample = ({
               <Tag name={String(s[l].label)} color={colors[i]} />
             ) : null;
           })}
-        {s.tags.map((t, i) =>
-          activeTags[t] ? (
+        {s.tags.map((t, i) => {
+          console.log("l", lengths.mapping);
+          return activeTags[t] ? (
             <Tag name={String(t)} color={colors[lengths.mapping[t]]} />
-          ) : null
-        )}
+          ) : null;
+        })}
         {Object.keys(s)
           .sort()
           .map((l, i) => {
