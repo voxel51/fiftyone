@@ -33,7 +33,9 @@ FIFTYONE_ENV = os.environ["VIRTUAL_ENV"]
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
-EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
+EXAMPLES_DIR = os.path.join(FIFTYONE_DIR, "examples")
+if not os.path.isdir(EXAMPLES_DIR):
+    EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
 
 # Package metadata
 _META = metadata("fiftyone")
