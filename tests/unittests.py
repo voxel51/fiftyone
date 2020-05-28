@@ -453,7 +453,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             sample.save()  # @todo(Tyler) SAVE
 
         def check_set_field_create(sample_id):
-            dataset = fo.Dataset(name=dataset_name)
+            dataset = fo.load_dataset(name=dataset_name)
             fields = dataset.get_field_schema()
             self.assertIn(field_name, fields)
 
@@ -464,8 +464,88 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         check_set_field_create(sample_id)
 
     def test_modify_sample(self):
-        # @todo(Tyler)
-        pass
+        dataset_name = self.test_set_field_create.__name__
+
+        def create_dataset():
+            dataset = fo.Dataset(name=dataset_name)
+            dataset.add_sample_field("bool_field", fo.BooleanField)
+            dataset.add_sample_field("list_field", fo.ListField)
+            return dataset.add_sample(fo.Sample(filepath="test.png"))
+
+        sample_id = create_dataset()
+
+        def check_field_defaults(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+
+            self.assertIs(sample.bool_field, None)
+            self.assertIsInstance(sample.list_field, list)
+            self.assertListEqual(sample.list_field, [])
+
+        check_field_defaults(sample_id)
+
+        # modify simple field (boolean)
+
+        def modify_simple_field(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            sample.bool_field = True
+            sample.save()  # @todo(Tyler) SAVE
+
+        def check_modify_simple_field(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            self.assertIs(sample.bool_field, True)
+
+        modify_simple_field(sample_id)
+        check_modify_simple_field(sample_id)
+
+        # clear simple field (boolean)
+
+        def clear_simple_field(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            del sample["asdf"]
+            del sample.bool_field
+            sample.save()  # @todo(Tyler) SAVE
+
+        def check_clear_simple_field(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            self.assertIs(sample.bool_field, None)
+
+        clear_simple_field(sample_id)
+        check_clear_simple_field(sample_id)
+
+        # modify complex field (list)
+
+        # def modify_list_set(sample_id):
+        #     dataset = fo.load_dataset(name=dataset_name)
+        #     sample = dataset[sample_id]
+        #     sample.list_field = []
+        #     sample.save()  # @todo(Tyler) SAVE
+        #
+        # def check_modify_list_set(sample_id):
+        #     dataset = fo.load_dataset(name=dataset_name)
+        #     sample = dataset[sample_id]
+        #     self.assertIsInstance(sample.list_, True)
+        #
+        # modify_simple_field(sample_id)
+        # check_modify_simple_field(sample_id)
+        #
+        # def clear_complex_field(sample_id):
+        #     dataset = fo.load_dataset(name=dataset_name)
+        #     sample = dataset[sample_id]
+        #     sample.clear_field("bool_field")
+        #     # sample.save()  # @todo(Tyler) SAVE
+        #
+        # def check_clear_complex_field(sample_id):
+        #     dataset = fo.load_dataset(name=dataset_name)
+        #     sample = dataset[sample_id]
+        #     self.assertIs(sample.bool_field, None)
+        #
+        # clear_simple_field(sample_id)
+        # check_clear_simple_field(sample_id)
 
 
 class MultiProcessSynchronizationTest(unittest.TestCase):

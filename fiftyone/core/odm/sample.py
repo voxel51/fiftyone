@@ -268,10 +268,11 @@ class ODMSample(ODMDocument):
             if create:
                 self.add_implied_field(field_name, value)
             else:
-                raise ValueError(
-                    "Sample does not have field '%s'. Use `create=True` to "
-                    "create a new field"
-                )
+                msg = "Sample does not have field '%s'." % field_name
+                if value is not None:
+                    # don't report this when clearing a field.
+                    msg += " Use `create=True` to create a new field."
+                raise ValueError(msg)
 
         self.__setattr__(field_name, value)
 
@@ -282,9 +283,9 @@ class ODMSample(ODMDocument):
             field_name: the field name
 
         Raises:
-            AttributeError: if the field does not exist
+            ValueError: if the field does not exist
         """
-        raise NotImplementedError("Subclass must implement clear_field()")
+        self.set_field(field_name, None, create=False)
 
     def delete_field(self, field_name):
         """Deletes the field from the dataset.
@@ -470,8 +471,12 @@ class ODMNoDatasetSample(ODMSample):
     @nodataset
     @no_delete_default_field
     def delete_field(self, field_name):
-        # @todo(Tyler) ODMNoDatasetSample.delete_field
-        raise NotImplementedError("Not yet implemented")
+        self.clear_field(field_name)
+        self._fields.pop(field_name)
+        self._fields_ordered = (
+            fn for fn in self._fields_ordered if fn != field_name
+        )
+        self._data.pop(field_name, None)  # @todo(Tyler) possibly unnecessary?
 
 
 class NoDatasetError(Exception):

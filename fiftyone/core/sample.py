@@ -67,8 +67,10 @@ class Sample(object):
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
-        # @todo(Tyler) __delattr__
-        raise NotImplementedError("Not yet implemented")
+        try:
+            self.__delitem__(name)
+        except KeyError:
+            super().__delattr__(name)
 
     def __getitem__(self, key):
         try:
@@ -82,8 +84,8 @@ class Sample(object):
     def __delitem__(self, key):
         try:
             return self.clear_field(key)
-        except AttributeError:
-            raise KeyError("Sample has no field '%s'" % key)
+        except ValueError as e:
+            raise KeyError(e.args[0])
 
     def __copy__(self):
         return self.copy()
@@ -178,7 +180,7 @@ class Sample(object):
             field_name: the name of the field to clear
 
         Raises:
-            AttributeError: if the field does not exist
+            ValueError: if the field does not exist
         """
         return self._doc.clear_field(field_name=field_name)
 
