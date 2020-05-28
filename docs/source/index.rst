@@ -5,4 +5,4 @@ FiftyOne
    :maxdepth: 2
 
    README
-   fiftyone
+   api/fiftyone
