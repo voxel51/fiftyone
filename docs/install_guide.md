@@ -151,6 +151,23 @@ environment (with `pip install` followed by the given package names):
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.
 
+## Upgrading FiftyOne
+
+Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
+upgrade an existing FiftyOne installation in-place:
+
+```sh
+pip install --index https://pypi.voxel51.com --upgrade fiftyone
+```
+
+## Uninstalling FiftyOne
+
+FiftyOne and all of its subpackages can be uninstalled with:
+
+```sh
+pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
+```
+
 ## Copyright
 
 Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
