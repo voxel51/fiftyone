@@ -37,14 +37,12 @@ export default async function tile(data, state, count, host) {
   }
 
   let remainder = [];
-  const newRemainder = hasMore ? currentRow : [];
-  if (!hasMore && currentRow.length) newRows.push(currentRow);
+  const newRemainder = newHasMore ? currentRow : [];
+  if (!newHasMore && currentRow.length) newRows.push(currentRow);
 
-  const rowStyles = [];
   for (const i in newRows) {
     const row = newRows[i];
     const columns = [];
-    if (row.length === 0) break;
     const baseHeight = row[0].height;
     const refWidth = row.reduce(
       (acc, val) => acc + (baseHeight / val.height) * val.width,
@@ -63,7 +61,7 @@ export default async function tile(data, state, count, host) {
       width: "100%",
       margin: 0,
     };
-    rows.push({ style: rowStyle, samples: row.map((s) => s.sample) });
+    rows.push({ style: rowStyle, samples: row });
   }
   return {
     hasMore: state.pageToLoad * 20 < count,

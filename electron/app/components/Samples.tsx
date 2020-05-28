@@ -3,7 +3,7 @@ import React, { createRef, useState, useRef, useEffect } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import { Grid, Loader } from "semantic-ui-react";
 import uuid from "react-uuid";
-
+import Sample from "./Sample";
 import connect from "../utils/connect";
 import { wrap } from "comlink";
 import { tile } from "./Samples.hooks";
