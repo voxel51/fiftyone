@@ -270,6 +270,7 @@
     "@fortawesome/fontawesome-free": "^5.13.0",
     "@hot-loader/react-dom": "^16.13.0",
     "babel-plugin-styled-components": "^1.10.7",
+    "bluebird": "^3.7.2",
     "comlink": "^4.3.0",
     "connected-react-router": "^6.6.1",
     "core-js": "^3.6.4",
@@ -297,6 +298,7 @@
     "semantic-ui-css": "^2.4.1",
     "semantic-ui-react": "^0.88.2",
     "source-map-support": "^0.5.16",
+    "underscore": "^1.10.2",
     "worker-plugin": "^4.0.3"
   },
   "devEngines": {

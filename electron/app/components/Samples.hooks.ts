@@ -1,16 +1,30 @@
 import { wrap, releaseProxy } from "comlink";
 import { useEffect, useState, useMemo } from "react";
+import { getSocket, useSubscribe } from "../utils/socket";
 
 /**
  * Our hook that performs the calculation on the worker
  */
-export function tile(loadMore) {
+export function tile(port, loadMore, count) {
   // We'll want to expose a wrapping object so we know when a calculation is in progress
   const [state, setState] = useState({
     isLoading: true,
     hasMore: true,
     pageToLoad: 1,
     rows: [],
+    remainder: [],
+  });
+
+  const host = `http://127.0.0.1:${port}`;
+  const socket = getSocket(port, "state");
+  useSubscribe(socket, "update", (data) => {
+    setState({
+      isLoading: true,
+      hasMore: true,
+      rows: [],
+      pageToLoad: 1,
+      remainder: [],
+    });
   });
 
   // acquire our worker
@@ -20,8 +34,12 @@ export function tile(loadMore) {
     if (!loadMore) return;
     setState({ ...state, isLoading: true });
 
-    workerApi.tile(state).then((result) => setState(result)); // We receive the result here
-  }, [workerApi, setState, loadMore]);
+    socket.emit("page", state.pageToLoad, (data) => {
+      workerApi
+        .tile(data, state, count, host)
+        .then((result) => setState(result)); // We receive the result here
+    });
+  }, [workerApi, setState, loadMore, count]);
 
   return state;
 }
@@ -29,7 +47,7 @@ export function tile(loadMore) {
 function useWorker() {
   // memoise a worker so it can be reused; create one worker up front
   // and then reuse it subsequently; no creating new workers each time
-  const workerApiAndCleanup = useMemo(() => makeWorkerApiAndCleanup(), []);
+  const [workerApiAndCleanup, _] = useState(() => makeWorkerApiAndCleanup());
 
   useEffect(() => {
     const { cleanup } = workerApiAndCleanup;

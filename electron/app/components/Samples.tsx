@@ -37,7 +37,7 @@ function Samples(props) {
   const [selected, setSelected] = useState(initialSelected);
   const [loadMore, setLoadMore] = useState(false);
 
-  const scrollState = tile(loadMore);
+  const scrollState = tile(port, loadMore, state.count);
   console.log(scrollState);
   return (
     <InfiniteScroll
