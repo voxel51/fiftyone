@@ -10,10 +10,66 @@ export default async function tile(data, state, count, host) {
   const result = await Promise.all(data.map((s) => loadSample(s, host)));
 
   const samplesToFit = [...state.remainder, ...result];
+  const rows = [...state.rows];
+  const newHasMore = state.pageToLoad * 20 < count;
+  const newRows = [];
+  let currentRow = [];
+  let currentWidth = null;
+  let currentHeight = null;
+  for (const i in samplesToFit) {
+    const s = samplesToFit[i];
+    if (currentWidth === null) {
+      currentWidth = s.width;
+      currentHeight = s.height;
+      currentRow.push(s.sample);
+      continue;
+    }
 
-  for (const s in samplesToFit) {
-    consotle.log(s);
+    if (currentWidth / currentHeight >= 5) {
+      newRows.push(currentRow);
+      currentRow = [s.sample];
+      currentWidth = s.width;
+      currentHeight = s.height;
+      continue;
+    }
+    currentRow.push(s.sample);
+    currentWidth += (currentHeight / s.height) * s.width;
   }
 
-  return state;
+  let remainder = [];
+  const newRemainder = hasMore ? currentRow : [];
+  if (!hasMore && currentRow.length) newRows.push(currentRow);
+
+  const rowStyles = [];
+  for (const i in newRows) {
+    const row = newRows[i];
+    const columns = [];
+    if (row.length === 0) break;
+    const baseHeight = row[0].height;
+    const refWidth = row.reduce(
+      (acc, val) => acc + (baseHeight / val.height) * val.width,
+      0
+    );
+    for (const j in row) {
+      const sample = row[j];
+      const sampleWidth = (baseHeight * sample.width) / sample.height;
+      columns.push(sampleWidth / refWidth);
+    }
+    const rowStyle = {
+      display: "grid",
+      gridTemplateColumns: columns
+        .map((c) => (c * 100).toFixed(2) + "%")
+        .join(" "),
+      width: "100%",
+      margin: 0,
+    };
+    rows.push({ style: rowStyle, samples: row.map((s) => s.sample) });
+  }
+  return {
+    hasMore: state.pageToLoad * 20 < count,
+    rows: rows,
+    isLoading: false,
+    remainder: remainder,
+    pageToLoad: state.pageToLoad + 1,
+  };
 }
