@@ -34,8 +34,10 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages(),
+    packages=find_packages() + ["fiftyone.examples"],
+    package_dir={"fiftyone.examples": "examples"},
     include_package_data=True,
+    exclude_package_data={"fiftyone.examples": ["archive/*", "data/*"]},
     install_requires=[
         # third-party packages
         "argcomplete",
