@@ -426,6 +426,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Creates a :class:`Dataset` for the given image classification
         samples.
 
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Classification` format.
+
         The input ``samples`` can be any iterable that emits
         ``(image_path, target)`` tuples, where:
 
@@ -475,6 +478,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls, samples, name=None, label_field="ground_truth", labels_map=None,
     ):
         """Creates a :class:`Dataset` for the given image detection samples.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
 
         The input ``samples`` can be any iterable that emits
         ``(image_path, detections)`` tuples, where:
@@ -537,6 +543,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls, samples, name=None, label_field="ground_truth"
     ):
         """Creates a :class:`Dataset` for the given image labels samples.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.ImageLabels` format.
 
         The input ``samples`` can be any iterable that emits
         ``(image_path, image_labels)`` tuples, where:
@@ -720,6 +729,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         See :class:`fiftyone.types.ImageClassificationDataset` for format
         details.
 
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Classification` format.
+
         Args:
             dataset_dir: the directory containing the dataset
             name (None): a name for the dataset. By default,
@@ -744,6 +756,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         See :class:`fiftyone.types.ImageDetectionDataset` for format details.
 
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
         Args:
             dataset_dir: the directory containing the dataset
             name (None): a name for the dataset. By default,
@@ -767,6 +782,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         on disk.
 
         See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.ImageLabels` format.
 
         Args:
             dataset_dir: the directory containing the dataset
