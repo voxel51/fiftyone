@@ -370,11 +370,11 @@ class Sample(object):
                 % (foo.ODMDatasetSample, type(doc))
             )
 
-        self._doc = doc
-
         # ensure the doc is saved to the database
         if not doc.id:
             doc.save()
+
+        self._doc = doc
 
         # save weak reference
         dataset_instances = self._instances[doc.dataset_name]

@@ -48,13 +48,12 @@ class SerializableDocument(object):
         return self.copy()
 
     def copy(self):
-        """Returns a copy of the document that does not have its `id` set.
+        """Returns a copy of the document.
 
         Returns:
             a :class:`SerializableDocument`
         """
-        doc = deepcopy(self)
-        return doc
+        return deepcopy(self)
 
     def to_dict(self, extended=False):
         """Serializes this document to a JSON dictionary.
@@ -66,6 +65,7 @@ class SerializableDocument(object):
         Returns:
             a JSON dict
         """
+        # pylint: disable=no-member
         if extended:
             return json.loads(self.to_json())
 
@@ -98,6 +98,7 @@ class SerializableDocument(object):
         Returns:
             a :class:`ODMDocument`
         """
+        # pylint: disable=no-member
         if not extended:
             try:
                 # Attempt to load the document directly, assuming it is in
@@ -162,6 +163,7 @@ class ODMDocument(SerializableDocument, Document):
         """The time the document was added to the database, or ``None`` if it
         has not been added to the database.
         """
+        # pylint: disable=no-member
         return self.id.generation_time if self.in_db else None
 
     @property
@@ -169,4 +171,5 @@ class ODMDocument(SerializableDocument, Document):
         """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
         been inserted into the database.
         """
+        # pylint: disable=no-member
         return hasattr(self, "id") and self.id is not None
