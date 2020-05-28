@@ -42,16 +42,11 @@ const Sample = ({
     });
   };
   return (
-    <div
-      className="sample"
-      style={{
-        marginTop: selected[id] ? 0 : "2px",
-        border: selected[id] ? "2px solid rgb(255, 109, 4)" : "none",
-      }}
-    >
+    <div className="sample">
       <Player51
         src={src}
         style={{
+          height: "100%",
           width: "100%",
           position: "relative",
         }}
@@ -71,7 +66,6 @@ const Sample = ({
             ) : null;
           })}
         {s.tags.map((t, i) => {
-          console.log("l", lengths.mapping);
           return activeTags[t] ? (
             <Tag name={String(t)} color={colors[lengths.mapping[t]]} />
           ) : null;
@@ -87,6 +81,17 @@ const Sample = ({
             ) : null;
           })}
       </div>
+      {selected[id] ? (
+        <div
+          style={{
+            border: "2px solid rgb(255, 109, 4)",
+            width: "100%",
+            height: "100%",
+            position: "absolute",
+            top: 0,
+          }}
+        />
+      ) : null}
     </div>
   );
 };

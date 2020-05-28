@@ -3,6 +3,7 @@ import React, { createRef, useState, useRef, useEffect } from "react";
 import { Card, Grid } from "semantic-ui-react";
 import InfiniteScroll from "react-infinite-scroller";
 import { Dimmer, Loader } from "semantic-ui-react";
+import uuid from "react-uuid";
 
 import ImagePit from "./ImagePit";
 import Sample from "./Sample";
@@ -22,27 +23,27 @@ function Samples(props) {
   const [scrollState, setScrollState] = useState({
     initialLoad: true,
     hasMore: true,
-    imageGroups: [],
     imagePits: [],
     pageToLoad: 1,
   });
+  const [sampleGroups, setSampleGroups] = useState([]);
+
   const loadMore = () => {
     socket.emit("page", scrollState.pageToLoad, (data) => {
       setScrollState({
         initialLoad: false,
         hasMore: scrollState.pageToLoad * 20 < state.count,
         imagePits: [...scrollState.imagePits, data],
-        imageGroups: [...scrollState.imageGroups, null],
         pageToLoad: scrollState.pageToLoad + 1,
       });
     });
   };
 
   useSubscribe(socket, "update", (data) => {
+    setSampleGroups([]);
     setScrollState({
       iniitialLoad: true,
       hasMore: true,
-      imageGroups: [],
       imagePits: [],
       pageToLoad: 1,
     });
@@ -62,7 +63,7 @@ function Samples(props) {
       for (const j in group) {
         const sample = group[j];
         if (currentWidth === null) {
-          currentWidth = sample.width + 4;
+          currentWidth = sample.width;
           currentHeight = sample.height;
           currentRow.push(sample);
           continue;
@@ -71,13 +72,13 @@ function Samples(props) {
         if (currentWidth / currentHeight >= 5) {
           sampleRows.push(currentRow);
           currentRow = [sample];
-          currentWidth = sample.width + 4;
+          currentWidth = sample.width;
           currentHeight = sample.height;
           continue;
         }
 
         currentRow.push(sample);
-        currentWidth += (currentHeight / sample.height) * (sample.width + 4);
+        currentWidth += (currentHeight / sample.height) * sample.width;
       }
     }
     if (currentRow.length) sampleRows.push(currentRow);
@@ -88,12 +89,12 @@ function Samples(props) {
       if (row.length === 0) break;
       const baseHeight = row[0].height;
       const refWidth = row.reduce(
-        (acc, val) => acc + (baseHeight / val.height) * (val.width + 4),
+        (acc, val) => acc + (baseHeight / val.height) * val.width,
         0
       );
       for (const j in row) {
         const sample = row[j];
-        const sampleWidth = (baseHeight * (sample.width + 4)) / sample.height;
+        const sampleWidth = (baseHeight * sample.width) / sample.height;
         columns.push(sampleWidth / refWidth);
       }
       const rowStyle = {
@@ -101,8 +102,8 @@ function Samples(props) {
         gridTemplateColumns: columns
           .map((c) => (c * 100).toFixed(2) + "%")
           .join(" "),
-        gridColumnGap: 4,
-        margin: "2px 4px",
+        width: "100%",
+        margin: 0,
       };
       rowStyles.push(rowStyle);
     }
@@ -123,17 +124,18 @@ function Samples(props) {
     ));
   };
 
-  let content = fitImages(scrollState.imageGroups);
+  const content = fitImages(sampleGroups);
 
   return (
     <>
       {scrollState.imagePits.map((p, i) => (
         <ImagePit
+          key={uuid()}
           scrollState={scrollState}
           images={p}
           index={i}
-          key={i}
-          setScrollState={setScrollState}
+          setSampleGroups={setSampleGroups}
+          sampleGroups={sampleGroups}
         />
       ))}
       <InfiniteScroll
@@ -141,12 +143,11 @@ function Samples(props) {
         initialLoad={true}
         loadMore={() => loadMore()}
         hasMore={scrollState.hasMore}
-        loader={<Loader key={0} />}
         useWindow={true}
+        key={uuid()}
       >
         {content}
       </InfiniteScroll>
-      {scrollState.hasMore ? <Loader /> : ""}
     </>
   );
 }

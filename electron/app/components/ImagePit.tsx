@@ -7,6 +7,7 @@ const PitImage = connect(({ port, sample, pitStore, setPitStore }) => {
   const src = `${host}?path=${sample.filepath}`;
   const ref = useRef(null);
   const onLoad = () => {
+    if (pitStore[sample._id.$oid]) return;
     setPitStore({
       ...pitStore,
       [sample._id.$oid]: {
@@ -26,19 +27,34 @@ const PitImage = connect(({ port, sample, pitStore, setPitStore }) => {
   );
 });
 
-export default ({ images, setScrollState, index, scrollState }) => {
+export default ({
+  images,
+  setSampleGroups,
+  sampleGroups,
+  index,
+  scrollState,
+}) => {
   const [pitStore, setPitStore] = useState({});
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
-    if (Object.keys(pitStore).length === images.length) {
+    if (sampleGroups[index]) return;
+    if (!loaded && Object.keys(pitStore).length === images.length) {
       const loadedImages = images.map((s) => pitStore[s._id.$oid]);
-      const imageGroups = [...scrollState.imageGroups];
+      const imageGroups = [...sampleGroups];
       imageGroups[index] = loadedImages;
-      setScrollState({ ...scrollState, imageGroups });
+      setLoaded(true);
+      setSampleGroups(imageGroups);
     }
-  }, [pitStore]);
+  }, [pitStore, loaded]);
+  if (loaded) return null;
   return images.map((s, i) => {
     return (
-      <PitImage pitStore={pitStore} sample={s} setPitStore={setPitStore} />
+      <PitImage
+        key={i}
+        pitStore={pitStore}
+        sample={s}
+        setPitStore={setPitStore}
+      />
     );
   });
 };
