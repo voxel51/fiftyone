@@ -469,7 +469,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample[field_name] = value
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_set_field_create(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -512,7 +511,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.bool_field = True
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_modify_simple_field(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -528,7 +526,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             del sample.bool_field
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_clear_simple_field(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -544,7 +541,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field = [True, False, True]
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_modify_list_set(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -558,7 +554,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             del sample.list_field
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_clear_complex_field(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -573,7 +568,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field.append(51)
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_modify_list_append(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -587,7 +581,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field.extend(["fiftyone"])
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_modify_list_extend(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -601,7 +594,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field.pop(0)
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_modify_list_pop(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -615,7 +607,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field += [52]
-            sample.save()  # @todo(Tyler) SAVE
 
         def check_modify_list_iadd(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -961,7 +952,6 @@ class CRUDTest(unittest.TestCase):
         # update assign
         tag = "tag3"
         sample.tags = [tag]
-        sample.save()
         self.assertEqual(len(sample.tags), 1)
         self.assertEqual(sample.tags[0], tag)
         sample2 = dataset[sample.id]
@@ -971,7 +961,6 @@ class CRUDTest(unittest.TestCase):
         # update append
         tag = "tag4"
         sample.tags.append(tag)
-        sample.save()
         self.assertEqual(len(sample.tags), 2)
         self.assertEqual(sample.tags[-1], tag)
         sample2 = dataset[sample.id]
@@ -986,7 +975,6 @@ class CRUDTest(unittest.TestCase):
         )
         sample.test_label = fo.Classification(label="cow")
         self.assertEqual(sample.test_label.label, "cow")
-        sample.save()
         self.assertEqual(sample.test_label.label, "cow")
         sample2 = dataset[sample.id]
         self.assertEqual(sample2.test_label.label, "cow")
@@ -994,7 +982,6 @@ class CRUDTest(unittest.TestCase):
         # update modify embedded document
         sample.test_label.label = "chicken"
         self.assertEqual(sample.test_label.label, "chicken")
-        sample.save()
         self.assertEqual(sample.test_label.label, "chicken")
         sample2 = dataset[sample.id]
         self.assertEqual(sample2.test_label.label, "chicken")
@@ -1099,7 +1086,6 @@ class FieldTest(unittest.TestCase):
         # add field (new)
         dataset.add_sample_field(field_name, ftype)
         setattr(sample1, field_name, field_test_value)
-        sample1.save()
 
         # check field exists and is of correct type
         field = dataset.get_field_schema()[field_name]
@@ -1150,7 +1136,6 @@ class FieldTest(unittest.TestCase):
         field_test_value = 51
         dataset.add_sample_field(field_name, ftype)
         setattr(sample1, field_name, field_test_value)
-        sample1.save()
 
         # check field exists and is of correct type
         field = dataset.get_field_schema()[field_name]

@@ -49,6 +49,11 @@ class Sample(object):
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
+    def __del__(self):
+        """Automatically save the sample when it is destroyed."""
+        if self.in_dataset:
+            self.save()
+
     def __str__(self):
         return str(self._doc)
 
