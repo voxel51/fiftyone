@@ -193,6 +193,34 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
     scopes (or processes!).
     """
 
+    def test_scoped_dataset(self):
+        dataset_name = self.test_scoped_dataset.__name__
+
+        def create_dataset():
+            with self.assertRaises(ValueError):
+                dataset = fo.Dataset(name=dataset_name, create_empty=False)
+
+            dataset = fo.Dataset(name=dataset_name)
+
+        create_dataset()
+
+        def check_create_dataset():
+            dataset = fo.Dataset(name=dataset_name, create_empty=False)
+
+        def check_create_dataset_via_load():
+            self.assertIn(dataset_name, fo.list_dataset_names())
+            dataset = fo.load_dataset(dataset_name)
+
+        check_create_dataset()
+        check_create_dataset_via_load()
+
+        def delete_default_field():
+            dataset = fo.load_dataset(dataset_name)
+            with self.assertRaises(ValueError):
+                dataset.delete_sample_field("tags")
+
+        delete_default_field()
+
     def test_scoped_schema_changes(self):
         dataset_name = self.test_scoped_schema_changes.__name__
 
@@ -231,6 +259,12 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             self.assertEqual(sample[field_name], value)
 
         check_add_to_sample()
+
+
+class MultiProcessSynchronizationTest(unittest.TestCase):
+    """What happens when multiple processes (users) are modifying the same
+    dataset?
+    """
 
 
 class DatasetTest(unittest.TestCase):
