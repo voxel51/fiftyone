@@ -221,6 +221,37 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
 
         delete_default_field()
 
+        def add_field():
+            dataset = fo.load_dataset(dataset_name)
+            dataset.add_sample_field("test_field", fo.IntField)
+
+        def check_add_field():
+            dataset = fo.load_dataset(dataset_name)
+            fields = dataset.get_field_schema()
+            self.assertIsInstance(fields["test_field"], fo.IntField)
+
+        add_field()
+        check_add_field()
+
+        def delete_field():
+            dataset = fo.load_dataset(dataset_name)
+            dataset.delete_sample_field("test_field")
+
+        def check_delete_field():
+            dataset = fo.load_dataset(dataset_name)
+            fields = dataset.get_field_schema()
+            with self.assertRaises(KeyError):
+                fields["test_field"]
+
+            # this is checking backend implementation. if it changes this may
+            # be N/A
+            sample_fields = dataset._meta.sample_fields
+            sample_field_names = [sf.name for sf in sample_fields]
+            self.assertNotIn("test_field", sample_field_names)
+
+        delete_field()
+        check_delete_field()
+
     def test_scoped_schema_changes(self):
         dataset_name = self.test_scoped_schema_changes.__name__
 
