@@ -379,33 +379,93 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         clear_dataset()
         check_clear_dataset(sample_ids)
 
-    def test_modify_sample(self):
-        # @todo(Tyler)
-        pass
+    def test_add_sample_expand_schema(self):
+        dataset_name = self.test_add_sample_expand_schema.__name__
 
-    def test_scoped_schema_changes(self):
-        dataset_name = self.test_scoped_schema_changes.__name__
+        def create_dataset():
+            dataset = fo.Dataset(name=dataset_name)
+
+        create_dataset()
+
+        # add sample with custom field
+
+        def add_sample_expand_schema():
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = fo.Sample(filepath="test.png", test_field=True)
+            return dataset.add_sample(sample)
+
+        def check_add_sample_expand_schema(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+
+            fields = dataset.get_field_schema()
+            self.assertIn("test_field", fields)
+            self.assertIsInstance(fields["test_field"], fo.BooleanField)
+
+            sample = dataset[sample_id]
+            self.assertEqual(sample["test_field"], True)
+
+        sample_id = add_sample_expand_schema()
+        check_add_sample_expand_schema(sample_id)
+
+        # add multiple samples with custom fields
+
+        def add_samples_expand_schema():
+            dataset = fo.load_dataset(name=dataset_name)
+            sample1 = fo.Sample(filepath="test1.png", test_field_1=51)
+            sample2 = fo.Sample(filepath="test2.png", test_field_2="fiftyone")
+            return dataset.add_samples([sample1, sample2])
+
+        def check_add_samples_expand_schema(sample_ids):
+            dataset = fo.load_dataset(name=dataset_name)
+
+            fields = dataset.get_field_schema()
+            self.assertIn("test_field_1", fields)
+            self.assertIsInstance(fields["test_field_1"], fo.IntField)
+            self.assertIn("test_field_2", fields)
+            self.assertIsInstance(fields["test_field_2"], fo.StringField)
+
+            sample1 = dataset[sample_ids[0]]
+            self.assertEqual(sample1["test_field_1"], 51)
+
+            sample2 = dataset[sample_ids[1]]
+            self.assertEqual(sample2["test_field_2"], "fiftyone")
+
+        sample_ids = add_samples_expand_schema()
+        check_add_samples_expand_schema(sample_ids)
+
+    def test_set_field_create(self):
+        dataset_name = self.test_set_field_create.__name__
+
+        def create_dataset():
+            dataset = fo.Dataset(name=dataset_name)
+            sample = fo.Sample(filepath="path/to/file.jpg")
+            return dataset.add_sample(sample)
+
+        sample_id = create_dataset()
 
         field_name = "field2"
         value = 51
 
-        def add_to_sample():
-            dataset = fo.Dataset(name=dataset_name)
-            sample = fo.Sample(filepath="path/to/file.jpg")
-            dataset.add_sample(sample)
+        def set_field_create(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
             sample[field_name] = value
-            sample.save()
+            sample.save()  # @todo(Tyler) SAVE
 
-        add_to_sample()
-
-        def check_add_to_sample():
+        def check_set_field_create(sample_id):
             dataset = fo.Dataset(name=dataset_name)
-            sample = dataset.view().first()
             fields = dataset.get_field_schema()
             self.assertIn(field_name, fields)
+
+            sample = dataset[sample_id]
             self.assertEqual(sample[field_name], value)
 
-        check_add_to_sample()
+        set_field_create(sample_id)
+        check_set_field_create(sample_id)
+
+    def test_modify_sample(self):
+        # @todo(Tyler)
+        pass
 
 
 class MultiProcessSynchronizationTest(unittest.TestCase):
