@@ -1,3 +1,6 @@
 # FiftyOne Tests
 
-A completely random and unmaintained sandbox of tests for FiftyOne.
+| File              | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| `db_conn_test.py` | test connection to the MongoDB database             |
+| `unittests.py`    | Unit tests checking expected behavior of `fiftyone` |

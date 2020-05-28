@@ -6,12 +6,29 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 from setuptools import setup, find_packages
+from wheel.bdist_wheel import bdist_wheel
+
+
+class BdistWheelCustom(bdist_wheel):
+    def finalize_options(self):
+        bdist_wheel.finalize_options(self)
+        # pure Python, so build a wheel for any Python version
+        self.universal = True
+        # make just the wheel require these packages, since they aren't needed
+        # for a development installation
+        self.distribution.install_requires += [
+            "fiftyone-brain>=0.1.2",
+            "fiftyone-gui>=0.1.2",
+            "fiftyone-db",
+        ]
 
 
 setup(
     name="fiftyone",
-    version="0.1.0",
+    version="0.1.2",
     description="Project FiftyOne",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
@@ -19,6 +36,29 @@ setup(
     license="",
     packages=find_packages(),
     include_package_data=True,
+    install_requires=[
+        # third-party packages
+        "argcomplete",
+        "eventlet",
+        "Flask",
+        "flask-socketio",
+        "future",
+        "gunicorn",
+        "mongoengine",
+        "numpy",
+        "packaging",
+        "Pillow<7,>=6.2",
+        "pymongo",
+        "python-engineio[client]<3.12;python_version<'3'",
+        "python-engineio[client];python_version>='3'",
+        "python-socketio[client]<4.5;python_version<'3'",
+        "python-socketio[client];python_version>='3'",
+        "retrying",
+        "setuptools",
+        "tabulate",
+        # internal packages
+        "voxel51-eta",
+    ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
@@ -27,4 +67,5 @@ setup(
     ],
     scripts=["fiftyone/fiftyone"],
     python_requires=">=2.7",
+    cmdclass={"bdist_wheel": BdistWheelCustom},
 )

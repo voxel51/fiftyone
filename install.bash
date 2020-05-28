@@ -49,6 +49,9 @@ fi
 cd ..
 
 
+echo "***** INSTALLING PLAYER51 *****"
+git submodule update --init
+
 echo "***** INSTALLING MONGODB *****"
 mkdir -p ~/.fiftyone/bin
 cd ~/.fiftyone

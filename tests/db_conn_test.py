@@ -1,33 +1,33 @@
 """
-Test if the fiftyone MongoDB server is available
+Test if the fiftyone MongoDB server is available.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
+import unittest
 
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 
-import fiftyone  # starts the server!
+
+class TestDatabaseConnection(unittest.TestCase):
+    def test_connection(self):
+        """
+        Test that two datasets with the same name are the same
+        """
+        import fiftyone  # starts the server!
+
+        client = MongoClient()
+
+        try:
+            # The ismaster command is cheap and does not require auth.
+            client.admin.command("ismaster")
+        except ConnectionFailure:
+            self.fail("Server not available")
+
+        print("Server available!")
 
 
-client = MongoClient()
-
-try:
-    # The ismaster command is cheap and does not require auth.
-    client.admin.command("ismaster")
-except ConnectionFailure:
-    import sys
-
-    sys.exit("Server not available")
-
-print("Server available!")
+if __name__ == "__main__":
+    unittest.main()
