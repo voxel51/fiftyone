@@ -569,7 +569,61 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         clear_complex_field(sample_id)
         check_clear_complex_field(sample_id)
 
-        # @todo(Tyler) modify append, pop, ...
+        def modify_list_append(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            sample.list_field.append(51)
+            sample.save()  # @todo(Tyler) SAVE
+
+        def check_modify_list_append(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            self.assertListEqual(sample.list_field, [51])
+
+        modify_list_append(sample_id)
+        check_modify_list_append(sample_id)
+
+        def modify_list_extend(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            sample.list_field.extend(["fiftyone"])
+            sample.save()  # @todo(Tyler) SAVE
+
+        def check_modify_list_extend(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            self.assertListEqual(sample.list_field, [51, "fiftyone"])
+
+        modify_list_extend(sample_id)
+        check_modify_list_extend(sample_id)
+
+        def modify_list_pop(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            sample.list_field.pop(0)
+            sample.save()  # @todo(Tyler) SAVE
+
+        def check_modify_list_pop(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            self.assertListEqual(sample.list_field, ["fiftyone"])
+
+        modify_list_pop(sample_id)
+        check_modify_list_pop(sample_id)
+
+        def modify_list_iadd(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            sample.list_field += [52]
+            sample.save()  # @todo(Tyler) SAVE
+
+        def check_modify_list_iadd(sample_id):
+            dataset = fo.load_dataset(name=dataset_name)
+            sample = dataset[sample_id]
+            self.assertListEqual(sample.list_field, ["fiftyone", 52])
+
+        modify_list_iadd(sample_id)
+        check_modify_list_iadd(sample_id)
 
 
 class MultiProcessSynchronizationTest(unittest.TestCase):
