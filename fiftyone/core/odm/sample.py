@@ -343,13 +343,16 @@ class ODMSample(ODMDocument):
                 % (ftype, fof.Field)
             )
 
-        kwargs = {"db_field": field_name, "null": True}
+        kwargs = {"db_field": field_name}
 
         if issubclass(ftype, fof.EmbeddedDocumentField):
             kwargs.update({"document_type": embedded_doc_type})
+            kwargs["null"] = True
         elif issubclass(ftype, (fof.ListField, fof.DictField)):
             if subfield is not None:
                 kwargs["field"] = subfield
+        else:
+            kwargs["null"] = True
 
         #
         # Mimicking setting a DynamicField from this code:
