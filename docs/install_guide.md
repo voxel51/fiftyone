@@ -132,9 +132,10 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> exit()
 ```
 
-Once FiftyOne is installed, you can proceed with any of the examples in the
-documentation. The "Fifteen minutes to FiftyOne" walkthrough is a good place to
-start.
+Once FiftyOne is installed, you can proceed with any of the
+[examples](examples/index) in the documentation. The
+["Fifteen minutes to FiftyOne" walkthrough](examples/fifteen_to_fiftyone) is a
+good place to start.
 
 ## Installing extra packages
 
