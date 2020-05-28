@@ -180,6 +180,10 @@ class ImageLabels(ImageLabel):
 
     See :class:`fiftyone.utils.data.ImageLabelsSampleParser` for a
     convenient way to build labels of this type for your existing datasets.
+
+    Args:
+        labels: a dict representation of an ``eta.core.image.ImageLabels``
+            instance
     """
 
     meta = {"allow_inheritance": True}
