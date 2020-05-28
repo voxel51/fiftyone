@@ -294,7 +294,3 @@ selected_view = dataset.view().select(session.selected)
 print(selected_view.summary())
 print(selected_view.head())
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

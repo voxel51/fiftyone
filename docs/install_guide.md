@@ -167,7 +167,3 @@ FiftyOne and all of its subpackages can be uninstalled with:
 ```sh
 pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

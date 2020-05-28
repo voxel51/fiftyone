@@ -226,7 +226,3 @@ for filepath in ten_best:
 # Output to csv or json, send images to your annotation team, seek additional
 # similar data, etc.
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

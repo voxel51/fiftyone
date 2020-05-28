@@ -18,7 +18,3 @@ To launch the notebook, run:
 ```shell
 jupyter notebook 15to51.ipynb
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
