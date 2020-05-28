@@ -224,6 +224,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._sample_doc_cls.delete_field(field_name)
 
+    def save(self):
+        """Saves all changes to samples instances in memory belonging to the
+        dataset to the database.
+
+        A samples only needs to be saved if it has non-persisted changes and
+        still exists in memory.
+        """
+        fos.Sample.save_dataset_samples(self.name)
+
+    def reload(self):
+        """Reloads the fields for sample instances in memory belonging to the
+        dataset from the database.
+
+        If multiple processes or users are accessing the same database this
+        will keep the dataset in sync.
+        """
+        fos.Sample.reload_dataset_samples(self.name)
+
     def get_tags(self):
         """Returns the set of tags in the dataset.
 
