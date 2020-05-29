@@ -107,5 +107,5 @@ body {
 .samples-dimmer {
   position: relative !important;
   height: 50px;
-  margin: 2rem;
+  margin: 2rem 0;
 }
