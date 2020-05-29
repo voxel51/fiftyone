@@ -11,6 +11,16 @@ This walkthrough covers the following concepts:
 -   Identifying duplicate and near-duplicate images in your dataset
 -   Identifying the most unique/representative images in your dataset
 
+## Setup
+
+-   Install `torch` and `torchvision`, if necessary:
+
+```shell
+# Modify as necessary (e.g., GPU install). See https://pytorch.org for options
+pip install torch
+pip install torchvision
+```
+
 ## Part 1: Finding duplicate and near-duplicate images
 
 A common problem in dataset creation is duplicated data. Although this could be
