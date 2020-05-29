@@ -30,7 +30,7 @@ export default (port) => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
     setState({ ...state, isLoading: true, loadMore: false });
     socket.emit("page", state.pageToLoad, (data) => {
-      setState(tiler(data.results, data.more, state, host));
+      setState(tile(data.results, data.more, state, host));
     });
   }, [state.loadMore, state.pageToLoad, state.hasMore]);
 

@@ -6,7 +6,7 @@ import uuid from "react-uuid";
 import Sample from "./Sample";
 import connect from "../utils/connect";
 import { wrap } from "comlink";
-import { tile } from "./Samples.hooks";
+import tile from "./Samples.hooks";
 
 function Samples(props) {
   const { displayProps, state, setView, port, dispatch } = props;
