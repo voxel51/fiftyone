@@ -29,8 +29,10 @@ import fiftyone.utils.data as foud
 import fiftyone.types as fot
 import fiftyone.zoo as foz
 
-fou.ensure_torch()
-import torchvision
+# Lazy equivalent of `import torchvision`
+torchvision = fou.LazyImporter(
+    "torchvision", "torchvision", globals(), fou.ensure_torch
+)
 
 
 logger = logging.getLogger(__name__)

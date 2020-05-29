@@ -29,8 +29,10 @@ import fiftyone.utils.data as foud
 import fiftyone.types as fot
 import fiftyone.zoo as foz
 
-fou.ensure_tfds()
-import tensorflow_datasets as tfds
+# Lazy equivalent of `import tensorflow_datasets as tfds`
+tfds = fou.LazyImporter(
+    "tensorflow_datasets", "tfds", globals(), fou.ensure_tfds
+)
 
 
 logger = logging.getLogger(__name__)
