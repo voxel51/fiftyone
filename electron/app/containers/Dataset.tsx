@@ -20,7 +20,7 @@ import connect from "../utils/connect";
 
 function NoDataset() {
   return (
-    <Segment>
+    <Segment style={{ margin: "2rem" }}>
       <Message>No dataset loaded</Message>
     </Segment>
   );
@@ -108,7 +108,7 @@ function Dataset(props) {
         ) : null}
       </Sidebar>
       <Ref innerRef={stickyRef}>
-        <Container fluid={true} style={{ padding: "2rem 2rem 2rem" }}>
+        <Container fluid={true}>
           <Sticky context={stickyRef}>
             <Container
               fluid={true}

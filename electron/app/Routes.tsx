@@ -52,8 +52,10 @@ function Routes({ port }) {
       for (const i in labelKeys) {
         mapping[labelKeys[i]._id.field] = i;
       }
-      for (const i in data.tags.sort()) {
-        mapping[data.tags[i]] = data.labels.length + i;
+      if (data.tags) {
+        for (const i in data.tags.sort()) {
+          mapping[data.tags[i]] = data.labels.length + i;
+        }
       }
       setLengths({
         tags: data.tags,
