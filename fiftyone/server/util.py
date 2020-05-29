@@ -1,15 +1,27 @@
-from __future__ import print_function
+"""
+FiftyOne fast image metadata loading.
 
+Taken from https://github.com/scardine/image_size/blob/master/get_image_size.py
+
+TODO (BEN): clean up, document, and fit into fiftyone.core
+
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
-get_image_size.py
-====================
-    :Name:        get_image_size
-    :Purpose:     extract image dimensions given a file path
-    :Author:      Paulo Scardine (based on code from Emmanuel VAÏSSE)
-    :Created:     26/09/2013
-    :Copyright:   (c) Paulo Scardine 2013
-    :Licence:     MIT
-"""
+# pragma pylint: disable=redefined-builtin
+# pragma pylint: disable=unused-wildcard-import
+# pragma pylint: disable=wildcard-import
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+from builtins import *
+
+# pragma pylint: enable=redefined-builtin
+# pragma pylint: enable=unused-wildcard-import
+# pragma pylint: enable=wildcard-import
+
 import collections
 import json
 import os
