@@ -49,11 +49,6 @@ class Sample(object):
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
-    def __del__(self):
-        """Automatically save the sample when it is destroyed."""
-        if self.in_dataset:
-            self.save()
-
     def __str__(self):
         return str(self._doc)
 
@@ -94,58 +89,6 @@ class Sample(object):
 
     def __copy__(self):
         return self.copy()
-
-    @classmethod
-    def save_dataset_samples(cls, dataset_name):
-        """Saves all changes to samples instances in memory belonging to the
-        specified dataset to the database.
-
-        A samples only needs to be saved if it has non-persisted changes and
-        still exists in memory.
-
-        Args:
-            dataset_name: the name of the dataset to save.
-        """
-        for sample in cls._instances[dataset_name].values():
-            sample.save()
-
-    @classmethod
-    def reload_dataset_samples(cls, dataset_name):
-        """Reloads the fields for sample instances in memory belonging to the
-        specified dataset from the database.
-
-        If multiple processes or users are accessing the same database this
-        will keep the dataset in sync.
-
-        Args:
-            dataset_name: the name of the dataset to reload.
-        """
-        for sample in cls._instances[dataset_name].values():
-            sample.reload()
-
-    @classmethod
-    def save_all_samples(cls):
-        """Saves all changes to all samples instances in memory to the
-        database.
-
-        A samples only needs to be saved if it has non-persisted changes and
-        still exists in memory.
-        """
-        for dataset_instances in cls._instances.values():
-            for sample in dataset_instances.values():
-                sample.save()
-
-    @classmethod
-    def reload_all_samples(cls):
-        """Reloads the fields for all sample instances in memory from the
-        database.
-
-        If multiple processes or users are accessing the same database this
-        will keep the samples in sync.
-        """
-        for dataset_instances in cls._instances.values():
-            for sample in dataset_instances.values():
-                sample.reload()
 
     @property
     def filename(self):
