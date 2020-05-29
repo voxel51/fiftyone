@@ -829,7 +829,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 format to use to write the images to disk
 
         Returns:
-            the :class:`Dataset`
+            a list of IDs of the samples in the dataset
         """
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(self.name)
@@ -1199,9 +1199,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         dataset = cls(name)
-        return dataset.add_images_dir(
-            images_dir, recursive=recursive, tags=tags
-        )
+        dataset.add_images_dir(images_dir, recursive=recursive, tags=tags)
+        return dataset
 
     @classmethod
     def from_images_patt(cls, image_patt, name=None, tags=None):
@@ -1222,7 +1221,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         dataset = cls(name)
-        return dataset.add_images_patt(image_patt, tags=tags)
+        dataset.add_images_patt(image_patt, tags=tags)
+        return dataset
 
     @classmethod
     def from_images(cls, image_paths, name=None, tags=None):
@@ -1243,7 +1243,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         dataset = cls(name)
-        return dataset.add_images(image_paths, tags=tags)
+        dataset.add_images(image_paths, tags=tags)
+        return dataset
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the dataset.
