@@ -6,7 +6,6 @@ import path from "path";
 import webpack from "webpack";
 import { dependencies as externals } from "../app/package.json";
 import RewriteImportPlugin from "less-plugin-rewrite-import";
-import WorkerPlugin from "worker-plugin";
 const ROOT_DIR = path.resolve(__dirname, "../");
 const NODE_MODULES_DIR = path.resolve(__dirname, "../node_modules");
 
@@ -111,6 +110,5 @@ export default {
       },
     }),
     new webpack.NamedModulesPlugin(),
-    new WorkerPlugin(),
   ],
 };
