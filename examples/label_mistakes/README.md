@@ -12,7 +12,7 @@ find mistakes in your labels. It covers the following concepts:
 
 -   Install `torch` and `torchvision`, if necessary:
 
-```
+```shell
 pip install torch
 pip install torchvision
 ```
@@ -20,20 +20,8 @@ pip install torchvision
 -   Download the test split of the CIFAR-10 dataset to
     `~/fiftyone/cifar10/test`:
 
-```py
-#
-# This will soon be replaced with
-#   fiftyone zoo download cifar10 --split test
-#
-
-import fiftyone.zoo as foz
-import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
-
-# It is safe to run this multiple times; the data will not be re-downloaded
-foc.set_config_settings(default_ml_backend="torch")
-foz.load_zoo_dataset("cifar10")
-foo.drop_database()
+```shell
+fiftyone zoo download cifar10 --splits test
 ```
 
 -   Download a pretrained CIFAR-10 PyTorch model
@@ -63,21 +51,21 @@ import random
 import fiftyone as fo
 import fiftyone.zoo as foz
 
-dataset = foz.load_zoo_dataset("cifar10")
+# Load CIFAR-10 test split
+dataset = foz.load_zoo_dataset("cifar10", splits=["test"])
 
-# @todo load this from ZooDatasetInfo
-labels_map = (
+classes = (
     "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(",")
 )
 
 # Artificially make 10% of sample labels mistakes
 for sample in dataset.view().take(1000):
     mistake = random.randint(0, 9)
-    while labels_map[mistake] == sample.ground_truth.label:
+    while classes[mistake] == sample.ground_truth.label:
         mistake = random.randint(0, 9)
 
     sample.tags.append("mistake")
-    sample["ground_truth"] = fo.Classification(label=labels_map[mistake])
+    sample["ground_truth"] = fo.Classification(label=classes[mistake])
     sample.save()
 ```
 
@@ -174,7 +162,7 @@ for imgs, sample_ids in data_loader:
         sample = dataset[sample_id]
         sample.tags.append("processed")
         sample[model_name] = fo.Classification(
-            label=labels_map[prediction], logits=logits,
+            label=classes[prediction], logits=logits,
         )
         sample.save()
 ```

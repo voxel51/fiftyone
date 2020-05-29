@@ -43,24 +43,24 @@ setting in your FiftyOne config.
 
 You can customize this backend in any of the following ways:
 
--   directly editing your FiftyOne config at `~/.fiftyone/config.json`
+-   Directly editing your FiftyOne config at `~/.fiftyone/config.json`
 
 ```shell
 # Print your current config
-fiftyone config --print
+fiftyone config
 
 # Locate your config
 fiftyone constants FIFTYONE_CONFIG_PATH
 ```
 
--   setting the `FIFTYONE_DEFAULT_ML_BACKEND` environment variable
+-   Setting the `FIFTYONE_DEFAULT_ML_BACKEND` environment variable
 
 ```shell
 # Example: use the `tensorflow` backend
-export FIFTYONE_DEFAULT_ML_BACKEND="tensorflow"
+export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
 ```
 
--   adding the following commands to your Python code _before_ importing the
+-   Adding the following commands to your Python code _before_ importing the
     `fiftyone.zoo` package:
 
 ```py
@@ -325,7 +325,9 @@ labels_map = ...
 samples = ...
 
 sample_parser = fodu.ImageClassificationSampleParser(labels_map=labels_map)
-dataset = fo.Dataset.ingest_labeled_image_samples(
+
+dataset = fo.Dataset("test-dataset")
+dataset.ingest_labeled_image_samples(
     samples,
     dataset_dir="/tmp/dataset",
     sample_parser=sample_parser,

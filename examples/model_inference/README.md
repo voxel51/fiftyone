@@ -13,7 +13,7 @@ concepts:
 
 -   Install `torch` and `torchvision`, if necessary:
 
-```
+```shell
 pip install torch
 pip install torchvision
 ```
@@ -21,20 +21,8 @@ pip install torchvision
 -   Download the test split of the CIFAR-10 dataset to
     `~/fiftyone/cifar10/test`:
 
-```py
-#
-# This will soon be replaced with
-#   fiftyone zoo download cifar10 --split test
-#
-
-import fiftyone.zoo as foz
-import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
-
-# It is safe to run this multiple times; the data will not be re-downloaded
-foc.set_config_settings(default_ml_backend="torch")
-foz.load_zoo_dataset("cifar10")
-foo.drop_database()
+```shell
+fiftyone zoo download cifar10 --splits test
 ```
 
 -   Download a pretrained CIFAR-10 PyTorch model

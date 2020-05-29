@@ -32,7 +32,7 @@ import fiftyone as fo
 import fiftyone.zoo as foz
 
 # Load the test split (automatically download if needed)
-dataset = foz.load_zoo_dataset("cifar10", split="test")
+dataset = foz.load_zoo_dataset("cifar10", splits=["test"])
 ```
 
 ### Compute uniqueness
