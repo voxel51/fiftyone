@@ -112,7 +112,7 @@ def _ensure_package(package_name, min_version=None):
         min_version = packaging.version.parse(min_version)
 
     try:
-        pkg = __import__(package_name)
+        pkg = importlib.import_module(package_name)
     except ImportError as e:
         if has_min_ver:
             pkg_str = "%s>=%s" % (package_name, min_version)
