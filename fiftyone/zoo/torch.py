@@ -36,7 +36,15 @@ import torchvision
 logger = logging.getLogger(__name__)
 
 
-class MNISTDataset(foz.ZooDataset):
+class TorchVisionDataset(foz.ZooDataset):
+    """Base class for zoo datasets that are provided via the
+    ``torchvision.datasets`` package.
+    """
+
+    pass
+
+
+class MNISTDataset(TorchVisionDataset):
     """The MNIST database of handwritten digits.
 
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
@@ -61,27 +69,26 @@ class MNISTDataset(foz.ZooDataset):
     def default_split(self):
         return "test"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
 
-        def download_fcn(dataset_dir):
+        def download_fcn(download_dir):
             return torchvision.datasets.MNIST(
-                dataset_dir, train=train, download=True
+                download_dir, train=train, download=True
             )
 
-        get_class_labels_fcn = _parse_classification_labels_map
+        get_class_labels_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            download_fcn,
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
             sample_parser,
         )
 
 
-class FashionMNISTDataset(foz.ZooDataset):
+class FashionMNISTDataset(TorchVisionDataset):
     """The Fashion-MNIST database of Zalando's fashion article images.
 
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
@@ -106,27 +113,26 @@ class FashionMNISTDataset(foz.ZooDataset):
     def default_split(self):
         return "test"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
 
-        def download_fcn(dataset_dir):
+        def download_fcn(download_dir):
             return torchvision.datasets.FashionMNIST(
-                dataset_dir, train=train, download=True
+                download_dir, train=train, download=True
             )
 
-        get_class_labels_fcn = _parse_classification_labels_map
+        get_class_labels_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            download_fcn,
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
             sample_parser,
         )
 
 
-class CIFAR10Dataset(foz.ZooDataset):
+class CIFAR10Dataset(TorchVisionDataset):
     """The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
     classes, with 6000 images per class. There are 50000 training images and
     10000 test images.
@@ -150,27 +156,26 @@ class CIFAR10Dataset(foz.ZooDataset):
     def default_split(self):
         return "test"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
 
-        def download_fcn(dataset_dir):
+        def download_fcn(download_dir):
             return torchvision.datasets.CIFAR10(
-                dataset_dir, train=train, download=True
+                download_dir, train=train, download=True
             )
 
-        get_class_labels_fcn = _parse_classification_labels_map
+        get_class_labels_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            download_fcn,
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
             sample_parser,
         )
 
 
-class CIFAR100Dataset(foz.ZooDataset):
+class CIFAR100Dataset(TorchVisionDataset):
     """The CIFAR-100 dataset of images.
 
     The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
@@ -195,27 +200,26 @@ class CIFAR100Dataset(foz.ZooDataset):
     def default_split(self):
         return "test"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
 
-        def download_fcn(dataset_dir):
+        def download_fcn(download_dir):
             return torchvision.datasets.CIFAR100(
-                dataset_dir, train=train, download=True
+                download_dir, train=train, download=True
             )
 
-        get_class_labels_fcn = _parse_classification_labels_map
+        get_class_labels_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            download_fcn,
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
             sample_parser,
         )
 
 
-class ImageNet2012Dataset(foz.ZooDataset):
+class ImageNet2012Dataset(TorchVisionDataset):
     """The ImageNet 2012 dataset.
 
     ImageNet, as known as ILSVRC 2012, is an image dataset organized according
@@ -263,7 +267,7 @@ class ImageNet2012Dataset(foz.ZooDataset):
     def default_split(self):
         return "validation"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, _, split):
         if split == "validation":
             _split = "val"
         else:
@@ -272,19 +276,18 @@ class ImageNet2012Dataset(foz.ZooDataset):
         def download_fcn(_):
             return torchvision.datasets.ImageNet(dataset_dir, split=_split)
 
-        get_class_labels_fcn = _parse_classification_labels_map
+        get_class_labels_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            download_fcn,
             dataset_dir,
+            None,
+            download_fcn,
             get_class_labels_fcn,
             sample_parser,
         )
 
 
-class COCO2017Dataset(foz.ZooDataset):
+class COCO2017Dataset(TorchVisionDataset):
     """COCO is a large-scale object detection, segmentation, and captioning
     dataset.
 
@@ -318,10 +321,7 @@ class COCO2017Dataset(foz.ZooDataset):
     def default_split(self):
         return "train"
 
-    def _download_and_prepare(self, dataset_dir, split):
-        if split != "train":
-            raise ValueError("Currently only the 'train' split is supported")
-
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         download_fcn = _download_coco_train_dataset
         get_class_labels_fcn = _parse_coco_detection_labels_map
         sample_parser = foud.ImageDetectionSampleParser(
@@ -329,16 +329,15 @@ class COCO2017Dataset(foz.ZooDataset):
         )
 
         return _download_and_prepare(
-            self,
-            split,
-            download_fcn,
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
             sample_parser,
         )
 
 
-class VOC2007Dataset(foz.ZooDataset):
+class VOC2007Dataset(TorchVisionDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2007
     (VOC2007) for the classification and detection competitions.
 
@@ -368,30 +367,29 @@ class VOC2007Dataset(foz.ZooDataset):
     def default_split(self):
         return "validation"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         if split == "validation":
             image_set = "val"
         else:
             image_set = split
 
-        def download_fcn(dataset_dir):
+        def download_fcn(download_dir):
             return torchvision.datasets.VOCDetection(
-                dataset_dir, year="2007", image_set=image_set, download=True,
+                download_dir, year="2007", image_set=image_set, download=True,
             )
 
         get_class_labels_fcn = None  # @todo implement this
         sample_parser = foud.ImageDetectionSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            download_fcn,
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
             sample_parser,
         )
 
 
-class VOC2012Dataset(foz.ZooDataset):
+class VOC2012Dataset(TorchVisionDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2012
     (VOC2012) for the Classification and Detection competitions.
 
@@ -421,24 +419,23 @@ class VOC2012Dataset(foz.ZooDataset):
     def default_split(self):
         return "validation"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         if split == "validation":
             image_set = "val"
         else:
             image_set = split
 
-        def download_fcn(dataset_dir):
+        def download_fcn(download_dir):
             return torchvision.datasets.VOCDetection(
-                dataset_dir, year="2012", image_set=image_set, download=True,
+                download_dir, year="2012", image_set=image_set, download=True,
             )
 
         get_class_labels_fcn = None  # @todo implement this
         sample_parser = foud.ImageDetectionSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            download_fcn,
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
             sample_parser,
         )
@@ -454,6 +451,43 @@ AVAILABLE_DATASETS = {
     "voc-2007": VOC2007Dataset,
     "voc-2012": VOC2012Dataset,
 }
+
+
+def _download_and_prepare(
+    dataset_dir,
+    scratch_dir,
+    download_fcn,
+    get_class_labels_fcn,
+    sample_parser,
+):
+    # Download the torchvision dataset, if necessary
+    dataset = download_fcn(scratch_dir)
+
+    classes = get_class_labels_fcn(dataset)
+    num_samples = len(dataset)
+    sample_parser.classes = classes
+
+    if isinstance(sample_parser, foud.ImageClassificationSampleParser):
+        write_dataset_fcn = foud.to_image_classification_dataset
+        format = fot.ImageClassificationDataset
+    elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
+        write_dataset_fcn = foud.to_image_detection_dataset
+        format = fot.ImageDetectionDataset
+    elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
+        write_dataset_fcn = foud.to_image_labels_dataset
+        format = fot.ImageLabelsDataset
+    else:
+        raise ValueError("Unsupported sample parser: %s" % sample_parser)
+
+    # Write the formatted dataset to `dataset_dir`
+    write_dataset_fcn(
+        dataset,
+        dataset_dir,
+        sample_parser=sample_parser,
+        num_samples=num_samples,
+    )
+
+    return format, num_samples, classes
 
 
 def _download_coco_train_dataset(dataset_dir):
@@ -488,67 +522,24 @@ def _download_coco_train_dataset(dataset_dir):
     return torchvision.datasets.CocoDetection(data_dir, anno_path)
 
 
-def _download_and_prepare(
-    zoo_dataset,
-    split,
-    download_fcn,
-    dataset_dir,
-    get_class_labels_fcn,
-    sample_parser,
-):
-    # Download the raw dataset to a tmp directory
-    tmp_dir = os.path.join(dataset_dir, "tmp")
-    dataset = download_fcn(tmp_dir)
-
-    labels_map = get_class_labels_fcn(dataset)
-    sample_parser.labels_map = labels_map
-    num_samples = len(dataset)
-
-    if isinstance(sample_parser, foud.ImageClassificationSampleParser):
-        write_dataset_fcn = foud.to_image_classification_dataset
-        format = fot.ImageClassificationDataset
-    elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
-        write_dataset_fcn = foud.to_image_detection_dataset
-        format = fot.ImageDetectionDataset
-    elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
-        write_dataset_fcn = foud.to_image_labels_dataset
-        format = fot.ImageLabelsDataset
-    else:
-        raise ValueError("Unsupported sample parser: %s" % sample_parser)
-
-    # Write the formatted dataset to `dataset_dir`
-    write_dataset_fcn(
-        dataset,
-        dataset_dir,
-        sample_parser=sample_parser,
-        num_samples=num_samples,
-    )
-
-    info = foz.ZooDatasetInfo(
-        zoo_dataset.name,
-        type(zoo_dataset),
-        split,
-        num_samples,
-        format,
-        labels_map=labels_map,
-    )
-
-    # Cleanup tmp directory
-    etau.delete_dir(tmp_dir)
-
-    return info
-
-
-def _parse_classification_labels_map(dataset):
-    labels_map = {}
-    for idx, label in enumerate(dataset.classes):
+def _parse_classification_labels(dataset):
+    classes = []
+    for label in dataset.classes:
         if isinstance(label, tuple):
             label = label[0]
 
-        labels_map[idx] = label
+        classes.append(label)
 
-    return labels_map
+    return classes
 
 
 def _parse_coco_detection_labels_map(dataset):
-    return {c["id"]: c["name"] for c in dataset.coco.dataset["categories"]}
+    labels_map = {
+        c["id"]: c["name"] for c in dataset.coco.dataset["categories"]
+    }
+
+    classes = []
+    for idx in range(max(labels_map) + 1):
+        classes.append(labels_map.get(idx, str(idx)))
+
+    return classes
