@@ -22,6 +22,15 @@ exceptionally similar to one another, are intrinsically less valuable for the
 training scenario. Let's see if we can find such duplicates and near-duplicates
 in a common dataset: CIFAR-10.
 
+### Setup
+
+-   Install `torch` and `torchvision`, if necessary:
+
+```
+pip install torch
+pip install torchvision
+```
+
 ### Load the dataset
 
 Open an IPython shell to begin. We will use the CIFAR-10 dataset, which is

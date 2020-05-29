@@ -1,5 +1,9 @@
 # FiftyOne Examples
 
+**NOTE**: FiftyOne is currently **nonpersistent**. FiftyOne datasets are
+deleted when exiting the python shell. Persistent sessions are on the near-term
+roadmap.
+
 Examples of using FiftyOne.
 
 | Directory              | Description                                                       |
