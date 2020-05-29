@@ -142,14 +142,12 @@ def load_zoo_dataset(
         info, dataset_dir = download_zoo_dataset(
             name, splits=splits, dataset_dir=dataset_dir
         )
-        zoo_dataset = info._zoo_dataset
+        zoo_dataset = info.zoo_dataset
     else:
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
         info = zoo_dataset.load_dataset_info(dataset_dir)
 
-    format = info.format
-
-    name = info.name
+    name = zoo_dataset.name
     if splits is not None:
         name += "-" + "-".join(splits)
 
@@ -157,12 +155,14 @@ def load_zoo_dataset(
         splits = zoo_dataset.supported_splits
 
     dataset = fo.Dataset(name)
+    format = info.format
 
     if splits:
         for split in splits:
             split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
             tags = [split]
 
+            logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
             if issubclass(format, fot.ImageClassificationDataset):
                 dataset.add_image_classification_dataset(split_dir, tags=tags)
             elif issubclass(format, fot.ImageDetectionDataset):
@@ -175,6 +175,7 @@ def load_zoo_dataset(
                     % etau.get_class_name(format)
                 )
     else:
+        logger.info("Loading '%s'", zoo_dataset.name)
         if issubclass(format, fot.ImageClassificationDataset):
             dataset.add_image_classification_dataset(dataset_dir)
         elif issubclass(format, fot.ImageDetectionDataset):
@@ -321,7 +322,7 @@ class ZooDatasetInfo(etas.Serializable):
         zoo_dataset_cls = etau.get_class(d["zoo_dataset_cls"])
         zoo_dataset = zoo_dataset_cls()
 
-        format_cls = etau.get_class(d["format"])
+        format_cls = etau.get_class(d["format_cls"])
 
         downloaded_splits = d.get("downloaded_splits", None)
         if downloaded_splits is not None:
@@ -467,6 +468,7 @@ class ZooDataset(object):
         scratch_dir = etau.make_temp_dir(basedir=dataset_dir)
 
         # Download dataset, if necessary
+        write_info = False
         if splits:
             # Skip splits that have already been downloaded
             if info is not None:
@@ -486,14 +488,15 @@ class ZooDataset(object):
                     split_dir, scratch_dir, split
                 )
 
+                # Add split to ZooDatasetInfo
                 if info is None:
                     info = ZooDatasetInfo(self, format, 0, classes=classes)
 
-                # Add split to ZooDatasetInfo
                 info.num_samples += num_samples
                 info.downloaded_splits[split] = ZooDatasetSplitInfo(
                     split, num_samples
                 )
+                write_info = True
         else:
             if info is not None:
                 logger.info("Dataset already downloaded")
@@ -507,9 +510,10 @@ class ZooDataset(object):
                 info = ZooDatasetInfo(
                     self, format, num_samples, classes=classes
                 )
+                write_info = True
 
-        # Save ZooDatasetInfo
-        if info is not None:
+        # Write ZooDatasetInfo if necessary
+        if write_info:
             info.write_json(info_path, pretty_print=True)
             logger.info("Dataset info written to '%s'", info_path)
 
