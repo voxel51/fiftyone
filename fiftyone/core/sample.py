@@ -36,7 +36,7 @@ class Sample(object):
 
     Args:
         filepath: the path to the data on disk
-        tags (None): the set of tags associated with the sample
+        tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample
     """
