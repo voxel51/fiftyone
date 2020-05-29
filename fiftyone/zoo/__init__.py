@@ -51,7 +51,7 @@ def list_zoo_datasets():
     for d in itervalues(_get_zoo_datasets()):
         datasets |= d.keys()
 
-    return datasets
+    return list(datasets)
 
 
 def list_downloaded_zoo_datasets(base_dir=None):
@@ -230,8 +230,8 @@ def _get_zoo_datasets():
     global __ZOO_DATASETS__
 
     if __ZOO_DATASETS__ is None:
-        from .torch import AVAILABLE_DATASETS as TORCH_DATASETS
-        from .tf import AVAILABLE_DATASETS as TF_DATASETS
+        from fiftyone.zoo.torch import AVAILABLE_DATASETS as TORCH_DATASETS
+        from fiftyone.zoo.tf import AVAILABLE_DATASETS as TF_DATASETS
 
         __ZOO_DATASETS__ = {
             "torch": TORCH_DATASETS,
