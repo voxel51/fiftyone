@@ -65,7 +65,10 @@ const createWindow = async () => {
   };
 
   if (process.env.APPDIR) {
-    windowOpts.icon = path.join(process.env.APPDIR, "fiftyone.png");
+    windowOpts.icon = path.join(
+      process.env.APPDIR,
+      "usr/share/icons/hicolor/256x256/apps/fiftyone.png"
+    );
   }
 
   mainWindow = new BrowserWindow(windowOpts);
