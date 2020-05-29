@@ -62,7 +62,6 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import OrderedDict
-from copy import deepcopy
 import numbers
 
 from mongoengine.errors import InvalidQueryError
