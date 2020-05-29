@@ -26,7 +26,7 @@ in a common dataset: CIFAR-10.
 
 -   Install `torch` and `torchvision`, if necessary:
 
-```
+```shell
 pip install torch
 pip install torchvision
 ```
