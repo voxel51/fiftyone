@@ -142,30 +142,51 @@ def load_zoo_dataset(
         info, dataset_dir = download_zoo_dataset(
             name, splits=splits, dataset_dir=dataset_dir
         )
+        zoo_dataset = info._zoo_dataset
     else:
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
         info = zoo_dataset.load_dataset_info(dataset_dir)
 
-    dataset_type = info.dataset_type
+    format = info.format
 
     name = info.name
     if splits is not None:
         name += "-" + "-".join(splits)
 
-    if issubclass(dataset_type, fot.ImageClassificationDataset):
-        return fo.Dataset.from_image_classification_dataset(
-            dataset_dir, name=name
-        )
+    if splits is None and zoo_dataset.has_splits:
+        splits = zoo_dataset.supported_splits
 
-    if issubclass(dataset_type, fot.ImageDetectionDataset):
-        return fo.Dataset.from_image_detection_dataset(dataset_dir, name=name)
+    dataset = fo.Dataset(name)
 
-    if issubclass(dataset_type, fot.ImageLabelsDataset):
-        return fo.Dataset.from_image_labels_dataset(dataset_dir, name=name)
+    if splits:
+        for split in splits:
+            split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
+            tags = [split]
 
-    raise ValueError(
-        "Unsupported dataset type '%s'" % etau.get_class_name(dataset_type)
-    )
+            if issubclass(format, fot.ImageClassificationDataset):
+                dataset.add_image_classification_dataset(split_dir, tags=tags)
+            elif issubclass(format, fot.ImageDetectionDataset):
+                dataset.add_image_detection_dataset(split_dir, tags=tags)
+            elif issubclass(format, fot.ImageLabelsDataset):
+                dataset.add_image_labels_dataset(split_dir, tags=tags)
+            else:
+                raise ValueError(
+                    "Unsupported dataset format '%s'"
+                    % etau.get_class_name(format)
+                )
+    else:
+        if issubclass(format, fot.ImageClassificationDataset):
+            dataset.add_image_classification_dataset(dataset_dir)
+        elif issubclass(format, fot.ImageDetectionDataset):
+            dataset.add_image_detection_dataset(dataset_dir)
+        elif issubclass(format, fot.ImageLabelsDataset):
+            dataset.add_image_labels_dataset(dataset_dir)
+        else:
+            raise ValueError(
+                "Unsupported dataset format '%s'" % etau.get_class_name(format)
+            )
+
+    return dataset
 
 
 def _get_zoo_dataset(name):
@@ -220,7 +241,7 @@ class ZooDatasetInfo(etas.Serializable):
 
     Args:
         zoo_dataset: the :class:`ZooDataset` instance for the dataset
-        dataset_type: the :class:`fiftyone.types.DatasetType` of the dataset
+        format: the :class:`fiftyone.types.DatasetType` of the dataset
         num_samples: the total number of samples in all downloaded splits of
             the dataset
         downloaded_splits (None): a dict of :class:`ZooDatasetSplitInfo`
@@ -232,55 +253,46 @@ class ZooDatasetInfo(etas.Serializable):
     def __init__(
         self,
         zoo_dataset,
-        dataset_type,
+        format,
         num_samples,
         downloaded_splits=None,
         classes=None,
     ):
-        self._zoo_dataset = zoo_dataset
-        self._dataset_type = dataset_type
+        # Parse inputs
+        if zoo_dataset.has_splits and downloaded_splits is None:
+            downloaded_splits = {}
+
+        self.zoo_dataset = zoo_dataset
+        self.format = format
         self.num_samples = num_samples
         self.downloaded_splits = downloaded_splits
         self.classes = classes
 
-        if self.has_splits and downloaded_splits is None:
-            self.downloaded_splits = {}
-
     @property
     def name(self):
         """The name of the dataset."""
-        return self._zoo_dataset.name
+        return self.zoo_dataset.name
 
     @property
-    def zoo_dataset(self):
+    def zoo_dataset_cls(self):
         """The fully-qualified class string for the :class:`ZooDataset` of the
         dataset.
         """
-        return etau.get_class_name(self._zoo_dataset)
+        return etau.get_class_name(self.zoo_dataset)
 
     @property
-    def dataset_type(self):
-        """The :class:`fiftyone.types.DatasetType` of the dataset."""
-        return self._dataset_type
-
-    @property
-    def format(self):
+    def format_cls(self):
         """The fully-qualified class string for the
         :class:`fiftyone.types.DatasetType` of the dataset.
         """
-        return etau.get_class_name(self._dataset_type)
-
-    @property
-    def has_splits(self):
-        """Whether the dataset has splits."""
-        return self._zoo_dataset.has_splits
+        return etau.get_class_name(self.format)
 
     @property
     def supported_splits(self):
         """A tuple of supported splits for the dataset, or None if the dataset
         does not have splits.
         """
-        return self._zoo_dataset.supported_splits
+        return self.zoo_dataset.supported_splits
 
     def attributes(self):
         """Returns a list of class attributes to be serialized.
@@ -288,7 +300,7 @@ class ZooDatasetInfo(etas.Serializable):
         Returns:
             a list of class attributes
         """
-        _attrs = ["name", "zoo_dataset", "format", "num_samples"]
+        _attrs = ["name", "zoo_dataset_cls", "format_cls", "num_samples"]
         if self.downloaded_splits is not None:
             _attrs.append("downloaded_splits")
         if self.classes is not None:
@@ -306,8 +318,10 @@ class ZooDatasetInfo(etas.Serializable):
         Returns:
             a :class:`ZooDatasetInfo`
         """
-        zoo_dataset_cls = etau.get_class(d["zoo_dataset"])
+        zoo_dataset_cls = etau.get_class(d["zoo_dataset_cls"])
         zoo_dataset = zoo_dataset_cls()
+
+        format_cls = etau.get_class(d["format"])
 
         downloaded_splits = d.get("downloaded_splits", None)
         if downloaded_splits is not None:
@@ -318,7 +332,7 @@ class ZooDatasetInfo(etas.Serializable):
 
         return cls(
             zoo_dataset,
-            etau.get_class(d["format"]),
+            format_cls,
             d["num_samples"],
             downloaded_splits=downloaded_splits,
             classes=d.get("classes", None),
@@ -326,8 +340,8 @@ class ZooDatasetInfo(etas.Serializable):
 
 
 class ZooDatasetSplitInfo(etas.Serializable):
-    """Class containing info about a split of a dataset in the FiftyOne
-    Dataset Zoo.
+    """Class containing info about a split of a dataset in the FiftyOne Dataset
+    Zoo.
 
     Args:
         split: the name of the split
