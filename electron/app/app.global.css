@@ -115,7 +115,7 @@ body {
   margin: auto;
 }
 
-.ui.buttoni.help:hover,
+.ui.button.help:hover,
 .ui.button.help:focus {
   background-color: #cacbcd !important;
   background-image: none !important;
