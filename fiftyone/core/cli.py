@@ -309,13 +309,8 @@ class ZooInfoCommand(Command):
 
             return
 
-        d = downloaded_datasets[name]
-        if isinstance(d, dict):
-            for split, (dataset_dir, info) in iteritems(d):
-                _print_zoo_dataset_info(dataset_dir, info)
-        else:
-            dataset_dir, info = d
-            _print_zoo_dataset_info(dataset_dir, info)
+        dataset_dir, info = downloaded_datasets[name]
+        _print_zoo_dataset_info(dataset_dir, info)
 
 
 def _print_zoo_dataset_info(dataset_dir, info):
@@ -333,7 +328,7 @@ class ZooDownloadCommand(Command):
         # Download the entire zoo dataset
         fiftyone zoo download <name>
 
-        # Download the specified splits of the zoo dataset
+        # Download the specified split(s) of the zoo dataset
         fiftyone zoo download <name> --splits <split1> ...
 
         # Download to the zoo dataset to a custom directory
