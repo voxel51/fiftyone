@@ -5,11 +5,11 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import importlib
 import logging
 import resource
 import sys
-
-import packaging.version
+import types
 
 import packaging.version
 
@@ -17,6 +17,62 @@ import eta.core.utils as etau
 
 
 logger = logging.getLogger(__name__)
+
+
+class LazyImporter(types.ModuleType):
+    """Class for lazily importing a module, allowing it to be imported only
+    when it is actually used in the code.
+
+    Example usage::
+
+        # Lazy version of `import tensorflow as tf`
+        tf = LazyImporter("tensorflow", "tf", globals())
+
+    Args:
+        module_name: the name of the module to import
+        local_name: the desired local name of the module in the caller's
+            namespace
+        parent_module_globals: the caller's ``globals()``
+        load_callback (None): an optional callback function to call before
+            loading the module
+    """
+
+    def __init__(
+        self,
+        module_name,
+        local_name,
+        parent_module_globals,
+        load_callback=None,
+    ):
+        super(LazyImporter, self).__init__(module_name)
+        self._local_name = local_name
+        self._parent_module_globals = parent_module_globals
+        self._load_callback = load_callback
+
+    def _load(self):
+        # Execute load callback, if provided
+        if self._load_callback is not None:
+            self._load_callback()
+
+        # Import the target module and insert it into the parent's namespace
+        module = importlib.import_module(self.__name__)
+        self._parent_module_globals[self._local_name] = module
+
+        #
+        # Update this object's dict so that if someone keeps a reference to the
+        # LazyImporter, lookups are efficient (__getattr__ is only called on
+        # lookups that fail)
+        #
+        self.__dict__.update(module.__dict__)
+        return module
+
+    def __getattr__(self, item):
+        module = self._load()
+        return getattr(module, item)
+
+    def __dir__(self):
+        module = self._load()
+        return dir(module)
 
 
 def ensure_tf():
