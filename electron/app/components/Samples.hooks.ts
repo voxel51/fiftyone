@@ -1,13 +1,9 @@
 import { wrap, releaseProxy } from "comlink";
 import { useEffect, useState, useMemo } from "react";
 import { getSocket, useSubscribe } from "../utils/socket";
-import tiler from "../utils/tile";
+import tile from "../utils/tile";
 
-/**
- * Our hook that performs the calculation on the worker
- */
-export function tile(port) {
-  // We'll want to expose a wrapping object so we know when a calculation is in progress
+export default (port) => {
   const [state, setState] = useState({
     loadMore: false,
     isLoading: false,
@@ -39,4 +35,4 @@ export function tile(port) {
   }, [state.loadMore, state.pageToLoad, state.hasMore]);
 
   return [state, setState];
-}
+};

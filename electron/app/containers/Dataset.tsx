@@ -20,7 +20,7 @@ import connect from "../utils/connect";
 
 function NoDataset() {
   return (
-    <Segment>
+    <Segment style={{ margin: "2rem" }}>
       <Message>No dataset loaded</Message>
     </Segment>
   );

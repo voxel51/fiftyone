@@ -1,6 +1,6 @@
 import _ from "lodash";
 import React, { createRef, useState, useRef, useEffect } from "react";
-import InfiniteScroll from "./Scroller";
+import InfiniteScroll from "react-infinite-scroller";
 import { Grid, Loader } from "semantic-ui-react";
 import uuid from "react-uuid";
 import Sample from "./Sample";
@@ -16,8 +16,10 @@ function Samples(props) {
       [id]: true,
     };
   }, {});
+
   const [selected, setSelected] = useState(initialSelected);
   const [scrollState, setScrollState] = tile(port);
+
   return (
     <InfiniteScroll
       pageStart={1}
@@ -35,7 +37,6 @@ function Samples(props) {
       }
       useWindow={true}
     >
-      {" "}
       {scrollState.rows.map((r, i) => (
         <Grid columns={r.samples.length} style={r.style} key={i}>
           {r.samples.map((s, j) => (
