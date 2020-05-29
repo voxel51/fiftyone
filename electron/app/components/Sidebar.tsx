@@ -68,6 +68,7 @@ const _Sidebar = (props) => {
       ) : null}
       <Menu.Item as="h4">
         <Button
+          className="help"
           onClick={(e) => {
             e.preventDefault();
             electron.shell.openExternal(

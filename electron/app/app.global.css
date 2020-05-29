@@ -110,13 +110,13 @@ body {
   margin: 2rem 0;
 }
 
-.ui.button {
+.ui.button.help {
   display: block;
   margin: auto;
 }
 
-.ui.button:hover,
-.ui.button:focus {
+.ui.buttoni.help:hover,
+.ui.button.help:focus {
   background-color: #cacbcd !important;
   background-image: none !important;
   box-shadow: 0px 0px 0px 1px transparent inset,
