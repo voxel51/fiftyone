@@ -109,3 +109,17 @@ body {
   height: 50px;
   margin: 2rem 0;
 }
+
+.ui.button.help {
+  display: block;
+  margin: auto;
+}
+
+.ui.button.help:hover,
+.ui.button.help:focus {
+  background-color: #cacbcd !important;
+  background-image: none !important;
+  box-shadow: 0px 0px 0px 1px transparent inset,
+    0px 0em 0px 0px hsl(210, 20%, 50%) inset !important;
+  color: hsl(210, 20%, 15%) !important;
+}
