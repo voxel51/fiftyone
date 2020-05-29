@@ -77,7 +77,7 @@ def list_downloaded_zoo_datasets(base_dir=None):
     for sub_dir in sub_dirs:
         try:
             dataset_dir = os.path.join(base_dir, sub_dir)
-            info = zoo_dataset.load_dataset_info(dataset_dir)
+            info = ZooDataset.load_info(dataset_dir)
             downloaded_datasets[info.name] = (dataset_dir, info)
         except:
             pass
@@ -145,7 +145,7 @@ def load_zoo_dataset(
         zoo_dataset = info.zoo_dataset
     else:
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
-        info = zoo_dataset.load_dataset_info(dataset_dir)
+        info = zoo_dataset.load_info(dataset_dir)
 
     name = zoo_dataset.name
     if splits is not None:
@@ -394,7 +394,8 @@ class ZooDataset(object):
         """Whether the dataset has splits."""
         return self.supported_splits is not None
 
-    def load_dataset_info(self, dataset_dir):
+    @staticmethod
+    def load_info(dataset_dir):
         """Loads the :class:`ZooDatasetInfo` from the given dataset directory.
 
         Args:
@@ -403,7 +404,7 @@ class ZooDataset(object):
         Returns:
             the :class:`ZooDatasetInfo` for the dataset
         """
-        info_path = self.get_info_path(dataset_dir)
+        info_path = ZooDataset.get_info_path(dataset_dir)
         return ZooDatasetInfo.from_json(info_path)
 
     @staticmethod
