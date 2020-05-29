@@ -492,10 +492,13 @@ class ZooDataset(object):
                 if info is None:
                     info = ZooDatasetInfo(self, format, 0, classes=classes)
 
-                info.num_samples += num_samples
                 info.downloaded_splits[split] = ZooDatasetSplitInfo(
                     split, num_samples
                 )
+                info.num_samples = sum(
+                    si.num_samples for si in itervalues(info.downloaded_splits)
+                )
+
                 write_info = True
         else:
             if info is not None:
