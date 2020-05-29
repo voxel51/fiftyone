@@ -231,7 +231,3 @@ session.view = dataset.view().match_tag("mistake")
 # Show the samples we processed in rank order by the mistakenness
 session.view = mistake_view
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

@@ -125,6 +125,13 @@ then skip the next steps.
    your API will automatically appear on the following page.
 4. Install the Flickr API: `pip install flickrapi`
 
+You will also need to enable ETA's storage support to run this script, if you
+haven't yet:
+
+```shell
+pip install --index https://pypi.voxel51.com voxel51-eta[storage]
+```
+
 Next, let's download three sets of images to process together. I suggest using
 three distinct object-nouns like "badger", "wolverine", and "kitten". For the
 actual downloading, we will use the provided `query_flickr.py` script:
@@ -134,9 +141,9 @@ actual downloading, we will use the provided `query_flickr.py` script:
 KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 SECRET=YYYYYYYYYYYYYYYY
 
-python query_flickr.py $KEY $SECRET "badger"
-python query_flickr.py $KEY $SECRET "wolverine"
-python query_flickr.py $KEY $SECRET "kitten"
+python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "badger"
+python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "wolverine"
+python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "kitten"
 ```
 
 The rest of this walkthrough assumes you've downloaded some images to your
@@ -219,7 +226,3 @@ for filepath in ten_best:
 # Output to csv or json, send images to your annotation team, seek additional
 # similar data, etc.
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

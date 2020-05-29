@@ -1,3 +1,4 @@
+import electron from "electron";
 import PropTypes from "prop-types";
 import React, { Component } from "react";
 import {
@@ -7,6 +8,7 @@ import {
   Menu,
   Sidebar,
   Statistic,
+  Button,
 } from "semantic-ui-react";
 
 import InfoItem from "./InfoItem";
@@ -64,6 +66,19 @@ const _Sidebar = (props) => {
           </Menu>
         </Menu.Item>
       ) : null}
+      <Menu.Item as="h4">
+        <Button
+          className="help"
+          onClick={(e) => {
+            e.preventDefault();
+            electron.shell.openExternal(
+              "https://voxel51.slack.com/app_redirect?channel=C0154574MKJ"
+            );
+          }}
+        >
+          Need help? We're on Slack.
+        </Button>
+      </Menu.Item>
     </Sidebar>
   );
 };
