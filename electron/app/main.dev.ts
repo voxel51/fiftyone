@@ -55,14 +55,20 @@ const createWindow = async () => {
     await installExtensions();
   }
 
-  mainWindow = new BrowserWindow({
+  let windowOpts = {
     show: false,
     width: 1024,
     height: 728,
     webPreferences: {
       nodeIntegration: true,
     },
-  });
+  };
+
+  if (process.env.APPDIR) {
+    windowOpts.icon = path.join(process.env.APPDIR, "fiftyone.png");
+  }
+
+  mainWindow = new BrowserWindow(windowOpts);
 
   mainWindow.loadURL(`file://${__dirname}/app.html`);
 
