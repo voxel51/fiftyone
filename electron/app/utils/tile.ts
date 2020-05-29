@@ -1,17 +1,6 @@
-const loadSample = async (sample, host) => {
-  const src = `${host}?path=${sample.filepath}`;
-  const response = await fetch(src);
-  const blob = await response.blob();
-  const bitmap = await createImageBitmap(blob);
-  return { sample, height: bitmap.height, width: bitmap.width };
-};
-
-export default async function tile(data, state, count, host) {
-  const result = await Promise.all(data.map((s) => loadSample(s, host)));
-
-  const samplesToFit = [...state.remainder, ...result];
+export default function tile(data, newHasMore, state, host) {
+  const samplesToFit = [...state.remainder, ...data];
   const rows = [...state.rows];
-  const newHasMore = state.pageToLoad * 20 < count;
   const newRows = [];
   let currentRow = [];
   let currentWidth = null;
@@ -21,24 +10,24 @@ export default async function tile(data, state, count, host) {
     if (currentWidth === null) {
       currentWidth = s.width;
       currentHeight = s.height;
-      currentRow.push(s.sample);
+      currentRow.push(s);
       continue;
     }
 
     if (currentWidth / currentHeight >= 5) {
       newRows.push(currentRow);
-      currentRow = [s.sample];
+      currentRow = [s];
       currentWidth = s.width;
       currentHeight = s.height;
       continue;
     }
-    currentRow.push(s.sample);
+    currentRow.push(s);
     currentWidth += (currentHeight / s.height) * s.width;
   }
 
   let remainder = [];
-  const newRemainder = newHasMore ? currentRow : [];
-  if (!newHasMore && currentRow.length) newRows.push(currentRow);
+  const newRemainder = Boolean(newHasMore) ? currentRow : [];
+  if (!Boolean(newHasMore) && currentRow.length) newRows.push(currentRow);
 
   for (const i in newRows) {
     const row = newRows[i];
@@ -61,13 +50,14 @@ export default async function tile(data, state, count, host) {
       width: "100%",
       margin: 0,
     };
-    rows.push({ style: rowStyle, samples: row });
+    rows.push({ style: rowStyle, samples: row.map((s) => s.sample) });
   }
   return {
-    hasMore: state.pageToLoad * 20 < count,
+    hasMore: Boolean(newHasMore),
     rows: rows,
     isLoading: false,
+    loadMore: false,
     remainder: remainder,
-    pageToLoad: state.pageToLoad + 1,
+    pageToLoad: Boolean(newHasMore) ? newHasMore : state.pageToLoad,
   };
 }

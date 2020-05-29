@@ -26,7 +26,7 @@ from flask_socketio import emit, Namespace, SocketIO
 
 os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.core.state as fos
-
+from util import get_image_size
 
 logger = logging.getLogger(__name__)
 
@@ -148,8 +148,20 @@ class StateController(Namespace):
         else:
             return []
 
-        view = view.skip((page - 1) * page_length).limit(page_length)
-        return [s.to_dict(extended=True) for s in view]
+        view = view.skip((page - 1) * page_length).limit(page_length + 1)
+        samples = [s.to_dict(extended=True) for s in view]
+        more = False
+        if len(samples) > page_length:
+            samples = samples[:page_length]
+            more = page + 1
+
+        results = [{"sample": s} for s in samples]
+        for r in results:
+            w, h = get_image_size(r["sample"]["filepath"])
+            r["width"] = w
+            r["height"] = h
+
+        return {"results": results, "more": more}
 
     def on_lengths(self, _):
         state = fos.StateDescription.from_dict(self.state)

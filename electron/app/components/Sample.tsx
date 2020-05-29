@@ -62,12 +62,12 @@ const Sample = ({
           .sort()
           .map((l, i) => {
             return activeLabels[l] && s[l] && s[l]._cls === "Classification" ? (
-              <Tag name={String(s[l].label)} color={colors[i]} />
+              <Tag key={i} name={String(s[l].label)} color={colors[i]} />
             ) : null;
           })}
         {s.tags.map((t, i) => {
           return activeTags[t] ? (
-            <Tag name={String(t)} color={colors[lengths.mapping[t]]} />
+            <Tag key={i} name={String(t)} color={colors[lengths.mapping[t]]} />
           ) : null;
         })}
         {Object.keys(s)
@@ -75,6 +75,7 @@ const Sample = ({
           .map((l, i) => {
             return activeOther[l] && (s[l] || typeof s[l] === "boolean") ? (
               <Tag
+                key={i}
                 name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
                 color={colors[i]}
               />
