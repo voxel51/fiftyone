@@ -172,11 +172,10 @@ def to_image_classification_dataset(
     if sample_parser is None:
         sample_parser = ImageClassificationSampleParser()
 
-    # If a labels map was provdied, write the dataset in raw labels + labels
-    # map format
-    labels_map = sample_parser.labels_map
-    if labels_map is not None:
-        labels_map_rev = {v: k for k, v in iteritems(labels_map)}
+    # If classes were provided, write the dataset in classes + targets format
+    classes = sample_parser.classes
+    if classes is not None:
+        labels_map_rev = {c: i for i, c in enumerate(classes)}
     else:
         labels_map_rev = None
 
@@ -210,7 +209,7 @@ def to_image_classification_dataset(
 
     logger.info("Writing labels to '%s'", labels_path)
     labels = {
-        "labels_map": labels_map,
+        "classes": classes,
         "labels": labels_dict,
     }
     etas.write_json(labels, labels_path, pretty_print=True)
@@ -244,11 +243,10 @@ def to_image_detection_dataset(
     if sample_parser is None:
         sample_parser = ImageDetectionSampleParser()
 
-    # If a labels map was provdied, write the dataset in raw labels + labels
-    # map format
-    labels_map = sample_parser.labels_map
-    if labels_map is not None:
-        labels_map_rev = {v: k for k, v in iteritems(labels_map)}
+    # If classes were provided, write the dataset in classes + targets format
+    classes = sample_parser.classes
+    if classes is not None:
+        labels_map_rev = {c: i for i, c in enumerate(classes)}
     else:
         labels_map_rev = None
 
@@ -282,7 +280,7 @@ def to_image_detection_dataset(
 
     logger.info("Writing labels to '%s'", labels_path)
     labels = {
-        "labels_map": labels_map,
+        "classes": classes,
         "labels": labels_dict,
     }
     etas.write_json(labels, labels_path, pretty_print=True)
@@ -396,7 +394,7 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
 
     logger.info("Writing labels to '%s'", labels_path)
     labels = {
-        "labels_map": None,  # @todo get this somehow?
+        "classes": None,  # @todo get this somehow?
         "labels": labels_dict,
     }
     etas.write_json(labels, labels_path, pretty_print=True)
@@ -451,7 +449,7 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
 
     logger.info("Writing labels to '%s'", labels_path)
     labels = {
-        "labels_map": None,  # @todo get this somehow?
+        "classes": None,  # @todo get this somehow?
         "labels": labels_dict,
     }
     etas.write_json(labels, labels_path, pretty_print=True)
@@ -545,11 +543,7 @@ def parse_image_classification_dataset(dataset_dir, sample_parser=None):
 
     labels_path = os.path.join(dataset_dir, "labels.json")
     labels = etas.load_json(labels_path)
-    labels_map = labels.get("labels_map", None)
-    if labels_map is not None:
-        # @todo avoid the need to cast here
-        labels_map = {int(k): v for k, v in iteritems(labels_map)}
-        sample_parser.labels_map = labels_map
+    sample_parser.classes = labels.get("classes", None)
 
     samples = []
     for uuid, target in iteritems(labels["labels"]):
@@ -588,11 +582,7 @@ def parse_image_detection_dataset(dataset_dir, sample_parser=None):
 
     labels_path = os.path.join(dataset_dir, "labels.json")
     labels = etas.load_json(labels_path)
-    labels_map = labels.get("labels_map", None)
-    if labels_map is not None:
-        # @todo avoid the need to cast here
-        labels_map = {int(k): v for k, v in iteritems(labels_map)}
-        sample_parser.labels_map = labels_map
+    sample_parser.classes = labels.get("classes", None)
 
     samples = []
     for uuid, target in iteritems(labels["labels"]):
@@ -650,12 +640,12 @@ def parse_image_classification_dir_tree(dataset_dir):
         dataset_dir: the dataset directory
 
     Returns:
-        samples: a list of ``(image path, label)`` pairs
-        labels_map: a dict mapping class IDs to label strings
+        samples: a list of ``(image_path, target)`` pairs
+        classes: a list of class label strings
     """
-    # Get labels map
-    class_labels = etau.list_subdirs(dataset_dir)
-    labels_map = {idx: label for idx, label in enumerate(sorted(class_labels))}
+    # Get classes
+    classes = sorted(etau.list_subdirs(dataset_dir))
+    labels_map_rev = {c: i for i, c in enumerate(classes)}
 
     # Generate dataset
     glob_patt = os.path.join(dataset_dir, "*", "*")
@@ -665,9 +655,10 @@ def parse_image_classification_dir_tree(dataset_dir):
         if any(s.startswith(".") for s in chunks[-2:]):
             continue
 
-        samples.append((path, chunks[-2]))
+        target = labels_map_rev[chunks[-2]]
+        samples.append((path, target))
 
-    return samples, labels_map
+    return samples, classes
 
 
 class SampleParser(object):
@@ -805,19 +796,19 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``target`` is either a class ID (if a ``labels_map`` is provided) or
-          a label string
+        - ``target`` is either a class ID (if ``classes`` is provided) or a
+          label string
 
     Subclasses can support other input sample formats as necessary.
 
     Args:
-        labels_map (None): an optional dict mapping class IDs to label strings.
-            If provided, it is assumed that ``target`` is a class ID that
-            should be mapped to a label string via ``labels_map[target]``
+        classes (None): an optional list of class label strings. If provided,
+            it is assumed that ``target`` is a class ID that should be mapped
+            to a label string via ``classes[target]``
     """
 
-    def __init__(self, labels_map=None):
-        self.labels_map = labels_map
+    def __init__(self, classes=None):
+        self.classes = classes
 
     def parse_label(self, sample):
         """Parses the classification target from the given sample.
@@ -830,8 +821,8 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
         """
         target = sample[1]
 
-        if self.labels_map is not None:
-            label = self.labels_map[target]
+        if self.classes is not None:
+            label = self.classes[target]
         else:
             label = target
 
@@ -853,7 +844,7 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
 
             [
                 {
-                    "label": <label>,
+                    "label": <target>,
                     "bounding_box": [
                         <top-left-x>, <top-left-y>, <width>, <height>
                     ],
@@ -862,11 +853,10 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
                 ...
             ]
 
-          where ``label`` is either a class ID (if a ``labels_map`` is
-          provided) or a label string, and the bounding box coordinates can
-          either be relative coordinates in ``[0, 1]``
-          (if ``normalized == True``) or absolute pixels coordinates
-          (if ``normalized == False``).
+          where ``target`` is either a class ID (if ``classes`` is provided) or
+          a label string, and the bounding box coordinates can either be
+          relative coordinates in ``[0, 1]`` (if ``normalized == True``) or
+          absolute pixels coordinates (if ``normalized == False``).
 
           The input field names can be configured as necessary when
           instantiating the parser.
@@ -880,13 +870,12 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
             in the target dicts
         confidence_field ("confidence"): the name of the confidence field in
             the target dicts
-        labels_map (None): an optional dict mapping class IDs to class
-            strings. If provided, it is assumed that the ``label``s in
-            ``target`` are class IDs that should be mapped to label strings
-            via ``labels_map[target]``
-        normalized (True): whether the bounding box coordinates provided in
-            ``target`` are absolute pixel coordinates (``False``) or relative
-            coordinates in [0, 1] (``True``)
+        classes (None): an optional list of class label strings. If provided,
+            it is assumed that the ``target`` values are class IDs that should
+            be mapped to label strings via ``classes[target]``
+        normalized (True): whether the bounding box coordinates are absolute
+            pixel coordinates (``False``) or relative coordinates in [0, 1]
+            (``True``)
     """
 
     def __init__(
@@ -894,13 +883,13 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
         label_field="label",
         bounding_box_field="bounding_box",
         confidence_field="confidence",
-        labels_map=None,
+        classes=None,
         normalized=True,
     ):
         self.label_field = label_field
         self.bounding_box_field = bounding_box_field
         self.confidence_field = confidence_field
-        self.labels_map = labels_map
+        self.classes = classes
         self.normalized = normalized
 
     def parse_image(self, sample):
@@ -960,8 +949,8 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
         detections = []
         for obj in target:
             label = obj[self.label_field]
-            if self.labels_map is not None:
-                label = self.labels_map[label]
+            if self.classes is not None:
+                label = self.classes[label]
 
             tlx, tly, w, h = obj[self.bounding_box_field]
             if not self.normalized:
