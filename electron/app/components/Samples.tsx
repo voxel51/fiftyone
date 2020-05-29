@@ -1,86 +1,58 @@
 import _ from "lodash";
 import React, { createRef, useState, useRef, useEffect } from "react";
-import { Card, Grid } from "semantic-ui-react";
 import InfiniteScroll from "react-infinite-scroller";
-import { Dimmer, Loader } from "semantic-ui-react";
-
+import { Grid, Loader, Dimmer } from "semantic-ui-react";
+import uuid from "react-uuid";
 import Sample from "./Sample";
-import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
+import { wrap } from "comlink";
+import tile from "./Samples.hooks";
 
 function Samples(props) {
   const { displayProps, state, setView, port, dispatch } = props;
-  const socket = getSocket(port, "state");
   const initialSelected = state.selected.reduce((obj, id, i) => {
     return {
       ...obj,
       [id]: true,
     };
   }, {});
+
   const [selected, setSelected] = useState(initialSelected);
-  const [scrollState, setScrollState] = useState({
-    initialLoad: true,
-    hasMore: true,
-    images: [],
-    pageToLoad: 1,
-  });
-  const loadMore = () => {
-    socket.emit("page", scrollState.pageToLoad, (data) => {
-      setScrollState({
-        initialLoad: false,
-        hasMore: scrollState.pageToLoad * 20 < state.count,
-        images: [...scrollState.images, ...data],
-        pageToLoad: scrollState.pageToLoad + 1,
-      });
-    });
-  };
+  const [scrollState, setScrollState] = tile(port);
 
-  useSubscribe(socket, "update", (data) => {
-    setScrollState({
-      iniitialLoad: true,
-      hasMore: true,
-      images: [],
-      pageToLoad: 1,
-    });
-  });
-
-  const chunkedImages = _.chunk(scrollState.images, 4);
-  const content = chunkedImages.map((imgs, i) => {
-    return (
-      <>
-        {imgs.map((img, j) => {
-          return (
-            <Grid.Column key={j}>
+  return (
+    <InfiniteScroll
+      pageStart={1}
+      initialLoad={true}
+      loadMore={() =>
+        !scrollState.isLoading && !scrollState.loadMore
+          ? setScrollState({ ...scrollState, loadMore: true })
+          : null
+      }
+      hasMore={scrollState.hasMore}
+      loader={
+        <Dimmer active className="samples-dimmer" key={-1}>
+          <Loader />
+        </Dimmer>
+      }
+      useWindow={true}
+    >
+      {scrollState.rows.map((r, i) => (
+        <Grid columns={r.samples.length} style={r.style} key={i}>
+          {r.samples.map((s, j) => (
+            <Grid.Column key={j} style={{ padding: 0, width: "100%" }}>
               <Sample
                 displayProps={displayProps}
-                sample={img}
+                sample={s}
                 selected={selected}
                 setSelected={setSelected}
                 setView={setView}
               />
             </Grid.Column>
-          );
-        })}
-      </>
-    );
-  });
-
-  return (
-    <>
-      <InfiniteScroll
-        pageStart={1}
-        initialLoad={true}
-        loadMore={() => loadMore()}
-        hasMore={scrollState.hasMore}
-        loader={<Loader key={0} />}
-        useWindow={true}
-      >
-        <Grid columns={4} doubling stackable>
-          {content}
+          ))}
         </Grid>
-      </InfiniteScroll>
-      {scrollState.hasMore ? <Loader /> : ""}
-    </>
+      ))}
+    </InfiniteScroll>
   );
 }
 

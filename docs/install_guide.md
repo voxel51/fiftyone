@@ -101,9 +101,9 @@ dealing with virtual environments frequently:
     [here](https://docs.python.org/3/library/venv.html), with information on
     additional arguments that the `venv` command accepts.
 -   There is a similar
-    [`virtualenv` package](https://pypi.org/project/virtualenv/) (installable
+    ["virtualenv" package](https://pypi.org/project/virtualenv/) (installable
     with `pip`) that supports older Python versions.
--   [`virtualenvwrapper`](https://virtualenvwrapper.readthedocs.io/en/latest/)
+-   [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/)
     adds some convenient shell support for creating and managing virtual
     environments.
 
@@ -132,9 +132,10 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> exit()
 ```
 
-Once FiftyOne is installed, you can proceed with any of the examples in the
-documentation. The "Fifteen minutes to FiftyOne" walkthrough is a good place to
-start.
+Once FiftyOne is installed, you can proceed with any of the
+[examples](examples/index) in the documentation. The
+["Fifteen minutes to FiftyOne" walkthrough](examples/fifteen_to_fiftyone) is a
+good place to start.
 
 ## Installing extra packages
 
@@ -150,6 +151,19 @@ environment (with `pip install` followed by the given package names):
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.
 
-## Copyright
+## Upgrading FiftyOne
 
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
+Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
+upgrade an existing FiftyOne installation in-place:
+
+```sh
+pip install --index https://pypi.voxel51.com --upgrade fiftyone
+```
+
+## Uninstalling FiftyOne
+
+FiftyOne and all of its subpackages can be uninstalled with:
+
+```sh
+pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
+```

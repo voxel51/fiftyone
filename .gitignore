@@ -21,6 +21,4 @@ out/
 tmp/
 
 /docs/build/
-/docs/source/*.rst
-!/docs/source/index.rst
-!/docs/source/README.rst
+/docs/api/
