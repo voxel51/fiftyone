@@ -69,9 +69,7 @@ def get_default_dataset_name():
     Returns:
         a dataset name
     """
-    name = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logger.info("Using default dataset name '%s'", name)
-    return name
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def get_default_dataset_dir(name):
@@ -84,9 +82,7 @@ def get_default_dataset_dir(name):
     Returns:
         the default directory for the dataset
     """
-    dataset_dir = os.path.join(fo.config.default_dataset_dir, name)
-    logger.info("Using default dataset directory '%s'", dataset_dir)
-    return dataset_dir
+    return os.path.join(fo.config.default_dataset_dir, name)
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
