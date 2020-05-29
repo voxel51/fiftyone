@@ -190,6 +190,31 @@ def load_zoo_dataset(
     return dataset
 
 
+def load_zoo_dataset_info(name, dataset_dir=None):
+    """Loads the :class:`ZooDatasetInfo` for the specified dataset.
+
+    The dataset must be downloaded. Use :func:`download_zoo_dataset` to
+    download datasets.
+
+    Args:
+        name: the name of the zoo dataset
+        dataset_dir (None): the directory in which the dataset is stored. By
+            default, :func:`fiftyone.core.dataset.get_default_dataset_dir` is
+            used
+
+    Returns:
+        the :class:`ZooDatasetInfo` for the dataset
+
+    Raises:
+        OSError: if the dataset has not been downloaded
+    """
+    zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
+    try:
+        return zoo_dataset.load_info(dataset_dir)
+    except OSError:
+        raise OSError("Dataset '%s' not found at '%s'" % (name, dataset_dir))
+
+
 def _get_zoo_dataset(name):
     all_datasets = _get_zoo_datasets()
     for source in _get_zoo_dataset_sources():
