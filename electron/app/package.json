@@ -7,7 +7,7 @@
   "author": {
     "name": "FiftyOne",
     "email": "support@voxel51.com",
-    "url": "https://voxel51.com/"
+    "url": "https://voxel51.com/fiftyone"
   },
   "scripts": {
     "electron-rebuild": "node -r ../internals/scripts/BabelRegister.js ../internals/scripts/ElectronRebuild.js",
