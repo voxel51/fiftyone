@@ -199,7 +199,7 @@ class ZooListCommand(Command):
     def setup(parser):
         parser.add_argument(
             "-b",
-            "--base_dir",
+            "--base-dir",
             metavar="BASE_DIR",
             help=(
                 "a custom base directory in which to search for downloaded "
@@ -234,30 +234,25 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
 
     records = []
     for name in sorted(available_datasets):
+        if name in downloaded_datasets:
+            dataset_dir, info = downloaded_datasets[name]
+        else:
+            dataset_dir, info = None, None
+
         sources, zoo_dataset = available_datasets[name]
 
         # Prepare source list
         srcs = tuple("\u2713" if s in sources else "" for s in all_sources)
 
-        if zoo_dataset.supported_splits is not None:
-            downloaded_splits = {}
-            if name in downloaded_datasets:
-                for split, (dataset_dir, info) in iteritems(
-                    downloaded_datasets[name]
-                ):
-                    downloaded_splits[split] = dataset_dir
-
+        if zoo_dataset.has_splits:
             for split in zoo_dataset.supported_splits:
-                if split in downloaded_splits:
-                    records.append(
-                        (name, split, "\u2713", downloaded_splits[split])
-                        + srcs
-                    )
+                if info is not None and split in info.downloaded_splits:
+                    split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
+                    records.append((name, split, "\u2713", split_dir) + srcs)
                 else:
                     records.append((name, split, "", "-") + srcs)
         else:
-            if name in downloaded_datasets:
-                dataset_dir, info = downloaded_datasets[name]
+            if dataset_dir is not None:
                 records.append((name, "", "\u2713", dataset_dir) + srcs)
             else:
                 records.append((name, "", "", "-") + srcs)
@@ -290,7 +285,7 @@ class ZooInfoCommand(Command):
         )
         parser.add_argument(
             "-b",
-            "--base_dir",
+            "--base-dir",
             metavar="BASE_DIR",
             help=(
                 "a custom base directory in which to search for downloaded "
@@ -335,13 +330,13 @@ class ZooDownloadCommand(Command):
     """Tools for downloading zoo datasets.
 
     Examples:
-        # Download the default split of the zoo dataset
+        # Download the entire zoo dataset
         fiftyone zoo download <name>
 
-        # Download the specified split of the zoo dataset
-        fiftyone zoo download <name> --split <split>
+        # Download the specified splits of the zoo dataset
+        fiftyone zoo download <name> --splits <split1> ...
 
-        # Download to a custom directory
+        # Download to the zoo dataset to a custom directory
         fiftyone zoo download <name> --dataset-dir <dataset-dir>
     """
 
@@ -352,23 +347,24 @@ class ZooDownloadCommand(Command):
         )
         parser.add_argument(
             "-s",
-            "--split",
-            metavar="SPLIT",
-            help="the dataset split to download",
+            "--splits",
+            metavar="SPLITS",
+            nargs="+",
+            help="the dataset splits to download",
         )
         parser.add_argument(
             "-d",
             "--dataset-dir",
-            metavar="BASE_DIR",
+            metavar="DATASET_DIR",
             help="a custom directory to which to download the dataset",
         )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
-        split = args.split
+        splits = args.splits or None
         dataset_dir = args.dataset_dir or None
-        foz.download_zoo_dataset(name, split=split, dataset_dir=dataset_dir)
+        foz.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
 
 
 def _print_dict_as_json(d):
