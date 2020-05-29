@@ -13,15 +13,9 @@ find mistakes in your labels. It covers the following concepts:
 -   Install `torch` and `torchvision`, if necessary:
 
 ```shell
+# Modify as necessary (e.g., GPU install). See https://pytorch.org for options
 pip install torch
 pip install torchvision
-```
-
--   Download the test split of the CIFAR-10 dataset to
-    `~/fiftyone/cifar10/test`:
-
-```shell
-fiftyone zoo download cifar10 --splits test
 ```
 
 -   Download a pretrained CIFAR-10 PyTorch model
@@ -51,12 +45,13 @@ import random
 import fiftyone as fo
 import fiftyone.zoo as foz
 
-# Load CIFAR-10 test split
+# Load the CIFAR-10 test split
+# Downloads the dataset from the web if necessary
 dataset = foz.load_zoo_dataset("cifar10", splits=["test"])
 
-classes = (
-    "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(",")
-)
+# Get the CIFAR-10 classes list
+info = foz.load_zoo_dataset_info("cifar10")
+classes = info.classes
 
 # Artificially make 10% of sample labels mistakes
 for sample in dataset.view().take(1000):
