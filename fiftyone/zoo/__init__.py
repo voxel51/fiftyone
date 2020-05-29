@@ -49,7 +49,7 @@ def list_zoo_datasets():
     """
     datasets = set()
     for d in itervalues(_get_zoo_datasets()):
-        datasets += d
+        datasets |= d.keys()
 
     return datasets
 
