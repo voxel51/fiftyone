@@ -20,6 +20,7 @@
     "prettier": "^2.0.5",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
+    "react-infinite": "^0.13.0",
     "semantic-ui-react": "^0.88.2",
     "socket.io-client": "^2.3.0"
   }

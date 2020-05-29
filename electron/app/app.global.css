@@ -23,6 +23,8 @@ body {
 
 .sample {
   position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 .sample-info {
@@ -100,4 +102,10 @@ body {
   font-size: 0.85714286rem !important;
   color: hsl(210, 20%, 90%) !important;
   font-weight: normal !important;
+}
+
+.samples-dimmer {
+  position: relative !important;
+  height: 50px;
+  margin: 2rem 0;
 }
