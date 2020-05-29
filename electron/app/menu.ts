@@ -175,7 +175,7 @@ export default class MenuBuilder {
         {
           label: "Email",
           click() {
-            shell.openExternal("mailto:someone@example.com");
+            shell.openExternal("mailto:support@voxel51.com");
           },
         },
         {
