@@ -103,3 +103,9 @@ body {
   color: hsl(210, 20%, 90%) !important;
   font-weight: normal !important;
 }
+
+.samples-dimmer {
+  position: relative !important;
+  height: 50px;
+  margin: 2rem;
+}

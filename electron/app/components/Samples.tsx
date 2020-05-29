@@ -1,7 +1,7 @@
 import _ from "lodash";
 import React, { createRef, useState, useRef, useEffect } from "react";
 import InfiniteScroll from "react-infinite-scroller";
-import { Grid, Loader } from "semantic-ui-react";
+import { Grid, Loader, Dimmer } from "semantic-ui-react";
 import uuid from "react-uuid";
 import Sample from "./Sample";
 import connect from "../utils/connect";
@@ -31,9 +31,9 @@ function Samples(props) {
       }
       hasMore={scrollState.hasMore}
       loader={
-        <div style={{ position: "relative", height: 40 }} key={-1}>
-          <Loader active />
-        </div>
+        <Dimmer active className="samples-dimmer" key={-1}>
+          <Loader />
+        </Dimmer>
       }
       useWindow={true}
     >
