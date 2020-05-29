@@ -109,3 +109,11 @@ body {
   height: 50px;
   margin: 2rem 0;
 }
+
+.ui.button:hover {
+  background-color: #cacbcd;
+  background-image: none;
+  box-shadow: 0px 0px 0px 1px transparent inset,
+    0px 0em 0px 0px hsl(210, 20%, 50%) inset;
+  color: hsl(210, 20%, 50%);
+}
