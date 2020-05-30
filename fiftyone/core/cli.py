@@ -20,6 +20,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 import argparse
+from collections import defaultdict
 import json
 
 import argcomplete
@@ -221,41 +222,58 @@ class ZooListCommand(Command):
 
 
 def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
-    available_datasets = {}
-    for source in all_sources:
-        for name, zoo_dataset_cls in iteritems(all_datasets[source]):
-            if name not in available_datasets:
-                available_datasets[name] = (
-                    [source],
-                    zoo_dataset_cls(),
-                )
-            else:
-                available_datasets[name][0].append(source)
+    available_datasets = defaultdict(dict)
+    for source, datasets in iteritems(all_datasets):
+        for name, zoo_dataset_cls in iteritems(datasets):
+            available_datasets[name][source] = zoo_dataset_cls()
 
     records = []
     for name in sorted(available_datasets):
+        dataset_sources = available_datasets[name]
+
+        # Determine if dataset is downloaded
         if name in downloaded_datasets:
             dataset_dir, info = downloaded_datasets[name]
         else:
             dataset_dir, info = None, None
 
-        sources, zoo_dataset = available_datasets[name]
-
-        # Prepare source list
-        srcs = tuple("\u2713" if s in sources else "" for s in all_sources)
-
-        if zoo_dataset.has_splits:
-            for split in zoo_dataset.supported_splits:
-                if info is not None and split in info.downloaded_splits:
-                    split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
-                    records.append((name, split, "\u2713", split_dir) + srcs)
-                else:
-                    records.append((name, split, "", "-") + srcs)
-        else:
-            if dataset_dir is not None:
-                records.append((name, "", "\u2713", dataset_dir) + srcs)
+        # Get available splits across all sources
+        splits = set()
+        for zoo_dataset in itervalues(dataset_sources):
+            if zoo_dataset.has_splits:
+                splits.update(zoo_dataset.supported_splits)
             else:
-                records.append((name, "", "", "-") + srcs)
+                splits.add("")
+
+        for split in sorted(splits):
+            # Get available sources for the split
+            srcs = []
+            for source in all_sources:
+                if source not in dataset_sources:
+                    srcs.append("")
+                    continue
+
+                zoo_dataset = dataset_sources[source]
+                if split and zoo_dataset.has_split(split):
+                    srcs.append("\u2713")
+                elif not split and not zoo_dataset.has_splits:
+                    srcs.append("\u2713")
+                else:
+                    srcs.append("")
+
+            # Get split directory
+            if not split and dataset_dir:
+                split_dir = dataset_dir
+            elif split and info and info.is_split_downloaded(split):
+                split_dir = zoo_dataset.get_split_dir(dataset_dir, split)
+            else:
+                split_dir = ""
+
+            is_downloaded = "\u2713" if split_dir else ""
+
+            records.append(
+                (name, split, is_downloaded, split_dir) + tuple(srcs)
+            )
 
     headers = (
         ["name", "split", "downloaded", "dataset_dir"]
