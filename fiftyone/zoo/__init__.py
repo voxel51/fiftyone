@@ -215,7 +215,19 @@ def load_zoo_dataset_info(name, dataset_dir=None):
         raise OSError("Dataset '%s' not found at '%s'" % (name, dataset_dir))
 
 
-def _get_zoo_dataset(name):
+def get_zoo_dataset(name):
+    """Returns the :class:`ZooDataset` instance for the dataset with the given
+    name.
+
+    If the dataset is available from multiple sources, the default source is
+    used.
+
+    Args:
+        name: the name of the zoo dataset
+
+    Returns:
+        the :class:`ZooDataset` instance
+    """
     all_datasets = _get_zoo_datasets()
     for source in _get_zoo_dataset_sources():
         datasets = all_datasets.get(source, {})
@@ -254,7 +266,7 @@ def _get_zoo_dataset_sources():
 
 
 def _parse_dataset_details(name, dataset_dir):
-    zoo_dataset = _get_zoo_dataset(name)
+    zoo_dataset = get_zoo_dataset(name)
 
     if dataset_dir is None:
         dataset_dir = fod.get_default_dataset_dir(zoo_dataset.name)
