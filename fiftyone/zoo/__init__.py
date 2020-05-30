@@ -320,6 +320,20 @@ class ZooDatasetInfo(etas.Serializable):
         """
         return self.zoo_dataset.supported_splits
 
+    def is_split_downloaded(self, split):
+        """Whether the given dataset split is downloaded.
+
+        Args:
+            split: the dataset split
+
+        Returns:
+            True/False
+        """
+        return (
+            self.downloaded_splits is not None
+            and split in self.downloaded_splits
+        )
+
     def attributes(self):
         """Returns a list of class attributes to be serialized.
 
@@ -418,6 +432,17 @@ class ZooDataset(object):
     def has_splits(self):
         """Whether the dataset has splits."""
         return self.supported_splits is not None
+
+    def has_split(self, split):
+        """Whether the dataset has the given split.
+
+        Args:
+            split: the dataset split
+
+        Returns:
+            True/False
+        """
+        return self.has_splits and (split in self.supported_splits)
 
     @staticmethod
     def load_info(dataset_dir):
