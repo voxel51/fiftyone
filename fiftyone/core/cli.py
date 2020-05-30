@@ -228,10 +228,12 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
             available_datasets[name][source] = zoo_dataset_cls()
 
     records = []
+
+    # Iterate over available datasets
     for name in sorted(available_datasets):
         dataset_sources = available_datasets[name]
 
-        # Determine if dataset is downloaded
+        # Check for downloaded splits
         if name in downloaded_datasets:
             dataset_dir, info = downloaded_datasets[name]
         else:
@@ -245,6 +247,7 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
             else:
                 splits.add("")
 
+        # Iterate over available splits
         for split in sorted(splits):
             # Get available sources for the split
             srcs = []
@@ -314,29 +317,25 @@ class ZooInfoCommand(Command):
     @staticmethod
     def execute(parser, args):
         name = args.name
+
+        # Print dataset info
+        zoo_dataset = foz.get_zoo_dataset(name)
+        print("***** Dataset description *****\n%s" % zoo_dataset.__doc__)
+
+        # Check if dataset is downloaded
         base_dir = args.base_dir or None
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
 
+        print("***** Dataset location *****")
         if name not in downloaded_datasets:
-            if name not in foz.list_zoo_datasets():
-                print("Dataset '%s' not found in the zoo" % name)
-            else:
-                print("Dataset '%s' is not downloaded" % name)
-
-            return
-
-        dataset_dir, info = downloaded_datasets[name]
-        _print_zoo_dataset_info(dataset_dir, info)
-
-
-def _print_zoo_dataset_info(dataset_dir, info):
-    d = info.serialize()
-    d["dataset_dir"] = dataset_dir
-    _print_dict_as_json(d)
-    # _print_dict_as_table(d)
-    print("")
+            print("Dataset '%s' is not downloaded" % name)
+        else:
+            dataset_dir, info = downloaded_datasets[name]
+            print(dataset_dir)
+            print("\n***** Dataset info *****")
+            _print_dict_as_json(info.serialize())
 
 
 class ZooDownloadCommand(Command):
