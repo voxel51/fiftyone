@@ -182,13 +182,13 @@ Now we can run a method from FiftyOne that estimates the mistakenness of the
 ground samples for which we generated predictions:
 
 ```py
-import fiftyone.brain.mistakenness as fbm
+import fiftyone.brain as fob
 
 # Get samples for which we added predictions
 h_view = dataset.view().match_tag("processed")
 
 # Compute mistakenness
-fbm.compute_mistakenness(h_view, model_name, label_field="ground_truth")
+fob.compute_mistakenness(h_view, model_name, label_field="ground_truth")
 ```
 
 The above method added `mistakenness` field to all samples for which we added
