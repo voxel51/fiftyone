@@ -78,7 +78,8 @@ def list_downloaded_zoo_datasets(base_dir=None):
         try:
             dataset_dir = os.path.join(base_dir, sub_dir)
             info = ZooDataset.load_info(dataset_dir)
-            downloaded_datasets[info.name] = (dataset_dir, info)
+            if sub_dir == info.name:
+                downloaded_datasets[info.name] = (dataset_dir, info)
         except:
             pass
 
