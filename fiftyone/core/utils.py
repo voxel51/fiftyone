@@ -19,62 +19,6 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-class LazyImporter(types.ModuleType):
-    """Class for lazily importing a module, allowing it to be imported only
-    when it is actually used in the code.
-
-    Example usage::
-
-        # Lazy version of `import tensorflow as tf`
-        tf = LazyImporter("tensorflow", "tf", globals())
-
-    Args:
-        module_name: the name of the module to import
-        local_name: the desired local name of the module in the caller's
-            namespace
-        parent_module_globals: the caller's ``globals()``
-        load_callback (None): an optional callback function to call before
-            loading the module
-    """
-
-    def __init__(
-        self,
-        module_name,
-        local_name,
-        parent_module_globals,
-        load_callback=None,
-    ):
-        super(LazyImporter, self).__init__(module_name)
-        self._local_name = local_name
-        self._parent_module_globals = parent_module_globals
-        self._load_callback = load_callback
-
-    def _load(self):
-        # Execute load callback, if provided
-        if self._load_callback is not None:
-            self._load_callback()
-
-        # Import the target module and insert it into the parent's namespace
-        module = importlib.import_module(self.__name__)
-        self._parent_module_globals[self._local_name] = module
-
-        #
-        # Update this object's dict so that if someone keeps a reference to the
-        # LazyImporter, lookups are efficient (__getattr__ is only called on
-        # lookups that fail)
-        #
-        self.__dict__.update(module.__dict__)
-        return module
-
-    def __getattr__(self, item):
-        module = self._load()
-        return getattr(module, item)
-
-    def __dir__(self):
-        module = self._load()
-        return dir(module)
-
-
 def ensure_tf():
     """Verifies that TensorFlow is installed on the host machine.
 
@@ -132,6 +76,72 @@ def _ensure_package(package_name, min_version=None):
                 "on your machine; found '%s==%s'"
                 % (package_name, min_version, package_name, pkg_version)
             )
+
+
+def lazy_import(module_name, callback=None):
+    """Returns a proxy module object that will lazily import the given module
+    the first time it is used.
+
+    Example usage::
+
+        # Lazy version of `import tensorflow as tf`
+        tf = lazy_import("tensorflow")
+
+        # Other commands
+
+        # Now the module is loaded
+        tf.__version__
+
+    Args:
+        module_name: the fully-qualified module name to import
+        callback (None): a callback function to call before importing the
+            module
+
+    Returns:
+        a proxy module object that will be lazily imported when first used
+    """
+    return LazyModule(module_name, callback=callback)
+
+
+class LazyModule(types.ModuleType):
+    """Proxy module that lazily imports the underlying module the first time it
+    is actually used.
+
+    Args:
+        module_name: the fully-qualified module name to import
+        callback (None): a callback function to call before importing the
+            module
+    """
+
+    def __init__(self, module_name, callback=None):
+        super(LazyModule, self).__init__(module_name)
+        self._module = None
+        self._callback = callback
+
+    def __getattr__(self, item):
+        if self._module is None:
+            self._import_module()
+
+        return getattr(self._module, item)
+
+    def __dir__(self):
+        if self._module is None:
+            self._import_module()
+
+        return dir(self._module)
+
+    def _import_module(self):
+        # Execute callback, if any
+        if self._callback is not None:
+            self._callback()
+
+        # Actually import the module
+        module = importlib.import_module(self.__name__)
+        self._module = module
+
+        # Update this object's dict so that attribute references are efficient
+        # (__getattr__ is only called on lookups that fail)
+        self.__dict__.update(module.__dict__)
 
 
 def parse_serializable(obj, cls):
