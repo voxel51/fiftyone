@@ -68,7 +68,7 @@ We can poke around in the dataset:
 
 ```python
 # Print summary information about the dataset
-print(dataset.summary())
+dataset
 
 # Print a random sample
 print(dataset.view().take(1).first())
@@ -80,7 +80,7 @@ Create a view that filters only `mountain`
 view = dataset.view().match({"ground_truth.label": "mountain"})
 
 # Print summary information about the view
-print(view.summary())
+view
 
 # Print the first sample in the view
 print(view.first())
@@ -91,7 +91,7 @@ Create a view that sorts labels reverse-alphabetically
 ```python
 view = dataset.view().sort_by("ground_truth.label", reverse=True)
 
-print(view.summary())
+view
 print(view.first())
 ```
 
@@ -139,7 +139,7 @@ for sample in dataset:
     sample["file_hash"] = fou.compute_filehash(sample.filepath)
     sample.save()
 
-print(dataset.summary())
+dataset
 ```
 
 We have two ways to visualize this new information:
