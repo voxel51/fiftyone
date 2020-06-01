@@ -467,7 +467,9 @@ class COCO2017Dataset(TFDSDataset):
             "label"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox"
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,

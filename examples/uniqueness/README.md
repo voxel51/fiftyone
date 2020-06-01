@@ -24,13 +24,13 @@ pip install torchvision
 ## Part 1: Finding duplicate and near-duplicate images
 
 A common problem in dataset creation is duplicated data. Although this could be
-found using file-hashing---as in the `file_hashing` walkthrough---it is less
-possible when small manipulations have occurred in the data. Even more critical
-for workflows involving model training is the need to get as much power out of
-each data samples as possible; near-duplicates, which are samples that are
-exceptionally similar to one another, are intrinsically less valuable for the
-training scenario. Let's see if we can find such duplicates and near-duplicates
-in a common dataset: CIFAR-10.
+found using file hashing---as in the `image_deduplication` walkthrough---it is
+less possible when small manipulations have occurred in the data. Even more
+critical for workflows involving model training is the need to get as much
+power out of each data samples as possible; near-duplicates, which are samples
+that are exceptionally similar to one another, are intrinsically less valuable
+for the training scenario. Let's see if we can find such duplicates and
+near-duplicates in a common dataset: CIFAR-10.
 
 ### Load the dataset
 

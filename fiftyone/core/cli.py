@@ -328,6 +328,10 @@ class ZooInfoCommand(Command):
             base_dir=base_dir
         )
 
+        if zoo_dataset.has_splits:
+            print("***** Supported splits *****")
+            print("%s\n" % ", ".join(zoo_dataset.supported_splits))
+
         print("***** Dataset location *****")
         if name not in downloaded_datasets:
             print("Dataset '%s' is not downloaded" % name)
