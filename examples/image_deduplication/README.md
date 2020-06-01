@@ -166,8 +166,8 @@ with the same file hashses:
 ```python
 from collections import Counter
 
-dup_filehashes = Counter(sample.file_hash for sample in dataset)
-dup_filehashes = [k for k, v in dup_filehashes.items() if v > 1]
+filehash_counts = Counter(sample.file_hash for sample in dataset)
+dup_filehashes = [k for k, v in filehash_counts.items() if v > 1]
 
 print("Number of duplicate file hashes: %d" % len(dup_filehashes))
 ```
