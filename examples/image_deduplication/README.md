@@ -144,14 +144,14 @@ dataset
 
 We have two ways to visualize this new information:
 
-1. From your terminal:
+1\. From your terminal:
 
 ```python
 sample = dataset.view().first()
 print(sample)
 ```
 
-2. By refreshing the dashboard:
+2\. By refreshing the dashboard:
 
 ```python
 session.dataset = dataset
