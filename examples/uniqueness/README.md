@@ -66,7 +66,7 @@ about the dataset:
 
 ```py
 # Now the samples have a "uniqueness" field on them
-print(dataset.summary())
+print(dataset)
 print(dataset.view().first())
 ```
 
@@ -172,7 +172,7 @@ dataset = fo.Dataset.from_images_dir(
     "data", recursive=True, name="flickr-images"
 )
 
-print(dataset.summary())
+print(dataset)
 print(dataset.view().first())
 ```
 
@@ -208,7 +208,7 @@ import fiftyone.brain as fob
 fob.compute_uniqueness(dataset)
 
 # Now the samples have a "uniqueness" field on them
-print(dataset.summary())
+print(dataset)
 print(dataset.view().first())
 
 # Sort by uniqueness (most unique first)
