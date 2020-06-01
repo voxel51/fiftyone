@@ -200,7 +200,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name = d["name"]
         samples = [
             fos.Sample.from_dict(
-                foo.ODMNoDatasetSample, s, created=True, extended=True
+                foo.NoDatasetSample, s, created=True, extended=True
             )
             for s in d["samples"]
         ]
@@ -984,8 +984,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return cls.from_images(image_paths, name=name)
 
     def _initialize_dataset(self, name):
-        # Create ODMDatasetSample subclass
-        self._sample_doc_cls = type(self._name, (foo.ODMDatasetSample,), {})
+        # Create ODMSample subclass
+        self._sample_doc_cls = type(self._name, (foo.ODMSample,), {})
 
         # Create dataset meta document
         self._meta = foo.ODMDataset(
@@ -1002,7 +1002,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # pylint: disable=no-member
         self._meta = foo.ODMDataset.objects.get(name=name)
 
-        self._sample_doc_cls = type(self._name, (foo.ODMDatasetSample,), {})
+        self._sample_doc_cls = type(self._name, (foo.ODMSample,), {})
 
         num_default_fields = len(self.get_field_schema())
 

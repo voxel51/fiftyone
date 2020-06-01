@@ -45,7 +45,7 @@ class Sample(object):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.ODMNoDatasetSample(
+        self._doc = foo.NoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
@@ -67,8 +67,10 @@ class Sample(object):
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
-        # @todo(Tyler) __delattr__
-        raise NotImplementedError("Not yet implemented")
+        try:
+            self.__delitem__(name)
+        except KeyError:
+            super().__delattr__(name)
 
     def __getitem__(self, key):
         try:
@@ -82,8 +84,8 @@ class Sample(object):
     def __delitem__(self, key):
         try:
             return self.clear_field(key)
-        except AttributeError:
-            raise KeyError("Sample has no field '%s'" % key)
+        except ValueError as e:
+            raise KeyError(e.args[0])
 
     def __copy__(self):
         return self.copy()
@@ -178,7 +180,7 @@ class Sample(object):
             field_name: the name of the field to clear
 
         Raises:
-            AttributeError: if the field does not exist
+            ValueError: if the field does not exist
         """
         return self._doc.clear_field(field_name=field_name)
 
@@ -255,17 +257,17 @@ class Sample(object):
         document.
 
         Args:
-            document: a :class:`fiftyone.core.odm.ODMDatasetSample`
+            document: a :class:`fiftyone.core.odm.ODMSample`
 
         Returns:
             a :class:`Sample`
         """
-        if isinstance(doc, foo.ODMNoDatasetSample):
+        if isinstance(doc, foo.NoDatasetSample):
             sample = cls.__new__(cls)
             sample._doc = doc
             return sample
 
-        if not isinstance(doc, foo.ODMDatasetSample):
+        if not isinstance(doc, foo.ODMSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
 
         if not doc.id:
@@ -282,8 +284,12 @@ class Sample(object):
         return sample
 
     def save(self):
-        """Saves the document to the database."""
+        """Saves the sample to the database."""
         self._doc.save()
+
+    def reload(self):
+        """Reload the sample from the database."""
+        self._doc.reload()
 
     def _delete(self):
         """Deletes the document from the database."""
@@ -310,20 +316,20 @@ class Sample(object):
 
         For use **only** when adding a sample to a dataset.
         """
-        if isinstance(self._doc, foo.ODMDatasetSample):
+        if isinstance(self._doc, foo.ODMSample):
             raise TypeError("Sample already belongs to a dataset")
 
-        if not isinstance(doc, foo.ODMDatasetSample):
+        if not isinstance(doc, foo.ODMSample):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
-                % (foo.ODMDatasetSample, type(doc))
+                % (foo.ODMSample, type(doc))
             )
-
-        self._doc = doc
 
         # ensure the doc is saved to the database
         if not doc.id:
             doc.save()
+
+        self._doc = doc
 
         # save weak reference
         dataset_instances = self._instances[doc.dataset_name]
