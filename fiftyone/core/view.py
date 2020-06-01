@@ -171,7 +171,7 @@ class DatasetView(foc.SampleCollection):
         try:
             return next(self.iter_samples())
         except StopIteration:
-            raise ValueError("View is empty")
+            raise ValueError("DatasetView is empty")
 
     def last(self):
         """Returns the last :class:`fiftyone.core.sample.Sample` in the view.
