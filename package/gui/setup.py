@@ -90,7 +90,7 @@ cmdclass = {
 
 setup(
     name="fiftyone_gui",
-    version="0.1.2",
+    version="0.1.3",
     description="Project FiftyOne dashboard",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
