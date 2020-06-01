@@ -529,7 +529,7 @@ class ZooDataset(object):
             info = None
 
         # Create scratch directory
-        scratch_dir = etau.make_temp_dir(basedir=dataset_dir)
+        scratch_dir = os.path.join(dataset_dir, "tmp-download")
 
         # Download dataset, if necessary
         write_info = False
