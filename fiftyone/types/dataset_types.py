@@ -69,17 +69,22 @@ class ImageClassificationDataset(LabeledImageDataset):
     where ``labels.json`` is a JSON file in the following format::
 
         {
-            "labels_map": {
-                <targetA>: <labelA>,
-                <targetB>: <labelB>,
+            "classes": [
+                <labelA>,
+                <labelB>,
                 ...
-            },
+            ],
             "labels": {
                 <uuid1>: <target1>,
                 <uuid2>: <target2>,
                 ...
             }
         }
+
+    If the ``classes`` field is provided, the ``target`` values are class IDs
+    that are mapped to class label strings via ``classes[target]``. If no
+    ``classes`` field is provided, then the ``target`` values directly store
+    the label strings.
     """
 
     pass
@@ -101,15 +106,15 @@ class ImageDetectionDataset(LabeledImageDataset):
     where ``labels.json`` is a JSON file in the following format::
 
         {
-            "labels_map": {
-                <targetA>: <labelA>,
-                <targetB>: <labelB>,
+            "classes": [
+                <labelA>,
+                <labelB>,
                 ...
-            },
+            ],
             "labels": {
                 <uuid1>: [
                     {
-                        "label": <label>,
+                        "label": <target>,
                         "bounding_box": [
                             <top-left-x>, <top-left-y>, <width>, <height>
                         ],
@@ -126,6 +131,11 @@ class ImageDetectionDataset(LabeledImageDataset):
 
     and where the bounding box coordinates are expressed as relative values in
     ``[0, 1] x [0, 1]``.
+
+    If the ``classes`` field is provided, the ``target`` values are class IDs
+    that are mapped to class label strings via ``classes[target]``. If no
+    ``classes`` field is provided, then the ``target`` values directly store
+    the label strings.
     """
 
     pass

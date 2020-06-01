@@ -13,18 +13,17 @@ pip install jupyter
 
 ## Running the walkthrough
 
-To launch the notebook, run:
+To launch the notebook on any machine with FiftyOne installed, run:
 
 ```sh
 python -m fiftyone.examples.fifteen_to_fiftyone
 ```
 
-If you would like to make a separate copy of this notebook, you can locate the
-examples folder by running:
+If you would like to directly work with this notebook, you can locate it on
+disk by running the following command:
 
 ```sh
-fiftyone constants EXAMPLES_DIR
-```
+NOTEBOOK_PATH="$(fiftyone constants EXAMPLES_DIR)/fifteen_to_fiftyone/15to51.ipynb"
 
-The notebook can be found at `fifteen_to_fiftyone/15to51.ipynb` within this
-examples folder.
+echo $NOTEBOOK_PATH
+```

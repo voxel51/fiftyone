@@ -189,16 +189,17 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
     Returns:
         a ``tf.data.Dataset` that emits ``(img, label)`` pairs
     """
-    samples, labels_map = foud.parse_image_classification_dir_tree(dataset_dir)
+    samples, classes = foud.parse_image_classification_dir_tree(dataset_dir)
 
     def parse_sample(sample):
         img_path, label = sample
         img = _parse_image(img_path)
         return img, label
 
-    return tf.data.Dataset.from_tensor_slices(samples).map(
+    dataset = tf.data.Dataset.from_tensor_slices(samples).map(
         parse_sample, num_parallel_calls=num_parallel_calls
     )
+    return dataset, classes
 
 
 def write_image_classification_tf_records(labeled_dataset, tf_records_path):
