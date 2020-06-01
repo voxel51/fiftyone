@@ -430,7 +430,7 @@ class NoDatasetSample(SerializableDocument):
     def to_dict(self, extended=False):
         return {
             k: v.to_dict() if hasattr(v, "to_dict") else v
-            for k, v in self._data.items()
+            for k, v in iteritems(self._data)
         }
 
     @classmethod
@@ -544,7 +544,7 @@ class NoDatasetSample(SerializableDocument):
             ]
         )
 
-        for field_name, value in self._data.items():
+        for field_name, value in iteritems(self._data):
             if field_name in d:
                 continue
 
@@ -552,7 +552,7 @@ class NoDatasetSample(SerializableDocument):
                 field_name, **_get_implied_field_kwargs(value)
             )
 
-        for field_name, field in d.items():
+        for field_name, field in iteritems(d):
             if not isinstance(field, ftype):
                 d.pop(field_name)
 
