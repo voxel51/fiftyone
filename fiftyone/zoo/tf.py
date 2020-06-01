@@ -759,9 +759,15 @@ def _download_and_prepare(
     else:
         raise ValueError("Unsupported sample parser: %s" % sample_parser)
 
+    try:
+        samples = dataset.as_numpy_iterator()
+    except AttributeError:
+        # Must be tensorflow < 2.1
+        samples = tfds.as_numpy(dataset)
+
     # Write the formatted dataset to `dataset_dir`
     write_dataset_fcn(
-        dataset.as_numpy_iterator(),
+        samples,
         dataset_dir,
         sample_parser=sample_parser,
         num_samples=num_samples,

@@ -56,9 +56,9 @@ dataset_name = "cifar100_with_duplicates"
 
 src_data_dir = os.path.join("/tmp/fiftyone", dataset_name)
 
-samples, _ = foud.parse_image_classification_dir_tree(src_data_dir)
+samples, classes = foud.parse_image_classification_dir_tree(src_data_dir)
 dataset = fo.Dataset.from_image_classification_samples(
-    samples, name=dataset_name
+    samples, name=dataset_name, classes=classes
 )
 ```
 
@@ -109,7 +109,8 @@ Narrow your scope to 10 random samples:
 session.view = dataset.view().take(10)
 ```
 
-Select some samples in the GUI and access their IDs from code!
+Click on some some samples in the GUI to select them and access their IDs from
+code!
 
 ```python
 # Get the IDs of the currently selected samples in the dashboard
@@ -163,14 +164,10 @@ Now let's use a more powerful query to search for duplicate files, i.e., those
 with the same file hashses:
 
 ```python
-pipeline = [
-    # Find all unique file hashes
-    {"$group": {"_id": "$file_hash", "count": {"$sum": 1}}},
-    # Filter out file hashes with a count of 1
-    {"$match": {"count": {"$gt": 1}}},
-]
+from collections import Counter
 
-dup_filehashes = [d["_id"] for d in dataset.aggregate(pipeline)]
+filehash_counts = Counter(sample.file_hash for sample in dataset)
+dup_filehashes = [k for k, v in filehash_counts.items() if v > 1]
 
 print("Number of duplicate file hashes: %d" % len(dup_filehashes))
 ```
