@@ -56,9 +56,9 @@ dataset_name = "cifar100_with_duplicates"
 
 src_data_dir = os.path.join("/tmp/fiftyone", dataset_name)
 
-samples, _ = foud.parse_image_classification_dir_tree(src_data_dir)
+samples, classes = foud.parse_image_classification_dir_tree(src_data_dir)
 dataset = fo.Dataset.from_image_classification_samples(
-    samples, name=dataset_name
+    samples, name=dataset_name, classes=classes
 )
 ```
 
