@@ -5,8 +5,11 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import importlib
 import logging
 import resource
+import sys
+import types
 
 import packaging.version
 
@@ -53,7 +56,7 @@ def _ensure_package(package_name, min_version=None):
         min_version = packaging.version.parse(min_version)
 
     try:
-        pkg = __import__(package_name)
+        pkg = importlib.import_module(package_name)
     except ImportError as e:
         if has_min_ver:
             pkg_str = "%s>=%s" % (package_name, min_version)
@@ -73,6 +76,72 @@ def _ensure_package(package_name, min_version=None):
                 "on your machine; found '%s==%s'"
                 % (package_name, min_version, package_name, pkg_version)
             )
+
+
+def lazy_import(module_name, callback=None):
+    """Returns a proxy module object that will lazily import the given module
+    the first time it is used.
+
+    Example usage::
+
+        # Lazy version of `import tensorflow as tf`
+        tf = lazy_import("tensorflow")
+
+        # Other commands
+
+        # Now the module is loaded
+        tf.__version__
+
+    Args:
+        module_name: the fully-qualified module name to import
+        callback (None): a callback function to call before importing the
+            module
+
+    Returns:
+        a proxy module object that will be lazily imported when first used
+    """
+    return LazyModule(module_name, callback=callback)
+
+
+class LazyModule(types.ModuleType):
+    """Proxy module that lazily imports the underlying module the first time it
+    is actually used.
+
+    Args:
+        module_name: the fully-qualified module name to import
+        callback (None): a callback function to call before importing the
+            module
+    """
+
+    def __init__(self, module_name, callback=None):
+        super(LazyModule, self).__init__(module_name)
+        self._module = None
+        self._callback = callback
+
+    def __getattr__(self, item):
+        if self._module is None:
+            self._import_module()
+
+        return getattr(self._module, item)
+
+    def __dir__(self):
+        if self._module is None:
+            self._import_module()
+
+        return dir(self._module)
+
+    def _import_module(self):
+        # Execute callback, if any
+        if self._callback is not None:
+            self._callback()
+
+        # Actually import the module
+        module = importlib.import_module(self.__name__)
+        self._module = module
+
+        # Update this object's dict so that attribute references are efficient
+        # (__getattr__ is only called on lookups that fail)
+        self.__dict__.update(module.__dict__)
 
 
 def parse_serializable(obj, cls):
