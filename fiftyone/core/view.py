@@ -433,6 +433,10 @@ class DatasetView(foc.SampleCollection):
         if stop is None:
             return self.skip(start)
 
+        # handle the case where an empty view should be returned
+        if stop == start:
+            return self.match({"_id": None})
+
         return self.skip(start).limit(stop - start)
 
     def _get_field_distributions(self):
