@@ -12,28 +12,10 @@ find mistakes in your labels. It covers the following concepts:
 
 -   Install `torch` and `torchvision`, if necessary:
 
-```
+```shell
+# Modify as necessary (e.g., GPU install). See https://pytorch.org for options
 pip install torch
 pip install torchvision
-```
-
--   Download the test split of the CIFAR-10 dataset to
-    `~/fiftyone/cifar10/test`:
-
-```py
-#
-# This will soon be replaced with
-#   fiftyone zoo download cifar10 --split test
-#
-
-import fiftyone.zoo as foz
-import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
-
-# It is safe to run this multiple times; the data will not be re-downloaded
-foc.set_config_settings(default_ml_backend="torch")
-foz.load_zoo_dataset("cifar10")
-foo.drop_database()
 ```
 
 -   Download a pretrained CIFAR-10 PyTorch model
@@ -63,21 +45,22 @@ import random
 import fiftyone as fo
 import fiftyone.zoo as foz
 
-dataset = foz.load_zoo_dataset("cifar10")
+# Load the CIFAR-10 test split
+# Downloads the dataset from the web if necessary
+dataset = foz.load_zoo_dataset("cifar10", splits=["test"])
 
-# @todo load this from ZooDatasetInfo
-labels_map = (
-    "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(",")
-)
+# Get the CIFAR-10 classes list
+info = foz.load_zoo_dataset_info("cifar10")
+classes = info.classes
 
 # Artificially make 10% of sample labels mistakes
 for sample in dataset.view().take(1000):
     mistake = random.randint(0, 9)
-    while labels_map[mistake] == sample.ground_truth.label:
+    while classes[mistake] == sample.ground_truth.label:
         mistake = random.randint(0, 9)
 
     sample.tags.append("mistake")
-    sample["ground_truth"] = fo.Classification(label=labels_map[mistake])
+    sample["ground_truth"] = fo.Classification(label=classes[mistake])
     sample.save()
 ```
 
@@ -174,7 +157,7 @@ for imgs, sample_ids in data_loader:
         sample = dataset[sample_id]
         sample.tags.append("processed")
         sample[model_name] = fo.Classification(
-            label=labels_map[prediction], logits=logits,
+            label=classes[prediction], logits=logits,
         )
         sample.save()
 ```
@@ -199,13 +182,13 @@ Now we can run a method from FiftyOne that estimates the mistakenness of the
 ground samples for which we generated predictions:
 
 ```py
-import fiftyone.brain.mistakenness as fbm
+import fiftyone.brain as fob
 
 # Get samples for which we added predictions
 h_view = dataset.view().match_tag("processed")
 
 # Compute mistakenness
-fbm.compute_mistakenness(h_view, model_name, label_field="ground_truth")
+fob.compute_mistakenness(h_view, model_name, label_field="ground_truth")
 ```
 
 The above method added `mistakenness` field to all samples for which we added

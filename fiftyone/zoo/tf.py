@@ -29,14 +29,21 @@ import fiftyone.utils.data as foud
 import fiftyone.types as fot
 import fiftyone.zoo as foz
 
-fou.ensure_tfds()
-import tensorflow_datasets as tfds
+tfds = fou.lazy_import("tensorflow_datasets", callback=fou.ensure_tfds)
 
 
 logger = logging.getLogger(__name__)
 
 
-class MNISTDataset(foz.ZooDataset):
+class TFDSDataset(foz.ZooDataset):
+    """Base class for zoo datasets that are provided via the
+    ``tensorflow_datasets`` package.
+    """
+
+    pass
+
+
+class MNISTDataset(TFDSDataset):
     """The MNIST database of handwritten digits.
 
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
@@ -61,20 +68,78 @@ class MNISTDataset(foz.ZooDataset):
     def default_split(self):
         return "test"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "mnist",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["label"].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            "mnist",
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
         )
 
 
-class CIFAR10Dataset(foz.ZooDataset):
+class FashionMNISTDataset(TFDSDataset):
+    """The Fashion-MNIST database of Zalando's fashion article images.
+
+    The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
+    There are 60000 training images and 10000 test images.
+
+    Dataset size:
+        36.42 MiB
+
+    Source:
+        https://github.com/zalandoresearch/fashion-mnist
+    """
+
+    @property
+    def name(self):
+        return "fashion-mnist"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train")
+
+    @property
+    def default_split(self):
+        return "test"
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "fashion_mnist",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
+        get_class_labels_fcn = lambda info: info.features["label"].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
+        sample_parser = _TFDSImageClassificationSampleParser()
+        return _download_and_prepare(
+            dataset_dir,
+            scratch_dir,
+            download_fcn,
+            get_class_labels_fcn,
+            get_num_samples_fcn,
+            sample_parser,
+        )
+
+
+class CIFAR10Dataset(TFDSDataset):
     """The CIFAR-10 dataset of images.
 
     The dataset consists of 60000 32 x 32 color images in 10 classes, with 6000
@@ -99,20 +164,78 @@ class CIFAR10Dataset(foz.ZooDataset):
     def default_split(self):
         return "test"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "cifar10",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["label"].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            "cifar10",
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
         )
 
 
-class Caltech101Dataset(foz.ZooDataset):
+class CIFAR100Dataset(TFDSDataset):
+    """The CIFAR-100 dataset of images.
+
+    The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
+    images per class. There are 50000 training images and 10000 test images.
+
+    Dataset size:
+        132.03 MiB
+
+    Source:
+        https://www.cs.toronto.edu/~kriz/cifar.html
+    """
+
+    @property
+    def name(self):
+        return "cifar100"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train")
+
+    @property
+    def default_split(self):
+        return "test"
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "cifar100",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
+        get_class_labels_fcn = lambda info: info.features["label"].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
+        sample_parser = _TFDSImageClassificationSampleParser()
+        return _download_and_prepare(
+            dataset_dir,
+            scratch_dir,
+            download_fcn,
+            get_class_labels_fcn,
+            get_num_samples_fcn,
+            sample_parser,
+        )
+
+
+class Caltech101Dataset(TFDSDataset):
     """The Caltech-101 dataset of images.
 
     The dataset consists of pictures of objects belonging to 101 classes, plus
@@ -140,20 +263,30 @@ class Caltech101Dataset(foz.ZooDataset):
     def default_split(self):
         return "test"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "caltech101",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["label"].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            "caltech101",
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
         )
 
 
-class ImageNet2012Dataset(foz.ZooDataset):
+class ImageNet2012Dataset(TFDSDataset):
     """The ImageNet 2012 dataset.
 
     ImageNet, as known as ILSVRC 2012, is an image dataset organized according
@@ -177,7 +310,7 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
             both splits: ILSVRC2012_devkit_t12.tar.gz
             train split: ILSVRC2012_img_train.tar
-             test split: ILSVRC2012_img_val.tar
+       validation split: ILSVRC2012_img_val.tar
 
     You need to register on http://www.image-net.org/download-images in
     order to get the link to download the dataset.
@@ -195,28 +328,41 @@ class ImageNet2012Dataset(foz.ZooDataset):
 
     @property
     def supported_splits(self):
-        return ("train", "val")
+        return ("train", "validation")
 
     @property
     def default_split(self):
-        return "val"
+        return "validation"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, _, split):
+        if split == "validation":
+            _split = "val"
+        else:
+            _split = split
+
+        def download_fcn(_):
+            return tfds.load(
+                "imagenet",
+                split=_split,
+                data_dir=dataset_dir,
+                download=False,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["label"].names
+        get_num_samples_fcn = lambda info: info.splits[_split].num_examples
         sample_parser = _TFDSImageClassificationSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            "imagenet",
             dataset_dir,
+            None,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
-            download=False,
-            use_tmp_dir=False,
         )
 
 
-class COCO2014Dataset(foz.ZooDataset):
+class COCO2014Dataset(TFDSDataset):
     """COCO is a large-scale object detection, segmentation, and captioning
     dataset.
 
@@ -249,22 +395,32 @@ class COCO2014Dataset(foz.ZooDataset):
     def default_split(self):
         return "validation"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "coco/2014",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser(normalized=False)
         return _download_and_prepare(
-            self,
-            split,
-            "coco/2014",
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
         )
 
 
-class COCO2017Dataset(foz.ZooDataset):
+class COCO2017Dataset(TFDSDataset):
     """COCO is a large-scale object detection, segmentation, and captioning
     dataset.
 
@@ -297,22 +453,34 @@ class COCO2017Dataset(foz.ZooDataset):
     def default_split(self):
         return "validation"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "coco/2017",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
-        sample_parser = _TFDSImageDetectionSampleParser()
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox"
+        )
         return _download_and_prepare(
-            self,
-            split,
-            "coco/2017",
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
         )
 
 
-class KITTIDataset(foz.ZooDataset):
+class KITTIDataset(TFDSDataset):
     """KITTI contains a suite of vision tasks built using an autonomous
     driving platform.
 
@@ -342,31 +510,38 @@ class KITTIDataset(foz.ZooDataset):
     def default_split(self):
         return "test"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "kitti",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["objects"][
             "type"
         ].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser(label_field="type")
         return _download_and_prepare(
-            self,
-            split,
-            "coco",
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
         )
 
 
-class VOC2007Dataset(foz.ZooDataset):
+class VOC2007Dataset(TFDSDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2007
-    (VOC2007) for the classification and detection competitions.
+    (VOC2007) for the detection competition.
 
     A total of 9963 images are included in this dataset, where each image
     contains a set of objects, out of 20 different classes, making a total of
-    24640 annotated objects. In the classification competition, the goal is to
-    predict the set of labels contained in the image, while in the detection
-    competition the goal is to predict the bounding box and label of each
-    individual object.
+    24640 annotated objects.
 
     Note that, as per the official dataset, the test set of VOC2007 does not
     contain annotations.
@@ -384,37 +559,44 @@ class VOC2007Dataset(foz.ZooDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train", "validation")
+        return ("train", "validation", "test")
 
     @property
     def default_split(self):
         return "validation"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "voc/2007",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            "voc/2007",
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
         )
 
 
-class VOC2012Dataset(foz.ZooDataset):
+class VOC2012Dataset(TFDSDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2012
-    (VOC2012) for the Classification and Detection competitions.
+    (VOC2012) for the detection competition.
 
     A total of 11540 images are included in this dataset, where each image
     contains a set of objects, out of 20 different classes, making a total of
-    27450 annotated objects. In the classification competition, the goal is to
-    predict the set of labels contained in the image, while in the detection
-    competition the goal is to predict the bounding box and label of each
-    individual object.
+    27450 annotated objects.
 
     Note that, as per the official dataset, the test set of VOC2012 does not
     contain annotations.
@@ -432,44 +614,50 @@ class VOC2012Dataset(foz.ZooDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train", "validation")
+        return ("train", "validation", "test")
 
     @property
     def default_split(self):
         return "validation"
 
-    def _download_and_prepare(self, dataset_dir, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            return tfds.load(
+                "voc/2012",
+                split=split,
+                data_dir=download_dir,
+                download=True,
+                with_info=True,
+            )
+
         get_class_labels_fcn = lambda info: info.features["objects"][
             "label"
         ].names
+        get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser()
         return _download_and_prepare(
-            self,
-            split,
-            "voc/2012",
             dataset_dir,
+            scratch_dir,
+            download_fcn,
             get_class_labels_fcn,
+            get_num_samples_fcn,
             sample_parser,
         )
 
 
-# Register datasets in the zoo
-foz.AVAILABLE_DATASETS.update(
-    {
-        "mnist": MNISTDataset,
-        "caltech101": Caltech101Dataset,
-        "cifar10": CIFAR10Dataset,
-        "imagenet": ImageNet2012Dataset,  # default ImageNet
-        "imagenet-2012": ImageNet2012Dataset,
-        "coco": COCO2014Dataset,  # default COCO
-        "coco-2014": COCO2014Dataset,
-        "coco-2017": COCO2017Dataset,
-        "kitti": KITTIDataset,
-        "voc": VOC2007Dataset,  # default VOC
-        "voc-2007": VOC2007Dataset,
-        "voc-2012": VOC2012Dataset,
-    }
-)
+AVAILABLE_DATASETS = {
+    "mnist": MNISTDataset,
+    "fashion-mnist": FashionMNISTDataset,
+    "caltech101": Caltech101Dataset,
+    "cifar10": CIFAR10Dataset,
+    "cifar100": CIFAR100Dataset,
+    "imagenet-2012": ImageNet2012Dataset,
+    "coco-2014": COCO2014Dataset,
+    "coco-2017": COCO2017Dataset,
+    "kitti": KITTIDataset,
+    "voc-2007": VOC2007Dataset,
+    "voc-2012": VOC2012Dataset,
+}
 
 
 class _TFDSImageClassificationSampleParser(
@@ -537,21 +725,15 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
 
 
 def _download_and_prepare(
-    zoo_dataset,
-    split,
-    tfds_name,
     dataset_dir,
+    scratch_dir,
+    download_fcn,
     get_class_labels_fcn,
+    get_num_samples_fcn,
     sample_parser,
-    download=True,
-    use_tmp_dir=True,
 ):
-    # Download the TFDS dataset to a tmp directory, unless requested not to
-    if use_tmp_dir:
-        tmp_dir = os.path.join(dataset_dir, "tmp")
-    else:
-        tmp_dir = dataset_dir
-
+    #
+    # Download the TFDS dataset, if necessary
     #
     # Prevents ResourceExhaustedError that can arise...
     # https://github.com/tensorflow/datasets/issues/1441#issuecomment-581660890
@@ -559,18 +741,11 @@ def _download_and_prepare(
     with fou.ResourceLimit(
         resource.RLIMIT_NOFILE, soft=4096, warn_on_failure=True
     ):
-        dataset, info = tfds.load(
-            tfds_name,
-            split=split,
-            data_dir=tmp_dir,
-            download=download,
-            with_info=True,
-        )
+        dataset, info = download_fcn(scratch_dir)
 
-    class_labels = get_class_labels_fcn(info)
-    labels_map = _class_labels_to_labels_map(class_labels)
-    sample_parser.labels_map = labels_map
-    num_samples = info.splits[split].num_examples
+    classes = get_class_labels_fcn(info)
+    num_samples = get_num_samples_fcn(info)
+    sample_parser.classes = classes
 
     if isinstance(sample_parser, foud.ImageClassificationSampleParser):
         write_dataset_fcn = foud.to_image_classification_dataset
@@ -592,21 +767,4 @@ def _download_and_prepare(
         num_samples=num_samples,
     )
 
-    info = foz.ZooDatasetInfo(
-        zoo_dataset.name,
-        type(zoo_dataset),
-        split,
-        num_samples,
-        format,
-        labels_map=labels_map,
-    )
-
-    # Cleanup tmp directory
-    if use_tmp_dir:
-        etau.delete_dir(tmp_dir)
-
-    return info
-
-
-def _class_labels_to_labels_map(class_labels):
-    return {idx: label for idx, label in enumerate(class_labels)}
+    return format, num_samples, classes
