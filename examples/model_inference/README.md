@@ -137,10 +137,10 @@ view = (dataset.view()
 )
 
 # Print some information about the entire dataset
-print(dataset.summary())
+print(dataset)
 
 # Print some information about the view you created
-print(view.summary())
+print(view)
 
 # Print a few samples from the view
 print(view.head())
@@ -282,6 +282,6 @@ session.view = None
 
 # Print details about the selected samples
 selected_view = dataset.view().select(session.selected)
-print(selected_view.summary())
+print(selected_view)
 print(selected_view.head())
 ```
