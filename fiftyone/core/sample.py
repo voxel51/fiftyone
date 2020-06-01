@@ -262,12 +262,12 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        if isinstance(doc, foo.ODMNoDatasetSample):
+        if isinstance(doc, foo.NoDatasetSample):
             sample = cls.__new__(cls)
             sample._doc = doc
             return sample
 
-        if not isinstance(doc, foo.ODMDatasetSample):
+        if not isinstance(doc, foo.ODMSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
 
         if not doc.id:

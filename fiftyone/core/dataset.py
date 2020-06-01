@@ -1296,7 +1296,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name = d["name"]
         samples = [
             fos.Sample.from_dict(
-                foo.ODMNoDatasetSample, s, created=True, extended=True
+                foo.NoDatasetSample, s, created=True, extended=True
             )
             for s in d["samples"]
         ]

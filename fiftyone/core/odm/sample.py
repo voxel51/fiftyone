@@ -428,7 +428,10 @@ class NoDatasetSample(SerializableDocument):
         self._data.update(kwargs)
 
     def to_dict(self, extended=False):
-        return dict(self._data)
+        return {
+            k: v.to_dict() if hasattr(v, "to_dict") else v
+            for k, v in self._data.items()
+        }
 
     @classmethod
     def from_dict(cls, d, created=False, extended=False):
