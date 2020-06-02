@@ -42,7 +42,6 @@ function Dataset(props) {
     src = `${host}?path=${path}&id=${id}`;
     s = view.sample;
   }
-
   if (loading) {
     return <Redirect to={routes.LOADING} />;
   }
@@ -122,10 +121,10 @@ function Dataset(props) {
               <Menu pointing secondary>
                 {tabs.map((v, i) => {
                   return (
-                    <Link key={i} to={`${routes.DATASET}${v}`}>
+                    <Link key={i} to={v}>
                       <Menu.Item
-                        name={v}
-                        active={`/${v}` === props.location.pathname}
+                        name={v.slice(1)}
+                        active={v === props.location.pathname}
                       />
                     </Link>
                   );
@@ -149,7 +148,7 @@ function Dataset(props) {
                 <Route path={routes.LABELS}>
                   <Distributions group="labels" />
                 </Route>
-                <Route path={routes.LABELS}>
+                <Route path={routes.TAGS}>
                   <Distributions group="tags" />
                 </Route>
               </>

@@ -27,7 +27,8 @@ class CustomizedAxisTick extends PureComponent {
   }
 }
 
-const Distribution = connect(({ data, name }) => {
+const Distribution = connect(({ distribution }) => {
+  const { name, type, data } = distribution;
   const barWidth = 30;
   const [rightMargin, setRightMargin] = useState(0);
   const container = useRef(null);
@@ -36,7 +37,7 @@ const Distribution = connect(({ data, name }) => {
 
   return (
     <Segment style={{ overflowY: "auto", margin: "2rem" }}>
-      <Header as="h3">{name}</Header>
+      <Header as="h3">{`${name}: ${type}`}</Header>
       <BarChart
         ref={container}
         height={500}
@@ -75,6 +76,7 @@ const Distributions = ({ group, port, state }) => {
 
   const getData = () => {
     socket.emit("get_distributions", group, (data) => {
+      console.log(data);
       setInitialLoad(false);
       setLoading(false);
       setData(data);
@@ -96,8 +98,8 @@ const Distributions = ({ group, port, state }) => {
 
   return (
     <>
-      {data.map((dist, i) => {
-        return <Distribution key={i} data={dist.data} name={chart._id} />;
+      {data.map((distribution, i) => {
+        return <Distribution key={i} distribution={distribution} />;
       })}
     </>
   );

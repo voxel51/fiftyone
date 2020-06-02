@@ -459,8 +459,16 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _get_distribution(self, dataset, group):
-        return list(self.aggregate(_DISTRIBUTION_PIPELINES[group](dataset)))
+    def _get_distributions(self, group):
+        result = list(self.aggregate(_DISTRIBUTION_PIPELINES[group]))
+
+        if group == "labels":
+            result = [result[0]["classifications"] + result[0]["detections"]]
+
+        for idx, dist in enumerate(result):
+            result[idx] = sorted(result[idx], key=lambda c: c["key"])
+        print(result)
+        return sorted(result, key=lambda d: d["_id"])
 
     def _get_facets(self):
         return list(self.aggregate(_FACETS_PIPELINE))
@@ -479,7 +487,7 @@ class DatasetView(foc.SampleCollection):
 
 
 _DISTRIBUTION_PIPELINES = {
-    "labels": lambda view: [
+    "labels": [
         {
             "$facet": {
                 "detections": [
@@ -513,6 +521,13 @@ _DISTRIBUTION_PIPELINES = {
                             },
                         }
                     },
+                    {
+                        "$project": {
+                            "name": "$_id",
+                            "type": "Detection",
+                            "data": "$data",
+                        }
+                    },
                 ],
                 "classifications": [
                     {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
@@ -541,11 +556,18 @@ _DISTRIBUTION_PIPELINES = {
                             },
                         }
                     },
+                    {
+                        "$project": {
+                            "name": "$_id",
+                            "type": "Classification",
+                            "data": "$data",
+                        }
+                    },
                 ],
             }
         }
     ],
-    "tags": lambda view: [
+    "tags": [
         {"$project": {"tag": "$tags"}},
         {"$unwind": "$tag"},
         {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
@@ -558,6 +580,7 @@ _DISTRIBUTION_PIPELINES = {
                 },
             }
         },
+        {"$project": {"name": "$_id", "type": "Tag", "data": "$data"}},
     ],
 }
 
