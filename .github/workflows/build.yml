@@ -13,3 +13,7 @@ jobs:
       - name: Build wheel
         run: |
           python setup.py bdist_wheel
+      - name: Upload wheel
+        uses: actions/upload-artifact@v2
+        with:
+          path: dist/*.whl
