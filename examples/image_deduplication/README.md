@@ -163,8 +163,8 @@ session.dataset = dataset
 
 ## Check for duplicates
 
-Now let's use a more powerful query to search for duplicate files, i.e., those
-with the same file hashses:
+Now let's use a simple Python statement to locate the duplicate files in the
+dataset, i.e., those with the same file hashses:
 
 ```py
 from collections import Counter
