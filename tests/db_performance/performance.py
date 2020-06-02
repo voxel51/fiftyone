@@ -230,8 +230,11 @@ class MongoFramesSample(mongoframes.Frame):
     }
 
 
-def mongoframes_frame_save(n):
+def mongoframes_one(n):
     foo.drop_database()
+    times = []
+
+    # CREATE
     start_time = time.time()
     samples = [
         MongoFramesSample(
@@ -243,11 +246,41 @@ def mongoframes_frame_save(n):
     ]
     for sample in samples:
         sample.insert()
-    return time.time() - start_time
+    times.append(time.time() - start_time)
+
+    # READ
+    start_time = time.time()
+    samples = [
+        MongoFramesSample.one(mongoframes.Q.filepath == "test_%d.png" % i)
+        for i in range(n)
+    ]
+    times.append(time.time() - start_time)
+
+    # UPDATE
+    start_time = time.time()
+    for i, sample in enumerate(samples):
+        sample.filepath = "test_%d.jpg" % i
+        sample.tags.append("tag3")
+        sample.metadata[
+            "size_bytes"
+        ] = 1024  # @todo(Tyler) why is this a dict?
+        sample.update()
+    times.append(time.time() - start_time)
+
+    # DELETE
+    start_time = time.time()
+    for sample in samples:
+        sample.delete()
+    times.append(time.time() - start_time)
+
+    return np.array(times)
 
 
-def mongoframes_insert_many(n):
+def mongoframes_many(n):
     foo.drop_database()
+    times = []
+
+    # CREATE
     start_time = time.time()
     samples = [
         {
@@ -258,53 +291,88 @@ def mongoframes_insert_many(n):
         for i in range(n)
     ]
     MongoFramesSample.insert_many(samples)
-    return time.time() - start_time
+    times.append(time.time() - start_time)
+
+    # READ
+    start_time = time.time()
+    samples = MongoFramesSample.many()
+    times.append(time.time() - start_time)
+
+    # UPDATE
+    start_time = time.time()
+    for i, sample in enumerate(samples):
+        sample.filepath = "test_%d.jpg" % i
+        sample.tags.append("tag3")
+        sample.metadata[
+            "size_bytes"
+        ] = 1024  # @todo(Tyler) why is this a dict?
+    MongoFramesSample.update_many(samples)
+    times.append(time.time() - start_time)
+
+    # DELETE
+    start_time = time.time()
+    MongoFramesSample.delete_many(samples)
+    times.append(time.time() - start_time)
+
+    return np.array(times)
 
 
 ###############################################################################
 
 func_map = {
-    "insert": {
-        "pymongo": {"one": pymongo_insert_one, "many": pymongo_insert_many,},
-        "pymodm": {"one": pymodm_document_save, "many": pymodm_bulk_create,},
-        "mongoengine": {
-            "one": mongoengine_document_save,
-            "many": mongoengine_insert,
-        },
-        "mongoframes": {
-            "one": mongoframes_frame_save,
-            "many": mongoframes_insert_many,
-        },
-    }
+    "pymongo": {"one": pymongo_insert_one, "many": pymongo_insert_many,},
+    "pymodm": {"one": pymodm_document_save, "many": pymodm_bulk_create,},
+    "mongoengine": {
+        "one": mongoengine_document_save,
+        "many": mongoengine_insert,
+    },
+    "mongoframes": {"one": mongoframes_one, "many": mongoframes_many,},
 }
 
 ###############################################################################
 
-NUM_SAMPLES = [10 ** i for i in range(0, 4)]
-OPS = ["insert"]
-packages = ["mongoengine", "pymodm", "mongoframes", "pymongo"]
+NUM_SAMPLES = [10 ** i for i in range(1, 3)]
+OPS = ["create", "read", "update", "delete"]
+packages = [
+    # "mongoengine",
+    # "pymodm",
+    "mongoframes",
+    # "pymongo"
+]
 bulk = ["one", "many"]
 
 TIMES = defaultdict(lambda: defaultdict(dict))
 
-for op in OPS:
-    for b in bulk:
-        for pkg in packages:
-            func = func_map[op][pkg][b]
-            times = []
-            for n in NUM_SAMPLES:
-                if n < 1000:
-                    rounds = []
-                    for i in range(11):
-                        rounds.append(func(n))
-                    times.append(np.median(rounds) * 1000 / n)
-                else:
-                    times.append(func(n) * 1000 / n)
-                print(
-                    "%27s() %.3fs per 1000 samples (batch size = %d)"
-                    % (func.__name__, times[-1], n)
-                )
-            TIMES[op][b][pkg] = times
+for b in bulk:
+    for pkg in packages:
+        func = func_map[pkg][b]
+        times = None
+        for n in NUM_SAMPLES:
+            if n < 1000:
+                rounds = None
+                for i in range(11):
+                    if rounds is None:
+                        rounds = func(n)
+                    else:
+                        rounds = np.vstack([rounds, func(n)])
+                # new_time
+                new_time = np.mean(rounds, axis=0)
+            else:
+                new_time = func(n)
+
+            new_time = new_time * 1000 / n
+
+            if times is None:
+                times = np.expand_dims(new_time, axis=0)
+            else:
+                times = np.vstack([times, new_time])
+            print(
+                "%27s() %s per 1000 samples (batch size = %d)"
+                % (func.__name__, times[-1, :], n)
+            )
+
+        for i, op in enumerate(OPS):
+            TIMES[op][b][pkg] = times[:, i]
 
 ###############################################################################
 
@@ -312,26 +380,30 @@ for op in OPS:
 x = np.arange(len(NUM_SAMPLES))
 width = 0.1
 
-fig, ax = plt.subplots()
+fig, axs = plt.subplots(nrows=len(OPS))
+if len(OPS) == 1:
+    axs = [axs]
 
-op = OPS[0]
+for ax, op in zip(axs, OPS):
+    i = 0
+    for b in bulk:
+        for pkg in packages:
+            times = TIMES[op][b][pkg]
+            L = (len(bulk) * len(packages) - 1) / 2
+            rects = ax.bar(
+                x + (i - L) * width,
+                times,
+                width=width,
+                label="-".join([pkg, b]),
+            )
+            i += 1
 
-i = 0
-for b in bulk:
-    for pkg in packages:
-        times = TIMES[op][b][pkg]
-        L = (len(bulk) * len(packages) - 1) / 2
-        rects = ax.bar(
-            x + (i - L) * width, times, width=width, label="-".join([pkg, b])
-        )
-        i += 1
-
-# Add some text for labels, title and custom x-axis tick labels, etc.
-ax.set_ylabel("Time per 1000 samples")
-ax.set_title("Database Operations grouped by Method")
-ax.set_xticks(x)
-ax.set_xticklabels(NUM_SAMPLES)
-ax.legend()
-# plt.yscale("log")
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel("Time per 1000 samples")
+    ax.set_title("Processing Time for '%s'" % op)
+    ax.set_xticks(x)
+    ax.set_xticklabels(NUM_SAMPLES)
+    ax.legend()
+    ax.set_yscale("log")
 
 plt.show()
