@@ -8,8 +8,8 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
-        with:
-          submodules: true
+        # with:
+        #   submodules: true
       - name: Build wheel
         run: |
           python setup.py bdist_wheel
