@@ -1,0 +1,15 @@
+name: Build
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+      - name: Build wheel
+        run: |
+          python setup.py bdist_wheel
