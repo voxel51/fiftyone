@@ -19,28 +19,19 @@ pip install torch
 pip install torchvision
 ```
 
-## Data Download
+## Dataset download
 
-Since we are going to train a model in this walkthrough, we need the training
-data too. Download the train and test split of the CIFAR-10 dataset to
-`~/fiftyone/cifar10`:
+In this walkthrough, we'll train a model on the CIFAR-10 dataset, which you can
+download from the FiftyOne Dataset Zoo to `~/fiftyone/cifar10` via the
+following command:
 
-```py
-import fiftyone.zoo as foz
-import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
-
-# It is safe to run this multiple times; the data will not be re-downloaded
-foc.set_config_settings(default_ml_backend="torch")
-foz.load_zoo_dataset("cifar10", split="train")
-foz.load_zoo_dataset("cifar10", split="test")
-foo.drop_database()
+```
+fiftyone zoo download cifar10
 ```
 
-We use CIFAR-10 here as an illustrative example and use it via the FiftyOne
-zoo. However, this is not a requirement for using FiftyOne. You can use your
-datasets no matter where they are. Refer to the other, data-related
-walkthroughs for more examples.
+We use CIFAR-10 here as an illustrative example. However, this is not a
+requirement for using FiftyOne. You can use your own datasets no matter where
+they are. Refer to the other, data-related walkthroughs for more examples.
 
 ## Manipulating the data
 
@@ -57,7 +48,7 @@ without loss of generality.
 %run -i setup_data.py
 ```
 
-## Train and save a model
+## Train a model
 
 Using the simple model provided in `simple_resnet.py`, let's now train a model
 and save it to disk. We will train the model using the FiftyOne dataset we made
@@ -69,7 +60,7 @@ wrapped by FiftyOne; all good, FiftyOne will work with you on your terms.
 %run -i train.py
 ```
 
-## Run predictions on the dataset
+## Add predictions on the dataset
 
 Using the model we just trained, let's now add predictions to the dataset so
 that we can explore some of FiftyOne's capabilities in identifying hard samples
