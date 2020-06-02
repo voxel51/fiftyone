@@ -78,17 +78,16 @@ we processed. We can use this to find possible label mistakes both in the code
 and in the visualization.
 
 ```py
-import fiftyone.brain.hardness as fbh
-import fiftyone.brain.mistakenness as fbm
+import fiftyone.brain as fob
 
 # Retrieve samples that we processed
 h_view = dataset.view().match_tag("processed")
 
 # Compute sample hardness
-fbh.compute_hardness(h_view, "walkthrough")
+fob.compute_hardness(h_view, "walkthrough")
 
 # Compute sample mistakenness
-fbm.compute_mistakenness(h_view, "walkthrough")
+fob.compute_mistakenness(h_view, "walkthrough")
 
 # Launch the FiftyOne Dashboard
 session = fo.launch_dashboard()
