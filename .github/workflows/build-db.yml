@@ -13,7 +13,7 @@ jobs:
       - name: Build wheel
         run: |
           cd package/db
-          python setup.py bdist_wheel
+          python3 setup.py bdist_wheel
       - name: Upload wheel
         uses: actions/upload-artifact@v2
         with:
