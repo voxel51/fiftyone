@@ -10,7 +10,6 @@ import {
   Segment,
 } from "semantic-ui-react";
 
-import routes from "../constants/routes.json";
 import Distributions from "../components/Distributions";
 import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
