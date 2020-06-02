@@ -212,9 +212,7 @@ model_name = "resnet50"
 num_samples = 25
 batch_size = 5
 view = dataset.view().take(num_samples)
-image_paths, sample_ids = zip(
-    *[(s.filepath, s.id) for s in view.iter_samples()]
-)
+image_paths, sample_ids = zip(*[(s.filepath, s.id) for s in view])
 data_loader = make_cifar10_data_loader(image_paths, sample_ids, batch_size)
 
 #

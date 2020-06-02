@@ -231,7 +231,10 @@ def get_zoo_dataset(name):
     """
     all_datasets = _get_zoo_datasets()
     for source in _get_zoo_dataset_sources():
-        datasets = all_datasets.get(source, {})
+        if source not in all_datasets:
+            continue
+
+        datasets = all_datasets[source]
         if name in datasets:
             zoo_dataset_cls = datasets[name]
             return zoo_dataset_cls()
