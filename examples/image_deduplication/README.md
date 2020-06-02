@@ -39,7 +39,7 @@ have no clue which they are!
 
 Importing the main FiftyOne package is easy:
 
-```python
+```py
 import fiftyone as fo
 ```
 
@@ -48,7 +48,7 @@ import fiftyone as fo
 Let's use a utililty method provided by FiftyOne to load the image
 classification dataset from disk:
 
-```python
+```py
 import os
 
 import fiftyone.utils.data as foud
@@ -67,7 +67,7 @@ dataset = fo.Dataset.from_image_classification_samples(
 
 We can poke around in the dataset:
 
-```python
+```py
 # Print summary information about the dataset
 print(dataset)
 
@@ -78,7 +78,7 @@ print(dataset.view().take(1).first())
 Create a view that contains only samples whose ground truth label is
 `mountain`:
 
-```python
+```py
 view = dataset.view().match({"ground_truth.label": "mountain"})
 
 # Print summary information about the view
@@ -91,7 +91,7 @@ print(view.first())
 Create a view with samples sorted by their ground truth labels in reverse
 alphabetical order:
 
-```python
+```py
 view = dataset.view().sort_by("ground_truth.label", reverse=True)
 
 print(view)
@@ -102,33 +102,33 @@ print(view.first())
 
 Start browsing the dataset:
 
-```python
+```py
 session = fo.launch_dashboard(dataset=dataset)
 ```
 
 Narrow your scope to 10 random samples:
 
-```python
+```py
 session.view = dataset.view().take(10)
 ```
 
 Click on some some samples in the GUI to select them and access their IDs from
 code!
 
-```python
+```py
 # Get the IDs of the currently selected samples in the dashboard
 sample_ids = session.selected
 ```
 
 Create a view that contains your currently selected samples:
 
-```python
+```py
 selected_view = dataset.view().select(session.selected)
 ```
 
 Update the dashboard to only show your selected samples:
 
-```python
+```py
 session.view = selected_view
 ```
 
@@ -136,7 +136,7 @@ session.view = selected_view
 
 Iterate over the samples and compute their file hashes:
 
-```python
+```py
 import fiftyone.core.utils as fou
 
 for sample in dataset:
@@ -150,14 +150,14 @@ We have two ways to visualize this new information:
 
 -   From your terminal:
 
-```python
+```py
 sample = dataset.view().first()
 print(sample)
 ```
 
 -   By refreshing the dashboard:
 
-```python
+```py
 session.dataset = dataset
 ```
 
@@ -166,7 +166,7 @@ session.dataset = dataset
 Now let's use a more powerful query to search for duplicate files, i.e., those
 with the same file hashses:
 
-```python
+```py
 from collections import Counter
 
 filehash_counts = Counter(sample.file_hash for sample in dataset)
@@ -178,7 +178,7 @@ print("Number of duplicate file hashes: %d" % len(dup_filehashes))
 Now let's create a view that contains only the samples with these duplicate
 file hashes:
 
-```python
+```py
 dup_view = (
     dataset.view()
     # Extract samples with duplicate file hashes
@@ -193,7 +193,7 @@ print("Number of duplicates: %d" % (len(dup_view) - len(dup_filehashes)))
 
 Of course, we can always use the dashboard to visualize our work!
 
-```python
+```py
 session.view = dup_view
 ```
 
@@ -202,7 +202,7 @@ session.view = dup_view
 Now let's delete the duplicate samples from the dataset using our `dup_view` to
 restrict our attention to known duplicates:
 
-```python
+```py
 print("Length of dataset before: %d" % len(dataset))
 
 _dup_filehashes = set()
