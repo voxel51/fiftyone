@@ -103,4 +103,4 @@ const Distributions = ({ group, port, state }) => {
   );
 };
 
-export default connect(Charts);
+export default connect(Distributions);
