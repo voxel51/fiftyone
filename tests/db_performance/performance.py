@@ -48,7 +48,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pymongo import MongoClient
+import pymongo
 import mongoengine
 import mongoframes
 import pymodm
@@ -62,9 +62,16 @@ foo.drop_database()
 
 def pymongo_one(n):
     foo.drop_database()
-    client = MongoClient()
+    client = pymongo.MongoClient()
     db = client.fiftyone
     collection = db["test_pymongo_collection"]
+
+    count = collection.count_documents({})
+    assert count == 0, "pymongo_one count: %d" % count
+
+    times = []
+
+    # CREATE
     start_time = time.time()
     samples = [
         {
@@ -76,14 +83,53 @@ def pymongo_one(n):
     ]
     for sample in samples:
         collection.insert_one(sample)
-    return time.time() - start_time
+    times.append(time.time() - start_time)
+
+    count = collection.count_documents({})
+    assert count == n, "pymongo_one count: %d" % count
+
+    # READ
+    start_time = time.time()
+    samples = [
+        collection.find_one({"filepath": "test_%d.png" % i}) for i in range(n)
+    ]
+    times.append(time.time() - start_time)
+
+    assert len(samples) == n, "pymongo_one count: %d" % len(samples)
+
+    # UPDATE
+    start_time = time.time()
+    for i, sample in enumerate(samples):
+        sample["filepath"] = "test_%d.jpg" % i
+        sample["tags"].append("tag3")
+        sample["metadata"]["size_bytes"] = 1024
+        collection.replace_one({"_id": sample["_id"]}, sample)
+    times.append(time.time() - start_time)
+
+    # DELETE
+    start_time = time.time()
+    for sample in samples:
+        collection.delete_one({"_id": sample["_id"]})
+    times.append(time.time() - start_time)
+
+    count = collection.count_documents({})
+    assert count == 0, "pymongo_one count: %d" % count
+
+    return np.array(times)
 
 
 def pymongo_many(n):
     foo.drop_database()
-    client = MongoClient()
+    client = pymongo.MongoClient()
     db = client.fiftyone
     collection = db["test_pymongo_collection"]
+
+    count = collection.count_documents({})
+    assert count == 0, "pymongo_many count: %d" % count
+
+    times = []
+
+    # CREATE
     start_time = time.time()
     samples = [
         {
@@ -94,7 +140,41 @@ def pymongo_many(n):
         for i in range(n)
     ]
     collection.insert_many(samples)
-    return time.time() - start_time
+    times.append(time.time() - start_time)
+
+    count = collection.count_documents({})
+    assert count == n, "pymongo_many count: %d" % count
+
+    # READ
+    start_time = time.time()
+    samples = [sample for sample in collection.find({})]
+    times.append(time.time() - start_time)
+
+    assert len(samples) == n, "pymongo_many count: %d" % len(samples)
+
+    # UPDATE
+    start_time = time.time()
+    for i, sample in enumerate(samples):
+        sample["filepath"] = "test_%d.jpg" % i
+        sample["tags"].append("tag3")
+        sample["metadata"]["size_bytes"] = 1024
+    requests = [
+        pymongo.ReplaceOne({"_id": sample["_id"]}, sample, upsert=False)
+        for sample in samples
+    ]
+    collection.bulk_write(requests)
+    times.append(time.time() - start_time)
+
+    # DELETE
+    start_time = time.time()
+    sample_ids = [sample["_id"] for sample in samples]
+    collection.delete_many({"_id": {"$in": sample_ids}})
+    times.append(time.time() - start_time)
+
+    count = collection.count_documents({})
+    assert count == 0, "pymongo_many count: %d" % count
+
+    return np.array(times)
 
 
 ###############################################################################
@@ -366,7 +446,9 @@ def mongoengine_many(n):
 ###############################################################################
 
 # Connect MongoFrames to the database
-mongoframes.Frame._client = MongoClient("mongodb://localhost:27017/fiftyone")
+mongoframes.Frame._client = pymongo.MongoClient(
+    "mongodb://localhost:27017/fiftyone"
+)
 
 
 class MongoFramesMetadata(mongoframes.SubFrame):
@@ -541,13 +623,13 @@ def compute_times():
 
 ###############################################################################
 
-NUM_SAMPLES = [10 ** i for i in range(2, 3)]
+NUM_SAMPLES = [10 ** i for i in range(0, 4)]
 OPS = ["create", "read", "update", "delete"]
 packages = [
-    "mongoengine",
-    "pymodm",
-    "mongoframes",
-    # "pymongo"
+    # "mongoengine",
+    # "pymodm",
+    # "mongoframes",
+    "pymongo"
 ]
 bulk = ["one", "many"]
 
