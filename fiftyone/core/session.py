@@ -148,7 +148,6 @@ class Session(foc.HasClient):
 
         if not self._remote:
             self._app_service = fos.AppService()
-            _close_on_exit(self)
         else:
             logger.info(
                 "You have launched a remote session and will need to configure "
@@ -248,15 +247,3 @@ class Session(foc.HasClient):
             view=self._view,
             selected=self.state.selected,
         )
-
-
-def _close_on_exit(session):
-    def handle_exit(*args):
-        try:
-            session.close()
-        except:
-            pass
-
-    atexit.register(handle_exit)
-    signal.signal(signal.SIGTERM, handle_exit)
-    signal.signal(signal.SIGINT, handle_exit)
