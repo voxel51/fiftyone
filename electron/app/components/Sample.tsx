@@ -17,9 +17,9 @@ const Sample = ({
   setView,
 }) => {
   const host = `http://127.0.0.1:${port}`;
-  const src = `${host}?path=${sample.filepath}`;
-  const socket = getSocket(port, "state");
   const id = sample._id.$oid;
+  const src = `${host}?path=${sample.filepath}&id=${id}`;
+  const socket = getSocket(port, "state");
   const s = sample;
   const {
     activeLabels,
