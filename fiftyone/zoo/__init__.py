@@ -86,7 +86,7 @@ def list_downloaded_zoo_datasets(base_dir=None):
     return downloaded_datasets
 
 
-def download_zoo_dataset(name, splits=None, dataset_dir=None):
+def download_zoo_dataset(name, split=None, splits=None, dataset_dir=None):
     """Downloads the dataset of the given name from the FiftyOne Dataset Zoo.
 
     Any dataset splits that already exist in the specified directory are not
@@ -95,11 +95,16 @@ def download_zoo_dataset(name, splits=None, dataset_dir=None):
     Args:
         name: the name of the zoo dataset to download. Call
             :func:`list_zoo_datasets` to see the available datasets
-        splits (None): an optional list of splits to download, if applicable.
-            Typical values are ``("train", "validation", "test")``. If not
-            specified, all available splits are downloaded. Consult the
-            documentation for the :class:`ZooDataset` you specified to see the
-            supported splits
+        split (None) a split to download, if applicable. Typical values are
+            ``("train", "validation", "test")``. If neither ``split`` nor
+            ``splits`` are provided, all available splits are downloaded.
+            Consult the documentation for the :class:`ZooDataset` you specified
+            to see the supported splits
+        splits (None): a list of splits to download, if applicable. Typical
+            values are ``("train", "validation", "test")``. If neither
+            ``split`` nor ``splits`` are provided, all available splits are
+            downloaded. Consult the documentation for the :class:`ZooDataset`
+            you specified to see the supported splits
         dataset_dir (None): the directory into which to download the dataset.
             By default, :func:`fiftyone.core.dataset.get_default_dataset_dir`
             is used
@@ -109,12 +114,18 @@ def download_zoo_dataset(name, splits=None, dataset_dir=None):
         dataset_dir: the directory containing the dataset
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
-    info = zoo_dataset.download_and_prepare(dataset_dir, splits=splits)
+    info = zoo_dataset.download_and_prepare(
+        dataset_dir, split=split, splits=splits
+    )
     return info, dataset_dir
 
 
 def load_zoo_dataset(
-    name, splits=None, dataset_dir=None, download_if_necessary=True,
+    name,
+    split=None,
+    splits=None,
+    dataset_dir=None,
+    download_if_necessary=True,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
     a :class:`fiftyone.core.dataset.Dataset`.
@@ -125,11 +136,16 @@ def load_zoo_dataset(
     Args:
         name: the name of the zoo dataset to load. Call
             :func:`list_zoo_datasets` to see the available datasets
-        splits (None): an optional list of splits to load, if applicable.
-            Typical values are ``("train", "validation", "test")``. If not
-            specified, all available splits are loaded. Consult the
-            documentation for the :class:`ZooDataset` you specified to see the
-            supported splits
+        split (None) a split to load, if applicable. Typical values are
+            ``("train", "validation", "test")``. If neither ``split`` nor
+            ``splits`` are provided, all available splits are loaded. Consult
+            the documentation for the :class:`ZooDataset` you specified to see
+            the supported splits
+        splits (None): a list of splits to load, if applicable. Typical values
+            are ``("train", "validation", "test")``. If neither ``split`` nor
+            ``splits`` are provided, all available splits are loaded. Consult
+            the documentation for the :class:`ZooDataset` you specified to see
+            the supported splits
         dataset_dir (None): the directory in which the dataset is stored or
             will be downloaded. By default,
             :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
@@ -139,6 +155,8 @@ def load_zoo_dataset(
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
+    splits = _parse_splits(split, splits)
+
     if download_if_necessary:
         info, dataset_dir = download_zoo_dataset(
             name, splits=splits, dataset_dir=dataset_dir
@@ -240,6 +258,21 @@ def get_zoo_dataset(name):
             return zoo_dataset_cls()
 
     raise ValueError("Dataset '%s' not found in the zoo" % name)
+
+
+def _parse_splits(split, splits):
+    if split is None and splits is None:
+        return None
+
+    _splits = []
+
+    if split:
+        _splits.append(split)
+
+    if splits:
+        _splits.extend(list(splits))
+
+    return _splits
 
 
 def _get_zoo_datasets():
@@ -498,7 +531,7 @@ class ZooDataset(object):
         """
         return os.path.join(dataset_dir, "info.json")
 
-    def download_and_prepare(self, dataset_dir, splits=None):
+    def download_and_prepare(self, dataset_dir, split=None, splits=None):
         """Downloads the dataset and prepares it for use in the given directory
         as a :class:`fiftyone.types.LabeledDataset`.
 
@@ -507,13 +540,18 @@ class ZooDataset(object):
 
         Args:
             dataset_dir: the directory in which to construct the dataset
-            splits (None): an optional list of splits to download, if
-                applicable. If omitted, the full dataset is downloaded
+            split (None) a split to download, if applicable. If neither
+                ``split`` nor ``splits`` are provided, the full dataset is
+                downloaded
+            splits (None): a list of splits to download, if applicable. If
+                neither ``split`` nor ``splits`` are provided, the full dataset
+                is  downloaded
 
         Returns:
             the :class:`ZooDatasetInfo` for the dataset
         """
         # Parse splits
+        splits = _parse_splits(split, splits)
         if splits:
             for split in splits:
                 if split not in self.supported_splits:
