@@ -6,7 +6,7 @@ remove duplicate images from your dataset.
 ## Download the data
 
 First we download the dataset to disk. The dataset is a 1000 sample subset of
-CIFAR100, a dataset of 32x32 pixel images with one of 100 different
+CIFAR-100, a dataset of 32x32 pixel images with one of 100 different
 classification labels such as `apple`, `bicycle`, `porcupine`, etc.
 
 ```bash
