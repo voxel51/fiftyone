@@ -13,6 +13,9 @@ classification labels such as `apple`, `bicycle`, `porcupine`, etc.
 python -m fiftyone.examples.image_deduplication.download_dataset
 ```
 
+The above script uses `tensorflow.keras.datasets` to download the dataset, so
+you must have TensorFlow installed.
+
 The dataset is organized on disk as follows:
 
 ```
