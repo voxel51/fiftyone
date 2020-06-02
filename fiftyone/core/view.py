@@ -463,11 +463,13 @@ class DatasetView(foc.SampleCollection):
         result = list(self.aggregate(_DISTRIBUTION_PIPELINES[group]))
 
         if group == "labels":
-            result = [result[0]["classifications"] + result[0]["detections"]]
+            result = result[0]["classifications"] + result[0]["detections"]
 
         for idx, dist in enumerate(result):
-            result[idx] = sorted(result[idx], key=lambda c: c["key"])
-        print(result)
+            result[idx]["data"] = sorted(
+                result[idx]["data"], key=lambda c: c["count"], reverse=True
+            )
+
         return sorted(result, key=lambda d: d["_id"])
 
     def _get_facets(self):
