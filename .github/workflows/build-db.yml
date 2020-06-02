@@ -1,9 +1,9 @@
-name: Build
+name: Build DB
 
 on: push
 
 jobs:
-  build:
+  build-db:
     runs-on: ubuntu-20.04
     steps:
       - name: Clone fiftyone
@@ -12,6 +12,7 @@ jobs:
         #   submodules: true
       - name: Build wheel
         run: |
+          cd package/db
           python setup.py bdist_wheel
       - name: Upload wheel
         uses: actions/upload-artifact@v2
