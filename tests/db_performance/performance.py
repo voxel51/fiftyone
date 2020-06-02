@@ -60,7 +60,7 @@ foo.drop_database()
 ###############################################################################
 
 
-def pymongo_insert_one(n):
+def pymongo_one(n):
     foo.drop_database()
     client = MongoClient()
     db = client.fiftyone
@@ -79,7 +79,7 @@ def pymongo_insert_one(n):
     return time.time() - start_time
 
 
-def pymongo_insert_many(n):
+def pymongo_many(n):
     foo.drop_database()
     client = MongoClient()
     db = client.fiftyone
@@ -102,7 +102,7 @@ def pymongo_insert_many(n):
 ###############################################################################
 
 # Connect to MongoDB and call the connection "my-app".
-pymodm.connection.connect("mongodb://localhost:27017/pymodm_db")
+pymodm.connection.connect("mongodb://localhost:27017/fiftyone")
 
 
 class PyMODMMetadata(pymodm.EmbeddedMongoModel):
@@ -116,8 +116,14 @@ class PyMODMSample(pymodm.MongoModel):
     metadata = pymodm.fields.EmbeddedDocumentField(PyMODMMetadata)
 
 
-def pymodm_document_save(n):
+def pymodm_one(n):
+    # pylint: disable=no-member
     foo.drop_database()
+    count = PyMODMSample.objects.count()
+    assert count == 0, "pymodm_one count: %d" % count
+    times = []
+
+    # CREATE
     start_time = time.time()
     samples = [
         PyMODMSample(
@@ -129,12 +135,51 @@ def pymodm_document_save(n):
     ]
     for sample in samples:
         sample.save()
-    return time.time() - start_time
+    times.append(time.time() - start_time)
+
+    count = PyMODMSample.objects.count()
+    assert count == n, "pymodm_one count: %d" % count
+
+    # READ
+    start_time = time.time()
+    samples = [
+        PyMODMSample.objects.get({"filepath": "test_%d.png" % i})
+        for i in range(n)
+    ]
+    times.append(time.time() - start_time)
+
+    assert len(samples) == n, "pymodm_one count: %d" % len(samples)
+
+    # UPDATE
+    start_time = time.time()
+    for i, sample in enumerate(samples):
+        sample.filepath = "test_%d.jpg" % i
+        sample.tags.append("tag3")
+        sample.metadata.size_bytes = 1024
+        sample.save()
+    times.append(time.time() - start_time)
+
+    # DELETE
+    start_time = time.time()
+    for sample in samples:
+        sample.delete()
+    times.append(time.time() - start_time)
+
+    count = PyMODMSample.objects.count()
+    assert count == 0, "pymodm_one count: %d" % count
+
+    return np.array(times)
 
 
-def pymodm_bulk_create(n):
+def pymodm_many(n):
     # pylint: disable=no-member
     foo.drop_database()
+    count = PyMODMSample.objects.count()
+    assert count == 0, "pymodm_many count: %d" % count
+
+    times = []
+
+    # CREATE
     start_time = time.time()
     samples = [
         PyMODMSample(
@@ -145,7 +190,39 @@ def pymodm_bulk_create(n):
         for i in range(n)
     ]
     PyMODMSample.objects.bulk_create(samples)
-    return time.time() - start_time
+    times.append(time.time() - start_time)
+
+    count = PyMODMSample.objects.count()
+    assert count == n, "pymodm_many count: %d" % count
+
+    # READ
+    start_time = time.time()
+    samples = [sample for sample in PyMODMSample.objects.all()]
+    times.append(time.time() - start_time)
+
+    assert len(samples) == n, "pymodm_many count: %d" % len(samples)
+
+    # UPDATE
+    # @todo(Tyler) is there a batch update???
+    start_time = time.time()
+    for i, sample in enumerate(samples):
+        sample.filepath = "test_%d.jpg" % i
+        sample.tags.append("tag3")
+        sample.metadata.size_bytes = 1024
+        sample.save()
+    times.append(time.time() - start_time)
+
+    # DELETE
+    start_time = time.time()
+    sample_ids = [sample._id for sample in samples]
+
+    PyMODMSample.objects.raw({"_id": {"$in": sample_ids}}).delete()
+    times.append(time.time() - start_time)
+
+    count = PyMODMSample.objects.count()
+    assert count == 0, "pymodm_many count: %d" % count
+
+    return np.array(times)
 
 
 ###############################################################################
@@ -175,8 +252,15 @@ class MongoEngineSample(mongoengine.Document):
     )
 
 
-def mongoengine_document_save(n):
+def mongoengine_one(n):
+    # pylint: disable=no-member
     foo.drop_database()
+    count = MongoEngineSample.objects.count()
+    assert count == 0, "mongoengine_one count: %d" % count
+
+    times = []
+
+    # CREATE
     start_time = time.time()
     samples = [
         MongoEngineSample(
@@ -188,12 +272,51 @@ def mongoengine_document_save(n):
     ]
     for sample in samples:
         sample.save()
-    return time.time() - start_time
+    times.append(time.time() - start_time)
+
+    count = MongoEngineSample.objects.count()
+    assert count == n, "mongoengine_one count: %d" % count
+
+    # READ
+    start_time = time.time()
+    samples = [
+        MongoEngineSample.objects.get(filepath="test_%d.png" % i)
+        for i in range(n)
+    ]
+    times.append(time.time() - start_time)
+
+    assert len(samples) == n, "mongoengine_one count: %d" % len(samples)
+
+    # UPDATE
+    start_time = time.time()
+    for i, sample in enumerate(samples):
+        sample.filepath = "test_%d.jpg" % i
+        sample.tags.append("tag3")
+        sample.metadata.size_bytes = 1024
+        sample.save()
+    times.append(time.time() - start_time)
+
+    # DELETE
+    start_time = time.time()
+    for sample in samples:
+        sample.delete()
+    times.append(time.time() - start_time)
+
+    count = MongoEngineSample.objects.count()
+    assert count == 0, "mongoengine_one count: %d" % count
+
+    return np.array(times)
 
 
-def mongoengine_insert(n):
+def mongoengine_many(n):
     # pylint: disable=no-member
     foo.drop_database()
+    count = MongoEngineSample.objects.count()
+    assert count == 0, "mongoframes_many count: %d" % count
+
+    times = []
+
+    # CREATE
     start_time = time.time()
     samples = [
         MongoEngineSample(
@@ -204,7 +327,38 @@ def mongoengine_insert(n):
         for i in range(n)
     ]
     MongoEngineSample.objects.insert(samples)
-    return time.time() - start_time
+    times.append(time.time() - start_time)
+
+    count = MongoEngineSample.objects.count()
+    assert count == n, "mongoengine_one count: %d" % count
+
+    # READ
+    start_time = time.time()
+    samples = [sample for sample in MongoEngineSample.objects]
+    times.append(time.time() - start_time)
+
+    assert len(samples) == n, "mongoengine_one count: %d" % len(samples)
+
+    # UPDATE
+    # @todo(Tyler) is there a batch update???
+    start_time = time.time()
+    for i, sample in enumerate(samples):
+        sample.filepath = "test_%d.jpg" % i
+        sample.tags.append("tag3")
+        sample.metadata.size_bytes = 1024
+        sample.save()
+    times.append(time.time() - start_time)
+
+    # DELETE
+    start_time = time.time()
+    sample_ids = [sample.id for sample in samples]
+    MongoEngineSample.objects(id__in=sample_ids).delete()
+    times.append(time.time() - start_time)
+
+    count = MongoEngineSample.objects.count()
+    assert count == 0, "mongoengine_one count: %d" % count
+
+    return np.array(times)
 
 
 ###############################################################################
@@ -232,6 +386,8 @@ class MongoFramesSample(mongoframes.Frame):
 
 def mongoframes_one(n):
     foo.drop_database()
+    count = MongoFramesSample.count()
+    assert count == 0, "mongoframes_one count: %d" % count
     times = []
 
     # CREATE
@@ -248,6 +404,9 @@ def mongoframes_one(n):
         sample.insert()
     times.append(time.time() - start_time)
 
+    count = MongoFramesSample.count()
+    assert count == n, "mongoframes_one count: %d" % count
+
     # READ
     start_time = time.time()
     samples = [
@@ -255,6 +414,8 @@ def mongoframes_one(n):
         for i in range(n)
     ]
     times.append(time.time() - start_time)
+
+    assert len(samples) == n, "mongoframes_one count: %d" % len(samples)
 
     # UPDATE
     start_time = time.time()
@@ -273,11 +434,17 @@ def mongoframes_one(n):
         sample.delete()
     times.append(time.time() - start_time)
 
+    count = MongoFramesSample.count()
+    assert count == 0, "mongoframes_one count: %d" % count
+
     return np.array(times)
 
 
 def mongoframes_many(n):
     foo.drop_database()
+    count = MongoFramesSample.count()
+    assert count == 0, "mongoframes_many count: %d" % count
+
     times = []
 
     # CREATE
@@ -293,10 +460,15 @@ def mongoframes_many(n):
     MongoFramesSample.insert_many(samples)
     times.append(time.time() - start_time)
 
+    count = MongoFramesSample.count()
+    assert count == n, "mongoframes_many count: %d" % count
+
     # READ
     start_time = time.time()
-    samples = MongoFramesSample.many()
+    samples = [sample for sample in MongoFramesSample.many()]
     times.append(time.time() - start_time)
+
+    assert len(samples) == n, "mongoframes_many count: %d" % len(samples)
 
     # UPDATE
     start_time = time.time()
@@ -314,65 +486,72 @@ def mongoframes_many(n):
     MongoFramesSample.delete_many(samples)
     times.append(time.time() - start_time)
 
+    count = MongoFramesSample.count()
+    assert count == 0, "mongoframes_many count: %d" % count
+
     return np.array(times)
 
 
 ###############################################################################
 
 func_map = {
-    "pymongo": {"one": pymongo_insert_one, "many": pymongo_insert_many,},
-    "pymodm": {"one": pymodm_document_save, "many": pymodm_bulk_create,},
-    "mongoengine": {
-        "one": mongoengine_document_save,
-        "many": mongoengine_insert,
-    },
-    "mongoframes": {"one": mongoframes_one, "many": mongoframes_many,},
+    "pymongo": {"one": pymongo_one, "many": pymongo_many},
+    "pymodm": {"one": pymodm_one, "many": pymodm_many},
+    "mongoengine": {"one": mongoengine_one, "many": mongoengine_many},
+    "mongoframes": {"one": mongoframes_one, "many": mongoframes_many},
 }
+
+
+def compute_times():
+    all_times = defaultdict(lambda: defaultdict(dict))
+
+    for b in bulk:
+        for pkg in packages:
+            func = func_map[pkg][b]
+            times = None
+            for n in NUM_SAMPLES:
+                if n < 1000:
+                    rounds = None
+                    for i in range(11):
+                        if rounds is None:
+                            rounds = func(n)
+                        else:
+                            rounds = np.vstack([rounds, func(n)])
+                    # new_time
+                    new_time = np.median(rounds, axis=0)
+                else:
+                    new_time = func(n)
+
+                new_time = new_time * 1000 / n
+
+                if times is None:
+                    times = np.expand_dims(new_time, axis=0)
+                else:
+                    times = np.vstack([times, new_time])
+                print(
+                    "%15s() %s per 1000 samples (batch size = %d)"
+                    % (func.__name__, times[-1, :], n)
+                )
+
+            for i, op in enumerate(OPS):
+                all_times[op][b][pkg] = times[:, i]
+
+    return all_times
+
 
 ###############################################################################
 
-NUM_SAMPLES = [10 ** i for i in range(1, 3)]
+NUM_SAMPLES = [10 ** i for i in range(2, 3)]
 OPS = ["create", "read", "update", "delete"]
 packages = [
-    # "mongoengine",
-    # "pymodm",
+    "mongoengine",
+    "pymodm",
     "mongoframes",
     # "pymongo"
 ]
 bulk = ["one", "many"]
 
-TIMES = defaultdict(lambda: defaultdict(dict))
-
-for b in bulk:
-    for pkg in packages:
-        func = func_map[pkg][b]
-        times = None
-        for n in NUM_SAMPLES:
-            if n < 1000:
-                rounds = None
-                for i in range(11):
-                    if rounds is None:
-                        rounds = func(n)
-                    else:
-                        rounds = np.vstack([rounds, func(n)])
-                # new_time
-                new_time = np.mean(rounds, axis=0)
-            else:
-                new_time = func(n)
-
-            new_time = new_time * 1000 / n
-
-            if times is None:
-                times = np.expand_dims(new_time, axis=0)
-            else:
-                times = np.vstack([times, new_time])
-            print(
-                "%27s() %s per 1000 samples (batch size = %d)"
-                % (func.__name__, times[-1, :], n)
-            )
-
-        for i, op in enumerate(OPS):
-            TIMES[op][b][pkg] = times[:, i]
+TIMES = compute_times()
 
 ###############################################################################
 

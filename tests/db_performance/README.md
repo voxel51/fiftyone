@@ -15,6 +15,7 @@
 -   Dynamic Schemas
     -   which are saved to the DB
 -   Multi-process/user Synchronization
+-   Samples/Datasets are updated in memory when modified
 
 ...
 
