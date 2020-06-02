@@ -292,14 +292,14 @@ def _get_zoo_datasets():
 
 def _get_zoo_dataset_sources():
     all_datasets = _get_zoo_datasets()
-    all_sources = set(all_datasets.keys())
+    all_sources = list(all_datasets.keys())
     default_source = fo.config.default_ml_backend
 
     try:
         all_sources.remove(default_source)
-        return [default_source] + list(all_sources)
-    except KeyError:
-        return list(all_sources)
+        return [default_source] + all_sources
+    except ValueError:
+        return all_sources
 
 
 def _parse_dataset_details(name, dataset_dir):
