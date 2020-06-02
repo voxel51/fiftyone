@@ -104,15 +104,11 @@ view = dataset.view().match_tag("mistake")
 session.view = view
 
 # Show the samples we processed in rank order by the hardness
-hardness_view = (h_view
-    .sort_by("hardness", reverse=True)
-)
+hardness_view = h_view.sort_by("hardness", reverse=True)
 session.view = hardness_view
 
 # Show the samples we processed in rank order by the hardness
-mistakennness_view = (h_view
-    .sort_by("mistakenness", reverse=True)
-)
+mistakennness_view = h_view.sort_by("mistakenness", reverse=True)
 session.view = mistakenness_view
 ```
 
@@ -120,7 +116,3 @@ You could easily drop these findings into an iterative loop that attempts to
 sequentially fix the mistakes, or remove them from training. FiftyOne lets you
 do this by integrating within your model training loop or via an export
 procedure.
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
