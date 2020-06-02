@@ -125,16 +125,18 @@ $ python
 Python 3.6.9 (default, Apr 18 2020, 01:56:04)
 [GCC 8.4.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
+>>>
 >>> import fiftyone as fo
 >>> fo.__file__
 '.../env/lib/python3.X/site-packages/fiftyone/__init__.py'
+>>>
 >>> session = fo.launch_dashboard()
 >>> exit()
 ```
 
 Once FiftyOne is installed, you can proceed with any of the
 [examples](examples/index) in the documentation. The
-["Fifteen minutes to FiftyOne" walkthrough](examples/fifteen_to_fiftyone) is a
+[Fifteen Minutes to FiftyOne](examples/fifteen_to_fiftyone) walkthrough is a
 good place to start.
 
 ## Installing extra packages
