@@ -95,20 +95,6 @@ export default {
       },
     }),
 
-    new webpack.LoaderOptionsPlugin({
-      options: {
-        essLoader: {
-          lessPlugins: [
-            new RewriteImportPlugin({
-              paths: {
-                "../../theme.config":
-                  __dirname + "/app/semantic-ui/theme.config",
-              },
-            }),
-          ],
-        },
-      },
-    }),
     new webpack.NamedModulesPlugin(),
   ],
 };

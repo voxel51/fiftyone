@@ -10,7 +10,8 @@ import {
   Segment,
 } from "semantic-ui-react";
 
-import Fields from "../components/Fields";
+import routes from "../constants/routes.json";
+import Distributions from "../components/Distributions";
 import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
 import Samples from "../components/Samples";
@@ -20,7 +21,7 @@ import connect from "../utils/connect";
 
 function NoDataset() {
   return (
-    <Segment style={{ margin: "2rem" }}>
+    <Segment>
       <Message>No dataset loaded</Message>
     </Segment>
   );
@@ -31,14 +32,15 @@ function Dataset(props) {
   const { connected, loading, port, state, displayProps } = props;
   const hasDataset = Boolean(state && state.dataset);
   const stickyRef = createRef();
-  const tabs = ["samples", "fields"];
+  const tabs = [routes.SAMPLES, routes.LABELS, routes.TAGS];
   const [view, setView] = useState({ visible: false, sample: null });
   let src = null;
   let s = null;
   if (view.sample) {
     const path = view.sample.filepath;
+    const id = view.sample._id.$oid;
     const host = `http://127.0.0.1:${port}/`;
-    src = `${host}?path=${path}`;
+    src = `${host}?path=${path}&id=${id}`;
     s = view.sample;
   }
 
@@ -55,7 +57,7 @@ function Dataset(props) {
       <Sidebar
         target={stickyRef}
         onHide={() => setView({ visible: false, sample: null })}
-        style={{ zIndex: 100001, width: "50%" }}
+        style={{ zIndex: 100001, width: "50%", padding: 0 }}
         as={Menu}
         animation="overlay"
         direction="right"
@@ -145,8 +147,11 @@ function Dataset(props) {
                     displayProps={displayProps}
                   />
                 </Route>
-                <Route path={routes.FIELDS}>
-                  <Fields data={[]} />
+                <Route path={routes.LABELS}>
+                  <Distributions group="labels" />
+                </Route>
+                <Route path={routes.LABELS}>
+                  <Distributions group="tags" />
                 </Route>
               </>
             ) : (

@@ -27,7 +27,7 @@ class CustomizedAxisTick extends PureComponent {
   }
 }
 
-const Histogram = connect(({ data, name }) => {
+const Distribution = connect(({ data, name }) => {
   const barWidth = 30;
   const [rightMargin, setRightMargin] = useState(0);
   const container = useRef(null);
@@ -46,7 +46,7 @@ const Histogram = connect(({ data, name }) => {
         margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
       >
         <XAxis
-          dataKey="label"
+          dataKey="key"
           type="category"
           interval={0}
           height={100}
@@ -67,15 +67,14 @@ const Histogram = connect(({ data, name }) => {
   );
 });
 
-const Charts = (props) => {
-  const { state, port } = props;
+const Distributions = ({ group, port, state }) => {
   const socket = getSocket(port, "state");
   const [initialLoad, setInitialLoad] = useState(true);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
 
   const getData = () => {
-    socket.emit("get_field_distributions", "", (data) => {
+    socket.emit("get_distributions", group, (data) => {
       setInitialLoad(false);
       setLoading(false);
       setData(data);
@@ -97,8 +96,8 @@ const Charts = (props) => {
 
   return (
     <>
-      {data.map((chart, i) => {
-        return <Histogram key={i} data={chart.labels} name={chart._id} />;
+      {data.map((dist, i) => {
+        return <Distribution key={i} data={dist.data} name={chart._id} />;
       })}
     </>
   );
