@@ -2,7 +2,7 @@
 
 Examples of creating datasets with FiftyOne.
 
-## Working with publicly available datasets
+## Loading zoo datasets
 
 > Factory method: `fiftyone.zoo.load_zoo_dataset()`
 
@@ -60,8 +60,7 @@ fiftyone constants FIFTYONE_CONFIG_PATH
 export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
 ```
 
--   Adding the following commands to your Python code _before_ importing the
-    `fiftyone.zoo` package:
+-   Setting the `default_ml_backend` config setting from your Python code
 
 ```py
 # Example: use the `torch` backend
@@ -69,13 +68,13 @@ import fiftyone.core.config as foc
 foc.set_config_settings(default_ml_backend="torch")
 ```
 
-## Building your own dataset from scratch
+## Building datasets from scratch
 
 > Factory method: `fiftyone.Dataset.add_samples()`
 
-FiftyOne datasets are composed of `fiftyone.core.sample.Sample`s, and FiftyOne
-provides the ability for you to construct your own dataset from scratch by
-creating your own samples, if desired.
+FiftyOne datasets are composed of `fiftyone.core.sample.Sample` instances, and
+FiftyOne provides the ability for you to construct your own dataset from
+scratch by creating your own samples, if desired.
 
 The following example demonstrates the construction of a dataset with ground
 truth labels stored in a `ground_truth` field:
@@ -107,7 +106,7 @@ dataset.add_samples(_samples)
 print(dataset.view().head())
 ```
 
-## Working with image classification samples
+## Image classification datasets
 
 > Factory method: `fiftyone.Dataset.from_image_classification_samples()`
 
@@ -142,7 +141,7 @@ samples = ...
 dataset = fo.Dataset.from_image_classification_samples(samples, classes=classes)
 ```
 
-## Working with image detection samples
+## Image detection datasets
 
 > Factory method: `fiftyone.Dataset.from_image_detection_samples()`
 
@@ -193,7 +192,7 @@ samples = ...
 dataset = fo.Dataset.from_image_detection_samples(samples, classes=classes)
 ```
 
-## Working with multitask image prediction samples
+## Multitask image prediction datasets
 
 > Factory method: `fiftyone.Dataset.from_image_labels_samples()`
 
@@ -228,7 +227,7 @@ samples = ...
 dataset = fo.Dataset.from_image_labels_samples(samples)
 ```
 
-## Working with custom labeled image samples
+## Custom labeled image datasets
 
 > Factory method: `fiftyone.Dataset.from_labeled_image_samples()`
 
@@ -282,7 +281,7 @@ dataset = fo.Dataset.from_labeled_image_samples(
 )
 ```
 
-## Ingesting labeled image samples stored in-memory
+## Labeled image datasets stored in-memory
 
 > Factory method: `fiftyone.Dataset.ingest_labeled_image_samples()`
 
@@ -328,7 +327,7 @@ dataset.ingest_labeled_image_samples(
 )
 ```
 
-## Working with image classification datasets stored on disk
+## Image classification datasets stored on disk
 
 > Factory method: `fiftyone.Dataset.from_image_classification_dataset()`
 
@@ -362,15 +361,14 @@ where `labels.json` is a JSON file in the following format:
 ```
 
 If the `classes` field is provided, the `target` values are class IDs that are
-mapped to class label strings via `classes[target]`. If no
-` classes`` field is provided, then the `target` values directly store the
-label strings.
+mapped to class label strings via `classes[target]`. If no `classes` field is
+provided, then the `target` values directly store the label strings.
 
 This dataset format is encapsulated by the
 `fiftyone.types.ImageClassificationDataset` type in FiftyOne.
 
-You can load an image classification dataset backed by `dataset_dir` via the
-following command:
+You can load an image classification dataset from disk via the following
+command:
 
 ```py
 import fiftyone as fo
@@ -381,7 +379,7 @@ dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
 print(dataset.view().head())
 ```
 
-## Working with image detection datasets stored on disk
+## Image detection datasets stored on disk
 
 > Factory method: `fiftyone.Dataset.from_image_detection_dataset()`
 
@@ -429,15 +427,13 @@ and where the bounding box coordinates are expressed as relative values in
 `[0, 1] x [0, 1]`.
 
 If the `classes` field is provided, the `target` values are class IDs that are
-mapped to class label strings via `classes[target]`. If no
-` classes`` field is provided, then the `target` values directly store the
-label strings.
+mapped to class label strings via `classes[target]`. If no `classes` field is
+provided, then the `target` values directly store the label strings.
 
 This dataset format is encapsulated by the
 `fiftyone.types.ImageDetectionDataset` type in FiftyOne.
 
-You can load an image detection dataset backed by `dataset_dir` via the
-following command:
+You can load an image detection dataset from disk via the following command:
 
 ```py
 import fiftyone as fo
@@ -448,7 +444,7 @@ dataset = fo.Dataset.from_image_detection_dataset(dataset_dir)
 print(dataset.view().head())
 ```
 
-## Working with multitask image prediction datasets stored on disk
+## Multitask image prediction datasets stored on disk
 
 > Factory method: `fiftyone.Dataset.from_image_labels_dataset()`
 
@@ -490,8 +486,8 @@ format. See https://voxel51.com/docs/api/#types-imagelabels for more details.
 This dataset format is encapsulated by the `fiftyone.types.ImageLabelsDataset`
 type in FiftyOne.
 
-You can load a multitask image labels dataset backed by `dataset_dir` via the
-following command:
+You can load a multitask image labels dataset from disk via the following
+command:
 
 ```py
 import fiftyone as fo
