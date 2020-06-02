@@ -505,9 +505,9 @@ _DISTRIBUTION_PIPELINES = {
                     {
                         "$group": {
                             "_id": "$_id.field",
-                            "labels": {
+                            "data": {
                                 "$push": {
-                                    "label": "$_id.label",
+                                    "key": "$_id.label",
                                     "count": "$count",
                                 }
                             },
@@ -533,9 +533,9 @@ _DISTRIBUTION_PIPELINES = {
                     {
                         "$group": {
                             "_id": "$_id.group",
-                            "labels": {
+                            "data": {
                                 "$push": {
-                                    "label": "$_id.label",
+                                    "key": "$_id.label",
                                     "count": "$count",
                                 }
                             },
@@ -549,13 +549,21 @@ _DISTRIBUTION_PIPELINES = {
         {"$project": {"tag": "$tags"}},
         {"$unwind": "$tag"},
         {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
-        {"$project": {"tag": "$_id", "count": "$count"}},
+        {"$project": {"result": "$$ROOT", "field": "tags"}},
+        {
+            "$group": {
+                "_id": "$field",
+                "data": {
+                    "$push": {"key": "$result._id", "count": "$result.count"}
+                },
+            }
+        },
     ],
 }
 
 
-def _scalar_field_distributions(dataset):
-    schema = dataset.get_field_schema()
+def _scalar_field_distributions(view):
+    schema = view.get_field_schema()
     return
 
 
