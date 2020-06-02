@@ -187,7 +187,15 @@ class DatasetView(foc.SampleCollection):
         try:
             return next(self.iter_samples())
         except StopIteration:
-            raise ValueError("View is empty")
+            raise ValueError("DatasetView is empty")
+
+    def last(self):
+        """Returns the last :class:`fiftyone.core.sample.Sample` in the view.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        return self[-1:].first()
 
     def get_tags(self):
         """Returns the list of tags in the collection.
@@ -335,11 +343,15 @@ class DatasetView(foc.SampleCollection):
         """Omits the given number of samples from the head of the view.
 
         Args:
-            skip: the number of samples to skip
+            skip: the number of samples to skip. If a non-positive number is
+                provided, no samples are omitted
 
         Returns:
             a :class:`DatasetView`
         """
+        if skip <= 0:
+            return copy(self)
+
         return self._copy_with_new_stage({"$skip": skip})
 
     @operation
@@ -347,11 +359,15 @@ class DatasetView(foc.SampleCollection):
         """Limits the view to the given number of samples.
 
         Args:
-            num: the maximum number of samples to return
+            num: the maximum number of samples to return. If a non-positive
+                number is provided, an empty view is returned
 
         Returns:
             a :class:`DatasetView`
         """
+        if limit <= 0:
+            return self.match({"_id": None})
+
         return self._copy_with_new_stage({"$limit": limit})
 
     @operation
@@ -359,11 +375,15 @@ class DatasetView(foc.SampleCollection):
         """Randomly samples the given number of samples from the view.
 
         Args:
-            size: the number of samples to return
+            size: the number of samples to return. If a non-positive number is
+                provided, an empty view is returned
 
         Returns:
             a :class:`DatasetView`
         """
+        if size <= 0:
+            return self.match({"_id": None})
+
         return self._copy_with_new_stage({"$sample": {"size": size}})
 
     @operation
@@ -429,9 +449,13 @@ class DatasetView(foc.SampleCollection):
         _len = None
 
         start = s.start
-        if start is not None and start < 0:
-            _len = len(self)
-            start += _len
+        if start is not None:
+            if start < 0:
+                _len = len(self)
+                start += _len
+
+            if start <= 0:
+                start = None
 
         stop = s.stop
         if stop is not None and stop < 0:

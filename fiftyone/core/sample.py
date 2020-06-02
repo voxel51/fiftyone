@@ -121,6 +121,11 @@ class Sample(object):
         """
         return self._doc.dataset_name
 
+    @property
+    def field_names(self):
+        """An ordered list of the names of the fields of this sample."""
+        return self._doc.field_names
+
     def get_field_schema(self, ftype=None, embedded_doc_type=None):
         """Returns a schema dictionary describing the fields of this sample.
 
@@ -191,7 +196,9 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        return self.__class__(**self._doc.copy().to_dict())
+        doc = self._doc.copy()
+        kwargs = {fn: getattr(doc, fn) for fn in doc.field_names}
+        return self.__class__(**kwargs)
 
     def to_dict(self, extended=False, include_id=True):
         """Serializes the sample to a JSON dictionary.

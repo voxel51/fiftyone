@@ -69,7 +69,7 @@ performed:
 
 ```py
 # Verify that the `mistake` tag is now in the dataset's schema
-print(dataset.summary())
+print(dataset)
 
 # Count the number of samples with the `mistake` tag
 num_mistakes = len(dataset.view().match_tag("mistake"))
@@ -202,7 +202,7 @@ mistake_view = (dataset.view()
 )
 
 # Print some information about the view
-print(mistake_view.summary())
+print(mistake_view)
 
 # Inspect the first few samples
 print(mistake_view.head())

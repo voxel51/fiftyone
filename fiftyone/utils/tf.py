@@ -187,7 +187,8 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
             details
 
     Returns:
-        a ``tf.data.Dataset` that emits ``(img, label)`` pairs
+        dataset: a ``tf.data.Dataset` that emits ``(img, label)`` pairs
+        classes: a list of class label strings
     """
     samples, classes = foud.parse_image_classification_dir_tree(dataset_dir)
 
