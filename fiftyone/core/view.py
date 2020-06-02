@@ -459,8 +459,8 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _get_field_distributions(self):
-        return list(self.aggregate(_FIELD_DISTRIBUTIONS_PIPELINE))
+    def _get_distribution(self, dataset, group):
+        return list(self.aggregate(_DISTRIBUTION_PIPELINES[group](dataset)))
 
     def _get_facets(self):
         return list(self.aggregate(_FACETS_PIPELINE))
@@ -478,61 +478,86 @@ class DatasetView(foc.SampleCollection):
         return 0
 
 
-_FIELD_DISTRIBUTIONS_PIPELINE = [
-    {
-        "$facet": {
-            "detections": [
-                {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-                {"$unwind": "$field"},
-                {"$match": {"field.v._cls": "Detections"}},
-                {
-                    "$project": {
-                        "field": "$field.k",
-                        "detection": "$field.v.detections",
-                    }
-                },
-                {"$unwind": "$detection"},
-                {
-                    "$group": {
-                        "_id": {
-                            "field": "$field",
-                            "label": "$detection.label",
-                        },
-                        "count": {"$sum": 1},
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": "$_id.field",
-                        "labels": {
-                            "$push": {"label": "$_id.label", "count": "$count"}
-                        },
-                    }
-                },
-            ],
-            "classes": [
-                {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-                {"$unwind": "$field"},
-                {"$match": {"field.v._cls": "Classification"}},
-                {"$project": {"field": "$field.k", "label": "$field.v.label"}},
-                {
-                    "$group": {
-                        "_id": {"group": "$group", "label": "$label"},
-                        "count": {"$sum": 1},
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": "$_id.group",
-                        "labels": {
-                            "$push": {"label": "$_id.label", "count": "$count"}
-                        },
-                    }
-                },
-            ],
+_DISTRIBUTION_PIPELINES = {
+    "labels": lambda view: [
+        {
+            "$facet": {
+                "detections": [
+                    {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+                    {"$unwind": "$field"},
+                    {"$match": {"field.v._cls": "Detections"}},
+                    {
+                        "$project": {
+                            "field": "$field.k",
+                            "detection": "$field.v.detections",
+                        }
+                    },
+                    {"$unwind": "$detection"},
+                    {
+                        "$group": {
+                            "_id": {
+                                "field": "$field",
+                                "label": "$detection.label",
+                            },
+                            "count": {"$sum": 1},
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": "$_id.field",
+                            "labels": {
+                                "$push": {
+                                    "label": "$_id.label",
+                                    "count": "$count",
+                                }
+                            },
+                        }
+                    },
+                ],
+                "classifications": [
+                    {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+                    {"$unwind": "$field"},
+                    {"$match": {"field.v._cls": "Classification"}},
+                    {
+                        "$project": {
+                            "field": "$field.k",
+                            "label": "$field.v.label",
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": {"group": "$group", "label": "$label"},
+                            "count": {"$sum": 1},
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": "$_id.group",
+                            "labels": {
+                                "$push": {
+                                    "label": "$_id.label",
+                                    "count": "$count",
+                                }
+                            },
+                        }
+                    },
+                ],
+            }
         }
-    }
-]
+    ],
+    "tags": lambda view: [
+        {"$project": {"tag": "$tags"}},
+        {"$unwind": "$tag"},
+        {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
+        {"$project": {"tag": "$_id", "count": "$count"}},
+    ],
+}
+
+
+def _scalar_field_distributions(dataset):
+    schema = dataset.get_field_schema()
+    return
+
 
 _FACETS_PIPELINE = [
     {

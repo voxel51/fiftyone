@@ -173,14 +173,14 @@ class StateController(Namespace):
             return []
         return {"labels": view.get_label_fields(), "tags": view.get_tags()}
 
-    def on_get_field_distributions(self, _):
-        """Gets the labels distributions for the current state.
+    def on_get_distributions(self, group):
+        """Gets the distributions for the current state with respect to a group,
 
         Args:
-            _: the message, which is not used
+            group: one of "labels", "tags", or "scalars"
 
         Returns:
-            the list of label distributions
+            a list of distributions
         """
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
@@ -190,7 +190,7 @@ class StateController(Namespace):
         else:
             return []
 
-        return view._get_field_distributions()
+        return view._get_distributions(group)
 
     def on_get_facets(self, _):
         """Gets the facets for the current state.
