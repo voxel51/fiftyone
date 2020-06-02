@@ -47,9 +47,7 @@ def predict(model, imgs):
 num_samples = 1000
 batch_size = 20
 view = train_view.sample(num_samples)
-image_paths, sample_ids = zip(
-    *[(s.filepath, s.id) for s in view.iter_samples()]
-)
+image_paths, sample_ids = zip(*[(s.filepath, s.id) for s in view])
 data_loader = make_cifar10_data_loader(image_paths, sample_ids, batch_size)
 
 #
@@ -73,8 +71,9 @@ with torch.no_grad():
             sample.save()
 
 #
-# Print some information about the Predictions
+# Print some information about the predictions
 #
+
 num_processed = len(train_view.match_tag("processed"))
 num_mistaken = len(train_view.match_tag("processed").match_tag("mistake"))
 print(
