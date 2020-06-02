@@ -85,7 +85,8 @@ class FiftyOneCommand(Command):
 class ConfigCommand(Command):
     """Tools for working with your FiftyOne config.
 
-    Examples:
+    Examples::
+
         # Print your entire config
         fiftyone config
 
@@ -114,7 +115,8 @@ class ConfigCommand(Command):
 class ConstantsCommand(Command):
     """Print constants from `fiftyone.constants`.
 
-    Examples:
+    Examples::
+
         # Print all constants
         fiftyone constants
 
@@ -187,7 +189,8 @@ class ZooCommand(Command):
 class ZooListCommand(Command):
     """Tools for listing datasets in the FiftyOne Dataset Zoo.
 
-    Examples:
+    Examples::
+
         # List available datasets
         fiftyone zoo list
 
@@ -290,7 +293,8 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
 class ZooInfoCommand(Command):
     """Tools for printing info about downloaded zoo datasets.
 
-    Examples:
+    Examples::
+
         # Print information about a downloaded zoo dataset
         fiftyone zoo info <name>
 
@@ -345,7 +349,8 @@ class ZooInfoCommand(Command):
 class ZooDownloadCommand(Command):
     """Tools for downloading zoo datasets.
 
-    Examples:
+    Examples::
+
         # Download the entire zoo dataset
         fiftyone zoo download <name>
 
