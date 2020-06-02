@@ -32,9 +32,7 @@ The dataset is organized on disk as follows:
 As we will soon come to discover, some of these samples are duplicates and we
 have no clue which they are!
 
-## Walkthrough
-
-### 0. Import FiftyOne
+## Import FiftyOne
 
 Importing the main FiftyOne package is easy:
 
@@ -42,7 +40,7 @@ Importing the main FiftyOne package is easy:
 import fiftyone as fo
 ```
 
-### 1. Create a dataset
+## Create a dataset
 
 Let's use a utililty method provided by FiftyOne to load the image
 classification dataset from disk:
@@ -62,40 +60,42 @@ dataset = fo.Dataset.from_image_classification_samples(
 )
 ```
 
-### 2. Explore the dataset
+## Explore the dataset
 
 We can poke around in the dataset:
 
 ```python
 # Print summary information about the dataset
-dataset
+print(dataset)
 
 # Print a random sample
 print(dataset.view().take(1).first())
 ```
 
-Create a view that filters only `mountain`
+Create a view that contains only samples whose ground truth label is
+`mountain`:
 
 ```python
 view = dataset.view().match({"ground_truth.label": "mountain"})
 
 # Print summary information about the view
-view
+print(view)
 
 # Print the first sample in the view
 print(view.first())
 ```
 
-Create a view that sorts labels reverse-alphabetically
+Create a view with samples sorted by their ground truth labels in reverse
+alphabetical order:
 
 ```python
 view = dataset.view().sort_by("ground_truth.label", reverse=True)
 
-view
+print(view)
 print(view.first())
 ```
 
-### 3. Visualize the dataset
+## Visualize the dataset
 
 Start browsing the dataset:
 
@@ -129,7 +129,7 @@ Update the dashboard to only show your selected samples:
 session.view = selected_view
 ```
 
-### 4. Compute file hashes
+## Compute file hashes
 
 Iterate over the samples and compute their file hashes:
 
@@ -140,25 +140,25 @@ for sample in dataset:
     sample["file_hash"] = fou.compute_filehash(sample.filepath)
     sample.save()
 
-dataset
+print(dataset)
 ```
 
 We have two ways to visualize this new information:
 
-1\. From your terminal:
+-   From your terminal:
 
 ```python
 sample = dataset.view().first()
 print(sample)
 ```
 
-2\. By refreshing the dashboard:
+-   By refreshing the dashboard:
 
 ```python
 session.dataset = dataset
 ```
 
-### 5. Check for duplicates
+## Check for duplicates
 
 Now let's use a more powerful query to search for duplicate files, i.e., those
 with the same file hashses:
@@ -185,7 +185,6 @@ dup_view = (
 )
 
 print("Number of images that have a duplicate: %d" % len(dup_view))
-
 print("Number of duplicates: %d" % (len(dup_view) - len(dup_filehashes)))
 ```
 
@@ -195,7 +194,7 @@ Of course, we can always use the dashboard to visualize our work!
 session.view = dup_view
 ```
 
-### 6. Delete duplicates
+## Delete duplicates
 
 Now let's delete the duplicate samples from the dataset using our `dup_view` to
 restrict our attention to known duplicates:
@@ -217,7 +216,7 @@ print("Length of dataset after: %d" % len(dataset))
 print("Number of unique file hashes: %d" % len({s.file_hash for s in dataset}))
 ```
 
-### 7. Export the deduplicated dataset
+## Export the deduplicated dataset
 
 Finally, let's export a fresh copy of our now-duplicate-free dataset:
 

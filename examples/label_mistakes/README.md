@@ -53,14 +53,15 @@ dataset = foz.load_zoo_dataset("cifar10", splits=["test"])
 info = foz.load_zoo_dataset_info("cifar10")
 classes = info.classes
 
-# Artificially make 10% of sample labels mistakes
-for sample in dataset.view().take(1000):
+# Artificially corrupt 10% of the labels
+_num_mistakes = int(0.1 * len(dataset))
+for sample in dataset.view().take(_num_mistakes):
     mistake = random.randint(0, 9)
     while classes[mistake] == sample.ground_truth.label:
         mistake = random.randint(0, 9)
 
     sample.tags.append("mistake")
-    sample["ground_truth"] = fo.Classification(label=classes[mistake])
+    sample.ground_truth = fo.Classification(label=classes[mistake])
     sample.save()
 ```
 
@@ -76,7 +77,7 @@ num_mistakes = len(dataset.view().match_tag("mistake"))
 print("%d ground truth labels are now mistakes" % num_mistakes)
 ```
 
-## Run predictions on the dataset
+## Add predictions to the dataset
 
 Using an off-the-shelf model, let's now add predictions to the dataset, which
 are necessary for us to deduce some understanding of the possible label
