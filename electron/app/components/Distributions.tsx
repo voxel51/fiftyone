@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, PureComponent } from "react";
 import { Bar, BarChart, LabelList, XAxis, YAxis, Tooltip } from "recharts";
-import { Header, Loader, Segment } from "semantic-ui-react";
+import { Dimmer, Header, Loader, Segment } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
@@ -36,7 +36,7 @@ const Distribution = connect(({ distribution }) => {
   const fill = stroke;
 
   return (
-    <Segment style={{ overflowY: "auto", margin: "2rem" }}>
+    <Segment style={{ overflowY: "auto", margin: "2rem 0" }}>
       <Header as="h3">{`${name}: ${type}`}</Header>
       <BarChart
         ref={container}
@@ -68,6 +68,14 @@ const Distribution = connect(({ distribution }) => {
   );
 });
 
+function NoDistributions({ name }) {
+  return (
+    <Segment>
+      <Message>No {name}</Message>
+    </Segment>
+  );
+}
+
 const Distributions = ({ group, port, state }) => {
   const socket = getSocket(port, "state");
   const [initialLoad, setInitialLoad] = useState(true);
@@ -93,7 +101,15 @@ const Distributions = ({ group, port, state }) => {
   });
 
   if (loading) {
-    return <Loader />;
+    return (
+      <Dimmer active className="samples-dimmer" key={-1}>
+        <Loader />
+      </Dimmer>
+    );
+  }
+
+  if (!data.length) {
+    return <NoDistribution name={group} />;
   }
 
   return (
