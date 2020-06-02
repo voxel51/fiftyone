@@ -116,7 +116,6 @@ function Dataset(props) {
                 background: "hsl(210, 20%, 15%)",
                 paddingTop: "2rem",
                 zIndex: 1000000,
-                display: "none",
               }}
             >
               <Menu pointing secondary>

@@ -479,24 +479,60 @@ class DatasetView(foc.SampleCollection):
 
 
 _FIELD_DISTRIBUTIONS_PIPELINE = [
-    {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-    {"$unwind": "$field"},
-    {"$project": {"field": "$field.k", "detection": "$field.v.detections"}},
-    {"$unwind": "$detection"},
     {
-        "$group": {
-            "_id": {"field": "$field", "label": "$detection.label"},
-            "count": {"$sum": 1},
+        "$facet": {
+            "detections": [
+                {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+                {"$unwind": "$field"},
+                {"$match": {"field.v._cls": "Detections"}},
+                {
+                    "$project": {
+                        "field": "$field.k",
+                        "detection": "$field.v.detections",
+                    }
+                },
+                {"$unwind": "$detection"},
+                {
+                    "$group": {
+                        "_id": {
+                            "field": "$field",
+                            "label": "$detection.label",
+                        },
+                        "count": {"$sum": 1},
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$_id.field",
+                        "labels": {
+                            "$push": {"label": "$_id.label", "count": "$count"}
+                        },
+                    }
+                },
+            ],
+            "classes": [
+                {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+                {"$unwind": "$field"},
+                {"$match": {"field.v._cls": "Classification"}},
+                {"$project": {"field": "$field.k", "label": "$field.v.label"}},
+                {
+                    "$group": {
+                        "_id": {"group": "$group", "label": "$label"},
+                        "count": {"$sum": 1},
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$_id.group",
+                        "labels": {
+                            "$push": {"label": "$_id.label", "count": "$count"}
+                        },
+                    }
+                },
+            ],
         }
-    },
-    {
-        "$group": {
-            "_id": "$_id.field",
-            "labels": {"$push": {"label": "$_id.label", "count": "$count"}},
-        }
-    },
+    }
 ]
-
 
 _FACETS_PIPELINE = [
     {

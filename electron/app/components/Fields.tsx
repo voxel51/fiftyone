@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, PureComponent } from "react";
-import { Bar, BarChart, LabelList, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, LabelList, XAxis, YAxis, Tooltip } from "recharts";
 import { Header, Loader, Segment } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
@@ -35,7 +35,7 @@ const Histogram = connect(({ data, name }) => {
   const fill = stroke;
 
   return (
-    <Segment style={{ overflowY: "auto" }}>
+    <Segment style={{ overflowY: "auto", margin: "2rem" }}>
       <Header as="h3">{name}</Header>
       <BarChart
         ref={container}
@@ -60,6 +60,7 @@ const Histogram = connect(({ data, name }) => {
           tick={{ fill }}
           tickLine={{ stroke }}
         />
+        <Tooltip />
         <Bar dataKey="count" fill="rgb(255, 109, 4)" barSize={barWidth} />
       </BarChart>
     </Segment>
