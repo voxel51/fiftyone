@@ -15,6 +15,7 @@ following concepts:
 Install `torch` and `torchvision`, if necessary:
 
 ```
+# Modify as necessary (e.g., GPU install). See https://pytorch.org for options
 pip install torch
 pip install torchvision
 ```
