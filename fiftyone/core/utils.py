@@ -5,21 +5,13 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
+import importlib
 import logging
 import resource
+import sys
+import types
+
+import packaging.version
 
 import eta.core.utils as etau
 
@@ -27,35 +19,24 @@ import eta.core.utils as etau
 logger = logging.getLogger(__name__)
 
 
-def ensure_tensorflow():
+def ensure_tf():
     """Verifies that TensorFlow is installed on the host machine.
 
     Raises:
         ImportError: if ``tensorflow`` could not be imported
     """
-    try:
-        import tensorflow  # pylint: disable=unused-import
-    except ImportError:
-        raise ImportError(
-            "The requested operation requires that 'tensorflow' is installed "
-            "on your machine"
-        )
+    _ensure_package("tensorflow")
 
 
-def ensure_tensorflow_datasets():
+def ensure_tfds():
     """Verifies that the ``tensorflow_datasets`` package is installed on the
     host machine.
 
     Raises:
         ImportError: if ``tensorflow_datasets`` could not be imported
     """
-    try:
-        import tensorflow_datasets  # pylint: disable=unused-import
-    except ImportError:
-        raise ImportError(
-            "The requested operation requires that 'tensorflow_datasets' is "
-            "installed on your machine"
-        )
+    _ensure_package("tensorflow", min_version="1.15")
+    _ensure_package("tensorflow_datasets")
 
 
 def ensure_torch():
@@ -64,14 +45,103 @@ def ensure_torch():
     Raises:
         ImportError: if ``torch`` or ``torchvision`` could not be imported
     """
+    _ensure_package("torch")
+    _ensure_package("torchvision")
+
+
+def _ensure_package(package_name, min_version=None):
+    has_min_ver = min_version is not None
+
+    if has_min_ver:
+        min_version = packaging.version.parse(min_version)
+
     try:
-        import torch  # pylint: disable=unused-import
-        import torchvision  # pylint: disable=unused-import
-    except ImportError:
+        pkg = importlib.import_module(package_name)
+    except ImportError as e:
+        if has_min_ver:
+            pkg_str = "%s>=%s" % (package_name, min_version)
+        else:
+            pkg_str = package_name
+
         raise ImportError(
-            "The requested operation requires that 'torch' and 'torchvision' "
-            "are installed on your machine"
-        )
+            "The requested operation requires that '%s' is installed on your "
+            "machine" % pkg_str
+        ) from e
+
+    if has_min_ver:
+        pkg_version = packaging.version.parse(pkg.__version__)
+        if pkg_version < min_version:
+            raise ImportError(
+                "The requested operation requires that '%s>=%s' is installed "
+                "on your machine; found '%s==%s'"
+                % (package_name, min_version, package_name, pkg_version)
+            )
+
+
+def lazy_import(module_name, callback=None):
+    """Returns a proxy module object that will lazily import the given module
+    the first time it is used.
+
+    Example usage::
+
+        # Lazy version of `import tensorflow as tf`
+        tf = lazy_import("tensorflow")
+
+        # Other commands
+
+        # Now the module is loaded
+        tf.__version__
+
+    Args:
+        module_name: the fully-qualified module name to import
+        callback (None): a callback function to call before importing the
+            module
+
+    Returns:
+        a proxy module object that will be lazily imported when first used
+    """
+    return LazyModule(module_name, callback=callback)
+
+
+class LazyModule(types.ModuleType):
+    """Proxy module that lazily imports the underlying module the first time it
+    is actually used.
+
+    Args:
+        module_name: the fully-qualified module name to import
+        callback (None): a callback function to call before importing the
+            module
+    """
+
+    def __init__(self, module_name, callback=None):
+        super(LazyModule, self).__init__(module_name)
+        self._module = None
+        self._callback = callback
+
+    def __getattr__(self, item):
+        if self._module is None:
+            self._import_module()
+
+        return getattr(self._module, item)
+
+    def __dir__(self):
+        if self._module is None:
+            self._import_module()
+
+        return dir(self._module)
+
+    def _import_module(self):
+        # Execute callback, if any
+        if self._callback is not None:
+            self._callback()
+
+        # Actually import the module
+        module = importlib.import_module(self.__name__)
+        self._module = module
+
+        # Update this object's dict so that attribute references are efficient
+        # (__getattr__ is only called on lookups that fail)
+        self.__dict__.update(module.__dict__)
 
 
 def parse_serializable(obj, cls):
@@ -148,3 +218,16 @@ class ResourceLimit(object):
                 logger.warning(e)
             else:
                 raise
+
+
+def compute_filehash(filepath):
+    """Computes the file hash of the given file.
+
+    Args:
+        filepath: the path to the file
+
+    Returns:
+        the file hash
+    """
+    with open(filepath, "rb") as f:
+        return hash(f.read())

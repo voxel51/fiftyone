@@ -17,6 +17,7 @@ from builtins import *
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
+from future.utils import itervalues
 
 from collections import defaultdict
 import os
@@ -35,16 +36,16 @@ class Sample(object):
 
     Args:
         filepath: the path to the data on disk
-        tags (None): the set of tags associated with the sample
+        tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample
     """
 
     # Instance references keyed by [dataset_name][sample_id]
-    _instances = defaultdict(dict)
+    _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.ODMNoDatasetSample(
+        self._doc = foo.NoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
@@ -66,8 +67,10 @@ class Sample(object):
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
-        # @todo(Tyler) __delattr__
-        raise NotImplementedError("Not yet implemented")
+        try:
+            self.__delitem__(name)
+        except KeyError:
+            super().__delattr__(name)
 
     def __getitem__(self, key):
         try:
@@ -81,8 +84,8 @@ class Sample(object):
     def __delitem__(self, key):
         try:
             return self.clear_field(key)
-        except AttributeError:
-            raise KeyError("Sample has no field '%s'" % key)
+        except ValueError as e:
+            raise KeyError(e.args[0])
 
     def __copy__(self):
         return self.copy()
@@ -118,22 +121,31 @@ class Sample(object):
         """
         return self._doc.dataset_name
 
-    def get_field_schema(self, ftype=None):
+    @property
+    def field_names(self):
+        """An ordered list of the names of the fields of this sample."""
+        return self._doc.field_names
+
+    def get_field_schema(self, ftype=None, embedded_doc_type=None):
         """Returns a schema dictionary describing the fields of this sample.
 
-        If the sample belongs to a dataset, the schema applies to all samples
-        in the dataset. Sample fields are synchronized across all samples in a
-        dataset and default to `None` if not explicitly set.
+        If the sample belongs to a dataset, the schema will apply to all
+        samples in the dataset.
 
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                ``mongoengine.fields.BaseField``
+                :class:``fiftyone.core.fields.Field``
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
 
         Returns:
              a dictionary mapping field names to field types
         """
-        return self._doc.get_field_schema(ftype=ftype)
+        return self._doc.get_field_schema(
+            ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
 
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
@@ -173,7 +185,7 @@ class Sample(object):
             field_name: the name of the field to clear
 
         Raises:
-            AttributeError: if the field does not exist
+            ValueError: if the field does not exist
         """
         return self._doc.clear_field(field_name=field_name)
 
@@ -184,7 +196,9 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        return self.__class__(**self._doc.copy().to_dict())
+        doc = self._doc.copy()
+        kwargs = {fn: getattr(doc, fn) for fn in doc.field_names}
+        return self.__class__(**kwargs)
 
     def to_dict(self, extended=False):
         """Serializes the sample to a JSON dictionary.
@@ -243,12 +257,12 @@ class Sample(object):
         document.
 
         Args:
-            document: a :class:`fiftyone.core.odm.ODMDatasetSample`
+            document: a :class:`fiftyone.core.odm.ODMSample`
 
         Returns:
             a :class:`Sample`
         """
-        if not isinstance(doc, foo.ODMDatasetSample):
+        if not isinstance(doc, foo.ODMSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
 
         if not doc.id:
@@ -256,14 +270,8 @@ class Sample(object):
 
         try:
             # get instance if exists
-            ref = cls._instances[doc.dataset_name][str(doc.id)]
-
-            # de-reference the weakref
-            sample = ref and ref()
+            sample = cls._instances[doc.dataset_name][str(doc.id)]
         except KeyError:
-            sample = None
-
-        if sample is None:
             sample = cls.__new__(cls)
             sample._doc = None  # set to prevent RecursionError
             sample._set_backing_doc(doc)
@@ -271,8 +279,12 @@ class Sample(object):
         return sample
 
     def save(self):
-        """Saves the document to the database."""
+        """Saves the sample to the database."""
         self._doc.save()
+
+    def reload(self):
+        """Reload the sample from the database."""
+        self._doc.reload()
 
     def _delete(self):
         """Deletes the document from the database."""
@@ -299,26 +311,47 @@ class Sample(object):
 
         For use **only** when adding a sample to a dataset.
         """
-        if isinstance(self._doc, foo.ODMDatasetSample):
+        if isinstance(self._doc, foo.ODMSample):
             raise TypeError("Sample already belongs to a dataset")
 
-        if not isinstance(doc, foo.ODMDatasetSample):
+        if not isinstance(doc, foo.ODMSample):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
-                % (foo.ODMDatasetSample, type(doc))
+                % (foo.ODMSample, type(doc))
             )
-
-        self._doc = doc
 
         # ensure the doc is saved to the database
         if not doc.id:
             doc.save()
 
-        try:
-            ref = self._instances[self.dataset_name][self.id]
-            if ref() is None:
-                # ref is stale, overwrite
-                self._instances[self.dataset_name][self.id] = weakref.ref(self)
-        except KeyError:
-            # ref does not exist, so add it
-            self._instances[self.dataset_name][self.id] = weakref.ref(self)
+        self._doc = doc
+
+        # save weak reference
+        dataset_instances = self._instances[doc.dataset_name]
+        if self.id not in dataset_instances:
+            dataset_instances[self.id] = self
+
+    @classmethod
+    def _reset_backing_docs(cls, dataset_name, sample_ids):
+        """Resets the sample's backing document to a
+        :class:`fiftyone.core.odm.ODMNoDatasetSample` instance.
+
+        For use **only** when removing samples from a dataset.
+        """
+        dataset_instances = cls._instances[dataset_name]
+        for sample_id in sample_ids:
+            sample = dataset_instances.pop(sample_id, None)
+            if sample is not None:
+                sample._doc = sample.copy()._doc
+
+    @classmethod
+    def _reset_all_backing_docs(cls, dataset_name):
+        """Resets the sample's backing document to a
+        :class:`fiftyone.core.odm.ODMNoDatasetSample` instance for all samples
+        in a dataset.
+
+        For use **only** when clearing a dataset.
+        """
+        dataset_instances = cls._instances.pop(dataset_name)
+        for sample in itervalues(dataset_instances):
+            sample._doc = sample.copy()._doc

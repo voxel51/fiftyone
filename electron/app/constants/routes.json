@@ -1,7 +1,7 @@
 {
   "DATASET": "/",
   "SAMPLES": "/samples",
-  "LABELS": "/labels",
+  "FIELDS": "/fields",
   "SETUP": "/setup",
   "LOADING": "/loading"
 }

@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import atexit
 import logging
 import os
 import signal
@@ -94,6 +95,7 @@ class ServerService(Service):
         cmd = " ".join(foc.START_SERVER) % self._port
         with etau.WorkingDir(foc.SERVER_DIR):
             etau.call(cmd.split(" "), **self._SUPPRESS)
+        _close_on_exit(self)
 
     def stop(self):
         """Stops the ServerService."""
@@ -150,3 +152,15 @@ class AppService(Service):
                 self.process.pid,
             )
             self.process.kill()
+
+
+def _close_on_exit(service):
+    def handle_exit(*args):
+        try:
+            service.stop()
+        except:
+            pass
+
+    atexit.register(handle_exit)
+    signal.signal(signal.SIGTERM, handle_exit)
+    signal.signal(signal.SIGINT, handle_exit)

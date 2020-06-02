@@ -18,20 +18,13 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from mongoengine import (
-    FloatField,
-    StringField,
-    ListField,
-    DictField,
-    EmbeddedDocumentField,
-)
-
 import eta.core.data as etad
 import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
 
 from fiftyone.core.odm.document import ODMEmbeddedDocument
+import fiftyone.core.fields as fof
 
 
 class Label(ODMEmbeddedDocument):
@@ -78,10 +71,10 @@ class Classification(ImageLabel):
 
     meta = {"allow_inheritance": True}
 
-    label = StringField()
-    confidence = FloatField(null=True)
+    label = fof.StringField()
+    confidence = fof.FloatField(null=True)
     # @todo convert to a numeric array representation somehow?
-    logits = ListField(FloatField(), null=True)
+    logits = fof.ListField(fof.FloatField(), null=True)
 
     def to_image_labels(self, attr_name="label"):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -117,9 +110,9 @@ class Detection(ODMEmbeddedDocument):
 
     meta = {"allow_inheritance": True}
 
-    label = StringField()
-    bounding_box = ListField(FloatField())
-    confidence = FloatField(null=True)
+    label = fof.StringField()
+    bounding_box = fof.ListField(fof.FloatField())
+    confidence = fof.FloatField(null=True)
 
 
 class Detections(ImageLabel):
@@ -152,7 +145,7 @@ class Detections(ImageLabel):
 
     meta = {"allow_inheritance": True}
 
-    detections = ListField(EmbeddedDocumentField(Detection))
+    detections = fof.ListField(fof.EmbeddedDocumentField(Detection))
 
     def to_image_labels(self):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -161,6 +154,7 @@ class Detections(ImageLabel):
         Returns:
             an ``eta.core.image.ImageLabels`` instance
         """
+        # pylint: disable=not-an-iterable
         image_labels = etai.ImageLabels()
 
         for detection in self.detections:
@@ -186,11 +180,15 @@ class ImageLabels(ImageLabel):
 
     See :class:`fiftyone.utils.data.ImageLabelsSampleParser` for a
     convenient way to build labels of this type for your existing datasets.
+
+    Args:
+        labels: a dict representation of an ``eta.core.image.ImageLabels``
+            instance
     """
 
     meta = {"allow_inheritance": True}
 
-    labels = DictField()
+    labels = fof.DictField()
 
     def to_image_labels(self):
         """Returns an ``eta.core.image.ImageLabels`` representation of this

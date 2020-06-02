@@ -55,19 +55,23 @@ const createWindow = async () => {
     await installExtensions();
   }
 
-  mainWindow = new BrowserWindow({
+  let windowOpts = {
     show: false,
     width: 1024,
     height: 728,
-    webPreferences:
-      process.env.NODE_ENV === "development" || process.env.E2E_BUILD === "true"
-        ? {
-            nodeIntegration: true,
-          }
-        : {
-            preload: path.join(__dirname, "dist/renderer.prod.js"),
-          },
-  });
+    webPreferences: {
+      nodeIntegration: true,
+    },
+  };
+
+  if (process.env.APPDIR) {
+    windowOpts.icon = path.join(
+      process.env.APPDIR,
+      "usr/share/icons/hicolor/256x256/apps/fiftyone.png"
+    );
+  }
+
+  mainWindow = new BrowserWindow(windowOpts);
 
   mainWindow.loadURL(`file://${__dirname}/app.html`);
 

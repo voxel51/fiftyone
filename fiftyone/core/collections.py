@@ -34,6 +34,12 @@ class SampleCollection(object):
     :class:`fiftyone.core.sample.Sample` instances.
     """
 
+    def __str__(self):
+        return self.summary()
+
+    def __repr__(self):
+        return self.summary()
+
     def __bool__(self):
         return len(self) > 0
 
@@ -53,6 +59,14 @@ class SampleCollection(object):
 
     def __iter__(self):
         return self.iter_samples()
+
+    def summary(self):
+        """Returns a string summary of the collection.
+
+        Returns:
+            a string summary
+        """
+        raise NotImplementedError("Subclass must implement summary()")
 
     def get_tags(self):
         """Returns the list of tags in the collection.

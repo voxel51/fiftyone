@@ -13,7 +13,8 @@ concepts:
 
 -   Install `torch` and `torchvision`, if necessary:
 
-```
+```shell
+# Modify as necessary (e.g., GPU install). See https://pytorch.org for options
 pip install torch
 pip install torchvision
 ```
@@ -21,30 +22,20 @@ pip install torchvision
 -   Download the test split of the CIFAR-10 dataset to
     `~/fiftyone/cifar10/test`:
 
-```py
-import fiftyone.zoo as foz
-import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
-
-# It is safe to run this multiple times; the data will not be re-downloaded
-foc.set_config_settings(default_ml_backend="torch")
-foz.load_zoo_dataset("cifar10")
-foo.drop_database()
+```
+fiftyone zoo download cifar10 --splits test
 ```
 
--   Download some pretrained CIFAR-10 PyTorch models
+-   Download a pretrained CIFAR-10 PyTorch model
 
-```
+```shell
 # Download the software
 git clone https://github.com/huyvnphan/PyTorch_CIFAR10
-cd PyTorch_CIFAR10
 
-# Download pretrained models
-eta http download \
-    https://rutgers.box.com/shared/static/hm73mc6t8ncy1z499fwukpn1xes9rswe.zip \
-    cifar10_models/models.zip
-unzip cifar10_models/models.zip -d cifar10_models/
-rm cifar10_models/models.zip
+# Download the pretrained model (90MB)
+eta gdrive download --public \
+    1dGfpeFK_QG0kV-U6QDHMX2EOGXPqaNzu \
+    PyTorch_CIFAR10/cifar10_models/state_dicts/resnet50.pt
 ```
 
 ## Importing FiftyOne
@@ -73,11 +64,11 @@ where `labels.json` is a JSON file in the following format:
 
 ```
 {
-    "labels_map": {
-        <targetA>: <labelA>,
-        <targetB>: <labelB>,
+    "classes": [
+        <labelA>,
+        <labelB>,
         ...
-    },
+    ],
     "labels": {
         <uuid1>: <target1>,
         <uuid2>: <target2>,
@@ -93,7 +84,7 @@ In your current workflow, you may parse this data into a list of
 import json
 import os
 
-# The location of the dataset on disk
+# The location of the dataset on disk that you downloaded above
 dataset_dir = os.path.expanduser("~/fiftyone/cifar10/test")
 
 # Maps image UUIDs to image paths
@@ -107,14 +98,14 @@ labels_path = os.path.join(dataset_dir, "labels.json")
 with open(labels_path, "rt") as f:
     _labels = json.load(f)
 
-# Maps int targets to label strings
-labels_map = {int(k): v for k, v in _labels["labels_map"].items()}
+# Get classes
+classes = _labels["classes"]
 
 # Maps image UUIDs to int targets
 labels = _labels["labels"]
 
 # Make a list of (image_path, label) samples
-samples = [(image_uuids_to_paths[u], labels_map[t]) for u, t in labels.items()]
+samples = [(image_uuids_to_paths[u], classes[t]) for u, t in labels.items()]
 
 # Print a few samples
 print(samples[:5])
@@ -146,10 +137,10 @@ view = (dataset.view()
 )
 
 # Print some information about the entire dataset
-print(dataset.summary())
+print(dataset)
 
 # Print some information about the view you created
-print(view.summary())
+print(view)
 
 # Print a few samples from the view
 print(view.head())
@@ -207,17 +198,12 @@ def predict(model, imgs):
 #
 # Load a model
 #
-# Choices here are:
-#   vgg11_bn, vgg13_bn, vgg16_bn, vgg19_bn, resnet18, resnet34, resnet50
-#   densenet121, densenet161, densenet169, mobilenet_v2, googlenet
-#   inception_v3
-#
 # Model performance numbers are available at:
 #   https://github.com/huyvnphan/PyTorch_CIFAR10
 #
 
-model = inception_v3(pretrained=True)
-model_name = "inception_v3"
+model = resnet50(pretrained=True)
+model_name = "resnet50"
 
 #
 # Extract a few images to process
@@ -243,8 +229,10 @@ for imgs, sample_ids in data_loader:
         sample_ids, predictions, confidences
     ):
         sample = dataset[sample_id]
-        sample[model_name] = fo.Classification(label=labels_map[prediction])
-        sample["confidence"] = float(confidence)
+        sample[model_name] = fo.Classification(
+            label=classes[prediction],
+            confidence=confidence,
+        )
         sample.save()
 
 #
@@ -260,14 +248,14 @@ print(view.head(batch_size))
 #
 
 pred_view = (dataset.view()
-    .exists("confidence")
-    .sort_by("confidence", reverse=True)
+    .exists(model_name)
+    .sort_by("%s.confidence" % model_name, reverse=True)
 )
 print(len(pred_view))
 print(pred_view.head())
 ```
 
-## Using the FiftyOne dashboard
+## Using the FiftyOne Dashboard
 
 FiftyOne provides a powerful dashboard that allows you easily visualize,
 explore, search, filter, your datasets.
@@ -276,7 +264,7 @@ You can explore the dashboard interactively through the GUI, and you can even
 interact with it in real-time from your Python interpreter!
 
 ```py
-# Launch the FiftyOne dashboard
+# Launch the FiftyOne Dashboard
 session = fo.launch_dashboard()
 
 # Open your dataset in the dashboard
@@ -294,10 +282,6 @@ session.view = None
 
 # Print details about the selected samples
 selected_view = dataset.view().select(session.selected)
-print(selected_view.summary())
+print(selected_view)
 print(selected_view.head())
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

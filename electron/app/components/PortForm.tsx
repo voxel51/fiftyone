@@ -4,7 +4,6 @@ import { Input, Label } from "semantic-ui-react";
 
 import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
-import CodeBlock from "./CodeBlock";
 
 export default connect(({ connected, port, setResult }) => {
   const [initialState, setInitialState] = useState({ port, connected });

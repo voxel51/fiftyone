@@ -8,17 +8,18 @@
 # voxel51.com
 #
 
+cd "$(dirname "$0")/.."
 echo "**** Generating documentation"
 
 #
 # The syntax here is:
 #   sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, …]
 #
-sphinx-apidoc -f -o docs/source fiftyone fiftyone/experimental
+sphinx-apidoc -f --no-toc -o docs/api fiftyone fiftyone/experimental
 
 cd docs
 make html
 cd ..
 
 echo "**** Documentation complete"
-printf "To view the docs, run:\n\nopen docs/build/html/index.html\n\n"
+printf "To view the docs, open:\n\ndocs/build/html/index.html\n\n"

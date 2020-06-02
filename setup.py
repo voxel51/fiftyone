@@ -7,6 +7,7 @@ Installs FiftyOne.
 |
 """
 import os
+
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
@@ -16,23 +17,31 @@ class BdistWheelCustom(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # pure Python, so build a wheel for any Python version
         self.universal = True
-
-
-cmdclass = {
-    "bdist_wheel": BdistWheelCustom,
-}
+        # make just the wheel require these packages, since they aren't needed
+        # for a development installation
+        self.distribution.install_requires += [
+            "fiftyone-brain>=0.1.3",
+            "fiftyone-gui>=0.1.3",
+            "fiftyone-db",
+        ]
 
 
 setup(
     name="fiftyone",
-    version="0.1.0",
+    version="0.1.3",
     description="Project FiftyOne",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages(),
+    packages=find_packages(exclude=["fiftyone.experimental"])
+    + ["fiftyone.examples"],
+    package_dir={"fiftyone.examples": "examples"},
     include_package_data=True,
+    exclude_package_data={
+        "fiftyone": ["experimental/*"],
+        "fiftyone.examples": ["archive/*", "data/*"],
+    },
     install_requires=[
         # third-party packages
         "argcomplete",
@@ -43,6 +52,7 @@ setup(
         "gunicorn",
         "mongoengine",
         "numpy",
+        "packaging",
         "Pillow<7,>=6.2",
         "pymongo",
         "python-engineio[client]<3.12;python_version<'3'",
@@ -53,9 +63,6 @@ setup(
         "setuptools",
         "tabulate",
         # internal packages
-        "fiftyone-brain",
-        "fiftyone-db",
-        "fiftyone-gui",
         "voxel51-eta",
     ],
     classifiers=[
@@ -66,5 +73,5 @@ setup(
     ],
     scripts=["fiftyone/fiftyone"],
     python_requires=">=2.7",
-    cmdclass=cmdclass,
+    cmdclass={"bdist_wheel": BdistWheelCustom},
 )

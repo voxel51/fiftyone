@@ -251,7 +251,7 @@ class Session(foc.HasClient):
 
 
 def _close_on_exit(session):
-    def handle_exit():
+    def handle_exit(*args):
         try:
             session.close()
         except:
