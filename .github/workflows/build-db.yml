@@ -10,12 +10,21 @@ jobs:
         uses: actions/checkout@v1
         # with:
         #   submodules: true
-      - name: Build wheel
+      - name: Build wheel (Linux)
         run: |
           cd package/db
-          python3 setup.py bdist_wheel
-      - name: Upload wheel
+          python3 setup.py bdist_wheel --plat-name linux
+      - name: Build wheel (macOS)
+        run: |
+          cd package/db
+          python3 setup.py bdist_wheel --plat-name mac
+      - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
-          name: wheel
-          path: package/db/dist/*.whl
+          name: wheel-linux
+          path: package/db/dist/*linux*.whl
+      - name: Upload wheel (macOS)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-macos
+          path: package/db/dist/*macos*.whl
