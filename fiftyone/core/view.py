@@ -462,14 +462,16 @@ class DatasetView(foc.SampleCollection):
 
     def _get_distributions(self, group):
         pipeline = _DISTRIBUTION_PIPELINES[group]
+        # we add a sub-pipeline for each numeric as it looks like multiple
+        # butckets in a single pipeline is not supported
         if group == "scalars":
             numerics = self._dataset.get_field_schema(ftype=fof.IntField)
             numerics.update(
                 self._dataset.get_field_schema(ftype=fof.FloatField)
             )
 
-            # we add a sub-pipeline for each numeric as it looks like multiple
-            # "bucketAuto"s in a single pipeline is not supported
+            # here we query the min and max for each numeric field
+            # unfortunately, it looks like this has to be a seperate query
             bounds_pipeline = [{"$facet": {}}]
             for idx, (k, v) in enumerate(numerics.items()):
                 bounds_pipeline[0]["$facet"]["numeric-%d" % idx] = [
@@ -483,6 +485,9 @@ class DatasetView(foc.SampleCollection):
                 ]
 
             bounds = list(self.aggregate(bounds_pipeline))[0]
+
+            # take min/max results to calculate boundaries list while building the main
+            # pipeline
             for idx, (k, v) in enumerate(numerics.items()):
                 sub_pipeline = "numeric-%d" % idx
                 field_bounds = bounds[sub_pipeline][0]
