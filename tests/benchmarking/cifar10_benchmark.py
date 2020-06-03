@@ -54,7 +54,6 @@ for _ in range(9):
     start_time = time.time()
     for sample in view:
         sample.filepath = sample.filepath + "123"
-        sample.save()
     update_sample_times.append(time.time() - start_time)
 RESULT["update_samples_modify_field"] = np.median(update_sample_times)
 
@@ -66,7 +65,6 @@ for i in range(9):
     start_time = time.time()
     for sample in view:
         sample[field_name] = random.randint(0, 100)
-        sample.save()
     update_sample_times.append(time.time() - start_time)
 RESULT["update_samples_new_field"] = np.median(update_sample_times)
 
