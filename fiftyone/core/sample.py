@@ -49,6 +49,9 @@ class Sample(object):
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
+        # maintain a reference to the dataset
+        self._dataset = self._get_dataset()
+
     def __del__(self):
         """Automatically save the sample when it is destroyed."""
         if self.in_dataset:
@@ -348,10 +351,8 @@ class Sample(object):
         """
         return self._doc.in_db
 
-    @property
-    def _dataset(self):
+    def _get_dataset(self):
         if self._in_db:
-            # @todo(Tyler) should this import be cached?
             from fiftyone.core.dataset import load_dataset
 
             return load_dataset(self.dataset_name)
@@ -381,6 +382,8 @@ class Sample(object):
         dataset_instances = self._instances[doc.dataset_name]
         if self.id not in dataset_instances:
             dataset_instances[self.id] = self
+
+        self._dataset = self._get_dataset()
 
     @classmethod
     def _reset_backing_docs(cls, dataset_name, sample_ids):
