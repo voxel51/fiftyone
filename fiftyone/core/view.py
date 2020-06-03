@@ -461,9 +461,6 @@ class DatasetView(foc.SampleCollection):
         return self.skip(start).limit(stop - start)
 
     def _get_distributions(self, group):
-        import pprint
-
-        pp = pprint.PrettyPrinter(indent=4)
         pipeline = _DISTRIBUTION_PIPELINES[group]
         if group == "scalars":
             numerics = self._dataset.get_field_schema(ftype=fof.IntField)
@@ -484,7 +481,7 @@ class DatasetView(foc.SampleCollection):
                         "$group": {
                             "_id": k,
                             "data": {
-                                "$push": {"key": "$_id", "count": "$count",}
+                                "$push": {"key": "$_id", "count": "$count"}
                             },
                         }
                     },
@@ -504,8 +501,6 @@ class DatasetView(foc.SampleCollection):
             for f in result[0].values():
                 new_result += f
             result = new_result
-
-        pp.pprint(result)
 
         for idx, dist in enumerate(result):
             result[idx]["data"] = sorted(
