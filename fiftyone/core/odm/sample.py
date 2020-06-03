@@ -62,13 +62,18 @@ import six
 # pragma pylint: enable=wildcard-import
 
 from collections import OrderedDict
+import json
 import numbers
 
+from bson import json_util
+from bson.binary import Binary
 from mongoengine.errors import InvalidQueryError
 import numpy as np
 
+import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 
 from .dataset import SampleField
 from .document import ODMDocument, ODMEmbeddedDocument, SerializableDocument
@@ -430,14 +435,56 @@ class NoDatasetSample(SerializableDocument):
         self._data.update(kwargs)
 
     def to_dict(self, extended=False):
-        return {
-            k: v.to_dict() if hasattr(v, "to_dict") else v
-            for k, v in self._data.items()
-        }
+        d = {}
+        for k, v in iteritems(self._data):
+            if hasattr(v, "to_dict"):
+                # Embedded document
+                d[k] = v.to_dict(extended=extended)
+            elif isinstance(v, np.ndarray):
+                # Must handle arrays separately, since they are non-primitives
+
+                # @todo cannot support serializing 1D arrays as lists because
+                # there is no way for `from_dict` to know that the data should
+                # be converted back to a numpy array
+                #
+                # if v.ndim == 1:
+                #     d[k] = v.tolist()
+                #
+
+                v_binary = fou.serialize_numpy_array(v)
+                if extended:
+                    # @todo improve this
+                    d[k] = json.loads(json_util.dumps(Binary(v_binary)))
+                else:
+                    d[k] = v_binary
+            else:
+                # JSON primitive
+                d[k] = v
+
+        return d
 
     @classmethod
     def from_dict(cls, d, created=False, extended=False):
-        return cls(**d)
+        kwargs = {}
+        for k, v in iteritems(d):
+            if isinstance(v, dict):
+                if "_cls" in v:
+                    # Serialized embedded document
+                    _cls = getattr(fo, v["_cls"])
+                    kwargs[k] = _cls.from_dict(v)
+                elif "$binary" in v:
+                    # Serialized array in extended format
+                    binary = json_util.loads(json.dumps(v))
+                    kwargs[k] = fou.deserialize_numpy_array(binary)
+                else:
+                    kwargs[k] = v
+            elif isinstance(v, six.binary_type):
+                # Serialized array in non-extended format
+                kwargs[k] = fou.deserialize_numpy_array(v)
+            else:
+                kwargs[k] = v
+
+        return cls(**kwargs)
 
     def __getattr__(self, name):
         try:
