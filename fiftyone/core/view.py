@@ -468,7 +468,9 @@ class DatasetView(foc.SampleCollection):
                 self._dataset.get_field_schema(ftype=fof.FloatField)
             )
 
-            for k in numerics:
+            # we add a sub-pipeline for each numeric as it looks like multiple
+            # "bucketAuto"s in a single pipeline is not supported
+            for k, v in numerics.items():
                 pipeline[0]["$facet"][k] = [
                     {
                         "$bucketAuto": {
@@ -488,14 +490,13 @@ class DatasetView(foc.SampleCollection):
                     {
                         "$project": {
                             "name": k,
-                            "type": "Numeric",
+                            "type": v.__class__.__name__[:-5].lower(),
                             "data": "$data",
                         }
                     },
                 ]
 
         result = list(self.aggregate(pipeline))
-
         if group in {"labels", "scalars"}:
             new_result = []
             for f in result[0].values():
@@ -507,7 +508,7 @@ class DatasetView(foc.SampleCollection):
                 result[idx]["data"], key=lambda c: c["count"], reverse=True
             )
 
-        return sorted(result, key=lambda d: d["_id"])
+        return sorted(result, key=lambda d: d["name"])
 
     def _get_facets(self):
         return list(self.aggregate(_FACETS_PIPELINE))
@@ -563,7 +564,7 @@ _DISTRIBUTION_PIPELINES = {
                     {
                         "$project": {
                             "name": "$_id",
-                            "type": "Detection",
+                            "type": "detection",
                             "data": "$data",
                         }
                     },
@@ -598,7 +599,7 @@ _DISTRIBUTION_PIPELINES = {
                     {
                         "$project": {
                             "name": "$_id",
-                            "type": "Classification",
+                            "type": "classification",
                             "data": "$data",
                         }
                     },
@@ -619,7 +620,7 @@ _DISTRIBUTION_PIPELINES = {
                 },
             }
         },
-        {"$project": {"name": "$_id", "type": "Tag", "data": "$data"}},
+        {"$project": {"name": "$_id", "type": "tag", "data": "$data"}},
     ],
     "scalars": [
         {
@@ -639,13 +640,20 @@ _DISTRIBUTION_PIPELINES = {
                     {"$project": {"field": "$field.k", "label": "$field.v"}},
                     {
                         "$group": {
-                            "_id": {"group": "$field", "label": "$label"},
+                            "_id": {
+                                "group": "$field",
+                                "label": "$label",
+                                "type": {"$type": "$label"},
+                            },
                             "count": {"$sum": 1},
                         }
                     },
                     {
                         "$group": {
-                            "_id": "$_id.group",
+                            "_id": {
+                                "group": "$_id.group",
+                                "type": "$_id.type",
+                            },
                             "data": {
                                 "$push": {
                                     "key": "$_id.label",
@@ -656,8 +664,8 @@ _DISTRIBUTION_PIPELINES = {
                     },
                     {
                         "$project": {
-                            "name": "$_id",
-                            "type": "Something",
+                            "name": "$_id.group",
+                            "type": "$_id.type",
                             "data": "$data",
                         }
                     },
