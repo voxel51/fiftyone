@@ -26,7 +26,7 @@ from mongoengine import Document, EmbeddedDocument
 
 
 class SerializableDocument(object):
-    """Mixin for documents to support serializing and de-serializing"""
+    """Mixin for documents that can be serialized in JSON format."""
 
     meta = {"abstract": True}
 
@@ -55,8 +55,8 @@ class SerializableDocument(object):
         """Serializes this document to a JSON dictionary.
 
         Args:
-            extended (False): whether to return extended JSON, where objects
-                such as ObjectIDs Datetimes, etc. are not fully serialized
+            extended (False): whether to serialize extended JSON constructs
+                such as ObjectIDs, Binary, etc. into JSON format
 
         Returns:
             a JSON dict
@@ -88,8 +88,8 @@ class SerializableDocument(object):
                       object has already been persisted (this has an impact on
                       the subsequent call to ``.save()``)
 
-            extended (False): whether the input dictionary is in extended JSON
-                format
+            extended (False): whether the input dictionary contains extended
+                JSON
 
         Returns:
             a :class:`ODMDocument`

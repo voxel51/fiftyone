@@ -234,8 +234,8 @@ class Sample(object):
         """Serializes the sample to a JSON dictionary.
 
         Args:
-            extended (False): whether to return extended JSON, where objects
-                such as ObjectIDs Datetimes, etc. are not fully serialized
+            extended (False): whether to serialize extended JSON constructs
+                such as ObjectIDs, Binary, etc. into JSON format
 
         Returns:
             a JSON dict
@@ -264,8 +264,8 @@ class Sample(object):
                       object has already been persisted (this has an impact on
                       the subsequent call to ``.save()``)
 
-            extended (False): whether the input dictionary is in extended JSON
-                format
+            extended (False): whether the input dictionary contains extended
+                JSON
 
         Returns:
             a :class:`Sample`
