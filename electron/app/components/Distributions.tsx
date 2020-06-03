@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, PureComponent } from "react";
 import { Bar, BarChart, LabelList, XAxis, YAxis, Tooltip } from "recharts";
-import { Dimmer, Header, Loader, Segment } from "semantic-ui-react";
+import { Dimmer, Header, Loader, Message, Segment } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
@@ -109,7 +109,7 @@ const Distributions = ({ group, port, state }) => {
   }
 
   if (!data.length) {
-    return <NoDistribution name={group} />;
+    return <NoDistributions name={group} />;
   }
 
   return (

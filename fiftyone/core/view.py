@@ -26,6 +26,7 @@ from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
 
 
 def _make_registrar():
@@ -460,6 +461,25 @@ class DatasetView(foc.SampleCollection):
         return self.skip(start).limit(stop - start)
 
     def _get_distributions(self, group):
+
+        if group == "scalars":
+            pipeline = _DISTRIBUTION_PIPELINES[group]
+            numerics = self._dataset.get_field_schema(ftype=fof.IntField)
+            numerics.update(
+                self._dataset.get_field_schema(ftype=fof.FloatField)
+            )
+
+            for k in numerics:
+                pipeline[0]["$facet"]["buckets"][k] = [
+                    {
+                        "$bucketAuto": {
+                            "groupBy": "$%s" % k,
+                            "buckets": 4,
+                            "output": {"key": k, "count": {"$sum": 1}},
+                        }
+                    }
+                ]
+
         result = list(self.aggregate(_DISTRIBUTION_PIPELINES[group]))
 
         if group == "labels":
@@ -584,12 +604,49 @@ _DISTRIBUTION_PIPELINES = {
         },
         {"$project": {"name": "$_id", "type": "Tag", "data": "$data"}},
     ],
+    "scalars": [
+        {
+            "$facet": {
+                "groupings": [
+                    {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+                    {"$unwind": "$field"},
+                    {"$match": {"field.v": {"$type": {"$in": [2, 8]}}}},
+                    {
+                        "$project": {
+                            "field": "$field.k",
+                            "label": "$field.v.label",
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": {"group": "$group", "label": "$label"},
+                            "count": {"$sum": 1},
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": "$_id.group",
+                            "data": {
+                                "$push": {
+                                    "key": "$_id.label",
+                                    "count": "$count",
+                                }
+                            },
+                        }
+                    },
+                    {
+                        "$project": {
+                            "name": "$_id",
+                            "type": "Something",
+                            "data": "$data",
+                        }
+                    },
+                ],
+                "buckets": None,  # numerics are auto-bucketed
+            }
+        }
+    ],
 }
-
-
-def _scalar_field_distributions(view):
-    schema = view.get_field_schema()
-    return
 
 
 _FACETS_PIPELINE = [
