@@ -76,8 +76,8 @@ from .document import ODMDocument, ODMEmbeddedDocument, SerializableDocument
 
 def nodataset(func):
     """Decorator that provides a more informative error when attempting to call
-    a class method on an :class:``ODMNoDatasetSample`` instance that should
-    only be called on individual instances.
+    a class method on an :class:`ODMNoDatasetSample` instance that should only
+    be called on individual instances.
 
     This is necessary because fields are shared across all samples in a dataset
     but samples outside of a dataset have their own schema.
@@ -103,8 +103,8 @@ def nodataset(func):
 
 
 def no_delete_default_field(func):
-    """Wrapper for :class:``ODMSample.delete_field`` that prevents deleting
-    default fields :class:``of ODMSample``.
+    """Wrapper for :func:`ODMSample.delete_field` that prevents deleting
+    default fields of :class:`ODMSample`.
 
     This is a decorator because the subclasses implement this as either an
     instance or class method.
@@ -122,8 +122,8 @@ def no_delete_default_field(func):
 class ODMSample(ODMDocument):
     """Abstract base class for dataset sample classes.
 
-    All :class:`fiftyone.core.dataset.Dataset._sample_doc_cls` classes inherit
-    from this class.
+    All ``fiftyone.core.dataset.Dataset._sample_doc_cls`` classes inherit from
+    this class.
     """
 
     meta = {"abstract": True}
@@ -142,7 +142,7 @@ class ODMSample(ODMDocument):
         has_field = self.has_field(name)
 
         if name.startswith("_") or (hasattr(self, name) and not has_field):
-            super().__setattr__(name, value)
+            super(ODMSample, self).__setattr__(name, value)
             return
 
         if not has_field:
@@ -154,7 +154,7 @@ class ODMSample(ODMDocument):
         if value is not None:
             self._fields[name].validate(value)
 
-        super().__setattr__(name, value)
+        super(ODMSample, self).__setattr__(name, value)
 
     @property
     def dataset_name(self):
@@ -179,10 +179,10 @@ class ODMSample(ODMDocument):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
+                :class:`fiftyone.core.odm.ODMEmbeddedDocument`
 
         Returns:
              a dictionary mapping field names to field types
@@ -262,17 +262,18 @@ class ODMSample(ODMDocument):
         Args:
             field_name: the field name
             ftype: the field type to create. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
-                ``fiftyone.core.odm.ODMEmbeddedDocument`` type of the field.
-                Used only when ``ftype`` is
-                :class:``fiftyone.core.fields.EmbeddedDocumentField``
+                :class:`fiftyone.core.odm.ODMEmbeddedDocument` type of the
+                field. Used only when ``ftype`` is
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
             subfield (None): the type of the contained field. Used only when
-                `ftype` is a list or dict type
+                ``ftype`` is a list or dict type
         """
-        # pylint: disable=no-member
         # Additional arg `save` is to prevent saving the fields when reloading
         # a dataset from the database.
+
+        # pylint: disable=no-member
         if field_name in cls._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
@@ -444,17 +445,17 @@ class NoDatasetSample(SerializableDocument):
         except Exception:
             pass
 
-        return super().__getattribute__(name)
+        return super(NoDatasetSample, self).__getattribute__(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
-            super().__setattr__(name, value)
+            super(NoDatasetSample, self).__setattr__(name, value)
             return
 
         has_field = self.has_field(name)
 
         if hasattr(self, name) and not has_field:
-            super().__setattr__(name, value)
+            super(NoDatasetSample, self).__setattr__(name, value)
             return
 
         if not has_field:
