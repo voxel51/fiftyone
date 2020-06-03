@@ -490,9 +490,9 @@ class DatasetView(foc.SampleCollection):
                     {
                         "$project": {
                             "name": k,
-                            "type": v.__class__.__name__.rstrip(
-                                "Field"
-                            ).lower(),
+                            "type": v.__class__.__name__[
+                                : -len("Field")
+                            ].lower(),
                             "data": "$data",
                         }
                     },
