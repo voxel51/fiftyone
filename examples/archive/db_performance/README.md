@@ -16,6 +16,7 @@
     -   which are saved to the DB
 -   Multi-process/user Synchronization
 -   Samples/Datasets are updated in memory when modified
+-   EmbeddedDocuments, subclassing and serialization
 
 ...
 
@@ -24,8 +25,9 @@
 ### Idea
 
 -   Samples are automatically saved when modified
--   Use an `UpdateConext` to modify many samples and save every...1000
+-   Use an `UpdateContext` to modify many samples and save every...1000
     modifies.
+-   `Sample.reload()` and `Dataset.reload()` reload from the database.
 
 ## Performance Benchmarking
 
@@ -39,3 +41,7 @@ CRUD
 -   What is the idea batch size? -> 1000
 -   How does size of documents affect this?
 -   How do indexes affect this? Is `background: true` going to help?
+
+`MongoFrames`? Or pure `PyMongo`??
+
+Schemas? Validation?

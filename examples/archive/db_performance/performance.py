@@ -69,15 +69,18 @@ def compute_times():
 
 ###############################################################################
 
-NUM_SAMPLES = [10 ** i for i in range(1, 3)]
+NUM_SAMPLES = [10 ** i for i in range(3, 5)]
 OPS = ["create", "read", "update", "delete"]
 packages = [
-    "mongoengine",
+    # "mongoengine",
     # "pymodm",
     "mongoframes",
     "pymongo",
 ]
-bulk = ["one", "many"]
+bulk = [
+    # "one",
+    "many",
+]
 
 TIMES = compute_times()
 
@@ -111,6 +114,6 @@ for ax, op in zip(axs, OPS):
     ax.set_xticks(x)
     ax.set_xticklabels(NUM_SAMPLES)
     ax.legend()
-    ax.set_yscale("log")
+    # ax.set_yscale("log")
 
 plt.show()
