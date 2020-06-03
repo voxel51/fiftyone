@@ -469,7 +469,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample[field_name] = value
-            sample.save()
 
         def check_set_field_create(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -512,7 +511,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.bool_field = True
-            sample.save()
 
         def check_modify_simple_field(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -528,7 +526,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             del sample.bool_field
-            sample.save()
 
         def check_clear_simple_field(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -544,7 +541,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field = [True, False, True]
-            sample.save()
 
         def check_modify_list_set(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -558,7 +554,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             del sample.list_field
-            sample.save()
 
         def check_clear_complex_field(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -573,7 +568,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field.append(51)
-            sample.save()
 
         def check_modify_list_append(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -587,7 +581,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field.extend(["fiftyone"])
-            sample.save()
 
         def check_modify_list_extend(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -601,7 +594,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field.pop(0)
-            sample.save()
 
         def check_modify_list_pop(sample_id):
             dataset = fo.load_dataset(name=dataset_name)
@@ -615,7 +607,6 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             dataset = fo.load_dataset(name=dataset_name)
             sample = dataset[sample_id]
             sample.list_field += [52]
-            sample.save()
 
         def check_modify_list_iadd(sample_id):
             dataset = fo.load_dataset(name=dataset_name)

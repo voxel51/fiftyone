@@ -383,6 +383,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # unset the dataset for all samples
         fos.Sample._reset_all_backing_docs(dataset_name=self.name)
 
+    def save(self):
+        """Saves all changes to samples instances in memory belonging to the
+        dataset to the database.
+        A samples only needs to be saved if it has non-persisted changes and
+        still exists in memory.
+        """
+        fos.Sample.save_dataset_samples(self.name)
+
+    def reload(self):
+        """Reloads the fields for sample instances in memory belonging to the
+        dataset from the database.
+        If multiple processes or users are accessing the same database this
+        will keep the dataset in sync.
+        """
+        fos.Sample.reload_dataset_samples(self.name)
+
     def add_image_classification_samples(
         self, samples, label_field="ground_truth", tags=None, classes=None,
     ):
