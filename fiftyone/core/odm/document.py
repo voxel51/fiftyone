@@ -173,3 +173,10 @@ class ODMDocument(SerializableDocument, Document):
         """
         # pylint: disable=no-member
         return hasattr(self, "id") and self.id is not None
+
+    def save(self):
+        """Saves the document to the collection, but only if the fields have
+        changed.
+        """
+        if self._get_changed_fields():
+            super().save()
