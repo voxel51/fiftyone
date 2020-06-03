@@ -462,15 +462,15 @@ class DatasetView(foc.SampleCollection):
 
     def _get_distributions(self, group):
 
+        pipeline = _DISTRIBUTION_PIPELINES[group]
         if group == "scalars":
-            pipeline = _DISTRIBUTION_PIPELINES[group]
             numerics = self._dataset.get_field_schema(ftype=fof.IntField)
             numerics.update(
                 self._dataset.get_field_schema(ftype=fof.FloatField)
             )
 
             for k in numerics:
-                pipeline[0]["$facet"]["buckets"][k] = [
+                pipeline[0]["$facet"]["buckets"]["$facet"][k] = [
                     {
                         "$bucketAuto": {
                             "groupBy": "$%s" % k,
@@ -480,10 +480,10 @@ class DatasetView(foc.SampleCollection):
                     }
                 ]
 
-        result = list(self.aggregate(_DISTRIBUTION_PIPELINES[group]))
+        result = list(self.aggregate(pipeline))
 
-        if group == "labels":
-            result = result[0]["classifications"] + result[0]["detections"]
+        if group in {"labels", "scalars"}:
+            result = [f for f in result[0].values()]
 
         for idx, dist in enumerate(result):
             result[idx]["data"] = sorted(
@@ -642,7 +642,7 @@ _DISTRIBUTION_PIPELINES = {
                         }
                     },
                 ],
-                "buckets": None,  # numerics are auto-bucketed
+                "buckets": {"$facet": {}},  # numerics are auto-bucketed
             }
         }
     ],
