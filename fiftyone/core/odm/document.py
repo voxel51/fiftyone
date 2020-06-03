@@ -27,6 +27,7 @@ from mongoengine import (
     Document,
     EmbeddedDocument,
 )
+import numpy as np
 
 
 class SerializableDocument(object):
@@ -39,6 +40,7 @@ class SerializableDocument(object):
             json.dumps(
                 self.to_dict(extended=True),
                 separators=(",", ": "),
+                cls=JSONEncoder,
                 ensure_ascii=False,
                 indent=4,
             )
@@ -173,3 +175,18 @@ class ODMDocument(SerializableDocument, Document):
         """
         # pylint: disable=no-member
         return hasattr(self, "id") and self.id is not None
+
+
+class JSONEncoder(json.JSONEncoder):
+
+    # pylint: disable=method-hidden
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, bytes):
+            return obj.decode("ascii")
+        return super(JSONEncoder, self).default(obj)
