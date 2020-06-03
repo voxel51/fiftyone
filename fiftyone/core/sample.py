@@ -152,6 +152,10 @@ class Sample(object):
     ):
         """Adds a new field of the given type to the sample.
 
+        The sample must belong to a dataset in order to declare a field without
+        a value. Use :func:`__setitem__` or :func:`set_field` to add fields
+        to samples that do not belong to datasets.
+
         Args:
             field_name: the field name
             ftype: the field type to create. Must be a subclass of
@@ -162,6 +166,9 @@ class Sample(object):
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             subfield (None): the type of the contained field. Used only when
                 ``ftype`` is a list or dict type
+
+        Raises:
+            ValueError: if the sample does not belong to a dataset
         """
         self._doc.add_field(
             field_name,

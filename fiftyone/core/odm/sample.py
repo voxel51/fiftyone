@@ -606,7 +606,7 @@ class NoDatasetSample(SerializableDocument):
 
     @nodataset
     def add_field(self, *args, **kwargs):
-        raise NoDatasetError(
+        raise ValueError(
             "You cannot use `add_field()` to add a field without a value to a "
             "sample that does not belong to a dataset. Use `set_field()` "
             "instead"
