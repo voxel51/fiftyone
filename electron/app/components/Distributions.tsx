@@ -61,7 +61,13 @@ const Distribution = connect(({ distribution }) => {
           tick={{ fill }}
           tickLine={{ stroke }}
         />
-        <Tooltip />
+        <Tooltip
+          cursor={false}
+          contentStyle={{
+            background: "hsl(210, 20%, 23%)",
+            borderColor: "rgb(255, 109, 4)",
+          }}
+        />
         <Bar dataKey="count" fill="rgb(255, 109, 4)" barSize={barWidth} />
       </BarChart>
     </Segment>
@@ -83,8 +89,8 @@ const Distributions = ({ group, port, state }) => {
   const [data, setData] = useState([]);
 
   const getData = () => {
-    console.log(group);
     socket.emit("get_distributions", group, (data) => {
+      console.log(data);
       setInitialLoad(false);
       setLoading(false);
       setData(data);

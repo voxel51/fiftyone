@@ -470,8 +470,8 @@ class DatasetView(foc.SampleCollection):
 
             # we add a sub-pipeline for each numeric as it looks like multiple
             # "bucketAuto"s in a single pipeline is not supported
-            for k, v in numerics.items():
-                pipeline[0]["$facet"][k] = [
+            for idx, (k, v) in enumerate(numerics.items()):
+                pipeline[0]["$facet"]["numeric-%d" % idx] = [
                     {
                         "$bucketAuto": {
                             "groupBy": "$%s" % k,
@@ -500,6 +500,16 @@ class DatasetView(foc.SampleCollection):
         if group in {"labels", "scalars"}:
             new_result = []
             for f in result[0].values():
+                for d in f:
+                    for c in d["data"]:
+                        if d["type"] in {"int", "float"}:
+                            c["key"] = "%s - %s" % (
+                                str(c["key"]["min"]),
+                                str(c["key"]["max"]),
+                            )
+                        else:
+                            c["key"] = str(c["key"])
+
                 new_result += f
             result = new_result
 
@@ -625,7 +635,7 @@ _DISTRIBUTION_PIPELINES = {
     "scalars": [
         {
             "$facet": {
-                "_groupings": [
+                "groupings": [
                     {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
                     {"$unwind": "$field"},
                     {"$match": {"field.k": {"$ne": "filepath"}}},
