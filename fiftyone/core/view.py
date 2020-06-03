@@ -475,7 +475,7 @@ class DatasetView(foc.SampleCollection):
                     {
                         "$bucketAuto": {
                             "groupBy": "$%s" % k,
-                            "buckets": 4,
+                            "buckets": 50,
                             "output": {"count": {"$sum": 1}},
                         },
                     },
@@ -501,18 +501,20 @@ class DatasetView(foc.SampleCollection):
                 ]
 
         result = list(self.aggregate(pipeline))
+
+        def _parse_boundary(v):
+            return v if v is not None else 0
+
         if group in {"labels", "scalars"}:
             new_result = []
             for f in result[0].values():
                 for d in f:
                     for c in d["data"]:
                         if d["type"] in {"int", "float"}:
-                            c["key"] = "%s - %s" % (
-                                str(c["key"]["min"]),
-                                str(c["key"]["max"]),
-                            )
-                        else:
-                            c["key"] = str(c["key"])
+                            mn = _parse_boundary(c["key"]["min"])
+                            mx = _parse_boundary(c["key"]["max"])
+                            c["key"] = (mx - mn) / 2 + mn
+                        c["key"] = str(c["key"])
 
                 new_result += f
             result = new_result

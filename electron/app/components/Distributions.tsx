@@ -41,7 +41,7 @@ const Distribution = connect(({ distribution }) => {
       <BarChart
         ref={container}
         height={500}
-        width={data.length * (barWidth + 20 + 36.5)}
+        width={data.length * (barWidth + 20)}
         barCategoryGap={"20px"}
         data={data}
         margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
