@@ -65,6 +65,7 @@ from collections import OrderedDict
 import numbers
 
 from mongoengine.errors import InvalidQueryError
+import numpy as np
 
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
@@ -603,17 +604,18 @@ class NoDatasetSample(SerializableDocument):
         self.set_field(field_name, None)
 
     @nodataset
-    def add_field(self, *args, **kwargs):
-        raise TypeError("No dataset")
+    def add_field(self, field_name, *args, **kwargs):
+        self.set_field(field_name, None, create=True)
+        self._data[field_name] = None
 
     @nodataset
     def add_implied_field(self, field_name, value):
-        raise TypeError("No dataset")
+        self.set_field(field_name, value, create=True)
 
     @nodataset
     @no_delete_default_field
     def delete_field(self, field_name):
-        raise TypeError("No dataset")
+        self.clear_field(field_name)
 
 
 class NoDatasetError(Exception):
@@ -640,6 +642,11 @@ def _get_implied_field_kwargs(value):
         return {"ftype": fof.StringField}
     if isinstance(value, (list, tuple)):
         return {"ftype": fof.ListField}
+    if isinstance(value, np.ndarray):
+        if value.ndim == 1:
+            return {"ftype": fof.VectorField}
+
+        return {"ftype": fof.ArrayField}
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
     raise TypeError("Unsupported field value '%s'" % type(value))
