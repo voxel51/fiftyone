@@ -605,9 +605,12 @@ class NoDatasetSample(SerializableDocument):
         self.set_field(field_name, None)
 
     @nodataset
-    def add_field(self, field_name, *args, **kwargs):
-        self.set_field(field_name, None, create=True)
-        self._data[field_name] = None
+    def add_field(self, *args, **kwargs):
+        raise NoDatasetError(
+            "You cannot use `add_field()` to add a field without a value to a "
+            "sample that does not belong to a dataset. Use `set_field()` "
+            "instead"
+        )
 
     @nodataset
     def add_implied_field(self, field_name, value):
