@@ -54,13 +54,22 @@ def list_dataset_names():
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
+    Note that :class:`Dataset` instances are singletons keyed by ``name``, so
+    all calls to this function with a given dataset ``name`` in a program will
+    return the same object.
+
+    To create a new dataset, use the :class:`Dataset` constructor.
+
     Args:
         name: the name of the dataset
 
     Returns:
         a :class:`Dataset`
+
+    Raises:
+        ValueError: if no dataset exists with the given name
     """
-    return Dataset(name, create_empty=False)
+    return Dataset(name, create=False)
 
 
 def get_default_dataset_name():
@@ -96,24 +105,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
+    Note that :class:`Dataset` instances are singletons keyed by ``name``, so
+    all calls to :func:`Dataset.__init__` for a given dataset ``name`` in a
+    program will return the same object.
+
     Args:
         name: the name of the dataset
-        create_empty (True): whether to create a dataset with the given name
-            if it does not already exist
+        create (True): whether to create a dataset with the given name if it
+            does not exist
+
+    Raises:
+        ValueError: if ``create == False`` and the dataset does not exist
     """
 
-    def __init__(self, name, create_empty=True):
+    def __init__(self, name, create=True):
         self._name = name
-        self._sample_doc_cls = None
         self._meta = None
+        self._sample_doc_cls = None
 
-        try:
-            self._load_dataset(name=name)
-        except DoesNotExist:
-            if create_empty:
-                self._initialize_dataset(name=name)
-            else:
-                raise ValueError("Dataset '%s' not found" % name)
+        if create:
+            self._meta, self._sample_doc_cls = _create_dataset(name)
+        else:
+            self._meta, self._sample_doc_cls = _load_dataset(name)
 
     def __len__(self):
         return self._get_query_set().count()
@@ -1261,49 +1274,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return {"name": self.name}
 
-    def _initialize_dataset(self, name):
-        # Create ODMSample subclass
-        self._sample_doc_cls = type(self._name, (foo.ODMSample,), {})
-
-        # Create dataset meta document
-        self._meta = foo.ODMDataset(
-            name=name,
-            sample_fields=foo.SampleField.list_from_field_schema(
-                self.get_field_schema()
-            ),
-        )
-
-        # Save dataset meta document
-        self._meta.save()
-
-    def _load_dataset(self, name):
-        # pylint: disable=no-member
-        self._meta = foo.ODMDataset.objects.get(name=name)
-
-        self._sample_doc_cls = type(self._name, (foo.ODMSample,), {})
-
-        num_default_fields = len(self.get_field_schema())
-
-        for sample_field in self._meta.sample_fields[num_default_fields:]:
-            subfield = (
-                etau.get_class(sample_field.subfield)
-                if sample_field.subfield
-                else None
-            )
-            embedded_doc_type = (
-                etau.get_class(sample_field.embedded_doc_type)
-                if sample_field.embedded_doc_type
-                else None
-            )
-
-            self._sample_doc_cls.add_field(
-                sample_field.name,
-                etau.get_class(sample_field.ftype),
-                subfield=subfield,
-                embedded_doc_type=embedded_doc_type,
-                save=False,
-            )
-
     def _expand_schema(self, samples):
         fields = self.get_field_schema()
         for sample in samples:
@@ -1348,3 +1318,65 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         return field_str
+
+
+def _dataset_exists(name):
+    try:
+        # pylint: disable=no-member
+        foo.ODMDataset.objects.get(name=name)
+        return True
+    except DoesNotExist:
+        return False
+
+
+def _create_dataset(name):
+    if _dataset_exists(name):
+        raise ValueError("Dataset '%s' already exists" % name)
+
+    # Create sample class
+    _sample_doc_cls = type(name, (foo.ODMSample,), {})
+
+    # Create dataset meta document
+    _meta = foo.ODMDataset(
+        name=name,
+        sample_fields=foo.SampleField.list_from_field_schema(
+            _sample_doc_cls.get_field_schema()
+        ),
+    )
+    _meta.save()
+
+    return _meta, _sample_doc_cls
+
+
+def _load_dataset(name):
+    try:
+        # pylint: disable=no-member
+        _meta = foo.ODMDataset.objects.get(name=name)
+    except DoesNotExist:
+        raise ValueError("Dataset '%s' not found" % name)
+
+    _sample_doc_cls = type(name, (foo.ODMSample,), {})
+
+    num_default_fields = len(_sample_doc_cls.get_field_schema())
+
+    for sample_field in _meta.sample_fields[num_default_fields:]:
+        subfield = (
+            etau.get_class(sample_field.subfield)
+            if sample_field.subfield
+            else None
+        )
+        embedded_doc_type = (
+            etau.get_class(sample_field.embedded_doc_type)
+            if sample_field.embedded_doc_type
+            else None
+        )
+
+        _sample_doc_cls.add_field(
+            sample_field.name,
+            etau.get_class(sample_field.ftype),
+            subfield=subfield,
+            embedded_doc_type=embedded_doc_type,
+            save=False,
+        )
+
+    return _meta, _sample_doc_cls
