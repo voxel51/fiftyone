@@ -16,7 +16,7 @@ function Setup(props) {
     return <Redirect to={routes.DATASET} />;
   }
   return (
-    <Container fluid={true} style={{ padding: "2rem" }}>
+    <Container fluid={true}>
       <Segment>
         <Header as="h1">Hi there! Welcome to FiftyOne</Header>
         <Divider />
