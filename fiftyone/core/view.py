@@ -462,8 +462,8 @@ class DatasetView(foc.SampleCollection):
 
     def _get_distributions(self, group):
         pipeline = _DISTRIBUTION_PIPELINES[group]
-        # we add a sub-pipeline for each numeric as it looks like multiple
-        # butckets in a single pipeline is not supported
+
+        # we add a sub-pipeline for each numeric as it looks like multiple buckets in a single pipeline is not supported
         if group == "scalars":
             numerics = self._dataset.get_field_schema(ftype=fof.IntField)
             numerics.update(
@@ -486,8 +486,7 @@ class DatasetView(foc.SampleCollection):
 
             bounds = list(self.aggregate(bounds_pipeline))[0]
 
-            # take min/max results to calculate boundaries list while building the main
-            # pipeline
+            # for each numeric field, build the boundaries array with the min/max results when adding the field's sub-pipeline
             for idx, (k, v) in enumerate(numerics.items()):
                 sub_pipeline = "numeric-%d" % idx
                 field_bounds = bounds[sub_pipeline][0]
