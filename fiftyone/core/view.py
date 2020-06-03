@@ -491,7 +491,9 @@ class DatasetView(foc.SampleCollection):
                         "$project": {
                             "name": k,
                             "type": v.__class__.__name__[
-                                : -len("Field")
+                                : -len(
+                                    "Field"
+                                )  # grab field type from the class
                             ].lower(),
                             "data": "$data",
                         }
