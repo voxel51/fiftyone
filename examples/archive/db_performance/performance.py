@@ -20,6 +20,25 @@ from mongoengine_funcs import mongoengine_one, mongoengine_many
 from mongoframes_funcs import mongoframes_one, mongoframes_many
 
 
+# PARAMETERS ##################################################################
+
+# batch sizes
+NUM_SAMPLES = [10 ** i for i in range(3, 5)]
+
+# what packages to test
+packages = [
+    # "mongoengine",
+    # "pymodm",
+    "mongoframes",
+    "pymongo",
+]
+
+# test single-document operations (one) and/or bulk operations (many)
+bulk = [
+    # "one",
+    "many",
+]
+
 ###############################################################################
 
 func_map = {
@@ -28,6 +47,8 @@ func_map = {
     "mongoengine": {"one": mongoengine_one, "many": mongoengine_many},
     "mongoframes": {"one": mongoframes_one, "many": mongoframes_many},
 }
+
+ops = ["create", "read", "update", "delete"]
 
 
 def compute_times():
@@ -57,11 +78,11 @@ def compute_times():
                 else:
                     times = np.vstack([times, new_time])
                 print(
-                    "%15s() %s per 1000 samples (batch size = %d)"
+                    "%18s() %s per 1000 samples (batch size = %d)"
                     % (func.__name__, times[-1, :], n)
                 )
 
-            for i, op in enumerate(OPS):
+            for i, op in enumerate(ops):
                 all_times[op][b][pkg] = times[:, i]
 
     return all_times
@@ -69,36 +90,22 @@ def compute_times():
 
 ###############################################################################
 
-NUM_SAMPLES = [10 ** i for i in range(3, 5)]
-OPS = ["create", "read", "update", "delete"]
-packages = [
-    # "mongoengine",
-    # "pymodm",
-    "mongoframes",
-    "pymongo",
-]
-bulk = [
-    # "one",
-    "many",
-]
-
-TIMES = compute_times()
+all_times = compute_times()
 
 ###############################################################################
-
 
 x = np.arange(len(NUM_SAMPLES))
 width = 0.1
 
-fig, axs = plt.subplots(nrows=len(OPS))
-if len(OPS) == 1:
+fig, axs = plt.subplots(nrows=len(ops))
+if len(ops) == 1:
     axs = [axs]
 
-for ax, op in zip(axs, OPS):
+for ax, op in zip(axs, ops):
     i = 0
     for b in bulk:
         for pkg in packages:
-            times = TIMES[op][b][pkg]
+            times = all_times[op][b][pkg]
             L = (len(bulk) * len(packages) - 1) / 2
             rects = ax.bar(
                 x + (i - L) * width,
@@ -115,5 +122,7 @@ for ax, op in zip(axs, OPS):
     ax.set_xticklabels(NUM_SAMPLES)
     ax.legend()
     # ax.set_yscale("log")
+
+ax.set_xlabel("Operation Batch Size")
 
 plt.show()
