@@ -62,11 +62,11 @@ class ListField(mongoengine.ListField, Field):
 
 
 class VectorField(Field):
-    """A field for storing one-dimensional arrays.
+    """A field that stores one-dimensional arrays.
 
     :class:`VectorField` instances accept lists, tuples, and numpy array
-    values. The underlying data is stored as a list of floats in the database
-    and always retrieved as a numpy array.
+    values. The underlying data is stored as a list in the database and always
+    retrieved as a numpy array.
     """
 
     def to_mongo(self, value):
@@ -82,7 +82,10 @@ class VectorField(Field):
         return np.asarray(value)
 
     def validate(self, value):
-        if not isinstance(value, (np.ndarray, list, tuple)):
+        if isinstance(value, np.ndarray):
+            if value.ndim > 1:
+                self.error("Only 1D arrays may be used in a vector field")
+        elif not isinstance(value, (list, tuple)):
             self.error(
                 "Only numpy arrays, lists, and tuples may be used in a "
                 "vector field"
