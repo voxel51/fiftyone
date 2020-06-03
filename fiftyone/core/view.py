@@ -654,11 +654,8 @@ _DISTRIBUTION_PIPELINES = {
                     {"$match": {"type": {"$ne": "array"}}},
                     {
                         "$match": {
-                            "$or": [
-                                {"field.v": {"$type": 2}},
-                                {"field.v": {"$type": 8}},
-                            ]
-                        }
+                            "field.v": {"$type": "bool"}
+                        },  # @todo: support strings
                     },
                     {"$project": {"field": "$field.k", "label": "$field.v"}},
                     {
