@@ -591,13 +591,13 @@ _DISTRIBUTION_PIPELINES = {
                     },
                     {
                         "$group": {
-                            "_id": {"group": "$group", "label": "$label"},
+                            "_id": {"field": "$field", "label": "$label"},
                             "count": {"$sum": 1},
                         }
                     },
                     {
                         "$group": {
-                            "_id": "$_id.group",
+                            "_id": "$_id.field",
                             "data": {
                                 "$push": {
                                     "key": "$_id.label",
@@ -639,6 +639,13 @@ _DISTRIBUTION_PIPELINES = {
                     {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
                     {"$unwind": "$field"},
                     {"$match": {"field.k": {"$ne": "filepath"}}},
+                    {
+                        "$project": {
+                            "field": "$field",
+                            "type": {"$type": "$field.v"},
+                        }
+                    },
+                    {"$match": {"type": {"$ne": "array"}}},
                     {
                         "$match": {
                             "$or": [
