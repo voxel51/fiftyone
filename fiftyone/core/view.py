@@ -514,15 +514,16 @@ class DatasetView(foc.SampleCollection):
                             mn = _parse_boundary(c["key"]["min"])
                             mx = _parse_boundary(c["key"]["max"])
                             c["key"] = (mx - mn) / 2 + mn
-                        c["key"] = str(c["key"])
+                        else:
+                            c["key"] = str(c["key"])
 
                 new_result += f
             result = new_result
-
-        for idx, dist in enumerate(result):
-            result[idx]["data"] = sorted(
-                result[idx]["data"], key=lambda c: c["count"], reverse=True
-            )
+        else:
+            for idx, dist in enumerate(result):
+                result[idx]["data"] = sorted(
+                    result[idx]["data"], key=lambda c: c["count"], reverse=True
+                )
 
         return sorted(result, key=lambda d: d["name"])
 

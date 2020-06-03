@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef, PureComponent } from "react";
 import { Bar, BarChart, LabelList, XAxis, YAxis, Tooltip } from "recharts";
 import { Dimmer, Header, Loader, Message, Segment } from "semantic-ui-react";
+import _ from "lodash";
 
 import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
+import { isFloat } from "../utils/generic";
 
 class CustomizedAxisTick extends PureComponent {
   render() {
     const { x, y, stroke, payload, fill } = this.props;
-
+    const v = payload.value;
     return (
       <g transform={`translate(${x},${y})`}>
         <text
@@ -20,7 +22,7 @@ class CustomizedAxisTick extends PureComponent {
           fill={fill}
           transform="rotate(-80)"
         >
-          {payload.value}
+          {isFloat(v) ? v.toFixed(3) : v}
         </text>
       </g>
     );
@@ -34,14 +36,15 @@ const Distribution = connect(({ distribution }) => {
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
-
+  const isNumeric = _.indexOf(["int", "float"], type);
+  const padding = isNumeric >= 0 ? 0 : 20;
   return (
     <Segment style={{ overflowY: "auto", margin: "2rem 0" }}>
       <Header as="h3">{`${name}: ${type}`}</Header>
       <BarChart
         ref={container}
         height={500}
-        width={data.length * (barWidth + 20)}
+        width={data.length * (barWidth + padding)}
         barCategoryGap={"20px"}
         data={data}
         margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
@@ -49,7 +52,7 @@ const Distribution = connect(({ distribution }) => {
         <XAxis
           dataKey="key"
           type="category"
-          interval={0}
+          interval={isNumeric ? "preserveStartEnd" : 0}
           height={100}
           axisLine={false}
           tick={<CustomizedAxisTick {...{ fill }} />}
