@@ -216,14 +216,14 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
 
         def create_dataset():
             with self.assertRaises(ValueError):
-                dataset = fo.Dataset(name=dataset_name, create_empty=False)
+                dataset = fo.Dataset(name=dataset_name, create=False)
 
             dataset = fo.Dataset(name=dataset_name)
 
         create_dataset()
 
         def check_create_dataset():
-            dataset = fo.Dataset(name=dataset_name, create_empty=False)
+            dataset = fo.Dataset(name=dataset_name, create=False)
 
         def check_create_dataset_via_load():
             self.assertIn(dataset_name, fo.list_dataset_names())
