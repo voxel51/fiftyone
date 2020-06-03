@@ -473,9 +473,38 @@ class DatasetView(foc.SampleCollection):
             for idx, (k, v) in enumerate(numerics.items()):
                 pipeline[0]["$facet"]["numeric-%d" % idx] = [
                     {
-                        "$bucketAuto": {
+                        "$group": {
+                            "_id": k,
+                            "values": {"$push": "$%s" % k},
+                            "min": {"$min": "$%s" % k},
+                            "max": {"$max": "$%s" % k},
+                        }
+                    },
+                    {
+                        "$addFields": {
+                            "step": {
+                                "$divide": [
+                                    {
+                                        "$subtract": [
+                                            {"$max": "$%s" % k},
+                                            {"$min": "$%s" % k},
+                                        ]
+                                    },
+                                    50,
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "$project": {
+                            "values": "$values",
+                            "buckets": {"$range": ["$min", "$max", "$step"]},
+                        }
+                    },
+                    {
+                        "$bucket": {
                             "groupBy": "$%s" % k,
-                            "buckets": 50,
+                            "buckets": "$buckets",
                             "output": {"count": {"$sum": 1}},
                         },
                     },
