@@ -36,8 +36,8 @@ const Distribution = connect(({ distribution }) => {
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
-  const isNumeric = _.indexOf(["int", "float"], type);
-  const padding = isNumeric >= 0 ? 0 : 20;
+  const isNumeric = _.indexOf(["int", "float"], type) >= 0;
+  const padding = isNumeric ? 0 : 20;
   return (
     <Segment style={{ overflowY: "auto", margin: "2rem 0" }}>
       <Header as="h3">{`${name}: ${type}`}</Header>
