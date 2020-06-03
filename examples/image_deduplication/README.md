@@ -141,7 +141,6 @@ import fiftyone.core.utils as fou
 
 for sample in dataset:
     sample["file_hash"] = fou.compute_filehash(sample.filepath)
-    sample.save()
 
 print(dataset)
 ```
