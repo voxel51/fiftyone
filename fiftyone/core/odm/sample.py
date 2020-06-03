@@ -593,7 +593,7 @@ class NoDatasetSample(SerializableDocument):
             ]
         )
 
-        for field_name, value in self._data.items():
+        for field_name, value in iteritems(self._data):
             if field_name in d:
                 continue
 
@@ -601,7 +601,7 @@ class NoDatasetSample(SerializableDocument):
                 field_name, **_get_implied_field_kwargs(value)
             )
 
-        for field_name, field in d.items():
+        for field_name, field in iteritems(d):
             if not isinstance(field, ftype):
                 d.pop(field_name)
 

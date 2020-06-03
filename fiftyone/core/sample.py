@@ -230,24 +230,31 @@ class Sample(object):
         kwargs = {fn: getattr(doc, fn) for fn in doc.field_names}
         return self.__class__(**kwargs)
 
-    def to_dict(self, extended=False):
+    def to_dict(self, extended=False, include_id=True):
         """Serializes the sample to a JSON dictionary.
 
         Args:
             extended (False): whether to serialize extended JSON constructs
                 such as ObjectIDs, Binary, etc. into JSON format
+            include_id (True): whether to include the ID of the sample in the
+                serialized dictionary
 
         Returns:
             a JSON dict
         """
-        return self._doc.to_dict(extended=extended)
+        d = self._doc.to_dict(extended=extended)
+        if not include_id:
+            d.pop("_id", None)
+
+        return d
 
     @classmethod
     def from_dict(cls, doc_class, d, created=False, extended=False):
         """Loads the sample from a JSON dictionary.
 
         Args:
-            doc_class:
+            doc_class: the :class:`fiftyone.core.odm.ODMSample` class to use
+                to load the backing document
             d: a JSON dictionary
             created (False): whether to consider the newly instantiated
                 document as brand new or as persisted already. The following
@@ -292,6 +299,11 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
+        if isinstance(doc, foo.NoDatasetSample):
+            sample = cls.__new__(cls)
+            sample._doc = doc
+            return sample
+
         if not isinstance(doc, foo.ODMSample):
             raise TypeError("Unexpected doc type: %s" % type(doc))
 
