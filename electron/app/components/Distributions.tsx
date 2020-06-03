@@ -71,7 +71,12 @@ const Distribution = connect(({ distribution }) => {
             borderColor: "rgb(255, 109, 4)",
           }}
         />
-        <Bar dataKey="count" fill="rgb(255, 109, 4)" barSize={barWidth} />
+        <Bar
+          dataKey="count"
+          fill="rgb(255, 109, 4)"
+          barCategoryGap={0}
+          barSize={barWidth}
+        />
       </BarChart>
     </Segment>
   );

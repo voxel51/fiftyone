@@ -485,7 +485,11 @@ class DatasetView(foc.SampleCollection):
                     }
                 ]
 
-            bounds = list(self.aggregate(bounds_pipeline))[0]
+            bounds = (
+                list(self.aggregate(bounds_pipeline))[0]
+                if len(numerics)
+                else {}
+            )
 
             # for each numeric field, build the boundaries array with the
             # min/max results when adding the field's sub-pipeline
@@ -543,7 +547,8 @@ class DatasetView(foc.SampleCollection):
             for f in result[0].values():
                 new_result += f
             result = new_result
-        else:
+
+        if group != "scalars":
             for idx, dist in enumerate(result):
                 result[idx]["data"] = sorted(
                     result[idx]["data"], key=lambda c: c["count"], reverse=True
