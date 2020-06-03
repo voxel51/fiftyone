@@ -470,49 +470,50 @@ class DatasetView(foc.SampleCollection):
 
             # we add a sub-pipeline for each numeric as it looks like multiple
             # "bucketAuto"s in a single pipeline is not supported
+            bounds_pipeline = [{"$facet": {}}]
             for idx, (k, v) in enumerate(numerics.items()):
-                pipeline[0]["$facet"]["numeric-%d" % idx] = [
+                bounds_pipeline[0]["$facet"]["numeric-%d" % idx] = [
                     {
                         "$group": {
                             "_id": k,
-                            "values": {"$push": "$%s" % k},
                             "min": {"$min": "$%s" % k},
                             "max": {"$max": "$%s" % k},
-                        }
-                    },
-                    {
-                        "$addFields": {
-                            "step": {
-                                "$divide": [
-                                    {
-                                        "$subtract": [
-                                            {"$max": "$%s" % k},
-                                            {"$min": "$%s" % k},
-                                        ]
-                                    },
-                                    50,
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "$project": {
-                            "values": "$values",
-                            "buckets": {"$range": ["$min", "$max", "$step"]},
-                        }
-                    },
+                        },
+                    }
+                ]
+
+            bounds = list(self.aggregate(bounds_pipeline))[0]
+            for idx, (k, v) in enumerate(numerics.items()):
+                sub_pipeline = "numeric-%d" % idx
+                field_bounds = bounds[sub_pipeline][0]
+                mn = field_bounds["min"]
+                mx = field_bounds["max"]
+                step = (mx - mn) / 50
+                boundaries = [mn + step * s for s in range(0, 50)]
+
+                pipeline[0]["$facet"][sub_pipeline] = [
                     {
                         "$bucket": {
                             "groupBy": "$%s" % k,
-                            "buckets": "$buckets",
+                            "boundaries": boundaries,
+                            "default": "null",
                             "output": {"count": {"$sum": 1}},
-                        },
+                        }
                     },
                     {
                         "$group": {
                             "_id": k,
                             "data": {
-                                "$push": {"key": "$_id", "count": "$count"}
+                                "$push": {
+                                    "key": {
+                                        "$cond": [
+                                            {"$ne": ["$_id", "null"]},
+                                            {"$add": ["$_id", step / 2]},
+                                            "null",
+                                        ]
+                                    },
+                                    "count": "$count",
+                                }
                             },
                         }
                     },
@@ -531,21 +532,9 @@ class DatasetView(foc.SampleCollection):
 
         result = list(self.aggregate(pipeline))
 
-        def _parse_boundary(v):
-            return v if v is not None else 0
-
         if group in {"labels", "scalars"}:
             new_result = []
             for f in result[0].values():
-                for d in f:
-                    for c in d["data"]:
-                        if d["type"] in {"int", "float"}:
-                            mn = _parse_boundary(c["key"]["min"])
-                            mx = _parse_boundary(c["key"]["max"])
-                            c["key"] = (mx - mn) / 2 + mn
-                        else:
-                            c["key"] = str(c["key"])
-
                 new_result += f
             result = new_result
         else:
