@@ -1,4 +1,11 @@
-# Data Model
+# Performance Benchmarking
+
+This directory includes tests benchmarking the processing time of CRUD
+operations using different MongoDB python libraries.
+
+Run `performance.py` to measure processing times and plot them.
+
+Below are some notes related to this study.
 
 ## Libraries
 
@@ -7,6 +14,22 @@
 -   [~~PyMODM~~](https://pymodm.readthedocs.io/en/stable/)
 -   [MongoEngine](http://docs.mongoengine.org/)
 -   [MongoFrames](http://mongoframes.com/)
+
+## Benchmarking Measures
+
+CRUD
+
+1. create one/many
+2. read one/many
+3. update one/many
+4. delete one/many
+
+-   What is the idea batch size? -> ~1000
+-   How does size of documents affect this?
+-   How do indexes affect this? Is `background: true` going to help?
+-   `MongoFrames`? Or pure `PyMongo`?? -> `PyMongo`
+-   Schemas? Validation? ->
+    [schema validation](https://docs.mongodb.com/manual/core/schema-validation/)
 
 ## Desired Features
 
@@ -28,20 +51,3 @@
 -   Use an `UpdateContext` to modify many samples and save every...1000
     modifies.
 -   `Sample.reload()` and `Dataset.reload()` reload from the database.
-
-## Performance Benchmarking
-
-CRUD
-
-1. create one/many
-2. read one/many
-3. update one/many
-4. delete one/many
-
--   What is the idea batch size? -> 1000
--   How does size of documents affect this?
--   How do indexes affect this? Is `background: true` going to help?
-
-`MongoFrames`? Or pure `PyMongo`??
-
-Schemas? Validation?
