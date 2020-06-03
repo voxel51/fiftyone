@@ -83,8 +83,8 @@ const Distributions = ({ group, port, state }) => {
   const [data, setData] = useState([]);
 
   const getData = () => {
+    console.log(group);
     socket.emit("get_distributions", group, (data) => {
-      console.log(data);
       setInitialLoad(false);
       setLoading(false);
       setData(data);

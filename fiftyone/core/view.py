@@ -461,7 +461,9 @@ class DatasetView(foc.SampleCollection):
         return self.skip(start).limit(stop - start)
 
     def _get_distributions(self, group):
+        import pprint
 
+        pp = pprint.PrettyPrinter(indent=4)
         pipeline = _DISTRIBUTION_PIPELINES[group]
         if group == "scalars":
             numerics = self._dataset.get_field_schema(ftype=fof.IntField)
@@ -470,20 +472,40 @@ class DatasetView(foc.SampleCollection):
             )
 
             for k in numerics:
-                pipeline[0]["$facet"]["buckets"]["$facet"][k] = [
+                pipeline[0]["$facet"][k] = [
                     {
                         "$bucketAuto": {
                             "groupBy": "$%s" % k,
                             "buckets": 4,
-                            "output": {"key": k, "count": {"$sum": 1}},
+                            "output": {"count": {"$sum": 1}},
+                        },
+                    },
+                    {
+                        "$group": {
+                            "_id": k,
+                            "data": {
+                                "$push": {"key": "$_id", "count": "$count",}
+                            },
                         }
-                    }
+                    },
+                    {
+                        "$project": {
+                            "name": k,
+                            "type": "Numeric",
+                            "data": "$data",
+                        }
+                    },
                 ]
 
         result = list(self.aggregate(pipeline))
 
         if group in {"labels", "scalars"}:
-            result = [f for f in result[0].values()]
+            new_result = []
+            for f in result[0].values():
+                new_result += f
+            result = new_result
+
+        pp.pprint(result)
 
         for idx, dist in enumerate(result):
             result[idx]["data"] = sorted(
@@ -607,19 +629,22 @@ _DISTRIBUTION_PIPELINES = {
     "scalars": [
         {
             "$facet": {
-                "groupings": [
+                "_groupings": [
                     {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
                     {"$unwind": "$field"},
-                    {"$match": {"field.v": {"$type": {"$in": [2, 8]}}}},
+                    {"$match": {"field.k": {"$ne": "filepath"}}},
                     {
-                        "$project": {
-                            "field": "$field.k",
-                            "label": "$field.v.label",
+                        "$match": {
+                            "$or": [
+                                {"field.v": {"$type": 2}},
+                                {"field.v": {"$type": 8}},
+                            ]
                         }
                     },
+                    {"$project": {"field": "$field.k", "label": "$field.v"}},
                     {
                         "$group": {
-                            "_id": {"group": "$group", "label": "$label"},
+                            "_id": {"group": "$field", "label": "$label"},
                             "count": {"$sum": 1},
                         }
                     },
@@ -642,7 +667,6 @@ _DISTRIBUTION_PIPELINES = {
                         }
                     },
                 ],
-                "buckets": {"$facet": {}},  # numerics are auto-bucketed
             }
         }
     ],

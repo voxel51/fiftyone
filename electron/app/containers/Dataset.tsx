@@ -151,6 +151,9 @@ function Dataset(props) {
                 <Route path={routes.TAGS}>
                   <Distributions group="tags" />
                 </Route>
+                <Route path={routes.SCALARS}>
+                  <Distributions group="scalars" />
+                </Route>
               </>
             ) : (
               <NoDataset />
