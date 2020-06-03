@@ -301,9 +301,9 @@ class ODMSample(ODMDocument):
 
         # @todo(Tyler) refactor to avoid local import here
         if save:
-            from fiftyone.core.dataset import Dataset
+            import fiftyone.core.dataset as fod
 
-            dataset = Dataset(name=cls.__name__)
+            dataset = fod.Dataset(name=cls.__name__)
 
             # Update dataset meta class
             field = cls._fields[field_name]
