@@ -8,8 +8,10 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
-        # with:
-        #   submodules: true
+      - name: Clone submodules
+        run: |
+          git submodule set-url electron/app/player51 https://${{ secrets.FIFTYONE_GITHUB_TOKEN }}@github.com/voxel51/player51
+          git submodule update --init
       - name: Build wheel
         run: |
           python3 setup.py bdist_wheel
