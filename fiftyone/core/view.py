@@ -466,79 +466,7 @@ class DatasetView(foc.SampleCollection):
         # we add a sub-pipeline for each numeric as it looks like multiple
         # buckets in a single pipeline is not supported
         if group == "scalars":
-            numerics = self._dataset.get_field_schema(ftype=fof.IntField)
-            numerics.update(
-                self._dataset.get_field_schema(ftype=fof.FloatField)
-            )
-
-            # here we query the min and max for each numeric field
-            # unfortunately, it looks like this has to be a seperate query
-            bounds_pipeline = [{"$facet": {}}]
-            for idx, (k, v) in enumerate(numerics.items()):
-                bounds_pipeline[0]["$facet"]["numeric-%d" % idx] = [
-                    {
-                        "$group": {
-                            "_id": k,
-                            "min": {"$min": "$%s" % k},
-                            "max": {"$max": "$%s" % k},
-                        },
-                    }
-                ]
-
-            bounds = (
-                list(self.aggregate(bounds_pipeline))[0]
-                if len(numerics)
-                else {}
-            )
-
-            # for each numeric field, build the boundaries array with the
-            # min/max results when adding the field's sub-pipeline
-            for idx, (k, v) in enumerate(numerics.items()):
-                sub_pipeline = "numeric-%d" % idx
-                field_bounds = bounds[sub_pipeline][0]
-                mn = field_bounds["min"]
-                mx = field_bounds["max"]
-                step = (mx - mn) / 50
-                boundaries = [mn + step * s for s in range(0, 50)]
-
-                pipeline[0]["$facet"][sub_pipeline] = [
-                    {
-                        "$bucket": {
-                            "groupBy": "$%s" % k,
-                            "boundaries": boundaries,
-                            "default": "null",
-                            "output": {"count": {"$sum": 1}},
-                        }
-                    },
-                    {
-                        "$group": {
-                            "_id": k,
-                            "data": {
-                                "$push": {
-                                    "key": {
-                                        "$cond": [
-                                            {"$ne": ["$_id", "null"]},
-                                            {"$add": ["$_id", step / 2]},
-                                            "null",
-                                        ]
-                                    },
-                                    "count": "$count",
-                                }
-                            },
-                        }
-                    },
-                    {
-                        "$project": {
-                            "name": k,
-                            "type": v.__class__.__name__[
-                                : -len(
-                                    "Field"
-                                )  # grab field type from the class
-                            ].lower(),
-                            "data": "$data",
-                        }
-                    },
-                ]
+            _numeric_distribution_pipelines(self, pipeline)
 
         result = list(self.aggregate(pipeline))
 
@@ -570,6 +498,78 @@ class DatasetView(foc.SampleCollection):
                 return stage["$skip"]
 
         return 0
+
+
+def _numeric_bounds(view, numerics):
+    bounds_pipeline = [{"$facet": {}}]
+    for idx, (k, v) in enumerate(numerics.items()):
+        bounds_pipeline[0]["$facet"]["numeric-%d" % idx] = [
+            {
+                "$group": {
+                    "_id": k,
+                    "min": {"$min": "$%s" % k},
+                    "max": {"$max": "$%s" % k},
+                },
+            }
+        ]
+
+    return list(view.aggregate(bounds_pipeline))[0] if len(numerics) else {}
+
+
+def _numeric_distribution_pipelines(view, pipeline):
+    numerics = view._dataset.get_field_schema(ftype=fof.IntField)
+    numerics.update(view._dataset.get_field_schema(ftype=fof.FloatField))
+
+    # here we query the min and max for each numeric field
+    # unfortunately, it looks like this has to be a separate query
+    bounds = _numeric_bounds(view, numerics)
+
+    # for each numeric field, build the boundaries array with the
+    # min/max results when adding the field's sub-pipeline
+    for idx, (k, v) in enumerate(numerics.items()):
+        sub_pipeline = "numeric-%d" % idx
+        field_bounds = bounds[sub_pipeline][0]
+        mn = field_bounds["min"]
+        mx = field_bounds["max"]
+        step = (mx - mn) / 50  # magic number
+        boundaries = [mn + step * s for s in range(0, 50)]  # magic number
+
+        pipeline[0]["$facet"][sub_pipeline] = [
+            {
+                "$bucket": {
+                    "groupBy": "$%s" % k,
+                    "boundaries": boundaries,
+                    "default": "null",
+                    "output": {"count": {"$sum": 1}},
+                }
+            },
+            {
+                "$group": {
+                    "_id": k,
+                    "data": {
+                        "$push": {
+                            "key": {
+                                "$cond": [
+                                    {"$ne": ["$_id", "null"]},
+                                    {"$add": ["$_id", step / 2]},
+                                    "null",
+                                ]
+                            },
+                            "count": "$count",
+                        }
+                    },
+                }
+            },
+            {
+                "$project": {
+                    "name": k,
+                    "type": v.__class__.__name__[
+                        : -len("Field")  # grab field type from the class
+                    ].lower(),
+                    "data": "$data",
+                }
+            },
+        ]
 
 
 _DISTRIBUTION_PIPELINES = {
