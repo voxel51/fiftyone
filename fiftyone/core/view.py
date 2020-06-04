@@ -23,10 +23,9 @@ from copy import copy, deepcopy
 import numbers
 
 from bson import ObjectId, json_util
-from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
-import fiftyone.core.fields as fof
+import fiftyone.core.stage as fos
 
 
 def _make_registrar():
@@ -41,7 +40,6 @@ def _make_registrar():
     registry = {}
 
     def registrar(func):
-        registry[func.__name__] = func
         # Normally a decorator returns a wrapped function, but here we return
         # `func` unmodified, after registering it
         return func
@@ -50,8 +48,26 @@ def _make_registrar():
     return registrar
 
 
-# Keeps track of all DatasetView operations
-operation = _make_registrar()
+def _make_stage_factory():
+    registry = {}
+
+    def stage_factory(stage_cls):
+        def decorator(method):
+            registry[method.__name__] = method
+
+            def wrapper(view, *args, **kwargs):
+                return view._copy_with_new_stage(stage_cls(*args, **kwargs))
+
+            return wrapper
+
+        return decorator
+
+    stage_factory.all = registry
+    return stage_factory
+
+
+# Keeps track of all DatasetView stage methods
+add_new_stage = _make_stage_factory()
 
 
 class DatasetView(foc.SampleCollection):
@@ -238,16 +254,16 @@ class DatasetView(foc.SampleCollection):
             yield idx, sample
 
     @classmethod
-    def get_operation_names(cls):
-        """Returns a list of all available :class:`DatasetView` operations,
-        i.e., operations that return another :class:`DatasetView`.
+    def list_stage_methods(cls):
+        """Returns a list of all available :class:`DatasetView` stage methods,
+        i.e., stages that return another :class:`DatasetView`.
 
         Returns:
-            a list of method names
+            a list of :class:`DatasetView` method names
         """
-        return list(operation.all)
+        return list(add_new_stage.all)
 
-    @operation
+    @add_new_stage(fos.Match)
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
@@ -259,9 +275,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage({"$match": filter})
+        pass
 
-    @operation
+    @add_new_stage(fos.MatchTag)
     def match_tag(self, tag):
         """Returns a view containing the samples that have the given tag.
 
@@ -271,9 +287,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage({"$match": {"tags": tag}})
+        pass
 
-    @operation
+    @add_new_stage(fos.MatchTags)
     def match_tags(self, tags):
         """Returns a view containing the samples that have any of the given
         tags.
@@ -287,11 +303,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage(
-            {"$match": {"tags": {"$in": list(tags)}}}
-        )
+        pass
 
-    @operation
+    @add_new_stage(fos.Exists)
     def exists(self, field):
         """Returns a view containing the samples that have a non-``None`` value
         for the given field.
@@ -302,9 +316,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.match({field: {"$exists": True, "$ne": None}})
+        pass
 
-    @operation
+    @add_new_stage(fos.SortBy)
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
 
@@ -320,10 +334,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        order = DESCENDING if reverse else ASCENDING
-        return self._copy_with_new_stage({"$sort": {field: order}})
+        pass
 
-    @operation
+    @add_new_stage(fos.Skip)
     def skip(self, skip):
         """Omits the given number of samples from the head of the view.
 
@@ -334,12 +347,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        if skip <= 0:
-            return copy(self)
+        pass
 
-        return self._copy_with_new_stage({"$skip": skip})
-
-    @operation
+    @add_new_stage(fos.Limit)
     def limit(self, limit):
         """Limits the view to the given number of samples.
 
@@ -350,12 +360,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        if limit <= 0:
-            return self.match({"_id": None})
+        pass
 
-        return self._copy_with_new_stage({"$limit": limit})
-
-    @operation
+    @add_new_stage(fos.Take)
     def take(self, size):
         """Randomly samples the given number of samples from the view.
 
@@ -366,12 +373,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        if size <= 0:
-            return self.match({"_id": None})
+        pass
 
-        return self._copy_with_new_stage({"$sample": {"size": size}})
-
-    @operation
+    @add_new_stage(fos.Select)
     def select(self, sample_ids):
         """Selects the samples with the given IDs from the view.
 
@@ -381,10 +385,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        sample_ids = [ObjectId(id) for id in sample_ids]
-        return self.match({"_id": {"$in": sample_ids}})
+        pass
 
-    @operation
+    @add_new_stage(fos.Exclude)
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the view.
 
@@ -394,8 +397,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        sample_ids = [ObjectId(id) for id in sample_ids]
-        return self.match({"_id": {"$not": {"$in": sample_ids}}})
+        pass
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.
@@ -411,7 +413,7 @@ class DatasetView(foc.SampleCollection):
             pipeline = []
 
         return self._dataset._get_query_set().aggregate(
-            self._pipeline + pipeline
+            [s.resolve() for s in self._pipeline] + pipeline
         )
 
     def serialize(self):
@@ -422,7 +424,7 @@ class DatasetView(foc.SampleCollection):
         """
         return {
             "dataset": self._dataset.serialize(),
-            "view": json_util.dumps(self._pipeline),
+            "view": json_util.dumps([s.serialize() for s in self._pipeline]),
         }
 
     def _slice(self, s):
