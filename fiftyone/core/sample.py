@@ -51,6 +51,9 @@ class Sample(object):
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
+        # maintain a reference to the dataset
+        self._dataset = self._get_dataset()
+
     def __str__(self):
         return str(self._doc)
 
@@ -318,6 +321,30 @@ class Sample(object):
         """Reload the sample from the database."""
         self._doc.reload()
 
+    @classmethod
+    def _save_dataset_samples(cls, dataset_name):
+        """Saves all changes to samples instances in memory belonging to the
+        specified dataset to the database.
+        A samples only needs to be saved if it has non-persisted changes and
+        still exists in memory.
+        Args:
+            dataset_name: the name of the dataset to save.
+        """
+        for sample in cls._instances[dataset_name].values():
+            sample.save()
+
+    @classmethod
+    def _reload_dataset_samples(cls, dataset_name):
+        """Reloads the fields for sample instances in memory belonging to the
+        specified dataset from the database.
+        If multiple processes or users are accessing the same database this
+        will keep the dataset in sync.
+        Args:
+            dataset_name: the name of the dataset to reload.
+        """
+        for sample in cls._instances[dataset_name].values():
+            sample.reload()
+
     def _delete(self):
         """Deletes the document from the database."""
         self._doc.delete()
@@ -329,10 +356,8 @@ class Sample(object):
         """
         return self._doc.in_db
 
-    @property
-    def _dataset(self):
+    def _get_dataset(self):
         if self._in_db:
-            # @todo(Tyler) should this import be cached?
             from fiftyone.core.dataset import load_dataset
 
             return load_dataset(self.dataset_name)
@@ -362,6 +387,8 @@ class Sample(object):
         dataset_instances = self._instances[doc.dataset_name]
         if self.id not in dataset_instances:
             dataset_instances[self.id] = self
+
+        self._dataset = self._get_dataset()
 
     @classmethod
     def _reset_backing_docs(cls, dataset_name, sample_ids):
