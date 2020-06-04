@@ -340,8 +340,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
 
-        If a reference to the sample exists in memory, the sample's dataset
-        will be "unset" such that `sample.in_dataset == False`
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
 
         Args:
             sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
@@ -355,8 +355,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_id = sample.id
 
         sample._delete()
-
-        # unset the dataset for the sample
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=[sample_id]
         )
@@ -364,8 +362,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def remove_samples(self, samples_or_ids):
         """Removes the given samples from the dataset.
 
-        If reference to a sample exists in memory, the sample's dataset
-        will be "unset" such that `sample.in_dataset == False`
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -379,8 +377,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample_or_id in samples_or_ids
         ]
         self._get_query_set(id__in=sample_ids).delete()
-
-        # unset the dataset for the samples
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=sample_ids
         )
@@ -388,28 +384,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def clear(self):
         """Removes all samples from the dataset.
 
-        If reference to a sample exists in memory, the sample's dataset
-        will be "unset" such that `sample.in_dataset == False`
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
         """
         self._sample_doc_cls.drop_collection()
-
-        # unset the dataset for all samples
         fos.Sample._reset_all_backing_docs(dataset_name=self.name)
 
     def save(self):
-        """Saves all changes to samples instances in memory belonging to the
-        dataset to the database.
-        A samples only needs to be saved if it has non-persisted changes and
-        still exists in memory.
+        """Saves all modified in-memory samples in the dataset to the database.
+
+        Only samples with non-persisted changes will be processed.
         """
         fos.Sample._save_dataset_samples(self.name)
 
     def reload(self):
-        """Reloads the fields for sample instances in memory belonging to the
-        dataset from the database.
-        If multiple processes or users are accessing the same database this
-        will keep the dataset in sync.
-        """
+        """Reloads all in-memory samples in the dataset from the database."""
         fos.Sample._reload_dataset_samples(self.name)
 
     def add_image_classification_samples(
