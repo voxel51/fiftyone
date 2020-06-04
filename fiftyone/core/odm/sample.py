@@ -121,8 +121,6 @@ def no_delete_default_field(func):
 class ODMSample(SerializableDocument):
     """Interface for all sample backing documents."""
 
-    _DEFAULT_FIELDS = ["filepath", "tags", "metadata"]
-
     @property
     def dataset_name(self):
         """The name of the dataset to which this sample belongs, or ``None`` if
