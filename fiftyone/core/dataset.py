@@ -273,8 +273,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
 
-        If the sample belongs to another dataset, a copy is created and added
-        to this dataset.
+        If the sample instance does not belong to a dataset, it is updated
+        in-place to reflect its membership in this dataset. If the sample
+        instance belongs to another dataset, it is not modified.
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
@@ -308,8 +309,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_samples(self, samples, expand_schema=True):
         """Adds the given samples to the dataset.
 
-        If a sample belongs to another dataset, a copy is created and added to
-        this dataset.
+        Any sample instances that do not belong to a dataset are updated
+        in-place to reflect membership in this dataset. Any sample instances
+        that belong to other datasets are not modified.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
