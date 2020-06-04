@@ -1301,16 +1301,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset
         """
-        # Parse dictionary
-        name = d["name"]
-        samples = [
-            fos.Sample.from_dict(s, extended=True) for s in d["samples"]
-        ]
-
-        # Create dataset
-        dataset = cls(name)
-        dataset.add_samples(samples)
-
+        dataset = cls(d["name"])
+        dataset.add_samples(
+            [fos.Sample.from_dict(s, extended=True) for s in d["samples"]]
+        )
         return dataset
 
     @classmethod
