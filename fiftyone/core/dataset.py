@@ -1427,12 +1427,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _get_fields_dict(self):
         fields = self.get_field_schema()
-        max_len = max([len(field_name) for field_name in fields]) + 1
-        return "\n".join(
-            "    %s %s"
-            % ((field_name + ":").ljust(max_len), self._field_to_str(field))
+        return {
+            field_name: self._field_to_str(field)
             for field_name, field in fields.items()
-        )
+        }
 
     def _get_fields_str(self):
         fields_dict = self._get_fields_dict()
