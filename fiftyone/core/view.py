@@ -29,14 +29,23 @@ import eta.core.utils as etau
 import fiftyone.core.collections as foc
 
 
-def _make_registrar():
-    """Makes a decorator that keeps a registry of all functions decorated by
-    it.
+def _make_view_stage():
+    """This method serves two purposes:
+
+        1. Building a registry of all stage methods on
+            :class:`fiftyone.core.view.DatasetView`
+        2. Defining the view stage method via the class definiton of the view stage
 
     Usage::
 
-        my_decorator = _make_registrar()
-        my_decorator.all  # dictionary mapping names to functions
+        view_stage = _make_stage()
+        view_stage.all  # dictionary mapping names to view stage methods
+
+    Adding a :class:`fiftyone.core.view.MyViewStage`::
+        # assuming fiftyone.core.view.MyStage exists with arguments `arg1` and `arg2`
+        @view_stage
+        def my_view_stage(self, arg1, arg2):
+            pass # this will never be called
     """
     registry = {}
 
@@ -59,7 +68,7 @@ def _make_registrar():
 
 
 # Keeps track of all DatasetView stage methods
-add_new_stage = _make_registrar()
+view_stage = _make_view_stage()
 
 
 class DatasetView(foc.SampleCollection):
@@ -253,9 +262,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a list of :class:`DatasetView` method names
         """
-        return list(add_new_stage.all)
+        return list(view_stage.all)
 
-    @add_new_stage
+    @view_stage
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
@@ -269,7 +278,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def match_tag(self, tag):
         """Returns a view containing the samples that have the given tag.
 
@@ -281,7 +290,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def match_tags(self, tags):
         """Returns a view containing the samples that have any of the given
         tags.
@@ -297,7 +306,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def exists(self, field):
         """Returns a view containing the samples that have a non-``None`` value
         for the given field.
@@ -310,7 +319,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
 
@@ -328,7 +337,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def skip(self, skip):
         """Omits the given number of samples from the head of the view.
 
@@ -341,7 +350,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def limit(self, limit):
         """Limits the view to the given number of samples.
 
@@ -354,7 +363,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def take(self, size):
         """Randomly samples the given number of samples from the view.
 
@@ -367,7 +376,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def select(self, sample_ids):
         """Selects the samples with the given IDs from the view.
 
@@ -379,7 +388,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage
+    @view_stage
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the view.
 

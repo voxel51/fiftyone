@@ -48,6 +48,12 @@ class ViewStage(object):
         }
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.ViewStage`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         raise NotImplementedError("subclasses must implement `resolve()`")
 
     @classmethod
@@ -56,6 +62,8 @@ class ViewStage(object):
 
 
 class ViewStageError(Exception):
+    """An error raise by a :class:`ViewStage`"""
+
     pass
 
 
@@ -64,6 +72,12 @@ class Exclude(ViewStage):
         super(Exclude, self).__init__(sample_ids=sample_ids)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.Exclude`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         sample_ids = [ObjectId(id) for id in self.config.sample_ids]
         return Match({"_id": {"$not": {"$in": sample_ids}}}).resolve()
 
@@ -78,6 +92,12 @@ class Exists(ViewStage):
         super(Exists, self).__init__(field=field)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.Exists`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         return Match(
             {self.config.field: {"$exists": True, "$ne": None}}
         ).resolve()
@@ -93,6 +113,12 @@ class Limit(ViewStage):
         super(Limit, self).__init__(limit=limit)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.Limit`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         return {"$limit": self.config.limit}
 
 
@@ -105,10 +131,27 @@ class LimitConfig(Config):
 
 
 class Match(ViewStage):
+    """Filters the samples in the view by the given filter.
+
+    Args:
+        filter: a MongoDB query dict. See
+            https://docs.mongodb.com/manual/tutorial/query-documents
+            for details
+
+    Returns:
+        a :class:`DatasetView`
+    """
+
     def __init__(self, filter):
         super(Match, self).__init__(filter=filter)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.Match`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         return {"$match": self.config.filter}
 
 
@@ -122,6 +165,12 @@ class MatchTag(ViewStage):
         super(MatchTag, self).__init__(tag=tag)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.MatchTag`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         return Match({"tags": self.config.tag}).resolve()
 
 
@@ -135,6 +184,12 @@ class MatchTags(ViewStage):
         super(MatchTags, self).__init__(tags=tags)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.MatchTags`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         return Match({"tags": {"$in": self.config.tags}}).resolve()
 
 
@@ -151,6 +206,12 @@ class Select(ViewStage):
         super(Select, self).__init__(sample_ids=sample_ids)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.Select`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         sample_ids = [ObjectId(id) for id in self.config.sample_ids]
         return Match({"_id": {"$in": sample_ids}}).resolve()
 
@@ -165,6 +226,12 @@ class SortBy(ViewStage):
         super(SortBy, self).__init__(field=field, reverse=reverse)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.SortBy`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         order = DESCENDING if self.config.reverse else ASCENDING
         return {"$sort": {self.config.field: order}}
 
@@ -180,6 +247,12 @@ class Skip(ViewStage):
         super(Skip, self).__init__(skip=skip)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.Skip`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         return {"$skip": self.config.skip}
 
 
@@ -196,6 +269,12 @@ class Take(ViewStage):
         super(Take, self).__init__(size=size)
 
     def resolve(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.view.Take`
+        instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         size = self.config.size
 
         if size <= 0:
