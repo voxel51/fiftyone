@@ -21,6 +21,7 @@ from mongoengine.errors import (
     NotUniqueError,
     ValidationError,
 )
+import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -217,14 +218,14 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
 
         def create_dataset():
             with self.assertRaises(ValueError):
-                dataset = fo.Dataset(name=dataset_name, create_empty=False)
+                dataset = fo.Dataset(name=dataset_name, create=False)
 
             dataset = fo.Dataset(name=dataset_name)
 
         create_dataset()
 
         def check_create_dataset():
-            dataset = fo.Dataset(name=dataset_name, create_empty=False)
+            dataset = fo.Dataset(name=dataset_name, create=False)
 
         def check_create_dataset_via_load():
             self.assertIn(dataset_name, fo.list_dataset_names())
@@ -664,7 +665,9 @@ class DatasetTest(unittest.TestCase):
     def test_backing_doc_class(self):
         dataset_name = self.test_backing_doc_class.__name__
         dataset = fo.Dataset(dataset_name)
-        self.assertTrue(issubclass(dataset._sample_doc_cls, foo.ODMSample))
+        self.assertTrue(
+            issubclass(dataset._sample_doc_cls, foo.ODMDatasetSample)
+        )
 
     @drop_datasets
     def test_meta_dataset(self):
@@ -700,7 +703,7 @@ class SampleTest(unittest.TestCase):
     @drop_datasets
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
-        self.assertIsInstance(sample._doc, foo.NoDatasetSample)
+        self.assertIsInstance(sample._doc, foo.ODMNoDatasetSample)
 
     @drop_datasets
     def test_get_field(self):
@@ -1220,6 +1223,39 @@ class FieldTest(unittest.TestCase):
 
         # add deleted field
 
+    @drop_datasets
+    def test_vector_array_fields(self):
+        sample1 = fo.Sample(
+            filepath="img.png",
+            vector_field=np.arange(5),
+            array_field=np.ones((2, 3)),
+        )
+
+        sample2 = fo.Sample(filepath="img.png")
+        sample2["vector_field"] = np.arange(5)
+        sample2["array_field"] = np.ones((2, 3))
+
+        dataset1 = fo.Dataset("test_one")
+        dataset2 = fo.Dataset("test_two")
+
+        sample3 = fo.Sample(
+            filepath="img.png",
+            vector_field=np.arange(5),
+            array_field=np.ones((2, 3)),
+        )
+        dataset1.add_sample(sample3)
+
+        sample4 = fo.Sample(filepath="img.png")
+        dataset2.add_sample(sample4)
+        sample4["vector_field"] = np.arange(5)
+        sample4["array_field"] = np.ones((2, 3))
+        sample4.save()
+
+        for sample in [sample1, sample2, sample3, sample4]:
+            fields = sample.get_field_schema()
+            self.assertIsInstance(fields["vector_field"], fo.VectorField)
+            self.assertIsInstance(fields["array_field"], fo.ArrayField)
+
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)
