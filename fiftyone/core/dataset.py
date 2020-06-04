@@ -389,7 +389,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         A samples only needs to be saved if it has non-persisted changes and
         still exists in memory.
         """
-        fos.Sample.save_dataset_samples(self.name)
+        fos.Sample._save_dataset_samples(self.name)
 
     def reload(self):
         """Reloads the fields for sample instances in memory belonging to the
@@ -397,7 +397,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If multiple processes or users are accessing the same database this
         will keep the dataset in sync.
         """
-        fos.Sample.reload_dataset_samples(self.name)
+        fos.Sample._reload_dataset_samples(self.name)
 
     def add_image_classification_samples(
         self, samples, label_field="ground_truth", tags=None, classes=None,

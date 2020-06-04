@@ -290,7 +290,7 @@ class Sample(object):
         self._doc.reload()
 
     @classmethod
-    def save_dataset_samples(cls, dataset_name):
+    def _save_dataset_samples(cls, dataset_name):
         """Saves all changes to samples instances in memory belonging to the
         specified dataset to the database.
         A samples only needs to be saved if it has non-persisted changes and
@@ -302,7 +302,7 @@ class Sample(object):
             sample.save()
 
     @classmethod
-    def reload_dataset_samples(cls, dataset_name):
+    def _reload_dataset_samples(cls, dataset_name):
         """Reloads the fields for sample instances in memory belonging to the
         specified dataset from the database.
         If multiple processes or users are accessing the same database this
@@ -312,28 +312,6 @@ class Sample(object):
         """
         for sample in cls._instances[dataset_name].values():
             sample.reload()
-
-    @classmethod
-    def save_all_samples(cls):
-        """Saves all changes to all samples instances in memory to the
-        database.
-        A samples only needs to be saved if it has non-persisted changes and
-        still exists in memory.
-        """
-        for dataset_instances in cls._instances.values():
-            for sample in dataset_instances.values():
-                sample.save()
-
-    @classmethod
-    def reload_all_samples(cls):
-        """Reloads the fields for all sample instances in memory from the
-        database.
-        If multiple processes or users are accessing the same database this
-        will keep the samples in sync.
-        """
-        for dataset_instances in cls._instances.values():
-            for sample in dataset_instances.values():
-                sample.reload()
 
     def _delete(self):
         """Deletes the document from the database."""
