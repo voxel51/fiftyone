@@ -108,6 +108,14 @@ def delete_dataset(name):
     dataset.delete()
 
 
+def delete_non_persistent_datasets():
+    """Deletes all non-persistent datasets."""
+    for dataset_name in list_dataset_names():
+        dataset = load_dataset(dataset_name)
+        if not dataset.persistent:
+            dataset.delete()
+
+
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """A FiftyOne dataset.
 
@@ -125,7 +133,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if it does not already exist
     """
 
-    def __init__(self, name, create_empty=True):
+    def __init__(self, name, create_empty=True, persistent=False):
         self._name = name
         self._sample_doc_cls = None
         self._meta = None
@@ -135,7 +143,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._load_dataset(name=name)
         except DoesNotExist:
             if create_empty:
-                self._initialize_dataset(name=name)
+                self._initialize_dataset(name=name, persistent=persistent)
             else:
                 raise ValueError("Dataset '%s' not found" % name)
 
@@ -179,6 +187,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._name
 
     @property
+    def persistent(self):
+        return self._meta.persistent
+
+    @persistent.setter
+    def persistent(self, value):
+        self._meta.persistent = value
+        self._meta.save()
+
+    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
@@ -192,6 +209,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
+                "Persistent:     %s" % self.persistent,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % list(self.get_tags()),
                 "Sample fields:",
@@ -1313,7 +1331,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return {"name": self.name}
 
-    def _initialize_dataset(self, name):
+    def _initialize_dataset(self, name, persistent=False):
         # Create ODMSample subclass
         self._sample_doc_cls = type(self._name, (foo.ODMSample,), {})
 
@@ -1323,6 +1341,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_fields=foo.SampleField.list_from_field_schema(
                 self.get_field_schema()
             ),
+            persistent=persistent,
         )
 
         # Save dataset meta document
