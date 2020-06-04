@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -1378,7 +1377,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _expand_schema(self, samples):
         fields = self.get_field_schema()
         for sample in samples:
-            for field_name, field in iteritems(sample.get_field_schema()):
+            for field_name, field in sample.get_field_schema().items():
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
@@ -1402,7 +1401,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             "    %s %s"
             % ((field_name + ":").ljust(max_len), self._field_to_str(field))
-            for field_name, field in iteritems(fields)
+            for field_name, field in fields.items()
         )
 
     @staticmethod
