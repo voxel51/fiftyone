@@ -70,7 +70,7 @@ def load_dataset(name):
     Raises:
         ValueError: if no dataset exists with the given name
     """
-    return Dataset(name, create=False)
+    return Dataset(name, _create=False)
 
 
 def get_default_dataset_name():
@@ -106,25 +106,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
-    Note that :class:`Dataset` instances are singletons keyed by ``name``, so
-    all calls to :func:`Dataset.__init__` for a given dataset ``name`` in a
-    program will return the same object.
-
     Args:
         name: the name of the dataset
-        create (True): whether to create a dataset with the given name if it
-            does not exist
-
-    Raises:
-        ValueError: if ``create == False`` and the dataset does not exist
     """
 
-    def __init__(self, name, create=True):
+    def __init__(self, name, _create=True):
         self._name = name
         self._meta = None
         self._sample_doc_cls = None
 
-        if create:
+        if _create:
             self._meta, self._sample_doc_cls = _create_dataset(name)
         else:
             self._meta, self._sample_doc_cls = _load_dataset(name)
