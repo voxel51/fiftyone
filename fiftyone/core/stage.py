@@ -57,7 +57,7 @@ class ViewStage(object):
 
     def _serialize(self):
         return {
-            "name": self.__class__,
+            "name": self.__class__.__name__,
             "kwargs": self._kwargs,
             "_cls": etau.get_class_name(self),
         }

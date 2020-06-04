@@ -425,7 +425,7 @@ class DatasetView(foc.SampleCollection):
         """
         return {
             "dataset": self._dataset.serialize(),
-            "view": json_util.dumps([s.serialize() for s in self._pipeline]),
+            "view": json_util.dumps([s._serialize() for s in self._pipeline]),
         }
 
     def _slice(self, s):
