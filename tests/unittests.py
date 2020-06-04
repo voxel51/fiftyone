@@ -46,7 +46,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
     def test_pername_singleton(self):
         """Test datasets are always in sync with themselves"""
         dataset1 = fo.Dataset("test_dataset")
-        dataset2 = fo.Dataset("test_dataset")
+        dataset2 = fo.load_dataset("test_dataset")
         dataset3 = fo.Dataset("another_dataset")
         self.assertIs(dataset1, dataset2)
         self.assertIsNot(dataset1, dataset3)
@@ -55,7 +55,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
     def test_sample_singletons(self):
         """Test samples are always in sync with themselves"""
         dataset_name = self.test_sample_singletons.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
 
         filepath = "test1.png"
         sample = fo.Sample(filepath=filepath)
@@ -76,7 +76,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         those changes are reflected on the samples in the dataset.
         """
         dataset_name = self.test_dataset_add_delete_field.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
 
         sample = fo.Sample(filepath="test1.png")
         dataset.add_sample(sample)
@@ -86,22 +86,22 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
 
         # Field not in schema
         with self.assertRaises(AttributeError):
-            sample.get_field(field_name=field_name)
+            sample.get_field(field_name)
         with self.assertRaises(KeyError):
             sample[field_name]
         with self.assertRaises(AttributeError):
             getattr(sample, field_name)
 
         # Field added to dataset
-        dataset.add_sample_field(field_name=field_name, ftype=ftype)
-        self.assertIsNone(sample.get_field(field_name=field_name))
+        dataset.add_sample_field(field_name, ftype=ftype)
+        self.assertIsNone(sample.get_field(field_name))
         self.assertIsNone(sample[field_name])
         self.assertIsNone(getattr(sample, field_name))
 
         # Field removed from dataset
-        dataset.delete_sample_field(field_name=field_name)
+        dataset.delete_sample_field(field_name)
         with self.assertRaises(AttributeError):
-            sample.get_field(field_name=field_name)
+            sample.get_field(field_name)
         with self.assertRaises(KeyError):
             sample[field_name]
         with self.assertRaises(AttributeError):
@@ -109,16 +109,16 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
 
         # Field added to dataset and sample value set
         value = 51
-        dataset.add_sample_field(field_name=field_name, ftype=ftype)
+        dataset.add_sample_field(field_name, ftype=ftype)
         sample[field_name] = value
-        self.assertEqual(sample.get_field(field_name=field_name), value)
+        self.assertEqual(sample.get_field(field_name), value)
         self.assertEqual(sample[field_name], value)
         self.assertEqual(getattr(sample, field_name), value)
 
         # Field removed from dataset
-        dataset.delete_sample_field(field_name=field_name)
+        dataset.delete_sample_field(field_name)
         with self.assertRaises(AttributeError):
-            sample.get_field(field_name=field_name)
+            sample.get_field(field_name)
         with self.assertRaises(KeyError):
             sample[field_name]
         with self.assertRaises(AttributeError):
@@ -130,7 +130,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         disconnected from the dataset.
         """
         dataset_name = self.test_dataset_remove_samples.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
 
         # add 1 sample
         sample = fo.Sample(filepath="test1.png")
@@ -184,7 +184,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         on a sample, that change is reflected in the dataset.
         """
         dataset_name = self.test_sample_set_field.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
         sample = fo.Sample(filepath="test1.png")
         dataset.add_sample(sample)
 
@@ -217,14 +217,14 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
 
         def create_dataset():
             with self.assertRaises(ValueError):
-                dataset = fo.Dataset(name=dataset_name, create=False)
+                dataset = fo.load_dataset(dataset_name)
 
-            dataset = fo.Dataset(name=dataset_name)
+            dataset = fo.Dataset(dataset_name)
 
         create_dataset()
 
         def check_create_dataset():
-            dataset = fo.Dataset(name=dataset_name, create=False)
+            fo.load_dataset(dataset_name)
 
         def check_create_dataset_via_load():
             self.assertIn(dataset_name, fo.list_dataset_names())
@@ -290,7 +290,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         dataset_name = self.test_add_remove_sample.__name__
 
         def create_dataset():
-            dataset = fo.Dataset(name=dataset_name)
+            dataset = fo.Dataset(dataset_name)
 
         create_dataset()
 
@@ -299,12 +299,12 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # add sample
 
         def add_sample():
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = fo.Sample(filepath=filepath)
             return dataset.add_sample(sample)
 
         def check_add_sample(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             self.assertEqual(len(dataset), 1)
             sample = dataset[sample_id]
             self.assertTrue(sample.in_dataset)
@@ -317,12 +317,12 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # remove sample
 
         def remove_sample(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             dataset.remove_sample(sample)
 
         def check_remove_sample(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             self.assertEqual(len(dataset), 0)
             with self.assertRaises(KeyError):
                 dataset[sample_id]
@@ -336,7 +336,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         num_samples = 10
 
         def add_samples():
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             samples = [
                 fo.Sample(filepath=filepath_template % i)
                 for i in range(num_samples)
@@ -344,7 +344,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             return dataset.add_samples(samples)
 
         def check_add_samples(sample_ids):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             self.assertEqual(len(dataset), num_samples)
             for sample_id in sample_ids:
                 sample = dataset[sample_id]
@@ -360,11 +360,11 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         num_delete = 7
 
         def remove_samples(sample_ids):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             dataset.remove_samples(sample_ids[:num_delete])
 
         def check_remove_samples(sample_ids):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             self.assertEqual(len(dataset), num_samples - num_delete)
 
             for i, sample_id in enumerate(sample_ids):
@@ -383,11 +383,11 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # clear dataset
 
         def clear_dataset():
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             dataset.clear()
 
         def check_clear_dataset(sample_ids):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             self.assertEqual(len(dataset), 0)
 
             for sample_id in sample_ids:
@@ -402,19 +402,19 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         dataset_name = self.test_add_sample_expand_schema.__name__
 
         def create_dataset():
-            dataset = fo.Dataset(name=dataset_name)
+            dataset = fo.Dataset(dataset_name)
 
         create_dataset()
 
         # add sample with custom field
 
         def add_sample_expand_schema():
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = fo.Sample(filepath="test.png", test_field=True)
             return dataset.add_sample(sample)
 
         def check_add_sample_expand_schema(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
 
             fields = dataset.get_field_schema()
             self.assertIn("test_field", fields)
@@ -429,13 +429,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # add multiple samples with custom fields
 
         def add_samples_expand_schema():
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample1 = fo.Sample(filepath="test1.png", test_field_1=51)
             sample2 = fo.Sample(filepath="test2.png", test_field_2="fiftyone")
             return dataset.add_samples([sample1, sample2])
 
         def check_add_samples_expand_schema(sample_ids):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
 
             fields = dataset.get_field_schema()
             self.assertIn("test_field_1", fields)
@@ -457,7 +457,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         dataset_name = self.test_set_field_create.__name__
 
         def create_dataset():
-            dataset = fo.Dataset(name=dataset_name)
+            dataset = fo.Dataset(dataset_name)
             sample = fo.Sample(filepath="path/to/file.jpg")
             return dataset.add_sample(sample)
 
@@ -467,13 +467,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         value = 51
 
         def set_field_create(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             sample[field_name] = value
             sample.save()
 
         def check_set_field_create(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             fields = dataset.get_field_schema()
             self.assertIn(field_name, fields)
 
@@ -488,7 +488,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         dataset_name = self.test_set_field_create.__name__
 
         def create_dataset():
-            dataset = fo.Dataset(name=dataset_name)
+            dataset = fo.Dataset(dataset_name)
             dataset.add_sample_field("bool_field", fo.BooleanField)
             dataset.add_sample_field("list_field", fo.ListField)
             return dataset.add_sample(fo.Sample(filepath="test.png"))
@@ -498,7 +498,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # check unset defaults
 
         def check_field_defaults(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
 
             self.assertIs(sample.bool_field, None)
@@ -510,13 +510,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # modify simple field (boolean)
 
         def modify_simple_field(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             sample.bool_field = True
             sample.save()
 
         def check_modify_simple_field(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertIs(sample.bool_field, True)
 
@@ -526,13 +526,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # clear simple field (boolean)
 
         def clear_simple_field(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             del sample.bool_field
             sample.save()
 
         def check_clear_simple_field(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertIs(sample.bool_field, None)
 
@@ -542,13 +542,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # modify complex field (list)
 
         def modify_list_set(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             sample.list_field = [True, False, True]
             sample.save()
 
         def check_modify_list_set(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertListEqual(sample.list_field, [True, False, True])
 
@@ -556,13 +556,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         check_modify_list_set(sample_id)
 
         def clear_complex_field(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             del sample.list_field
             sample.save()
 
         def check_clear_complex_field(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertIsInstance(sample.list_field, list)
             self.assertListEqual(sample.list_field, [])
@@ -571,13 +571,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         check_clear_complex_field(sample_id)
 
         def modify_list_append(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             sample.list_field.append(51)
             sample.save()
 
         def check_modify_list_append(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertListEqual(sample.list_field, [51])
 
@@ -585,13 +585,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         check_modify_list_append(sample_id)
 
         def modify_list_extend(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             sample.list_field.extend(["fiftyone"])
             sample.save()
 
         def check_modify_list_extend(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertListEqual(sample.list_field, [51, "fiftyone"])
 
@@ -599,13 +599,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         check_modify_list_extend(sample_id)
 
         def modify_list_pop(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             sample.list_field.pop(0)
             sample.save()
 
         def check_modify_list_pop(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertListEqual(sample.list_field, ["fiftyone"])
 
@@ -613,13 +613,13 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         check_modify_list_pop(sample_id)
 
         def modify_list_iadd(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             sample.list_field += [52]
             sample.save()
 
         def check_modify_list_iadd(sample_id):
-            dataset = fo.load_dataset(name=dataset_name)
+            dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertListEqual(sample.list_field, ["fiftyone", 52])
 
@@ -642,12 +642,14 @@ class DatasetTest(unittest.TestCase):
     def test_backing_doc_class(self):
         dataset_name = self.test_backing_doc_class.__name__
         dataset = fo.Dataset(dataset_name)
-        self.assertTrue(issubclass(dataset._sample_doc_cls, foo.ODMSample))
+        self.assertTrue(
+            issubclass(dataset._sample_doc_cls, foo.ODMDatasetSample)
+        )
 
     @drop_database
     def test_meta_dataset(self):
         dataset_name = self.test_meta_dataset.__name__
-        dataset1 = fo.Dataset(name=dataset_name)
+        dataset1 = fo.Dataset(dataset_name)
 
         field_name = "field1"
         ftype = fo.IntField
@@ -655,30 +657,32 @@ class DatasetTest(unittest.TestCase):
         dataset1.add_sample_field(field_name, ftype)
         fields = dataset1.get_field_schema()
         self.assertIsInstance(fields[field_name], ftype)
-        dataset_copy = fo.load_dataset(name=dataset_name)
-        fields = dataset_copy.get_field_schema()
+
+        dataset1b = fo.load_dataset(dataset_name)
+        fields = dataset1b.get_field_schema()
         self.assertIsInstance(fields[field_name], ftype)
 
         dataset1.delete_sample_field("field1")
         with self.assertRaises(KeyError):
             fields = dataset1.get_field_schema()
             fields[field_name]
+
         with self.assertRaises(KeyError):
-            dataset_copy = fo.load_dataset(name=dataset_name)
-            fields = dataset_copy.get_field_schema()
+            dataset1b = fo.load_dataset(dataset_name)
+            fields = dataset1b.get_field_schema()
             fields[field_name]
 
-        dataset2 = fo.Dataset(name=dataset_name)
-        self.assertIs(dataset2, dataset1)
-        dataset2 = fo.load_dataset(name=dataset_name)
-        self.assertIs(dataset2, dataset1)
+        dataset1c = fo.load_dataset(dataset_name)
+        self.assertIs(dataset1c, dataset1)
+        dataset1c = fo.load_dataset(dataset_name)
+        self.assertIs(dataset1c, dataset1)
 
 
 class SampleTest(unittest.TestCase):
     @drop_database
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
-        self.assertIsInstance(sample._doc, foo.NoDatasetSample)
+        self.assertIsInstance(sample._doc, foo.ODMNoDatasetSample)
 
     @drop_database
     def test_get_field(self):
@@ -762,7 +766,7 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_database
     def test_dataset_clear(self):
         dataset_name = self.test_dataset_clear.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
 
         # add some samples
         num_samples = 10
@@ -789,7 +793,7 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_database
     def test_dataset_delete_samples(self):
         dataset_name = self.test_dataset_delete_samples.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
 
         # add some samples
         num_samples = 10
@@ -808,7 +812,7 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_database
     def test_getitem(self):
         dataset_name = self.test_getitem.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
 
         # add some samples
         samples = [
@@ -831,7 +835,7 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_database
     def test_autopopulated_fields(self):
         dataset_name = self.test_autopopulated_fields.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
         sample = fo.Sample(filepath="path/to/file.jpg")
 
         self.assertIsNone(sample.id)
@@ -850,7 +854,7 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_database
     def test_new_fields(self):
         dataset_name = self.test_new_fields.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
         sample = fo.Sample(filepath="path/to/file.jpg")
 
         field_name = "field1"
@@ -870,7 +874,7 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_database
     def test_new_fields_multi(self):
         dataset_name = self.test_new_fields_multi.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
         sample = fo.Sample(filepath="path/to/file.jpg")
 
         field_name = "field1"
@@ -890,8 +894,8 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_database
     def test_add_from_another_dataset(self):
         dataset_name = self.test_add_from_another_dataset.__name__ + "_%d"
-        dataset1 = fo.Dataset(name=dataset_name % 1)
-        dataset2 = fo.Dataset(name=dataset_name % 2)
+        dataset1 = fo.Dataset(dataset_name % 1)
+        dataset2 = fo.Dataset(dataset_name % 2)
 
         sample = fo.Sample(filepath="test.png")
 
@@ -908,7 +912,7 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_database
     def test_copy_sample(self):
         dataset_name = self.test_copy_sample.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
 
         sample = fo.Sample(filepath="test.png")
 
@@ -1058,7 +1062,7 @@ class FieldTest(unittest.TestCase):
     @drop_database
     def test_field_AddDelete_in_dataset(self):
         dataset_name = self.test_field_AddDelete_in_dataset.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
         id1 = dataset.add_sample(fo.Sample("1.jpg"))
         id2 = dataset.add_sample(fo.Sample("2.jpg"))
         sample1 = dataset[id1]
@@ -1184,7 +1188,7 @@ class FieldTest(unittest.TestCase):
     @drop_database
     def test_field_GetSetClear_in_dataset(self):
         dataset_name = self.test_field_GetSetClear_in_dataset.__name__
-        dataset = fo.Dataset(name=dataset_name)
+        dataset = fo.Dataset(dataset_name)
         dataset.add_sample(fo.Sample("1.jpg"))
         dataset.add_sample(fo.Sample("2.jpg"))
 
@@ -1233,4 +1237,4 @@ class FieldTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)

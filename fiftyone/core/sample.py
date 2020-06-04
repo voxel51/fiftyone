@@ -21,6 +21,7 @@ from future.utils import itervalues
 
 from collections import defaultdict
 from copy import deepcopy
+import json
 import os
 import weakref
 
@@ -46,7 +47,7 @@ class Sample(object):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.NoDatasetSample(
+        self._doc = foo.ODMNoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
@@ -74,7 +75,7 @@ class Sample(object):
         try:
             self.__delitem__(name)
         except KeyError:
-            super().__delattr__(name)
+            super(Sample, self).__delattr__(name)
 
     def __getitem__(self, key):
         try:
@@ -220,47 +221,43 @@ class Sample(object):
         kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
         return doc_cls(**kwargs)
 
-    def to_dict(self, extended=False):
+    def to_dict(self, extended=False, include_id=True):
         """Serializes the sample to a JSON dictionary.
 
         Args:
             extended (False): whether to serialize extended JSON constructs
                 such as ObjectIDs, Binary, etc. into JSON format
+            include_id (True): whether to include the ID of the sample in the
+                serialized dictionary
 
         Returns:
             a JSON dict
         """
-        return self._doc.to_dict(extended=extended)
+        d = self._doc.to_dict(extended=extended)
+        if not include_id:
+            d.pop("_id", None)
+
+        return d
 
     @classmethod
-    def from_dict(cls, doc_class, d, created=False, extended=False):
+    def from_dict(cls, d, doc_cls=None, extended=False):
         """Loads the sample from a JSON dictionary.
 
         Args:
-            doc_class:
             d: a JSON dictionary
-            created (False): whether to consider the newly instantiated
-                document as brand new or as persisted already. The following
-                cases exist:
-
-                    * If ``True``, consider the document as brand new, no
-                      matter what data it is loaded with (i.e., even if an ID
-                      is loaded)
-
-                    * If ``False`` and an ID is NOT provided, consider the
-                      document as brand new
-
-                    * If ``False`` and an ID is provided, assume that the
-                      object has already been persisted (this has an impact on
-                      the subsequent call to ``.save()``)
-
+            doc_cls (None): the :class:`fiftyone.core.odm.ODMSample` class to
+                use to load the backing document. By default,
+                :class:`fiftyone.core.odm.ODMNoDatasetSample` is used
             extended (False): whether the input dictionary contains extended
                 JSON
 
         Returns:
             a :class:`Sample`
         """
-        doc = doc_class.from_dict(d, created=created, extended=extended)
+        if doc_cls is None:
+            doc_cls = foo.ODMNoDatasetSample
+
+        doc = doc_cls.from_dict(d, extended=extended)
         return cls.from_doc(doc)
 
     def to_json(self):
@@ -270,6 +267,22 @@ class Sample(object):
             a JSON string
         """
         return self._doc.to_json()
+
+    @classmethod
+    def from_json(cls, s, doc_cls=None):
+        """Loads the sample from a JSON string.
+
+        Args:
+            s: the JSON string
+            doc_cls (None): the :class:`fiftyone.core.odm.ODMSample` class to
+                use to load the backing document. By default,
+                :class:`fiftyone.core.odm.ODMNoDatasetSample` is used
+
+        Returns:
+            a :class:`Sample`
+        """
+        d = json.loads(s)
+        return cls.from_dict(d, doc_cls=doc_cls, extended=True)
 
     @classmethod
     def from_doc(cls, doc):
@@ -282,8 +295,10 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        if not isinstance(doc, foo.ODMSample):
-            raise TypeError("Unexpected doc type: %s" % type(doc))
+        if isinstance(doc, foo.ODMNoDatasetSample):
+            sample = cls.__new__(cls)
+            sample._doc = doc
+            return sample
 
         if not doc.id:
             raise ValueError("`doc` is not saved to the database.")
@@ -353,13 +368,13 @@ class Sample(object):
 
         For use **only** when adding a sample to a dataset.
         """
-        if isinstance(self._doc, foo.ODMSample):
+        if isinstance(self._doc, foo.ODMDatasetSample):
             raise TypeError("Sample already belongs to a dataset")
 
-        if not isinstance(doc, foo.ODMSample):
+        if not isinstance(doc, foo.ODMDatasetSample):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
-                % (foo.ODMSample, type(doc))
+                % (foo.ODMDatasetSample, type(doc))
             )
 
         # ensure the doc is saved to the database
