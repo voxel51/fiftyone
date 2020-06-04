@@ -1304,8 +1304,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Parse dictionary
         name = d["name"]
         samples = [
-            fos.Sample.from_dict(foo.ODMNoDatasetSample, s, extended=True)
-            for s in d["samples"]
+            fos.Sample.from_dict(s, extended=True) for s in d["samples"]
         ]
 
         # Create dataset
