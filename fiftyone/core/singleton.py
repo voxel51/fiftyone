@@ -39,7 +39,7 @@ class DatasetSingleton(type):
         return cls
 
     def __call__(cls, name, *args, **kwargs):
-        if name not in cls._instances:
+        if name not in cls._instances or cls._instances[name].deleted:
             instance = cls.__new__(cls, name, *args, **kwargs)
             instance.__init__(name, *args, **kwargs)
             cls._instances[name] = instance

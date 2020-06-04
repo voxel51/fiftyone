@@ -91,6 +91,13 @@ def get_default_dataset_dir(name):
 def delete_dataset(name):
     """Deletes the FiftyOne dataset with the given name.
 
+    If reference to the dataset exists in memory, only `Dataset.name` and
+    `Dataset.deleted` will be valid attributes. Accessing any other attributes
+    or methods will raise a :class:`DatasetError`
+
+    If reference to a sample exists in memory, the sample's dataset will be
+    "unset" such that `sample.in_dataset == False`
+
     Args:
         name: the name of the dataset
 
@@ -99,21 +106,6 @@ def delete_dataset(name):
     """
     dataset = fo.load_dataset(name)
     dataset.delete()
-
-
-def check_deleted(func):
-    """Wrapper for properties of :class:`Dataset` that are essential to the
-    functionality of the class and are deleted when the dataset is deleted.
-    """
-
-    def wrapper(self, *args, **kwargs):
-        try:
-            return func(self, *args, **kwargs)
-        except AttributeError:
-            pass
-        raise DatasetError("Dataset '%s' has been deleted." % self.name)
-
-    return wrapper
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -137,6 +129,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._name = name
         self._sample_doc_cls = None
         self._meta = None
+        self._deleted = False
 
         try:
             self._load_dataset(name=name)
@@ -171,10 +164,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
 
+    def __getattribute__(self, name):
+        if name in ["name", "deleted", "_name", "_deleted"]:
+            return super().__getattribute__(name)
+
+        if getattr(self, "_deleted", False):
+            raise DatasetError("Dataset '%s' has been deleted." % self.name)
+
+        return super().__getattribute__(name)
+
     @property
     def name(self):
         """The name of the dataset."""
         return self._name
+
+    @property
+    def deleted(self):
+        """Whether the dataset is deleted."""
+        return self._deleted
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -417,18 +424,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def delete(self):
         """Deletes the dataset.
 
+        Once deleted, only `Dataset.name` and `Dataset.deleted` will be valid
+        attributes. Accessing any other attributes or methods will raise a
+        :class:`DatasetError`
+
         If reference to a sample exists in memory, the sample's dataset
         will be "unset" such that `sample.in_dataset == False`
-
-        If reference to the dataset exists in memory, behavior is undetermined
-        but many operations will raise a :class:`DatasetError`.
         """
         self.clear()
-
         self._meta.delete()
-
-        del self.__sample_doc_cls
-        del self.__meta
+        self._deleted = True
 
     def add_image_classification_samples(
         self, samples, label_field="ground_truth", tags=None, classes=None,
@@ -1307,24 +1312,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a JSON representation of the dataset
         """
         return {"name": self.name}
-
-    @property
-    @check_deleted
-    def _sample_doc_cls(self):
-        return self.__sample_doc_cls
-
-    @property
-    @check_deleted
-    def _meta(self):
-        return self.__meta
-
-    @_sample_doc_cls.setter
-    def _sample_doc_cls(self, _sample_doc_cls):
-        self.__sample_doc_cls = _sample_doc_cls
-
-    @_meta.setter
-    def _meta(self, _meta):
-        self.__meta = _meta
 
     def _initialize_dataset(self, name):
         # Create ODMSample subclass
