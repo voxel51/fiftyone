@@ -297,9 +297,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample = sample.copy()
 
         doc = sample.clone_doc(doc_cls=self._sample_doc_cls)
-        sample._set_backing_doc(doc)
 
-        return sample.id
+        if sample._in_db:
+            doc.save()
+        else:
+            sample._set_backing_doc(doc)
+
+        return doc.id
 
     def add_samples(self, samples, expand_schema=True):
         """Adds the given samples to the dataset.
@@ -323,9 +327,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
-        # Create copies of any samples already in datasets
-        samples = [s.copy() if s._in_db else s for s in samples]
-
         if expand_schema:
             self._expand_schema(samples)
 
@@ -334,7 +335,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         for sample, doc in zip(samples, docs):
-            sample._set_backing_doc(doc)
+            if not sample._in_db:
+                sample._set_backing_doc(doc)
 
         return [str(doc.id) for doc in docs]
 
