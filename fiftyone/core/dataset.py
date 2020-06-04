@@ -1390,7 +1390,13 @@ def _dataset_exists(name):
 
 def _create_dataset(name):
     if _dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
+        raise ValueError(
+            (
+                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
+                "to load an existing dataset"
+            )
+            % name
+        )
 
     # Create sample class
     _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
