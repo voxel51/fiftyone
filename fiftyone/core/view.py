@@ -24,8 +24,9 @@ import numbers
 
 from bson import ObjectId, json_util
 
+import eta.core.utils as etau
+
 import fiftyone.core.collections as foc
-import fiftyone.core.stage as fos
 
 
 def _make_registrar():
@@ -40,34 +41,24 @@ def _make_registrar():
     registry = {}
 
     def registrar(func):
-        # Normally a decorator returns a wrapped function, but here we return
-        # `func` unmodified, after registering it
-        return func
+        func_name = func.__name__
+        stage_cls = etau.get_class(
+            "".join([s.capitalize() for s in func_name.split("_")])
+        )
+
+        def wrapper(view, *args, **kwargs):
+            return view._copy_with_new_stage(stage_cls(*args, **kwargs))
+
+        registry[func_name] = wrapper
+
+        return wrapper
 
     registrar.all = registry
     return registrar
 
 
-def _make_stage_factory():
-    registry = {}
-
-    def stage_factory(stage_cls):
-        def decorator(method):
-            registry[method.__name__] = method
-
-            def wrapper(view, *args, **kwargs):
-                return view._copy_with_new_stage(stage_cls(*args, **kwargs))
-
-            return wrapper
-
-        return decorator
-
-    stage_factory.all = registry
-    return stage_factory
-
-
 # Keeps track of all DatasetView stage methods
-add_new_stage = _make_stage_factory()
+add_new_stage = _make_registrar()
 
 
 class DatasetView(foc.SampleCollection):
@@ -263,7 +254,7 @@ class DatasetView(foc.SampleCollection):
         """
         return list(add_new_stage.all)
 
-    @add_new_stage(fos.Match)
+    @add_new_stage
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
@@ -277,7 +268,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.MatchTag)
+    @add_new_stage
     def match_tag(self, tag):
         """Returns a view containing the samples that have the given tag.
 
@@ -289,7 +280,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.MatchTags)
+    @add_new_stage
     def match_tags(self, tags):
         """Returns a view containing the samples that have any of the given
         tags.
@@ -305,7 +296,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.Exists)
+    @add_new_stage
     def exists(self, field):
         """Returns a view containing the samples that have a non-``None`` value
         for the given field.
@@ -318,7 +309,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.SortBy)
+    @add_new_stage
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
 
@@ -336,7 +327,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.Skip)
+    @add_new_stage
     def skip(self, skip):
         """Omits the given number of samples from the head of the view.
 
@@ -349,7 +340,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.Limit)
+    @add_new_stage
     def limit(self, limit):
         """Limits the view to the given number of samples.
 
@@ -362,7 +353,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.Take)
+    @add_new_stage
     def take(self, size):
         """Randomly samples the given number of samples from the view.
 
@@ -375,7 +366,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.Select)
+    @add_new_stage
     def select(self, sample_ids):
         """Selects the samples with the given IDs from the view.
 
@@ -387,7 +378,7 @@ class DatasetView(foc.SampleCollection):
         """
         pass
 
-    @add_new_stage(fos.Exclude)
+    @add_new_stage
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the view.
 

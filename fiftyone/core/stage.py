@@ -1,5 +1,5 @@
 """
-FiftyOne stage definition.
+FiftyOne stage definitions.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -19,6 +19,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from copy import copy
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
@@ -29,12 +30,15 @@ import eta.core.utils as etau
 class ViewStage(object):
     def __init__(self, **kwargs):
         builder = ConfigBuilder(
-            etau.get_class(etau.get_class_name(self) + "StageConfig")
+            etau.get_class(etau.get_class_name(self) + "Config")
         )
-        self._kwargs = kwargs
-        builder = builder.set(**kwargs)
+        self._kwargs = copy(kwargs)
+        builder = builder.set(**self._kwargs)
         builder.validate()
         self.config = builder.build()
+
+    def __call__(self, view):
+        return view._copy_with_new_stage(self)
 
     def serialize(self):
         return {
