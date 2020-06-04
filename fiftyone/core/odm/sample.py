@@ -331,7 +331,7 @@ class ODMDatasetSample(ODMDocument, ODMSample):
     @property
     def field_names(self):
         # pylint: disable=no-member
-        return self._fields_ordered
+        return tuple(f for f in self._fields_ordered if f != "id")
 
     @classmethod
     def get_field_schema(cls, ftype=None, embedded_doc_type=None):
