@@ -19,6 +19,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from functools import wraps
 from copy import copy, deepcopy
 import numbers
 
@@ -56,6 +57,7 @@ def _make_view_stage():
             + "".join([s.capitalize() for s in func_name.split("_")])
         )
 
+        @wraps(func)
         def wrapper(view, *args, **kwargs):
             return view._copy_with_new_stage(stage_cls(*args, **kwargs))
 
