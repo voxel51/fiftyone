@@ -62,6 +62,7 @@ for sample in dataset.view().take(_num_mistakes):
 
     sample.tags.append("mistake")
     sample.ground_truth = fo.Classification(label=classes[mistake])
+    sample.save()
 ```
 
 Let's print some information about the dataset to verify the operation that we
@@ -159,6 +160,7 @@ for imgs, sample_ids in data_loader:
         sample[model_name] = fo.Classification(
             label=classes[prediction], logits=logits,
         )
+        sample.save()
 ```
 
 Let's print some information about the predictions that were generated and how

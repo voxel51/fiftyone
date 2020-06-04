@@ -102,6 +102,7 @@ dup_ids = session.selected
 dups_view = dataset.view().select(dup_ids)
 for sample in dups_view:
     sample.tags.append("dup")
+    sample.save()
 
 # Visualize duplicates-only in dashboard
 session.view = dups_view

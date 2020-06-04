@@ -231,6 +231,7 @@ for imgs, sample_ids in data_loader:
             label=classes[prediction],
             confidence=confidence,
         )
+        sample.save()
 
 #
 # Get the last batch of samples for which we added predictions

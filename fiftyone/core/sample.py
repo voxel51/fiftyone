@@ -52,11 +52,6 @@ class Sample(object):
         # maintain a reference to the dataset
         self._dataset = self._get_dataset()
 
-    def __del__(self):
-        """Automatically save the sample when it is destroyed."""
-        if self.in_dataset:
-            self.save()
-
     def __str__(self):
         return str(self._doc)
 
