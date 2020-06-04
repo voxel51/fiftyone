@@ -147,36 +147,6 @@ class Sample(object):
             ftype=ftype, embedded_doc_type=embedded_doc_type
         )
 
-    def add_field(
-        self, field_name, ftype, embedded_doc_type=None, subfield=None
-    ):
-        """Adds a new field of the given type to the sample.
-
-        The sample must belong to a dataset in order to declare a field without
-        a value. Use :func:`__setitem__` or :func:`set_field` to add fields
-        to samples that do not belong to datasets.
-
-        Args:
-            field_name: the field name
-            ftype: the field type to create. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.ODMEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a list or dict type
-
-        Raises:
-            ValueError: if the sample does not belong to a dataset
-        """
-        self._doc.add_field(
-            field_name,
-            ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-        )
-
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
 
