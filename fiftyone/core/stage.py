@@ -181,9 +181,6 @@ class Match(ViewStage):
         filter: a MongoDB query dict. See
             https://docs.mongodb.com/manual/tutorial/query-documents
             for details
-
-    Returns:
-        a :class:`DatasetView`
     """
 
     def __init__(self, filter):
