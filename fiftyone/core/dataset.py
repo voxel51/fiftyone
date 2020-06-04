@@ -296,7 +296,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample._in_db:
             sample = sample.copy()
 
-        doc = self._sample_doc_cls(**sample.to_dict())
+        doc = sample.clone_doc(doc_cls=self._sample_doc_cls)
         sample._set_backing_doc(doc)
 
         return sample.id
@@ -330,7 +330,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._expand_schema(samples)
 
         docs = self._get_query_set().insert(
-            [self._sample_doc_cls(**sample.to_dict()) for sample in samples]
+            [s.clone_doc(doc_cls=self._sample_doc_cls) for s in samples]
         )
 
         for sample, doc in zip(samples, docs):
@@ -1304,9 +1304,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Parse dictionary
         name = d["name"]
         samples = [
-            fos.Sample.from_dict(
-                foo.NoDatasetSample, s, created=True, extended=True
-            )
+            fos.Sample.from_dict(foo.ODMNoDatasetSample, s, extended=True)
             for s in d["samples"]
         ]
 
@@ -1341,7 +1339,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     fields = self.get_field_schema()
 
     def _load_sample_from_dict(self, d):
-        doc = self._sample_doc_cls.from_dict(d, created=False, extended=False)
+        doc = self._sample_doc_cls.from_dict(d, extended=False)
         return self._load_sample_from_doc(doc)
 
     def _load_sample_from_doc(self, doc):
@@ -1396,7 +1394,7 @@ def _create_dataset(name):
         raise ValueError("Dataset '%s' already exists" % name)
 
     # Create sample class
-    _sample_doc_cls = type(name, (foo.ODMSample,), {})
+    _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
 
     # Create dataset meta document
     _meta = foo.ODMDataset(
@@ -1417,7 +1415,7 @@ def _load_dataset(name):
     except DoesNotExist:
         raise ValueError("Dataset '%s' not found" % name)
 
-    _sample_doc_cls = type(name, (foo.ODMSample,), {})
+    _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
 
     num_default_fields = len(_sample_doc_cls.get_field_schema())
 
