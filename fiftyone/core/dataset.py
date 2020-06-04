@@ -130,6 +130,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name: the name of the dataset
         create_empty (True): whether to create a dataset with the given name
             if it does not already exist
+        persistent (False): whether the dataset will persist in the database
+            once the session terminates.
     """
 
     def __init__(self, name, create_empty=True, persistent=False):
