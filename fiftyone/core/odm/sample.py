@@ -410,13 +410,12 @@ class ODMDatasetSample(ODMDocument, ODMSample):
             # Instance, not class, so do not `setattr`
             pass
 
-        # @todo(Tyler) refactor to avoid local import here
         if save:
+            # Update dataset meta class
+            # @todo(Tyler) refactor to avoid local import here
             import fiftyone.core.dataset as fod
 
-            dataset = fod.Dataset(name=cls.__name__)
-
-            # Update dataset meta class
+            dataset = fod.load_dataset(cls.__name__)
             field = cls._fields[field_name]
             sample_field = SampleField.from_field(field)
             dataset._meta.sample_fields.append(sample_field)

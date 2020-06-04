@@ -69,7 +69,7 @@ def load_dataset(name):
     Raises:
         ValueError: if no dataset exists with the given name
     """
-    return Dataset(name, create=False)
+    return Dataset(name, _create=False)
 
 
 def get_default_dataset_name():
@@ -133,14 +133,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
-    Note that :class:`Dataset` instances are singletons keyed by ``name``, so
-    all calls to :func:`Dataset.__init__` for a given dataset ``name`` in a
-    program will return the same object.
-
     Args:
         name: the name of the dataset
-        create (True): whether to create a dataset with the given name if it
-            does not exist
         persistent (False): whether the dataset will persist in the database
             once the session terminates.
 
@@ -148,11 +142,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ValueError: if ``create == False`` and the dataset does not exist
     """
 
-    def __init__(self, name, create=True, persistent=False):
+    def __init__(self, name, persistent=False, _create=True):
         self._name = name
         self._deleted = False
 
-        if create:
+        if _create:
             self._meta, self._sample_doc_cls = _create_dataset(
                 name, persistent=persistent
             )
@@ -1378,16 +1372,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset
         """
-        # Parse dictionary
-        name = d["name"]
-        samples = [
-            fos.Sample.from_dict(s, extended=True) for s in d["samples"]
-        ]
-
-        # Create dataset
-        dataset = cls(name)
-        dataset.add_samples(samples)
-
+        dataset = cls(d["name"])
+        dataset.add_samples(
+            [fos.Sample.from_dict(s, extended=True) for s in d["samples"]]
+        )
         return dataset
 
     @classmethod
@@ -1471,7 +1459,13 @@ def _dataset_exists(name):
 
 def _create_dataset(name, persistent=False):
     if _dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
+        raise ValueError(
+            (
+                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
+                "to load an existing dataset"
+            )
+            % name
+        )
 
     # Create sample class
     _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
