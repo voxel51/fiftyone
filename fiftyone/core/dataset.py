@@ -295,7 +295,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample._in_db:
             sample = sample.copy()
 
-        doc = self._sample_doc_cls.from_document(sample)
+        doc = sample.clone_doc(doc_cls=self._sample_doc_cls)
         sample._set_backing_doc(doc)
 
         return sample.id
@@ -329,7 +329,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._expand_schema(samples)
 
         docs = self._get_query_set().insert(
-            [self._sample_doc_cls.from_document(sample) for sample in samples]
+            [s.clone_doc(doc_cls=self._sample_doc_cls) for s in samples]
         )
 
         for sample, doc in zip(samples, docs):

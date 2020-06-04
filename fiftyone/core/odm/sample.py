@@ -408,19 +408,6 @@ class ODMSample(ODMDocument):
         ]
         dataset._meta.save()
 
-    @classmethod
-    def from_document(cls, document):
-        """Returns a newly created document from an existing
-        :class:`ODMSample`, :class:`NoDatasetSample` or
-        :class:`fiftyone.core.sample.Sample`.
-        """
-        kwargs = {
-            field_name: document.get_field(field_name)
-            for field_name in document.field_names
-        }
-
-        return cls(**kwargs)
-
 
 class NoDatasetSample(SerializableDocument):
     """Backing document for samples that have not been added to a dataset."""
