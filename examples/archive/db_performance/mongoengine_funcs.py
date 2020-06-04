@@ -5,10 +5,15 @@ Benchmarking packages
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone.core.odm as foo
+import fiftyone as fo  # start DB service
 import time
 import numpy as np
+import pymongo
 import mongoengine
+
+
+CLIENT = pymongo.MongoClient()
+_DEFAULT_DATABASE = "mongoengine"
 
 
 class MongoEngineMetadata(mongoengine.EmbeddedDocument):
@@ -35,7 +40,7 @@ class MongoEngineSample(mongoengine.Document):
 
 def mongoengine_one(n):
     # pylint: disable=no-member
-    foo.drop_database()
+    CLIENT.drop_database(_DEFAULT_DATABASE)
     count = MongoEngineSample.objects.count()
     assert count == 0, "mongoengine_one count: %d" % count
 
@@ -91,7 +96,7 @@ def mongoengine_one(n):
 
 def mongoengine_many(n):
     # pylint: disable=no-member
-    foo.drop_database()
+    CLIENT.drop_database(_DEFAULT_DATABASE)
     count = MongoEngineSample.objects.count()
     assert count == 0, "mongoframes_many count: %d" % count
 
