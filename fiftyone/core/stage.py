@@ -98,7 +98,7 @@ class Limit(ViewStage):
 
 class LimitConfig(Config):
     def __init__(self, d):
-        self.limit = self.parse_number(d, "skip")
+        self.limit = self.parse_number(d, "limit")
 
         if self.limit < 0 or not isinstance(self.limit, int):
             raise ViewStageError("Invalid limit value %s" % str(self.limit))
@@ -143,7 +143,7 @@ class MatchTagsConfig(Config):
         if "tags" in d:
             d = {"tags": list(d["tags"])}
 
-        self.tags = self.parse_dict(d, "tags")
+        self.tags = self.parse_object_array(d, "tags", str)
 
 
 class Select(ViewStage):
@@ -157,7 +157,7 @@ class Select(ViewStage):
 
 class SelectConfig(Config):
     def __init__(self, d):
-        self.sample_ids = self.parse_object_array(d, "samples_ids", str)
+        self.sample_ids = self.parse_object_array(d, "sample_ids", str)
 
 
 class SortBy(ViewStage):
