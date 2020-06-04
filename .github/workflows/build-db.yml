@@ -47,7 +47,8 @@ jobs:
           pip3 install pytest
       - name: Run tests
         run: |
-          python3 -m pytest package/db/tests/
+          cd package/db/
+          python3 -m pytest tests/
   publish:
     runs-on: ubuntu-20.04
     needs: [build, test]
