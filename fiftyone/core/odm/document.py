@@ -33,6 +33,17 @@ class SerializableDocument(object):
     def __str__(self):
         return self.to_json(pretty_print=True)
 
+    def __copy__(self):
+        return self.copy()
+
+    def copy(self):
+        """Returns a deep copy of the document.
+
+        Returns:
+            a document
+        """
+        return deepcopy(self)
+
     def to_dict(self, extended=False):
         """Serializes this document to a BSON/JSON dictionary.
 
@@ -97,8 +108,9 @@ class ODMDocument(Document, SerializableDocument):
 
     meta = {"abstract": True}
 
-    def __copy__(self):
-        return self.copy()
+    def __str__(self):
+        d = self.to_dict(extended=True)
+        return etas.json_to_str(d, pretty_print=True)
 
     def copy(self):
         """Returns a copy of the document that does not have its `id` set.
@@ -158,6 +170,10 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
     def __init__(self, *args, **kwargs):
         super(ODMEmbeddedDocument, self).__init__(*args, **kwargs)
         self.validate()
+
+    def __str__(self):
+        d = self.to_dict(extended=True)
+        return etas.json_to_str(d, pretty_print=True)
 
     def to_dict(self, extended=False):
         if extended:
