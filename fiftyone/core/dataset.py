@@ -295,7 +295,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample._in_db:
             sample = sample.copy()
 
-        doc = self._sample_doc_cls(**sample.to_dict())
+        sample_kwargs = {
+            field_name: sample[field_name] for field_name in sample.field_names
+        }
+
+        doc = self._sample_doc_cls(**sample_kwargs)
         sample._set_backing_doc(doc)
 
         return sample.id
