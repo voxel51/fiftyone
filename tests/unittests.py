@@ -52,6 +52,9 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         self.assertIs(dataset1, dataset2)
         self.assertIsNot(dataset1, dataset3)
 
+        with self.assertRaises(ValueError):
+            fo.Dataset("test_dataset")
+
     @drop_datasets
     def test_sample_singletons(self):
         """Test samples are always in sync with themselves"""
