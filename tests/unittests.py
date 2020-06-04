@@ -21,6 +21,7 @@ from mongoengine.errors import (
     NotUniqueError,
     ValidationError,
 )
+import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.odm as foo
@@ -1198,6 +1199,39 @@ class FieldTest(unittest.TestCase):
         # delete field
 
         # add deleted field
+
+    @drop_database
+    def test_vector_array_fields(self):
+        sample1 = fo.Sample(
+            filepath="img.png",
+            vector_field=np.arange(5),
+            array_field=np.ones((2, 3)),
+        )
+
+        sample2 = fo.Sample(filepath="img.png")
+        sample2["vector_field"] = np.arange(5)
+        sample2["array_field"] = np.ones((2, 3))
+
+        dataset1 = fo.Dataset("test_one")
+        dataset2 = fo.Dataset("test_two")
+
+        sample3 = fo.Sample(
+            filepath="img.png",
+            vector_field=np.arange(5),
+            array_field=np.ones((2, 3)),
+        )
+        dataset1.add_sample(sample3)
+
+        sample4 = fo.Sample(filepath="img.png")
+        dataset2.add_sample(sample4)
+        sample4["vector_field"] = np.arange(5)
+        sample4["array_field"] = np.ones((2, 3))
+        sample4.save()
+
+        for sample in [sample1, sample2, sample3, sample4]:
+            fields = sample.get_field_schema()
+            self.assertIsInstance(fields["vector_field"], fo.VectorField)
+            self.assertIsInstance(fields["array_field"], fo.ArrayField)
 
 
 if __name__ == "__main__":

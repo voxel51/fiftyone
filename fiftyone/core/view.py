@@ -26,6 +26,7 @@ from bson import ObjectId, json_util
 from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
 
 
 def _make_registrar():
@@ -475,12 +476,6 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _get_field_distributions(self):
-        return list(self.aggregate(_FIELD_DISTRIBUTIONS_PIPELINE))
-
-    def _get_facets(self):
-        return list(self.aggregate(_FACETS_PIPELINE))
-
     def _copy_with_new_stage(self, stage):
         view = copy(self)
         view._pipeline.append(stage)
@@ -492,42 +487,3 @@ class DatasetView(foc.SampleCollection):
                 return stage["$skip"]
 
         return 0
-
-
-_FIELD_DISTRIBUTIONS_PIPELINE = [
-    {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-    {"$unwind": "$field"},
-    {"$project": {"field": "$field.k", "detection": "$field.v.detections"}},
-    {"$unwind": "$detection"},
-    {
-        "$group": {
-            "_id": {"field": "$field", "label": "$detection.label"},
-            "count": {"$sum": 1},
-        }
-    },
-    {
-        "$group": {
-            "_id": "$_id.field",
-            "labels": {"$push": {"label": "$_id.label", "count": "$count"}},
-        }
-    },
-]
-
-
-_FACETS_PIPELINE = [
-    {
-        "$facet": {
-            "tags": [
-                {"$project": {"tag": "$tags"}},
-                {
-                    "$unwind": {
-                        "path": "$tag",
-                        "preserveNullAndEmptyArrays": True,
-                    }
-                },
-                {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
-                {"$sort": {"_id": 1}},
-            ],
-        }
-    }
-]
