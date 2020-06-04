@@ -13,13 +13,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-from future.utils import itervalues
 
 from collections import defaultdict
+from copy import deepcopy
 import os
 import weakref
 
@@ -190,22 +191,38 @@ class Sample(object):
         return self._doc.clear_field(field_name=field_name)
 
     def copy(self):
-        """Returns a copy of the sample that has not been added to the
+        """Returns a deep copy of the sample that has not been added to the
         database.
 
         Returns:
             a :class:`Sample`
         """
-        doc = self._doc.copy()
-        kwargs = {fn: getattr(doc, fn) for fn in doc.field_names}
+        kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
         return self.__class__(**kwargs)
+
+    def clone_doc(self, doc_cls=None):
+        """Returns a deep clone of the backing document of the sample.
+
+        Args:
+            doc_cls (None): a :class:`fiftyone.core.odm.ODMSample` class to
+                use for the backing document. By default, the backing document
+                class of the sample is used
+
+        Returns:
+            a :class:`fiftyone.core.odm.ODMSample`
+        """
+        if doc_cls is None:
+            doc_cls = self._doc.__class__
+
+        kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
+        return doc_cls(**kwargs)
 
     def to_dict(self, extended=False):
         """Serializes the sample to a JSON dictionary.
 
         Args:
-            extended (False): whether to return extended JSON, i.e.,
-                ObjectIDs, Datetimes, etc. are serialized
+            extended (False): whether to serialize extended JSON constructs
+                such as ObjectIDs, Binary, etc. into JSON format
 
         Returns:
             a JSON dict
@@ -234,8 +251,8 @@ class Sample(object):
                       object has already been persisted (this has an impact on
                       the subsequent call to ``.save()``)
 
-            extended (False): if ``False``, ObjectIDs, Datetimes, etc. are
-                expected to already be loaded
+            extended (False): whether the input dictionary contains extended
+                JSON
 
         Returns:
             a :class:`Sample`
