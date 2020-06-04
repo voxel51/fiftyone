@@ -647,10 +647,17 @@ class DatasetTest(unittest.TestCase):
         name = dataset_names.pop(0)
         datasets[name].delete()
         self.assertListEqual(fo.list_dataset_names(), dataset_names)
+        with self.assertRaises(fo.DatasetError):
+            len(datasets[name])
 
         name = dataset_names.pop(0)
         fo.delete_dataset(name)
         self.assertListEqual(fo.list_dataset_names(), dataset_names)
+        with self.assertRaises(fo.DatasetError):
+            len(datasets[name])
+
+        new_dataset = fo.Dataset(name)
+        self.assertEqual(len(new_dataset), 0)
 
     @drop_database
     def test_backing_doc_class(self):

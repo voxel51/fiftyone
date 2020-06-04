@@ -102,6 +102,10 @@ def delete_dataset(name):
 
 
 def check_deleted(func):
+    """Wrapper for properties of :class:`Dataset` that are essential to the
+    functionality of the class and are deleted when the dataset is deleted.
+    """
+
     def wrapper(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
