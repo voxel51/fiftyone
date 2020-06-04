@@ -70,7 +70,7 @@ class Exclude(ViewStage):
 
 class ExcludeConfig(Config):
     def __init__(self, d):
-        self.sample_ids = self.parse_object_array(d, "samples_ids", str)
+        self.sample_ids = self.parse_object_array(d, "sample_ids", str)
 
 
 class Exists(ViewStage):

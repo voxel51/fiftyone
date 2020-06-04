@@ -43,7 +43,8 @@ def _make_registrar():
     def registrar(func):
         func_name = func.__name__
         stage_cls = etau.get_class(
-            "".join([s.capitalize() for s in func_name.split("_")])
+            "fiftyone.core.stage."
+            + "".join([s.capitalize() for s in func_name.split("_")])
         )
 
         def wrapper(view, *args, **kwargs):
