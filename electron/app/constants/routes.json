@@ -1,7 +1,9 @@
 {
   "DATASET": "/",
+  "LABELS": "/labels",
+  "LOADING": "/loading",
   "SAMPLES": "/samples",
-  "FIELDS": "/fields",
+  "SCALARS": "/scalars",
   "SETUP": "/setup",
-  "LOADING": "/loading"
+  "TAGS": "/tags"
 }

@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -23,14 +22,11 @@ from copy import deepcopy
 import json
 
 from bson import json_util
-from mongoengine import (
-    Document,
-    EmbeddedDocument,
-)
+from mongoengine import Document, EmbeddedDocument
 
 
 class SerializableDocument(object):
-    """Mixin for documents to support serializing and de-serializing"""
+    """Mixin for documents that can be serialized in JSON format."""
 
     meta = {"abstract": True}
 
@@ -59,8 +55,8 @@ class SerializableDocument(object):
         """Serializes this document to a JSON dictionary.
 
         Args:
-            extended (False): whether to return extended JSON, i.e.,
-                ObjectIDs, Datetimes, etc. are serialized
+            extended (False): whether to serialize extended JSON constructs
+                such as ObjectIDs, Binary, etc. into JSON format
 
         Returns:
             a JSON dict
@@ -92,8 +88,8 @@ class SerializableDocument(object):
                       object has already been persisted (this has an impact on
                       the subsequent call to ``.save()``)
 
-            extended (False): if ``False``, ObjectIDs, Datetimes, etc. are
-                expected to already be loaded
+            extended (False): whether the input dictionary contains extended
+                JSON
 
         Returns:
             a :class:`ODMDocument`

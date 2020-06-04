@@ -23,6 +23,8 @@ from .core.fields import (
     FloatField,
     StringField,
     ListField,
+    VectorField,
+    ArrayField,
     DictField,
     EmbeddedDocumentField,
 )
