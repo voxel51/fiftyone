@@ -15,6 +15,7 @@ from .core.dataset import (
     Dataset,
     list_dataset_names,
     load_dataset,
+    delete_dataset,
 )
 from .core.fields import (
     Field,

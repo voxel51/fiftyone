@@ -59,6 +59,9 @@ def load_dataset(name):
 
     Returns:
         a :class:`Dataset`
+
+    Raises:
+        ValueError: if the dataset is not found
     """
     return Dataset(name, create_empty=False)
 
@@ -83,6 +86,30 @@ def get_default_dataset_dir(name):
         the default directory for the dataset
     """
     return os.path.join(fo.config.default_dataset_dir, name)
+
+
+def delete_dataset(name):
+    """Deletes the FiftyOne dataset with the given name.
+
+    Args:
+        name: the name of the dataset
+
+    Raises:
+        ValueError: if the dataset is not found
+    """
+    dataset = fo.load_dataset(name)
+    dataset.delete()
+
+
+def check_deleted(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except AttributeError:
+            pass
+        raise DatasetError("Dataset '%s' has been deleted." % self.name)
+
+    return wrapper
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -382,6 +409,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # unset the dataset for all samples
         fos.Sample._reset_all_backing_docs(dataset_name=self.name)
+
+    def delete(self):
+        """Deletes the dataset.
+
+        If reference to a sample exists in memory, the sample's dataset
+        will be "unset" such that `sample.in_dataset == False`
+
+        If reference to the dataset exists in memory, behavior is undetermined
+        but many operations will raise a :class:`DatasetError`.
+        """
+        self.clear()
+
+        self._meta.delete()
+
+        del self.__sample_doc_cls
+        del self.__meta
 
     def add_image_classification_samples(
         self, samples, label_field="ground_truth", tags=None, classes=None,
@@ -1261,6 +1304,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return {"name": self.name}
 
+    @property
+    @check_deleted
+    def _sample_doc_cls(self):
+        return self.__sample_doc_cls
+
+    @property
+    @check_deleted
+    def _meta(self):
+        return self.__meta
+
+    @_sample_doc_cls.setter
+    def _sample_doc_cls(self, _sample_doc_cls):
+        self.__sample_doc_cls = _sample_doc_cls
+
+    @_meta.setter
+    def _meta(self, _meta):
+        self.__meta = _meta
+
     def _initialize_dataset(self, name):
         # Create ODMSample subclass
         self._sample_doc_cls = type(self._name, (foo.ODMSample,), {})
@@ -1348,3 +1409,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         return field_str
+
+
+class DatasetError(Exception):
+    pass

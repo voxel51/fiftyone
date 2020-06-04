@@ -638,6 +638,21 @@ class DatasetTest(unittest.TestCase):
         self.assertIsInstance(fo.list_dataset_names(), list)
 
     @drop_database
+    def test_delete_dataset(self):
+        dataset_names = ["test_%d" % i for i in range(10)]
+
+        datasets = {name: fo.Dataset(name) for name in dataset_names}
+        self.assertListEqual(fo.list_dataset_names(), dataset_names)
+
+        name = dataset_names.pop(0)
+        datasets[name].delete()
+        self.assertListEqual(fo.list_dataset_names(), dataset_names)
+
+        name = dataset_names.pop(0)
+        fo.delete_dataset(name)
+        self.assertListEqual(fo.list_dataset_names(), dataset_names)
+
+    @drop_database
     def test_backing_doc_class(self):
         dataset_name = self.test_backing_doc_class.__name__
         dataset = fo.Dataset(dataset_name)
