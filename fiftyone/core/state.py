@@ -79,7 +79,7 @@ class StateDescription(etas.Serializable):
 
         dataset = d.get("dataset", None)
         if dataset is not None:
-            dataset = fod.Dataset(dataset.get("name"))
+            dataset = fod.load_dataset(dataset.get("name"))
 
         view_ = d.get("view", None)
         view = None
