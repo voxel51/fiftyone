@@ -101,8 +101,9 @@ class Detection(ODMEmbeddedDocument):
     Args:
         label: the label string
         bounding_box: a list of relative bounding box coordinates in ``[0, 1]``
+            in the following format::
 
-            [ <top-left-x>, <top-right-y>, <width>, <height> ]
+            [<top-left-x>, <top-right-y>, <width>, <height>]
 
         confidence (None): a confidence in ``[0, 1]`` for the label
     """
