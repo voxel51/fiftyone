@@ -101,3 +101,32 @@ jobs:
           TWINE_NON_INTERACTIVE: 1
         run: |
           python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/*.whl
+
+  update-docs:
+    needs: build-docs
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Clone website
+        uses: actions/checkout@v2
+        with:
+          repo: voxel51/website
+      - name: Download docs
+        uses: actions/download-artifact@v2
+        with:
+          name: docs
+          path: downloads/
+      - name: Update docs
+        run: |
+          rm -r source/docs/fiftyone/
+          unzip downloads/docs.zip -d source/docs/fiftyone/
+      - name: Create website PR
+        uses: peter-evans/create-pull-request@v2
+        with:
+          branch: fiftyone-docs
+          commit-message: Update fiftyone docs (${{ github.ref }})
+          title: Automated fiftyone documentation update
+          body:
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          author: voxel51-bot <bot@voxel51.com>
+          labels: documentation
+          reviewers: voxel51/developers
