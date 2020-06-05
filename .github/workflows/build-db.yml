@@ -1,6 +1,9 @@
 name: Build DB
 
-on: push
+on:
+  push:
+    paths:
+      - package/db/
 
 jobs:
   build:

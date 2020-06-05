@@ -1,6 +1,10 @@
 name: Build GUI
 
-on: push
+on:
+  push:
+    paths:
+      - electron/
+      - package/gui/
 
 jobs:
   build:
