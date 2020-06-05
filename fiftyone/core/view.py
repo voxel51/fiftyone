@@ -25,54 +25,31 @@ import numbers
 
 from bson import ObjectId, json_util
 
-import eta.core.utils as etau
-
 import fiftyone.core.collections as foc
+import fiftyone.core.stages as fos
 
 
-def _make_view_stage():
-    """This method serves two purposes:
-
-        1. Building a registry of all stage methods on
-            :class:`fiftyone.core.view.DatasetView`
-        2. Defining the view stage method via the class definition of the view
-            stage
-
+def _make_registrar():
+    """Makes a decorator that keeps a registry of all functions decorated by
+    it.
     Usage::
-
-        view_stage = _make_stage()
-        view_stage.all  # dictionary mapping names to view stage methods
-
-    Adding a :class:`fiftyone.core.view.MyViewStage`::
-        # assuming fiftyone.core.view.MyStage exists with arguments `arg1` and
-        # `arg2`
-        @view_stage
-        def my_view_stage(self, arg1, arg2):
-            pass # this will never be called
+        my_decorator = _make_registrar()
+        my_decorator.all  # dictionary mapping names to functions
     """
     registry = {}
 
     def registrar(func):
-        func_name = func.__name__
-        stage_cls = etau.get_class(
-            "fiftyone.core.stages."
-            + "".join([s.capitalize() for s in func_name.split("_")])
-        )
-
-        @wraps(func)
-        def wrapper(view, *args, **kwargs):
-            return view._copy_with_new_stage(stage_cls(*args, **kwargs))
-
-        registry[func_name] = wrapper
-
-        return wrapper
+        registry[func.__name__] = func
+        # Normally a decorator returns a wrapped function, but here we return
+        # `func` unmodified, after registering it
+        return func
 
     registrar.all = registry
     return registrar
 
 
 # Keeps track of all DatasetView stage methods
-view_stage = _make_view_stage()
+view_stage = _make_registrar()
 
 
 class DatasetView(foc.SampleCollection):
@@ -130,6 +107,43 @@ class DatasetView(foc.SampleCollection):
         view = self.__class__(self._dataset)
         view._pipeline = deepcopy(self._pipeline)
         return view
+
+    def add_stage(self, stage):
+        """Adds a :class:`fiftyone.core.stages.ViewStage` to the current view,
+        returning a new view.
+
+        Args:
+            stage: a :class:`fiftyone.core.stages.ViewStage`
+        """
+        return stage(self)
+
+    def aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the view.
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to append to the view's pipeline before aggregation.
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._dataset._get_query_set().aggregate(
+            [s.to_mongo() for s in self._pipeline] + pipeline
+        )
+
+    def serialize(self):
+        """Serializes the view.
+
+        Returns:
+            a JSON representation of the view
+        """
+        return {
+            "dataset": self._dataset.serialize(),
+            "view": json_util.dumps([s._serialize() for s in self._pipeline]),
+        }
 
     def summary(self):
         """Returns a string summary of the view.
@@ -280,7 +294,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.Match(filter))
 
     @view_stage
     def match_tag(self, tag):
@@ -292,7 +306,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.MatchTag(tag))
 
     @view_stage
     def match_tags(self, tags):
@@ -308,7 +322,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.MatchTag(tags))
 
     @view_stage
     def exists(self, field):
@@ -321,7 +335,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.Exists(field))
 
     @view_stage
     def sort_by(self, field, reverse=False):
@@ -339,7 +353,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.SortBy(field, reverse=reverse))
 
     @view_stage
     def skip(self, skip):
@@ -352,7 +366,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.Skip(skip))
 
     @view_stage
     def limit(self, limit):
@@ -365,7 +379,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.Limit(limit))
 
     @view_stage
     def take(self, size):
@@ -378,7 +392,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.Take(size))
 
     @view_stage
     def select(self, sample_ids):
@@ -390,7 +404,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
+        return self.add_stage(fos.Select(sample_ids))
 
     @view_stage
     def exclude(self, sample_ids):
@@ -402,35 +416,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        pass
-
-    def aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the view.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before aggregation.
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        if pipeline is None:
-            pipeline = []
-
-        return self._dataset._get_query_set().aggregate(
-            [s.to_mongo() for s in self._pipeline] + pipeline
-        )
-
-    def serialize(self):
-        """Serializes the view.
-
-        Returns:
-            a JSON representation of the view
-        """
-        return {
-            "dataset": self._dataset.serialize(),
-            "view": json_util.dumps([s._serialize() for s in self._pipeline]),
-        }
+        return self.add_stage(fos.Exclude(sample_ids))
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:
