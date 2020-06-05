@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - package/db/
+      - .github/workflows/build-db.yml
 
 jobs:
   build:

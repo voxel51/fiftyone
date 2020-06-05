@@ -5,6 +5,7 @@ on:
     paths:
       - electron/
       - package/gui/
+      - .github/workflows/build-gui.yml
 
 jobs:
   build:
