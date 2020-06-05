@@ -295,7 +295,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample._set_backing_doc(doc)
 
-        return doc.id
+        return str(doc.id)
 
     def add_samples(self, samples, expand_schema=True):
         """Adds the given samples to the dataset.
@@ -1345,8 +1345,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _get_fields_dict(self):
         fields = self.get_field_schema()
         return {
-            field_name: self._field_to_str(field)
-            for field_name, field in iteritems(fields)
+            field_name: str(field) for field_name, field in iteritems(fields)
         }
 
     def _get_fields_str(self):
@@ -1356,21 +1355,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "    %s %s" % ((field_name + ":").ljust(max_len), field)
             for field_name, field in iteritems(fields_dict)
         )
-
-    @staticmethod
-    def _field_to_str(field):
-        field_str = etau.get_class_name(field)
-
-        if any(
-            isinstance(field, cls) for cls in [fof.ListField, fof.DictField]
-        ):
-            field_str += "(field=%s)" % etau.get_class_name(field.field)
-        elif isinstance(field, fof.EmbeddedDocumentField):
-            field_str += "(document_type=%s)" % etau.get_class_name(
-                field.document_type
-            )
-
-        return field_str
 
 
 def _dataset_exists(name):
