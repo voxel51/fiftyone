@@ -44,7 +44,7 @@ jobs:
   publish:
     runs-on: ubuntu-20.04
     needs: [build]
-    if: startsWith(github.ref, 'refs/tags/db-v')
+    if: startsWith(github.ref, 'refs/tags/gui-v')
     steps:
       - name: Download wheels
         uses: actions/download-artifact@v2
