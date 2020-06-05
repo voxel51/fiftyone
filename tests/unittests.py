@@ -1033,6 +1033,7 @@ class CRUDTest(unittest.TestCase):
         sample2 = dataset[sample.id]
         self.assertEqual(sample2.test_label.label, "chicken")
 
+        # @todo(Tyler)
         # print("Removing tag 'tag1'")
         # sample.remove_tag("tag1")
         # print("Num samples: %d" % len(dataset))
@@ -1215,6 +1216,7 @@ class FieldTest(unittest.TestCase):
         dataset.add_sample(fo.Sample("1.jpg"))
         dataset.add_sample(fo.Sample("2.jpg"))
 
+        # @todo(Tyler)
         # add field (default duplicate)
 
         # add field (new)
@@ -1227,31 +1229,21 @@ class FieldTest(unittest.TestCase):
 
     @drop_datasets
     def test_vector_array_fields(self):
+        dataset1 = fo.Dataset("test_one")
+        dataset2 = fo.Dataset("test_two")
+
         sample1 = fo.Sample(
             filepath="img.png",
             vector_field=np.arange(5),
             array_field=np.ones((2, 3)),
         )
+        dataset1.add_sample(sample1)
 
         sample2 = fo.Sample(filepath="img.png")
+        dataset2.add_sample(sample2)
         sample2["vector_field"] = np.arange(5)
         sample2["array_field"] = np.ones((2, 3))
-
-        dataset1 = fo.Dataset("test_one")
-        dataset2 = fo.Dataset("test_two")
-
-        sample3 = fo.Sample(
-            filepath="img.png",
-            vector_field=np.arange(5),
-            array_field=np.ones((2, 3)),
-        )
-        dataset1.add_sample(sample3)
-
-        sample4 = fo.Sample(filepath="img.png")
-        dataset2.add_sample(sample4)
-        sample4["vector_field"] = np.arange(5)
-        sample4["array_field"] = np.ones((2, 3))
-        sample4.save()
+        sample2.save()
 
         for dataset in [dataset1, dataset2]:
             fields = dataset.get_field_schema()
