@@ -155,9 +155,9 @@ def load_zoo_dataset(
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
         persistent (False): whether the dataset will persist in the database
-            once the session terminates.
+            once the session terminates
         delete_existing_dataset (False): whether to delete an existing dataset
-            with the same name if it exists.
+            with the same name if it exists
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
