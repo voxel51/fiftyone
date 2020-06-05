@@ -58,3 +58,24 @@ jobs:
       - name: Run tests
         run: |
           pytest tests/ --verbose --ignore tests/benchmarking/
+
+  publish:
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v2
+        with:
+          name: wheel
+          path: downloads
+      - name: Install dependencies
+        run: |
+          pip3 install twine
+      - name: Upload to pypi.voxel51.com
+        env:
+          TWINE_USERNAME: voxel51-ci
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          TWINE_NON_INTERACTIVE: 1
+        run: |
+          python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/wheel/*.whl
