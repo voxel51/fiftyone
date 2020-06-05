@@ -8,6 +8,7 @@
 # voxel51.com
 #
 
+set -e
 cd "$(dirname "$0")/.."
 echo "**** Generating documentation"
 
