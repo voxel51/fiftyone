@@ -35,7 +35,7 @@ def _make_view_stage():
 
         1. Building a registry of all stage methods on
             :class:`fiftyone.core.view.DatasetView`
-        2. Defining the view stage method via the class definiton of the view
+        2. Defining the view stage method via the class definition of the view
             stage
 
     Usage::
@@ -55,7 +55,7 @@ def _make_view_stage():
     def registrar(func):
         func_name = func.__name__
         stage_cls = etau.get_class(
-            "fiftyone.core.stage."
+            "fiftyone.core.stages."
             + "".join([s.capitalize() for s in func_name.split("_")])
         )
 
