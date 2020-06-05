@@ -36,6 +36,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -297,7 +298,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return doc.id
 
-    def add_samples(self, samples, expand_schema=True):
+    def add_samples(self, samples, expand_schema=True, batch_size=256):
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -320,6 +321,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
+        sample_ids = []
+        with etau.ProgressBar(iters_str="samples") as progress:
+            for batch in fou.iter_batches(progress(samples), batch_size):
+                sample_ids.extend(self._add_samples(batch, expand_schema))
+
+        return sample_ids
+
+    def _add_samples(self, samples, expand_schema):
         if expand_schema:
             self._expand_schema(samples)
 
