@@ -418,7 +418,7 @@ class DatasetView(foc.SampleCollection):
             pipeline = []
 
         return self._dataset._get_query_set().aggregate(
-            [s.resolve() for s in self._pipeline] + pipeline
+            [s.to_mongo() for s in self._pipeline] + pipeline
         )
 
     def serialize(self):

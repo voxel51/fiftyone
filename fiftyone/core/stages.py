@@ -28,10 +28,12 @@ import eta.core.utils as etau
 
 
 class ViewStage(object):
-    """Abstract base class for all :class:`fiftyone.core.view.DatasetView` stages.
+    """Abstract base class for all :class:`fiftyone.core.view.DatasetView`
+    stages.
 
     Args:
-        **kwargs: the concrete :class:`fiftyone.core.stage.ViewStage` arguments
+        **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
+            arguments
     """
 
     def __init__(self, **kwargs):
@@ -46,14 +48,14 @@ class ViewStage(object):
     def __call__(self, view):
         return view._copy_with_new_stage(self)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.ViewStage`
-        instance
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.ViewStage` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        raise NotImplementedError("subclasses must implement `resolve()`")
+        raise NotImplementedError("subclasses must implement `to_mongo()`")
 
     def _serialize(self):
         return {
@@ -83,15 +85,15 @@ class Exclude(ViewStage):
     def __init__(self, sample_ids):
         super(Exclude, self).__init__(sample_ids=sample_ids)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.Exclude`
-        instance
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Exclude` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
         sample_ids = [ObjectId(id) for id in self.config.sample_ids]
-        return Match({"_id": {"$not": {"$in": sample_ids}}}).resolve()
+        return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
 
 
 class ExcludeConfig(Config):
@@ -116,16 +118,16 @@ class Exists(ViewStage):
     def __init__(self, field):
         super(Exists, self).__init__(field=field)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.Exists`
-        instance
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Exists` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
         return Match(
             {self.config.field: {"$exists": True, "$ne": None}}
-        ).resolve()
+        ).to_mongo()
 
 
 class ExistsConfig(Config):
@@ -150,8 +152,8 @@ class Limit(ViewStage):
     def __init__(self, limit):
         super(Limit, self).__init__(limit=limit)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.Limit`
+    def to_mongo(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Limit`
         instance
 
         Returns:
@@ -186,9 +188,9 @@ class Match(ViewStage):
     def __init__(self, filter):
         super(Match, self).__init__(filter=filter)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.Match`
-        instance
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Match` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -217,14 +219,14 @@ class MatchTag(ViewStage):
     def __init__(self, tag):
         super(MatchTag, self).__init__(tag=tag)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.MatchTag`
-        instance
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.MatchTag` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        return Match({"tags": self.config.tag}).resolve()
+        return Match({"tags": self.config.tag}).to_mongo()
 
 
 class MatchTagConfig(Config):
@@ -251,14 +253,14 @@ class MatchTags(ViewStage):
     def __init__(self, tags):
         super(MatchTags, self).__init__(tags=tags)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.MatchTags`
-        instance
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.MatchTags` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        return Match({"tags": {"$in": self.config.tags}}).resolve()
+        return Match({"tags": {"$in": self.config.tags}}).to_mongo()
 
 
 class MatchTagsConfig(Config):
@@ -285,15 +287,15 @@ class Select(ViewStage):
     def __init__(self, sample_ids):
         super(Select, self).__init__(sample_ids=sample_ids)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.Select`
-        instance
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Select` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
         sample_ids = [ObjectId(id) for id in self.config.sample_ids]
-        return Match({"_id": {"$in": sample_ids}}).resolve()
+        return Match({"_id": {"$in": sample_ids}}).to_mongo()
 
 
 class SelectConfig(Config):
@@ -323,9 +325,9 @@ class SortBy(ViewStage):
     def __init__(self, field, reverse=False):
         super(SortBy, self).__init__(field=field, reverse=reverse)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.SortBy`
-        instance
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.SortBy` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -357,8 +359,8 @@ class Skip(ViewStage):
     def __init__(self, skip):
         super(Skip, self).__init__(skip=skip)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.Skip`
+    def to_mongo(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Skip`
         instance
 
         Returns:
@@ -392,8 +394,8 @@ class Take(ViewStage):
     def __init__(self, size):
         super(Take, self).__init__(size=size)
 
-    def resolve(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stage.Take`
+    def to_mongo(self):
+        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Take`
         instance
 
         Returns:
@@ -402,7 +404,7 @@ class Take(ViewStage):
         size = self.config.size
 
         if size <= 0:
-            return Match({"_id": None}).resolve()
+            return Match({"_id": None}).to_mongo()
 
         return {"$sample": {"size": size}}
 
