@@ -28,7 +28,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          pip install sphinx
+          pip install -r requirements/docs.txt
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
