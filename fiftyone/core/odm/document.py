@@ -22,7 +22,20 @@ from copy import deepcopy
 import json
 
 from bson import json_util
+from bson.objectid import ObjectId
 from mongoengine import Document, EmbeddedDocument
+import numpy as np
+
+try:
+    import pprintpp as pprint
+
+    # import pprint
+
+    # Monkey patch to prevent sorting keys
+    # https://stackoverflow.com/a/25688431
+    pprint._sorted = lambda x: x
+except:
+    import pprint
 
 import eta.core.serial as etas
 
@@ -31,10 +44,30 @@ class SerializableDocument(object):
     """Mixin for documents that can be serialized in BSON or JSON format."""
 
     def __str__(self):
-        return self.to_json(pretty_print=True)
+        return _pformat(self._to_str_dict())
 
     def __copy__(self):
         return self.copy()
+
+    def _to_str_dict(self):
+        d = {}
+        for f in _to_front(self._to_str_fields, "id"):
+            value = getattr(self, f)
+            if isinstance(value, SerializableDocument):
+                d[f] = value._to_str_dict()
+            elif isinstance(value, ObjectId):
+                d[f] = str(value)
+            else:
+                d[f] = value
+
+        return d
+
+    @property
+    def _to_str_fields(self):
+        """An ordered tuple of names of fields on the document that should be
+        printed.
+        """
+        raise NotImplementedError("Subclass must implement `_to_str_fields`")
 
     def copy(self):
         """Returns a deep copy of the document.
@@ -109,20 +142,12 @@ class ODMDocument(Document, SerializableDocument):
     meta = {"abstract": True}
 
     def __str__(self):
-        d = self.to_dict(extended=True)
-        return etas.json_to_str(d, pretty_print=True)
+        return _pformat(self._to_str_dict())
 
-    def copy(self):
-        """Returns a copy of the document that does not have its `id` set.
-
-        Returns:
-            a :class:`ODMDocument`
-        """
-        doc = deepcopy(self)
-        if doc.id is not None:
-            doc.id = None
-
-        return doc
+    @property
+    def _to_str_fields(self):
+        # pylint: disable=no-member
+        return self._fields_ordered
 
     @property
     def ingest_time(self):
@@ -138,6 +163,18 @@ class ODMDocument(Document, SerializableDocument):
         been inserted into the database.
         """
         return getattr(self, "id", None) is not None
+
+    def copy(self):
+        """Returns a copy of the document that does not have its `id` set.
+
+        Returns:
+            a :class:`ODMDocument`
+        """
+        doc = deepcopy(self)
+        if doc.id is not None:
+            doc.id = None
+
+        return doc
 
     def to_dict(self, extended=False):
         if extended:
@@ -172,8 +209,12 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
         self.validate()
 
     def __str__(self):
-        d = self.to_dict(extended=True)
-        return etas.json_to_str(d, pretty_print=True)
+        return _pformat(self._to_str_dict())
+
+    @property
+    def _to_str_fields(self):
+        # pylint: disable=no-member
+        return self._fields_ordered
 
     def to_dict(self, extended=False):
         if extended:
@@ -194,3 +235,18 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
                 pass
 
         return cls.from_json(json_util.dumps(d), created=False)
+
+
+def _to_front(l, val):
+    l = list(l)
+    try:
+        l.remove(val)
+        l.insert(0, val)
+    except ValueError:
+        pass
+
+    return l
+
+
+def _pformat(doc):
+    return pprint.pformat(doc, indent=4)
