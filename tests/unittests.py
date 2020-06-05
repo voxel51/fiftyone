@@ -14,6 +14,7 @@ unittest.TextTestRunner().run(singletest)
 |
 """
 import datetime
+from functools import wraps
 import unittest
 
 from mongoengine.errors import (
@@ -31,6 +32,7 @@ import fiftyone.core.odm as foo
 def drop_datasets(func):
     """Decorator to drop the database before running a test"""
 
+    @wraps(func)
     def wrapper(*args, **kwargs):
         fo.delete_non_persistent_datasets()
         return func(*args, **kwargs)
@@ -220,7 +222,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # Test Create
 
         def create_dataset():
-            with self.assertRaises(ValueError):
+            with self.assertRaises(fod.DoesNotExistError):
                 dataset = fo.load_dataset(dataset_name)
 
             dataset = fo.Dataset(dataset_name)
@@ -661,13 +663,13 @@ class DatasetTest(unittest.TestCase):
         name = dataset_names.pop(0)
         datasets[name].delete()
         self.assertListEqual(list_dataset_names(), dataset_names)
-        with self.assertRaises(fod.DatasetError):
+        with self.assertRaises(fod.DoesNotExistError):
             len(datasets[name])
 
         name = dataset_names.pop(0)
         fo.delete_dataset(name)
         self.assertListEqual(list_dataset_names(), dataset_names)
-        with self.assertRaises(fod.DatasetError):
+        with self.assertRaises(fod.DoesNotExistError):
             len(datasets[name])
 
         new_dataset = fo.Dataset(name)
@@ -756,8 +758,6 @@ class SampleTest(unittest.TestCase):
 
         # set_field create=True
         sample.set_field("field2", value, create=True)
-        fields = sample.get_field_schema()
-        self.assertIsInstance(fields["field2"], fo.IntField)
         self.assertIsInstance(sample.field2, int)
         self.assertEqual(sample.get_field("field2"), value)
         self.assertEqual(sample["field2"], value)
@@ -1119,8 +1119,6 @@ class FieldTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             dataset.get_field_schema()[field_name]
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
-            with self.assertRaises(KeyError):
-                sample.get_field_schema()[field_name]
             with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
             with self.assertRaises(KeyError):
@@ -1138,17 +1136,12 @@ class FieldTest(unittest.TestCase):
         field = dataset.get_field_schema()[field_name]
         self.assertIsInstance(field, ftype)
         for sample in [sample1, dataset[id1]]:
-            # check field exists and is of correct type
-            field = sample.get_field_schema()[field_name]
-            self.assertIsInstance(field, ftype)
             # check field exists on sample and is set correctly
             self.assertEqual(sample.get_field(field_name), field_test_value)
             self.assertEqual(sample[field_name], field_test_value)
             self.assertEqual(getattr(sample, field_name), field_test_value)
             self.assertEqual(sample.to_dict()[field_name], field_test_value)
         for sample in [sample2, dataset[id2]]:
-            # check field exists and is of correct type
-            field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is None
             self.assertIsNone(sample.get_field(field_name))
@@ -1167,8 +1160,6 @@ class FieldTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             dataset.get_field_schema()[field_name]
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
-            with self.assertRaises(KeyError):
-                sample.get_field_schema()[field_name]
             with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
             with self.assertRaises(KeyError):
@@ -1188,8 +1179,6 @@ class FieldTest(unittest.TestCase):
         field = dataset.get_field_schema()[field_name]
         self.assertIsInstance(field, ftype)
         for sample in [sample1, dataset[id1]]:
-            # check field exists and is of correct type
-            field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is set correctly
             self.assertEqual(sample.get_field(field_name), field_test_value)
@@ -1197,8 +1186,6 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(getattr(sample, field_name), field_test_value)
             self.assertEqual(sample.to_dict()[field_name], field_test_value)
         for sample in [sample2, dataset[id2]]:
-            # check field exists and is of correct type
-            field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is None
             self.assertIsNone(sample.get_field(field_name))
@@ -1208,6 +1195,7 @@ class FieldTest(unittest.TestCase):
 
     @drop_datasets
     def test_field_GetSetClear_no_dataset(self):
+        # @todo(Tyler) IMPLEMENT THIS
         sample = fo.Sample("1.jpg")
 
         # set field (default duplicate)
@@ -1265,8 +1253,8 @@ class FieldTest(unittest.TestCase):
         sample4["array_field"] = np.ones((2, 3))
         sample4.save()
 
-        for sample in [sample1, sample2, sample3, sample4]:
-            fields = sample.get_field_schema()
+        for dataset in [dataset1, dataset2]:
+            fields = dataset.get_field_schema()
             self.assertIsInstance(fields["vector_field"], fo.VectorField)
             self.assertIsInstance(fields["array_field"], fo.ArrayField)
 

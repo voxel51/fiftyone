@@ -30,7 +30,6 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
@@ -200,7 +199,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return super().__getattribute__(name)
 
         if getattr(self, "_deleted", False):
-            raise DatasetError("Dataset '%s' has been deleted." % self.name)
+            raise DoesNotExistError(
+                "Dataset '%s' has been deleted." % self.name
+            )
 
         return super().__getattribute__(name)
 
@@ -1412,7 +1413,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _expand_schema(self, samples):
         fields = self.get_field_schema()
         for sample in samples:
-            for field_name, field in sample.get_field_schema().items():
+            for field_name in sample.field_names:
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
@@ -1443,7 +1444,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
 
-class DatasetError(Exception):
+class DoesNotExistError(Exception):
     pass
 
 
@@ -1478,7 +1479,7 @@ def _load_dataset(name):
         # pylint: disable=no-member
         _meta = foo.ODMDataset.objects.get(name=name)
     except DoesNotExist:
-        raise ValueError("Dataset '%s' not found" % name)
+        raise DoesNotExistError("Dataset '%s' not found" % name)
 
     _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
 
