@@ -22,9 +22,13 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
       - name: Install dependencies
         run: |
-          pip3 install sphinx
+          pip install sphinx
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
