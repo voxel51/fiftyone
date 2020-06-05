@@ -8,16 +8,21 @@ import fiftyone.core.odm as foo
 import fiftyone.zoo as foz
 
 
-foo.drop_database()
+def test_zoo():
+    foo.drop_database()
 
-# List available datasets
-print(foz.list_zoo_datasets())
+    # List available datasets
+    print(foz.list_zoo_datasets())
 
-# Load a dataset
-dataset = foz.load_zoo_dataset("cifar10")
+    # Load a dataset
+    dataset = foz.load_zoo_dataset("cifar10")
 
-# Print a few random samples from the dataset
-view = dataset.view().take(5)
-for sample in view:
-    label = sample.ground_truth.label
-    print("%s: %s" % (label, sample.filepath))
+    # Print a few random samples from the dataset
+    view = dataset.view().take(5)
+    for sample in view:
+        label = sample.ground_truth.label
+        print("%s: %s" % (label, sample.filepath))
+
+
+if __name__ == "__main__":
+    test_zoo()

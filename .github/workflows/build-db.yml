@@ -51,7 +51,7 @@ jobs:
       - name: Run tests
         run: |
           cd package/db/
-          python3 -m pytest tests/
+          python3 -m pytest --verbose tests/
   publish:
     runs-on: ubuntu-20.04
     needs: [build, test]

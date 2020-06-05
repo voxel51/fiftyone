@@ -57,4 +57,4 @@ jobs:
           pip install pytest
       - name: Run tests
         run: |
-          pytest tests/unittests.py
+          pytest tests/ --verbose --ignore tests/benchmarking/
