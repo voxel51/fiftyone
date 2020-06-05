@@ -4,10 +4,10 @@ on: push
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-18.04
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
       - name: Build wheel
         run: |
           python3 setup.py bdist_wheel
@@ -16,6 +16,23 @@ jobs:
         with:
           name: wheel
           path: dist/*.whl
+
+  build-docs:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          pip3 install sphinx
+      - name: Build docs
+        run: |
+          ./docs/generate_docs.bash
+      - name: Upload docs
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs
+          path: docs/build/html/
 
   test:
     runs-on: ubuntu-18.04
@@ -27,7 +44,7 @@ jobs:
           - 3.6
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
