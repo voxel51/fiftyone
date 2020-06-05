@@ -62,8 +62,8 @@ class SerializableDocument(object):
 
     @property
     def _to_str_fields(self):
-        """An ordered tuple of names of fields on the document that should be
-        printed.
+        """An ordered tuple of field names that should be included in the
+        string representation of the document.
         """
         raise NotImplementedError("Subclass must implement `_to_str_fields`")
 
