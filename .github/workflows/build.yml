@@ -54,7 +54,7 @@ jobs:
           pip install -e .
       - name: Install test dependencies
         run: |
-          pip install pytest
+          pip install pytest torch torchvision
       - name: Run tests
         run: |
           pytest tests/ --verbose --ignore tests/benchmarking/
