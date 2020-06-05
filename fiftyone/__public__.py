@@ -14,6 +14,7 @@ config = foc.load_config()
 from .core.dataset import (
     Dataset,
     list_dataset_names,
+    dataset_exists,
     load_dataset,
     delete_dataset,
     delete_non_persistent_datasets,

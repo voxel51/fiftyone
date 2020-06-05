@@ -25,6 +25,7 @@ from future.utils import iteritems, itervalues
 from collections import defaultdict
 import logging
 import os
+import warnings
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -126,6 +127,8 @@ def load_zoo_dataset(
     splits=None,
     dataset_dir=None,
     download_if_necessary=True,
+    persistent=False,
+    delete_existing_dataset=False,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
     a :class:`fiftyone.core.dataset.Dataset`.
@@ -151,10 +154,24 @@ def load_zoo_dataset(
             :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
+        persistent (False): whether the dataset will persist in the database
+            once the session terminates.
+        delete_existing_dataset (False): whether to delete an existing dataset
+            with the same name if it exists.
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
+    if fo.dataset_exists(name):
+        if not delete_existing_dataset:
+            warnings.warn(
+                "Loading pre-existing dataset with name '%s'. To reload from disk,"
+                " first delete the existing dataset." % name
+            )
+            return fo.load_dataset(name)
+
+        fo.delete_dataset(name)
+
     splits = _parse_splits(split, splits)
 
     if download_if_necessary:
@@ -173,7 +190,7 @@ def load_zoo_dataset(
     if splits is None and zoo_dataset.has_splits:
         splits = zoo_dataset.supported_splits
 
-    dataset = fo.Dataset(name)
+    dataset = fo.Dataset(name, persistent=persistent)
     format = info.format
 
     if splits:

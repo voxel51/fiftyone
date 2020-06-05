@@ -32,7 +32,7 @@ def get_git_revision_hash():
 
 foc.set_config_settings(default_ml_backend="tensorflow")
 
-if DATASET_NAME in fo.list_dataset_names():
+if fo.dataset_exists(DATASET_NAME):
     fo.delete_dataset(DATASET_NAME)
 
 RESULT = OrderedDict({"githash": get_git_revision_hash()})

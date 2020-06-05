@@ -10,14 +10,14 @@ import fiftyone.zoo as foz
 DATASET_NAME = "cifar10"
 
 
-if DATASET_NAME in fo.list_dataset_names():
-    fo.delete_dataset(DATASET_NAME)
-
 # List available datasets
 print(foz.list_zoo_datasets())
 
 # Load a dataset
-dataset = foz.load_zoo_dataset(DATASET_NAME)
+dataset = foz.load_zoo_dataset(DATASET_NAME, delete_existing_dataset=True)
+
+# Print the dataset summary
+print(dataset)
 
 # Print a few random samples from the dataset
 view = dataset.view().take(5)

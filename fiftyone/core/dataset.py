@@ -51,6 +51,23 @@ def list_dataset_names():
     return list(foo.ODMDataset.objects.distinct("name"))
 
 
+def dataset_exists(name):
+    """Checks if the dataset exists.
+
+    Args:
+        name: the name of the dataset
+
+    Returns:
+        True if the dataset exists
+    """
+    try:
+        # pylint: disable=no-member
+        foo.ODMDataset.objects.get(name=name)
+        return True
+    except DoesNotExist:
+        return False
+
+
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
@@ -1448,17 +1465,8 @@ class DatasetError(Exception):
     pass
 
 
-def _dataset_exists(name):
-    try:
-        # pylint: disable=no-member
-        foo.ODMDataset.objects.get(name=name)
-        return True
-    except DoesNotExist:
-        return False
-
-
 def _create_dataset(name, persistent=False):
-    if _dataset_exists(name):
+    if dataset_exists(name):
         raise ValueError(
             (
                 "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
