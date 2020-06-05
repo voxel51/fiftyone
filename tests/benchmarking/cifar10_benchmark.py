@@ -14,7 +14,6 @@ import time
 
 import numpy as np
 
-import fiftyone as fo
 import fiftyone.core.config as foc
 import fiftyone.zoo as foz
 
@@ -32,14 +31,11 @@ def get_git_revision_hash():
 
 foc.set_config_settings(default_ml_backend="tensorflow")
 
-if fo.dataset_exists(DATASET_NAME):
-    fo.delete_dataset(DATASET_NAME)
-
 RESULT = OrderedDict({"githash": get_git_revision_hash()})
 
 # CREATE: load the dataset
 start_time = time.time()
-dataset = foz.load_zoo_dataset(DATASET_NAME)
+dataset = foz.load_zoo_dataset(DATASET_NAME, delete_existing_dataset=True)
 RESULT["load_dataset"] = time.time() - start_time
 
 # READ: load from view

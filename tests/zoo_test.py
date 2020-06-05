@@ -7,14 +7,11 @@ import fiftyone as fo
 import fiftyone.zoo as foz
 
 
-DATASET_NAME = "cifar10"
-
-
 # List available datasets
 print(foz.list_zoo_datasets())
 
 # Load a dataset
-dataset = foz.load_zoo_dataset(DATASET_NAME, delete_existing_dataset=True)
+dataset = foz.load_zoo_dataset("cifar10", delete_existing_dataset=True)
 
 # Print the dataset summary
 print(dataset)
