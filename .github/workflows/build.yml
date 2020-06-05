@@ -28,6 +28,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
+          pip install -e . --index https://pypi.voxel51.com
           pip install -r requirements/docs.txt
       - name: Build docs
         run: |
