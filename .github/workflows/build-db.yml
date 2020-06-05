@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
-        # with:
-        #   submodules: true
       - name: Build wheel (Linux)
         run: |
           cd package/db
@@ -32,6 +30,7 @@ jobs:
         with:
           name: wheel-macos
           path: package/db/dist/*macos*.whl
+
   test:
     runs-on: ubuntu-20.04
     needs: build
@@ -53,6 +52,7 @@ jobs:
         run: |
           cd package/db/
           python3 -m pytest --verbose tests/
+
   publish:
     runs-on: ubuntu-20.04
     needs: [build, test]
