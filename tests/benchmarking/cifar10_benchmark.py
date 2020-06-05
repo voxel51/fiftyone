@@ -8,6 +8,7 @@ Results are written to a log file: `benchmark_log.txt`
 |
 """
 from collections import OrderedDict
+import pathlib
 import random
 import subprocess
 import time
@@ -79,7 +80,11 @@ for _ in range(9):
     delete_sample_times.append(time.time() - start_time)
 RESULT["delete_samples"] = np.median(delete_sample_times)
 
-with open("benchmark_log.txt", "a") as file:
+log_path = (
+    pathlib.Path(__file__).parent.absolute().joinpath("benchmark_log.txt")
+)
+
+with open(log_path, "a") as file:
     for k, v in RESULT.items():
         if isinstance(v, float):
             RESULT[k] = "{:7.4f}".format(v)
