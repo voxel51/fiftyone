@@ -22,11 +22,15 @@ from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
 
+import eta.core.image as etai
+import eta.core.utils as etau
+
 import fiftyone.core.utils as fou
 
 
 class Field(mongoengine.fields.BaseField):
-    pass
+    def __str__(self):
+        return etau.get_class_name(self)
 
 
 class BooleanField(mongoengine.BooleanField, Field):
@@ -58,7 +62,20 @@ class StringField(mongoengine.StringField, Field):
 
 
 class ListField(mongoengine.ListField, Field):
+    def __str__(self):
+        return "%s(%s)" % (
+            etau.get_class_name(self),
+            etau.get_class_name(self.field),
+        )
+
+
+class DictField(mongoengine.DictField, Field):
     pass
+
+
+class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
+    def __str__(self):
+        return etau.get_class_name(self.document_type)
 
 
 class VectorField(Field):
@@ -76,8 +93,8 @@ class VectorField(Field):
         return np.asarray(value).tolist()
 
     def to_python(self, value):
-        if value is None:
-            return None
+        if value is None or isinstance(value, np.ndarray):
+            return value
 
         return np.asarray(value)
 
@@ -118,9 +135,30 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             self.error("Only numpy arrays may be used in an array field")
 
 
-class DictField(mongoengine.DictField, Field):
-    pass
+class ImageLabelsField(Field):
+    """A field that stores an ``eta.core.image.ImageLabels`` instance.
 
+    :class:`ImageLabelsField` instances accept ``eta.core.image.ImageLabels``
+    instances or serialized dict representations of them. The underlying data
+    is stored as a serialized dictionary in the dataset and always retrieved as
+    an ``eta.core.image.ImageLabels`` instance.
+    """
 
-class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
-    pass
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return value.serialize()
+
+    def to_python(self, value):
+        if value is None or isinstance(value, etai.ImageLabels):
+            return value
+
+        return etai.ImageLabels.from_dict(value)
+
+    def validate(self, value):
+        if not isinstance(value, (dict, etai.ImageLabels)):
+            self.error(
+                "Only dicts and `eta.core.image.ImageLabels` instances may be "
+                "used in an ImageLabels field"
+            )
