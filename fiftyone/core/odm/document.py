@@ -29,8 +29,6 @@ import numpy as np
 try:
     import pprintpp as pprint
 
-    # import pprint
-
     # Monkey patch to prevent sorting keys
     # https://stackoverflow.com/a/25688431
     pprint._sorted = lambda x: x
