@@ -803,6 +803,8 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset_name = self.test_dataset_clear.__name__
         dataset = fo.Dataset(dataset_name)
 
+        self.assertEqual(len(dataset), 0)
+
         # add some samples
         num_samples = 10
         samples = [
@@ -927,6 +929,56 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(dataset[sample.id][field_name], value)
 
     @drop_datasets
+    def test_update_sample(self):
+        dataset_name = self.test_update_sample.__name__
+        dataset = fo.Dataset(dataset_name)
+        filepath = "path/to/file.txt"
+        sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
+        dataset.add_sample(sample)
+
+        # add duplicate filepath
+        with self.assertRaises(NotUniqueError):
+            dataset.add_sample(fo.Sample(filepath=filepath))
+        self.assertEqual(len(dataset), 1)
+
+        # update assign
+        tag = "tag3"
+        sample.tags = [tag]
+        self.assertEqual(len(sample.tags), 1)
+        self.assertEqual(sample.tags[0], tag)
+        sample2 = dataset[sample.id]
+        self.assertEqual(len(sample2.tags), 1)
+        self.assertEqual(sample2.tags[0], tag)
+
+        # update append
+        tag = "tag4"
+        sample.tags.append(tag)
+        self.assertEqual(len(sample.tags), 2)
+        self.assertEqual(sample.tags[-1], tag)
+        sample2 = dataset[sample.id]
+        self.assertEqual(len(sample2.tags), 2)
+        self.assertEqual(sample2.tags[-1], tag)
+
+        # update add new field
+        dataset.add_sample_field(
+            "test_label",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        sample.test_label = fo.Classification(label="cow")
+        self.assertEqual(sample.test_label.label, "cow")
+        self.assertEqual(sample.test_label.label, "cow")
+        sample2 = dataset[sample.id]
+        self.assertEqual(sample2.test_label.label, "cow")
+
+        # update modify embedded document
+        sample.test_label.label = "chicken"
+        self.assertEqual(sample.test_label.label, "chicken")
+        self.assertEqual(sample.test_label.label, "chicken")
+        sample2 = dataset[sample.id]
+        self.assertEqual(sample2.test_label.label, "chicken")
+
+    @drop_datasets
     def test_add_from_another_dataset(self):
         dataset_name = self.test_add_from_another_dataset.__name__ + "_%d"
         dataset1 = fo.Dataset(dataset_name % 1)
@@ -975,86 +1027,6 @@ class LabelsTest(unittest.TestCase):
 
         with self.assertRaises(ValidationError):
             fo.Classification(label=100)
-
-
-class CRUDTest(unittest.TestCase):
-    """Create, Read, Update, Delete (CRUD)"""
-
-    @drop_datasets
-    def test_create_sample(self):
-        dataset_name = self.test_create_sample.__name__
-        dataset = fo.Dataset(dataset_name)
-        filepath = "path/to/file.txt"
-        sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
-        self.assertEqual(len(dataset), 0)
-
-        dataset.add_sample(sample)
-        self.assertEqual(len(dataset), 1)
-
-        # add duplicate filepath
-        with self.assertRaises(NotUniqueError):
-            dataset.add_sample(fo.Sample(filepath=filepath))
-        self.assertEqual(len(dataset), 1)
-
-        # update assign
-        tag = "tag3"
-        sample.tags = [tag]
-        self.assertEqual(len(sample.tags), 1)
-        self.assertEqual(sample.tags[0], tag)
-        sample2 = dataset[sample.id]
-        self.assertEqual(len(sample2.tags), 1)
-        self.assertEqual(sample2.tags[0], tag)
-
-        # update append
-        tag = "tag4"
-        sample.tags.append(tag)
-        self.assertEqual(len(sample.tags), 2)
-        self.assertEqual(sample.tags[-1], tag)
-        sample2 = dataset[sample.id]
-        self.assertEqual(len(sample2.tags), 2)
-        self.assertEqual(sample2.tags[-1], tag)
-
-        # update add new field
-        dataset.add_sample_field(
-            "test_label",
-            fo.EmbeddedDocumentField,
-            embedded_doc_type=fo.Classification,
-        )
-        sample.test_label = fo.Classification(label="cow")
-        self.assertEqual(sample.test_label.label, "cow")
-        self.assertEqual(sample.test_label.label, "cow")
-        sample2 = dataset[sample.id]
-        self.assertEqual(sample2.test_label.label, "cow")
-
-        # update modify embedded document
-        sample.test_label.label = "chicken"
-        self.assertEqual(sample.test_label.label, "chicken")
-        self.assertEqual(sample.test_label.label, "chicken")
-        sample2 = dataset[sample.id]
-        self.assertEqual(sample2.test_label.label, "chicken")
-
-        # @todo(Tyler)
-        # print("Removing tag 'tag1'")
-        # sample.remove_tag("tag1")
-        # print("Num samples: %d" % len(dataset))
-        # for sample in dataset.iter_samples():
-        #     print(sample)
-        # print()
-        #
-        #
-        # print("Adding new tag: 'tag2'")
-        # sample.add_tag("tag2")
-        # print("Num samples: %d" % len(dataset))
-        # for sample in dataset.iter_samples():
-        #     print(sample)
-        # print()
-        #
-        # print("Deleting sample")
-        # del dataset[sample.id]
-        # print("Num samples: %d" % len(dataset))
-        # for sample in dataset.iter_samples():
-        #     print(sample)
-        # print()
 
 
 class ViewTest(unittest.TestCase):
