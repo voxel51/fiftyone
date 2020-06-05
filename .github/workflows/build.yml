@@ -40,9 +40,14 @@ jobs:
         with:
           name: wheel
           path: downloads
-      - name: Install dependencies
+      - name: Install fiftyone-db
+        working-directory: package/db
         run: |
-          pip install -e package/db/ -e package/gui/
+          python setup.py bdist_wheel
+          pip install dist/*.whl
+      - name: Install fiftyone dependencies
+        run: |
+          pip install -e package/gui/
           pip install --index https://pypi.voxel51.com fiftyone-brain voxel51-eta
       - name: Install fiftyone
         run: |
