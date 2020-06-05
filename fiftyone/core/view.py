@@ -35,7 +35,8 @@ def _make_view_stage():
 
         1. Building a registry of all stage methods on
             :class:`fiftyone.core.view.DatasetView`
-        2. Defining the view stage method via the class definiton of the view stage
+        2. Defining the view stage method via the class definiton of the view
+            stage
 
     Usage::
 
@@ -43,7 +44,8 @@ def _make_view_stage():
         view_stage.all  # dictionary mapping names to view stage methods
 
     Adding a :class:`fiftyone.core.view.MyViewStage`::
-        # assuming fiftyone.core.view.MyStage exists with arguments `arg1` and `arg2`
+        # assuming fiftyone.core.view.MyStage exists with arguments `arg1` and
+        # `arg2`
         @view_stage
         def my_view_stage(self, arg1, arg2):
             pass # this will never be called
