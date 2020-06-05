@@ -289,7 +289,16 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
 
         # Test Delete Dataset
 
-        # @todo(Tyler) test delete dataset
+        def delete_dataset():
+            fo.delete_dataset(dataset_name)
+
+        delete_dataset()
+
+        def check_delete_dataset():
+            with self.assertRaises(fod.DoesNotExistError):
+                fo.load_dataset(dataset_name)
+
+        check_delete_dataset()
 
     @drop_datasets
     def test_add_remove_sample(self):
