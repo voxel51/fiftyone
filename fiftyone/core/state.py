@@ -25,7 +25,7 @@ from bson import json_util
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
-import fiftyone.core.stage as fos
+import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 
 
