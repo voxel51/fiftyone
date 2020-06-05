@@ -447,14 +447,11 @@ class ODMNoDatasetSample(ODMSample):
         self._data = OrderedDict()
 
         for field_name in self.default_fields_ordered:
-            field = self.default_fields[field_name]
 
             value = kwargs.pop(field_name, None)
 
             if value is None:
-                value = self._get_default(field)
-            else:
-                field.validate(value)
+                value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value
 

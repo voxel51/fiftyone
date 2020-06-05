@@ -808,6 +808,16 @@ class SampleTest(unittest.TestCase):
 
 class SampleInDatasetTest(unittest.TestCase):
     @drop_datasets
+    def test_invalid_sample(self):
+        dataset_name = self.test_invalid_sample.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        sample = fo.Sample(filepath=51)
+
+        with self.assertRaises(ValidationError):
+            dataset.add_sample(sample)
+
+    @drop_datasets
     def test_dataset_clear(self):
         dataset_name = self.test_dataset_clear.__name__
         dataset = fo.Dataset(dataset_name)
