@@ -64,7 +64,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-18.04
     steps:
-      - name: Download wheels
+      - name: Download wheel
         uses: actions/download-artifact@v2
         with:
           name: wheel
@@ -78,4 +78,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/wheel/*.whl
+          python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/*.whl
