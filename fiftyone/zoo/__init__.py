@@ -162,16 +162,6 @@ def load_zoo_dataset(
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    if fo.dataset_exists(name):
-        if not delete_existing_dataset:
-            warnings.warn(
-                "Loading pre-existing dataset with name '%s'. To reload from disk,"
-                " first delete the existing dataset." % name
-            )
-            return fo.load_dataset(name)
-
-        fo.delete_dataset(name)
-
     splits = _parse_splits(split, splits)
 
     if download_if_necessary:
@@ -183,14 +173,25 @@ def load_zoo_dataset(
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
         info = zoo_dataset.load_info(dataset_dir)
 
-    name = zoo_dataset.name
+    dataset_name = zoo_dataset.name
     if splits is not None:
-        name += "-" + "-".join(splits)
+        dataset_name += "-" + "-".join(splits)
+
+    if fo.dataset_exists(dataset_name):
+        if not delete_existing_dataset:
+            msg = (
+                "Loading pre-existing dataset with name '%s'. To reload"
+                " from disk, first delete the existing dataset." % dataset_name
+            )
+            warnings.warn(msg)
+            return fo.load_dataset(dataset_name)
+
+        fo.delete_dataset(dataset_name)
 
     if splits is None and zoo_dataset.has_splits:
         splits = zoo_dataset.supported_splits
 
-    dataset = fo.Dataset(name, persistent=persistent)
+    dataset = fo.Dataset(dataset_name, persistent=persistent)
     format = info.format
 
     if splits:
