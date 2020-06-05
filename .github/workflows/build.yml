@@ -16,3 +16,40 @@ jobs:
         with:
           name: wheel
           path: dist/*.whl
+
+  test:
+    runs-on: ubuntu-18.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - 3.6
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+      - name: Download fiftyone wheel
+        uses: actions/download-artifact@v2
+        with:
+          name: wheel
+          path: downloads
+      - name: Install dependencies
+        run: |
+          pip install -e package/db/ -e package/gui/
+          pip install --index https://pypi.voxel51.com fiftyone-brain voxel51-eta
+      - name: Install fiftyone
+        run: |
+          pip install -e .
+      - name: Install test dependencies
+        run: |
+          pip install pytest
+      - name: Run tests
+        run: |
+          pytest tests/unittests.py
