@@ -322,7 +322,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.MatchTag(tags))
+        return self.add_stage(fos.MatchTags(tags))
 
     @view_stage
     def exists(self, field):
