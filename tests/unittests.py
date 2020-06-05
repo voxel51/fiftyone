@@ -1177,18 +1177,62 @@ class FieldTest(unittest.TestCase):
 
     @drop_datasets
     def test_field_GetSetClear_no_dataset(self):
-        # @todo(Tyler) IMPLEMENT THIS
-        sample = fo.Sample("1.jpg")
+        filename = "1.jpg"
+        tags = ["tag1", "tag2"]
+        sample = fo.Sample(filepath=filename, tags=tags)
 
-        # set field (default duplicate)
+        # get field (default)
+        self.assertEqual(sample.filename, filename)
+        self.assertListEqual(sample.tags, tags)
+        self.assertIsNone(sample.metadata)
 
-        # add field (new)
+        # get field (invalid)
+        with self.assertRaises(AttributeError):
+            sample.get_field("invalid_field")
+        with self.assertRaises(KeyError):
+            sample["invalid_field"]
+        with self.assertRaises(AttributeError):
+            sample.invalid_field
 
-        # add field (duplicate)
+        # set field (default)
+        sample.filepath = ["invalid", "type"]
+        sample.filepath = None
+        sample.tags = "invalid type"
+        sample.tags = None
 
-        # delete field
+        # clear field (default)
+        with self.assertRaises(ValueError):
+            sample.clear_field("filepath")
+        sample.clear_field("tags")
+        self.assertListEqual(sample.tags, [])
+        sample.clear_field("metadata")
+        self.assertIsNone(sample.metadata)
 
-        # add deleted field
+        # set field (new)
+        with self.assertRaises(ValueError):
+            sample.set_field("field_1", 51)
+
+        sample.set_field("field_1", 51, create=True)
+        self.assertIn("field_1", sample.field_names)
+        self.assertEqual(sample.get_field("field_1"), 51)
+        self.assertEqual(sample["field_1"], 51)
+        self.assertEqual(sample.field_1, 51)
+
+        sample["field_2"] = "fiftyone"
+        self.assertIn("field_2", sample.field_names)
+        self.assertEqual(sample.get_field("field_2"), "fiftyone")
+        self.assertEqual(sample["field_2"], "fiftyone")
+        self.assertEqual(sample.field_2, "fiftyone")
+
+        # clear field (new)
+        sample.clear_field("field_1")
+        self.assertNotIn("field_1", sample.field_names)
+        with self.assertRaises(AttributeError):
+            sample.get_field("field_1")
+        with self.assertRaises(KeyError):
+            sample["field_1"]
+        with self.assertRaises(AttributeError):
+            sample.field_1
 
     @drop_datasets
     def test_field_GetSetClear_in_dataset(self):
@@ -1198,15 +1242,17 @@ class FieldTest(unittest.TestCase):
         dataset.add_sample(fo.Sample("2.jpg"))
 
         # @todo(Tyler)
-        # add field (default duplicate)
+        # get field (default)
 
-        # add field (new)
+        # get field (invalid)
 
-        # add field (duplicate)
+        # set field (default)
 
-        # delete field
+        # clear field (default)
 
-        # add deleted field
+        # set field (new)
+
+        # clear field (new)
 
     @drop_datasets
     def test_vector_array_fields(self):

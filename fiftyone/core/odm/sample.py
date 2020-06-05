@@ -485,20 +485,7 @@ class ODMNoDatasetSample(ODMSample):
                 "is not allowed; use `sample['field'] = value` instead"
             )
 
-        if name in self.default_fields:
-            field = self.default_fields[name]
-
-            if value is None:
-                value = self._get_default(field)
-            else:
-                field.validate(value)
-
-            self._data[name] = value
-        else:
-            if value is None:
-                self._data.pop(name, None)
-            else:
-                self._data[name] = value
+        self._data[name] = value
 
     @property
     def _to_str_fields(self):
@@ -567,7 +554,11 @@ class ODMNoDatasetSample(ODMSample):
         self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
-        self.set_field(field_name, None)
+        if field_name in self.default_fields:
+            default_value = self._get_default(self.default_fields[field_name])
+            self.set_field(field_name, default_value)
+        else:
+            self._data.pop(field_name, None)
 
     def to_dict(self, extended=False):
         d = {}
