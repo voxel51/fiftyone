@@ -11,6 +11,7 @@ jobs:
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:
+          key: electron-cache
           path: electron/node_modules
       - name: Clone submodules
         run: |
