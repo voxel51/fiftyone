@@ -72,9 +72,8 @@ class Classification(ImageLabel):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    confidence = fof.FloatField(null=True)
-    # @todo convert to a numeric array representation somehow?
-    logits = fof.ListField(fof.FloatField(), null=True)
+    confidence = fof.FloatField()
+    logits = fof.VectorField()
 
     def to_image_labels(self, attr_name="label"):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -111,8 +110,8 @@ class Detection(ODMEmbeddedDocument):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    bounding_box = fof.ListField(fof.FloatField())
-    confidence = fof.FloatField(null=True)
+    bounding_box = fof.VectorField()
+    confidence = fof.ListField(fof.FloatField())
 
 
 class Detections(ImageLabel):
@@ -182,13 +181,13 @@ class ImageLabels(ImageLabel):
     convenient way to build labels of this type for your existing datasets.
 
     Args:
-        labels: a dict representation of an ``eta.core.image.ImageLabels``
-            instance
+        labels: an ``eta.core.image.ImageLabels`` instance or a serialized
+            dict representation of one
     """
 
     meta = {"allow_inheritance": True}
 
-    labels = fof.DictField()
+    labels = fof.ImageLabelsField()
 
     def to_image_labels(self):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -197,4 +196,4 @@ class ImageLabels(ImageLabel):
         Returns:
             an ``eta.core.image.ImageLabels`` instance
         """
-        return etai.ImageLabels.from_dict(self.labels)
+        return self.labels
