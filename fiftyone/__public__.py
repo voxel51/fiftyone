@@ -23,10 +23,11 @@ from .core.fields import (
     FloatField,
     StringField,
     ListField,
-    VectorField,
-    ArrayField,
     DictField,
     EmbeddedDocumentField,
+    VectorField,
+    ArrayField,
+    ImageLabelsField,
 )
 from .core.labels import (
     Label,
