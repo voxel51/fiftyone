@@ -22,7 +22,6 @@ from future.utils import iteritems
 import datetime
 import logging
 import numbers
-import operator
 import os
 
 from mongoengine.errors import DoesNotExist
