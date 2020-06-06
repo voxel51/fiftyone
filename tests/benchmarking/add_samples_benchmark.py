@@ -1,5 +1,7 @@
 """
-Benchmarking :func:`fiftyone.core.dataset.Dataset.add_samples`.
+Benchmarking for :func:`fiftyone.core.dataset.Dataset.add_samples`.
+
+Results are written to `add_samples_benchmark.log`.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,6 +20,7 @@ import fiftyone.core.odm as foo
 logger = logging.getLogger(__name__)
 
 
+# Logs everything written by a `logger` in this benchmark
 etal.custom_setup(
     etal.LoggingConfig(
         dict(
@@ -28,6 +31,10 @@ etal.custom_setup(
     verbose=False,
 )
 
+
+#
+# Add samples benchmark
+#
 
 dataset = foz.load_zoo_dataset("cifar10", split="train")
 
