@@ -283,7 +283,8 @@ def iter_batches(iterable, batch_size):
 
     Args:
         iterable: an iterable
-        batch_size: the desired batch size
+        batch_size: the desired batch size, or None to return the contents in
+            a single batch
 
     Returns:
         a generator that emits tuples of elements of the requested batch size
