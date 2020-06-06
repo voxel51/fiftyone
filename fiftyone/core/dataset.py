@@ -299,7 +299,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return doc.id
 
-    def add_samples(self, samples, expand_schema=True, batch_size=256):
+    def add_samples(self, samples, expand_schema=True, _batch_size=128):
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -322,10 +322,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
+        logger.info("Adding samples...")
         sample_ids = []
-        with etau.ProgressBar(iters_str="samples") as progress:
-            for batch in fou.iter_batches(progress(samples), batch_size):
+        with etau.ProgressBar(samples, iters_str="samples") as pb:
+            for batch in fou.iter_batches(samples, _batch_size):
                 sample_ids.extend(self._add_samples(batch, expand_schema))
+                pb.update(count=len(batch))
 
         return sample_ids
 
