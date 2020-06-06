@@ -604,26 +604,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        if sample_parser is not None:
-            logger.info("Parsing samples...")
-            with etau.ProgressBar(iters_str="samples") as pb:
-                parse_label_fcn = sample_parser.parse_label
-                return self._add_labeled_image_samples(
-                    pb(samples), label_field, tags, parse_label_fcn
-                )
-
-        parse_label_fcn = operator.itemgetter(1)
-        return self._add_labeled_image_samples(
-            samples, label_field, tags, parse_label_fcn
-        )
-
-    def _add_labeled_image_samples(
-        self, samples, label_field, tags, parse_label_fcn
-    ):
         _samples = []
         for sample in samples:
-            label = parse_label_fcn(sample)
+            if sample_parser is not None:
+                label = sample_parser.parse_label(sample)
+            else:
+                label = sample[1]
+
             filepath = os.path.abspath(os.path.expanduser(sample[0]))
+
             _samples.append(
                 fo.Sample(filepath=filepath, tags=tags, **{label_field: label})
             )
