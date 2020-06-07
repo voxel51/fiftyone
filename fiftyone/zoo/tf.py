@@ -18,21 +18,15 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import logging
-import os
 import resource
 
-import eta.core.utils as etau
-
 import fiftyone.core.utils as fou
-import fiftyone.utils.data as foud
 import fiftyone.types as fot
+import fiftyone.utils.imagenet as foui
+import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
 tfds = fou.lazy_import("tensorflow_datasets", callback=fou.ensure_tfds)
-
-
-logger = logging.getLogger(__name__)
 
 
 class TFDSDataset(foz.ZooDataset):
@@ -389,11 +383,7 @@ class COCO2014Dataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "test2015", "train", "validation")
-
-    @property
-    def default_split(self):
-        return "validation"
+        return ("test", "train", "validation")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -409,7 +399,9 @@ class COCO2014Dataset(TFDSDataset):
             "label"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser(normalized=False)
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox", normalized=False,
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -468,7 +460,7 @@ class COCO2017Dataset(TFDSDataset):
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser(
-            bounding_box_field="bbox"
+            bounding_box_field="bbox", normalized=False,
         )
         return _download_and_prepare(
             dataset_dir,
@@ -524,7 +516,9 @@ class KITTIDataset(TFDSDataset):
             "type"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser(label_field="type")
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox", label_field="type",
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -579,7 +573,9 @@ class VOC2007Dataset(TFDSDataset):
             "label"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox"
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -634,7 +630,9 @@ class VOC2012Dataset(TFDSDataset):
             "label"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox"
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
