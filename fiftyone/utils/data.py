@@ -972,11 +972,11 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
             confidence = obj.get(self.confidence_field, None)
 
             detections.append(
-                {
-                    "label": label,
-                    "bounding_box": bounding_box,
-                    "confidence": confidence,
-                }
+                fol.Detection(
+                    label=label,
+                    bounding_box=bounding_box,
+                    confidence=confidence,
+                )
             )
 
         return fol.Detections(detections=detections)
