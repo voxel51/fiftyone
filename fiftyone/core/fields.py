@@ -75,7 +75,10 @@ class DictField(mongoengine.DictField, Field):
 
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     def __str__(self):
-        return etau.get_class_name(self.document_type)
+        return "%s(%s)" % (
+            etau.get_class_name(self),
+            etau.get_class_name(self.document_type),
+        )
 
 
 class VectorField(Field):
