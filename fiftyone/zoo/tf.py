@@ -58,10 +58,6 @@ class MNISTDataset(TFDSDataset):
     def supported_splits(self):
         return ("test", "train")
 
-    @property
-    def default_split(self):
-        return "test"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -105,10 +101,6 @@ class FashionMNISTDataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("test", "train")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -154,10 +146,6 @@ class CIFAR10Dataset(TFDSDataset):
     def supported_splits(self):
         return ("test", "train")
 
-    @property
-    def default_split(self):
-        return "test"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -201,10 +189,6 @@ class CIFAR100Dataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("test", "train")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -252,10 +236,6 @@ class Caltech101Dataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("test", "train")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -323,10 +303,6 @@ class ImageNet2012Dataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("train", "validation")
-
-    @property
-    def default_split(self):
-        return "validation"
 
     def _download_and_prepare(self, dataset_dir, _, split):
         if split == "validation":
@@ -441,10 +417,6 @@ class COCO2017Dataset(TFDSDataset):
     def supported_splits(self):
         return ("test", "train", "validation")
 
-    @property
-    def default_split(self):
-        return "validation"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -497,10 +469,6 @@ class KITTIDataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("test", "train", "validation")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -555,10 +523,6 @@ class VOC2007Dataset(TFDSDataset):
     def supported_splits(self):
         return ("train", "validation", "test")
 
-    @property
-    def default_split(self):
-        return "validation"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -611,10 +575,6 @@ class VOC2012Dataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("train", "validation", "test")
-
-    @property
-    def default_split(self):
-        return "validation"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
