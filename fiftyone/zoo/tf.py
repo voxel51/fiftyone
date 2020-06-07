@@ -286,8 +286,8 @@ class ImageNet2012Dataset(TFDSDataset):
             train split: ILSVRC2012_img_train.tar
        validation split: ILSVRC2012_img_val.tar
 
-    You need to register on http://www.image-net.org/download-images in
-    order to get the link to download the dataset.
+    You must register at http://www.image-net.org/download-images in order to
+    get the link to download the dataset.
 
     Dataset size:
         144.02 GiB
@@ -305,6 +305,9 @@ class ImageNet2012Dataset(TFDSDataset):
         return ("train", "validation")
 
     def _download_and_prepare(self, dataset_dir, _, split):
+        # Ensure that the source files have been manually downloaded
+        foui.ensure_imagenet_manual_download(dataset_dir, split)
+
         if split == "validation":
             _split = "val"
         else:
@@ -312,7 +315,7 @@ class ImageNet2012Dataset(TFDSDataset):
 
         def download_fcn(_):
             return tfds.load(
-                "imagenet",
+                "imagenet2012",
                 split=_split,
                 data_dir=dataset_dir,
                 download=False,
