@@ -821,9 +821,9 @@ class ImageClassificationSampleParser(LabeledImageSampleParser):
         """
         target = sample[1]
 
-        if self.classes is not None:
+        try:
             label = self.classes[target]
-        else:
+        except:
             label = target
 
         return fol.Classification(label=label)
