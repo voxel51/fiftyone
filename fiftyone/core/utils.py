@@ -16,6 +16,7 @@ import zlib
 
 import numpy as np
 import packaging.version
+import xmltodict
 
 import eta.core.utils as etau
 
@@ -146,6 +147,19 @@ class LazyModule(types.ModuleType):
         # Update this object's dict so that attribute references are efficient
         # (__getattr__ is only called on lookups that fail)
         self.__dict__.update(module.__dict__)
+
+
+def load_xml_as_json_dict(xml_path):
+    """Loads the XML file as a JSON dictionary.
+
+    Args:
+        xml_path: the path to the XML file
+
+    Returns:
+        a JSON dict
+    """
+    with open(xml_path, "rb") as f:
+        return xmltodict.parse(f.read())
 
 
 def parse_serializable(obj, cls):
