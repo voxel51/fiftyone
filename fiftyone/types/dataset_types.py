@@ -141,6 +141,61 @@ class ImageDetectionDataset(LabeledImageDataset):
     pass
 
 
+class COCODetectionDataset(LabeledImageDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections saved in COCO format.
+
+    FiftyOne exports datasets of this type on disk in the following format::
+
+        <dataset_dir>/
+            data/
+                <file_name0>
+                <file_name1>
+                ...
+            labels.json
+
+    where ``labels.json`` is a JSON file in the following format::
+
+        {
+            "info": {...},
+            "licenses": [],
+            "categories": [
+                ...
+                {
+                    "id": 2,
+                    "name": "cat",
+                    "supercategory": "none"
+                },
+                ...
+            ],
+            "images": [
+                {
+                    "id": 0,
+                    "license": null,
+                    "file_name": <file_name0>,
+                    "height": 480,
+                    "width": 640,
+                    "date_captured": null
+                }
+            ],
+            "annotations": [
+                {
+                    "id": 0,
+                    "image_id": 0,
+                    "category_id": 2,
+                    "bbox": [260, 177, 231, 199],
+                    "area": 45969,
+                    "segmentation": [],
+                    "iscrowd": 0
+                },
+                ...
+            ]
+        }
+    """
+
+    pass
+
+
 class ImageLabelsDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in ``eta.core.image.ImageLabels`` format.

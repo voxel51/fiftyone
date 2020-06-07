@@ -18,12 +18,17 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from collections import defaultdict
+from datetime import datetime
 import logging
 import os
 
+import eta.core.image as etai
 import eta.core.utils as etau
+import eta.core.serial as etas
 import eta.core.web as etaw
 
+import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
@@ -64,6 +69,210 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
             bounding_box_field="bbox",
             normalized=False,
         )
+
+
+class COCOObject(object):
+    """Description of an object in COCO Detection format.
+
+    Args:
+        id: the ID of the annotation
+        image_id: the ID of the image in which the annotation appears
+        category_id: the category ID of the object
+        bbox: a bounding box for the object in ``[xmin, ymin, width, height]``
+            format
+        area (None): the area of the bounding box
+        segmentation (None): a list of segmentation data
+        iscrowd (None): 0 for polygon (object instance) segmentation and 1 for
+            uncompressed RLE (crowd)
+    """
+
+    def __init__(
+        self,
+        id,
+        image_id,
+        category_id,
+        bbox,
+        area=None,
+        segmentation=None,
+        iscrowd=None,
+    ):
+        self.id = id
+        self.image_id = image_id
+        self.category_id = category_id
+        self.bbox = bbox
+        self.area = area
+        self.segmentation = segmentation
+        self.iscrowd = iscrowd
+
+    @classmethod
+    def from_detection(cls, detection, frame_size, labels_map_rev=None):
+        """Creates a :class:`COCOObject` from a
+        :class:`fiftyone.core.labels.Detection`.
+
+        Args:
+            detection: a :class:`fiftyone.core.labels.Detection`
+            frame_size: the ``(width, height)`` of the image
+            labels_map_rev (None): an optional dict mapping labels to category
+                IDs
+
+        Returns:
+            a :class:`COCOObject`
+        """
+        if labels_map_rev:
+            category_id = labels_map_rev[detection.label]
+        else:
+            category_id = detection.label
+
+        width, height = frame_size
+        x, y, w, h = detection.bounding_box
+        bbox = [
+            int(round(x * width)),
+            int(round(y * height)),
+            int(round(w * width)),
+            int(round(h * height)),
+        ]
+        area = bbox[2] * bbox[3]
+
+        return cls(None, None, category_id, bbox, area=area)
+
+    def to_dict(self):
+        """Returns a dictionary representation of the object.
+
+        Returns:
+            a dict
+        """
+        return {
+            "id": self.id,
+            "image_id": self.image_id,
+            "category_id": self.category_id,
+            "bbox": self.bbox,
+            "area": self.area,
+            "segmentation": self.segmentation or [],
+            "iscrowd": self.iscrowd or 0,
+        }
+
+
+def export_coco_detection_dataset(
+    image_paths, labels, dataset_dir, classes=None
+):
+    """Exports the given data to disk as a COCO detection dataset.
+
+    See :class:`fiftyone.types.COCODetectionDataset` for format details.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appended to the base
+    filename.
+
+    Args:
+        image_paths: an iterable of image paths
+        labels: an iterable of :class:`fiftyone.core.labels.Detections`
+            instances
+        dataset_dir: the directory to which to write the dataset
+        classes (None): an optional list of class labels. If omitted, this is
+            dynamically computed from the observed labels
+    """
+    if classes is not None:
+        labels_map_rev = _to_labels_map_rev(classes)
+    else:
+        labels_map_rev = None
+
+    data_dir = os.path.join(dataset_dir, "data")
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    logger.info(
+        "Writing samples to '%s' in '%s' format...",
+        dataset_dir,
+        etau.get_class_name(fot.COCODetectionDataset),
+    )
+
+    etau.ensure_dir(data_dir)
+
+    image_id = -1
+    anno_id = -1
+
+    images = []
+    annotations = []
+
+    _classes = set()
+    data_filename_counts = defaultdict(int)
+
+    with etau.ProgressBar(iters_str="samples") as pb:
+        for img_path, label in pb(zip(image_paths, labels)):
+            name, ext = os.path.splitext(os.path.basename(img_path))
+            data_filename_counts[name] += 1
+
+            count = data_filename_counts[name]
+            if count > 1:
+                name += "-%d" + count
+
+            filename = name + ext
+            out_img_path = os.path.join(data_dir, filename)
+
+            etau.copy_file(img_path, out_img_path)
+
+            # Must read image to get dimensions
+            img = etai.read(img_path)
+            height, width = img.shape[:2]
+            frame_size = width, height
+
+            image_id += 1
+            images.append(
+                {
+                    "id": image_id,
+                    "license": None,
+                    "file_name": filename,
+                    "height": height,
+                    "width": width,
+                }
+            )
+
+            for detection in label.detections:
+                anno_id += 1
+                _classes.add(detection.label)
+                obj = COCOObject.from_detection(
+                    detection, frame_size, labels_map_rev=labels_map_rev
+                )
+                obj.id = anno_id
+                obj.image_id = image_id
+                annotations.append(obj.to_dict())
+
+    # Populate observed category IDs, if necessary
+    if classes is None:
+        classes = sorted(_classes)
+        labels_map_rev = _to_labels_map_rev(classes)
+        for anno in annotations:
+            anno["category_id"] = labels_map_rev[anno["category_id"]]
+
+    info = {
+        "year": "",
+        "version": "",
+        "description": "Exported from FiftyOne",
+        "contributor": "",
+        "url": "https://voxel51.com/fiftyone",
+        "date_created": datetime.now().replace(microsecond=0).isoformat(),
+    }
+
+    categories = [
+        {"id": i, "name": l, "supercategory": "none",}
+        for i, l in enumerate(classes)
+    ]
+
+    logger.info("Writing labels to '%s'", labels_path)
+    labels = {
+        "info": info,
+        "licenses": [],
+        "categories": categories,
+        "images": images,
+        "annotations": annotations,
+    }
+    etas.write_json(labels, labels_path)
+
+    logger.info("Dataset created")
+
+
+def _to_labels_map_rev(classes):
+    return {c: i for i, c in enumerate(classes)}
 
 
 def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
