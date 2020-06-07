@@ -50,6 +50,7 @@ setup(
         "flask-socketio",
         "future",
         "gunicorn",
+        "Jinja2",
         "mongoengine",
         "numpy",
         "packaging",
