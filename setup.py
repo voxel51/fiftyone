@@ -63,6 +63,7 @@ setup(
         "retrying",
         "setuptools",
         "tabulate",
+        "xmltodict",
         # internal packages
         "voxel51-eta",
     ],
