@@ -196,6 +196,66 @@ class COCODetectionDataset(LabeledImageDataset):
     pass
 
 
+class VOCDetectionDataset(LabeledImageDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections saved in VOC format.
+
+    FiftyOne exports datasets of this type on disk in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.xml
+                <uuid2>.xml
+
+    where the labels XML files are in the following format::
+
+        <annotation>
+            <folder>data</folder>
+            <filename>image.ext</filename>
+            <path>/path/to/dataset/data/image.ext</path>
+            <source>
+                <database></database>
+            </source>
+            <size>
+                <width>640</width>
+                <height>480</height>
+                <depth>3</depth>
+            </size>
+            <segmented></segmented>
+            <object>
+                <name>cat</name>
+                <pose></pose>
+                <truncated></truncated>
+                <difficult></difficult>
+                <bndbox>
+                    <xmin>256</xmin>
+                    <ymin>200</ymin>
+                    <xmax>450</xmax>
+                    <ymax>400</ymax>
+                </bndbox>
+            </object>
+            <object>
+                <name>dog</name>
+                <pose></pose>
+                <truncated></truncated>
+                <difficult></difficult>
+                <bndbox>
+                    <xmin>128</xmin>
+                    <ymin>100</ymin>
+                    <xmax>350</xmax>
+                    <ymax>300</ymax>
+                </bndbox>
+            </object>
+        </annotation>
+    """
+
+    pass
+
+
 class ImageLabelsDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in ``eta.core.image.ImageLabels`` format.
