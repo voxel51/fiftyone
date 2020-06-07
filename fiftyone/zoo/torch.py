@@ -396,8 +396,8 @@ class VOC2007Dataset(TorchVisionDataset):
                 download_dir, year="2007", image_set=image_set, download=True,
             )
 
-        get_class_labels_fcn = None  # @todo implement this
-        sample_parser = foud.ImageDetectionSampleParser()
+        get_class_labels_fcn = _parse_voc_detection_labels
+        sample_parser = fouv.VOCDetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -444,8 +444,8 @@ class VOC2012Dataset(TorchVisionDataset):
                 download_dir, year="2012", image_set=image_set, download=True,
             )
 
-        get_class_labels_fcn = None  # @todo implement this
-        sample_parser = foud.ImageDetectionSampleParser()
+        get_class_labels_fcn = _parse_voc_detection_labels
+        sample_parser = fouv.VOCDetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
