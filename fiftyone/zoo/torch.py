@@ -58,10 +58,6 @@ class MNISTDataset(TorchVisionDataset):
     def supported_splits(self):
         return ("test", "train")
 
-    @property
-    def default_split(self):
-        return "test"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
 
@@ -102,10 +98,6 @@ class FashionMNISTDataset(TorchVisionDataset):
     def supported_splits(self):
         return ("test", "train")
 
-    @property
-    def default_split(self):
-        return "test"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
 
@@ -144,10 +136,6 @@ class CIFAR10Dataset(TorchVisionDataset):
     @property
     def supported_splits(self):
         return ("test", "train")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
@@ -188,10 +176,6 @@ class CIFAR100Dataset(TorchVisionDataset):
     @property
     def supported_splits(self):
         return ("test", "train")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
@@ -255,10 +239,6 @@ class ImageNet2012Dataset(TorchVisionDataset):
     @property
     def supported_splits(self):
         return ("train", "validation")
-
-    @property
-    def default_split(self):
-        return "validation"
 
     def _download_and_prepare(self, dataset_dir, _, split):
         # Ensure that the source files have been manually downloaded
@@ -405,10 +385,6 @@ class VOC2007Dataset(TorchVisionDataset):
     def supported_splits(self):
         return ("train", "validation")
 
-    @property
-    def default_split(self):
-        return "validation"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         if split == "validation":
             image_set = "val"
@@ -456,10 +432,6 @@ class VOC2012Dataset(TorchVisionDataset):
     @property
     def supported_splits(self):
         return ("train", "validation")
-
-    @property
-    def default_split(self):
-        return "validation"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         if split == "validation":
