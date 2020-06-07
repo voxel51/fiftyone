@@ -956,9 +956,12 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
 
         detections = []
         for obj in target:
-            label = obj[self.label_field]
-            if self.classes is not None:
-                label = self.classes[label]
+            target = obj[self.label_field]
+
+            try:
+                label = self.classes[target]
+            except:
+                label = target
 
             tlx, tly, w, h = obj[self.bounding_box_field]
             if not self.normalized:
