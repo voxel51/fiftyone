@@ -835,12 +835,13 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
     :class:`fiftyone.core.labels.Detections` instances.
 
     The default implementation provided by this class supports samples that are
-    ``(image_or_path, detections)`` tuples, where:
+    ``(image_or_path, detections_or_path)`` tuples, where:
 
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``detections`` is a list of detections in the following format::
+        - ``detections_or_path`` is either a list of detections in the
+          following format::
 
             [
                 {
@@ -853,10 +854,14 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
                 ...
             ]
 
-          where ``target`` is either a class ID (if ``classes`` is provided) or
-          a label string, and the bounding box coordinates can either be
-          relative coordinates in ``[0, 1]`` (if ``normalized == True``) or
-          absolute pixels coordinates (if ``normalized == False``).
+          or the path to such a file on disk.
+
+          In the above, ``target`` is either a class ID (if ``classes`` is
+          provided) or a label string, and the bounding box coordinates can
+          either be relative coordinates in ``[0, 1]``
+          (if ``normalized == True``) or absolute pixels coordinates
+          (if ``normalized == False``). The ``confidence`` field is optional
+          for each sample.
 
           The input field names can be configured as necessary when
           instantiating the parser.
@@ -868,8 +873,8 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
             target dicts
         bounding_box_field ("bounding_box"): the name of the bounding box field
             in the target dicts
-        confidence_field ("confidence"): the name of the confidence field in
-            the target dicts
+        confidence_field ("confidence"): the name of the optional confidence
+            field in the target dicts
         classes (None): an optional list of class label strings. If provided,
             it is assumed that the ``target`` values are class IDs that should
             be mapped to label strings via ``classes[target]``
@@ -946,6 +951,9 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
         return np.asarray(image_or_path)
 
     def _parse_label(self, target, img=None):
+        if etau.is_str(target):
+            target = etas.load_json(target)
+
         detections = []
         for obj in target:
             label = obj[self.label_field]
@@ -977,13 +985,14 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
     :class:`fiftyone.core.labels.ImageLabels` instances.
 
     The default implementation provided by this class supports samples that are
-    ``(image_or_path, image_labels)`` tuples, where:
+    ``(image_or_path, image_labels_or_path)`` tuples, where:
 
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``image_labels`` is an ``eta.core.image.ImageLabels`` instance or a
-          serialized dict representation of one
+        - ``image_labels_or_path`` is an ``eta.core.image.ImageLabels``
+          instance, a serialized dict representation of one, or the path to one
+          on disk
 
     Subclasses can support other input sample formats as necessary.
     """
@@ -998,6 +1007,10 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
             a :class:`fiftyone.core.labels.ImageLabels` instance
         """
         labels = sample[1]
+
+        if etau.is_str(labels):
+            labels = etai.ImageLabels.from_dict(labels)
+
         if isinstance(labels, etai.ImageLabels):
             labels = labels.serialize()
 
