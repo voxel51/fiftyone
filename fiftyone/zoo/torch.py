@@ -18,21 +18,15 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import logging
-import os
-
-import eta.core.utils as etau
-import eta.core.web as etaw
-
 import fiftyone.core.utils as fou
-import fiftyone.utils.data as foud
 import fiftyone.types as fot
+import fiftyone.utils.coco as fouc
+import fiftyone.utils.data as foud
+import fiftyone.utils.imagenet as foui
+import fiftyone.utils.voc as fouv
 import fiftyone.zoo as foz
 
 torchvision = fou.lazy_import("torchvision", fou.ensure_torch)
-
-
-logger = logging.getLogger(__name__)
 
 
 class TorchVisionDataset(foz.ZooDataset):
@@ -286,6 +280,54 @@ class ImageNet2012Dataset(TorchVisionDataset):
         )
 
 
+class COCO2014Dataset(TorchVisionDataset):
+    """COCO is a large-scale object detection, segmentation, and captioning
+    dataset.
+
+    This version contains images, bounding boxes and labels for the 2014
+    version of the dataset.
+
+    Notes:
+        - COCO defines 91 classes but the data only uses 80 classes
+        - some images from the train and validation sets don't have annotations
+        - the test set does not have annotations
+        - COCO 2014 and 2017 uses the same images, but different train/val/test
+            splits
+
+    Dataset size:
+        37.57 GiB
+
+    Source:
+        http://cocodataset.org/#home
+    """
+
+    @property
+    def name(self):
+        return "coco-2014"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train", "validation")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        def download_fcn(download_dir):
+            fou.ensure_pycocotools()
+            images_dir, anno_path = fouc.download_coco_dataset_split(
+                download_dir, split, year="2014", cleanup=True
+            )
+            return torchvision.datasets.CocoDetection(images_dir, anno_path)
+
+        get_class_labels_fcn = _parse_coco_detection_labels_map
+        sample_parser = fouc.COCODetectionSampleParser()
+        return _download_and_prepare(
+            dataset_dir,
+            scratch_dir,
+            download_fcn,
+            get_class_labels_fcn,
+            sample_parser,
+        )
+
+
 class COCO2017Dataset(TorchVisionDataset):
     """COCO is a large-scale object detection, segmentation, and captioning
     dataset.
@@ -313,20 +355,18 @@ class COCO2017Dataset(TorchVisionDataset):
 
     @property
     def supported_splits(self):
-        return ("train",)  # @todo support other splits
-        # return ("test", "train", "val")
-
-    @property
-    def default_split(self):
-        return "train"
+        return ("test", "train", "validation")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        download_fcn = _download_coco_train_dataset
-        get_class_labels_fcn = _parse_coco_detection_labels_map
-        sample_parser = foud.ImageDetectionSampleParser(
-            label_field="category_id", normalized=False
-        )
+        def download_fcn(download_dir):
+            fou.ensure_pycocotools()
+            images_dir, anno_path = fouc.download_coco_dataset_split(
+                download_dir, split, year="2017", cleanup=True
+            )
+            return torchvision.datasets.CocoDetection(images_dir, anno_path)
 
+        get_class_labels_fcn = _parse_coco_detection_labels_map
+        sample_parser = fouc.COCODetectionSampleParser()
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -446,6 +486,7 @@ AVAILABLE_DATASETS = {
     "cifar10": CIFAR10Dataset,
     "cifar100": CIFAR100Dataset,
     "imagenet-2012": ImageNet2012Dataset,
+    "coco-2014": COCO2014Dataset,
     "coco-2017": COCO2017Dataset,
     "voc-2007": VOC2007Dataset,
     "voc-2012": VOC2012Dataset,
@@ -489,47 +530,8 @@ def _download_and_prepare(
     return format, num_samples, classes
 
 
-def _download_coco_train_dataset(dataset_dir):
-    try:
-        import pycocotools.coco  # pylint: disable=unused-import
-    except ImportError:
-        raise ImportError(
-            "You must have the 'pycocotools' package installed in order "
-            "to download the COCO dataset from the FiftyOne Model Zoo "
-            "using a PyTorch backend. "
-            "See https://github.com/cocodataset/cocoapi for installation "
-            "instructions"
-        )
-
-    data_dir = os.path.join(dataset_dir, "train2017")
-    data_zip_path = os.path.join(dataset_dir, "train2017.zip")
-    etaw.download_file(
-        "http://images.cocodataset.org/zips/train2017.zip", path=data_zip_path,
-    )
-    etau.extract_zip(data_zip_path)
-
-    anno_path = os.path.join(
-        dataset_dir, "annotations/instances_train2017.json"
-    )
-    anno_zip_path = os.path.join(dataset_dir, "annotations_trainval2017.zip")
-    etaw.download_file(
-        "http://images.cocodataset.org/annotations/annotations_trainval2017.zip",
-        path=anno_zip_path,
-    )
-    etau.extract_zip(anno_zip_path)
-
-    return torchvision.datasets.CocoDetection(data_dir, anno_path)
-
-
-def _parse_classification_labels(dataset):
-    classes = []
-    for label in dataset.classes:
-        if isinstance(label, tuple):
-            label = label[0]
-
-        classes.append(label)
-
-    return classes
+def _parse_voc_detection_labels(_):
+    return fouv.VOC_DETECTION_CLASSES
 
 
 def _parse_coco_detection_labels_map(dataset):
@@ -540,5 +542,16 @@ def _parse_coco_detection_labels_map(dataset):
     classes = []
     for idx in range(max(labels_map) + 1):
         classes.append(labels_map.get(idx, str(idx)))
+
+    return classes
+
+
+def _parse_classification_labels(dataset):
+    classes = []
+    for label in dataset.classes:
+        if isinstance(label, tuple):
+            label = label[0]
+
+        classes.append(label)
 
     return classes
