@@ -212,7 +212,7 @@ def to_image_classification_dataset(
         "classes": classes,
         "labels": labels_dict,
     }
-    etas.write_json(labels, labels_path, pretty_print=True)
+    etas.write_json(labels, labels_path)
 
     logger.info("Dataset created")
 
@@ -283,7 +283,7 @@ def to_image_detection_dataset(
         "classes": classes,
         "labels": labels_dict,
     }
-    etas.write_json(labels, labels_path, pretty_print=True)
+    etas.write_json(labels, labels_path)
 
     logger.info("Dataset created")
 
@@ -397,7 +397,7 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
         "classes": None,  # @todo get this somehow?
         "labels": labels_dict,
     }
-    etas.write_json(labels, labels_path, pretty_print=True)
+    etas.write_json(labels, labels_path)
 
     logger.info("Dataset created")
 
@@ -452,7 +452,7 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
         "classes": None,  # @todo get this somehow?
         "labels": labels_dict,
     }
-    etas.write_json(labels, labels_path, pretty_print=True)
+    etas.write_json(labels, labels_path)
 
     logger.info("Dataset created")
 
