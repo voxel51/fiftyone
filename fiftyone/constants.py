@@ -106,4 +106,6 @@ STOP_SERVER = _STOP_SERVICE
 try:
     from fiftyone.gui import FIFTYONE_APP_DIR
 except ImportError:
-    FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
+    FIFTYONE_APP_DIR = os.path.abspath(
+        os.path.join(FIFTYONE_DIR, "../electron")
+    )
