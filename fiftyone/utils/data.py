@@ -347,8 +347,8 @@ def to_image_labels_dataset(
     logger.info("Dataset created")
 
 
-def export_image_classification_dataset(image_paths, labels, dataset_dir):
-    """Exports the given data to disk as an image classification dataset.
+def export_image_classification_dataset(samples, label_field, dataset_dir):
+    """Exports the given samples to disk as an image classification dataset.
 
     See :class:`fiftyone.types.ImageClassificationDataset` for format details.
 
@@ -358,28 +358,29 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
     filename.
 
     Args:
-        image_paths: an iterable of image paths
-        labels: an iterable of :class:`fiftyone.core.labels.Classification`
-            instances
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        label_field: the name of the
+            :class:`fiftyone.core.labels.Classification` field of the samples
+            to export
         dataset_dir: the directory to which to write the dataset
     """
-    num_samples = len(image_paths)
-    data_filename_counts = defaultdict(int)
-
     data_dir = os.path.join(dataset_dir, "data")
     labels_path = os.path.join(dataset_dir, "labels.json")
 
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageClassificationDataset),
     )
 
     etau.ensure_dir(data_dir)
+
     labels_dict = {}
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
-        for img_path, label in pb(zip(image_paths, labels)):
+    data_filename_counts = defaultdict(int)
+
+    with etau.ProgressBar(iters_str="samples") as pb:
+        for sample in pb(samples):
+            img_path = sample.filepath
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -390,6 +391,7 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
             out_img_path = os.path.join(data_dir, name + ext)
             etau.copy_file(img_path, out_img_path)
 
+            label = sample[label_field]
             labels_dict[name] = _parse_classification(label)
 
     logger.info("Writing labels to '%s'", labels_path)
@@ -402,8 +404,8 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
     logger.info("Dataset created")
 
 
-def export_image_detection_dataset(image_paths, labels, dataset_dir):
-    """Exports the given data to disk as an image detection dataset.
+def export_image_detection_dataset(samples, label_field, dataset_dir):
+    """Exports the given samples to disk as an image detection dataset.
 
     See :class:`fiftyone.types.ImageDetectionDataset` for format details.
 
@@ -413,28 +415,28 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
     filename.
 
     Args:
-        image_paths: an iterable of image paths
-        labels: an iterable of :class:`fiftyone.core.labels.Detections`
-            instances
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        label_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field of the samples to export
         dataset_dir: the directory to which to write the dataset
     """
-    num_samples = len(image_paths)
-    data_filename_counts = defaultdict(int)
-
     data_dir = os.path.join(dataset_dir, "data")
     labels_path = os.path.join(dataset_dir, "labels.json")
 
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageDetectionDataset),
     )
 
     etau.ensure_dir(data_dir)
+
+    data_filename_counts = defaultdict(int)
     labels_dict = {}
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
-        for img_path, label in pb(zip(image_paths, labels)):
+
+    with etau.ProgressBar(iters_str="samples") as pb:
+        for sample in pb(samples):
+            img_path = sample.filepath
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -445,6 +447,7 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
             out_img_path = os.path.join(data_dir, name + ext)
             etau.copy_file(img_path, out_img_path)
 
+            label = sample[label_field]
             labels_dict[name] = _parse_detections(label)
 
     logger.info("Writing labels to '%s'", labels_path)
@@ -457,8 +460,8 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
     logger.info("Dataset created")
 
 
-def export_image_labels_dataset(image_paths, labels, dataset_dir):
-    """Exports the given data to disk as a multitask image labels dataset.
+def export_image_labels_dataset(samples, label_field, dataset_dir):
+    """Exports the given samples to disk as a multitask image labels dataset.
 
     See :class:`fiftyone.types.ImageLabelsDataset` for format details.
 
@@ -468,24 +471,22 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
     filename.
 
     Args:
-        image_paths: an iterable of image paths
-        labels: an iterable of :class:`fiftyone.core.labels.ImageLabels`
-            instances
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        label_field: the name of the :class:`fiftyone.core.labels.ImageLabels`
+            field of the samples to export
         dataset_dir: the directory to which to write the dataset
     """
-    num_samples = len(image_paths)
-    data_filename_counts = defaultdict(int)
-
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageLabelsDataset),
     )
 
+    data_filename_counts = defaultdict(int)
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
-        for img_path, label in pb(zip(image_paths, labels)):
+    with etau.ProgressBar(iters_str="samples") as pb:
+        for sample in pb(samples):
+            img_path = sample.filepath
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -497,8 +498,9 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
             new_labels_filename = name + ".json"
 
             image_labels_path = os.path.join(lid.labels_dir, name + ".json")
-            image_labels = _parse_image_labels(label)
 
+            label = sample[label_field]
+            image_labels = _parse_image_labels(label)
             image_labels.write_json(image_labels_path)
 
             lid.add_file(
