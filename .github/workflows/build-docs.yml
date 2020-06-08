@@ -1,0 +1,64 @@
+name: Build docs
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          pip install -e . --index https://pypi.voxel51.com
+          pip install -r requirements/docs.txt
+          pip install tensorflow torch torchvision
+      - name: Build docs
+        run: |
+          ./docs/generate_docs.bash
+      - name: Upload docs
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs
+          path: docs/build/html/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Clone website
+        uses: actions/checkout@v2
+        with:
+          repository: voxel51/website
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          ref: develop
+      - name: Download docs
+        uses: actions/download-artifact@v2
+        with:
+          name: docs
+          path: docs-download/
+      - name: Update docs
+        run: |
+          find docs-download/
+          test -f docs-download/genindex.html
+          rm -r source/docs/fiftyone/
+          cp -r docs-download/ source/docs/fiftyone/
+          rm -r docs-download/
+      - name: Create website PR
+        uses: peter-evans/create-pull-request@v2
+        with:
+          branch: fiftyone-docs
+          commit-message: |
+            Update fiftyone docs (${{ github.ref }})
+
+            voxel51/fiftyone@${{ github.sha }}
+          title: Automated fiftyone documentation update
+          body: " "
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          author: voxel51-bot <bot@voxel51.com>
+          labels: documentation
+          reviewers: voxel51/developers
