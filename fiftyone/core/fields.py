@@ -26,7 +26,6 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
-import fiftyone.core.odm as foo
 
 
 class Field(mongoengine.fields.BaseField):
@@ -229,11 +228,18 @@ class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """
 
     def __init__(self, document_type, **kwargs):
-        if not issubclass(document_type, foo.ODMEmbeddedDocument):
-            raise ValueError(
-                "Invalid document type %s; must be a subclass of %s"
-                % (document_type, foo.ODMEmbeddedDocument)
-            )
+        #
+        # @todo resolve circular import errors in `fiftyone.core.odm.sample`
+        # so that this validation can occur here
+        #
+        # import fiftyone.core.odm as foo
+        #
+        # if not issubclass(document_type, foo.ODMEmbeddedDocument):
+        #     raise ValueError(
+        #         "Invalid document type %s; must be a subclass of %s"
+        #         % (document_type, foo.ODMEmbeddedDocument)
+        #     )
+        #
 
         super(EmbeddedDocumentField, self).__init__(document_type, **kwargs)
 
