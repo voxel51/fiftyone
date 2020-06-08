@@ -5,11 +5,15 @@ Benchmarking packages
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone.core.odm as foo
+import fiftyone as fo  # start DB service
 import time
 import numpy as np
 import pymongo
 import mongoframes
+
+
+CLIENT = pymongo.MongoClient()
+_DEFAULT_DATABASE = "mongoframes"
 
 
 # Connect MongoFrames to the database
@@ -34,7 +38,7 @@ class MongoFramesSample(mongoframes.Frame):
 
 
 def mongoframes_one(n):
-    foo.drop_database()
+    CLIENT.drop_database(_DEFAULT_DATABASE)
     count = MongoFramesSample.count()
     assert count == 0, "mongoframes_one count: %d" % count
     times = []
@@ -90,7 +94,7 @@ def mongoframes_one(n):
 
 
 def mongoframes_many(n):
-    foo.drop_database()
+    CLIENT.drop_database(_DEFAULT_DATABASE)
     count = MongoFramesSample.count()
     assert count == 0, "mongoframes_many count: %d" % count
 

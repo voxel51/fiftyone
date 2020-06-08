@@ -5,15 +5,18 @@ Benchmarking packages
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone.core.odm as foo
+import fiftyone as fo  # start DB service
 import time
 import numpy as np
 import pymongo
 
 
+_DEFAULT_DATABASE = "pymongo"
+
+
 def pymongo_one(n):
-    foo.drop_database()
     client = pymongo.MongoClient()
+    client.drop_database(_DEFAULT_DATABASE)
     db = client.fiftyone
     collection = db["test_pymongo_collection"]
 
@@ -70,8 +73,8 @@ def pymongo_one(n):
 
 
 def pymongo_many(n):
-    foo.drop_database()
     client = pymongo.MongoClient()
+    client.drop_database(_DEFAULT_DATABASE)
     db = client.fiftyone
     collection = db["test_pymongo_collection"]
 
