@@ -85,6 +85,20 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
+    def compute_metadata(self, overwrite=False):
+        """Populates the ``metadata`` field of all samples in the collection.
+
+        Any samples with existing metadata are skipped, unless
+        ``overwrite == True`.
+
+        Args:
+            overwrite (False): whether to overwrite existing metadata
+        """
+        with etau.ProgressBar(iters_str="samples") as pb:
+            for sample in pb(self):
+                if sample.metadata is None or overwrite:
+                    sample.compute_metadata()
+
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the collection.
 
