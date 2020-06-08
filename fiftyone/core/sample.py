@@ -98,6 +98,15 @@ class Sample(object):
     def __copy__(self):
         return self.copy()
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        if self._in_db:
+            return other is self
+
+        return self._doc == other._doc
+
     @property
     def filename(self):
         """The basename of the data filepath."""
@@ -224,43 +233,26 @@ class Sample(object):
         kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
         return doc_cls(**kwargs)
 
-    def to_dict(self, extended=False, include_id=True):
-        """Serializes the sample to a BSON/JSON dictionary.
-
-        Args:
-            extended (False): whether to serialize BSON constructs
-                such as ObjectIDs, Binary, etc. into extended JSON format
-            include_id (True): whether to include the ID of the sample in the
-                serialized dictionary
+    def to_dict(self):
+        """Serializes the sample to a JSON dictionary. The sample ID is always
+        excluded in this representation.
 
         Returns:
             a JSON dict
         """
-        d = self._doc.to_dict(extended=extended)
-        if not include_id:
-            d.pop("_id", None)
-
+        d = self._doc.to_dict(extended=True)
+        d.pop("_id", None)
         return d
 
     @classmethod
-    def from_dict(cls, d, doc_cls=None, extended=False):
-        """Loads the sample from a JSON dictionary.
-
-        Args:
-            d: a JSON dictionary
-            doc_cls (None): the :class:`fiftyone.core.odm.ODMSample` class to
-                use to load the backing document. By default,
-                :class:`fiftyone.core.odm.ODMNoDatasetSample` is used
-            extended (False): whether the input dictionary contains extended
-                JSON
+    def from_dict(cls, d):
+        """Loads the sample from a JSON dictionary. The sample is created as a
+        new instance that is not in a dataset.
 
         Returns:
             a :class:`Sample`
         """
-        if doc_cls is None:
-            doc_cls = foo.ODMNoDatasetSample
-
-        doc = doc_cls.from_dict(d, extended=extended)
+        doc = foo.ODMNoDatasetSample.from_dict(d, extended=True)
         return cls.from_doc(doc)
 
     def to_json(self):
@@ -272,20 +264,25 @@ class Sample(object):
         return self._doc.to_json()
 
     @classmethod
-    def from_json(cls, s, doc_cls=None):
+    def from_json(cls, s):
         """Loads the sample from a JSON string.
 
         Args:
             s: the JSON string
-            doc_cls (None): the :class:`fiftyone.core.odm.ODMSample` class to
-                use to load the backing document. By default,
-                :class:`fiftyone.core.odm.ODMNoDatasetSample` is used
 
         Returns:
             a :class:`Sample`
         """
-        d = json.loads(s)
-        return cls.from_dict(d, doc_cls=doc_cls, extended=True)
+        return cls.from_dict(json.loads(s))
+
+    def to_mongo_dict(self):
+        """Serializes the sample to a BSON dictionary equivalent to the
+        representation that would be stored in the database.
+
+        Returns:
+            a BSON dict
+        """
+        return self._doc.to_dict(extended=False)
 
     @classmethod
     def from_doc(cls, doc):

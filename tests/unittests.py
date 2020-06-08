@@ -1271,5 +1271,85 @@ class FieldTest(unittest.TestCase):
             self.assertIsInstance(fields["array_field"], fo.ArrayField)
 
 
+class SerializationTest(unittest.TestCase):
+    def test_embedded_document(self):
+        label1 = fo.Classification(label="cat", logits=np.arange(4))
+
+        label2 = fo.Classification(label="cat", logits=np.arange(4))
+        self.assertEqual(label2, label1)
+
+        d = label1.to_dict()
+        self.assertEqual(fo.Classification.from_dict(d), label1)
+
+    def test_sample_no_dataset(self):
+        sample1 = fo.Sample(
+            filepath="~/Desktop/test.png",
+            tags=["test"],
+            ground_truth=fo.Classification(label="cat", logits=np.arange(4)),
+            vector=np.arange(5),
+            array=np.ones((2, 3)),
+            float=5.1,
+            bool=True,
+            int=51,
+        )
+
+        sample2 = fo.Sample(
+            filepath="~/Desktop/test.png",
+            tags=["test"],
+            ground_truth=fo.Classification(label="cat", logits=np.arange(4)),
+            vector=np.arange(5),
+            array=np.ones((2, 3)),
+            float=5.1,
+            bool=True,
+            int=51,
+        )
+        self.assertEqual(sample1, sample2)
+
+        self.assertEqual(fo.Sample.from_dict(sample1.to_dict()), sample1)
+
+    @drop_datasets
+    def test_sample_in_dataset(self):
+        dataset_name = self.test_sample_in_dataset.__name__
+        dataset1 = fo.Dataset(dataset_name + "1")
+        dataset2 = fo.Dataset(dataset_name + "2")
+
+        sample1 = fo.Sample(
+            filepath="~/Desktop/test.png",
+            tags=["test"],
+            ground_truth=fo.Classification(label="cat", logits=np.arange(4)),
+            vector=np.arange(5),
+            array=np.ones((2, 3)),
+            float=5.1,
+            bool=True,
+            int=51,
+        )
+
+        sample2 = fo.Sample(
+            filepath="~/Desktop/test.png",
+            tags=["test"],
+            ground_truth=fo.Classification(label="cat", logits=np.arange(4)),
+            vector=np.arange(5),
+            array=np.ones((2, 3)),
+            float=5.1,
+            bool=True,
+            int=51,
+        )
+
+        self.assertEqual(sample1, sample2)
+
+        dataset1.add_sample(sample1)
+        dataset2.add_sample(sample2)
+
+        self.assertNotEqual(sample1, sample2)
+
+        s1 = fo.Sample.from_dict(sample1.to_dict())
+        s2 = fo.Sample.from_dict(sample2.to_dict())
+
+        self.assertFalse(s1.in_dataset)
+        self.assertNotEqual(s1, sample1)
+
+        self.assertEqual(s1, s2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

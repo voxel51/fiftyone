@@ -43,6 +43,11 @@ class SerializableDocument(object):
     def __str__(self):
         return _pformat(self._to_str_dict())
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.to_json() == other.to_json()
+
     def __copy__(self):
         return self.copy()
 
@@ -138,6 +143,11 @@ class ODMDocument(SerializableDocument, Document):
 
     meta = {"abstract": True}
 
+    def __eq__(self, other):
+        if self.in_db:
+            return other is self
+        return super(ODMDocument, self).__eq__(other)
+
     @property
     def _to_str_fields(self):
         # pylint: disable=no-member
@@ -172,9 +182,9 @@ class ODMDocument(SerializableDocument, Document):
 
     def to_dict(self, extended=False):
         if extended:
-            return json.loads(self.to_json())
+            return json.loads(self._to_json())
 
-        return json_util.loads(self.to_json())
+        return json_util.loads(self._to_json())
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -189,6 +199,11 @@ class ODMDocument(SerializableDocument, Document):
                 pass
 
         return cls.from_json(json_util.dumps(d))
+
+    def _to_json(self, *args, **kwargs):
+        # @todo(Tyler) mongoengine snippet, to be replaced
+        use_db_field = kwargs.pop("use_db_field", True)
+        return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
 
 class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
@@ -209,9 +224,9 @@ class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
 
     def to_dict(self, extended=False):
         if extended:
-            return json.loads(self.to_json())
+            return json.loads(self._to_json())
 
-        return json_util.loads(self.to_json())
+        return json_util.loads(self._to_json())
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -226,6 +241,11 @@ class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
                 pass
 
         return cls.from_json(json_util.dumps(d))
+
+    def _to_json(self, *args, **kwargs):
+        # @todo(Tyler) mongoengine snippet, to be replaced
+        use_db_field = kwargs.pop("use_db_field", True)
+        return json_util.dumps(self.to_mongo(use_db_field), *args, **kwargs)
 
 
 def _to_front(l, val):
