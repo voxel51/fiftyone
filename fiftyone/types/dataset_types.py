@@ -176,7 +176,8 @@ class COCODetectionDataset(LabeledImageDataset):
                     "height": 480,
                     "width": 640,
                     "date_captured": null
-                }
+                },
+                ...
             ],
             "annotations": [
                 {
@@ -250,6 +251,7 @@ class VOCDetectionDataset(LabeledImageDataset):
                     <ymax>300</ymax>
                 </bndbox>
             </object>
+            ...
         </annotation>
     """
 
