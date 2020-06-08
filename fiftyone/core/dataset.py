@@ -1392,9 +1392,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset
         """
         dataset = cls(d["name"])
-        dataset.add_samples(
-            [fos.Sample.from_dict(s, extended=True) for s in d["samples"]]
-        )
+        dataset.add_samples([fos.Sample.from_dict(s) for s in d["samples"]])
         return dataset
 
     @classmethod
