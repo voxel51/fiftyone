@@ -200,11 +200,9 @@ class ODMDocument(SerializableDocument, Document):
 
         return cls.from_json(json_util.dumps(d))
 
-    def _to_json(self, *args, **kwargs):
+    def _to_json(self):
         # @todo(Tyler) mongoengine snippet, to be replaced
-        return json_util.dumps(
-            self.to_mongo(use_db_field=True), *args, **kwargs
-        )
+        return json_util.dumps(self.to_mongo(use_db_field=True))
 
 
 class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
@@ -243,11 +241,9 @@ class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
 
         return cls.from_json(json_util.dumps(d))
 
-    def _to_json(self, *args, **kwargs):
+    def _to_json(self):
         # @todo(Tyler) mongoengine snippet, to be replaced
-        return json_util.dumps(
-            self.to_mongo(use_db_field=True), *args, **kwargs
-        )
+        return json_util.dumps(self.to_mongo(use_db_field=True))
 
 
 def _to_front(l, val):
