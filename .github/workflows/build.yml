@@ -116,11 +116,13 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: docs
-          path: downloads/
+          path: docs-download/
       - name: Update docs
         run: |
+          find docs-download/
+          test -f docs-download/genindex.html
           rm -r source/docs/fiftyone/
-          unzip downloads/docs.zip -d source/docs/fiftyone/
+          cp -r docs-download/ source/docs/fiftyone/
       - name: Create website PR
         uses: peter-evans/create-pull-request@v2
         with:
