@@ -22,9 +22,9 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
 import logging
 import os
+import warnings
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -126,6 +126,8 @@ def load_zoo_dataset(
     splits=None,
     dataset_dir=None,
     download_if_necessary=True,
+    persistent=False,
+    drop_existing_dataset=False,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
     a :class:`fiftyone.core.dataset.Dataset`.
@@ -151,6 +153,10 @@ def load_zoo_dataset(
             :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
+        persistent (False): whether the dataset will persist in the database
+            once the session terminates
+        drop_existing_dataset (False): whether to drop an existing dataset
+            with the same name if it exists
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -166,14 +172,25 @@ def load_zoo_dataset(
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
         info = zoo_dataset.load_info(dataset_dir)
 
-    name = zoo_dataset.name
+    dataset_name = zoo_dataset.name
     if splits is not None:
-        name += "-" + "-".join(splits)
+        dataset_name += "-" + "-".join(splits)
+
+    if fo.dataset_exists(dataset_name):
+        if not drop_existing_dataset:
+            msg = (
+                "Loading pre-existing dataset with name '%s'. To reload"
+                " from disk, first delete the existing dataset." % dataset_name
+            )
+            warnings.warn(msg)
+            return fo.load_dataset(dataset_name)
+
+        fo.delete_dataset(dataset_name)
 
     if splits is None and zoo_dataset.has_splits:
         splits = zoo_dataset.supported_splits
 
-    dataset = fo.Dataset(name)
+    dataset = fo.Dataset(dataset_name, persistent=persistent)
     format = info.format
 
     if splits:
