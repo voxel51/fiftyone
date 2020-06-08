@@ -30,6 +30,7 @@ jobs:
         run: |
           pip install -e . --index https://pypi.voxel51.com
           pip install -r requirements/docs.txt
+          pip install tensorflow torch torchvision
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
