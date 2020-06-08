@@ -1392,9 +1392,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset
         """
         dataset = cls(d["name"])
-        dataset.add_samples(
-            [fos.Sample.from_dict(s, extended=True) for s in d["samples"]]
-        )
+        dataset.add_samples([fos.Sample.from_dict(s) for s in d["samples"]])
         return dataset
 
     @classmethod
@@ -1410,6 +1408,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         d = etas.load_json(path_or_str)
         return cls.from_dict(d)
+
+    @property
+    def _collection_name(self):
+        return self._sample_doc_cls._meta["collection"]
+
+    @property
+    def _collection(self):
+        return foo.get_db_conn()[self._collection_name]
 
     def _expand_schema(self, samples):
         fields = self.get_field_schema()
