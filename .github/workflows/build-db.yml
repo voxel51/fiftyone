@@ -1,0 +1,74 @@
+name: Build DB
+
+on:
+  push:
+    paths:
+      - package/db/
+      - .github/workflows/build-db.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+      - name: Build wheel (Linux)
+        run: |
+          cd package/db
+          python3 setup.py bdist_wheel --plat-name linux
+      - name: Build wheel (macOS)
+        run: |
+          cd package/db
+          python3 setup.py bdist_wheel --plat-name mac
+      - name: Upload wheel (Linux)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-linux
+          path: package/db/dist/*linux*.whl
+      - name: Upload wheel (macOS)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-macos
+          path: package/db/dist/*macos*.whl
+
+  test:
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+      - name: Download fiftyone-db wheel
+        uses: actions/download-artifact@v2
+        with:
+          name: wheel-linux
+          path: downloads
+      - name: Install fiftyone-db
+        run: |
+          pip3 install downloads/*.whl
+      - name: Install test dependencies
+        run: |
+          pip3 install pytest
+      - name: Run tests
+        run: |
+          cd package/db/
+          python3 -m pytest --verbose tests/
+
+  publish:
+    runs-on: ubuntu-20.04
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/db-v')
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v2
+        with:
+          path: downloads
+      - name: Install dependencies
+        run: |
+          pip3 install twine
+      - name: Upload to pypi.voxel51.com
+        env:
+          TWINE_USERNAME: voxel51-ci
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          TWINE_NON_INTERACTIVE: 1
+        run: |
+          python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/wheel-*/*.whl
