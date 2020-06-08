@@ -54,7 +54,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 import six
 
 # pragma pylint: enable=redefined-builtin
@@ -539,7 +538,7 @@ class ODMNoDatasetSample(ODMSample):
 
     def to_dict(self, extended=False):
         d = {}
-        for k, v in iteritems(self._data):
+        for k, v in self._data.items():
             if hasattr(v, "to_dict"):
                 # Embedded document
                 d[k] = v.to_dict(extended=extended)
@@ -569,7 +568,7 @@ class ODMNoDatasetSample(ODMSample):
     @classmethod
     def from_dict(cls, d, extended=False):
         kwargs = {}
-        for k, v in iteritems(d):
+        for k, v in d.items():
             if isinstance(v, dict):
                 if "_cls" in v:
                     # Serialized embedded document
