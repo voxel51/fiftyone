@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -157,7 +156,7 @@ class DatasetView(foc.SampleCollection):
             pipeline_str = "    " + "\n    ".join(
                 [
                     "%d. %s" % (idx, str(d))
-                    for idx, d in enumerate(self._pipeline, start=1)
+                    for idx, d in enumerate(self._pipeline, 1)
                 ]
             )
         else:
@@ -174,6 +173,22 @@ class DatasetView(foc.SampleCollection):
                 pipeline_str,
             ]
         )
+
+    def to_dict(self):
+        """Returns a JSON dictionary representation of the view.
+
+        Returns:
+            a JSON dict
+        """
+        d = {
+            "name": self._dataset.name,
+            "num_samples": len(self),
+            "tags": list(self.get_tags()),
+            "sample_fields": self._dataset._get_fields_dict(),
+            "pipeline_stages": [str(d) for d in self._pipeline],
+        }
+        d.update(super(DatasetView, self).to_dict())
+        return d
 
     def head(self, num_samples=3):
         """Returns a string representation of the first few samples in the

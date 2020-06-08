@@ -22,10 +22,13 @@ import weakref
 
 
 class DatasetSingleton(type):
-    """FiftyOne Dataset Per-'name' Singleton Metaclass.
+    """Singleton metadata for :class:`fiftyone.core.dataset.Dataset`.
 
-    Datasets are singletons keyed on unique dataset 'name'. This metaclass
-    keeps a dictionary of weak references to instances keyed on 'name'.
+    Datasets are singletons keyed on unique dataset ``name``. This metaclass
+    keeps a dictionary of weak references to instances keyed on ``name``.
+
+    Note that new :class:`fiftyone.core.dataset.Dataset` instances are always
+    created if the ``_create == True``.
 
     When the final strong reference to a dataset dies the weak reference dies
     and the dataset objects destructor is called.
@@ -38,9 +41,14 @@ class DatasetSingleton(type):
         cls._instances = weakref.WeakValueDictionary()
         return cls
 
-    def __call__(cls, name, *args, **kwargs):
-        if name not in cls._instances:
-            instance = cls.__new__(cls, name, *args, **kwargs)
-            instance.__init__(name, *args, **kwargs)
+    def __call__(cls, name, _create=True, *args, **kwargs):
+        if (
+            _create
+            or name not in cls._instances
+            or cls._instances[name].deleted
+        ):
+            instance = cls.__new__(cls, name)
+            instance.__init__(name, _create=_create, *args, **kwargs)
             cls._instances[name] = instance
+
         return cls._instances[name]
