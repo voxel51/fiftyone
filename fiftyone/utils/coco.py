@@ -28,6 +28,7 @@ import eta.core.utils as etau
 import eta.core.serial as etas
 import eta.core.web as etaw
 
+import fiftyone.core.metadata as fom
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
@@ -105,13 +106,14 @@ class COCOObject(object):
         self.iscrowd = iscrowd
 
     @classmethod
-    def from_detection(cls, detection, frame_size, labels_map_rev=None):
+    def from_detection(cls, detection, metadata, labels_map_rev=None):
         """Creates a :class:`COCOObject` from a
         :class:`fiftyone.core.labels.Detection`.
 
         Args:
             detection: a :class:`fiftyone.core.labels.Detection`
-            frame_size: the ``(width, height)`` of the image
+            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
+                image
             labels_map_rev (None): an optional dict mapping labels to category
                 IDs
 
@@ -123,7 +125,8 @@ class COCOObject(object):
         else:
             category_id = detection.label
 
-        width, height = frame_size
+        width = metadata.width
+        height = metadata.height
         x, y, w, h = detection.bounding_box
         bbox = [
             int(round(x * width)),
@@ -153,9 +156,9 @@ class COCOObject(object):
 
 
 def export_coco_detection_dataset(
-    image_paths, labels, dataset_dir, classes=None
+    samples, label_field, dataset_dir, classes=None
 ):
-    """Exports the given data to disk as a COCO detection dataset.
+    """Exports the given samples to disk as a COCO detection dataset.
 
     See :class:`fiftyone.types.COCODetectionDataset` for format details.
 
@@ -165,9 +168,9 @@ def export_coco_detection_dataset(
     filename.
 
     Args:
-        image_paths: an iterable of image paths
-        labels: an iterable of :class:`fiftyone.core.labels.Detections`
-            instances
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        label_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field of the samples to export
         dataset_dir: the directory to which to write the dataset
         classes (None): an optional list of class labels. If omitted, this is
             dynamically computed from the observed labels
@@ -198,7 +201,8 @@ def export_coco_detection_dataset(
     data_filename_counts = defaultdict(int)
 
     with etau.ProgressBar(iters_str="samples") as pb:
-        for img_path, label in pb(zip(image_paths, labels)):
+        for sample in pb(samples):
+            img_path = sample.filepath
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -211,10 +215,9 @@ def export_coco_detection_dataset(
 
             etau.copy_file(img_path, out_img_path)
 
-            # Must read image to get dimensions
-            img = etai.read(img_path)
-            height, width = img.shape[:2]
-            frame_size = width, height
+            metadata = sample.metadata
+            if metadata is None:
+                metadata = fom.ImageMetadata.build_for(img_path)
 
             image_id += 1
             images.append(
@@ -222,16 +225,17 @@ def export_coco_detection_dataset(
                     "id": image_id,
                     "license": None,
                     "file_name": filename,
-                    "height": height,
-                    "width": width,
+                    "height": metadata.height,
+                    "width": metadata.width,
                 }
             )
 
+            label = sample[label_field]
             for detection in label.detections:
                 anno_id += 1
                 _classes.add(detection.label)
                 obj = COCOObject.from_detection(
-                    detection, frame_size, labels_map_rev=labels_map_rev
+                    detection, metadata, labels_map_rev=labels_map_rev
                 )
                 obj.id = anno_id
                 obj.image_id = image_id
