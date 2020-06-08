@@ -178,18 +178,17 @@ class ODMDocument(SerializableDocument, Document):
 
     @classmethod
     def from_dict(cls, d, extended=False):
-        # pylint: disable=unexpected-keyword-arg
         if not extended:
             try:
                 # Attempt to load the document directly, assuming it is in
                 # extended form
 
                 # pylint: disable=no-member
-                return cls._from_son(d, created=False)
+                return cls._from_son(d)
             except Exception:
                 pass
 
-        return cls.from_json(json_util.dumps(d), created=False)
+        return cls.from_json(json_util.dumps(d))
 
 
 class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
@@ -216,18 +215,17 @@ class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
 
     @classmethod
     def from_dict(cls, d, extended=False):
-        # pylint: disable=unexpected-keyword-arg
         if not extended:
             try:
                 # Attempt to load the document directly, assuming it is in
                 # extended form
 
                 # pylint: disable=no-member
-                return cls._from_son(d, created=False)
+                return cls._from_son(d)
             except Exception:
                 pass
 
-        return cls.from_json(json_util.dumps(d), created=False)
+        return cls.from_json(json_util.dumps(d))
 
 
 def _to_front(l, val):
