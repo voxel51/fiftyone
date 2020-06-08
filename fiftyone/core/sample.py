@@ -225,11 +225,11 @@ class Sample(object):
         return doc_cls(**kwargs)
 
     def to_dict(self, extended=False, include_id=True):
-        """Serializes the sample to a JSON dictionary.
+        """Serializes the sample to a BSON/JSON dictionary.
 
         Args:
-            extended (False): whether to serialize extended JSON constructs
-                such as ObjectIDs, Binary, etc. into JSON format
+            extended (False): whether to serialize BSON constructs
+                such as ObjectIDs, Binary, etc. into extended JSON format
             include_id (True): whether to include the ID of the sample in the
                 serialized dictionary
 
