@@ -34,6 +34,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -373,7 +374,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return str(doc.id)
 
-    def add_samples(self, samples, expand_schema=True):
+    def add_samples(self, samples, expand_schema=True, _batch_size=128):
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -396,6 +397,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
+        logger.info("Adding samples...")
+        sample_ids = []
+        with etau.ProgressBar(samples, iters_str="samples") as pb:
+            for batch in fou.iter_batches(samples, _batch_size):
+                sample_ids.extend(self._add_samples(batch, expand_schema))
+                pb.update(count=len(batch))
+
+        return sample_ids
+
+    def _add_samples(self, samples, expand_schema):
         if expand_schema:
             self._expand_schema(samples)
 
@@ -1425,7 +1436,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_doc_cls.from_dict(d, extended=False)
         return self._load_sample_from_doc(doc)
 
-    def _load_sample_from_doc(self, doc):
+    @staticmethod
+    def _load_sample_from_doc(doc):
         return fos.Sample.from_doc(doc)
 
     def _get_query_set(self, **kwargs):
