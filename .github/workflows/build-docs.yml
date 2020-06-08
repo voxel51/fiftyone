@@ -1,6 +1,14 @@
 name: Build docs
 
-on: push
+on:
+  push:
+    paths:
+      - docs/
+      - examples/
+      - fiftyone/
+      - "**.py"
+      - "**.md"
+      - "**.rst"
 
 jobs:
   build:
