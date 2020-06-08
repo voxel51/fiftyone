@@ -1014,9 +1014,6 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
         if etau.is_str(labels):
             labels = etai.ImageLabels.from_dict(labels)
 
-        if isinstance(labels, etai.ImageLabels):
-            labels = labels.serialize()
-
         return fol.ImageLabels(labels=labels)
 
 

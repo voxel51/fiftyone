@@ -14,7 +14,10 @@ config = foc.load_config()
 from .core.dataset import (
     Dataset,
     list_dataset_names,
+    dataset_exists,
     load_dataset,
+    delete_dataset,
+    delete_non_persistent_datasets,
 )
 from .core.fields import (
     Field,
@@ -23,10 +26,11 @@ from .core.fields import (
     FloatField,
     StringField,
     ListField,
-    VectorField,
-    ArrayField,
     DictField,
     EmbeddedDocumentField,
+    VectorField,
+    ArrayField,
+    ImageLabelsField,
 )
 from .core.labels import (
     Label,
