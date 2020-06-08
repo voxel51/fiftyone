@@ -13,20 +13,19 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-# pylint: disable=wildcard-import,unused-wildcard-import
+import eta.core.image as etai
 
 from fiftyone.core.odm.document import ODMEmbeddedDocument
 import fiftyone.core.fields as fof
 
 
 class Metadata(ODMEmbeddedDocument):
-    """Base class for storing metadata about raw data.
+    """Base class for storing metadata about sample data.
 
     Args:
         size_bytes: integer size of the media in bytes
@@ -40,7 +39,7 @@ class Metadata(ODMEmbeddedDocument):
 
 
 class ImageMetadata(Metadata):
-    """Base class for storing metadata about raw images.
+    """Class for storing metadata about images in samples.
 
     Args:
         width: integer width of the image in pixels
@@ -51,3 +50,22 @@ class ImageMetadata(Metadata):
     width = fof.IntField()
     height = fof.IntField()
     num_channels = fof.IntField()
+
+    @classmethod
+    def build_for(cls, filepath):
+        """Builds an :class:`ImageMetadata` object for the given image.
+
+        Args:
+            filepath: the path to the image on disk
+
+        Returns:
+            an :class:`ImageMetadata`
+        """
+        m = etai.ImageMetadata.build_for(filepath)
+        return cls(
+            size_bytes=m.size_bytes,
+            mime_type=m.mime_type,
+            width=m.frame_size[0],
+            height=m.frame_size[1],
+            num_channels=m.num_channels,
+        )
