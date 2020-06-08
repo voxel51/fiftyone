@@ -18,7 +18,10 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import os
+
 import eta.core.image as etai
+import eta.core.utils as etau
 
 from fiftyone.core.odm.document import ODMEmbeddedDocument
 import fiftyone.core.fields as fof
@@ -36,6 +39,21 @@ class Metadata(ODMEmbeddedDocument):
 
     size_bytes = fof.IntField()
     mime_type = fof.StringField()
+
+    @classmethod
+    def build_for(cls, filepath):
+        """Builds a :class:`Metadata` object for the given filepath.
+
+        Args:
+            filepath: the path to the data on disk
+
+        Returns:
+            a :class:`Metadata`
+        """
+        return cls(
+            size_bytes=etau.guess_mime_type(filepath),
+            mime_type=os.path.getsize(filepath),
+        )
 
 
 class ImageMetadata(Metadata):
