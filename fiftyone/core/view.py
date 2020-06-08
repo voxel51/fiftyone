@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from functools import wraps
 from copy import copy, deepcopy
 import numbers
 
@@ -114,7 +113,7 @@ class DatasetView(foc.SampleCollection):
         Args:
             stage: a :class:`fiftyone.core.stages.ViewStage`
         """
-        return stage(self)
+        return self._copy_with_new_stage(stage)
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.

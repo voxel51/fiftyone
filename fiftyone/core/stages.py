@@ -33,9 +33,6 @@ class ViewStage(object):
             arguments
     """
 
-    def __call__(self, view):
-        return view._copy_with_new_stage(self)
-
     def to_mongo(self):
         """Returns the MongoDB version of the
         :class:`fiftyone.core.stages.ViewStage` instance
