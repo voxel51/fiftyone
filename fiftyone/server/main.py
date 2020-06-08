@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from functools import reduce
 import logging
 import os
 
@@ -74,6 +75,7 @@ class StateController(Namespace):
 
     def __init__(self, *args, **kwargs):
         self.state = fos.StateDescription().serialize()
+        self._remainder = []
         super(StateController, self).__init__(*args, **kwargs)
 
     def on_connect(self):
@@ -133,7 +135,7 @@ class StateController(Namespace):
         state.selected = list(selected)
         return state
 
-    def on_page(self, page, page_length=20):
+    def on_page(self, page, page_length=50):
         """Gets the requested page of samples.
 
         Args:
@@ -164,7 +166,57 @@ class StateController(Namespace):
             r["width"] = w
             r["height"] = h
 
-        return {"results": results, "more": more}
+        rows = []
+        current_row = []
+        current_h = None
+        current_w = None
+        for s in results + self._remainder:
+            if current_w is None:
+                current_w = s["width"]
+                current_h = s["height"]
+                current_row.append(s)
+                continue
+
+            if current_w / current_h >= 5:
+                rows.append(current_row)
+                current_row = [s]
+                current_w = s["width"]
+                current_h = s["height"]
+                continue
+
+            current_row.append(s)
+            current_w += (current_h / s["height"]) * s["width"]
+
+        self._remainder = current_row if bool(more) else []
+        if bool(more) and len(current_row):
+            rows.append(current_row)
+
+        for row in rows:
+            columns = []
+            base_height = row[0]["height"]
+            ref_width = reduce(
+                lambda acc, val: acc
+                + (base_height / val["height"]) * val["width"],
+                row,
+                0,
+            )
+
+            for sample in row:
+                sample_width = base_height * sample["width"] / sample["height"]
+                columns.append(sample_width / ref_width)
+
+            row_style = {
+                "display": "grid",
+                "gridTemplateColumns": " ".join(
+                    map(lambda c: str(c * 100) + "%", columns)
+                ),
+                "width": "100%",
+                "margin": 0,
+            }
+
+            rows.append({"style": row_style, "samples": samples})
+
+        return {"rows": rows, "more": more}
 
     def on_lengths(self, _):
         state = fos.StateDescription.from_dict(self.state)
