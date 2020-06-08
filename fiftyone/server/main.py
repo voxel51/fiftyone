@@ -153,7 +153,6 @@ class StateController(Namespace):
             view = state.dataset.view()
         else:
             return []
-
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [s.to_dict(extended=True) for s in view]
         more = False
@@ -187,6 +186,10 @@ class StateController(Namespace):
 
             current_row.append(s)
             current_w += (current_h / s["height"]) * s["width"]
+
+        if current_w / current_h >= 5:
+            rows.append(current_row)
+            current_row = []
 
         self._remainder = current_row if bool(more) else []
         if bool(more) and len(current_row) > 0:
