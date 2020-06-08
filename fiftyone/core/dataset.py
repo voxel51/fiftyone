@@ -211,6 +211,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def persistent(self):
+        """Whether the dataset persists in the database after a session is
+        terminated.
+        """
         return self._meta.persistent
 
     @persistent.setter

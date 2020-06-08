@@ -11,7 +11,7 @@ import fiftyone.zoo as foz
 print(foz.list_zoo_datasets())
 
 # Load a dataset
-dataset = foz.load_zoo_dataset("cifar10", delete_existing_dataset=True)
+dataset = foz.load_zoo_dataset("cifar10", drop_existing_dataset=True)
 
 # Print the dataset summary
 print(dataset)
