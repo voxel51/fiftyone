@@ -25,8 +25,11 @@ from flask import Flask, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
 
 os.environ["FIFTYONE_SERVER"] = "1"
+import fiftyone.core.fields as fof
 import fiftyone.core.state as fos
+
 from util import get_image_size
+from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
 
@@ -173,14 +176,14 @@ class StateController(Namespace):
             return []
         return {"labels": view.get_label_fields(), "tags": view.get_tags()}
 
-    def on_get_field_distributions(self, _):
-        """Gets the labels distributions for the current state.
+    def on_get_distributions(self, group):
+        """Gets the distributions for the current state with respect to a group,
 
         Args:
-            _: the message, which is not used
+            group: one of "labels", "tags", or "scalars"
 
         Returns:
-            the list of label distributions
+            a list of distributions
         """
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
@@ -190,7 +193,7 @@ class StateController(Namespace):
         else:
             return []
 
-        return view._get_field_distributions()
+        return _get_distributions(view, group)
 
     def on_get_facets(self, _):
         """Gets the facets for the current state.
@@ -222,6 +225,103 @@ class StateController(Namespace):
         state.view = state.dataset.view().match_tag(value)
         self.state = state.serialize()
         emit("update", self.state, broadcast=True, include_self=True)
+
+
+def _get_distributions(view, group):
+    pipeline = DISTRIBUTION_PIPELINES[group]
+
+    # we add a sub-pipeline for each numeric as it looks like multiple
+    # buckets in a single pipeline is not supported
+    if group == SCALARS:
+        _numeric_distribution_pipelines(view, pipeline)
+
+    result = list(view.aggregate(pipeline))
+
+    if group in {LABELS, SCALARS}:
+        new_result = []
+        for f in result[0].values():
+            new_result += f
+        result = new_result
+
+    if group != SCALARS:
+        for idx, dist in enumerate(result):
+            result[idx]["data"] = sorted(
+                result[idx]["data"], key=lambda c: c["count"], reverse=True
+            )
+
+    return sorted(result, key=lambda d: d["name"])
+
+
+def _numeric_bounds(view, numerics):
+    bounds_pipeline = [{"$facet": {}}]
+    for idx, (k, v) in enumerate(numerics.items()):
+        bounds_pipeline[0]["$facet"]["numeric-%d" % idx] = [
+            {
+                "$group": {
+                    "_id": k,
+                    "min": {"$min": "$%s" % k},
+                    "max": {"$max": "$%s" % k},
+                },
+            }
+        ]
+
+    return list(view.aggregate(bounds_pipeline))[0] if len(numerics) else {}
+
+
+def _numeric_distribution_pipelines(view, pipeline, buckets=50):
+    numerics = view._dataset.get_field_schema(ftype=fof.IntField)
+    numerics.update(view._dataset.get_field_schema(ftype=fof.FloatField))
+
+    # here we query the min and max for each numeric field
+    # unfortunately, it looks like this has to be a separate query
+    bounds = _numeric_bounds(view, numerics)
+
+    # for each numeric field, build the boundaries array with the
+    # min/max results when adding the field's sub-pipeline
+    for idx, (k, v) in enumerate(numerics.items()):
+        sub_pipeline = "numeric-%d" % idx
+        field_bounds = bounds[sub_pipeline][0]
+        mn = field_bounds["min"]
+        mx = field_bounds["max"]
+        step = (mx - mn) / buckets
+        boundaries = [mn + step * s for s in range(0, buckets)]
+
+        pipeline[0]["$facet"][sub_pipeline] = [
+            {
+                "$bucket": {
+                    "groupBy": "$%s" % k,
+                    "boundaries": boundaries,
+                    "default": "null",
+                    "output": {"count": {"$sum": 1}},
+                }
+            },
+            {
+                "$group": {
+                    "_id": k,
+                    "data": {
+                        "$push": {
+                            "key": {
+                                "$cond": [
+                                    {"$ne": ["$_id", "null"]},
+                                    {"$add": ["$_id", step / 2]},
+                                    "null",
+                                ]
+                            },
+                            "count": "$count",
+                        }
+                    },
+                }
+            },
+            {
+                "$project": {
+                    "name": k,
+                    "type": v.__class__.__name__[
+                        : -len("Field")  # grab field type from the class
+                    ].lower(),
+                    "data": "$data",
+                }
+            },
+        ]
 
 
 socketio.on_namespace(StateController("/state"))

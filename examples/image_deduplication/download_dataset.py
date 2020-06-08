@@ -1,22 +1,23 @@
 """
-Download subset of CIFAR100 and store to disk:
-    /tmp/fiftyone/cifar100_with_duplicates/
+Downloads a subset of CIFAR-100 and stores it to disk as follows::
+
+    /tmp/fiftyone/
+    └── cifar100_with_duplicates/
+        ├── <classA>/
+        │   ├── <image1>.jpg
+        │   ├── <image2>.jpg
+        │   └── ...
+        ├── <classB>/
+        │   ├── <image1>.jpg
+        │   ├── <image2>.jpg
+        │   └── ...
+        └── ...
 
 A random 5% of the samples are duplicates, instead of the original samples.
 
-Data is downloaded as:
-/tmp/fiftyone/
-└── cifar100_with_duplicates/
-    ├── <classA>/
-    │   ├── <image1>.jpg
-    │   ├── <image2>.jpg
-    │   └── ...
-    ├── <classB>/
-    │   ├── <image1>.jpg
-    │   ├── <image2>.jpg
-    │   └── ...
-    └── ...
-
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 import os
 import random
@@ -26,9 +27,11 @@ from tensorflow.keras.datasets import cifar100
 import eta.core.image as etai
 import eta.core.utils as etau
 
-DATASET_SIZE = 1000
 
-fine_labels_map = [
+DATASET_SIZE = 1000
+DATASET_DIR = os.path.join("/tmp/fiftyone/cifar100_with_duplicates")
+
+FINE_CLASSES = [
     "apple",
     "aquarium_fish",
     "baby",
@@ -131,11 +134,9 @@ fine_labels_map = [
     "worm",
 ]
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-data_dir = os.path.join(dir_path, "/tmp/fiftyone/cifar100_with_duplicates")
 
 # if not empty, delete current contents
-etau.ensure_empty_dir(data_dir, cleanup=True)
+etau.ensure_empty_dir(DATASET_DIR, cleanup=True)
 
 (_, _), (x_test, y_test) = cifar100.load_data(label_mode="fine")
 
@@ -152,14 +153,12 @@ for i in range(x.shape[0]):
         idx = i
 
     # get label
-    fine_label = fine_labels_map[y[idx, 0]]
+    fine_label = FINE_CLASSES[y[idx, 0]]
 
     # read image
     img = x[idx, :]
 
-    etau.ensure_dir(data_dir)
-
     rel_img_path = os.path.join(fine_label, "%d.jpg" % i)
-    abs_img_path = os.path.join(data_dir, rel_img_path)
+    abs_img_path = os.path.join(DATASET_DIR, rel_img_path)
 
     etai.write(img, abs_img_path)

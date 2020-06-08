@@ -20,6 +20,7 @@ from builtins import *
 
 import logging
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
@@ -131,3 +132,40 @@ class SampleCollection(object):
                 "Cannot export labels of type '%s'"
                 % etau.get_class_name(labels[0])
             )
+
+    def to_dict(self):
+        """Returns a JSON dictionary representation of the collection.
+
+        The samples will be written as a list in a top-level ``samples`` field
+        of the returned dictionary.
+
+        Returns:
+            a JSON dict
+        """
+        samples = [s.to_dict(extended=True, include_id=False) for s in self]
+        return {"samples": samples}
+
+    def to_json(self, pretty_print=False):
+        """Returns a JSON string representation of the collection.
+
+        The samples will be written as a list in a top-level ``samples`` field
+        of the returned dictionary.
+
+        Args:
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
+
+        Returns:
+            a JSON string
+        """
+        return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
+
+    def write_json(self, json_path, pretty_print=False):
+        """Writes the colllection to disk
+
+        Args:
+            json_path: the path to write the JSON
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
+        """
+        etas.write_json(self.to_dict(), json_path, pretty_print=pretty_print)

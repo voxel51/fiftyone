@@ -4,6 +4,7 @@ import { Menu } from "semantic-ui-react";
 import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
+import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
 import Tag from "./Tag";
 

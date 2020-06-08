@@ -49,7 +49,7 @@ const Rendering = ({ displayProps, port }) => {
       />
       <Menu vertical>
         <Menu.Item as="div" style={{ padding: "0.5rem 0" }}>
-          <pre>Numerics and strings</pre>
+          <pre>Scalars</pre>
         </Menu.Item>
       </Menu>
       <Labels

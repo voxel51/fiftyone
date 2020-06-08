@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -23,17 +22,15 @@ from copy import copy, deepcopy
 import numbers
 
 from bson import ObjectId, json_util
-from pymongo import ASCENDING, DESCENDING
 
 import fiftyone.core.collections as foc
+import fiftyone.core.stages as fos
 
 
 def _make_registrar():
     """Makes a decorator that keeps a registry of all functions decorated by
     it.
-
     Usage::
-
         my_decorator = _make_registrar()
         my_decorator.all  # dictionary mapping names to functions
     """
@@ -49,8 +46,8 @@ def _make_registrar():
     return registrar
 
 
-# Keeps track of all DatasetView operations
-operation = _make_registrar()
+# Keeps track of all DatasetView stage methods
+view_stage = _make_registrar()
 
 
 class DatasetView(foc.SampleCollection):
@@ -109,6 +106,43 @@ class DatasetView(foc.SampleCollection):
         view._pipeline = deepcopy(self._pipeline)
         return view
 
+    def add_stage(self, stage):
+        """Adds a :class:`fiftyone.core.stages.ViewStage` to the current view,
+        returning a new view.
+
+        Args:
+            stage: a :class:`fiftyone.core.stages.ViewStage`
+        """
+        return self._copy_with_new_stage(stage)
+
+    def aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the view.
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to append to the view's pipeline before aggregation.
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._dataset._get_query_set().aggregate(
+            [s.to_mongo() for s in self._pipeline] + pipeline
+        )
+
+    def serialize(self):
+        """Serializes the view.
+
+        Returns:
+            a JSON representation of the view
+        """
+        return {
+            "dataset": self._dataset.serialize(),
+            "view": json_util.dumps([s._serialize() for s in self._pipeline]),
+        }
+
     def summary(self):
         """Returns a string summary of the view.
 
@@ -121,7 +155,7 @@ class DatasetView(foc.SampleCollection):
             pipeline_str = "    " + "\n    ".join(
                 [
                     "%d. %s" % (idx, str(d))
-                    for idx, d in enumerate(self._pipeline, start=1)
+                    for idx, d in enumerate(self._pipeline, 1)
                 ]
             )
         else:
@@ -138,6 +172,22 @@ class DatasetView(foc.SampleCollection):
                 pipeline_str,
             ]
         )
+
+    def to_dict(self):
+        """Returns a JSON dictionary representation of the view.
+
+        Returns:
+            a JSON dict
+        """
+        d = {
+            "name": self._dataset.name,
+            "num_samples": len(self),
+            "tags": list(self.get_tags()),
+            "sample_fields": self._dataset._get_fields_dict(),
+            "pipeline_stages": [str(d) for d in self._pipeline],
+        }
+        d.update(super(DatasetView, self).to_dict())
+        return d
 
     def head(self, num_samples=3):
         """Returns a string representation of the first few samples in the
@@ -237,16 +287,16 @@ class DatasetView(foc.SampleCollection):
             yield idx, sample
 
     @classmethod
-    def get_operation_names(cls):
-        """Returns a list of all available :class:`DatasetView` operations,
-        i.e., operations that return another :class:`DatasetView`.
+    def list_stage_methods(cls):
+        """Returns a list of all available :class:`DatasetView` stage methods,
+        i.e., stages that return another :class:`DatasetView`.
 
         Returns:
-            a list of method names
+            a list of :class:`DatasetView` method names
         """
-        return list(operation.all)
+        return list(view_stage.all)
 
-    @operation
+    @view_stage
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
@@ -258,9 +308,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage({"$match": filter})
+        return self.add_stage(fos.Match(filter))
 
-    @operation
+    @view_stage
     def match_tag(self, tag):
         """Returns a view containing the samples that have the given tag.
 
@@ -270,9 +320,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage({"$match": {"tags": tag}})
+        return self.add_stage(fos.MatchTag(tag))
 
-    @operation
+    @view_stage
     def match_tags(self, tags):
         """Returns a view containing the samples that have any of the given
         tags.
@@ -286,11 +336,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self._copy_with_new_stage(
-            {"$match": {"tags": {"$in": list(tags)}}}
-        )
+        return self.add_stage(fos.MatchTags(tags))
 
-    @operation
+    @view_stage
     def exists(self, field):
         """Returns a view containing the samples that have a non-``None`` value
         for the given field.
@@ -301,9 +349,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.match({field: {"$exists": True, "$ne": None}})
+        return self.add_stage(fos.Exists(field))
 
-    @operation
+    @view_stage
     def sort_by(self, field, reverse=False):
         """Sorts the samples in the view by the given field.
 
@@ -319,10 +367,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        order = DESCENDING if reverse else ASCENDING
-        return self._copy_with_new_stage({"$sort": {field: order}})
+        return self.add_stage(fos.SortBy(field, reverse=reverse))
 
-    @operation
+    @view_stage
     def skip(self, skip):
         """Omits the given number of samples from the head of the view.
 
@@ -333,12 +380,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        if skip <= 0:
-            return copy(self)
+        return self.add_stage(fos.Skip(skip))
 
-        return self._copy_with_new_stage({"$skip": skip})
-
-    @operation
+    @view_stage
     def limit(self, limit):
         """Limits the view to the given number of samples.
 
@@ -349,12 +393,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        if limit <= 0:
-            return self.match({"_id": None})
+        return self.add_stage(fos.Limit(limit))
 
-        return self._copy_with_new_stage({"$limit": limit})
-
-    @operation
+    @view_stage
     def take(self, size):
         """Randomly samples the given number of samples from the view.
 
@@ -365,12 +406,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        if size <= 0:
-            return self.match({"_id": None})
+        return self.add_stage(fos.Take(size))
 
-        return self._copy_with_new_stage({"$sample": {"size": size}})
-
-    @operation
+    @view_stage
     def select(self, sample_ids):
         """Selects the samples with the given IDs from the view.
 
@@ -380,10 +418,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        sample_ids = [ObjectId(id) for id in sample_ids]
-        return self.match({"_id": {"$in": sample_ids}})
+        return self.add_stage(fos.Select(sample_ids))
 
-    @operation
+    @view_stage
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the view.
 
@@ -393,36 +430,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        sample_ids = [ObjectId(id) for id in sample_ids]
-        return self.match({"_id": {"$not": {"$in": sample_ids}}})
-
-    def aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the view.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before aggregation.
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        if pipeline is None:
-            pipeline = []
-
-        return self._dataset._get_query_set().aggregate(
-            self._pipeline + pipeline
-        )
-
-    def serialize(self):
-        """Serializes the view.
-
-        Returns:
-            a JSON representation of the view
-        """
-        return {
-            "dataset": self._dataset.serialize(),
-            "view": json_util.dumps(self._pipeline),
-        }
+        return self.add_stage(fos.Exclude(sample_ids))
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:
@@ -459,12 +467,6 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _get_field_distributions(self):
-        return list(self.aggregate(_FIELD_DISTRIBUTIONS_PIPELINE))
-
-    def _get_facets(self):
-        return list(self.aggregate(_FACETS_PIPELINE))
-
     def _copy_with_new_stage(self, stage):
         view = copy(self)
         view._pipeline.append(stage)
@@ -476,42 +478,3 @@ class DatasetView(foc.SampleCollection):
                 return stage["$skip"]
 
         return 0
-
-
-_FIELD_DISTRIBUTIONS_PIPELINE = [
-    {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-    {"$unwind": "$field"},
-    {"$project": {"field": "$field.k", "detection": "$field.v.detections"}},
-    {"$unwind": "$detection"},
-    {
-        "$group": {
-            "_id": {"field": "$field", "label": "$detection.label"},
-            "count": {"$sum": 1},
-        }
-    },
-    {
-        "$group": {
-            "_id": "$_id.field",
-            "labels": {"$push": {"label": "$_id.label", "count": "$count"}},
-        }
-    },
-]
-
-
-_FACETS_PIPELINE = [
-    {
-        "$facet": {
-            "tags": [
-                {"$project": {"tag": "$tags"}},
-                {
-                    "$unwind": {
-                        "path": "$tag",
-                        "preserveNullAndEmptyArrays": True,
-                    }
-                },
-                {"$group": {"_id": "$tag", "count": {"$sum": 1}}},
-                {"$sort": {"_id": 1}},
-            ],
-        }
-    }
-]

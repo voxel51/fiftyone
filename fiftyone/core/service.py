@@ -44,7 +44,9 @@ class Service(object):
     def __init__(self):
         """Creates (starts) the Service."""
         self._system = os.system
-        self._is_server = os.environ.get("FIFTYONE_SERVER", False)
+        self._is_server = os.environ.get(
+            "FIFTYONE_SERVER", False
+        ) or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
         self.child = None
         if not self._is_server:
             self.start()
@@ -100,10 +102,10 @@ class DatabaseService(Service):
 
         super().start()
 
-        # Drop the entire database (lightweight!)
-        import fiftyone.core.odm as foo
+        # Drop non-persistent datasets
+        import fiftyone.core.dataset as fod
 
-        foo.drop_database()
+        fod.delete_non_persistent_datasets()
 
 
 class ServerService(Service):
