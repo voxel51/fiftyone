@@ -129,11 +129,6 @@ class ODMSample(SerializableDocument):
         return None
 
     @property
-    def field_names(self):
-        """An ordered list of the names of the fields of this sample."""
-        raise NotImplementedError("Subclass must implement `field_names`")
-
-    @property
     def in_db(self):
         """Whether the sample has been added to the database."""
         return False
@@ -546,6 +541,10 @@ class ODMNoDatasetSample(ODMSample):
                 self._data.pop(name, None)
             else:
                 self._data[name] = value
+
+    @property
+    def _to_str_fields(self):
+        return self.field_names
 
     @property
     def field_names(self):

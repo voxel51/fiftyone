@@ -8,6 +8,7 @@ Results are appended to `cifar10_benchmark.log`.
 |
 """
 from collections import OrderedDict
+import pathlib
 import random
 import os
 import subprocess
@@ -16,8 +17,10 @@ import time
 import numpy as np
 
 import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
 import fiftyone.zoo as foz
+
+
+DATASET_NAME = "cifar10"
 
 
 def get_git_revision_hash():
@@ -30,13 +33,11 @@ def get_git_revision_hash():
 
 foc.set_config_settings(default_ml_backend="tensorflow")
 
-foo.drop_database()
-
 RESULT = OrderedDict({"githash": get_git_revision_hash()})
 
 # CREATE: load the dataset
 start_time = time.time()
-dataset = foz.load_zoo_dataset("cifar10")
+dataset = foz.load_zoo_dataset(DATASET_NAME, drop_existing_dataset=True)
 RESULT["load_dataset"] = time.time() - start_time
 
 # READ: load from view
