@@ -30,6 +30,10 @@ jobs:
         run: |
           pip install -e . --index https://pypi.voxel51.com
           pip install -r requirements/docs.txt
+      - name: Set up fiftyone-db stub
+        run: |
+          mkdir -p "$HOME/.fiftyone/bin"
+          ln -s "$(which true)" ~/.fiftyone/bin/mongod
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
