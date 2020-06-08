@@ -25,6 +25,7 @@ from bson import json_util
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
+import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 
 
@@ -32,13 +33,20 @@ logger = logging.getLogger(__name__)
 
 
 class StateDescription(etas.Serializable):
-    """A ``StateDescription`` describes the shared state between the FiftyOne
-    GUI and the FiftyOne ``fiftyone.core.session.Session``.
+    """Class that describes the shared state between the FiftyOne Dashboard and
+    a corresponding :class:`fiftyone.core.session.Session`.
 
     Attributes:
-        dataset: (optional) the current ``fiftyone.core.dataset.Dataset``
-        selected: (optional) the currently selected samples
-        view: (optional) the current view
+        dataset: the current :class:`fiftyone.core.session.Session`
+        selected: the list of currently selected samples
+        view: the current :class:`fiftyone.core.view.DatasetView`
+
+    Args:
+        close (False): whether to close the app
+        connected (False): whether the session is connected to an app
+        dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
+        selected (None): the list of currently selected samples
+        view (None): the current :class:`fiftyone.core.view.DatasetView`
     """
 
     def __init__(
@@ -49,15 +57,6 @@ class StateDescription(etas.Serializable):
         selected=None,
         view=None,
     ):
-        """Creates a StateDescription instance.
-
-        Args:
-            close: (optional) whether to close the app
-            connected: (optional) whether the session is connected to an app
-            dataset: (optional) the current dataset
-            selected: (optional) the currently selected samples
-            view: (optional) the current view
-        """
         self.close = close
         self.connect = connected
         self.dataset = dataset
@@ -68,27 +67,30 @@ class StateDescription(etas.Serializable):
 
     @classmethod
     def from_dict(cls, d, **kwargs):
-        """Constructs a ``StateDescription`` from a JSON dictionary.
+        """Constructs a :class:`StateDescription` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
 
         Returns:
-            a ``StateDescription``
+            :class:`StateDescription`
         """
         close = d.get("close", False)
         connected = d.get("connected", False)
 
         dataset = d.get("dataset", None)
         if dataset is not None:
-            dataset = fod.Dataset(dataset.get("name"))
+            dataset = fod.load_dataset(dataset.get("name"))
 
         view_ = d.get("view", None)
         view = None
         if dataset is not None:
             view = fov.DatasetView(dataset)
             if view_ is not None:
-                view._pipeline = json_util.loads(view_["view"])
+                view._pipeline = [
+                    fos.ViewStage._from_dict(s)
+                    for s in json_util.loads(view_["view"])
+                ]
 
         selected = d.get("selected", [])
 

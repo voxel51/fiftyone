@@ -75,10 +75,10 @@ class DatabaseService(Service):
 
         etau.call(foc.START_DB, **self._SUPPRESS)
 
-        # Drop the entire database (lightweight!)
-        import fiftyone.core.odm as foo
+        # Drop non-persistent datasets
+        import fiftyone.core.dataset as fod
 
-        foo.drop_database()
+        fod.delete_non_persistent_datasets()
 
     def stop(self):
         """Stops the DatabaseService."""

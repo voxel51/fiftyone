@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -26,11 +25,11 @@ import os
 
 from mongoengine.errors import DoesNotExist
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
-import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
@@ -51,6 +50,23 @@ def list_dataset_names():
     return list(foo.ODMDataset.objects.distinct("name"))
 
 
+def dataset_exists(name):
+    """Checks if the dataset exists.
+
+    Args:
+        name: the name of the dataset
+
+    Returns:
+        True if the dataset exists
+    """
+    try:
+        # pylint: disable=no-member
+        foo.ODMDataset.objects.get(name=name)
+        return True
+    except DoesNotExist:
+        return False
+
+
 def load_dataset(name):
     """Loads the FiftyOne dataset with the given name.
 
@@ -69,7 +85,7 @@ def load_dataset(name):
     Raises:
         ValueError: if no dataset exists with the given name
     """
-    return Dataset(name, create=False)
+    return Dataset(name, _create=False)
 
 
 def get_default_dataset_name():
@@ -94,6 +110,34 @@ def get_default_dataset_dir(name):
     return os.path.join(fo.config.default_dataset_dir, name)
 
 
+def delete_dataset(name):
+    """Deletes the FiftyOne dataset with the given name.
+
+    If reference to the dataset exists in memory, only `Dataset.name` and
+    `Dataset.deleted` will be valid attributes. Accessing any other attributes
+    or methods will raise a :class:`DatasetError`
+
+    If reference to a sample exists in memory, the sample's dataset will be
+    "unset" such that `sample.in_dataset == False`
+
+    Args:
+        name: the name of the dataset
+
+    Raises:
+        ValueError: if the dataset is not found
+    """
+    dataset = fo.load_dataset(name)
+    dataset.delete()
+
+
+def delete_non_persistent_datasets():
+    """Deletes all non-persistent datasets."""
+    for dataset_name in list_dataset_names():
+        dataset = load_dataset(dataset_name)
+        if not dataset.persistent:
+            dataset.delete()
+
+
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """A FiftyOne dataset.
 
@@ -105,26 +149,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
-    Note that :class:`Dataset` instances are singletons keyed by ``name``, so
-    all calls to :func:`Dataset.__init__` for a given dataset ``name`` in a
-    program will return the same object.
-
     Args:
         name: the name of the dataset
-        create (True): whether to create a dataset with the given name if it
-            does not exist
+        persistent (False): whether the dataset will persist in the database
+            once the session terminates.
 
     Raises:
         ValueError: if ``create == False`` and the dataset does not exist
     """
 
-    def __init__(self, name, create=True):
+    def __init__(self, name, persistent=False, _create=True):
         self._name = name
-        self._meta = None
-        self._sample_doc_cls = None
+        self._deleted = False
 
-        if create:
-            self._meta, self._sample_doc_cls = _create_dataset(name)
+        if _create:
+            self._meta, self._sample_doc_cls = _create_dataset(
+                name, persistent=persistent
+            )
         else:
             self._meta, self._sample_doc_cls = _load_dataset(name)
 
@@ -153,10 +194,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
 
+    def __getattribute__(self, name):
+        if name in ["name", "deleted", "_name", "_deleted"]:
+            return super().__getattribute__(name)
+
+        if getattr(self, "_deleted", False):
+            raise DoesNotExistError("Dataset '%s' is deleted" % self.name)
+
+        return super().__getattribute__(name)
+
     @property
     def name(self):
         """The name of the dataset."""
         return self._name
+
+    @property
+    def persistent(self):
+        """Whether the dataset persists in the database after a session is
+        terminated.
+        """
+        return self._meta.persistent
+
+    @persistent.setter
+    def persistent(self, value):
+        self._meta.persistent = value
+        self._meta.save()
+
+    @property
+    def deleted(self):
+        """Whether the dataset is deleted."""
+        return self._deleted
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -167,6 +234,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
+                "Persistent:     %s" % self.persistent,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % list(self.get_tags()),
                 "Sample fields:",
@@ -272,8 +340,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
 
-        If the sample belongs to another dataset, a copy is created and added
-        to this dataset.
+        If the sample instance does not belong to a dataset, it is updated
+        in-place to reflect its membership in this dataset. If the sample
+        instance belongs to another dataset, it is not modified.
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
@@ -296,15 +365,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample = sample.copy()
 
         doc = sample.clone_doc(doc_cls=self._sample_doc_cls)
-        sample._set_backing_doc(doc)
 
-        return sample.id
+        if sample._in_db:
+            doc.save()
+        else:
+            sample._set_backing_doc(doc)
+
+        return str(doc.id)
 
     def add_samples(self, samples, expand_schema=True):
         """Adds the given samples to the dataset.
 
-        If a sample belongs to another dataset, a copy is created and added to
-        this dataset.
+        Any sample instances that do not belong to a dataset are updated
+        in-place to reflect membership in this dataset. Any sample instances
+        that belong to other datasets are not modified.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -322,9 +396,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
-        # Create copies of any samples already in datasets
-        samples = [s.copy() if s._in_db else s for s in samples]
-
         if expand_schema:
             self._expand_schema(samples)
 
@@ -333,15 +404,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         for sample, doc in zip(samples, docs):
-            sample._set_backing_doc(doc)
+            if not sample._in_db:
+                sample._set_backing_doc(doc)
 
         return [str(doc.id) for doc in docs]
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
 
-        If a reference to the sample exists in memory, the sample's dataset
-        will be "unset" such that `sample.in_dataset == False`
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
 
         Args:
             sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
@@ -355,8 +427,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_id = sample.id
 
         sample._delete()
-
-        # unset the dataset for the sample
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=[sample_id]
         )
@@ -364,8 +434,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def remove_samples(self, samples_or_ids):
         """Removes the given samples from the dataset.
 
-        If reference to a sample exists in memory, the sample's dataset
-        will be "unset" such that `sample.in_dataset == False`
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -379,8 +449,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample_or_id in samples_or_ids
         ]
         self._get_query_set(id__in=sample_ids).delete()
-
-        # unset the dataset for the samples
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=sample_ids
         )
@@ -388,28 +456,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def clear(self):
         """Removes all samples from the dataset.
 
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
+        """
+        self._sample_doc_cls.drop_collection()
+        fos.Sample._reset_all_backing_docs(dataset_name=self.name)
+
+    def delete(self):
+        """Deletes the dataset.
+
+        Once deleted, only `Dataset.name` and `Dataset.deleted` will be valid
+        attributes. Accessing any other attributes or methods will raise a
+        :class:`DatasetError`
+
         If reference to a sample exists in memory, the sample's dataset
         will be "unset" such that `sample.in_dataset == False`
         """
-        self._sample_doc_cls.drop_collection()
-
-        # unset the dataset for all samples
-        fos.Sample._reset_all_backing_docs(dataset_name=self.name)
+        self.clear()
+        self._meta.delete()
+        self._deleted = True
 
     def save(self):
-        """Saves all changes to samples instances in memory belonging to the
-        dataset to the database.
-        A samples only needs to be saved if it has non-persisted changes and
-        still exists in memory.
+        """Saves all modified in-memory samples in the dataset to the database.
+
+        Only samples with non-persisted changes will be processed.
         """
         fos.Sample._save_dataset_samples(self.name)
 
     def reload(self):
-        """Reloads the fields for sample instances in memory belonging to the
-        dataset from the database.
-        If multiple processes or users are accessing the same database this
-        will keep the dataset in sync.
-        """
+        """Reloads all in-memory samples in the dataset from the database."""
         fos.Sample._reload_dataset_samples(self.name)
 
     def add_image_classification_samples(
@@ -1290,10 +1365,56 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return {"name": self.name}
 
+    def to_dict(self):
+        """Returns a JSON dictionary representation of the dataset.
+
+        Returns:
+            a JSON dict
+        """
+        d = {
+            "name": self.name,
+            "num_samples": len(self),
+            "tags": list(self.get_tags()),
+            "sample_fields": self._get_fields_dict(),
+        }
+        d.update(super(Dataset, self).to_dict())
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        """Loads a :class:`Dataset` from a JSON dictionary generated by
+        :func:`Dataset.to_dict`.
+
+        Args:
+            d: a JSON dictionary generated by :func:`Dataset.to_dict`
+
+        Returns:
+            a :class:`Dataset
+        """
+        dataset = cls(d["name"])
+        dataset.add_samples(
+            [fos.Sample.from_dict(s, extended=True) for s in d["samples"]]
+        )
+        return dataset
+
+    @classmethod
+    def from_json(cls, path_or_str):
+        """Loads a :class:`Dataset` from JSON generated by
+        :func:`Dataset.write_json` or :func:`Dataset.to_json`.
+
+        Args:
+            path_or_str: the path to a JSON file on disk or a JSON string
+
+        Returns:
+            a :class:`Dataset
+        """
+        d = etas.load_json(path_or_str)
+        return cls.from_dict(d)
+
     def _expand_schema(self, samples):
         fields = self.get_field_schema()
         for sample in samples:
-            for field_name, field in iteritems(sample.get_field_schema()):
+            for field_name in sample.field_names:
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
@@ -1301,7 +1422,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     fields = self.get_field_schema()
 
     def _load_sample_from_dict(self, d):
-        doc = self._sample_doc_cls.from_dict(d, created=False, extended=False)
+        doc = self._sample_doc_cls.from_dict(d, extended=False)
         return self._load_sample_from_doc(doc)
 
     def _load_sample_from_doc(self, doc):
@@ -1311,46 +1432,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # pylint: disable=no-member
         return self._sample_doc_cls.objects(**kwargs)
 
-    def _get_fields_str(self):
+    def _get_fields_dict(self):
         fields = self.get_field_schema()
-        max_len = max([len(field_name) for field_name in fields]) + 1
+        return {field_name: str(field) for field_name, field in fields.items()}
+
+    def _get_fields_str(self):
+        fields_dict = self._get_fields_dict()
+        max_len = max([len(field_name) for field_name in fields_dict]) + 1
         return "\n".join(
-            "    %s %s"
-            % ((field_name + ":").ljust(max_len), self._field_to_str(field))
-            for field_name, field in iteritems(fields)
+            "    %s %s" % ((field_name + ":").ljust(max_len), field)
+            for field_name, field in fields_dict.items()
         )
 
-    @staticmethod
-    def _field_to_str(field):
-        field_str = etau.get_class_name(field)
 
-        if any(
-            isinstance(field, cls) for cls in [fof.ListField, fof.DictField]
-        ):
-            field_str += "(field=%s)" % etau.get_class_name(field.field)
-        elif isinstance(field, fof.EmbeddedDocumentField):
-            field_str += "(document_type=%s)" % etau.get_class_name(
-                field.document_type
+class DoesNotExistError(Exception):
+    pass
+
+
+def _create_dataset(name, persistent=False):
+    if dataset_exists(name):
+        raise ValueError(
+            (
+                "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
+                "to load an existing dataset"
             )
-
-        return field_str
-
-
-def _dataset_exists(name):
-    try:
-        # pylint: disable=no-member
-        foo.ODMDataset.objects.get(name=name)
-        return True
-    except DoesNotExist:
-        return False
-
-
-def _create_dataset(name):
-    if _dataset_exists(name):
-        raise ValueError("Dataset '%s' already exists" % name)
+            % name
+        )
 
     # Create sample class
-    _sample_doc_cls = type(name, (foo.ODMSample,), {})
+    _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
 
     # Create dataset meta document
     _meta = foo.ODMDataset(
@@ -1358,6 +1468,7 @@ def _create_dataset(name):
         sample_fields=foo.SampleField.list_from_field_schema(
             _sample_doc_cls.get_field_schema()
         ),
+        persistent=persistent,
     )
     _meta.save()
 
@@ -1369,9 +1480,9 @@ def _load_dataset(name):
         # pylint: disable=no-member
         _meta = foo.ODMDataset.objects.get(name=name)
     except DoesNotExist:
-        raise ValueError("Dataset '%s' not found" % name)
+        raise DoesNotExistError("Dataset '%s' not found" % name)
 
-    _sample_doc_cls = type(name, (foo.ODMSample,), {})
+    _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
 
     num_default_fields = len(_sample_doc_cls.get_field_schema())
 

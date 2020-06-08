@@ -23,6 +23,7 @@ from future.utils import itervalues
 # pragma pylint: enable=wildcard-import
 
 from mongoengine import (
+    BooleanField,
     StringField,
     EmbeddedDocumentListField,
 )
@@ -112,4 +113,5 @@ class ODMDataset(ODMDocument):
     """Meta-collection that tracks and persists datasets."""
 
     name = StringField(unique=True)
+    persistent = BooleanField(default=False)
     sample_fields = EmbeddedDocumentListField(document_type=SampleField)
