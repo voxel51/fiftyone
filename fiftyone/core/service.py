@@ -44,7 +44,9 @@ class Service(object):
     def __init__(self):
         """Creates (starts) the Service."""
         self._system = os.system
-        self._is_server = os.environ.get("FIFTYONE_SERVER", False)
+        self._is_server = os.environ.get(
+            "FIFTYONE_SERVER", False
+        ) or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
         if not self._is_server:
             self.start()
 
