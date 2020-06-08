@@ -24,7 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - 3.6
+          - 3.5
+          - 3.8
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
