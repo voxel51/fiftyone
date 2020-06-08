@@ -254,7 +254,7 @@ def export_coco_detection_dataset(
     }
 
     categories = [
-        {"id": i, "name": l, "supercategory": "none",}
+        {"id": i, "name": l, "supercategory": "none"}
         for i, l in enumerate(classes)
     ]
 
