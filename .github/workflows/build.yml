@@ -1,0 +1,82 @@
+name: Build
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+      - name: Build wheel
+        run: |
+          python3 setup.py bdist_wheel
+      - name: Upload wheel
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel
+          path: dist/*.whl
+
+  test:
+    runs-on: ubuntu-18.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - 3.5
+          - 3.8
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+      - name: Download fiftyone wheel
+        uses: actions/download-artifact@v2
+        with:
+          name: wheel
+          path: downloads
+      - name: Install fiftyone-db
+        working-directory: package/db
+        run: |
+          python setup.py bdist_wheel
+          pip install dist/*.whl
+      - name: Install fiftyone dependencies
+        run: |
+          pip install -e package/gui/
+          pip install --index https://pypi.voxel51.com fiftyone-brain voxel51-eta
+      - name: Install fiftyone
+        run: |
+          pip install -e .
+      - name: Install test dependencies
+        run: |
+          pip install pytest torch torchvision
+      - name: Run tests
+        run: |
+          pytest tests/ --verbose --ignore tests/benchmarking/
+
+  publish:
+    needs: [build, test]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Download wheel
+        uses: actions/download-artifact@v2
+        with:
+          name: wheel
+          path: downloads
+      - name: Install dependencies
+        run: |
+          pip3 install twine
+      - name: Upload to pypi.voxel51.com
+        env:
+          TWINE_USERNAME: voxel51-ci
+          TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          TWINE_NON_INTERACTIVE: 1
+        run: |
+          python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/*.whl
