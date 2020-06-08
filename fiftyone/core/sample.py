@@ -57,6 +57,9 @@ class Sample(object):
     def __str__(self):
         return str(self._doc)
 
+    def __repr__(self):
+        return str(self._doc)
+
     def __getattr__(self, name):
         try:
             return super(Sample, self).__getattribute__(name)
