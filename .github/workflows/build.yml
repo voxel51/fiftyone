@@ -109,7 +109,7 @@ jobs:
       - name: Clone website
         uses: actions/checkout@v2
         with:
-          repo: voxel51/website
+          repository: voxel51/website
       - name: Download docs
         uses: actions/download-artifact@v2
         with:
