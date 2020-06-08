@@ -1,7 +1,6 @@
 import { wrap, releaseProxy } from "comlink";
 import { useEffect, useState, useMemo } from "react";
 import { getSocket, useSubscribe } from "../utils/socket";
-import tile from "../utils/tile";
 
 export default (port) => {
   const [state, setState] = useState({
@@ -10,7 +9,6 @@ export default (port) => {
     hasMore: true,
     pageToLoad: 1,
     rows: [],
-    remainder: [],
   });
 
   const host = `http://127.0.0.1:${port}`;
@@ -22,7 +20,6 @@ export default (port) => {
       hasMore: true,
       rows: [],
       pageToLoad: 1,
-      remainder: [],
     });
   });
 
@@ -30,7 +27,12 @@ export default (port) => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
     setState({ ...state, isLoading: true, loadMore: false });
     socket.emit("page", state.pageToLoad, (data) => {
-      setState(tile(data.results, data.more, state, host));
+      setState({
+        rows: [...state.rows, ...data.rows],
+        hasMore: Boolean(data.more),
+        isLoading: false,
+        pageToLoad: data.more,
+      });
     });
   }, [state.loadMore, state.pageToLoad, state.hasMore]);
 

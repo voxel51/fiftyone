@@ -93,6 +93,7 @@ class StateController(Namespace):
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
         self.state = state
+        self._remainder = []
         emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
@@ -188,9 +189,10 @@ class StateController(Namespace):
             current_w += (current_h / s["height"]) * s["width"]
 
         self._remainder = current_row if bool(more) else []
-        if bool(more) and len(current_row):
+        if bool(more) and len(current_row) > 0:
             rows.append(current_row)
 
+        fit_rows = []
         for row in rows:
             columns = []
             base_height = row[0]["height"]
@@ -214,9 +216,11 @@ class StateController(Namespace):
                 "margin": 0,
             }
 
-            rows.append({"style": row_style, "samples": samples})
+            fit_rows.append(
+                {"style": row_style, "samples": [s["sample"] for s in row]}
+            )
 
-        return {"rows": rows, "more": more}
+        return {"rows": fit_rows, "more": more}
 
     def on_lengths(self, _):
         state = fos.StateDescription.from_dict(self.state)
