@@ -64,6 +64,7 @@ import six
 from collections import OrderedDict
 import json
 import numbers
+import warnings
 
 from bson import json_util
 from bson.binary import Binary
@@ -259,27 +260,6 @@ class ODMSample(SerializableDocument):
             AttributeError: if the field does not exist
         """
         raise NotImplementedError("Subclass must implement `delete_field()`")
-
-    def save(self):
-        """Saves the sample to the database.
-
-        If the sample does not belong to a dataset, this method does nothing.
-        """
-        pass
-
-    def reload(self):
-        """Reloads the sample from the database.
-
-        If the sample does not belong to a dataset, this method does nothing.
-        """
-        pass
-
-    def delete(self):
-        """Deletes the sample from the database.
-
-        If the sample does not belong to a dataset, this method does nothing.
-        """
-        pass
 
 
 class ODMDatasetSample(ODMDocument, ODMSample):
@@ -723,6 +703,30 @@ class ODMNoDatasetSample(ODMSample):
                 kwargs[k] = v
 
         return cls(**kwargs)
+
+    def save(self):
+        """Saves the sample to the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        warnings.warn("Calling ODMNoDatasetSample.save() which does nothing")
+
+    def reload(self):
+        """Reloads the sample from the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        warnings.warn("Calling ODMNoDatasetSample.reload() which does nothing")
+
+    def delete(self):
+        """Deletes the sample from the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        warnings.warn("Calling ODMNoDatasetSample.delete() which does nothing")
 
 
 class NoDatasetError(Exception):

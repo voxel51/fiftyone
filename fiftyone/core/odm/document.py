@@ -24,7 +24,6 @@ import json
 from bson import json_util
 from bson.objectid import ObjectId
 from mongoengine import Document, EmbeddedDocument
-import numpy as np
 
 try:
     import pprintpp as pprint
@@ -125,7 +124,7 @@ class SerializableDocument(object):
         return cls.from_dict(d, extended=True)
 
 
-class ODMDocument(Document, SerializableDocument):
+class ODMDocument(SerializableDocument, Document):
     """Base class for documents that are stored in a MongoDB collection.
 
     The ID of a document is automatically populated when it is added to the
@@ -138,9 +137,6 @@ class ODMDocument(Document, SerializableDocument):
     """
 
     meta = {"abstract": True}
-
-    def __str__(self):
-        return _pformat(self._to_str_dict())
 
     @property
     def _to_str_fields(self):
@@ -182,6 +178,7 @@ class ODMDocument(Document, SerializableDocument):
 
     @classmethod
     def from_dict(cls, d, extended=False):
+        # pylint: disable=unexpected-keyword-arg
         if not extended:
             try:
                 # Attempt to load the document directly, assuming it is in
@@ -195,7 +192,7 @@ class ODMDocument(Document, SerializableDocument):
         return cls.from_json(json_util.dumps(d), created=False)
 
 
-class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
+class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
     """Base class for documents that are embedded within other documents and
     therefore aren't stored in their own collection in the database.
     """
@@ -205,9 +202,6 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
     def __init__(self, *args, **kwargs):
         super(ODMEmbeddedDocument, self).__init__(*args, **kwargs)
         self.validate()
-
-    def __str__(self):
-        return _pformat(self._to_str_dict())
 
     @property
     def _to_str_fields(self):
@@ -222,6 +216,7 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
 
     @classmethod
     def from_dict(cls, d, extended=False):
+        # pylint: disable=unexpected-keyword-arg
         if not extended:
             try:
                 # Attempt to load the document directly, assuming it is in
