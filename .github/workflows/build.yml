@@ -123,13 +123,17 @@ jobs:
           test -f docs-download/genindex.html
           rm -r source/docs/fiftyone/
           cp -r docs-download/ source/docs/fiftyone/
+          rm -r docs-download/
       - name: Create website PR
         uses: peter-evans/create-pull-request@v2
         with:
           branch: fiftyone-docs
-          commit-message: Update fiftyone docs (${{ github.ref }})
+          commit-message: |
+            Update fiftyone docs (${{ github.ref }})
+
+            voxel51/fiftyone@${{ github.sha }}
           title: Automated fiftyone documentation update
-          body:
+          body: " "
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           author: voxel51-bot <bot@voxel51.com>
           labels: documentation
