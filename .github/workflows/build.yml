@@ -111,6 +111,7 @@ jobs:
         with:
           repository: voxel51/website
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          ref: develop
       - name: Download docs
         uses: actions/download-artifact@v2
         with:
