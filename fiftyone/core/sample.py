@@ -239,13 +239,17 @@ class Sample(object):
         doc = foo.ODMNoDatasetSample.from_dict(d, extended=True)
         return cls.from_doc(doc)
 
-    def to_json(self):
-        """Returns a JSON string representation of the sample.
+    def to_json(self, pretty_print=False):
+        """Serializes the sample to a JSON string.
+
+        Args:
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
 
         Returns:
             a JSON string
         """
-        return self._doc.to_json()
+        return self._doc.to_json(pretty_print=pretty_print)
 
     @classmethod
     def from_json(cls, s):
