@@ -13,17 +13,14 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from copy import copy
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
-from eta.core.config import Config, ConfigBuilder
 import eta.core.utils as etau
 
 
@@ -35,15 +32,6 @@ class ViewStage(object):
         **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
             arguments
     """
-
-    def __init__(self, **kwargs):
-        builder = ConfigBuilder(
-            etau.get_class(etau.get_class_name(self) + "Config")
-        )
-        self._kwargs = copy(kwargs)
-        builder = builder.set(**self._kwargs)
-        builder.validate()
-        self.config = builder.build()
 
     def __call__(self, view):
         return view._copy_with_new_stage(self)
@@ -59,10 +47,12 @@ class ViewStage(object):
 
     def _serialize(self):
         return {
-            "name": self.__class__.__name__,
-            "kwargs": self._kwargs,
+            "kwargs": self._kwargs(),
             "_cls": etau.get_class_name(self),
         }
+
+    def _kwargs(self):
+        raise NotImplementedError("subclasses must implement `_kwargs()`")
 
     @classmethod
     def _from_dict(cls, d):
@@ -83,7 +73,7 @@ class Exclude(ViewStage):
     """
 
     def __init__(self, sample_ids):
-        super(Exclude, self).__init__(sample_ids=sample_ids)
+        self._sample_ids = sample_ids
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -92,19 +82,11 @@ class Exclude(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        sample_ids = [ObjectId(id) for id in self.config.sample_ids]
+        sample_ids = [ObjectId(id) for id in self._sample_ids]
         return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
 
-
-class ExcludeConfig(Config):
-    """Config for :class:`Exclude`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.sample_ids = self.parse_object_array(d, "sample_ids", str)
+    def _kwargs(self):
+        return {"sample_ids": self._sample_ids}
 
 
 class Exists(ViewStage):
@@ -116,7 +98,7 @@ class Exists(ViewStage):
     """
 
     def __init__(self, field):
-        super(Exists, self).__init__(field=field)
+        self._field = field
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -125,20 +107,10 @@ class Exists(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        return Match(
-            {self.config.field: {"$exists": True, "$ne": None}}
-        ).to_mongo()
+        return Match({self._field: {"$exists": True, "$ne": None}}).to_mongo()
 
-
-class ExistsConfig(Config):
-    """Config for :class:`Exists`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.field = self.parse_string(d, "field")
+    def _kwargs(self):
+        return {"field": self._field}
 
 
 class Limit(ViewStage):
@@ -150,7 +122,7 @@ class Limit(ViewStage):
     """
 
     def __init__(self, limit):
-        super(Limit, self).__init__(limit=limit)
+        self._limit = limit
 
     def to_mongo(self):
         """Returns the MongoDB version of the :class:`fiftyone.core.stages.Limit`
@@ -159,21 +131,10 @@ class Limit(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        return {"$limit": self.config.limit}
+        return {"$limit": self._limit}
 
-
-class LimitConfig(Config):
-    """Config for :class:`Limit`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.limit = self.parse_number(d, "limit")
-
-        if self.limit < 0 or not isinstance(self.limit, int):
-            raise ViewStageError("Invalid limit value %s" % str(self.limit))
+    def _kwargs(self):
+        return {"limit": self._limit}
 
 
 class Match(ViewStage):
@@ -186,7 +147,7 @@ class Match(ViewStage):
     """
 
     def __init__(self, filter):
-        super(Match, self).__init__(filter=filter)
+        self._filter = filter
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -195,18 +156,10 @@ class Match(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        return {"$match": self.config.filter}
+        return {"$match": self._filter}
 
-
-class MatchConfig(Config):
-    """Config for :class:`Match`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.filter = self.parse_dict(d, "filter")
+    def _kwargs(self):
+        return {"filter": self._filter}
 
 
 class MatchTag(ViewStage):
@@ -217,7 +170,7 @@ class MatchTag(ViewStage):
     """
 
     def __init__(self, tag):
-        super(MatchTag, self).__init__(tag=tag)
+        self._tag = tag
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -226,18 +179,10 @@ class MatchTag(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        return Match({"tags": self.config.tag}).to_mongo()
+        return Match({"tags": self._tag}).to_mongo()
 
-
-class MatchTagConfig(Config):
-    """Config for :class:`MatchTag`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.tag = self.parse_string(d, "tag")
+    def _kwargs(self):
+        return {"tag": self._tag}
 
 
 class MatchTags(ViewStage):
@@ -251,7 +196,7 @@ class MatchTags(ViewStage):
     """
 
     def __init__(self, tags):
-        super(MatchTags, self).__init__(tags=tags)
+        self._tags = tags
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -260,21 +205,10 @@ class MatchTags(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        return Match({"tags": {"$in": self.config.tags}}).to_mongo()
+        return Match({"tags": {"$in": self._tags}}).to_mongo()
 
-
-class MatchTagsConfig(Config):
-    """Config for :class:`MatchTags`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        if "tags" in d:
-            d = {"tags": list(d["tags"])}
-
-        self.tags = self.parse_object_array(d, "tags", str)
+    def _kwargs(self):
+        return {"tags": self._tags}
 
 
 class Select(ViewStage):
@@ -285,7 +219,7 @@ class Select(ViewStage):
     """
 
     def __init__(self, sample_ids):
-        super(Select, self).__init__(sample_ids=sample_ids)
+        self._sample_ids = sample_ids
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -294,19 +228,11 @@ class Select(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        sample_ids = [ObjectId(id) for id in self.config.sample_ids]
+        sample_ids = [ObjectId(id) for id in self._sample_ids]
         return Match({"_id": {"$in": sample_ids}}).to_mongo()
 
-
-class SelectConfig(Config):
-    """Config for :class:`Select`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.sample_ids = self.parse_object_array(d, "sample_ids", str)
+    def _kwargs(self):
+        return {"sample_ids": self._sample_ids}
 
 
 class SortBy(ViewStage):
@@ -323,7 +249,8 @@ class SortBy(ViewStage):
     """
 
     def __init__(self, field, reverse=False):
-        super(SortBy, self).__init__(field=field, reverse=reverse)
+        self._field = field
+        self._reverse = reverse
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -332,20 +259,11 @@ class SortBy(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        order = DESCENDING if self.config.reverse else ASCENDING
-        return {"$sort": {self.config.field: order}}
+        order = DESCENDING if self._reverse else ASCENDING
+        return {"$sort": {self._field: order}}
 
-
-class SortByConfig(Config):
-    """Config for :class:`SortBy`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.field = self.parse_string(d, "field")
-        self.reverse = self.parse_bool(d, "reverse")
+    def _kwargs(self):
+        return {"field": self._field, "reverse": self._reverse}
 
 
 class Skip(ViewStage):
@@ -357,7 +275,7 @@ class Skip(ViewStage):
     """
 
     def __init__(self, skip):
-        super(Skip, self).__init__(skip=skip)
+        self._skip = skip
 
     def to_mongo(self):
         """Returns the MongoDB version of the :class:`fiftyone.core.stages.Skip`
@@ -366,21 +284,10 @@ class Skip(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        return {"$skip": self.config.skip}
+        return {"$skip": self._skip}
 
-
-class SkipConfig(Config):
-    """Config for :class:`Skip`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.skip = self.parse_number(d, "skip")
-
-        if self.skip < 0 or not isinstance(self.skip, int):
-            raise ViewStageError("Invalid skip value %s" % str(self.skip))
+    def _kwargs(self):
+        return {"skip": self._skip}
 
 
 class Take(ViewStage):
@@ -392,7 +299,7 @@ class Take(ViewStage):
     """
 
     def __init__(self, size):
-        super(Take, self).__init__(size=size)
+        self._size = size
 
     def to_mongo(self):
         """Returns the MongoDB version of the :class:`fiftyone.core.stages.Take`
@@ -401,20 +308,12 @@ class Take(ViewStage):
         Returns:
             a MongoDB aggregation pipeline stage dict
         """
-        size = self.config.size
+        size = self._size
 
         if size <= 0:
             return Match({"_id": None}).to_mongo()
 
         return {"$sample": {"size": size}}
 
-
-class TakeConfig(Config):
-    """Config for :class:`Take`.
-
-    Args:
-        d: the config dict
-    """
-
-    def __init__(self, d):
-        self.size = self.parse_number(d, "size")
+    def _kwargs(self):
+        return {"size": self._size}
