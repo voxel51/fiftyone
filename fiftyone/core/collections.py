@@ -111,6 +111,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement aggregate()")
 
+    # @todo give user more control over export format/schema here...
     def export(self, label_field, export_dir):
         """Exports the samples in the collection to disk as a labeled dataset,
         using the given label field as labels.
@@ -123,28 +124,23 @@ class SampleCollection(object):
             label_field: the name of the label field to export
             export_dir: the directory to which to export
         """
-        data_paths = []
-        labels = []
-        for sample in self:
-            data_paths.append(sample.filepath)
-            labels.append(sample[label_field])
-
-        if not labels:
+        if not self:
             logger.warning("No samples to export; returning now")
             return
 
-        if isinstance(labels[0], fol.Classification):
+        label = next(self.iter_samples())
+        if isinstance(label, fol.Classification):
             foud.export_image_classification_dataset(
-                data_paths, labels, export_dir
+                self, label_field, export_dir
             )
-        elif isinstance(labels[0], fol.Detections):
-            foud.export_image_detection_dataset(data_paths, labels, export_dir)
-        elif isinstance(labels[0], fol.ImageLabels):
-            foud.export_image_labels_dataset(data_paths, labels, export_dir)
+        elif isinstance(label, fol.Detections):
+            foud.export_image_detection_dataset(self, label_field, export_dir)
+        elif isinstance(label, fol.ImageLabels):
+            foud.export_image_labels_dataset(self, label_field, export_dir)
         else:
             raise ValueError(
                 "Cannot export labels of type '%s'"
-                % etau.get_class_name(labels[0])
+                % etau.get_class_name(label)
             )
 
     def to_dict(self):
