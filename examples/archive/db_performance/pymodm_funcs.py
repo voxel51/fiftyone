@@ -5,10 +5,15 @@ Benchmarking packages
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import fiftyone.core.odm as foo
+import fiftyone as fo  # start DB service
 import time
 import numpy as np
 import pymodm
+import pymongo
+
+
+CLIENT = pymongo.MongoClient()
+_DEFAULT_DATABASE = "pymodm"
 
 
 # Connect to MongoDB and call the connection "my-app".
@@ -28,7 +33,7 @@ class PyMODMSample(pymodm.MongoModel):
 
 def pymodm_one(n):
     # pylint: disable=no-member
-    foo.drop_database()
+    CLIENT.drop_database(_DEFAULT_DATABASE)
     count = PyMODMSample.objects.count()
     assert count == 0, "pymodm_one count: %d" % count
     times = []
@@ -83,7 +88,7 @@ def pymodm_one(n):
 
 def pymodm_many(n):
     # pylint: disable=no-member
-    foo.drop_database()
+    CLIENT.drop_database(_DEFAULT_DATABASE)
     count = PyMODMSample.objects.count()
     assert count == 0, "pymodm_many count: %d" % count
 

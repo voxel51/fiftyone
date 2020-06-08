@@ -42,7 +42,11 @@ class DatasetSingleton(type):
         return cls
 
     def __call__(cls, name, _create=True, *args, **kwargs):
-        if _create or name not in cls._instances:
+        if (
+            _create
+            or name not in cls._instances
+            or cls._instances[name].deleted
+        ):
             instance = cls.__new__(cls, name)
             instance.__init__(name, _create=_create, *args, **kwargs)
             cls._instances[name] = instance

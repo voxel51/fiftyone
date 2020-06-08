@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -50,6 +49,23 @@ def list_dataset_names():
     """
     # pylint: disable=no-member
     return list(foo.ODMDataset.objects.distinct("name"))
+
+
+def dataset_exists(name):
+    """Checks if the dataset exists.
+
+    Args:
+        name: the name of the dataset
+
+    Returns:
+        True if the dataset exists
+    """
+    try:
+        # pylint: disable=no-member
+        foo.ODMDataset.objects.get(name=name)
+        return True
+    except DoesNotExist:
+        return False
 
 
 def load_dataset(name):
@@ -95,6 +111,34 @@ def get_default_dataset_dir(name):
     return os.path.join(fo.config.default_dataset_dir, name)
 
 
+def delete_dataset(name):
+    """Deletes the FiftyOne dataset with the given name.
+
+    If reference to the dataset exists in memory, only `Dataset.name` and
+    `Dataset.deleted` will be valid attributes. Accessing any other attributes
+    or methods will raise a :class:`DatasetError`
+
+    If reference to a sample exists in memory, the sample's dataset will be
+    "unset" such that `sample.in_dataset == False`
+
+    Args:
+        name: the name of the dataset
+
+    Raises:
+        ValueError: if the dataset is not found
+    """
+    dataset = fo.load_dataset(name)
+    dataset.delete()
+
+
+def delete_non_persistent_datasets():
+    """Deletes all non-persistent datasets."""
+    for dataset_name in list_dataset_names():
+        dataset = load_dataset(dataset_name)
+        if not dataset.persistent:
+            dataset.delete()
+
+
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """A FiftyOne dataset.
 
@@ -108,15 +152,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     Args:
         name: the name of the dataset
+        persistent (False): whether the dataset will persist in the database
+            once the session terminates.
+
+    Raises:
+        ValueError: if ``create == False`` and the dataset does not exist
     """
 
-    def __init__(self, name, _create=True):
+    def __init__(self, name, persistent=False, _create=True):
         self._name = name
-        self._meta = None
-        self._sample_doc_cls = None
+        self._deleted = False
 
         if _create:
-            self._meta, self._sample_doc_cls = _create_dataset(name)
+            self._meta, self._sample_doc_cls = _create_dataset(
+                name, persistent=persistent
+            )
         else:
             self._meta, self._sample_doc_cls = _load_dataset(name)
 
@@ -145,10 +195,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
 
+    def __getattribute__(self, name):
+        if name in ["name", "deleted", "_name", "_deleted"]:
+            return super().__getattribute__(name)
+
+        if getattr(self, "_deleted", False):
+            raise DatasetError("Dataset '%s' has been deleted." % self.name)
+
+        return super().__getattribute__(name)
+
     @property
     def name(self):
         """The name of the dataset."""
         return self._name
+
+    @property
+    def persistent(self):
+        """Whether the dataset persists in the database after a session is
+        terminated.
+        """
+        return self._meta.persistent
+
+    @persistent.setter
+    def persistent(self, value):
+        self._meta.persistent = value
+        self._meta.save()
+
+    @property
+    def deleted(self):
+        """Whether the dataset is deleted."""
+        return self._deleted
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -159,6 +235,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
+                "Persistent:     %s" % self.persistent,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % list(self.get_tags()),
                 "Sample fields:",
@@ -385,6 +462,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_all_backing_docs(dataset_name=self.name)
+
+    def delete(self):
+        """Deletes the dataset.
+
+        Once deleted, only `Dataset.name` and `Dataset.deleted` will be valid
+        attributes. Accessing any other attributes or methods will raise a
+        :class:`DatasetError`
+
+        If reference to a sample exists in memory, the sample's dataset
+        will be "unset" such that `sample.in_dataset == False`
+        """
+        self.clear()
+        self._meta.delete()
+        self._deleted = True
 
     def save(self):
         """Saves all modified in-memory samples in the dataset to the database.
@@ -1324,7 +1415,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _expand_schema(self, samples):
         fields = self.get_field_schema()
         for sample in samples:
-            for field_name, field in iteritems(sample.get_field_schema()):
+            for field_name, field in sample.get_field_schema().items():
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
@@ -1344,30 +1435,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _get_fields_dict(self):
         fields = self.get_field_schema()
-        return {
-            field_name: str(field) for field_name, field in iteritems(fields)
-        }
+        return {field_name: str(field) for field_name, field in fields.items()}
 
     def _get_fields_str(self):
         fields_dict = self._get_fields_dict()
         max_len = max([len(field_name) for field_name in fields_dict]) + 1
         return "\n".join(
             "    %s %s" % ((field_name + ":").ljust(max_len), field)
-            for field_name, field in iteritems(fields_dict)
+            for field_name, field in fields_dict.items()
         )
 
 
-def _dataset_exists(name):
-    try:
-        # pylint: disable=no-member
-        foo.ODMDataset.objects.get(name=name)
-        return True
-    except DoesNotExist:
-        return False
+class DatasetError(Exception):
+    pass
 
 
-def _create_dataset(name):
-    if _dataset_exists(name):
+def _create_dataset(name, persistent=False):
+    if dataset_exists(name):
         raise ValueError(
             (
                 "Dataset '%s' already exists; use `fiftyone.load_dataset()` "
@@ -1385,6 +1469,7 @@ def _create_dataset(name):
         sample_fields=foo.SampleField.list_from_field_schema(
             _sample_doc_cls.get_field_schema()
         ),
+        persistent=persistent,
     )
     _meta.save()
 

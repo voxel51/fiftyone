@@ -24,14 +24,15 @@ from mongoengine.errors import (
 import numpy as np
 
 import fiftyone as fo
+import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 
 
-def drop_database(func):
+def drop_datasets(func):
     """Decorator to drop the database before running a test"""
 
     def wrapper(*args, **kwargs):
-        foo.drop_database()
+        fo.delete_non_persistent_datasets()
         return func(*args, **kwargs)
 
     return wrapper
@@ -42,7 +43,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
     all relevant objects are instantly in sync within the same process.
     """
 
-    @drop_database
+    @drop_datasets
     def test_pername_singleton(self):
         """Test datasets are always in sync with themselves"""
         dataset1 = fo.Dataset("test_dataset")
@@ -51,7 +52,10 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         self.assertIs(dataset1, dataset2)
         self.assertIsNot(dataset1, dataset3)
 
-    @drop_database
+        with self.assertRaises(ValueError):
+            fo.Dataset("test_dataset")
+
+    @drop_datasets
     def test_sample_singletons(self):
         """Test samples are always in sync with themselves"""
         dataset_name = self.test_sample_singletons.__name__
@@ -70,7 +74,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         sample4 = dataset.view().match({"filepath": filepath}).first()
         self.assertIs(sample4, sample)
 
-    @drop_database
+    @drop_datasets
     def test_dataset_add_delete_field(self):
         """Test when fields are added or removed from a dataset field schema,
         those changes are reflected on the samples in the dataset.
@@ -124,7 +128,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         with self.assertRaises(AttributeError):
             getattr(sample, field_name)
 
-    @drop_database
+    @drop_datasets
     def test_dataset_remove_samples(self):
         """Test when a sample is deleted from a dataset, the sample is
         disconnected from the dataset.
@@ -178,7 +182,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
             self.assertIsNone(sample.id)
             self.assertIsNone(sample.dataset_name)
 
-    @drop_database
+    @drop_datasets
     def test_sample_set_field(self):
         """Test when a field is added to the dataset schema via implicit adding
         on a sample, that change is reflected in the dataset.
@@ -209,7 +213,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
     scopes (or processes!).
     """
 
-    @drop_database
+    @drop_datasets
     def test_dataset(self):
         dataset_name = self.test_dataset.__name__
 
@@ -285,7 +289,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
 
         # @todo(Tyler) test delete dataset
 
-    @drop_database
+    @drop_datasets
     def test_add_remove_sample(self):
         dataset_name = self.test_add_remove_sample.__name__
 
@@ -397,7 +401,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         clear_dataset()
         check_clear_dataset(sample_ids)
 
-    @drop_database
+    @drop_datasets
     def test_add_sample_expand_schema(self):
         dataset_name = self.test_add_sample_expand_schema.__name__
 
@@ -452,7 +456,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         sample_ids = add_samples_expand_schema()
         check_add_samples_expand_schema(sample_ids)
 
-    @drop_database
+    @drop_datasets
     def test_set_field_create(self):
         dataset_name = self.test_set_field_create.__name__
 
@@ -483,7 +487,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         set_field_create(sample_id)
         check_set_field_create(sample_id)
 
-    @drop_database
+    @drop_datasets
     def test_modify_sample(self):
         dataset_name = self.test_set_field_create.__name__
 
@@ -634,11 +638,42 @@ class MultiProcessSynchronizationTest(unittest.TestCase):
 
 
 class DatasetTest(unittest.TestCase):
-    @drop_database
+    @drop_datasets
     def test_list_dataset_names(self):
         self.assertIsInstance(fo.list_dataset_names(), list)
 
-    @drop_database
+    @drop_datasets
+    def test_delete_dataset(self):
+        IGNORED_DATASET_NAMES = fo.list_dataset_names()
+
+        def list_dataset_names():
+            return [
+                name
+                for name in fo.list_dataset_names()
+                if name not in IGNORED_DATASET_NAMES
+            ]
+
+        dataset_names = ["test_%d" % i for i in range(10)]
+
+        datasets = {name: fo.Dataset(name) for name in dataset_names}
+        self.assertListEqual(list_dataset_names(), dataset_names)
+
+        name = dataset_names.pop(0)
+        datasets[name].delete()
+        self.assertListEqual(list_dataset_names(), dataset_names)
+        with self.assertRaises(fod.DatasetError):
+            len(datasets[name])
+
+        name = dataset_names.pop(0)
+        fo.delete_dataset(name)
+        self.assertListEqual(list_dataset_names(), dataset_names)
+        with self.assertRaises(fod.DatasetError):
+            len(datasets[name])
+
+        new_dataset = fo.Dataset(name)
+        self.assertEqual(len(new_dataset), 0)
+
+    @drop_datasets
     def test_backing_doc_class(self):
         dataset_name = self.test_backing_doc_class.__name__
         dataset = fo.Dataset(dataset_name)
@@ -646,7 +681,7 @@ class DatasetTest(unittest.TestCase):
             issubclass(dataset._sample_doc_cls, foo.ODMDatasetSample)
         )
 
-    @drop_database
+    @drop_datasets
     def test_meta_dataset(self):
         dataset_name = self.test_meta_dataset.__name__
         dataset1 = fo.Dataset(dataset_name)
@@ -679,12 +714,12 @@ class DatasetTest(unittest.TestCase):
 
 
 class SampleTest(unittest.TestCase):
-    @drop_database
+    @drop_datasets
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
         self.assertIsInstance(sample._doc, foo.ODMNoDatasetSample)
 
-    @drop_database
+    @drop_datasets
     def test_get_field(self):
         filepath = "path/to/file.jpg"
 
@@ -703,7 +738,7 @@ class SampleTest(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.missing_field
 
-    @drop_database
+    @drop_datasets
     def test_set_field(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
 
@@ -742,7 +777,7 @@ class SampleTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             sample["field4"]
 
-    @drop_database
+    @drop_datasets
     def test_change_value(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
 
@@ -763,7 +798,7 @@ class SampleTest(unittest.TestCase):
 
 
 class SampleInDatasetTest(unittest.TestCase):
-    @drop_database
+    @drop_datasets
     def test_dataset_clear(self):
         dataset_name = self.test_dataset_clear.__name__
         dataset = fo.Dataset(dataset_name)
@@ -790,7 +825,7 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset.add_samples(samples)
         self.assertEqual(len(dataset), num_samples)
 
-    @drop_database
+    @drop_datasets
     def test_dataset_delete_samples(self):
         dataset_name = self.test_dataset_delete_samples.__name__
         dataset = fo.Dataset(dataset_name)
@@ -809,7 +844,7 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset.remove_samples(ids[:num_delete])
         self.assertEqual(len(dataset), num_samples - num_delete)
 
-    @drop_database
+    @drop_datasets
     def test_getitem(self):
         dataset_name = self.test_getitem.__name__
         dataset = fo.Dataset(dataset_name)
@@ -832,7 +867,7 @@ class SampleInDatasetTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             dataset["F" * 24]
 
-    @drop_database
+    @drop_datasets
     def test_autopopulated_fields(self):
         dataset_name = self.test_autopopulated_fields.__name__
         dataset = fo.Dataset(dataset_name)
@@ -851,7 +886,7 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertTrue(sample.in_dataset)
         self.assertEqual(sample.dataset_name, dataset_name)
 
-    @drop_database
+    @drop_datasets
     def test_new_fields(self):
         dataset_name = self.test_new_fields.__name__
         dataset = fo.Dataset(dataset_name)
@@ -871,7 +906,7 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
 
-    @drop_database
+    @drop_datasets
     def test_new_fields_multi(self):
         dataset_name = self.test_new_fields_multi.__name__
         dataset = fo.Dataset(dataset_name)
@@ -891,7 +926,7 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(sample[field_name], value)
         self.assertEqual(dataset[sample.id][field_name], value)
 
-    @drop_database
+    @drop_datasets
     def test_add_from_another_dataset(self):
         dataset_name = self.test_add_from_another_dataset.__name__ + "_%d"
         dataset1 = fo.Dataset(dataset_name % 1)
@@ -909,7 +944,7 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertIsNot(dataset2[sample_id], sample)
         self.assertEqual(sample2.dataset_name, dataset2.name)
 
-    @drop_database
+    @drop_datasets
     def test_copy_sample(self):
         dataset_name = self.test_copy_sample.__name__
         dataset = fo.Dataset(dataset_name)
@@ -930,7 +965,7 @@ class SampleInDatasetTest(unittest.TestCase):
 
 
 class LabelsTest(unittest.TestCase):
-    @drop_database
+    @drop_datasets
     def test_create(self):
         labels = fo.Classification(label="cow", confidence=0.98)
         self.assertIsInstance(labels, fo.Classification)
@@ -945,7 +980,7 @@ class LabelsTest(unittest.TestCase):
 class CRUDTest(unittest.TestCase):
     """Create, Read, Update, Delete (CRUD)"""
 
-    @drop_database
+    @drop_datasets
     def test_create_sample(self):
         dataset_name = self.test_create_sample.__name__
         dataset = fo.Dataset(dataset_name)
@@ -1022,7 +1057,7 @@ class CRUDTest(unittest.TestCase):
 
 
 class ViewTest(unittest.TestCase):
-    @drop_database
+    @drop_datasets
     def test_view(self):
         dataset_name = self.test_view.__name__
         dataset = fo.Dataset(dataset_name)
@@ -1059,7 +1094,7 @@ class ViewTest(unittest.TestCase):
 
 
 class FieldTest(unittest.TestCase):
-    @drop_database
+    @drop_datasets
     def test_field_AddDelete_in_dataset(self):
         dataset_name = self.test_field_AddDelete_in_dataset.__name__
         dataset = fo.Dataset(dataset_name)
@@ -1171,7 +1206,7 @@ class FieldTest(unittest.TestCase):
             self.assertIsNone(getattr(sample, field_name))
             self.assertIsNone(sample.to_dict()[field_name])
 
-    @drop_database
+    @drop_datasets
     def test_field_GetSetClear_no_dataset(self):
         sample = fo.Sample("1.jpg")
 
@@ -1185,7 +1220,7 @@ class FieldTest(unittest.TestCase):
 
         # add deleted field
 
-    @drop_database
+    @drop_datasets
     def test_field_GetSetClear_in_dataset(self):
         dataset_name = self.test_field_GetSetClear_in_dataset.__name__
         dataset = fo.Dataset(dataset_name)
@@ -1202,7 +1237,7 @@ class FieldTest(unittest.TestCase):
 
         # add deleted field
 
-    @drop_database
+    @drop_datasets
     def test_vector_array_fields(self):
         sample1 = fo.Sample(
             filepath="img.png",

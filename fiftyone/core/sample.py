@@ -411,6 +411,9 @@ class Sample(object):
 
         For use **only** when clearing a dataset.
         """
+        if dataset_name not in cls._instances:
+            return
+
         dataset_instances = cls._instances.pop(dataset_name)
         for sample in itervalues(dataset_instances):
             sample._doc = sample.copy()._doc
