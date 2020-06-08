@@ -594,7 +594,7 @@ class ODMNoDatasetSample(ODMSample):
         Because the sample does not belong to a dataset, this method does
         nothing.
         """
-        warnings.warn("Calling ODMNoDatasetSample.save() which does nothing")
+        pass
 
     def reload(self):
         """Reloads the sample from the database.
@@ -602,7 +602,7 @@ class ODMNoDatasetSample(ODMSample):
         Because the sample does not belong to a dataset, this method does
         nothing.
         """
-        warnings.warn("Calling ODMNoDatasetSample.reload() which does nothing")
+        pass
 
     def delete(self):
         """Deletes the sample from the database.
@@ -610,7 +610,7 @@ class ODMNoDatasetSample(ODMSample):
         Because the sample does not belong to a dataset, this method does
         nothing.
         """
-        warnings.warn("Calling ODMNoDatasetSample.delete() which does nothing")
+        pass
 
 
 def _get_implied_field_kwargs(value):
