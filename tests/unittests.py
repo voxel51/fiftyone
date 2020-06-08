@@ -97,7 +97,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
             getattr(sample, field_name)
 
         # Field added to dataset
-        dataset.add_sample_field(field_name, ftype=ftype)
+        dataset.add_sample_field(field_name, ftype)
         self.assertIsNone(sample.get_field(field_name))
         self.assertIsNone(sample[field_name])
         self.assertIsNone(getattr(sample, field_name))
@@ -113,7 +113,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
 
         # Field added to dataset and sample value set
         value = 51
-        dataset.add_sample_field(field_name, ftype=ftype)
+        dataset.add_sample_field(field_name, ftype)
         sample[field_name] = value
         self.assertEqual(sample.get_field(field_name), value)
         self.assertEqual(sample[field_name], value)
