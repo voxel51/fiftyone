@@ -28,6 +28,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
@@ -163,20 +164,22 @@ class VOCObject(object):
         self.difficult = difficult
 
     @classmethod
-    def from_detection(cls, detection, frame_size):
+    def from_detection(cls, detection, metadata):
         """Creates a :class:`VOCObject` from a
         :class:`fiftyone.core.labels.Detection`.
 
         Args:
             detection: a :class:`fiftyone.core.labels.Detection`
-            frame_size: the ``(width, height)`` of the image
+            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` instance
+                for the image
 
         Returns:
             a :class:`VOCObject`
         """
         name = detection.label
 
-        width, height = frame_size
+        width = metadata.width
+        height = metadata.height
         x, y, w, h = detection.bounding_box
         xmin = int(round(x * width))
         ymin = int(round(y * height))
@@ -212,22 +215,19 @@ class VOCAnnotationWriter(object):
         )
         self.template = environment.get_template("voc_annotation_template.xml")
 
-    def write_annotation(self, img, detections, img_path, xml_path):
+    def write_annotation(self, detections, metadata, img_path, xml_path):
         """Writes the annotations to disk in XML format.
 
         Args:
-            img: the image (used to compute dimensions)
             detections: a :class:`fiftyone.core.labels.Detections`
+            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` instance
+                for the image
             img_path: the path to the image on disk
             xml_path: the path to write the annotations XML file
         """
-        height, width = img.shape[:2]
-        depth = img.shape[2] if img.ndim > 2 else 1
-        frame_size = width, height
-
         objects = []
         for detection in detections.detections:
-            obj = VOCObject.from_detection(detection, frame_size)
+            obj = VOCObject.from_detection(detection, metadata)
             objects.append(obj.to_dict())
 
         xml_str = self.template.render(
@@ -235,9 +235,9 @@ class VOCAnnotationWriter(object):
                 "path": img_path,
                 "filename": os.path.basename(img_path),
                 "folder": os.path.basename(os.path.dirname(img_path)),
-                "width": width,
-                "height": height,
-                "depth": depth,
+                "width": metadata.width,
+                "height": metadata.height,
+                "depth": metadata.num_channels,
                 "database": "",
                 "segmented": "",
                 "objects": objects,
@@ -246,8 +246,8 @@ class VOCAnnotationWriter(object):
         etau.write_file(xml_str, xml_path)
 
 
-def export_voc_detection_dataset(image_paths, labels, dataset_dir):
-    """Exports the given data to disk as a VOC detection dataset.
+def export_voc_detection_dataset(samples, label_field, dataset_dir):
+    """Exports the given samples to disk as a VOC detection dataset.
 
     See :class:`fiftyone.types.VOCDetectionDataset` for format details.
 
@@ -257,9 +257,9 @@ def export_voc_detection_dataset(image_paths, labels, dataset_dir):
     filename.
 
     Args:
-        image_paths: an iterable of image paths
-        labels: an iterable of :class:`fiftyone.core.labels.Detections`
-            instances
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        label_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field of the samples to export
         dataset_dir: the directory to which to write the dataset
     """
     data_dir = os.path.join(dataset_dir, "data")
@@ -277,7 +277,8 @@ def export_voc_detection_dataset(image_paths, labels, dataset_dir):
     writer = VOCAnnotationWriter()
     data_filename_counts = defaultdict(int)
     with etau.ProgressBar(iters_str="samples") as pb:
-        for img_path, label in pb(zip(image_paths, labels)):
+        for sample in pb(samples):
+            img_path = sample.filepath
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
 
@@ -290,9 +291,13 @@ def export_voc_detection_dataset(image_paths, labels, dataset_dir):
 
             etau.copy_file(img_path, out_img_path)
 
-            # Must read image to get dimensions
-            img = etai.read(img_path)
+            metadata = sample.metadata
+            if metadata is None:
+                metadata = fom.ImageMetadata.build_for(img_path)
 
-            writer.write_annotation(img, label, out_img_path, out_anno_path)
+            label = sample[label_field]
+            writer.write_annotation(
+                label, metadata, out_img_path, out_anno_path
+            )
 
     logger.info("Dataset created")
