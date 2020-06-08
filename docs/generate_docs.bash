@@ -8,8 +8,11 @@
 # voxel51.com
 #
 
+set -e
 cd "$(dirname "$0")/.."
 echo "**** Generating documentation"
+
+export FIFTYONE_DISABLE_SERVICES=1
 
 #
 # The syntax here is:

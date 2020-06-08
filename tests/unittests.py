@@ -14,6 +14,7 @@ unittest.TextTestRunner().run(singletest)
 |
 """
 import datetime
+from functools import wraps
 import unittest
 
 from mongoengine.errors import (
@@ -31,6 +32,7 @@ import fiftyone.core.odm as foo
 def drop_datasets(func):
     """Decorator to drop the database before running a test"""
 
+    @wraps(func)
     def wrapper(*args, **kwargs):
         fo.delete_non_persistent_datasets()
         return func(*args, **kwargs)
@@ -220,7 +222,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         # Test Create
 
         def create_dataset():
-            with self.assertRaises(ValueError):
+            with self.assertRaises(fod.DoesNotExistError):
                 dataset = fo.load_dataset(dataset_name)
 
             dataset = fo.Dataset(dataset_name)
@@ -287,7 +289,16 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
 
         # Test Delete Dataset
 
-        # @todo(Tyler) test delete dataset
+        def delete_dataset():
+            fo.delete_dataset(dataset_name)
+
+        delete_dataset()
+
+        def check_delete_dataset():
+            with self.assertRaises(fod.DoesNotExistError):
+                fo.load_dataset(dataset_name)
+
+        check_delete_dataset()
 
     @drop_datasets
     def test_add_remove_sample(self):
@@ -661,13 +672,13 @@ class DatasetTest(unittest.TestCase):
         name = dataset_names.pop(0)
         datasets[name].delete()
         self.assertListEqual(list_dataset_names(), dataset_names)
-        with self.assertRaises(fod.DatasetError):
+        with self.assertRaises(fod.DoesNotExistError):
             len(datasets[name])
 
         name = dataset_names.pop(0)
         fo.delete_dataset(name)
         self.assertListEqual(list_dataset_names(), dataset_names)
-        with self.assertRaises(fod.DatasetError):
+        with self.assertRaises(fod.DoesNotExistError):
             len(datasets[name])
 
         new_dataset = fo.Dataset(name)
@@ -756,8 +767,6 @@ class SampleTest(unittest.TestCase):
 
         # set_field create=True
         sample.set_field("field2", value, create=True)
-        fields = sample.get_field_schema()
-        self.assertIsInstance(fields["field2"], fo.IntField)
         self.assertIsInstance(sample.field2, int)
         self.assertEqual(sample.get_field("field2"), value)
         self.assertEqual(sample["field2"], value)
@@ -799,9 +808,21 @@ class SampleTest(unittest.TestCase):
 
 class SampleInDatasetTest(unittest.TestCase):
     @drop_datasets
+    def test_invalid_sample(self):
+        dataset_name = self.test_invalid_sample.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        sample = fo.Sample(filepath=51)
+
+        with self.assertRaises(ValidationError):
+            dataset.add_sample(sample)
+
+    @drop_datasets
     def test_dataset_clear(self):
         dataset_name = self.test_dataset_clear.__name__
         dataset = fo.Dataset(dataset_name)
+
+        self.assertEqual(len(dataset), 0)
 
         # add some samples
         num_samples = 10
@@ -927,6 +948,56 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(dataset[sample.id][field_name], value)
 
     @drop_datasets
+    def test_update_sample(self):
+        dataset_name = self.test_update_sample.__name__
+        dataset = fo.Dataset(dataset_name)
+        filepath = "path/to/file.txt"
+        sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
+        dataset.add_sample(sample)
+
+        # add duplicate filepath
+        with self.assertRaises(NotUniqueError):
+            dataset.add_sample(fo.Sample(filepath=filepath))
+        self.assertEqual(len(dataset), 1)
+
+        # update assign
+        tag = "tag3"
+        sample.tags = [tag]
+        self.assertEqual(len(sample.tags), 1)
+        self.assertEqual(sample.tags[0], tag)
+        sample2 = dataset[sample.id]
+        self.assertEqual(len(sample2.tags), 1)
+        self.assertEqual(sample2.tags[0], tag)
+
+        # update append
+        tag = "tag4"
+        sample.tags.append(tag)
+        self.assertEqual(len(sample.tags), 2)
+        self.assertEqual(sample.tags[-1], tag)
+        sample2 = dataset[sample.id]
+        self.assertEqual(len(sample2.tags), 2)
+        self.assertEqual(sample2.tags[-1], tag)
+
+        # update add new field
+        dataset.add_sample_field(
+            "test_label",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        sample.test_label = fo.Classification(label="cow")
+        self.assertEqual(sample.test_label.label, "cow")
+        self.assertEqual(sample.test_label.label, "cow")
+        sample2 = dataset[sample.id]
+        self.assertEqual(sample2.test_label.label, "cow")
+
+        # update modify embedded document
+        sample.test_label.label = "chicken"
+        self.assertEqual(sample.test_label.label, "chicken")
+        self.assertEqual(sample.test_label.label, "chicken")
+        sample2 = dataset[sample.id]
+        self.assertEqual(sample2.test_label.label, "chicken")
+
+    @drop_datasets
     def test_add_from_another_dataset(self):
         dataset_name = self.test_add_from_another_dataset.__name__ + "_%d"
         dataset1 = fo.Dataset(dataset_name % 1)
@@ -975,85 +1046,6 @@ class LabelsTest(unittest.TestCase):
 
         with self.assertRaises(ValidationError):
             fo.Classification(label=100)
-
-
-class CRUDTest(unittest.TestCase):
-    """Create, Read, Update, Delete (CRUD)"""
-
-    @drop_datasets
-    def test_create_sample(self):
-        dataset_name = self.test_create_sample.__name__
-        dataset = fo.Dataset(dataset_name)
-        filepath = "path/to/file.txt"
-        sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
-        self.assertEqual(len(dataset), 0)
-
-        dataset.add_sample(sample)
-        self.assertEqual(len(dataset), 1)
-
-        # add duplicate filepath
-        with self.assertRaises(NotUniqueError):
-            dataset.add_sample(fo.Sample(filepath=filepath))
-        self.assertEqual(len(dataset), 1)
-
-        # update assign
-        tag = "tag3"
-        sample.tags = [tag]
-        self.assertEqual(len(sample.tags), 1)
-        self.assertEqual(sample.tags[0], tag)
-        sample2 = dataset[sample.id]
-        self.assertEqual(len(sample2.tags), 1)
-        self.assertEqual(sample2.tags[0], tag)
-
-        # update append
-        tag = "tag4"
-        sample.tags.append(tag)
-        self.assertEqual(len(sample.tags), 2)
-        self.assertEqual(sample.tags[-1], tag)
-        sample2 = dataset[sample.id]
-        self.assertEqual(len(sample2.tags), 2)
-        self.assertEqual(sample2.tags[-1], tag)
-
-        # update add new field
-        dataset.add_sample_field(
-            "test_label",
-            fo.EmbeddedDocumentField,
-            embedded_doc_type=fo.Classification,
-        )
-        sample.test_label = fo.Classification(label="cow")
-        self.assertEqual(sample.test_label.label, "cow")
-        self.assertEqual(sample.test_label.label, "cow")
-        sample2 = dataset[sample.id]
-        self.assertEqual(sample2.test_label.label, "cow")
-
-        # update modify embedded document
-        sample.test_label.label = "chicken"
-        self.assertEqual(sample.test_label.label, "chicken")
-        self.assertEqual(sample.test_label.label, "chicken")
-        sample2 = dataset[sample.id]
-        self.assertEqual(sample2.test_label.label, "chicken")
-
-        # print("Removing tag 'tag1'")
-        # sample.remove_tag("tag1")
-        # print("Num samples: %d" % len(dataset))
-        # for sample in dataset.iter_samples():
-        #     print(sample)
-        # print()
-        #
-        #
-        # print("Adding new tag: 'tag2'")
-        # sample.add_tag("tag2")
-        # print("Num samples: %d" % len(dataset))
-        # for sample in dataset.iter_samples():
-        #     print(sample)
-        # print()
-        #
-        # print("Deleting sample")
-        # del dataset[sample.id]
-        # print("Num samples: %d" % len(dataset))
-        # for sample in dataset.iter_samples():
-        #     print(sample)
-        # print()
 
 
 class ViewTest(unittest.TestCase):
@@ -1119,8 +1111,6 @@ class FieldTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             dataset.get_field_schema()[field_name]
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
-            with self.assertRaises(KeyError):
-                sample.get_field_schema()[field_name]
             with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
             with self.assertRaises(KeyError):
@@ -1138,17 +1128,12 @@ class FieldTest(unittest.TestCase):
         field = dataset.get_field_schema()[field_name]
         self.assertIsInstance(field, ftype)
         for sample in [sample1, dataset[id1]]:
-            # check field exists and is of correct type
-            field = sample.get_field_schema()[field_name]
-            self.assertIsInstance(field, ftype)
             # check field exists on sample and is set correctly
             self.assertEqual(sample.get_field(field_name), field_test_value)
             self.assertEqual(sample[field_name], field_test_value)
             self.assertEqual(getattr(sample, field_name), field_test_value)
             self.assertEqual(sample.to_dict()[field_name], field_test_value)
         for sample in [sample2, dataset[id2]]:
-            # check field exists and is of correct type
-            field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is None
             self.assertIsNone(sample.get_field(field_name))
@@ -1167,8 +1152,6 @@ class FieldTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             dataset.get_field_schema()[field_name]
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
-            with self.assertRaises(KeyError):
-                sample.get_field_schema()[field_name]
             with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
             with self.assertRaises(KeyError):
@@ -1188,8 +1171,6 @@ class FieldTest(unittest.TestCase):
         field = dataset.get_field_schema()[field_name]
         self.assertIsInstance(field, ftype)
         for sample in [sample1, dataset[id1]]:
-            # check field exists and is of correct type
-            field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is set correctly
             self.assertEqual(sample.get_field(field_name), field_test_value)
@@ -1197,8 +1178,6 @@ class FieldTest(unittest.TestCase):
             self.assertEqual(getattr(sample, field_name), field_test_value)
             self.assertEqual(sample.to_dict()[field_name], field_test_value)
         for sample in [sample2, dataset[id2]]:
-            # check field exists and is of correct type
-            field = sample.get_field_schema()[field_name]
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is None
             self.assertIsNone(sample.get_field(field_name))
@@ -1208,17 +1187,62 @@ class FieldTest(unittest.TestCase):
 
     @drop_datasets
     def test_field_GetSetClear_no_dataset(self):
-        sample = fo.Sample("1.jpg")
+        filename = "1.jpg"
+        tags = ["tag1", "tag2"]
+        sample = fo.Sample(filepath=filename, tags=tags)
 
-        # set field (default duplicate)
+        # get field (default)
+        self.assertEqual(sample.filename, filename)
+        self.assertListEqual(sample.tags, tags)
+        self.assertIsNone(sample.metadata)
 
-        # add field (new)
+        # get field (invalid)
+        with self.assertRaises(AttributeError):
+            sample.get_field("invalid_field")
+        with self.assertRaises(KeyError):
+            sample["invalid_field"]
+        with self.assertRaises(AttributeError):
+            sample.invalid_field
 
-        # add field (duplicate)
+        # set field (default)
+        sample.filepath = ["invalid", "type"]
+        sample.filepath = None
+        sample.tags = "invalid type"
+        sample.tags = None
 
-        # delete field
+        # clear field (default)
+        with self.assertRaises(ValueError):
+            sample.clear_field("filepath")
+        sample.clear_field("tags")
+        self.assertListEqual(sample.tags, [])
+        sample.clear_field("metadata")
+        self.assertIsNone(sample.metadata)
 
-        # add deleted field
+        # set field (new)
+        with self.assertRaises(ValueError):
+            sample.set_field("field_1", 51)
+
+        sample.set_field("field_1", 51, create=True)
+        self.assertIn("field_1", sample.field_names)
+        self.assertEqual(sample.get_field("field_1"), 51)
+        self.assertEqual(sample["field_1"], 51)
+        self.assertEqual(sample.field_1, 51)
+
+        sample["field_2"] = "fiftyone"
+        self.assertIn("field_2", sample.field_names)
+        self.assertEqual(sample.get_field("field_2"), "fiftyone")
+        self.assertEqual(sample["field_2"], "fiftyone")
+        self.assertEqual(sample.field_2, "fiftyone")
+
+        # clear field (new)
+        sample.clear_field("field_1")
+        self.assertNotIn("field_1", sample.field_names)
+        with self.assertRaises(AttributeError):
+            sample.get_field("field_1")
+        with self.assertRaises(KeyError):
+            sample["field_1"]
+        with self.assertRaises(AttributeError):
+            sample.field_1
 
     @drop_datasets
     def test_field_GetSetClear_in_dataset(self):
@@ -1227,46 +1251,39 @@ class FieldTest(unittest.TestCase):
         dataset.add_sample(fo.Sample("1.jpg"))
         dataset.add_sample(fo.Sample("2.jpg"))
 
-        # add field (default duplicate)
+        # @todo(Tyler)
+        # get field (default)
 
-        # add field (new)
+        # get field (invalid)
 
-        # add field (duplicate)
+        # set field (default)
 
-        # delete field
+        # clear field (default)
 
-        # add deleted field
+        # set field (new)
+
+        # clear field (new)
 
     @drop_datasets
     def test_vector_array_fields(self):
+        dataset1 = fo.Dataset("test_one")
+        dataset2 = fo.Dataset("test_two")
+
         sample1 = fo.Sample(
             filepath="img.png",
             vector_field=np.arange(5),
             array_field=np.ones((2, 3)),
         )
+        dataset1.add_sample(sample1)
 
         sample2 = fo.Sample(filepath="img.png")
+        dataset2.add_sample(sample2)
         sample2["vector_field"] = np.arange(5)
         sample2["array_field"] = np.ones((2, 3))
+        sample2.save()
 
-        dataset1 = fo.Dataset("test_one")
-        dataset2 = fo.Dataset("test_two")
-
-        sample3 = fo.Sample(
-            filepath="img.png",
-            vector_field=np.arange(5),
-            array_field=np.ones((2, 3)),
-        )
-        dataset1.add_sample(sample3)
-
-        sample4 = fo.Sample(filepath="img.png")
-        dataset2.add_sample(sample4)
-        sample4["vector_field"] = np.arange(5)
-        sample4["array_field"] = np.ones((2, 3))
-        sample4.save()
-
-        for sample in [sample1, sample2, sample3, sample4]:
-            fields = sample.get_field_schema()
+        for dataset in [dataset1, dataset2]:
+            fields = dataset.get_field_schema()
             self.assertIsInstance(fields["vector_field"], fo.VectorField)
             self.assertIsInstance(fields["array_field"], fo.ArrayField)
 

@@ -131,27 +131,6 @@ class Sample(object):
         """An ordered list of the names of the fields of this sample."""
         return self._doc.field_names
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
-        """Returns a schema dictionary describing the fields of this sample.
-
-        If the sample belongs to a dataset, the schema will apply to all
-        samples in the dataset.
-
-        Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
-
-        Returns:
-             a dictionary mapping field names to field types
-        """
-        return self._doc.get_field_schema(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
-        )
-
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
 
