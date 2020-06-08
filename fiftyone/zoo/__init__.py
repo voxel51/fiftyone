@@ -22,7 +22,6 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
 import logging
 import os
 import warnings
@@ -128,7 +127,7 @@ def load_zoo_dataset(
     dataset_dir=None,
     download_if_necessary=True,
     persistent=False,
-    delete_existing_dataset=False,
+    drop_existing_dataset=False,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
     a :class:`fiftyone.core.dataset.Dataset`.
@@ -156,7 +155,7 @@ def load_zoo_dataset(
             not found in the specified dataset directory
         persistent (False): whether the dataset will persist in the database
             once the session terminates
-        delete_existing_dataset (False): whether to delete an existing dataset
+        drop_existing_dataset (False): whether to drop an existing dataset
             with the same name if it exists
 
     Returns:
@@ -178,12 +177,14 @@ def load_zoo_dataset(
         dataset_name += "-" + "-".join(splits)
 
     if fo.dataset_exists(dataset_name):
-        if not delete_existing_dataset:
-            msg = (
-                "Loading pre-existing dataset with name '%s'. To reload"
-                " from disk, first delete the existing dataset." % dataset_name
+        if not drop_existing_dataset:
+            warnings.warn(
+                (
+                    "Loading existing dataset '%s'. To reload from disk, "
+                    "first delete the existing dataset"
+                )
+                % dataset_name
             )
-            warnings.warn(msg)
             return fo.load_dataset(dataset_name)
 
         fo.delete_dataset(dataset_name)

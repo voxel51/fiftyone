@@ -36,7 +36,7 @@ RESULT = OrderedDict({"githash": get_git_revision_hash()})
 
 # CREATE: load the dataset
 start_time = time.time()
-dataset = foz.load_zoo_dataset(DATASET_NAME, delete_existing_dataset=True)
+dataset = foz.load_zoo_dataset(DATASET_NAME, drop_existing_dataset=True)
 RESULT["load_dataset"] = time.time() - start_time
 
 # READ: load from view
