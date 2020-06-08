@@ -199,9 +199,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return super().__getattribute__(name)
 
         if getattr(self, "_deleted", False):
-            raise DoesNotExistError(
-                "Dataset '%s' has been deleted." % self.name
-            )
+            raise DoesNotExistError("Dataset '%s' is deleted" % self.name)
 
         return super().__getattribute__(name)
 
