@@ -23,6 +23,7 @@ import logging
 import numbers
 import os
 
+from bson import ObjectId
 from mongoengine.errors import DoesNotExist, FieldDoesNotExist
 
 import eta.core.serial as etas
@@ -440,12 +441,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if not isinstance(sample_or_id, fos.Sample):
             sample_id = sample_or_id
-            sample = self[sample_id]
         else:
-            sample = sample_or_id
-            sample_id = sample.id
+            sample_id = sample_or_id.id
 
-        sample._delete()
+        self._collection.delete_one({"_id": ObjectId(sample_id)})
+
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=[sample_id]
         )
@@ -467,7 +467,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             else sample_or_id
             for sample_or_id in samples_or_ids
         ]
-        self._get_query_set(id__in=sample_ids).delete()
+
+        sample_object_ids = [ObjectId(id) for id in sample_ids]
+        self._collection.delete_many({"_id": {"$in": sample_object_ids}})
+
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=sample_ids
         )
