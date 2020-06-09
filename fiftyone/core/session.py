@@ -121,8 +121,8 @@ class Session(foc.HasClient):
         view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
             load
         port (5151): the port to use to connect the FiftyOne app.
-        remote (False): whether this is a remote session. Remote sessions do not
-            launch the FiftyOne app
+        remote (False): whether this is a remote session. Remote sessions do
+            not launch the FiftyOne app
     """
 
     _HC_NAMESPACE = "state"
@@ -151,12 +151,8 @@ class Session(foc.HasClient):
             _close_on_exit(self)
         else:
             logger.info(
-                "You have launched a remote session and will need to configure "
-                "port forwarding. The current port number is %d.\n\n"
-                "Runnning the following command forwards this session to the default"
-                " port of 5151 on your local machine.\n"
-                "ssh -N -L %d:127.0.0.1:5151 username@this_machine_ip\n"
-                % (self.server_port, self.server_port)
+                _REMOTE_INSTRUCTIONS
+                % (self.server_port, self.server_port, self.server_port)
             )
 
     def open(self):
@@ -166,6 +162,7 @@ class Session(foc.HasClient):
         """
         if self._remote:
             raise ValueError("Remote sessions cannot launch the FiftyOne app")
+
         self._app_service.start()
 
     def close(self):
@@ -248,6 +245,22 @@ class Session(foc.HasClient):
             view=self._view,
             selected=self.state.selected,
         )
+
+
+_REMOTE_INSTRUCTIONS = """
+You have launched a remote dashboard on port %d. To connect to this dashboard
+from another machine, issue the following command:
+
+fiftyone dashboard connect -u <username> -h <hostname> --port %d
+
+where `<username>@<hostname>` refers to your current machine. Alternatively,
+you can manually configure port forwarding as follows:
+
+ssh -N -L %d:127.0.0.1:5151 <username>@<hostname>
+
+and then programmatically launch a dashboard using either
+`fiftyone dashboard connect` or from Python via `fiftyone.launch_dashboard()`.
+"""
 
 
 def _close_on_exit(session):
