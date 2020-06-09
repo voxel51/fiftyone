@@ -37,6 +37,11 @@ class Service(object):
     """Interface for FiftyOne services.
 
     All services must define a ``command`` property.
+
+    Services are run in an isolated Python subprocess (see ``_service_main.py``)
+    to ensure that they are shut down when the main Python process exits. The
+    ``command`` and ``working_dir`` properties control the execution of the
+    service in the subprocess.
     """
 
     working_dir = "."
