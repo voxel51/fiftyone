@@ -8,6 +8,7 @@ Core utilities.
 from base64 import b64encode, b64decode
 import importlib
 import io
+import itertools
 import logging
 import resource
 import sys
@@ -19,6 +20,8 @@ import packaging.version
 import xmltodict
 
 import eta.core.utils as etau
+
+import fiftyone as fo
 
 
 logger = logging.getLogger(__name__)
@@ -247,6 +250,14 @@ class ResourceLimit(object):
                 raise
 
 
+class ProgressBar(etau.ProgressBar):
+    def __init__(self, *args, **kwargs):
+        quiet = not fo.config.show_progress_bars
+        super(ProgressBar, self).__init__(
+            *args, iters_str="samples", quiet=quiet, **kwargs
+        )
+
+
 def compute_filehash(filepath):
     """Computes the file hash of the given file.
 
@@ -298,3 +309,24 @@ def deserialize_numpy_array(numpy_bytes, ascii=False):
 
     with io.BytesIO(zlib.decompress(numpy_bytes)) as f:
         return np.load(f)
+
+
+def iter_batches(iterable, batch_size):
+    """Iterates over the given iterable in batches.
+
+    Args:
+        iterable: an iterable
+        batch_size: the desired batch size, or None to return the contents in
+            a single batch
+
+    Returns:
+        a generator that emits tuples of elements of the requested batch size
+        from the input iterable
+    """
+    it = iter(iterable)
+    while True:
+        chunk = tuple(itertools.islice(it, batch_size))
+        if not chunk:
+            return
+
+        yield chunk

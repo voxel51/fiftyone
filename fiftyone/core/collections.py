@@ -24,6 +24,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -94,7 +95,7 @@ class SampleCollection(object):
         Args:
             overwrite (False): whether to overwrite existing metadata
         """
-        with etau.ProgressBar(iters_str="samples") as pb:
+        with fou.ProgressBar() as pb:
             for sample in pb(self):
                 if sample.metadata is None or overwrite:
                     sample.compute_metadata()

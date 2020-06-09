@@ -34,6 +34,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -199,7 +200,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return super().__getattribute__(name)
 
         if getattr(self, "_deleted", False):
-            raise DatasetError("Dataset '%s' has been deleted." % self.name)
+            raise DoesNotExistError("Dataset '%s' is deleted" % self.name)
 
         return super().__getattribute__(name)
 
@@ -373,7 +374,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return str(doc.id)
 
-    def add_samples(self, samples, expand_schema=True):
+    def add_samples(self, samples, expand_schema=True, _batch_size=128):
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -396,6 +397,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
+        sample_ids = []
+        with fou.ProgressBar(samples) as pb:
+            for batch in fou.iter_batches(samples, _batch_size):
+                sample_ids.extend(self._add_samples(batch, expand_schema))
+                pb.update(count=len(batch))
+
+        return sample_ids
+
+    def _add_samples(self, samples, expand_schema):
         if expand_schema:
             self._expand_schema(samples)
 
@@ -1414,7 +1424,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _expand_schema(self, samples):
         fields = self.get_field_schema()
         for sample in samples:
-            for field_name, field in sample.get_field_schema().items():
+            for field_name in sample.field_names:
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
@@ -1425,7 +1435,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_doc_cls.from_dict(d, extended=False)
         return self._load_sample_from_doc(doc)
 
-    def _load_sample_from_doc(self, doc):
+    @staticmethod
+    def _load_sample_from_doc(doc):
         return fos.Sample.from_doc(doc)
 
     def _get_query_set(self, **kwargs):
@@ -1445,7 +1456,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
 
-class DatasetError(Exception):
+class DoesNotExistError(Exception):
     pass
 
 
@@ -1480,7 +1491,7 @@ def _load_dataset(name):
         # pylint: disable=no-member
         _meta = foo.ODMDataset.objects.get(name=name)
     except DoesNotExist:
-        raise ValueError("Dataset '%s' not found" % name)
+        raise DoesNotExistError("Dataset '%s' not found" % name)
 
     _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
 
