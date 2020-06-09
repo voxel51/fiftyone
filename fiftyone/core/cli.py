@@ -396,6 +396,7 @@ class DashboardLaunchCommand(Command):
             "--port",
             metavar="PORT",
             default=5151,
+            type=int,
             help="the port number to use",
         )
         parser.add_argument(
