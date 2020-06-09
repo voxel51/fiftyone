@@ -24,6 +24,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -84,6 +85,20 @@ class SampleCollection(object):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
+
+    def compute_metadata(self, overwrite=False):
+        """Populates the ``metadata`` field of all samples in the collection.
+
+        Any samples with existing metadata are skipped, unless
+        ``overwrite == True`.
+
+        Args:
+            overwrite (False): whether to overwrite existing metadata
+        """
+        with fou.ProgressBar() as pb:
+            for sample in pb(self):
+                if sample.metadata is None or overwrite:
+                    sample.compute_metadata()
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the collection.
