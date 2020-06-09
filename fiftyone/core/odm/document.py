@@ -145,8 +145,10 @@ class ODMDocument(SerializableDocument, Document):
     meta = {"abstract": True}
 
     def __eq__(self, other):
-        if self.in_db:
-            return other is self
+        # pylint: disable=no-member
+        if self.id != other.id:
+            return False
+
         return super(ODMDocument, self).__eq__(other)
 
     @property
