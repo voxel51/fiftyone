@@ -5,6 +5,8 @@ import subprocess
 import sys
 import threading
 
+import psutil
+
 
 exiting = threading.Event()
 
@@ -15,7 +17,6 @@ class ChildStreamMonitor(object):
         self.output_deque = collections.deque(maxlen=4)
 
         thread = threading.Thread(target=self.run_monitor_thread)
-        thread.daemon = True
         thread.start()
 
     def run_monitor_thread(self):
@@ -49,7 +50,8 @@ if hasattr(os, "setpgrp"):
     os.setpgrp()
 signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-child = subprocess.Popen(
+
+child = psutil.Popen(
     command,
     stdin=subprocess.DEVNULL,
     stdout=subprocess.PIPE,
@@ -71,6 +73,15 @@ stdin_thread.daemon = True
 stdin_thread.start()
 
 exiting.wait()
+
+# subprocesses of "yarn dev" don't respond to SIGTERM - to be safe, kill all
+# subprocesses of the child process first
+for subchild in child.children(recursive=True):
+    if "gunicorn" in subchild.name():
+        # gunicorn tends to ignore SIGTERM
+        subchild.kill()
+    else:
+        subchild.terminate()
 
 child.terminate()
 if child.wait() > 0:
