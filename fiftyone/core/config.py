@@ -63,6 +63,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_IMAGE_EXT",
             default=".jpg",
         )
+        self.show_progress_bars = self.parse_bool(
+            d,
+            "show_progress_bars",
+            env_var="FIFTYONE_SHOW_PROGRESS_BARS",
+            default=True,
+        )
 
         self._set_defaults()
         self._validate()
