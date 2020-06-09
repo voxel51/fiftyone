@@ -8,11 +8,10 @@ const reserved = ["_id", "metadata", "filepath"];
 const Labels = (props) => {
   const { displayData, activeLabels, setActiveLabels, scalars, colors } = props;
   const onClick = (l) => {
-    console.log(l);
-    console.log(activeLabels);
     setActiveLabels({
       ...activeLabels,
-      [l.field]: activeLabels[l.field] === null ? colors[l.color] : null,
+      [l.field]:
+        typeof activeLabels[l.field] !== "string" ? colors[l.color] : null,
     });
   };
 

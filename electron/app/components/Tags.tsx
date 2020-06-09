@@ -9,7 +9,7 @@ const Tags = (props) => {
   const onClick = (t) => {
     setActiveTags({
       ...activeTags,
-      [t.name]: activeTags[t.name] === null ? colors[t.color] : null,
+      [t.name]: typeof activeTags[t.name] !== "string" ? colors[t.color] : null,
     });
   };
   const { tags } = displayData;

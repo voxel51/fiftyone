@@ -49,7 +49,6 @@ const Sample = ({
           width: "100%",
           position: "relative",
         }}
-        colors={colors}
         sample={sample}
         onClick={() => handleClick()}
         onDoubleClick={() => setView({ visible: true, sample })}
@@ -58,19 +57,30 @@ const Sample = ({
       />
       <div className="sample-info">
         {Object.keys(s).map((f, i) => {
-          return activeLabels[f] && s[f] && s[f].cls === "Classification" ? (
-            <Tag key={i} name={String(s[f].label)} color={activeLabels[f]} />
+          return s[f] && s[f]._cls === "Classification" ? (
+            <Tag
+              display={Boolean(activeLabels[f])}
+              key={i}
+              name={String(s[f].label)}
+              color={activeLabels[f]}
+            />
           ) : null;
         })}
         {s.tags.map((t, i) => {
-          return activeTags[t] ? (
-            <Tag key={i} name={String(t)} color={activeTags[t]} />
-          ) : null;
+          return (
+            <Tag
+              display={Boolean(activeTags[t])}
+              key={i}
+              name={String(t)}
+              color={activeTags[t]}
+            />
+          );
         })}
         {Object.keys(s).map((l, i) => {
-          return activeScalars[l] && (s[l] || typeof s[l] === "boolean") ? (
+          return s[l] || typeof s[l] === "boolean" ? (
             <Tag
               key={i}
+              display={Boolean(activeScalars[l])}
               name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
               color={activeScalars[l]}
             />
