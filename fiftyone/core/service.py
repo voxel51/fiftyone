@@ -80,7 +80,8 @@ class Service(object):
 
     def stop(self):
         """Stops the Service."""
-        self.child.send_signal(signal.SIGINT)
+        self.child.stdin.close()
+        self.child.wait()
 
 
 class DatabaseService(Service):
