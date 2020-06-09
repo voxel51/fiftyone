@@ -79,7 +79,7 @@ class FiftyOneCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
-        _register_command(subparsers, "dataset", DatasetCommand)
+        _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "dashboard", DashboardCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
@@ -177,29 +177,29 @@ def _render_constant_value(value):
     return value
 
 
-class DatasetCommand(Command):
+class DatasetsCommand(Command):
     """Tools for working with FiftyOne datasets."""
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "list", DatasetListCommand)
-        _register_command(subparsers, "info", DatasetInfoCommand)
-        _register_command(subparsers, "create", DatasetCreateCommand)
-        _register_command(subparsers, "delete", DatasetDeleteCommand)
+        _register_command(subparsers, "list", DatasetsListCommand)
+        _register_command(subparsers, "info", DatasetsInfoCommand)
+        _register_command(subparsers, "create", DatasetsCreateCommand)
+        _register_command(subparsers, "delete", DatasetsDeleteCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
 
 
-class DatasetListCommand(Command):
+class DatasetsListCommand(Command):
     """Tools for listing FiftyOne datasets.
 
     Examples::
 
         # List available datasets
-        fiftyone dataset list
+        fiftyone datasets list
     """
 
     @staticmethod
@@ -210,17 +210,20 @@ class DatasetListCommand(Command):
     def execute(parser, args):
         datasets = fod.list_dataset_names()
 
-        for dataset in sorted(datasets):
-            print(dataset)
+        if datasets:
+            for dataset in sorted(datasets):
+                print(dataset)
+        else:
+            print("No datasets found")
 
 
-class DatasetInfoCommand(Command):
+class DatasetsInfoCommand(Command):
     """Tools for listing information about FiftyOne datasets.
 
     Examples::
 
         # Print information about the given dataset
-        fiftyone dataset info <name>
+        fiftyone datasets info <name>
     """
 
     @staticmethod
@@ -235,12 +238,12 @@ class DatasetInfoCommand(Command):
         print(dataset)
 
 
-class DatasetCreateCommand(Command):
+class DatasetsCreateCommand(Command):
     """Tools for creating FiftyOne datasets.
 
     Examples::
         # Creates a persistent dataset from the given data on disk
-        fiftyone dataset create \\
+        fiftyone datasets create \\
             --name <name> --type <type> --dataset-dir <dataset-dir>
     """
 
@@ -288,13 +291,13 @@ class DatasetCreateCommand(Command):
         dataset.persistent = True
 
 
-class DatasetDeleteCommand(Command):
+class DatasetsDeleteCommand(Command):
     """Tools for deleting FiftyOne datasets.
 
     Examples::
 
         # Delete the dataset with the given name
-        fiftyone dataset delete <name>
+        fiftyone datasets delete <name>
     """
 
     @staticmethod
