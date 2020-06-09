@@ -23,7 +23,7 @@ import logging
 import numbers
 import os
 
-from mongoengine.errors import DoesNotExist
+from mongoengine.errors import DoesNotExist, FieldDoesNotExist
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -365,7 +365,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample._in_db:
             sample = sample.copy()
 
-        doc = sample.clone_doc(doc_cls=self._sample_doc_cls)
+        self._validate_sample_fields(sample)
+
+        d = sample.to_mongo_dict()
+        self._collection.insert_one(d)  # adds "_id" to `d`
+        doc = self._sample_doc_cls.from_dict(d, extended=False)
 
         sample._set_backing_doc(doc)
 
@@ -1457,6 +1461,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "    %s %s" % ((field_name + ":").ljust(max_len), field)
             for field_name, field in fields_dict.items()
         )
+
+    def _validate_sample_fields(self, sample):
+        fields = self.get_field_schema()
+
+        non_existest_fields = {
+            fn for fn in sample.field_names if fn not in fields
+        }
+
+        if non_existest_fields:
+            msg = "The fields %s do not exist on the dataset '%s'" % (
+                non_existest_fields,
+                self.name,
+            )
+            raise FieldDoesNotExist(msg)
 
 
 class DoesNotExistError(Exception):

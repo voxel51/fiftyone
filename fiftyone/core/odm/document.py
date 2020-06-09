@@ -198,11 +198,16 @@ class ODMDocument(SerializableDocument, Document):
             except Exception:
                 pass
 
-        return cls.from_json(json_util.dumps(d))
+        return cls._from_json(json_util.dumps(d))
 
     def _to_json(self):
         # @todo(Tyler) mongoengine snippet, to be replaced
         return json_util.dumps(self.to_mongo(use_db_field=True))
+
+    @classmethod
+    def _from_json(cls, json_data):
+        # @todo(Tyler) mongoengine snippet, to be replaced
+        return cls._from_son(json_util.loads(json_data), created=False)
 
 
 class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
@@ -239,11 +244,16 @@ class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
             except Exception:
                 pass
 
-        return cls.from_json(json_util.dumps(d))
+        return cls._from_json(json_util.dumps(d))
 
     def _to_json(self):
         # @todo(Tyler) mongoengine snippet, to be replaced
         return json_util.dumps(self.to_mongo(use_db_field=True))
+
+    @classmethod
+    def _from_json(cls, json_data):
+        # @todo(Tyler) mongoengine snippet, to be replaced
+        return cls._from_son(json_util.loads(json_data), created=False)
 
 
 def _to_front(l, val):

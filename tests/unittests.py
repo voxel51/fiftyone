@@ -921,6 +921,9 @@ class SampleInDatasetTest(unittest.TestCase):
         with self.assertRaises(FieldDoesNotExist):
             dataset.add_sample(sample, expand_schema=False)
 
+        # ensure sample was not inserted
+        self.assertEqual(len(dataset), 0)
+
         dataset.add_sample(sample)
         fields = dataset.get_field_schema()
         self.assertIsInstance(fields[field_name], fo.IntField)
