@@ -53,20 +53,13 @@ class Sample(object):
         self._doc = foo.ODMNoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
-
-        # maintain a reference to the dataset
         self._dataset = self._get_dataset()
 
     def __str__(self):
         return str(self._doc)
 
     def __repr__(self):
-        try:
-            u = self.__str__()
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            u = "[Bad Unicode data]"
-        repr_type = str if u is None else type(u)
-        return repr_type("<{}: {}>".format(self.__class__.__name__, u))
+        return repr(self._doc)
 
     def __getattr__(self, name):
         try:
@@ -109,9 +102,6 @@ class Sample(object):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-
-        if self._in_db:
-            return other is self
 
         return self._doc == other._doc
 
@@ -218,8 +208,9 @@ class Sample(object):
         return self.__class__(**kwargs)
 
     def to_dict(self):
-        """Serializes the sample to a JSON dictionary. The sample ID is always
-        excluded in this representation.
+        """Serializes the sample to a JSON dictionary.
+
+        Sample IDs are always excluded in this representation.
 
         Returns:
             a JSON dict
@@ -230,8 +221,9 @@ class Sample(object):
 
     @classmethod
     def from_dict(cls, d):
-        """Loads the sample from a JSON dictionary. The sample is created as a
-        new instance that is not in a dataset.
+        """Loads the sample from a JSON dictionary.
+
+        The returned sample will not belong to a dataset.
 
         Returns:
             a :class:`Sample`
@@ -239,13 +231,17 @@ class Sample(object):
         doc = foo.ODMNoDatasetSample.from_dict(d, extended=True)
         return cls.from_doc(doc)
 
-    def to_json(self):
-        """Returns a JSON string representation of the sample.
+    def to_json(self, pretty_print=False):
+        """Serializes the sample to a JSON string.
+
+        Args:
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
 
         Returns:
             a JSON string
         """
-        return self._doc.to_json()
+        return self._doc.to_json(pretty_print=pretty_print)
 
     @classmethod
     def from_json(cls, s):
@@ -310,8 +306,10 @@ class Sample(object):
     def _save_dataset_samples(cls, dataset_name):
         """Saves all changes to samples instances in memory belonging to the
         specified dataset to the database.
+
         A samples only needs to be saved if it has non-persisted changes and
         still exists in memory.
+
         Args:
             dataset_name: the name of the dataset to save.
         """
@@ -322,8 +320,10 @@ class Sample(object):
     def _reload_dataset_samples(cls, dataset_name):
         """Reloads the fields for sample instances in memory belonging to the
         specified dataset from the database.
+
         If multiple processes or users are accessing the same database this
         will keep the dataset in sync.
+
         Args:
             dataset_name: the name of the dataset to reload.
         """

@@ -413,6 +413,10 @@ class ODMDatasetSample(ODMDocument, ODMSample):
         ]
         dataset._meta.save()
 
+    @classmethod
+    def _get_class_repr(cls):
+        return "Sample in '%s'" % cls.__name__
+
 
 class ODMNoDatasetSample(ODMSample):
     """Backing document for samples that have not been added to a dataset."""
@@ -610,6 +614,10 @@ class ODMNoDatasetSample(ODMSample):
         nothing.
         """
         pass
+
+    @classmethod
+    def _get_class_repr(cls):
+        return "Sample not-in-dataset"
 
 
 def _get_implied_field_kwargs(value):

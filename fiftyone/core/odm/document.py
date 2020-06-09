@@ -43,20 +43,30 @@ class SerializableDocument(object):
     def __str__(self):
         return _pformat(self._to_str_dict())
 
+    def __repr__(self):
+        s = _pformat(self._to_str_dict(for_repr=True))
+        return "<%s: %s>" % (self._get_class_repr(), s)
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
+
         return self.to_json() == other.to_json()
 
     def __copy__(self):
         return self.copy()
 
-    def _to_str_dict(self):
+    def _to_str_dict(self, for_repr=False):
         d = {}
         for f in _to_front(self._to_str_fields, "id"):
+            if for_repr and f == "_cls":
+                continue
             value = getattr(self, f)
             if isinstance(value, SerializableDocument):
-                d[f] = value._to_str_dict()
+                if for_repr:
+                    d[f] = value
+                else:
+                    d[f] = value._to_str_dict()
             elif isinstance(value, ObjectId):
                 d[f] = str(value)
             else:
@@ -70,6 +80,10 @@ class SerializableDocument(object):
         string representation of the document.
         """
         raise NotImplementedError("Subclass must implement `_to_str_fields`")
+
+    @classmethod
+    def _get_class_repr(cls):
+        return cls.__name__
 
     def copy(self):
         """Returns a deep copy of the document.
@@ -144,8 +158,10 @@ class ODMDocument(SerializableDocument, Document):
     meta = {"abstract": True}
 
     def __eq__(self, other):
-        if self.in_db:
-            return other is self
+        # pylint: disable=no-member
+        if self.id != other.id:
+            return False
+
         return super(ODMDocument, self).__eq__(other)
 
     @property
