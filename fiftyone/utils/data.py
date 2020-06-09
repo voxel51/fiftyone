@@ -32,6 +32,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
 
@@ -79,7 +80,7 @@ def parse_labeled_images(
     )
 
     _samples = []
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             image_path = images_patt % idx
@@ -127,7 +128,7 @@ def to_images_dir(
     logger.info("Writing images to '%s'...", dataset_dir)
 
     image_paths = []
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img = sample_parser.parse(sample)
             image_path = images_patt % idx
@@ -182,7 +183,7 @@ def to_image_classification_dataset(
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             etai.write(img, images_patt % idx)
@@ -243,7 +244,7 @@ def to_image_detection_dataset(
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             etai.write(img, images_patt % idx)
@@ -302,7 +303,7 @@ def to_image_labels_dataset(
     )
 
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             image_labels = _parse_image_labels(label)
@@ -344,7 +345,7 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(iters_str="samples") as pb:
+    with fou.ProgressBar() as pb:
         for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
@@ -396,7 +397,7 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(iters_str="samples") as pb:
+    with fou.ProgressBar() as pb:
         for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
@@ -445,7 +446,7 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
     )
 
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-    with etau.ProgressBar(iters_str="samples") as pb:
+    with fou.ProgressBar() as pb:
         for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1

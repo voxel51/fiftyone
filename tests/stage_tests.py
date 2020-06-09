@@ -92,4 +92,5 @@ class StageTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    fo.config.show_progress_bars = False
+    unittest.main(verbosity=2)
