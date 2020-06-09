@@ -252,14 +252,14 @@ _REMOTE_INSTRUCTIONS = """
 You have launched a remote dashboard on port %d. To connect to this dashboard
 from another machine, issue the following command:
 
-fiftyone dashboard connect -u <username> -h <hostname> --port %d
+fiftyone dashboard connect --destination [<username>@]<hostname> --port %d
 
-where `<username>@<hostname>` refers to your current machine. Alternatively,
-you can manually configure port forwarding as follows:
+where `[<username>@]<hostname>` refers to your current machine. Alternatively,
+you can manually configure port forwarding on another machine as follows:
 
-ssh -N -L %d:127.0.0.1:5151 <username>@<hostname>
+ssh -N -L %d:127.0.0.1:5151 [<username>@]<hostname>
 
-and then programmatically launch a dashboard using either
+and then programmatically connect to the dashboard on that machine using either
 `fiftyone dashboard connect` or from Python via `fiftyone.launch_dashboard()`.
 """
 
