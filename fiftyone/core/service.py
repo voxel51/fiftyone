@@ -149,15 +149,11 @@ class AppService(Service):
             if os.path.isfile("FiftyOne.AppImage"):
                 # linux
                 args = ["./FiftyOne.AppImage"]
+            elif os.path.isdir("FiftyOne.app"):
+                args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
             elif os.path.isfile("package.json"):
                 # dev build
                 args = ["yarn", "dev"]
-            elif os.path.isdir("FiftyOne.app"):
-                # -W: wait for the app to terminate
-                # -n: open a new instance of the app
-                # TODO: the app doesn't run as a subprocess of `open`, so it
-                # won't get killed by stop()
-                args = ["open", "-W", "-n", "./FiftyOne.app"]
             else:
                 raise RuntimeError(
                     "Could not find FiftyOne dashboard in %r"
