@@ -22,6 +22,7 @@ from future.utils import iteritems, itervalues
 import argparse
 from collections import defaultdict
 import json
+import os
 
 import argcomplete
 from tabulate import tabulate
@@ -92,6 +93,12 @@ class ConfigCommand(Command):
 
         # Print a specific config field
         fiftyone config <field>
+
+        # Print the location of your FiftyOne config
+        fiftyone config --location
+
+        # Save your current FiftyOne config to disk
+        fiftyone config --save
     """
 
     @staticmethod
@@ -99,9 +106,43 @@ class ConfigCommand(Command):
         parser.add_argument(
             "field", nargs="?", metavar="FIELD", help="a config field"
         )
+        parser.add_argument(
+            "-l",
+            "--location",
+            action="store_true",
+            help="print the location of your FiftyOne config on disk",
+        )
+        parser.add_argument(
+            "-s",
+            "--save",
+            action="store_true",
+            help="save your current config to disk",
+        )
 
     @staticmethod
     def execute(parser, args):
+        if args.location:
+            config_path = foc.FIFTYONE_CONFIG_PATH
+            if os.path.isfile(config_path):
+                print(config_path)
+            else:
+                print("No config file found at '%s'.\n" % config_path)
+                print(
+                    "To save your current config (which may differ from the "
+                    "default config if you\n"
+                    "have any `FIFTYONE_XXX` environment variables set), run:"
+                    "\n\n"
+                    "fiftyone config --save"
+                    "\n"
+                )
+
+            return
+
+        if args.save:
+            fo.config.write_json(foc.FIFTYONE_CONFIG_PATH, pretty_print=True)
+            print("Config written to '%s'" % foc.FIFTYONE_CONFIG_PATH)
+            return
+
         if args.field:
             field = getattr(fo.config, args.field)
             if etau.is_str(field):
