@@ -380,7 +380,7 @@ class DashboardLaunchCommand(Command):
         # Launches the dashboard with a custom port
         fiftyone dashboard launch <name> --port <port>
 
-        # Launches the dashboard for remote
+        # Launches the dashboard as a remote session
         fiftyone dashboard launch <name> --remote
     """
 
