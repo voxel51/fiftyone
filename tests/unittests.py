@@ -1306,6 +1306,12 @@ class SerializationTest(unittest.TestCase):
         d = label1.to_dict()
         self.assertEqual(fo.Classification.from_dict(d), label1)
 
+        s = label1.to_json(pretty_print=False)
+        self.assertEqual(fo.Classification.from_json(s), label1)
+
+        s = label1.to_json(pretty_print=True)
+        self.assertEqual(fo.Classification.from_json(s), label1)
+
     def test_sample_no_dataset(self):
         sample1 = fo.Sample(
             filepath="~/Desktop/test.png",

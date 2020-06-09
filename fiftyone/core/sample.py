@@ -274,7 +274,8 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        return cls.from_dict(json.loads(s))
+        doc = foo.ODMNoDatasetSample.from_json(s)
+        return cls.from_doc(doc)
 
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
