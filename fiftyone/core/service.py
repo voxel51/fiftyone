@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import atexit
 import logging
 import os
 import signal
@@ -27,6 +26,7 @@ import subprocess
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.utils as fou
 
 
 logger = logging.getLogger(__name__)
@@ -97,6 +97,7 @@ class ServerService(Service):
         cmd = " ".join(foc.START_SERVER) % self._port
         with etau.WorkingDir(foc.SERVER_DIR):
             etau.call(cmd.split(" "), **self._SUPPRESS)
+
         _close_on_exit(self)
 
     def stop(self):
@@ -163,6 +164,4 @@ def _close_on_exit(service):
         except:
             pass
 
-    atexit.register(handle_exit)
-    signal.signal(signal.SIGTERM, handle_exit)
-    signal.signal(signal.SIGINT, handle_exit)
+    fou.call_on_exit(handle_exit)
