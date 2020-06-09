@@ -43,6 +43,10 @@ class SerializableDocument(object):
     def __str__(self):
         return _pformat(self._to_str_dict())
 
+    def __repr__(self):
+        s = _pformat(self._to_str_dict(include_private=False))
+        return "<%s: %s>" % (self.__class__.__name__, s)
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
@@ -52,9 +56,11 @@ class SerializableDocument(object):
     def __copy__(self):
         return self.copy()
 
-    def _to_str_dict(self):
+    def _to_str_dict(self, include_private=True):
         d = {}
         for f in _to_front(self._to_str_fields, "id"):
+            if not include_private and f.startswith("_"):
+                continue
             value = getattr(self, f)
             if isinstance(value, SerializableDocument):
                 d[f] = value._to_str_dict()
