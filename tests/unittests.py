@@ -1368,6 +1368,37 @@ class SerializationTest(unittest.TestCase):
         self.assertEqual(s1, s2)
 
 
+class AggregationTest(unittest.TestCase):
+    @drop_datasets
+    def test_aggregate(self):
+        dataset_name = self.test_aggregate.__name__
+        dataset = fo.Dataset(dataset_name)
+        dataset.add_samples(
+            [
+                fo.Sample("1.jpg", tags=["tag1"]),
+                fo.Sample("2.jpg", tags=["tag1", "tag2"]),
+                fo.Sample("3.jpg", tags=["tag2", "tag3"]),
+            ]
+        )
+
+        counts = {
+            "tag1": 2,
+            "tag2": 2,
+            "tag3": 1,
+        }
+
+        pipeline = [
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+        ]
+
+        for ds in dataset, dataset.view():
+            for d in ds.aggregate(pipeline):
+                tag = d["_id"]
+                count = d["count"]
+                self.assertEqual(count, counts[tag])
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)

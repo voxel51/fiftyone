@@ -210,7 +210,7 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
+        kwargs = {f: deepcopy(self.get_field(f)) for f in self.field_names}
         return self.__class__(**kwargs)
 
     def clone_doc(self, doc_cls=None):
