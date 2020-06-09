@@ -39,7 +39,7 @@ const Sample = ({
       dispatch(updateState(data));
     });
   };
-
+  let keyCount = -1;
   return (
     <div className="sample" style={{ width: `${width}%` }}>
       <Player51
@@ -57,29 +57,32 @@ const Sample = ({
       />
       <div className="sample-info">
         {Object.keys(s).map((f, i) => {
+          keyCount += 1;
           return s[f] && s[f]._cls === "Classification" ? (
             <Tag
               display={Boolean(activeLabels[f])}
-              key={i}
+              key={keyCount}
               name={String(s[f].label)}
               color={activeLabels[f]}
             />
           ) : null;
         })}
         {s.tags.map((t, i) => {
+          keyCount += 1;
           return (
             <Tag
               display={Boolean(activeTags[t])}
-              key={i}
+              key={keyCount}
               name={String(t)}
               color={activeTags[t]}
             />
           );
         })}
         {Object.keys(s).map((l, i) => {
+          keyCount += 1;
           return s[l] || typeof s[l] === "boolean" ? (
             <Tag
-              key={i}
+              key={keyCount}
               display={Boolean(activeScalars[l])}
               name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
               color={activeScalars[l]}

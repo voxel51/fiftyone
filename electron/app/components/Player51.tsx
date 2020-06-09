@@ -72,7 +72,7 @@ export default ({
   const overlay = loadOverlay(sample);
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
-  const id = uuid();
+  const [id, setId] = useState(uuid());
   const [player, setPlayer] = useState(
     new Player51({
       media: {

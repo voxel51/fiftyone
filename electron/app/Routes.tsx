@@ -8,6 +8,8 @@ import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
 import randomColor from "randomcolor";
+import { createGlobalStyle } from "styled-components";
+
 import { getSocket, useSubscribe } from "./utils/socket";
 import connect from "./utils/connect";
 
@@ -30,11 +32,12 @@ function Routes({ port }) {
     colors,
     displayData,
   };
+
   const datasetProps = {
-    activeTags,
-    activeLabels,
-    activeScalars,
+    colors,
+    displayData,
   };
+
   const dataset = (props) => {
     return <Dataset {...props} displayProps={datasetProps} />;
   };
@@ -60,8 +63,27 @@ function Routes({ port }) {
       </Dimmer>
     );
   }
+
+  const fieldStyles = displayData.labels.map((f, i) => {
+    return createGlobalStyle`
+      .sample-field-${f.field} {
+        background: ${colors[f.color]};
+      }
+      `;
+  });
+
+  const tagStyles = displayData.tags.map((t, i) => {
+    return createGlobalStyle`
+      .sample-tag-${t.name} {
+        background: ${colors[t.color]};
+      }
+      `;
+  });
+
   return (
     <App displayProps={appProps} colors={colors}>
+      {fieldStyles}
+      {tagStyles}
       <Switch>
         <Route path={routes.LOADING} exact component={Loading} />
         <Route path={routes.SETUP} exact component={Setup} />

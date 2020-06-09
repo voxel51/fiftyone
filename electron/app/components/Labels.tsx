@@ -16,7 +16,6 @@ const Labels = (props) => {
   };
 
   let content;
-  console.log(activeLabels);
   if (displayData.labels.length) {
     const styles = (l) => {
       if (activeLabels[l.field]) {
