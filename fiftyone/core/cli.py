@@ -443,6 +443,7 @@ class DashboardConnectCommand(Command):
             "--port",
             metavar="PORT",
             default=5151,
+            type=int,
             help="the remote port to connect to",
         )
 
