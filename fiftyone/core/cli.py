@@ -376,35 +376,28 @@ class DashboardConnectCommand(Command):
         fiftyone dashboard connect
 
         # Connects to a remote dashboard session
-        fiftyone dashboard connect \\
-            --user <username> --host <hostname> --port <port>
+        fiftyone dashboard connect --destination <destination> --port <port>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-u",
-            "--user",
-            metavar="USERNAME",
-            help="the username on the remote machine hosting the dashboard",
-        )
-        parser.add_argument(
-            "-h",
-            "--host",
-            metavar="HOSTNAME",
-            help="the hostname of the remote machine hosting the dashboard",
+            "-d",
+            "--destination",
+            metavar="DESTINATION",
+            help="the destination to connect to, e.g., [username@]hostname",
         )
         parser.add_argument(
             "-p",
             "--port",
             metavar="PORT",
             default=5151,
-            help="the port number on the remote machine to connect to",
+            help="the remote port to connect to",
         )
 
     @staticmethod
     def execute(parser, args):
-        if args.user and args.host:
+        if args.destination:
             # Configure port forwarding
             etau.call(
                 [
@@ -412,7 +405,7 @@ class DashboardConnectCommand(Command):
                     "-N",
                     "-L",
                     "%d:127.0.0.1:5151" % args.port,
-                    "%s:%s" % (args.user, args.host),
+                    "%s" % args.destination,
                 ]
             )
 
