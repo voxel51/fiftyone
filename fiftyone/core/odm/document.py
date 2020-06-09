@@ -41,11 +41,11 @@ class SerializableDocument(object):
     """Mixin for documents that can be serialized in BSON or JSON format."""
 
     def __str__(self):
-        return _pformat(self._to_str_dict())
-
-    def __repr__(self):
         s = _pformat(self._to_str_dict(for_repr=True))
         return "<%s: %s>" % (self._get_class_repr(), s)
+
+    def __repr__(self):
+        return self.__str__()
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
