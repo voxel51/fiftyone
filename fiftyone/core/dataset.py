@@ -367,10 +367,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         doc = sample.clone_doc(doc_cls=self._sample_doc_cls)
 
-        if sample._in_db:
-            doc.save()
-        else:
-            sample._set_backing_doc(doc)
+        sample._set_backing_doc(doc)
 
         return str(doc.id)
 
