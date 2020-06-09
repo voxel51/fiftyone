@@ -19,10 +19,10 @@ import unittest
 
 from mongoengine.errors import (
     FieldDoesNotExist,
-    NotUniqueError,
     ValidationError,
 )
 import numpy as np
+from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -959,8 +959,11 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset.add_sample(sample)
 
         # add duplicate filepath
-        with self.assertRaises(NotUniqueError):
+        with self.assertRaises(DuplicateKeyError):
             dataset.add_sample(fo.Sample(filepath=filepath))
+        # @todo(Tyler)
+        # with self.assertRaises(DuplicateKeyError):
+        #     dataset.add_samples([fo.Sample(filepath=filepath)])
         self.assertEqual(len(dataset), 1)
 
         # update assign

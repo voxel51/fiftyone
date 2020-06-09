@@ -1504,6 +1504,11 @@ def _create_dataset(name, persistent=False):
     )
     _meta.save()
 
+    # Create indexes
+    collection_name = _sample_doc_cls._meta["collection"]
+    collection = foo.get_db_conn()[collection_name]
+    collection.create_index("filepath", unique=True)
+
     return _meta, _sample_doc_cls
 
 
