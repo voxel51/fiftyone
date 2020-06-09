@@ -34,6 +34,9 @@ BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 EXAMPLES_DIR = os.path.join(FIFTYONE_DIR, "examples")
 if not os.path.isdir(EXAMPLES_DIR):
     EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
+DEV_INSTALL = os.path.isdir(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
+)
 
 # Package metadata
 _META = metadata("fiftyone")

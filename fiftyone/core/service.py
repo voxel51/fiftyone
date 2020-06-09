@@ -120,7 +120,7 @@ class ServerService(Service):
 
     @property
     def command(self):
-        return [
+        command = [
             "gunicorn",
             "-w",
             "1",
@@ -129,8 +129,10 @@ class ServerService(Service):
             "-b",
             "127.0.0.1:%d" % self._port,
             "main:app",
-            "--reload",
         ]
+        if foc.DEV_INSTALL:
+            command += ["--reload"]
+        return command
 
     @property
     def port(self):
