@@ -59,13 +59,7 @@ class Sample(object):
         return str(self._doc)
 
     def __repr__(self):
-        try:
-            u = self.__str__()
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            u = "[Bad Unicode data]"
-
-        repr_type = str if u is None else type(u)
-        return repr_type("<{}: {}>".format(self.__class__.__name__, u))
+        return repr(self._doc)
 
     def __getattr__(self, name):
         try:
