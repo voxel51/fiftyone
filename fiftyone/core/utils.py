@@ -20,6 +20,8 @@ import packaging.version
 
 import eta.core.utils as etau
 
+import fiftyone as fo
+
 
 logger = logging.getLogger(__name__)
 
@@ -223,6 +225,14 @@ class ResourceLimit(object):
                 logger.warning(e)
             else:
                 raise
+
+
+class ProgressBar(etau.ProgressBar):
+    def __init__(self, *args, **kwargs):
+        quiet = not fo.config.show_progress_bars
+        super(ProgressBar, self).__init__(
+            *args, iters_str="samples", quiet=quiet, **kwargs
+        )
 
 
 def compute_filehash(filepath):

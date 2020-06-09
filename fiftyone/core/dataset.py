@@ -397,9 +397,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
-        logger.info("Adding samples...")
         sample_ids = []
-        with etau.ProgressBar(samples, iters_str="samples") as pb:
+        with fou.ProgressBar(samples) as pb:
             for batch in fou.iter_batches(samples, _batch_size):
                 sample_ids.extend(self._add_samples(batch, expand_schema))
                 pb.update(count=len(batch))

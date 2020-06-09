@@ -1369,4 +1369,5 @@ class SerializationTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
