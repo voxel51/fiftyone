@@ -151,7 +151,7 @@ class Session(foc.HasClient):
             logger.info("Dashboard launched")
         else:
             logger.info(
-                _REMOTE_INSTRUCTIONS
+                _REMOTE_INSTRUCTIONS.strip()
                 % (self.server_port, self.server_port, self.server_port)
             )
 
@@ -259,7 +259,8 @@ you can manually configure port forwarding on another machine as follows:
 ssh -N -L %d:127.0.0.1:5151 [<username>@]<hostname>
 
 and then connect to the dashboard on that machine using either
-`fiftyone dashboard connect` or from Python via `fiftyone.launch_dashboard()`."""
+`fiftyone dashboard connect` or from Python via `fiftyone.launch_dashboard()`.
+"""
 
 
 def _close_on_exit(session):
