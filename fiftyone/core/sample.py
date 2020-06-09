@@ -25,6 +25,9 @@ import json
 import os
 import weakref
 
+import eta.core.utils as etau
+
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 
 
@@ -172,6 +175,16 @@ class Sample(object):
             ValueError: if the field does not exist
         """
         return self._doc.clear_field(field_name=field_name)
+
+    def compute_metadata(self):
+        """Populates the ``metadata`` field of the sample."""
+        mime_type = etau.guess_mime_type(self.filepath)
+        if mime_type.startswith("image"):
+            self.metadata = fom.ImageMetadata.build_for(self.filepath)
+        else:
+            self.metadata = fom.Metadata.build_for(self.filepath)
+
+        self.save()
 
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the

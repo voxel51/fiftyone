@@ -32,6 +32,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
 
@@ -57,7 +58,7 @@ def parse_labeled_images(
             will be used to parse the samples. If not provided, the default
             :class:`LabeledImageSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
-            it is assumed that this can be computed via ``len(samples)``
+            this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
 
@@ -67,23 +68,19 @@ def parse_labeled_images(
     if sample_parser is None:
         sample_parser = LabeledImageSampleParser()
 
-    if num_samples is None:
-        num_samples = len(samples)
+    num_samples, image_format, uuid_patt = _parse_args(
+        samples, num_samples, image_format
+    )
 
-    if image_format is None:
-        image_format = fo.config.default_image_ext
-
-    uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
     images_patt = os.path.join(dataset_dir, uuid_patt + image_format)
 
     logger.info(
-        "Parsing %d labeled image samples and writing images to '%s'...",
-        num_samples,
+        "Parsing labeled image samples and writing images to '%s'...",
         dataset_dir,
     )
 
     _samples = []
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             image_path = images_patt % idx
@@ -112,7 +109,7 @@ def to_images_dir(
             will be used to parse the samples. If not provided, the default
             :class:`UnlabeledImageSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
-            it is assumed that this can be computed via ``len(samples)``
+            this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
 
@@ -122,19 +119,16 @@ def to_images_dir(
     if sample_parser is None:
         sample_parser = UnlabeledImageSampleParser()
 
-    if num_samples is None:
-        num_samples = len(samples)
+    num_samples, image_format, uuid_patt = _parse_args(
+        samples, num_samples, image_format
+    )
 
-    if image_format is None:
-        image_format = fo.config.default_image_ext
-
-    uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
     images_patt = os.path.join(dataset_dir, uuid_patt + image_format)
 
-    logger.info("Writing %d images to '%s'...", num_samples, dataset_dir)
+    logger.info("Writing images to '%s'...", dataset_dir)
 
     image_paths = []
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img = sample_parser.parse(sample)
             image_path = images_patt % idx
@@ -165,41 +159,31 @@ def to_image_classification_dataset(
             will be used to parse the samples. If not provided, the default
             :class:`ImageClassificationSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
-            it is assumed that this can be computed via ``len(samples)``
+            this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
     """
     if sample_parser is None:
         sample_parser = ImageClassificationSampleParser()
 
-    # If classes were provided, write the dataset in classes + targets format
-    classes = sample_parser.classes
-    if classes is not None:
-        labels_map_rev = {c: i for i, c in enumerate(classes)}
-    else:
-        labels_map_rev = None
-
-    if num_samples is None:
-        num_samples = len(samples)
-
-    if image_format is None:
-        image_format = fo.config.default_image_ext
+    num_samples, image_format, uuid_patt = _parse_args(
+        samples, num_samples, image_format
+    )
+    classes, labels_map_rev = _parse_classes(sample_parser)
 
     data_dir = os.path.join(dataset_dir, "data")
-    uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
     images_patt = os.path.join(data_dir, uuid_patt + image_format)
     labels_path = os.path.join(dataset_dir, "labels.json")
 
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageClassificationDataset),
     )
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             etai.write(img, images_patt % idx)
@@ -236,41 +220,31 @@ def to_image_detection_dataset(
             used to parse the samples. If not provided, the default
             :class:`ImageDetectionSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
-            it is assumed that this can be computed via ``len(samples)``
+            this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
     """
     if sample_parser is None:
         sample_parser = ImageDetectionSampleParser()
 
-    # If classes were provided, write the dataset in classes + targets format
-    classes = sample_parser.classes
-    if classes is not None:
-        labels_map_rev = {c: i for i, c in enumerate(classes)}
-    else:
-        labels_map_rev = None
-
-    if num_samples is None:
-        num_samples = len(samples)
-
-    if image_format is None:
-        image_format = fo.config.default_image_ext
+    num_samples, image_format, uuid_patt = _parse_args(
+        samples, num_samples, image_format
+    )
+    classes, labels_map_rev = _parse_classes(sample_parser)
 
     data_dir = os.path.join(dataset_dir, "data")
-    uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
     images_patt = os.path.join(data_dir, uuid_patt + image_format)
     labels_path = os.path.join(dataset_dir, "labels.json")
 
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageDetectionDataset),
     )
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             etai.write(img, images_patt % idx)
@@ -308,32 +282,28 @@ def to_image_labels_dataset(
             the samples. If not provided, the default
             :class:`ImageLabelsSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
-            it is assumed that this can be computed via ``len(samples)``
+            this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
     """
     if sample_parser is None:
         sample_parser = ImageLabelsSampleParser()
 
-    if num_samples is None:
-        num_samples = len(samples)
+    num_samples, image_format, uuid_patt = _parse_args(
+        samples, num_samples, image_format
+    )
 
-    if image_format is None:
-        image_format = fo.config.default_image_ext
-
-    int_patt = etau.get_int_pattern_with_capacity(num_samples)
-    images_patt = int_patt + image_format
-    labels_patt = int_patt + ".json"
+    images_patt = uuid_patt + image_format
+    labels_patt = uuid_patt + ".json"
 
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageLabelsDataset),
     )
 
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
             img, label = sample_parser.parse(sample)
             image_labels = _parse_image_labels(label)
@@ -363,22 +333,19 @@ def export_image_classification_dataset(image_paths, labels, dataset_dir):
             instances
         dataset_dir: the directory to which to write the dataset
     """
-    num_samples = len(image_paths)
     data_filename_counts = defaultdict(int)
-
     data_dir = os.path.join(dataset_dir, "data")
     labels_path = os.path.join(dataset_dir, "labels.json")
 
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageClassificationDataset),
     )
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar() as pb:
         for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
@@ -418,22 +385,19 @@ def export_image_detection_dataset(image_paths, labels, dataset_dir):
             instances
         dataset_dir: the directory to which to write the dataset
     """
-    num_samples = len(image_paths)
     data_filename_counts = defaultdict(int)
-
     data_dir = os.path.join(dataset_dir, "data")
     labels_path = os.path.join(dataset_dir, "labels.json")
 
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageDetectionDataset),
     )
 
     etau.ensure_dir(data_dir)
     labels_dict = {}
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar() as pb:
         for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
@@ -473,18 +437,16 @@ def export_image_labels_dataset(image_paths, labels, dataset_dir):
             instances
         dataset_dir: the directory to which to write the dataset
     """
-    num_samples = len(image_paths)
     data_filename_counts = defaultdict(int)
 
     logger.info(
-        "Writing %d samples to '%s' in '%s' format...",
-        num_samples,
+        "Writing samples to '%s' in '%s' format...",
         dataset_dir,
         etau.get_class_name(fot.ImageLabelsDataset),
     )
 
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-    with etau.ProgressBar(total=num_samples, iters_str="samples") as pb:
+    with fou.ProgressBar() as pb:
         for img_path, label in pb(zip(image_paths, labels)):
             name, ext = os.path.splitext(os.path.basename(img_path))
             data_filename_counts[name] += 1
@@ -999,6 +961,34 @@ class ImageLabelsSampleParser(LabeledImageSampleParser):
         """
         labels = sample[1]
         return fol.ImageLabels(labels=labels)
+
+
+def _parse_args(samples, num_samples, image_format):
+    if num_samples is None:
+        try:
+            num_samples = len(samples)
+        except:
+            pass
+
+    if image_format is None:
+        image_format = fo.config.default_image_ext
+
+    if num_samples:
+        uuid_patt = etau.get_int_pattern_with_capacity(num_samples)
+    else:
+        uuid_patt = fo.config.default_sequence_idx
+
+    return num_samples, image_format, uuid_patt
+
+
+def _parse_classes(sample_parser):
+    classes = sample_parser.classes
+    if classes is not None:
+        labels_map_rev = {c: i for i, c in enumerate(classes)}
+    else:
+        labels_map_rev = None
+
+    return classes, labels_map_rev
 
 
 def _parse_classification(classification, labels_map_rev=None):
