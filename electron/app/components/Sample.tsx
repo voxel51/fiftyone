@@ -16,23 +16,20 @@ const Sample = ({
   setSelected,
   selected,
   setView,
+  width,
 }) => {
-  const host = `http://127.0.0.1:${port}`;
-  const id = sample._id.$oid;
-  const src = `${host}?path=${sample.filepath}&id=${id}`;
-  const socket = getSocket(port, "state");
   const s = sample;
-  const {
-    activeLabels,
-    activeTags,
-    activeOther,
-    colors,
-    lengths,
-  } = displayProps;
+  const host = `http://127.0.0.1:${port}`;
+  const id = s._id.$oid;
+  const src = `${host}?path=${s.filepath}&id=${id}`;
+  const socket = getSocket(port, "state");
+
+  const { activeLabels, activeTags, activeScalars } = displayProps;
 
   const isFloat = (n) => {
     return Number(n) === n && n % 1 !== 0;
   };
+
   const handleClick = () => {
     const newSelected = { ...selected };
     const event = newSelected[id] ? "remove_selection" : "add_selection";
@@ -42,8 +39,9 @@ const Sample = ({
       dispatch(updateState(data));
     });
   };
+
   return (
-    <div className="sample">
+    <div className="sample" style={{ width: `${width}%` }}>
       <Player51
         src={src}
         style={{
@@ -59,29 +57,25 @@ const Sample = ({
         activeLabels={activeLabels}
       />
       <div className="sample-info">
-        {Object.keys(s)
-          .sort()
-          .map((l, i) => {
-            return activeLabels[l] && s[l] && s[l]._cls === "Classification" ? (
-              <Tag key={i} name={String(s[l].label)} color={colors[i]} />
-            ) : null;
-          })}
-        {s.tags.map((t, i) => {
-          return activeTags[t] ? (
-            <Tag key={i} name={String(t)} color={colors[lengths.mapping[t]]} />
+        {Object.keys(s).map((f, i) => {
+          return activeLabels[f] && s[f] && s[f].cls === "Classification" ? (
+            <Tag key={i} name={String(s[f].label)} color={activeLabels[f]} />
           ) : null;
         })}
-        {Object.keys(s)
-          .sort()
-          .map((l, i) => {
-            return activeOther[l] && (s[l] || typeof s[l] === "boolean") ? (
-              <Tag
-                key={i}
-                name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
-                color={colors[i]}
-              />
-            ) : null;
-          })}
+        {s.tags.map((t, i) => {
+          return activeTags[t] ? (
+            <Tag key={i} name={String(t)} color={activeTags[t]} />
+          ) : null;
+        })}
+        {Object.keys(s).map((l, i) => {
+          return activeScalars[l] && (s[l] || typeof s[l] === "boolean") ? (
+            <Tag
+              key={i}
+              name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
+              color={activeScalars[l]}
+            />
+          ) : null;
+        })}
       </div>
       {selected[id] ? (
         <div

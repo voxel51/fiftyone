@@ -1,62 +1,50 @@
-import React, { useState } from "react";
-import { Dimmer, Loader, Container, Label } from "semantic-ui-react";
+import React, { useEffect } from "react";
 import _ from "lodash";
 
 import connect from "../utils/connect";
-import { getSocket, useSubscribe } from "../utils/socket";
 
 const reserved = ["_id", "metadata", "filepath"];
 
 const Labels = (props) => {
-  const {
-    lengths,
-    port,
-    activeLabels,
-    setActiveLabels,
-    other,
-    colors,
-    start,
-  } = props;
-  const socket = getSocket(port, "state");
+  const { displayData, activeLabels, setActiveLabels, scalars, colors } = props;
   const onClick = (l) => {
-    setActiveLabels({ ...activeLabels, [l]: !Boolean(activeLabels[l]) });
-  };
-
-  const isFloat = (n) => {
-    return Number(n) === n && n % 1 !== 0;
+    console.log(l);
+    console.log(activeLabels);
+    setActiveLabels({
+      ...activeLabels,
+      [l.field]: activeLabels[l.field] === null ? colors[l.color] : null,
+    });
   };
 
   let content;
-  if (lengths.labels && lengths.labels.length) {
-    let labels = lengths.labels.sort((a, b) =>
-      a._id.field > b._id.field ? 1 : -1
-    );
-    const styles = (t, i) => {
-      if (activeLabels[t]) {
-        return { background: colors[i] };
+  console.log(activeLabels);
+  if (displayData.labels.length) {
+    const styles = (l) => {
+      if (activeLabels[l.field]) {
+        return { background: colors[l.color] };
       }
-      return { borderColor: colors[i] };
+      return { borderColor: colors[l.color] };
     };
     let cnt = 0;
     content = (
       <>
-        {labels.map((l, i) => {
+        {displayData.labels.map((l, i) => {
           if (
-            ((l._id.cls === "Classification" || l._id.cls === "Detections") &&
-              !other) ||
-            (!l._id.cls && other && _.indexOf(reserved, l._id.field) < 0)
+            ((l.cls === "Classification" || l.cls === "Detections") &&
+              !scalars) ||
+            (!l.cls && scalars && _.indexOf(reserved, l.field) < 0)
           ) {
             cnt += 1;
             return (
               <div
                 className={`tag clickable ${
-                  activeLabels[l._id.field] ? "active" : ""
+                  activeLabels[l.field] ? "active" : ""
                 }`}
                 key={i}
-                onClick={() => onClick(l._id.field)}
-                style={styles(l._id.field, i)}
+                onClick={() => onClick(l)}
+                style={styles(l)}
               >
-                {l._id.field}
+                {l.field}
               </div>
             );
           } else {

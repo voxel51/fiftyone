@@ -2,14 +2,13 @@ import _ from "lodash";
 import React, { createRef, useState, useRef, useEffect } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import { Grid, Loader, Dimmer } from "semantic-ui-react";
-import uuid from "react-uuid";
 import Sample from "./Sample";
 import connect from "../utils/connect";
-import { wrap } from "comlink";
 import tile from "./Samples.hooks";
 
 function Samples(props) {
-  const { displayProps, state, setView, port, dispatch } = props;
+  const { displayProps, state, setView, port } = props;
+  const containerRef = useRef(null);
   const initialSelected = state.selected.reduce((obj, id, i) => {
     return {
       ...obj,
@@ -18,41 +17,51 @@ function Samples(props) {
   }, {});
 
   const [selected, setSelected] = useState(initialSelected);
-  const [scrollState, setScrollState] = tile(port);
+  const [scrollState, setScrollState] = tile(port, containerRef);
 
   return (
-    <InfiniteScroll
-      pageStart={1}
-      initialLoad={true}
-      loadMore={() =>
-        !scrollState.isLoading && !scrollState.loadMore
-          ? setScrollState({ ...scrollState, loadMore: true })
-          : null
-      }
-      hasMore={scrollState.hasMore}
-      loader={
-        <Dimmer active className="samples-dimmer" key={-1}>
-          <Loader />
-        </Dimmer>
-      }
-      useWindow={true}
-    >
-      {scrollState.rows.map((r, i) => (
-        <Grid columns={r.samples.length} style={r.style} key={i}>
-          {r.samples.map((s, j) => (
-            <Grid.Column key={j} style={{ padding: 0, width: "100%" }}>
+    <div ref={containerRef} style={{ width: "100%", padding: "1% 0" }}>
+      <InfiniteScroll
+        pageStart={1}
+        initialLoad={true}
+        loadMore={() =>
+          !scrollState.isLoading && !scrollState.loadMore
+            ? setScrollState({ ...scrollState, loadMore: true })
+            : null
+        }
+        hasMore={scrollState.hasMore}
+        loader={
+          <Dimmer active className="samples-dimmer" key={-1}>
+            <Loader />
+          </Dimmer>
+        }
+        useWindow={true}
+      >
+        {scrollState.rows.map((r, i) => (
+          <div
+            key={i}
+            style={{
+              padding: "1% 0",
+              display: "flex",
+              width: "100%",
+              justifyContent: "space-between",
+            }}
+          >
+            {r.samples.map((s, j) => (
               <Sample
                 displayProps={displayProps}
                 sample={s}
+                width={r.widths[j]}
                 selected={selected}
                 setSelected={setSelected}
                 setView={setView}
+                key={j}
               />
-            </Grid.Column>
-          ))}
-        </Grid>
-      ))}
-    </InfiniteScroll>
+            ))}
+          </div>
+        ))}
+      </InfiniteScroll>
+    </div>
   );
 }
 

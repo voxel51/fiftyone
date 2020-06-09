@@ -14,17 +14,10 @@ import {
 import InfoItem from "./InfoItem";
 import logo from "../logo.png";
 import connect from "../utils/connect";
-import Rendering from "./Rendering";
+import Display from "./Display";
 
 const _Sidebar = (props) => {
-  const {
-    state,
-    connected,
-    loading,
-    showInfo,
-    setShowInfo,
-    displayProps,
-  } = props;
+  const { state, connected, loading, displayProps } = props;
   const hasDataset = Boolean(state && state.dataset);
   return (
     <Sidebar
@@ -53,7 +46,7 @@ const _Sidebar = (props) => {
           </Menu>
         ) : null}
       </Menu.Item>
-      {hasDataset ? <Rendering displayProps={displayProps} /> : null}
+      {hasDataset ? <Display displayProps={displayProps} /> : null}
       {hasDataset ? (
         <Menu.Item as="h3">
           View

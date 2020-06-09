@@ -1,7 +1,6 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
-import { Button, Modal, Label } from "semantic-ui-react";
-import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
+import { Button, Modal } from "semantic-ui-react";
 
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
@@ -19,8 +18,6 @@ type Props = {
 };
 
 function App(props: Props) {
-  const { path, url } = useRouteMatch();
-  const [showInfo, setShowInfo] = useState(true);
   const {
     loading,
     children,
@@ -102,9 +99,7 @@ function App(props: Props) {
         </Modal.Content>
       </Modal>
       <Sidebar displayProps={displayProps} />
-      <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
-        {children}
-      </div>
+      <div style={bodyStyle}>{children}</div>
     </>
   );
 }

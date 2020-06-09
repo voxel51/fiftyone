@@ -8,17 +8,17 @@ import Tags from "./Tags";
 
 const Rendering = ({ displayProps, port }) => {
   const {
-    lengths,
+    displayData,
     colors,
     activeTags,
     setActiveTags,
     activeLabels,
     setActiveLabels,
-    setActiveOther,
-    activeOther,
+    setActiveScalars,
+    activeScalars,
   } = displayProps;
-  const tStart = lengths.labels;
-  const oStart = tStart + lengths.tags;
+  const tStart = displayData.labels.length;
+  const sStart = tStart + displayData.tags.length;
   return (
     <Menu.Item as="h3">
       Display
@@ -28,11 +28,11 @@ const Rendering = ({ displayProps, port }) => {
         </Menu.Item>
       </Menu>
       <Labels
-        lengths={lengths}
+        displayData={displayData}
         colors={colors}
         activeLabels={activeLabels}
         setActiveLabels={setActiveLabels}
-        other={false}
+        scalars={false}
         start={0}
       />
       <Menu vertical>
@@ -41,7 +41,7 @@ const Rendering = ({ displayProps, port }) => {
         </Menu.Item>
       </Menu>
       <Tags
-        lengths={lengths}
+        displayData={displayData}
         colors={colors}
         activeTags={activeTags}
         setActiveTags={setActiveTags}
@@ -53,12 +53,12 @@ const Rendering = ({ displayProps, port }) => {
         </Menu.Item>
       </Menu>
       <Labels
-        lengths={lengths}
+        displayData={displayData}
         colors={colors}
-        activeLabels={activeOther}
-        setActiveLabels={setActiveOther}
-        other={true}
-        start={oStart}
+        activeLabels={activeScalars}
+        setActiveLabels={setActiveScalars}
+        scalars={true}
+        start={sStart}
       />
     </Menu.Item>
   );

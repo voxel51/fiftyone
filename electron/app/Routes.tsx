@@ -16,58 +16,39 @@ const colors = randomColor({ count: 100, luminosity: "dark" });
 function Routes({ port }) {
   const [activeTags, setActiveTags] = useState({});
   const [activeLabels, setActiveLabels] = useState({});
-  const [activeOther, setActiveOther] = useState({});
-  const [lengths, setLengths] = useState({});
+  const [activeScalars, setActiveScalars] = useState({});
+  const [displayData, setDisplayData] = useState({ labels: [], tags: [] });
   const [needsLoad, setNeedsLoad] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [colorMap, setColorMap] = useState({});
   const socket = getSocket(port, "state");
   const appProps = {
     activeTags,
     setActiveTags,
     activeLabels,
     setActiveLabels,
-    setActiveOther,
-    activeOther,
+    setActiveScalars,
+    activeScalars,
     colors,
-    lengths,
+    displayData,
   };
   const datasetProps = {
     activeTags,
     activeLabels,
-    activeOther,
-    colors,
-    lengths,
+    activeScalars,
   };
   const dataset = (props) => {
     return <Dataset {...props} displayProps={datasetProps} />;
   };
   const loadData = () => {
     setNeedsLoad(false);
-    setLoading(true);
     socket.emit("lengths", "", (data) => {
-      const mapping = {};
-      const sortFn = (a, b) => (a._id.field > b._id.field ? 1 : -1);
-      const labelKeys = data.labels ? data.labels.sort(sortFn) : [];
-      for (const i in labelKeys) {
-        mapping[labelKeys[i]._id.field] = i;
-      }
-      if (data.tags) {
-        for (const i in data.tags.sort()) {
-          mapping[data.tags[i]] = data.labels.length + i;
-        }
-      }
-      setLengths({
+      setDisplayData({
         tags: data.tags,
         labels: data.labels,
-        mapping: mapping,
       });
-      setLoading(false);
     });
   };
 
   useSubscribe(socket, "update", () => {
-    setLoading(true);
     loadData();
   });
 

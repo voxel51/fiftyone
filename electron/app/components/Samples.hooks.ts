@@ -2,7 +2,8 @@ import { wrap, releaseProxy } from "comlink";
 import { useEffect, useState, useMemo } from "react";
 import { getSocket, useSubscribe } from "../utils/socket";
 
-export default (port) => {
+export default (port, containerRef) => {
+  const hasRef = containerRef && containerRef.current;
   const [state, setState] = useState({
     loadMore: false,
     isLoading: false,
@@ -24,7 +25,7 @@ export default (port) => {
   });
 
   useEffect(() => {
-    if (!state.loadMore || state.isLoading || !state.hasMore) return;
+    if (!hasRef || !state.loadMore || state.isLoading || !state.hasMore) return;
     setState({ ...state, isLoading: true, loadMore: false });
     socket.emit("page", state.pageToLoad, (data) => {
       setState({

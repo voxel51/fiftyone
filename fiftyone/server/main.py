@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from functools import reduce
 import logging
 import os
 
@@ -29,7 +28,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.core.fields as fof
 import fiftyone.core.state as fos
 
-from util import get_image_size
+from fiftyone.server.utils import tile
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
@@ -154,76 +153,9 @@ class StateController(Namespace):
         else:
             return []
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [s.to_dict(extended=True) for s in view]
-        more = False
-        if len(samples) > page_length:
-            samples = samples[:page_length]
-            more = page + 1
-
-        results = [{"sample": s} for s in samples]
-        for r in results:
-            w, h = get_image_size(r["sample"]["filepath"])
-            r["width"] = w
-            r["height"] = h
-
-        rows = []
-        current_row = []
-        current_h = None
-        current_w = None
-        for s in results + self._remainder:
-            if current_w is None:
-                current_w = s["width"]
-                current_h = s["height"]
-                current_row.append(s)
-                continue
-
-            if current_w / current_h >= 5:
-                rows.append(current_row)
-                current_row = [s]
-                current_w = s["width"]
-                current_h = s["height"]
-                continue
-
-            current_row.append(s)
-            current_w += (current_h / s["height"]) * s["width"]
-
-        if current_w / current_h >= 5:
-            rows.append(current_row)
-            current_row = []
-
-        self._remainder = current_row if bool(more) else []
-        if bool(more) and len(current_row) > 0:
-            rows.append(current_row)
-
-        fit_rows = []
-        for row in rows:
-            columns = []
-            base_height = row[0]["height"]
-            ref_width = reduce(
-                lambda acc, val: acc
-                + (base_height / val["height"]) * val["width"],
-                row,
-                0,
-            )
-
-            for sample in row:
-                sample_width = base_height * sample["width"] / sample["height"]
-                columns.append(sample_width / ref_width)
-
-            row_style = {
-                "display": "grid",
-                "gridTemplateColumns": " ".join(
-                    map(lambda c: str(c * 100) + "%", columns)
-                ),
-                "width": "100%",
-                "margin": 0,
-            }
-
-            fit_rows.append(
-                {"style": row_style, "samples": [s["sample"] for s in row]}
-            )
-
-        return {"rows": fit_rows, "more": more}
+        results, remainder = tile(view, page, page_length, self._remainder)
+        self._remainder = remainder
+        return results
 
     def on_lengths(self, _):
         state = fos.StateDescription.from_dict(self.state)
@@ -232,8 +164,18 @@ class StateController(Namespace):
         elif state.dataset is not None:
             view = state.dataset.view()
         else:
-            return []
-        return {"labels": view.get_label_fields(), "tags": view.get_tags()}
+            return {"total": 0, "labels": [], "tags": []}
+
+        labels = view.get_label_fields()
+        for idx, l in enumerate(labels):
+            l["color"] = idx
+
+        num_labels = len(labels)
+        tags = view.get_tags()
+        for idx, t in enumerate(tags):
+            tags[idx] = {"name": t, "color": num_labels + idx}
+
+        return {"labels": labels, "tags": tags}
 
     def on_get_distributions(self, group):
         """Gets the distributions for the current state with respect to a group,
@@ -254,36 +196,16 @@ class StateController(Namespace):
 
         return _get_distributions(view, group)
 
-    def on_get_facets(self, _):
-        """Gets the facets for the current state.
 
-        Args:
-            _: the message, which is not used
-
-        Returns:
-            the list of facets
-        """
-        state = fos.StateDescription.from_dict(self.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.view()
-        else:
-            return []
-
-        return view._get_facets()
-
-    def on_set_facets(self, facets):
-        """Sets the facets for the current state.
-
-        Args:
-            facets: the facets string
-        """
-        _, value = facets.split(".")
-        state = fos.StateDescription.from_dict(self.state)
-        state.view = state.dataset.view().match_tag(value)
-        self.state = state.serialize()
-        emit("update", self.state, broadcast=True, include_self=True)
+def _fit_row(row, row_width, row_height):
+    result = {"samples": [], "widths": []}
+    for sample, width, height in row:
+        fit_width = row_height * width / height
+        result["samples"].append(sample.to_dict(extended=True))
+        result["widths"].append(
+            fit_width / row_width * (100 - ((len(row) - 1) * 2))
+        )
+    return result
 
 
 def _get_distributions(view, group):

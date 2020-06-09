@@ -10,7 +10,6 @@ Results are written to a log file: `benchmark_log.txt`
 from collections import OrderedDict
 import pathlib
 import random
-import subprocess
 import time
 
 import numpy as np
@@ -18,17 +17,10 @@ import numpy as np
 import fiftyone.core.config as foc
 import fiftyone.zoo as foz
 
+from utils import get_git_revision_hash, write_result
+
 
 DATASET_NAME = "cifar10"
-
-
-def get_git_revision_hash():
-    return (
-        subprocess.check_output(["git", "rev-parse", "HEAD"])
-        .strip()
-        .decode("utf-8")
-    )
-
 
 foc.set_config_settings(default_ml_backend="tensorflow")
 
@@ -81,11 +73,9 @@ for _ in range(9):
 RESULT["delete_samples"] = np.median(delete_sample_times)
 
 log_path = (
-    pathlib.Path(__file__).parent.absolute().joinpath("benchmark_log.txt")
+    pathlib.Path(__file__)
+    .parent.absolute()
+    .joinpath("logs/cifar10_benchmark_log.txt")
 )
 
-with open(log_path, "a") as file:
-    for k, v in RESULT.items():
-        if isinstance(v, float):
-            RESULT[k] = "{:7.4f}".format(v)
-    file.write("\n" + " ".join(RESULT.values()))
+write_result(log_path, RESULT)

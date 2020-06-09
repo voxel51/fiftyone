@@ -23,6 +23,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import collections
+from itertools import zip_longest
 import json
 import os
 import io
@@ -44,6 +45,70 @@ PNG = types["PNG"] = "PNG"
 TIFF = types["TIFF"] = "TIFF"
 
 image_fields = ["path", "type", "file_size", "width", "height"]
+
+
+def tile(view, page, page_length, remainder=[]):
+    """Tiles the samples in a view in rows of varying height, where all
+    samples (images) in a row are fit to preserve aspect ratio. No cropping is
+    done
+
+    Args:
+        view: a :class:`fiftyone.core.view.DatasetView`
+        page: page number
+        page_length: page length
+        remainder: a list of samples to prepend to the view results
+
+    Returns:
+        a tuple of the serialized result and the new remainder (result, remainder)
+    """
+    more = False
+    rows = []
+    row = []
+    row_height = None
+    row_width = None
+
+    result = list(zip_longest(list(view), [], []))
+    for idx, (sample, w, h) in enumerate(remainder + result):
+        if idx == len(remainder) + page_length:
+            more = page + 1
+            break
+
+        if w is None:
+            w, h = get_image_size(sample.filepath)
+
+        if row_width is None:
+            row_width = w
+            row_height = h
+            row.append((sample, w, h))
+            continue
+
+        if row_width / row_height >= 5:
+            rows.append(_fit_row(row, row_width, row_height))
+            row = [(sample, w, h)]
+            row_width = w
+            row_height = h
+            continue
+
+        row.append((sample, w, h))
+        row_width += (row_height / h) * w
+
+    if row_width / row_height >= 5 or (not bool(more) and len(row)):
+        rows.append(_fit_row(row, row_width, row_height))
+        row = []
+
+    remainder = row if bool(more) else []
+    return {"rows": rows, "more": more}, remainder
+
+
+def _fit_row(row, row_width, row_height):
+    result = {"samples": [], "widths": []}
+    for sample, width, height in row:
+        fit_width = row_height * width / height
+        result["samples"].append(sample.to_dict(extended=True))
+        result["widths"].append(
+            fit_width / row_width * (100 - ((len(row) - 1) * 2))
+        )
+    return result
 
 
 class Image(collections.namedtuple("Image", image_fields)):

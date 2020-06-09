@@ -1,36 +1,36 @@
-import React, { useState } from "react";
-import { Menu, Dimmer, Loader, Container, Label } from "semantic-ui-react";
+import React from "react";
+import { Container } from "semantic-ui-react";
 
 import connect from "../utils/connect";
-import { getSocket, useSubscribe } from "../utils/socket";
 
 const Tags = (props) => {
-  const { port, activeTags, setActiveTags, colors, start, lengths } = props;
-  const socket = getSocket(port, "state");
+  const { activeTags, setActiveTags, colors, displayData } = props;
 
   const onClick = (t) => {
-    setActiveTags({ ...activeTags, [t]: !Boolean(activeTags[t]) });
+    setActiveTags({
+      ...activeTags,
+      [t.name]: activeTags[t.name] === null ? colors[t.color] : null,
+    });
   };
-
+  const { tags } = displayData;
   let content;
-  if (lengths.tags && lengths.tags.length) {
-    const { tags } = lengths;
-    const styles = (t, i) => {
-      if (activeTags[t]) {
-        return { background: colors[lengths.mapping[t]] };
+  if (tags) {
+    const styles = (t) => {
+      if (activeTags[t.name]) {
+        return { background: colors[t.color] };
       }
-      return { borderColor: colors[lengths.mapping[t]] };
+      return { borderColor: colors[t.color] };
     };
     content = (
       <Container>
         {tags.map((t, i) => (
           <div
-            className={`tag clickable ${activeTags[t] ? "active" : ""}`}
+            className={`tag clickable ${activeTags[t.name] ? "active" : ""}`}
             key={i}
             onClick={() => onClick(t)}
-            style={styles(t, i)}
+            style={styles(t)}
           >
-            {t}
+            {t.name}
           </div>
         ))}
       </Container>

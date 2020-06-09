@@ -241,6 +241,7 @@ class DatasetView(foc.SampleCollection):
             {"$project": {"tags": "$tags"}},
             {"$unwind": "$tags"},
             {"$group": {"_id": "None", "all_tags": {"$addToSet": "$tags"}}},
+            {"$sort": {"_id.all_tags": 1}},
         ]
         try:
             return next(self.aggregate(pipeline))["all_tags"]
@@ -259,8 +260,9 @@ class DatasetView(foc.SampleCollection):
             {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
             {"$unwind": "$field"},
             {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
+            {"$sort": {"_id.field": 1}},
         ]
-        return [f for f in self.aggregate(pipeline)]
+        return [f["_id"] for f in self.aggregate(pipeline)]
 
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
