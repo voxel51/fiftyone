@@ -193,6 +193,10 @@ class Sample(object):
         """
         return self._doc.clear_field(field_name=field_name)
 
+    def iter_fields(self):
+        for field_name in self.field_names:
+            yield field_name, self.get_field(field_name)
+
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
         mime_type = etau.guess_mime_type(self.filepath)

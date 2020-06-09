@@ -817,6 +817,8 @@ class SampleInDatasetTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             dataset.add_sample(sample)
 
+        self.assertEqual(len(dataset), 0)
+
     @drop_datasets
     def test_dataset_clear(self):
         dataset_name = self.test_dataset_clear.__name__

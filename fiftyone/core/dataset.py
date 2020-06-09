@@ -365,7 +365,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample._in_db:
             sample = sample.copy()
 
-        self._validate_sample_fields(sample)
+        self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
         self._collection.insert_one(d)  # adds "_id" to `d`
@@ -1462,7 +1462,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for field_name, field in fields_dict.items()
         )
 
-    def _validate_sample_fields(self, sample):
+    def _validate_sample(self, sample):
         fields = self.get_field_schema()
 
         non_existest_fields = {
@@ -1475,6 +1475,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self.name,
             )
             raise FieldDoesNotExist(msg)
+
+        for field_name, value in sample.iter_fields():
+            field = fields[field_name]
+            if value is None and field.null:
+                continue
+            field.validate(value)
 
 
 class DoesNotExistError(Exception):
