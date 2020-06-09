@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class Service(object):
     """Interface for FiftyOne services.
 
-    All services must implement :func:`Service.start` and :func:`Service.stop`.
+    All services must define a ``command`` property.
     """
 
     working_dir = "."
