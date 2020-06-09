@@ -412,7 +412,9 @@ class DashboardLaunchCommand(Command):
             dataset=dataset, port=args.port, remote=args.remote
         )
 
-        print("\nTo exit, close the dashboard or enter ctrl + c\n")
+        # @todo For non-remote sessions, automatically terminate process when
+        # dashboard closes
+        print("\nTo exit, type ctrl + c\n")
         signal.pause()
 
 
@@ -461,7 +463,8 @@ class DashboardConnectCommand(Command):
 
         session = fos.launch_dashboard()
 
-        print("\nTo exit, close the dashboard or enter ctrl + c\n")
+        # @todo automatically terminate process when dashboard closes
+        print("\nTo exit, type ctrl + c\n")
         signal.pause()
 
 
