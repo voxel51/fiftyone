@@ -50,8 +50,6 @@ class Sample(object):
         self._doc = foo.ODMNoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
-
-        # maintain a reference to the dataset
         self._dataset = self._get_dataset()
 
     def __str__(self):
@@ -62,6 +60,7 @@ class Sample(object):
             u = self.__str__()
         except (UnicodeEncodeError, UnicodeDecodeError):
             u = "[Bad Unicode data]"
+
         repr_type = str if u is None else type(u)
         return repr_type("<{}: {}>".format(self.__class__.__name__, u))
 
@@ -218,8 +217,9 @@ class Sample(object):
         return doc_cls(**kwargs)
 
     def to_dict(self):
-        """Serializes the sample to a JSON dictionary. The sample ID is always
-        excluded in this representation.
+        """Serializes the sample to a JSON dictionary.
+
+        Sample IDs are always excluded in this representation.
 
         Returns:
             a JSON dict
@@ -230,8 +230,9 @@ class Sample(object):
 
     @classmethod
     def from_dict(cls, d):
-        """Loads the sample from a JSON dictionary. The sample is created as a
-        new instance that is not in a dataset.
+        """Loads the sample from a JSON dictionary.
+
+        The returned sample will not belong to a dataset.
 
         Returns:
             a :class:`Sample`
@@ -313,8 +314,10 @@ class Sample(object):
     def _save_dataset_samples(cls, dataset_name):
         """Saves all changes to samples instances in memory belonging to the
         specified dataset to the database.
+
         A samples only needs to be saved if it has non-persisted changes and
         still exists in memory.
+
         Args:
             dataset_name: the name of the dataset to save.
         """
@@ -325,8 +328,10 @@ class Sample(object):
     def _reload_dataset_samples(cls, dataset_name):
         """Reloads the fields for sample instances in memory belonging to the
         specified dataset from the database.
+
         If multiple processes or users are accessing the same database this
         will keep the dataset in sync.
+
         Args:
             dataset_name: the name of the dataset to reload.
         """

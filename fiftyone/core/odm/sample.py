@@ -64,7 +64,6 @@ from collections import OrderedDict
 from functools import wraps
 import json
 import numbers
-import warnings
 
 from bson import json_util
 from bson.binary import Binary
