@@ -259,7 +259,7 @@ you can manually configure port forwarding on another machine as follows:
 
 ssh -N -L %d:127.0.0.1:5151 [<username>@]<hostname>
 
-and then programmatically connect to the dashboard on that machine using either
+and then connect to the dashboard on that machine using either
 `fiftyone dashboard connect` or from Python via `fiftyone.launch_dashboard()`.
 """
 
