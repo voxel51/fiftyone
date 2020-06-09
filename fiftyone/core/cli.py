@@ -95,7 +95,7 @@ class ConfigCommand(Command):
         fiftyone config <field>
 
         # Print the location of your FiftyOne config
-        fiftyone config --location
+        fiftyone config --locate
 
         # Save your current FiftyOne config to disk
         fiftyone config --save
@@ -108,7 +108,7 @@ class ConfigCommand(Command):
         )
         parser.add_argument(
             "-l",
-            "--location",
+            "--locate",
             action="store_true",
             help="print the location of your FiftyOne config on disk",
         )
@@ -121,7 +121,7 @@ class ConfigCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        if args.location:
+        if args.locate:
             config_path = foc.FIFTYONE_CONFIG_PATH
             if os.path.isfile(config_path):
                 print(config_path)
