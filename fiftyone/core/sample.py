@@ -109,9 +109,6 @@ class Sample(object):
         if not isinstance(other, self.__class__):
             return False
 
-        if self._in_db:
-            return other is self
-
         return self._doc == other._doc
 
     @property
