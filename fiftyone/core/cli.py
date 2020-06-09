@@ -22,6 +22,7 @@ from future.utils import iteritems, itervalues
 import argparse
 from collections import defaultdict
 import json
+import signal
 
 import argcomplete
 from tabulate import tabulate
@@ -31,6 +32,9 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.dataset as fod
+import fiftyone.core.session as fos
+import fiftyone.types as fot
 import fiftyone.zoo as foz
 
 
@@ -75,6 +79,8 @@ class FiftyOneCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
+        _register_command(subparsers, "dataset", DatasetCommand)
+        _register_command(subparsers, "dashboard", DashboardCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
     @staticmethod
@@ -171,6 +177,250 @@ def _render_constant_value(value):
     return value
 
 
+class DatasetCommand(Command):
+    """Tools for working with FiftyOne datasets."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", DatasetListCommand)
+        _register_command(subparsers, "info", DatasetInfoCommand)
+        _register_command(subparsers, "create", DatasetCreateCommand)
+        _register_command(subparsers, "delete", DatasetDeleteCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class DatasetListCommand(Command):
+    """Tools for listing FiftyOne datasets.
+
+    Examples::
+
+        # List available datasets
+        fiftyone dataset list
+    """
+
+    @staticmethod
+    def setup(parser):
+        pass
+
+    @staticmethod
+    def execute(parser, args):
+        datasets = fod.list_dataset_names()
+
+        for dataset in sorted(datasets):
+            print(dataset)
+
+
+class DatasetInfoCommand(Command):
+    """Tools for listing information about FiftyOne datasets.
+
+    Examples::
+
+        # Print information about the given dataset
+        fiftyone dataset info <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dataset = fod.load_dataset(args.name)
+        print(dataset)
+
+
+class DatasetCreateCommand(Command):
+    """Tools for creating FiftyOne datasets.
+
+    Examples::
+        # Creates a persistent dataset from the given data on disk
+        fiftyone dataset create \\
+            --name <name> --type <type> --dataset-dir <dataset-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-n", "--name", metavar="NAME", help="a name for the dataset",
+        )
+        parser.add_argument(
+            "-t",
+            "--type",
+            required=True,
+            metavar="TYPE",
+            help="the `fiftyone.types.Dataset` type of the dataset",
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset-dir",
+            required=True,
+            metavar="DATASET_DIR",
+            help="the directory containing the dataset files",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        dataset_type = etau.get_class(args.type)
+        dataset_dir = args.dataset_dir
+
+        if isinstance(dataset_type, fot.ImageClassificationDataset):
+            dataset = fod.Dataset.from_image_classification_dataset(
+                dataset_dir, name=name
+            )
+        elif isinstance(dataset_type, fot.ImageDetectionDataset):
+            dataset = fod.Dataset.from_image_detection_dataset(
+                dataset_dir, name=name
+            )
+        elif isinstance(dataset_type, fot.ImageLabelsDataset):
+            dataset = fod.Dataset.from_image_labels_dataset(
+                dataset_dir, name=name
+            )
+        else:
+            raise ValueError("Unsupported dataset type %s" % args.type)
+
+        dataset.persistent = True
+
+
+class DatasetDeleteCommand(Command):
+    """Tools for deleting FiftyOne datasets.
+
+    Examples::
+
+        # Delete the dataset with the given name
+        fiftyone dataset delete <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        fod.delete_dataset(args.name)
+        print("Dataset '%s' deleted" % args.name)
+
+
+class DashboardCommand(Command):
+    """Tools for working with the FiftyOne Dashboard."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "launch", DashboardLaunchCommand)
+        _register_command(subparsers, "connect", DashboardConnectCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class DashboardLaunchCommand(Command):
+    """Tools for launching the FiftyOne Dashboard.
+
+    Examples::
+
+        # Launches the dashboard with the given dataset
+        fiftyone dashboard launch <name>
+
+        # Launches the dashboard with a custom port
+        fiftyone dashboard launch <name> --port <port>
+
+        # Launches the dashboard for remote
+        fiftyone dashboard launch <name> --remote
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset",
+        )
+        parser.add_argument(
+            "-p",
+            "--port",
+            metavar="PORT",
+            default=5151,
+            help="the port number to use",
+        )
+        parser.add_argument(
+            "-r",
+            "--remote",
+            action="store_true",
+            help="whether to launch a remote dashboard session",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dataset = fod.load_dataset(args.name)
+        session = fos.launch_dashboard(
+            dataset=dataset, port=args.port, remote=args.remote
+        )
+
+        signal.pause()
+
+
+class DashboardConnectCommand(Command):
+    """Tools for connecting to a remote FiftyOne Dashboard.
+
+    Examples::
+
+        # Connect to a remote dashboard with port forwarding already configured
+        fiftyone dashboard connect
+
+        # Connects to a remote dashboard session
+        fiftyone dashboard connect \\
+            --user <username> --host <hostname> --port <port>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-u",
+            "--user",
+            metavar="USERNAME",
+            help="the username on the remote machine hosting the dashboard",
+        )
+        parser.add_argument(
+            "-h",
+            "--host",
+            metavar="HOSTNAME",
+            help="the hostname of the remote machine hosting the dashboard",
+        )
+        parser.add_argument(
+            "-p",
+            "--port",
+            metavar="PORT",
+            default=5151,
+            help="the port number on the remote machine to connect to",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.user and args.host:
+            # Configure port forwarding
+            etau.call(
+                [
+                    "ssh",
+                    "-N",
+                    "-L",
+                    "%d:127.0.0.1:5151" % args.port,
+                    "%s:%s" % (args.user, args.host),
+                ]
+            )
+
+        session = fos.launch_dashboard()
+
+        signal.pause()
+
+
 class ZooCommand(Command):
     """Tools for working with the FiftyOne Dataset Zoo."""
 
@@ -180,6 +430,7 @@ class ZooCommand(Command):
         _register_command(subparsers, "list", ZooListCommand)
         _register_command(subparsers, "info", ZooInfoCommand)
         _register_command(subparsers, "download", ZooDownloadCommand)
+        _register_command(subparsers, "load", ZooLoadCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -386,6 +637,51 @@ class ZooDownloadCommand(Command):
         splits = args.splits or None
         dataset_dir = args.dataset_dir or None
         foz.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
+
+
+class ZooLoadCommand(Command):
+    """Tools for loading zoo datasets.
+
+    Examples::
+
+        # Load the zoo dataset with the given name as a persistent dataset
+        fiftyone zoo load <name>
+
+        # Load the specified split(s) of the zoo dataset with the given name as
+        # a persistent dataset
+        fiftyone zoo load <name> --splits <split1> ...
+
+        # Load to the zoo dataset to a custom directory
+        fiftyone zoo load <name> --dataset-dir <dataset-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset"
+        )
+        parser.add_argument(
+            "-s",
+            "--splits",
+            metavar="SPLITS",
+            nargs="+",
+            help="the dataset splits to load",
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset-dir",
+            metavar="DATASET_DIR",
+            help="a custom directory in which the dataset is downloaded",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        splits = args.splits or None
+        dataset_dir = args.dataset_dir or None
+        foz.load_zoo_dataset(
+            name, splits=splits, dataset_dir=dataset_dir, persistent=True
+        )
 
 
 def _print_dict_as_json(d):
