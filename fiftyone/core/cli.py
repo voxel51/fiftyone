@@ -24,6 +24,7 @@ from collections import defaultdict
 import json
 import os
 import signal
+import subprocess
 
 import argcomplete
 from tabulate import tabulate
@@ -35,6 +36,7 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.zoo as foz
 
@@ -445,8 +447,8 @@ class DashboardConnectCommand(Command):
     @staticmethod
     def execute(parser, args):
         if args.destination:
-            # Configure port forwarding
-            etau.call(
+            # Port forwarding
+            p = subprocess.Popen(
                 [
                     "ssh",
                     "-N",
@@ -455,11 +457,22 @@ class DashboardConnectCommand(Command):
                     "%s" % args.destination,
                 ]
             )
+            _terminate_subprocess_on_exit(p)
 
         session = fos.launch_dashboard()
 
         print("\nTo exit, close the dashboard or enter ctrl + c\n")
         signal.pause()
+
+
+def _terminate_subprocess_on_exit(p):
+    def handle_exit(*args):
+        try:
+            p.terminate()
+        except:
+            pass
+
+    fou.call_on_exit(handle_exit)
 
 
 class ZooCommand(Command):
