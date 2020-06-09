@@ -149,6 +149,7 @@ class Session(foc.HasClient):
         if not self._remote:
             self._app_service = fos.AppService()
             _close_on_exit(self)
+            logger.info("Dashboard launched")
         else:
             logger.info(
                 _REMOTE_INSTRUCTIONS
