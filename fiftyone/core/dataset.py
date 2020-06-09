@@ -410,13 +410,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expand_schema:
             self._expand_schema(samples)
 
-        docs = self._get_query_set().insert(
-            [s.clone_doc(doc_cls=self._sample_doc_cls) for s in samples]
-        )
+        samples = [
+            sample.copy() if sample._in_db else sample for sample in samples
+        ]
+
+        for sample in samples:
+            self._validate_sample(sample)
+
+        dicts = [sample.to_mongo_dict() for sample in samples]
+        self._collection.insert_many(dicts)
+        docs = [
+            self._sample_doc_cls.from_dict(d, extended=False) for d in dicts
+        ]
 
         for sample, doc in zip(samples, docs):
-            if not sample._in_db:
-                sample._set_backing_doc(doc)
+            sample._set_backing_doc(doc)
 
         return [str(doc.id) for doc in docs]
 

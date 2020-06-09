@@ -217,23 +217,6 @@ class Sample(object):
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
         return self.__class__(**kwargs)
 
-    def clone_doc(self, doc_cls=None):
-        """Returns a deep clone of the backing document of the sample.
-
-        Args:
-            doc_cls (None): a :class:`fiftyone.core.odm.ODMSample` class to
-                use for the backing document. By default, the backing document
-                class of the sample is used
-
-        Returns:
-            a :class:`fiftyone.core.odm.ODMSample`
-        """
-        if doc_cls is None:
-            doc_cls = self._doc.__class__
-
-        kwargs = {f: deepcopy(self[f]) for f in self.field_names}
-        return doc_cls(**kwargs)
-
     def to_dict(self):
         """Serializes the sample to a JSON dictionary. The sample ID is always
         excluded in this representation.
