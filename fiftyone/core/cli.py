@@ -681,18 +681,17 @@ class ZooDownloadCommand(Command):
 
 
 class ZooLoadCommand(Command):
-    """Tools for loading zoo datasets.
+    """Tools for loading zoo datasets as persistent FiftyOne datasets.
 
     Examples::
 
-        # Load the zoo dataset with the given name as a persistent dataset
+        # Load the zoo dataset with the given name
         fiftyone zoo load <name>
 
-        # Load the specified split(s) of the zoo dataset with the given name as
-        # a persistent dataset
+        # Load the specified split(s) of the zoo dataset
         fiftyone zoo load <name> --splits <split1> ...
 
-        # Load to the zoo dataset to a custom directory
+        # Load the zoo dataset from a custom directory
         fiftyone zoo load <name> --dataset-dir <dataset-dir>
     """
 
