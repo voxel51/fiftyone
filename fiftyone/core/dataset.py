@@ -171,7 +171,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._meta, self._sample_doc_cls = _load_dataset(name)
 
     def __len__(self):
-        return self._get_query_set().count()
+        return self._collection.count_documents({})
 
     def __getitem__(self, sample_id):
         if isinstance(sample_id, numbers.Integral):
@@ -327,7 +327,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the set of distinct values
         """
-        return set(self._get_query_set().distinct(field))
+        return set(self._collection.distinct(field))
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -1366,7 +1366,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if pipeline is None:
             pipeline = []
 
-        return self._get_query_set().aggregate(pipeline)
+        return self._collection.aggregate(pipeline)
 
     def serialize(self):
         """Serializes the dataset.
