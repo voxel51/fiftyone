@@ -36,6 +36,7 @@ from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
@@ -497,6 +498,50 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Reloads all in-memory samples in the dataset from the database."""
         fos.Sample._reload_dataset_samples(self.name)
 
+    def add_dir(
+        self, dataset_dir, dataset_type, label_field="ground_truth", tags=None
+    ):
+        """Adds the contents of the given directory to the dataset.
+
+        Args:
+            dataset_dir: the dataset directory
+            dataset_type: the :class:`fiftyone.types.DatasetType` of the
+                dataset in the specified directory
+            label_field ("ground_truth"): the name of the field to use for the
+                labels (if applicable)
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if isinstance(dataset_type, fot.ImageDirectory):
+            return self.add_images_dir(dataset_dir, recursive=True, tags=tags)
+
+        if isinstance(dataset_type, fot.ImageClassificationDirectoryTree):
+            samples, classes = foud.parse_image_classification_dir_tree(
+                dataset_dir
+            )
+            return self.add_image_classification_samples(
+                samples, classes=classes, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.ImageClassificationDataset):
+            return self.add_image_classification_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.ImageDetectionDataset):
+            return self.add_image_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.ImageLabelsDataset):
+            return self.add_image_labels_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        raise ValueError("Unsupported dataset type %s" % type(dataset_type))
+
     def add_image_classification_samples(
         self, samples, label_field="ground_truth", tags=None, classes=None,
     ):
@@ -951,6 +996,39 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         return self.add_images(image_paths, tags=tags)
+
+    @classmethod
+    def from_dir(
+        cls,
+        dataset_dir,
+        dataset_type,
+        name=None,
+        label_field="ground_truth",
+        tags=None,
+    ):
+        """Creates a :class:`Dataset` from the contents of the given directory.
+
+        Args:
+            dataset_dir: the dataset directory
+            dataset_type: the :class:`fiftyone.types.DatasetType` of the
+                dataset in the specified directory
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            label_field ("ground_truth"): the name of the field to use for the
+                labels (if applicable)
+            tags (None): an optional list of tags to attach to each sample
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        dataset = cls(name)
+        return dataset.add_dir(
+            dataset_dir,
+            dataset_type,
+            name=name,
+            label_field=label_field,
+            tags=tags,
+        )
 
     @classmethod
     def from_image_classification_samples(
