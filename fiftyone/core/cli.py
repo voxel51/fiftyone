@@ -454,7 +454,7 @@ class DashboardConnectCommand(Command):
     def execute(parser, args):
         if args.destination:
             # Port forwarding
-            p = subprocess.call(
+            ret = subprocess.call(
                 [
                     "ssh",
                     "-f",
@@ -464,23 +464,14 @@ class DashboardConnectCommand(Command):
                     "%s" % args.destination,
                 ]
             )
-            _terminate_subprocess_on_exit(p)
+            if ret != 0:
+                raise RuntimeError("ssh failed with exit code %r" % ret)
 
         session = fos.launch_dashboard()
 
         # @todo automatically terminate process when dashboard closes
         print("\nTo exit, type ctrl + c\n")
         signal.pause()
-
-
-def _terminate_subprocess_on_exit(p):
-    def handle_exit(*args):
-        try:
-            p.terminate()
-        except:
-            pass
-
-    _call_on_exit(handle_exit)
 
 
 def _call_on_exit(callback):
