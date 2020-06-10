@@ -518,7 +518,6 @@ def _call_on_exit(callback):
     """
     atexit.register(callback)
     signal.signal(signal.SIGTERM, lambda *args: callback())
-    signal.signal(signal.SIGINT, lambda *args: callback())
 
 
 class ZooCommand(Command):
