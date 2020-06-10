@@ -18,10 +18,8 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import atexit
 import logging
 import os
-import signal
 import subprocess
 import sys
 

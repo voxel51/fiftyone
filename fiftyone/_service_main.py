@@ -11,8 +11,8 @@ Some services that we spin up do not terminate on their own when their parent
 process terminates, so they need to be killed explicitly. However, if the
 parent process is a Python interpreter that is in the process of shutting down,
 it cannot reliably kill its children. This script works around these issues by
-detecting when the parent process exits, terminating its children, and only then
-exiting itself.
+detecting when the parent process exits, terminating its children, and only
+then exiting itself.
 """
 
 import collections
