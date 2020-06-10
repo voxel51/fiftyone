@@ -209,7 +209,10 @@ class VOCObject(object):
 
 
 class VOCAnnotationWriter(object):
-    """Class for writing annotations in VOC format."""
+    """Class for writing annotations in VOC format.
+
+    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+    """
 
     def __init__(self):
         environment = jinja2.Environment(
@@ -217,8 +220,8 @@ class VOCAnnotationWriter(object):
         )
         self.template = environment.get_template("voc_annotation_template.xml")
 
-    def write_annotation(self, detections, metadata, img_path, xml_path):
-        """Writes the annotations to disk in XML format.
+    def write(self, detections, metadata, img_path, xml_path):
+        """Writes the annotations to disk.
 
         Args:
             detections: a :class:`fiftyone.core.labels.Detections`
@@ -298,8 +301,6 @@ def export_voc_detection_dataset(samples, label_field, dataset_dir):
                 metadata = fom.ImageMetadata.build_for(img_path)
 
             label = sample[label_field]
-            writer.write_annotation(
-                label, metadata, out_img_path, out_anno_path
-            )
+            writer.write(label, metadata, out_img_path, out_anno_path)
 
     logger.info("Dataset created")
