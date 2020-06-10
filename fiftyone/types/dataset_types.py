@@ -53,11 +53,26 @@ class LabeledImageDataset(LabeledDataset):
     pass
 
 
+class ImageDirectory(UnlabeledImageDataset):
+    """A directory of images.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <filename1>.<ext>
+            <filename2>.<ext>
+
+    When reading datasets of this type, subfolders are recursively traversed.
+    """
+
+    pass
+
+
 class ImageClassificationDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated
     classification labels.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -90,11 +105,30 @@ class ImageClassificationDataset(LabeledImageDataset):
     pass
 
 
+class ImageClassificationDirectoryTree(LabeledImageDataset):
+    """A directory tree that defines an image classification dataset.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <classA>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+            <classB>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+    """
+
+    pass
+
+
 class ImageDetectionDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated object
     detections.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -145,7 +179,7 @@ class ImageLabelsDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in ``eta.core.image.ImageLabels`` format.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
