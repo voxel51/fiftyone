@@ -414,12 +414,16 @@ def _watch_session(session, remote=False):
 
 
 class DashboardViewCommand(Command):
-    """Tools for viewing a raw dataset on disk in the FiftyOne Dashboard.
+    """Tools for viewing datasets in the FiftyOne Dashboard without persisting
+    them to the database.
 
     Examples::
 
-        # View the dataset in the dashboard
+        # View a dataset stored on disk in the dashboard
         fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+
+        # View a zoo dataset in the dashboard
+        fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
 
         # View the dataset in a remote dashboard session
         fiftyone dashboard view ... --remote
@@ -428,7 +432,13 @@ class DashboardViewCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-n", "--name", metavar="NAME", help="a name for the dataset",
+            "-n", "--name", metavar="NAME", help="a name for the dataset"
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset-dir",
+            metavar="DATASET_DIR",
+            help="the directory containing the dataset to view",
         )
         parser.add_argument(
             "-t",
@@ -437,10 +447,17 @@ class DashboardViewCommand(Command):
             help="the `fiftyone.types.Dataset` type of the dataset",
         )
         parser.add_argument(
-            "-d",
-            "--dataset-dir",
-            metavar="DATASET_DIR",
-            help="the directory containing the dataset",
+            "-z",
+            "--zoo-dataset",
+            metavar="NAME",
+            help="the name of a zoo dataset to view",
+        )
+        parser.add_argument(
+            "-s",
+            "--splits",
+            metavar="SPLITS",
+            nargs="+",
+            help="the dataset splits to load",
         )
         parser.add_argument(
             "-p",
@@ -459,11 +476,21 @@ class DashboardViewCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
-        dataset_dir = args.dataset_dir
-        dataset_type = etau.get_class(args.type)
-
-        dataset = fod.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+        if args.zoo_dataset:
+            # View a zoo dataset
+            name = args.zoo_dataset
+            splits = args.splits
+            dataset_dir = args.dataset_dir
+            dataset = foz.load_zoo_dataset(
+                name, splits=splits, dataset_dir=dataset_dir, persistent=False
+            )
+        else:
+            # View a dataset on disk
+            dataset_dir = args.dataset_dir
+            dataset_type = etau.get_class(args.type)
+            dataset = fod.Dataset.from_dir(
+                dataset_dir, dataset_type, name=name
+            )
 
         session = fos.launch_dashboard(
             dataset=dataset, port=args.port, remote=args.remote
@@ -703,7 +730,7 @@ class ZooInfoCommand(Command):
         print("***** Dataset description *****\n%s" % zoo_dataset.__doc__)
 
         # Check if dataset is downloaded
-        base_dir = args.base_dir or None
+        base_dir = args.base_dir
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
@@ -759,8 +786,8 @@ class ZooDownloadCommand(Command):
     @staticmethod
     def execute(parser, args):
         name = args.name
-        splits = args.splits or None
-        dataset_dir = args.dataset_dir or None
+        splits = args.splits
+        dataset_dir = args.dataset_dir
         foz.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
 
 
@@ -801,8 +828,8 @@ class ZooLoadCommand(Command):
     @staticmethod
     def execute(parser, args):
         name = args.name
-        splits = args.splits or None
-        dataset_dir = args.dataset_dir or None
+        splits = args.splits
+        dataset_dir = args.dataset_dir
         dataset = foz.load_zoo_dataset(
             name, splits=splits, dataset_dir=dataset_dir, persistent=True
         )
