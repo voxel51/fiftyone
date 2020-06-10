@@ -178,13 +178,11 @@ def load_zoo_dataset(
 
     if fo.dataset_exists(dataset_name):
         if not drop_existing_dataset:
-            warnings.warn(
-                (
-                    "Loading existing dataset '%s'. To reload from disk, "
-                    "first delete the existing dataset"
-                )
-                % dataset_name
-            )
+            msg = (
+                "Loading existing dataset '%s'. To reload from disk, first "
+                "delete the existing dataset"
+            ) % dataset_name
+            warnings.warn(msg)
             return fo.load_dataset(dataset_name)
 
         fo.delete_dataset(dataset_name)

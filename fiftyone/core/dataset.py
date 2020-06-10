@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import datetime
+import inspect
 import logging
 import numbers
 import os
@@ -514,6 +515,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
+        if inspect.isclass(dataset_type):
+            dataset_type = dataset_type()
+
         if isinstance(dataset_type, fot.ImageDirectory):
             return self.add_images_dir(dataset_dir, recursive=True, tags=tags)
 
@@ -1533,6 +1537,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
 
 class DoesNotExistError(Exception):
+    """Exception raised when a dataset that does not exist is encountered."""
+
     pass
 
 
