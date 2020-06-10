@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -28,7 +29,7 @@ import fiftyone.core.fields as fof
 
 
 class Label(ODMEmbeddedDocument):
-    """A label for a sample in a :class:`fiftyone.core.dataset.Dataset`.
+    """Base class for labels.
 
     Label instances represent an atomic collection of labels associated with a
     sample in a dataset. Label instances may represent concrete tasks such as
@@ -41,8 +42,7 @@ class Label(ODMEmbeddedDocument):
 
 
 class ImageLabel(Label):
-    """A label for an image sample in a :class:`fiftyone.core.dataset.Dataset`.
-    """
+    """Base class for labels attached to images."""
 
     meta = {"allow_inheritance": True}
 
@@ -56,15 +56,11 @@ class ImageLabel(Label):
         raise NotImplementedError("Subclass must implement to_image_labels()")
 
 
-class Classification(ImageLabel):
-    """A classification label for an image sample in a
-    :class:`fiftyone.core.dataset.Dataset`.
-
-    See :class:`fiftyone.utils.data.ImageClassificationSampleParser` for a
-    convenient way to build labels of this type for your existing datasets.
+class Attribute(ODMEmbeddedDocument):
+    """An attribute.
 
     Args:
-        label: the label string
+        label (None): the label string
         confidence (None): a confidence in ``[0, 1]`` for the label
         logits (None): logits associated with the labels
     """
@@ -74,6 +70,21 @@ class Classification(ImageLabel):
     label = fof.StringField()
     confidence = fof.FloatField()
     logits = fof.VectorField()
+
+
+class Classification(Attribute, ImageLabel):
+    """A classification label.
+
+    See :class:`fiftyone.utils.data.ImageClassificationSampleParser` for a
+    convenient way to build labels of this type for your existing datasets.
+
+    Args:
+        label (None): the label string
+        confidence (None): a confidence in ``[0, 1]`` for the label
+        logits (None): logits associated with the labels
+    """
+
+    meta = {"allow_inheritance": True}
 
     def to_image_labels(self, attr_name="label"):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -95,24 +106,26 @@ class Classification(ImageLabel):
 
 
 class Detection(ODMEmbeddedDocument):
-    """Backing document for individual detections stored in
-    :class:`fiftyone.core.labels.Detections`instances.
+    """An object detection.
 
     Args:
-        label: the label string
-        bounding_box: a list of relative bounding box coordinates in ``[0, 1]``
-            in the following format::
+        label (None): the label string
+        bounding_box (None): a list of relative bounding box coordinates in
+            ``[0, 1]`` in the following format::
 
             [<top-left-x>, <top-right-y>, <width>, <height>]
 
         confidence (None): a confidence in ``[0, 1]`` for the label
+        attributes ({}): a dict mapping attribute names to :class:`Attribute`
+            instances
     """
 
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
     bounding_box = fof.VectorField()
-    confidence = fof.ListField(fof.FloatField())
+    confidence = fof.FloatField()
+    attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
 
 class Detections(ImageLabel):
@@ -123,24 +136,7 @@ class Detections(ImageLabel):
     convenient way to build labels of this type for your existing datasets.
 
     Args:
-        detections: a list of detection dicts of the following form::
-
-            [
-                {
-                    "label": <label>,
-                    "bounding_box": [
-                        <top-left-x>, <top-right-y>, <width>, <height>
-                    ],
-                    "confidence": <optional-confidence>,
-                    ...
-                },
-                ...
-            ]
-
-            where ``label`` is a label string, the bounding box coordinates
-            are expressed as relative values in ``[0, 1]``, and
-            ``confidence`` is an optional confidence ``[0, 1]`` for the
-            label
+        detections (None): a list of :class:`Detection` instances
     """
 
     meta = {"allow_inheritance": True}
@@ -158,16 +154,25 @@ class Detections(ImageLabel):
         image_labels = etai.ImageLabels()
 
         for detection in self.detections:
+            label = detection.label
+
             tlx, tly, w, h = detection.bounding_box
             brx = tlx + w
             bry = tly + h
             bounding_box = etag.BoundingBox.from_coords(tlx, tly, brx, bry)
 
+            confidence = detection.confidence
+
+            attrs = etad.AttributeContainer()
+            for attr_name, attr in iteritems(detection.attributes):
+                attrs.add(etad.CategoricalAttribute(attr_name, attr.label))
+
             image_labels.add_object(
                 etao.DetectedObject(
-                    label=detection.label,
+                    label=label,
                     bounding_box=bounding_box,
-                    confidence=detection.confidence,
+                    confidence=confidence,
+                    attrs=attrs,
                 )
             )
 
