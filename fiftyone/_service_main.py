@@ -119,11 +119,15 @@ def shutdown():
     # "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
     # subprocesses of the child process first
     for subchild in child.children(recursive=True):
-        if "gunicorn" in subchild.name():
-            # gunicorn tends to ignore SIGTERM, so send SIGKILL instead
-            subchild.kill()
-        else:
-            subchild.terminate()
+        try:
+            if "gunicorn" in subchild.name():
+                # gunicorn tends to ignore SIGTERM, so send SIGKILL instead
+                subchild.kill()
+            else:
+                subchild.terminate()
+        except psutil.NoSuchProcess:
+            # we may have already caused it to exit by killing its parent
+            pass
 
     child.terminate()
     child.wait()
