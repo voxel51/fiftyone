@@ -58,7 +58,10 @@ jobs:
           pip install pytest torch torchvision
       - name: Run tests
         run: |
-          pytest tests/ --verbose --ignore tests/benchmarking/
+          pytest tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/
+      - name: Run isolated tests
+        run: |
+          find tests/isolated/ -name '*.py' -print0 | xargs -0 -v -n1 pytest --verbose
 
   publish:
     needs: [build, test]
