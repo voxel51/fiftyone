@@ -27,7 +27,7 @@ function NoDataset() {
 
 function Dataset(props) {
   const { path, url } = useRouteMatch();
-  const { connected, loading, port, state, displayProps } = props;
+  const { connected, loading, port, state, displayProps, classes } = props;
   const hasDataset = Boolean(state && state.dataset);
   const stickyRef = createRef();
   const tabs = [routes.SAMPLES, routes.LABELS, routes.TAGS, routes.SCALARS];
@@ -142,6 +142,7 @@ function Dataset(props) {
                     {...props.socket}
                     setView={setView}
                     displayProps={displayProps}
+                    classes={classes}
                   />
                 </Route>
                 <Route path={routes.LABELS}>

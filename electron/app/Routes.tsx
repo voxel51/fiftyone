@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Switch, Route } from "react-router-dom";
-import { Dimmer, Loader } from "semantic-ui-react";
 
 import routes from "./constants/routes.json";
 import App from "./containers/App";
@@ -38,11 +37,7 @@ function Routes({ port }) {
     displayData,
   };
 
-  const dataset = (props) => {
-    return <Dataset {...props} displayProps={datasetProps} />;
-  };
   const loadData = () => {
-    setNeedsLoad(false);
     socket.emit("lengths", "", (data) => {
       setDisplayData({
         tags: data.tags,
@@ -55,35 +50,34 @@ function Routes({ port }) {
     loadData();
   });
 
-  if (needsLoad) {
-    loadData();
-    return (
-      <Dimmer active>
-        <Loader>Loading</Loader>
-      </Dimmer>
-    );
-  }
+  useEffect(loadData, [needsLoad]);
 
-  const fieldStyles = displayData.labels.map((f, i) => {
-    return createGlobalStyle`
-      .sample-field-${f.field} {
+  const FieldStyles = createGlobalStyle`${displayData.labels
+    .map(
+      (f, i) =>
+        `.sample-field-${f.field} {
         background: ${colors[f.color]};
       }
-      `;
-  });
 
-  const tagStyles = displayData.tags.map((t, i) => {
-    return createGlobalStyle`
-      .sample-tag-${t.name} {
-        background: ${colors[t.color]};
+      .active-field-${f.field} .sample-field-${f.field} {
+        display: inline-block;
       }
-      `;
-  });
+      `
+    )
+    .join(" ")}`;
+
+  const activeLabelClasses = Object.keys(activeLabels).map(
+    (l, i) => `active-field-${l}`
+  );
+  const classes = ["asfgsfg", ...activeLabelClasses].join(" ");
+
+  const dataset = (props) => {
+    return <Dataset {...props} displayProps={datasetProps} classes={classes} />;
+  };
 
   return (
     <App displayProps={appProps} colors={colors}>
-      {fieldStyles}
-      {tagStyles}
+      <FieldStyles />
       <Switch>
         <Route path={routes.LOADING} exact component={Loading} />
         <Route path={routes.SETUP} exact component={Setup} />

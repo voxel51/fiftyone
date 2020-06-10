@@ -25,7 +25,7 @@ const Tags = (props) => {
       <Container>
         {tags.map((t, i) => (
           <div
-            className={`tag clickable ${activeTags[t.name] ? "active" : ""}`}
+            className={`bubble clickable ${activeTags[t.name] ? "active" : ""}`}
             key={i}
             onClick={() => onClick(t)}
             style={styles(t)}

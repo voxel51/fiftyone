@@ -36,12 +36,8 @@ body {
   bottom: 0;
 }
 
-.hide-info .sample:not(:hover) .sample-info {
-  display: none !important;
-}
-
-.tag {
-  display: inline-block;
+.bubble {
+  display: none;
   height: 24px;
   line-height: 24px;
   position: relative;
@@ -59,19 +55,18 @@ body {
   font-weight: bold;
   border-width: 2px;
   border-style: solid;
-  border-color: #777;
   background: transparent;
   line-height: 20px;
   min-width: 0;
 }
 
-.tag.clickable {
+.bubble.clickable {
+  display: inline-block;
   cursor: pointer;
 }
 
-.tag.active {
+.bubble.active {
   border: none;
-  background: #777;
   line-height: 24px;
   padding: 0 10px;
 }

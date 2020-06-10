@@ -62,6 +62,7 @@ class StateDescription(etas.Serializable):
         self.view = view
         self.selected = selected or []
         self.count = len(dataset) if dataset is not None else 0
+        self.view_count = len(view) if view else len(dataset)
         super(StateDescription, self).__init__()
 
     @classmethod

@@ -7,6 +7,7 @@ const reserved = ["_id", "metadata", "filepath"];
 
 const Labels = (props) => {
   const { displayData, activeLabels, setActiveLabels, scalars, colors } = props;
+  console.log(displayData);
   const onClick = (l) => {
     setActiveLabels({
       ...activeLabels,
@@ -35,7 +36,7 @@ const Labels = (props) => {
             cnt += 1;
             return (
               <div
-                className={`tag clickable ${
+                className={`bubble clickable ${
                   activeLabels[l.field] ? "active" : ""
                 }`}
                 key={i}

@@ -24,7 +24,7 @@ const Sample = ({
   const src = `${host}?path=${s.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
 
-  const { activeLabels, activeTags, activeScalars } = displayProps;
+  const { colors, displayData } = displayProps;
 
   const isFloat = (n) => {
     return Number(n) === n && n % 1 !== 0;
@@ -53,39 +53,35 @@ const Sample = ({
         onClick={() => handleClick()}
         onDoubleClick={() => setView({ visible: true, sample })}
         thumbnail={true}
-        activeLabels={activeLabels}
+        colors={colors}
+        displayData={displayData}
       />
       <div className="sample-info">
         {Object.keys(s).map((f, i) => {
           keyCount += 1;
           return s[f] && s[f]._cls === "Classification" ? (
             <Tag
-              display={Boolean(activeLabels[f])}
+              name={f}
               key={keyCount}
-              name={String(s[f].label)}
-              color={activeLabels[f]}
+              prefix="field"
+              val={String(s[f].label)}
             />
           ) : null;
         })}
         {s.tags.map((t, i) => {
           keyCount += 1;
           return (
-            <Tag
-              display={Boolean(activeTags[t])}
-              key={keyCount}
-              name={String(t)}
-              color={activeTags[t]}
-            />
+            <Tag prefix="tag" name={String(t)} key={keyCount} val={String(t)} />
           );
         })}
         {Object.keys(s).map((l, i) => {
           keyCount += 1;
-          return s[l] || typeof s[l] === "boolean" ? (
+          return (s[l] && !Boolean(s[l]._cls)) || typeof s[l] === "boolean" ? (
             <Tag
               key={keyCount}
-              display={Boolean(activeScalars[l])}
-              name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
-              color={activeScalars[l]}
+              name={l}
+              prefix="field"
+              val={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
             />
           ) : null;
         })}
