@@ -58,7 +58,7 @@ class SerializableDocument(object):
 
     def _to_str_dict(self, for_repr=False):
         d = {}
-        for f in _to_front(self._to_str_fields, "id"):
+        for f in self._to_str_fields:
             if for_repr and f == "_cls":
                 continue
             value = getattr(self, f)
@@ -167,7 +167,7 @@ class ODMDocument(SerializableDocument, Document):
     @property
     def _to_str_fields(self):
         # pylint: disable=no-member
-        return self._fields_ordered
+        return _to_front(self._fields_ordered, "id")
 
     @property
     def ingest_time(self):
