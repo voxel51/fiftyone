@@ -513,7 +513,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
-            a :class:`Dataset`
+            a list of IDs of the samples that were added to the dataset
         """
         if inspect.isclass(dataset_type):
             dataset_type = dataset_type()
@@ -1026,13 +1026,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         dataset = cls(name)
-        return dataset.add_dir(
-            dataset_dir,
-            dataset_type,
-            name=name,
-            label_field=label_field,
-            tags=tags,
+        dataset.add_dir(
+            dataset_dir, dataset_type, label_field=label_field, tags=tags,
         )
+        return dataset
 
     @classmethod
     def from_image_classification_samples(
