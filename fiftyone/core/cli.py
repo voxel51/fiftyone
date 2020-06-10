@@ -38,7 +38,7 @@ import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
+import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
 
@@ -310,31 +310,18 @@ class DatasetsCreateCommand(Command):
             "--dataset-dir",
             required=True,
             metavar="DATASET_DIR",
-            help="the directory containing the dataset files",
+            help="the directory containing the dataset",
         )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
-        dataset_type = etau.get_class(args.type)
         dataset_dir = args.dataset_dir
+        dataset_type = etau.get_class(args.type)
 
-        if isinstance(dataset_type, fot.ImageClassificationDataset):
-            dataset = fod.Dataset.from_image_classification_dataset(
-                dataset_dir, name=name
-            )
-        elif isinstance(dataset_type, fot.ImageDetectionDataset):
-            dataset = fod.Dataset.from_image_detection_dataset(
-                dataset_dir, name=name
-            )
-        elif isinstance(dataset_type, fot.ImageLabelsDataset):
-            dataset = fod.Dataset.from_image_labels_dataset(
-                dataset_dir, name=name
-            )
-        else:
-            raise ValueError("Unsupported dataset type %s" % args.type)
-
+        dataset = fod.Dataset.from_dir(dataset_dir, dataset_type, name=name)
         dataset.persistent = True
+
         print("Dataset '%s' created" % dataset.name)
 
 
@@ -366,6 +353,7 @@ class DashboardCommand(Command):
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "launch", DashboardLaunchCommand)
+        _register_command(subparsers, "view", DashboardViewCommand)
         _register_command(subparsers, "connect", DashboardConnectCommand)
 
     @staticmethod
@@ -381,17 +369,14 @@ class DashboardLaunchCommand(Command):
         # Launches the dashboard with the given dataset
         fiftyone dashboard launch <name>
 
-        # Launches the dashboard with a custom port
-        fiftyone dashboard launch <name> --port <port>
-
-        # Launches the dashboard as a remote session
+        # Launches a remote dashboard session
         fiftyone dashboard launch <name> --remote
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name", metavar="NAME", help="the name of the dataset to open",
         )
         parser.add_argument(
             "-p",
@@ -422,6 +407,68 @@ class DashboardLaunchCommand(Command):
             session.wait()
         except KeyboardInterrupt:
             print("\nExiting")
+
+
+class DashboardViewCommand(Command):
+    """Tools for viewing a raw dataset on disk in the FiftyOne Dashboard.
+
+    Examples::
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+
+        # View the dataset in a remote dashboard session
+        fiftyone dashboard view ... --remote
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-n", "--name", metavar="NAME", help="a name for the dataset",
+        )
+        parser.add_argument(
+            "-t",
+            "--type",
+            metavar="TYPE",
+            help="the `fiftyone.types.Dataset` type of the dataset",
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset-dir",
+            metavar="DATASET_DIR",
+            help="the directory containing the dataset",
+        )
+        parser.add_argument(
+            "-p",
+            "--port",
+            metavar="PORT",
+            default=5151,
+            type=int,
+            help="the port number to use",
+        )
+        parser.add_argument(
+            "-r",
+            "--remote",
+            action="store_true",
+            help="whether to launch a remote dashboard session",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        dataset_dir = args.dataset_dir
+        dataset_type = etau.get_class(args.type)
+
+        dataset = fod.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+
+        session = fos.launch_dashboard(
+            dataset=dataset, port=args.port, remote=args.remote
+        )
+
+        # @todo For non-remote sessions, automatically terminate process when
+        # dashboard closes
+        print("\nTo exit, type ctrl + c\n")
+        signal.pause()
 
 
 class DashboardConnectCommand(Command):
