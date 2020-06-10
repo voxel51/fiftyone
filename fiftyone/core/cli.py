@@ -24,6 +24,7 @@ from collections import defaultdict
 import json
 import os
 import subprocess
+import time
 
 import argcomplete
 from tabulate import tabulate
@@ -402,13 +403,14 @@ class DashboardLaunchCommand(Command):
 
 
 def _watch_session(session, remote=False):
-    if remote:
-        print("\nTo exit, press ctrl + c\n")
-    else:
-        print("\nTo exit, close the dashboard or press ctrl + c\n")
-
     try:
-        session.wait()
+        if remote:
+            print("\nTo exit, press ctrl + c\n")
+            while True:
+                time.sleep(60)
+        else:
+            print("\nTo exit, close the dashboard or press ctrl + c\n")
+            session.wait()
     except KeyboardInterrupt:
         pass
 
