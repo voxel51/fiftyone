@@ -100,14 +100,14 @@ class COCOObject(object):
         bbox,
         area=None,
         segmentation=None,
-        iscrowd=None,
+        iscrowd=0,
     ):
         self.id = id
         self.image_id = image_id
         self.category_id = category_id
         self.bbox = bbox
         self.area = area
-        self.segmentation = segmentation
+        self.segmentation = segmentation or []
         self.iscrowd = iscrowd
 
     @classmethod
@@ -142,22 +142,6 @@ class COCOObject(object):
         area = bbox[2] * bbox[3]
 
         return cls(None, None, category_id, bbox, area=area)
-
-    def to_dict(self):
-        """Returns a dictionary representation of the object.
-
-        Returns:
-            a dict
-        """
-        return {
-            "id": self.id,
-            "image_id": self.image_id,
-            "category_id": self.category_id,
-            "bbox": self.bbox,
-            "area": self.area,
-            "segmentation": self.segmentation or [],
-            "iscrowd": self.iscrowd or 0,
-        }
 
 
 def export_coco_detection_dataset(
@@ -244,14 +228,14 @@ def export_coco_detection_dataset(
                 )
                 obj.id = anno_id
                 obj.image_id = image_id
-                annotations.append(obj.to_dict())
+                annotations.append(obj)
 
     # Populate observed category IDs, if necessary
     if classes is None:
         classes = sorted(_classes)
         labels_map_rev = _to_labels_map_rev(classes)
         for anno in annotations:
-            anno["category_id"] = labels_map_rev[anno["category_id"]]
+            anno.category_id = labels_map_rev[anno.category_id]
 
     info = {
         "year": "",
