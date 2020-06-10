@@ -65,6 +65,8 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
             ]
 
           or the path to such a file on disk.
+
+    See :class:`fiftyone.types.COCODetectionDataset` for more format details.
     """
 
     def __init__(self):

@@ -80,15 +80,13 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
                     "object": [
                         {
                             "name": "chair",
-                            "pose": "Rear",
-                            "truncated": "0",
-                            "difficult": "0",
                             "bndbox": {
                                 "xmin": "263",
                                 "ymin": "211",
                                 "xmax": "324",
                                 "ymax": "339"
-                            }
+                            },
+                            ...
                         },
                         ...
                     ],
@@ -97,6 +95,8 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
             }
 
           or the path to a VOC annotations XML file on disk.
+
+    See :class:`fiftyone.types.VOCDetectionDataset` for more format details.
     """
 
     def __init__(self):
