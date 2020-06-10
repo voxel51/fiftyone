@@ -141,7 +141,7 @@ class ServerService(Service):
             super().start()
 
         if server_version is not None:
-            logger.info("Connected to running server on port %i" % self._port)
+            logger.info("Connected to fiftyone on local port %i" % self._port)
             if server_version != foc.VERSION:
                 logger.warn(
                     "Server version (%s) does not match client version (%s)"
