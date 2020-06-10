@@ -313,13 +313,15 @@ def iter_batches(iterable, batch_size):
 
 def call_on_exit(callback):
     """Registers the given callback function so that it will be called when the
-    process exits for (almost) any reason. Note that this should only be used
-    from non-interactive scripts because it intercepts ctrl+c.
+    process exits for (almost) any reason
+
+    Note that this should only be used from non-interactive scripts because it
+    intercepts ctrl + c.
 
     Covers the following cases:
     -   normal program termination
     -   a Python exception is raised
-    -   SIGTERM and SIGINT signals are received
+    -   a SIGTERM signal is received
 
     Args:
         callback: the function to execute upon termination
