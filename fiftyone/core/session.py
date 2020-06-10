@@ -23,7 +23,6 @@ import logging
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
-import fiftyone.core.utils as fou
 
 
 # Global session singleton
@@ -147,7 +146,6 @@ class Session(foc.HasClient):
 
         if not self._remote:
             self._app_service = fos.AppService()
-            _close_on_exit(self)
             logger.info("Dashboard launched")
         else:
             logger.info(
@@ -261,13 +259,3 @@ ssh -N -L %d:127.0.0.1:5151 [<username>@]<hostname>
 and then connect to the dashboard on that machine using either
 `fiftyone dashboard connect` or from Python via `fiftyone.launch_dashboard()`.
 """
-
-
-def _close_on_exit(session):
-    def handle_exit(*args):
-        try:
-            session.close()
-        except:
-            pass
-
-    fou.call_on_exit(handle_exit)

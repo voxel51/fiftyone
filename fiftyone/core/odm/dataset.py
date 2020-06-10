@@ -54,8 +54,8 @@ class SampleField(ODMEmbeddedDocument):
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
-            subfield=cls._get_class_name(field, "field"),
-            embedded_doc_type=cls._get_class_name(field, "document_type"),
+            subfield=cls._get_class_repr(field, "field"),
+            embedded_doc_type=cls._get_class_repr(field, "document_type"),
         )
 
     @classmethod
@@ -104,7 +104,7 @@ class SampleField(ODMEmbeddedDocument):
         return True
 
     @staticmethod
-    def _get_class_name(field, attr_name):
+    def _get_class_repr(field, attr_name):
         attr = getattr(field, attr_name, None)
         return etau.get_class_name(attr) if attr else None
 
