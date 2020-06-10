@@ -1,6 +1,8 @@
 """
 Utilities for the ImageNet dataset.
 
+The ImageNet dataset: http://www.image-net.org.
+
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
