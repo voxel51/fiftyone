@@ -511,8 +511,8 @@ def _call_on_exit(callback):
         callback: the function to execute upon termination
     """
     atexit.register(callback)
-    signal.signal(signal.SIGTERM, callback)
-    signal.signal(signal.SIGINT, callback)
+    signal.signal(signal.SIGTERM, lambda *args: callback())
+    signal.signal(signal.SIGINT, lambda *args: callback())
 
 
 class ZooCommand(Command):
