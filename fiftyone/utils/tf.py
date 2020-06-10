@@ -150,8 +150,8 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
     samples, classes = foud.parse_image_classification_dir_tree(dataset_dir)
 
     def parse_sample(sample):
-        image_path, label = sample
-        img = _parse_image_tf(image_path)
+        img_path, label = sample
+        img = _parse_image_tf(img_path)
         return img, label
 
     dataset = tf.data.Dataset.from_tensor_slices(samples).map(
@@ -613,8 +613,8 @@ def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
 
 
-def _parse_image_tf(image_path):
-    img_bytes = tf.io.read_file(image_path)
+def _parse_image_tf(img_path):
+    img_bytes = tf.io.read_file(img_path)
     return tf.image.decode_image(img_bytes)
 
 
