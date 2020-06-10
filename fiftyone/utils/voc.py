@@ -1,5 +1,7 @@
 """
-Utilities for the PASCAL VOC dataset.
+Utilities for working with datasets in PASCAL VOC format.
+
+The VOC dataset: http://host.robots.ox.ac.uk/pascal/VOC.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -62,7 +64,7 @@ VOC_DETECTION_CLASSES = [
 
 
 class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
-    """Sample parser for the PASCAL VOC Detection Dataset.
+    """Parser for samples in PASCAL VOC Detection format.
 
     This implementation supports samples that are
     ``(image_or_path, annotations_or_path)`` tuples, where:
@@ -276,7 +278,7 @@ def export_voc_detection_dataset(samples, label_field, dataset_dir):
 
     writer = VOCAnnotationWriter()
     data_filename_counts = defaultdict(int)
-    with etau.ProgressBar(iters_str="samples") as pb:
+    with fou.ProgressBar() as pb:
         for sample in pb(samples):
             img_path = sample.filepath
             name, ext = os.path.splitext(os.path.basename(img_path))
