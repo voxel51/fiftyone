@@ -452,9 +452,10 @@ class DashboardConnectCommand(Command):
     def execute(parser, args):
         if args.destination:
             # Port forwarding
-            p = subprocess.Popen(
+            p = subprocess.call(
                 [
                     "ssh",
+                    "-f",
                     "-N",
                     "-L",
                     "%d:127.0.0.1:5151" % args.port,
