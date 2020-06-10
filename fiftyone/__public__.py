@@ -3,6 +3,10 @@ FiftyOne's basic, high-level public interface.
 
 Parts of various fiftyone sub-packages are collected here and made available
 under the top-level `fiftyone` package.
+
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
 """
 
 import fiftyone.core.config as foc
