@@ -23,6 +23,8 @@ import os
 import subprocess
 import sys
 
+import requests
+
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
@@ -124,6 +126,27 @@ class ServerService(Service):
     def __init__(self, port):
         self._port = port
         super(ServerService, self).__init__()
+
+    def start(self):
+        server_version = None
+        try:
+            server_version = requests.get(
+                "http://127.0.0.1:%i/fiftyone" % self._port, timeout=2
+            ).json()["version"]
+        except Exception:
+            # There is likely not a fiftyone server running (remote or local),
+            # so start a local server. If there actually is a fiftyone server
+            # running that didn't respond to /fiftyone, the local server will
+            # fail to start but the dashboard will still connect successfully.
+            super().start()
+
+        if server_version is not None:
+            logger.info("Connected to running server on port %i" % self._port)
+            if server_version != foc.VERSION:
+                logger.warn(
+                    "Server version (%s) does not match client version (%s)"
+                    % (server_version, foc.VERSION)
+                )
 
     @property
     def command(self):
