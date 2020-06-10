@@ -90,6 +90,38 @@ class ImageClassificationDataset(LabeledImageDataset):
     pass
 
 
+class TFImageClassificationDataset(LabeledImageDataset):
+    """A labeled dataset consisting of images and their associated
+    classification labels stored as TFRecords.
+
+    FiftyOne exports datasets of this type on disk in the following format::
+
+        <dataset_dir>/
+            tf.records-?????-of-?????
+
+    where the features of the (possibly sharded) TFRecords are stored in the
+    following format::
+
+        {
+            # Image dimensions
+            "height": tf.io.FixedLenFeature([], tf.int64),
+            "width": tf.io.FixedLenFeature([], tf.int64),
+            "depth": tf.io.FixedLenFeature([], tf.int64),
+
+            # Image filename
+            "filename": tf.io.FixedLenFeature([], tf.int64),
+
+            # Encoded image bytes
+            "image_bytes": tf.io.FixedLenFeature([], tf.string),
+
+            # Class label string
+            "label": tf.io.FixedLenFeature([], tf.string),
+        }
+    """
+
+    pass
+
+
 class ImageDetectionDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated object
     detections.
@@ -143,7 +175,7 @@ class ImageDetectionDataset(LabeledImageDataset):
 
 class COCODetectionDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in COCO format.
+    detections saved in COCO format (http://cocodataset.org/#home).
 
     FiftyOne exports datasets of this type on disk in the following format::
 
@@ -199,7 +231,7 @@ class COCODetectionDataset(LabeledImageDataset):
 
 class VOCDetectionDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in VOC format.
+    detections saved in VOC format (http://host.robots.ox.ac.uk/pascal/VOC).
 
     FiftyOne exports datasets of this type on disk in the following format::
 
@@ -253,6 +285,51 @@ class VOCDetectionDataset(LabeledImageDataset):
             </object>
             ...
         </annotation>
+    """
+
+    pass
+
+
+class TFObjectDetectionDataset(LabeledImageDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections stored as TFRecords in TF Object Detection API format
+    (https://github.com/tensorflow/models/blob/master/research/object_detection).
+
+    FiftyOne exports datasets of this type on disk in the following format::
+
+        <dataset_dir>/
+            tf.records-?????-of-?????
+
+    where the features of the (possibly sharded) TFRecords are stored in the
+    following format::
+
+        {
+            # Image dimensions
+            "image/height": tf.io.FixedLenFeature([], tf.int64),
+            "image/width": tf.io.FixedLenFeature([], tf.int64),
+
+            # Image filename is used for both of these
+            "image/filename": tf.io.FixedLenFeature([], tf.int64),
+            "image/source_id": tf.io.FixedLenFeature([], tf.string),
+
+            # Encoded image bytes
+            "image/encoded": tf.io.FixedLenFeature([], tf.string),
+
+            # Image format, either `jpeg` or `png`
+            "image/format": tf.io.FixedLenFeature([], tf.string),
+
+            # Normalized bounding box coordinates in `[0, 1]`
+            "image/object/bbox/xmin": tf.io.FixedLenFeature([], tf.float64),
+            "image/object/bbox/xmax": tf.io.FixedLenFeature([], tf.float64),
+            "image/object/bbox/ymin": tf.io.FixedLenFeature([], tf.float64),
+            "image/object/bbox/ymax": tf.io.FixedLenFeature([], tf.float64),
+
+            # Class label string
+            "image/object/class/text": tf.io.FixedLenFeature([], tf.string),
+
+            # Integer class ID
+            "image/object/class/label": tf.io.FixedLenFeature([], tf.int64),
+        }
     """
 
     pass
