@@ -86,6 +86,10 @@ class Service(object):
         self.child.stdin.close()
         self.child.wait()
 
+    def wait(self):
+        """Waits for the Service to exit and returns its exit code."""
+        return self.child.wait()
+
 
 class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
