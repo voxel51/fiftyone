@@ -115,7 +115,10 @@ def monitor_stdin():
 
 
 def shutdown():
-    """"""
+    """Kill subprocesses and wait for them to finish.
+
+    Also dumps output if the main child process fails to exit cleanly.
+    """
     # "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
     # subprocesses of the child process first
     for subchild in child.children(recursive=True):
