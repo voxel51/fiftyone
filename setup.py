@@ -45,6 +45,7 @@ setup(
     install_requires=[
         # third-party packages
         "argcomplete",
+        "contextlib2",
         "eventlet",
         "Flask",
         "flask-socketio",
