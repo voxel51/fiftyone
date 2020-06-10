@@ -149,7 +149,8 @@ class StateController(Namespace):
         """
         start_index = indexes["startIndex"]
         stop_index = indexes["stopIndex"]
-        batch_size = stop_index - start_index
+        batch_size = stop_index - start_index + 1
+        print(batch_size)
 
         if start_index != 0:
             while self._prev_start_index != start_index - batch_size:
@@ -205,17 +206,6 @@ class StateController(Namespace):
             return []
 
         return _get_distributions(view, group)
-
-
-def _fit_row(row, row_width, row_height):
-    result = {"samples": [], "widths": []}
-    for sample, width, height in row:
-        fit_width = row_height * width / height
-        result["samples"].append(sample.to_dict(extended=True))
-        result["widths"].append(
-            fit_width / row_width * (100 - ((len(row) - 1) * 2))
-        )
-    return result
 
 
 def _get_distributions(view, group):

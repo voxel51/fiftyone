@@ -1,99 +1,145 @@
 import _ from "lodash";
-import React, { Component, useState, useRef, useEffect } from "react";
-import { InfiniteLoader, List } from "react-virtualized";
+import React, { Component, createRef } from "react";
+import { Dimmer, Loader } from "semantic-ui-react";
+import {
+  AutoSizer,
+  CellMeasurer,
+  CellMeasurerCache,
+  InfiniteLoader,
+  List,
+} from "react-virtualized";
 import "react-virtualized/styles.css";
 
 import connect from "../utils/connect";
 import { getSocket, useSubscribe } from "../utils/socket";
-import Sample from "./Sample";
-import tile from "./Samples.hooks";
-import { render } from "enzyme";
 
 class Samples extends Component {
-  constructor(props, context) {
-    super(props, context);
+  constructor(props) {
+    super(props);
 
-    this.containerRef = useRef(null);
-    this.socket = getSocket(port, "state");
-    this._list = [];
+    this.containerRef = createRef();
+    this.socket = getSocket(props.port, "state");
     this._loadMoreRowsStartIndex = null;
     this._loadMoreRowsStopIndex = null;
 
-    this._isRowLoaded = this._isRowLoaded.bind(this);
-    this._loadMoreRows = this._loadMoreRows.bind(this);
-    this._updateCallback = this._updateCallback.bind(this);
-    this._rowHeight = this._rowHeight.bind(this);
-  }
+    this.isRowLoaded = this.isRowLoaded.bind(this);
+    this.loadMoreRows = this.loadMoreRows.bind(this);
+    this.updateCallback = this.updateCallback.bind(this);
+    this.rowRenderer = this.rowRenderer.bind(this);
 
-  componentWillMount() {
-    this.socket.on("update", this._updateCallback);
+    this.socket.on("update", this.updateCallback);
+
+    this.cache = new CellMeasurerCache({
+      defaultHeight: 30,
+      fixedWidth: true,
+    });
+    this._resizeAllFlag = false;
+    this.state = {
+      list: [],
+      loading: false,
+    };
   }
 
   componentWillUnmount() {
-    this.socket.off("update", this._updateCallback);
+    this.socket.off("update", this.updateCallback);
   }
 
-  _isRowLoaded = ({ index }) => {
-    return !!this._list[index];
-  };
-
-  _loadMoreRows(indexes) {
+  loadMoreRows(indexes) {
+    console.log(indexes, this.state.loading);
+    if (this.state.loading) {
+      return;
+    }
+    this.setState({
+      loading: true,
+    });
     return new Promise((resolve, reject) => {
-      socket.emit("page", indexes, (data) => {
-        return resolve(data);
+      this.socket.emit("page", indexes, (data) => {
+        this.setState({
+          list: _.concat(this.state.list, data),
+          loading: false,
+        });
       });
     });
   }
 
-  _updateCallback() {
+  isRowLoaded({ index }) {
+    return !!this.state.list[index];
+  }
+
+  updateCallback() {
     this._loadMoreRows({
       startIndex: this._loadMoreRowsStartIndex,
       stopIndex: this._loadMoreRowsStopIndex,
     });
   }
 
-  _rowHeight({ index }) {
-    const sample = this._list[index];
-    return 913 * sample.coefficient;
-  }
-
-  _rowRenderer({ key, index, style }) {
+  rowRenderer({ key, index, isScrolling, isVisible, style }) {
     return (
-      <div key={key} style={style}>
-        {index}
-      </div>
+      <CellMeasurer
+        cache={this.cache}
+        columnIndex={0}
+        key={key}
+        parent={parent}
+        rowIndex={index}
+      >
+        <div style={style}>asrhfshashaafh</div>
+      </CellMeasurer>
     );
   }
 
   render() {
-    const { displayProps, state, setView, port, classes } = this.props;
-
-    return (
-      <div
-        className={classes}
-        ref={this.containerRef}
-        style={{ width: "100%", padding: "1% 0" }}
-      >
+    if (this.state.list.length === 0) {
+      return (
+        <Dimmer active className="samples-dimmer" key={-1}>
+          <Loader />
+        </Dimmer>
+      );
+    } else {
+      return (
         <InfiniteLoader
-          isRowLoaded={this._isRowLoaded}
-          loadMoreRows={this._loadMoreRows}
-          rowCount={this.props.state.count}
+          isRowLoaded={this.isRowLoaded}
+          loadMoreRows={this.loadMoreRows}
+          rowCount={this.state.list.length}
+          minimumBatchSize={10}
         >
           {({ onRowsRendered, registerChild }) => (
-            <List
-              height={500}
-              onRowsRendered={onRowsRendered}
-              ref={registerChild}
-              rowCount={this.props.state.rowCount}
-              rowHeight={this._rowHeight}
-              rowRenderer={this._rowRenderer}
-              width={913}
-            />
+            <AutoSizer>
+              {({ height, width }) => {
+                this._registerList = registerChild;
+
+                return (
+                  <List
+                    deferredMeasurementCache={this.cache}
+                    height={height}
+                    onRowsRendered={onRowsRendered}
+                    overscanRowCount={1}
+                    ref={this._setListRef}
+                    rowCount={this.state.list.length}
+                    rowHeight={this.cache.rowHeight}
+                    rowRenderer={this.rowRenderer}
+                    width={width}
+                  />
+                );
+              }}
+            </AutoSizer>
           )}
         </InfiniteLoader>
-      </div>
-    );
+      );
+    }
   }
+
+  _resizeAll = () => {
+    this._resizeAllFlag = false;
+    this._cache.clearAll();
+    if (this._list) {
+      this._list.recomputeRowHeights();
+    }
+  };
+
+  _setListRef = (ref) => {
+    this._list = ref;
+    this._registerList(ref);
+  };
 }
 
 export default connect(Samples);

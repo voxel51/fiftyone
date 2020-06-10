@@ -67,8 +67,7 @@ function App(props: Props) {
   });
   const bodyStyle = {
     height: "100%",
-    marginLeft: 260,
-    padding: "0 2rem 2rem 2rem",
+    marginLeft: 270,
   };
 
   return (

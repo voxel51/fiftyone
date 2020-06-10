@@ -106,31 +106,28 @@ function Dataset(props) {
           </>
         ) : null}
       </Sidebar>
-      <Ref innerRef={stickyRef}>
-        <Container fluid={true}>
-          <Sticky context={stickyRef}>
-            <Container
-              fluid={true}
-              style={{
-                background: "hsl(210, 20%, 15%)",
-                paddingTop: "2rem",
-                zIndex: 1000000,
-              }}
-            >
-              <Menu pointing secondary>
-                {tabs.map((v, i) => {
-                  return (
-                    <Link key={i} to={v}>
-                      <Menu.Item
-                        name={v.slice(1)}
-                        active={v === props.location.pathname}
-                      />
-                    </Link>
-                  );
-                })}
-              </Menu>
-            </Container>
-          </Sticky>
+      <Container
+        fluid={true}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "grid",
+          gridTemplateRows: "42px 1fr",
+        }}
+      >
+        <Menu pointing secondary>
+          {tabs.map((v, i) => {
+            return (
+              <Link key={i} to={v}>
+                <Menu.Item
+                  name={v.slice(1)}
+                  active={v === props.location.pathname}
+                />
+              </Link>
+            );
+          })}
+        </Menu>
+        <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <Switch>
             <Route exact path={routes.DATASET}>
               <Redirect to={routes.SAMPLES} />
@@ -159,8 +156,8 @@ function Dataset(props) {
               <NoDataset />
             )}
           </Switch>
-        </Container>
-      </Ref>
+        </div>
+      </Container>
     </>
   );
 }

@@ -65,8 +65,7 @@ def tile(view, remainder=0):
     row_height = None
     row_width = None
 
-    result = list(zip_longest(list(view), [], []))
-    for idx, (sample, w, h) in enumerate(remainder + result):
+    for idx, (sample, w, h) in enumerate(view):
         if w is None:
             w, h = get_image_size(sample.filepath)
 

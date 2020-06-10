@@ -2,9 +2,9 @@
     User Variable Overrides
 *******************************/
 
-@verticalBackground: @containerBackground;
-@secondaryPointingActiveBorderColor: @tertiaryColor;
-@secondaryPointingActiveTextColor: @tertiaryColor;
+@verticalBackground: transparent;
+@secondaryPointingActiveBorderColor: none;
+@secondaryPointingActiveTextColor: none;
 @borderWidth: 0;
 @boxShadow: none;
 @subMenuMargin: @subMenuDistance 0em 0em;

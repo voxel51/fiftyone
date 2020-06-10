@@ -20,59 +20,69 @@ const _Sidebar = (props) => {
   const { state, connected, loading, displayProps } = props;
   const hasDataset = Boolean(state && state.dataset);
   return (
-    <Sidebar
-      as={Menu}
-      animation={"uncover"}
-      vertical
-      direction={"left"}
-      visible={!loading}
-      className="fo-sidebar"
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        width: 270,
+        height: "100%",
+        borderRight: "2px solid hsl(210, 20%, 50%)",
+      }}
     >
-      <Menu.Item as="h3">
-        <Image src={logo} alt="FiftyOne" />
-      </Menu.Item>
-      <Menu.Item as="h3">
-        {!connected
-          ? "Not connected"
-          : hasDataset
-          ? "Dataset"
-          : "No dataset loaded"}
-        {hasDataset ? (
-          <Menu vertical>
-            <InfoItem k="Name" v={state.dataset.name} />
-            <InfoItem k="Type" v="image" />
-            <InfoItem k="Samples" v={state.count} />
-            <InfoItem k="Selected" v={state.selected.length} />
-          </Menu>
-        ) : null}
-      </Menu.Item>
-      {hasDataset ? <Display displayProps={displayProps} /> : null}
-      {hasDataset ? (
+      <Sidebar
+        as={Menu}
+        animation={"uncover"}
+        vertical
+        direction={"left"}
+        visible={!loading}
+        className="fo-sidebar"
+      >
         <Menu.Item as="h3">
-          View
-          <Menu vertical>
-            <Menu.Item as="span" style={{ overflowX: "auto" }}>
-              {state && state.view
-                ? JSON.stringify(JSON.parse(state.view.view), null, 2)
-                : "Empty view"}
-            </Menu.Item>
-          </Menu>
+          <Image src={logo} alt="FiftyOne" />
         </Menu.Item>
-      ) : null}
-      <Menu.Item as="h4">
-        <Button
-          className="help"
-          onClick={(e) => {
-            e.preventDefault();
-            electron.shell.openExternal(
-              "https://voxel51.slack.com/app_redirect?channel=C0154574MKJ"
-            );
-          }}
-        >
-          Need help? We're on Slack.
-        </Button>
-      </Menu.Item>
-    </Sidebar>
+        <Menu.Item as="h3">
+          {!connected
+            ? "Not connected"
+            : hasDataset
+            ? "Dataset"
+            : "No dataset loaded"}
+          {hasDataset ? (
+            <Menu vertical>
+              <InfoItem k="Name" v={state.dataset.name} />
+              <InfoItem k="Type" v="image" />
+              <InfoItem k="Samples" v={state.count} />
+              <InfoItem k="Selected" v={state.selected.length} />
+            </Menu>
+          ) : null}
+        </Menu.Item>
+        {hasDataset ? <Display displayProps={displayProps} /> : null}
+        {hasDataset ? (
+          <Menu.Item as="h3">
+            View
+            <Menu vertical>
+              <Menu.Item as="span" style={{ overflowX: "auto" }}>
+                {state && state.view
+                  ? JSON.stringify(JSON.parse(state.view.view), null, 2)
+                  : "Empty view"}
+              </Menu.Item>
+            </Menu>
+          </Menu.Item>
+        ) : null}
+        <Menu.Item as="h4">
+          <Button
+            className="help"
+            onClick={(e) => {
+              e.preventDefault();
+              electron.shell.openExternal(
+                "https://voxel51.slack.com/app_redirect?channel=C0154574MKJ"
+              );
+            }}
+          >
+            Need help? We're on Slack.
+          </Button>
+        </Menu.Item>
+      </Sidebar>
+    </div>
   );
 };
 

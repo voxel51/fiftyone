@@ -7,7 +7,6 @@ const reserved = ["_id", "metadata", "filepath"];
 
 const Labels = (props) => {
   const { displayData, activeLabels, setActiveLabels, scalars, colors } = props;
-  console.log(displayData);
   const onClick = (l) => {
     setActiveLabels({
       ...activeLabels,
