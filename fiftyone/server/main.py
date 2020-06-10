@@ -152,7 +152,7 @@ class StateController(Namespace):
             return []
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [s.to_dict(extended=True) for s in view]
+        samples = [s.to_dict() for s in view]
         more = False
         if len(samples) > page_length:
             samples = samples[:page_length]
