@@ -54,7 +54,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 import six
 
 # pragma pylint: enable=redefined-builtin
@@ -171,26 +170,14 @@ class ODMSample(SerializableDocument):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
-    def save(self):
-        """Saves the sample to the database.
+    def _to_str_dict(self, for_repr=False):
+        d = {"dataset_name": self.dataset_name}
+        d.update(super(ODMSample, self)._to_str_dict(for_repr=for_repr))
+        return d
 
-        If the sample does not belong to a dataset, this method does nothing.
-        """
-        pass
-
-    def reload(self):
-        """Reloads the sample from the database.
-
-        If the sample does not belong to a dataset, this method does nothing.
-        """
-        pass
-
-    def delete(self):
-        """Deletes the sample from the database.
-
-        If the sample does not belong to a dataset, this method does nothing.
-        """
-        pass
+    @classmethod
+    def _get_class_repr(cls):
+        return "Sample"
 
 
 class ODMDatasetSample(ODMDocument, ODMSample):
@@ -485,8 +472,12 @@ class ODMNoDatasetSample(ODMSample):
         self._data[name] = value
 
     @property
+    def id(self):
+        return None
+
+    @property
     def _to_str_fields(self):
-        return self.field_names
+        return ("id",) + self.field_names
 
     @property
     def field_names(self):
@@ -559,7 +550,7 @@ class ODMNoDatasetSample(ODMSample):
 
     def to_dict(self, extended=False):
         d = {}
-        for k, v in iteritems(self._data):
+        for k, v in self._data.items():
             if hasattr(v, "to_dict"):
                 # Embedded document
                 d[k] = v.to_dict(extended=extended)
@@ -589,7 +580,7 @@ class ODMNoDatasetSample(ODMSample):
     @classmethod
     def from_dict(cls, d, extended=False):
         kwargs = {}
-        for k, v in iteritems(d):
+        for k, v in d.items():
             if isinstance(v, dict):
                 if "_cls" in v:
                     # Serialized embedded document
@@ -608,6 +599,30 @@ class ODMNoDatasetSample(ODMSample):
                 kwargs[k] = v
 
         return cls(**kwargs)
+
+    def save(self):
+        """Saves the sample to the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        pass
+
+    def reload(self):
+        """Reloads the sample from the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        pass
+
+    def delete(self):
+        """Deletes the sample from the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        pass
 
 
 def _get_implied_field_kwargs(value):

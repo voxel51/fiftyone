@@ -57,6 +57,7 @@ setup(
         "packaging",
         "Pillow<7,>=6.2",
         "pprintpp",
+        "psutil",
         "pymongo",
         "python-engineio[client]<3.12;python_version<'3'",
         "python-engineio[client];python_version>='3'",

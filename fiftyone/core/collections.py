@@ -153,8 +153,7 @@ class SampleCollection(object):
         Returns:
             a JSON dict
         """
-        samples = [s.to_dict(extended=True, include_id=False) for s in self]
-        return {"samples": samples}
+        return {"samples": [s.to_dict() for s in self]}
 
     def to_json(self, pretty_print=False):
         """Returns a JSON string representation of the collection.
