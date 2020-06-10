@@ -47,15 +47,13 @@ TIFF = types["TIFF"] = "TIFF"
 image_fields = ["path", "type", "file_size", "width", "height"]
 
 
-def tile(view, page, page_length, remainder=[]):
+def tile(view, remainder=0):
     """Tiles the samples in a view in rows of varying height, where all
     samples (images) in a row are fit to preserve aspect ratio. No cropping is
     done
 
     Args:
         view: a :class:`fiftyone.core.view.DatasetView`
-        page: page number
-        page_length: page length
         remainder: a list of samples to prepend to the view results
 
     Returns:
@@ -69,10 +67,6 @@ def tile(view, page, page_length, remainder=[]):
 
     result = list(zip_longest(list(view), [], []))
     for idx, (sample, w, h) in enumerate(remainder + result):
-        if idx == len(remainder) + page_length:
-            more = page + 1
-            break
-
         if w is None:
             w, h = get_image_size(sample.filepath)
 
@@ -96,17 +90,22 @@ def tile(view, page, page_length, remainder=[]):
         rows.append(_fit_row(row, row_width, row_height))
         row = []
 
-    remainder = row if bool(more) else []
-    return {"rows": rows, "more": more}, remainder
+    remainder = len(row) if bool(more) else 0
+    return rows, remainder
 
 
 def _fit_row(row, row_width, row_height):
-    result = {"samples": [], "widths": []}
+    result = []
+    row_length = len(row)
     for sample, width, height in row:
         fit_width = row_height * width / height
-        result["samples"].append(sample.to_dict(extended=True))
-        result["widths"].append(
-            fit_width / row_width * (100 - ((len(row) - 1) * 2))
+        percent_width = fit_width / row_width * (100 - ((len(row) - 1) * 2))
+        result.append(
+            {
+                "coefficient": percent_width * row_height / row_width,
+                "sample": sample.to_dict(extended=True),
+                "width": percent_width,
+            }
         )
     return result
 

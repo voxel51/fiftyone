@@ -74,7 +74,8 @@ class StateController(Namespace):
 
     def __init__(self, *args, **kwargs):
         self.state = fos.StateDescription().serialize()
-        self._remainder = []
+        self._remainder = 0
+        self._prev_start_index = None
         super(StateController, self).__init__(*args, **kwargs)
 
     def on_connect(self):
@@ -92,7 +93,8 @@ class StateController(Namespace):
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
         self.state = state
-        self._remainder = []
+        self._remainder = 0
+        self._remainder_start_index = None
         emit("update", state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
@@ -135,7 +137,7 @@ class StateController(Namespace):
         state.selected = list(selected)
         return state
 
-    def on_page(self, page, page_length=50):
+    def on_page(self, indexes):
         """Gets the requested page of samples.
 
         Args:
@@ -145,6 +147,14 @@ class StateController(Namespace):
         Returns:
             the list of sample dicts for the page
         """
+        start_index = indexes["startIndex"]
+        stop_index = indexes["stopIndex"]
+        batch_size = stop_index - start_index
+
+        if start_index != 0:
+            while self._prev_start_index != start_index - batch_size:
+                continue
+
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
@@ -152,8 +162,8 @@ class StateController(Namespace):
             view = state.dataset.view()
         else:
             return []
-        view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        results, remainder = tile(view, page, page_length, self._remainder)
+        view = view.skip(start_index - self._remainder).limit(batch_size)
+        results, remainder = tile(view, self._remainder)
         self._remainder = remainder
         return results
 
