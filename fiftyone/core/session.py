@@ -176,6 +176,8 @@ class Session(foc.HasClient):
 
     def wait(self):
         """Waits for the session to be closed by the user."""
+        if self._remote:
+            raise ValueError("Remote sessions cannot wait for the app to exit")
         self._app_service.wait()
 
     # GETTERS #################################################################
