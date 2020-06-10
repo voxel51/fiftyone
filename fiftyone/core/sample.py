@@ -184,6 +184,9 @@ class Sample(object):
         return self._doc.clear_field(field_name=field_name)
 
     def iter_fields(self):
+        """Returns an iterator over the field (name, value) pairs of the
+        sample.
+        """
         for field_name in self.field_names:
             yield field_name, self.get_field(field_name)
 
