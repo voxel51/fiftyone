@@ -1,5 +1,7 @@
 """
-Utilities for the COCO dataset.
+Utilities for working with datasets in COCO format.
+
+The COCO dataset: http://cocodataset.org/#home.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -29,6 +31,7 @@ import eta.core.serial as etas
 import eta.core.web as etaw
 
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
@@ -37,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
-    """Sample parser for the COCO Detection Dataset.
+    """Parser for samples in COCO Detection format.
 
     This implementation supports samples that are
     ``(image_or_path, detections_or_path)`` tuples, where:
@@ -200,7 +203,7 @@ def export_coco_detection_dataset(
     _classes = set()
     data_filename_counts = defaultdict(int)
 
-    with etau.ProgressBar(iters_str="samples") as pb:
+    with fou.ProgressBar() as pb:
         for sample in pb(samples):
             img_path = sample.filepath
             name, ext = os.path.splitext(os.path.basename(img_path))
