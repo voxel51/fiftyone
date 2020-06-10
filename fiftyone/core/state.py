@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -25,6 +24,7 @@ from bson import json_util
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
+import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 
 
@@ -86,7 +86,10 @@ class StateDescription(etas.Serializable):
         if dataset is not None:
             view = fov.DatasetView(dataset)
             if view_ is not None:
-                view._pipeline = json_util.loads(view_["view"])
+                view._pipeline = [
+                    fos.ViewStage._from_dict(s)
+                    for s in json_util.loads(view_["view"])
+                ]
 
         selected = d.get("selected", [])
 
