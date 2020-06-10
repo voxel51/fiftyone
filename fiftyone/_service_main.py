@@ -114,27 +114,38 @@ def monitor_stdin():
     exiting.set()
 
 
+def shutdown():
+    """"""
+    # "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
+    # subprocesses of the child process first
+    for subchild in child.children(recursive=True):
+        if "gunicorn" in subchild.name():
+            # gunicorn tends to ignore SIGTERM, so send SIGKILL instead
+            subchild.kill()
+        else:
+            subchild.terminate()
+
+    child.terminate()
+    child.wait()
+    if child.returncode > 0:
+        if command[0] == "yarn" and child.returncode == 1:
+            # yarn sometimes returns this when its children are killed, but it
+            # can be safely ignored
+            return
+        sys.stdout.buffer.write(child_stdout.to_bytes())
+        sys.stdout.flush()
+        sys.stderr.write(
+            "Subprocess %r exited with error %i:\n"
+            % (command, child.returncode)
+        )
+        sys.stderr.buffer.write(child_stderr.to_bytes())
+        sys.stderr.flush()
+
+
 stdin_thread = threading.Thread(target=monitor_stdin)
 stdin_thread.daemon = True
 stdin_thread.start()
 
 exiting.wait()
 
-# "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
-# subprocesses of the child process first
-for subchild in child.children(recursive=True):
-    if "gunicorn" in subchild.name():
-        # gunicorn tends to ignore SIGTERM, so send SIGKILL instead
-        subchild.kill()
-    else:
-        subchild.terminate()
-
-child.terminate()
-if child.wait() > 0:
-    sys.stdout.buffer.write(child_stdout.to_bytes())
-    sys.stdout.flush()
-    sys.stderr.write(
-        "Subprocess %r exited with error %i:\n" % (command, child.returncode)
-    )
-    sys.stderr.buffer.write(child_stderr.to_bytes())
-    sys.stderr.flush()
+shutdown()
