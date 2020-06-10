@@ -193,7 +193,7 @@ def load_zoo_dataset(
         splits = zoo_dataset.supported_splits
 
     dataset = fo.Dataset(dataset_name, persistent=persistent)
-    format = info.format
+    dataset_type = info.format
 
     if splits:
         for split in splits:
@@ -201,29 +201,10 @@ def load_zoo_dataset(
             tags = [split]
 
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
-            if issubclass(format, fot.ImageClassificationDataset):
-                dataset.add_image_classification_dataset(split_dir, tags=tags)
-            elif issubclass(format, fot.ImageDetectionDataset):
-                dataset.add_image_detection_dataset(split_dir, tags=tags)
-            elif issubclass(format, fot.ImageLabelsDataset):
-                dataset.add_image_labels_dataset(split_dir, tags=tags)
-            else:
-                raise ValueError(
-                    "Unsupported dataset format '%s'"
-                    % etau.get_class_name(format)
-                )
+            dataset.add_dir(split_dir, dataset_type, tags=tags)
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
-        if issubclass(format, fot.ImageClassificationDataset):
-            dataset.add_image_classification_dataset(dataset_dir)
-        elif issubclass(format, fot.ImageDetectionDataset):
-            dataset.add_image_detection_dataset(dataset_dir)
-        elif issubclass(format, fot.ImageLabelsDataset):
-            dataset.add_image_labels_dataset(dataset_dir)
-        else:
-            raise ValueError(
-                "Unsupported dataset format '%s'" % etau.get_class_name(format)
-            )
+        dataset.add_dir(dataset_dir, dataset_type)
 
     return dataset
 
