@@ -18,13 +18,12 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import atexit
 import logging
-import signal
 
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
+import fiftyone.core.utils as fou
 
 
 # Global session singleton
@@ -152,7 +151,7 @@ class Session(foc.HasClient):
             logger.info("Dashboard launched")
         else:
             logger.info(
-                _REMOTE_INSTRUCTIONS
+                _REMOTE_INSTRUCTIONS.strip()
                 % (self.server_port, self.server_port, self.server_port)
             )
 
@@ -271,6 +270,4 @@ def _close_on_exit(session):
         except:
             pass
 
-    atexit.register(handle_exit)
-    signal.signal(signal.SIGTERM, handle_exit)
-    signal.signal(signal.SIGINT, handle_exit)
+    fou.call_on_exit(handle_exit)

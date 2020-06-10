@@ -334,6 +334,7 @@ class DatasetsCreateCommand(Command):
             raise ValueError("Unsupported dataset type %s" % args.type)
 
         dataset.persistent = True
+        print("Dataset '%s' created" % dataset.name)
 
 
 class DatasetsDeleteCommand(Command):
@@ -738,9 +739,10 @@ class ZooLoadCommand(Command):
         name = args.name
         splits = args.splits or None
         dataset_dir = args.dataset_dir or None
-        foz.load_zoo_dataset(
+        dataset = foz.load_zoo_dataset(
             name, splits=splits, dataset_dir=dataset_dir, persistent=True
         )
+        print("Dataset '%s' created" % dataset.name)
 
 
 def _print_dict_as_json(d):
