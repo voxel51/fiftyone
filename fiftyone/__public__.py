@@ -8,7 +8,6 @@ under the top-level `fiftyone` package.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
 import fiftyone.core.config as foc
 import fiftyone.core.service as fos
 
