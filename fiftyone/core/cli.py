@@ -565,7 +565,9 @@ class DashboardConnectCommand(Command):
                         "-O",
                         "exit",
                         args.destination,
-                    ]
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                 )
 
             fou.call_on_exit(stop_port_forward)
