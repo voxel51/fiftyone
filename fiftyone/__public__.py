@@ -35,6 +35,7 @@ from .core.fields import (
 from .core.labels import (
     Label,
     ImageLabel,
+    Attribute,
     Classification,
     Detection,
     Detections,
