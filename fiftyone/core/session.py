@@ -174,6 +174,10 @@ class Session(foc.HasClient):
         self._close = True
         self._update_state()
 
+    def wait(self):
+        """Waits for the session to be closed by the user."""
+        self._app_service.wait()
+
     # GETTERS #################################################################
 
     @property

@@ -20,6 +20,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 import argparse
+import atexit
 from collections import defaultdict
 import json
 import os
@@ -401,8 +402,11 @@ class DashboardLaunchCommand(Command):
 
         # @todo For non-remote sessions, automatically terminate process when
         # dashboard closes
-        print("\nTo exit, type ctrl + c\n")
-        signal.pause()
+        print("\nTo exit, close the dashboard or press ctrl + c\n")
+        try:
+            session.wait()
+        except KeyboardInterrupt:
+            print("\nExiting")
 
 
 class DashboardViewCommand(Command):
@@ -485,6 +489,7 @@ class DashboardConnectCommand(Command):
             "-d",
             "--destination",
             metavar="DESTINATION",
+            type=str,
             help="the destination to connect to, e.g., [username@]hostname",
         )
         parser.add_argument(
@@ -499,34 +504,68 @@ class DashboardConnectCommand(Command):
     @staticmethod
     def execute(parser, args):
         if args.destination:
+            control_path = os.path.join(
+                foc.FIFTYONE_CONFIG_DIR, "tmp", "ssh.sock"
+            )
+            etau.ensure_basedir(control_path)
+
             # Port forwarding
-            p = subprocess.call(
+            ret = subprocess.call(
                 [
                     "ssh",
                     "-f",
                     "-N",
+                    "-M",
+                    "-S",
+                    control_path,
                     "-L",
                     "%d:127.0.0.1:5151" % args.port,
-                    "%s" % args.destination,
+                    args.destination,
                 ]
             )
-            _terminate_subprocess_on_exit(p)
+            if ret != 0:
+                raise RuntimeError("ssh failed with exit code %r" % ret)
+
+            def stop_port_forward():
+                subprocess.call(
+                    [
+                        "ssh",
+                        "-S",
+                        control_path,
+                        "-O",
+                        "exit",
+                        args.destination,
+                    ]
+                )
+
+            _call_on_exit(stop_port_forward)
 
         session = fos.launch_dashboard()
 
         # @todo automatically terminate process when dashboard closes
-        print("\nTo exit, type ctrl + c\n")
-        signal.pause()
-
-
-def _terminate_subprocess_on_exit(p):
-    def handle_exit(*args):
+        print("\nTo exit, close the dashboard or press ctrl + c\n")
         try:
-            p.terminate()
-        except:
-            pass
+            session.wait()
+        except KeyboardInterrupt:
+            print("\nExiting")
 
-    fou.call_on_exit(handle_exit)
+
+def _call_on_exit(callback):
+    """Registers the given callback function so that it will be called when the
+    process exits for (almost) any reason. Note that this should only be used
+    from non-interactive scripts because it intercepts ctrl+c.
+
+    Covers the following cases:
+    -   normal program termination
+    -   a Python exception is raised
+    -   SIGTERM and SIGINT signals are received
+
+    Args:
+        callback: the function to execute upon termination
+    """
+    atexit.register(callback)
+    signal.signal(signal.SIGTERM, lambda *args: callback())
+    signal.signal(signal.SIGINT, lambda *args: callback())
 
 
 class ZooCommand(Command):

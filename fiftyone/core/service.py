@@ -59,7 +59,7 @@ class Service(object):
         if not self._is_server:
             try:
                 self.stop()
-            except Exception:
+            except:
                 # something probably failed due to interpreter shutdown, which
                 # will be handled by _service_main.py
                 pass
@@ -85,6 +85,10 @@ class Service(object):
         """Stops the Service."""
         self.child.stdin.close()
         self.child.wait()
+
+    def wait(self):
+        """Waits for the Service to exit and returns its exit code."""
+        return self.child.wait()
 
 
 class DatabaseService(Service):
