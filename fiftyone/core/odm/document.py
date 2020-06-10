@@ -51,7 +51,7 @@ class SerializableDocument(object):
         if not isinstance(other, self.__class__):
             return False
 
-        return self.to_json() == other.to_json()
+        return self.to_dict() == other.to_dict()
 
     def __copy__(self):
         return self.copy()
