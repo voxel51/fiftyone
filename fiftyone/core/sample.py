@@ -53,12 +53,13 @@ class Sample(object):
         self._doc = foo.ODMNoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
-
-        # maintain a reference to the dataset
         self._dataset = self._get_dataset()
 
     def __str__(self):
         return str(self._doc)
+
+    def __repr__(self):
+        return repr(self._doc)
 
     def __getattr__(self, name):
         try:
@@ -97,6 +98,12 @@ class Sample(object):
 
     def __copy__(self):
         return self.copy()
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self._doc == other._doc
 
     @property
     def filename(self):
@@ -213,68 +220,62 @@ class Sample(object):
         kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
         return doc_cls(**kwargs)
 
-    def to_dict(self, extended=False, include_id=True):
+    def to_dict(self):
         """Serializes the sample to a JSON dictionary.
 
-        Args:
-            extended (False): whether to serialize extended JSON constructs
-                such as ObjectIDs, Binary, etc. into JSON format
-            include_id (True): whether to include the ID of the sample in the
-                serialized dictionary
+        Sample IDs are always excluded in this representation.
 
         Returns:
             a JSON dict
         """
-        d = self._doc.to_dict(extended=extended)
-        if not include_id:
-            d.pop("_id", None)
-
+        d = self._doc.to_dict(extended=True)
+        d.pop("_id", None)
         return d
 
     @classmethod
-    def from_dict(cls, d, doc_cls=None, extended=False):
+    def from_dict(cls, d):
         """Loads the sample from a JSON dictionary.
 
-        Args:
-            d: a JSON dictionary
-            doc_cls (None): the :class:`fiftyone.core.odm.ODMSample` class to
-                use to load the backing document. By default,
-                :class:`fiftyone.core.odm.ODMNoDatasetSample` is used
-            extended (False): whether the input dictionary contains extended
-                JSON
+        The returned sample will not belong to a dataset.
 
         Returns:
             a :class:`Sample`
         """
-        if doc_cls is None:
-            doc_cls = foo.ODMNoDatasetSample
-
-        doc = doc_cls.from_dict(d, extended=extended)
+        doc = foo.ODMNoDatasetSample.from_dict(d, extended=True)
         return cls.from_doc(doc)
 
-    def to_json(self):
-        """Returns a JSON string representation of the sample.
+    def to_json(self, pretty_print=False):
+        """Serializes the sample to a JSON string.
+
+        Args:
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
 
         Returns:
             a JSON string
         """
-        return self._doc.to_json()
+        return self._doc.to_json(pretty_print=pretty_print)
 
     @classmethod
-    def from_json(cls, s, doc_cls=None):
+    def from_json(cls, s):
         """Loads the sample from a JSON string.
 
         Args:
             s: the JSON string
-            doc_cls (None): the :class:`fiftyone.core.odm.ODMSample` class to
-                use to load the backing document. By default,
-                :class:`fiftyone.core.odm.ODMNoDatasetSample` is used
 
         Returns:
             a :class:`Sample`
         """
-        d = json.loads(s)
-        return cls.from_dict(d, doc_cls=doc_cls, extended=True)
+        return cls.from_dict(json.loads(s))
+
+    def to_mongo_dict(self):
+        """Serializes the sample to a BSON dictionary equivalent to the
+        representation that would be stored in the database.
+
+        Returns:
+            a BSON dict
+        """
+        return self._doc.to_dict(extended=False)
 
     @classmethod
     def from_doc(cls, doc):
@@ -317,8 +318,10 @@ class Sample(object):
     def _save_dataset_samples(cls, dataset_name):
         """Saves all changes to samples instances in memory belonging to the
         specified dataset to the database.
+
         A samples only needs to be saved if it has non-persisted changes and
         still exists in memory.
+
         Args:
             dataset_name: the name of the dataset to save.
         """
@@ -329,8 +332,10 @@ class Sample(object):
     def _reload_dataset_samples(cls, dataset_name):
         """Reloads the fields for sample instances in memory belonging to the
         specified dataset from the database.
+
         If multiple processes or users are accessing the same database this
         will keep the dataset in sync.
+
         Args:
             dataset_name: the name of the dataset to reload.
         """

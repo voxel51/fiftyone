@@ -24,7 +24,6 @@ import json
 from bson import json_util
 from bson.objectid import ObjectId
 from mongoengine import Document, EmbeddedDocument
-import numpy as np
 
 try:
     import pprintpp as pprint
@@ -42,17 +41,32 @@ class SerializableDocument(object):
     """Mixin for documents that can be serialized in BSON or JSON format."""
 
     def __str__(self):
-        return _pformat(self._to_str_dict())
+        s = _pformat(self._to_str_dict(for_repr=True))
+        return "<%s: %s>" % (self._get_class_repr(), s)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.to_json() == other.to_json()
 
     def __copy__(self):
         return self.copy()
 
-    def _to_str_dict(self):
+    def _to_str_dict(self, for_repr=False):
         d = {}
-        for f in _to_front(self._to_str_fields, "id"):
+        for f in self._to_str_fields:
+            if for_repr and f == "_cls":
+                continue
             value = getattr(self, f)
             if isinstance(value, SerializableDocument):
-                d[f] = value._to_str_dict()
+                if for_repr:
+                    d[f] = value
+                else:
+                    d[f] = value._to_str_dict()
             elif isinstance(value, ObjectId):
                 d[f] = str(value)
             else:
@@ -66,6 +80,10 @@ class SerializableDocument(object):
         string representation of the document.
         """
         raise NotImplementedError("Subclass must implement `_to_str_fields`")
+
+    @classmethod
+    def _get_class_repr(cls):
+        return cls.__name__
 
     def copy(self):
         """Returns a deep copy of the document.
@@ -125,7 +143,7 @@ class SerializableDocument(object):
         return cls.from_dict(d, extended=True)
 
 
-class ODMDocument(Document, SerializableDocument):
+class ODMDocument(SerializableDocument, Document):
     """Base class for documents that are stored in a MongoDB collection.
 
     The ID of a document is automatically populated when it is added to the
@@ -139,13 +157,17 @@ class ODMDocument(Document, SerializableDocument):
 
     meta = {"abstract": True}
 
-    def __str__(self):
-        return _pformat(self._to_str_dict())
+    def __eq__(self, other):
+        # pylint: disable=no-member
+        if self.id != other.id:
+            return False
+
+        return super(ODMDocument, self).__eq__(other)
 
     @property
     def _to_str_fields(self):
         # pylint: disable=no-member
-        return self._fields_ordered
+        return _to_front(self._fields_ordered, "id")
 
     @property
     def ingest_time(self):
@@ -176,9 +198,9 @@ class ODMDocument(Document, SerializableDocument):
 
     def to_dict(self, extended=False):
         if extended:
-            return json.loads(self.to_json())
+            return json.loads(self._to_json())
 
-        return json_util.loads(self.to_json())
+        return json_util.loads(self._to_json())
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -188,14 +210,18 @@ class ODMDocument(Document, SerializableDocument):
                 # extended form
 
                 # pylint: disable=no-member
-                return cls._from_son(d, created=False)
+                return cls._from_son(d)
             except Exception:
                 pass
 
-        return cls.from_json(json_util.dumps(d), created=False)
+        return cls.from_json(json_util.dumps(d))
+
+    def _to_json(self):
+        # @todo(Tyler) mongoengine snippet, to be replaced
+        return json_util.dumps(self.to_mongo(use_db_field=True))
 
 
-class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
+class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
     """Base class for documents that are embedded within other documents and
     therefore aren't stored in their own collection in the database.
     """
@@ -206,9 +232,6 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
         super(ODMEmbeddedDocument, self).__init__(*args, **kwargs)
         self.validate()
 
-    def __str__(self):
-        return _pformat(self._to_str_dict())
-
     @property
     def _to_str_fields(self):
         # pylint: disable=no-member
@@ -216,9 +239,9 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
 
     def to_dict(self, extended=False):
         if extended:
-            return json.loads(self.to_json())
+            return json.loads(self._to_json())
 
-        return json_util.loads(self.to_json())
+        return json_util.loads(self._to_json())
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -228,11 +251,15 @@ class ODMEmbeddedDocument(EmbeddedDocument, SerializableDocument):
                 # extended form
 
                 # pylint: disable=no-member
-                return cls._from_son(d, created=False)
+                return cls._from_son(d)
             except Exception:
                 pass
 
-        return cls.from_json(json_util.dumps(d), created=False)
+        return cls.from_json(json_util.dumps(d))
+
+    def _to_json(self):
+        # @todo(Tyler) mongoengine snippet, to be replaced
+        return json_util.dumps(self.to_mongo(use_db_field=True))
 
 
 def _to_front(l, val):
