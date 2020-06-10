@@ -43,13 +43,12 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
     """Parser for samples in COCO Detection format.
 
     This implementation supports samples that are
-    ``(image_or_path, detections_or_path)`` tuples, where:
+    ``(image_or_path, annotations)`` tuples, where:
 
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``detections_or_path`` is either a list of detections in the
-          following format::
+        - ``annotations`` is a list of detections in the following format::
 
             [
                 {
@@ -64,7 +63,8 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
                 ...
             ]
 
-          or the path to such a file on disk.
+          where it is assumed that all detections correspond to the image in
+          the sample.
 
     See :class:`fiftyone.types.COCODetectionDataset` for more format details.
     """
