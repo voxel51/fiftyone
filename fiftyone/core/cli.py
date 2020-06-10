@@ -20,11 +20,9 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 import argparse
-import atexit
 from collections import defaultdict
 import json
 import os
-import signal
 import subprocess
 
 import argcomplete
@@ -400,13 +398,19 @@ class DashboardLaunchCommand(Command):
             dataset=dataset, port=args.port, remote=args.remote
         )
 
-        # @todo For non-remote sessions, automatically terminate process when
-        # dashboard closes
+        _watch_session(session, remote=args.remote)
+
+
+def _watch_session(session, remote=False):
+    if remote:
+        print("\nTo exit, press ctrl + c\n")
+    else:
         print("\nTo exit, close the dashboard or press ctrl + c\n")
-        try:
-            session.wait()
-        except KeyboardInterrupt:
-            print("\nExiting")
+
+    try:
+        session.wait()
+    except KeyboardInterrupt:
+        pass
 
 
 class DashboardViewCommand(Command):
@@ -465,10 +469,7 @@ class DashboardViewCommand(Command):
             dataset=dataset, port=args.port, remote=args.remote
         )
 
-        # @todo For non-remote sessions, automatically terminate process when
-        # dashboard closes
-        print("\nTo exit, type ctrl + c\n")
-        signal.pause()
+        _watch_session(session, remote=args.remote)
 
 
 class DashboardConnectCommand(Command):
@@ -538,34 +539,11 @@ class DashboardConnectCommand(Command):
                     ]
                 )
 
-            _call_on_exit(stop_port_forward)
+            fou.call_on_exit(stop_port_forward)
 
         session = fos.launch_dashboard()
 
-        # @todo automatically terminate process when dashboard closes
-        print("\nTo exit, close the dashboard or press ctrl + c\n")
-        try:
-            session.wait()
-        except KeyboardInterrupt:
-            print("\nExiting")
-
-
-def _call_on_exit(callback):
-    """Registers the given callback function so that it will be called when the
-    process exits for (almost) any reason. Note that this should only be used
-    from non-interactive scripts because it intercepts ctrl+c.
-
-    Covers the following cases:
-    -   normal program termination
-    -   a Python exception is raised
-    -   SIGTERM and SIGINT signals are received
-
-    Args:
-        callback: the function to execute upon termination
-    """
-    atexit.register(callback)
-    signal.signal(signal.SIGTERM, lambda *args: callback())
-    signal.signal(signal.SIGINT, lambda *args: callback())
+        _watch_session(session)
 
 
 class ZooCommand(Command):
