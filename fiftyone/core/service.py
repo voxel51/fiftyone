@@ -59,7 +59,7 @@ class Service(object):
         if not self._is_server:
             try:
                 self.stop()
-            except Exception:
+            except:
                 # something probably failed due to interpreter shutdown, which
                 # will be handled by _service_main.py
                 pass
