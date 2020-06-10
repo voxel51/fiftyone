@@ -161,9 +161,9 @@ class VOCObject(object):
         self.ymin = ymin
         self.xmax = xmax
         self.ymax = ymax
-        self.pose = pose
-        self.truncated = truncated
-        self.difficult = difficult
+        self.pose = pose or ""
+        self.truncated = truncated or ""
+        self.difficult = difficult or ""
 
     @classmethod
     def from_detection(cls, detection, metadata):
@@ -189,23 +189,6 @@ class VOCObject(object):
         ymax = int(round((y + h) * height))
 
         return cls(name, xmin, ymin, xmax, ymax)
-
-    def to_dict(self):
-        """Returns a dictionary representation of the object.
-
-        Returns:
-            a dict
-        """
-        return {
-            "name": self.name,
-            "xmin": self.xmin,
-            "ymin": self.ymin,
-            "xmax": self.xmax,
-            "ymax": self.ymax,
-            "pose": self.pose or "",
-            "truncated": self.truncated or "",
-            "difficult": self.difficult or "",
-        }
 
 
 class VOCAnnotationWriter(object):
@@ -233,7 +216,7 @@ class VOCAnnotationWriter(object):
         objects = []
         for detection in detections.detections:
             obj = VOCObject.from_detection(detection, metadata)
-            objects.append(obj.to_dict())
+            objects.append(obj)
 
         xml_str = self.template.render(
             {
