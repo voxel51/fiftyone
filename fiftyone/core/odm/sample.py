@@ -170,6 +170,15 @@ class ODMSample(SerializableDocument):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
+    def _to_str_dict(self, for_repr=False):
+        d = {"dataset_name": self.dataset_name}
+        d.update(super(ODMSample, self)._to_str_dict(for_repr=for_repr))
+        return d
+
+    @classmethod
+    def _get_class_repr(cls):
+        return "Sample"
+
 
 class ODMDatasetSample(ODMDocument, ODMSample):
     """Base class for sample documents backing samples in datasets.
@@ -413,10 +422,6 @@ class ODMDatasetSample(ODMDocument, ODMSample):
         ]
         dataset._meta.save()
 
-    @classmethod
-    def _get_class_repr(cls):
-        return "Sample in '%s'" % cls.__name__
-
 
 class ODMNoDatasetSample(ODMSample):
     """Backing document for samples that have not been added to a dataset."""
@@ -467,8 +472,12 @@ class ODMNoDatasetSample(ODMSample):
         self._data[name] = value
 
     @property
+    def id(self):
+        return None
+
+    @property
     def _to_str_fields(self):
-        return self.field_names
+        return ("id",) + self.field_names
 
     @property
     def field_names(self):
@@ -614,10 +623,6 @@ class ODMNoDatasetSample(ODMSample):
         nothing.
         """
         pass
-
-    @classmethod
-    def _get_class_repr(cls):
-        return "Sample not-in-dataset"
 
 
 def _get_implied_field_kwargs(value):
