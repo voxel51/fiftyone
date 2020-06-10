@@ -522,7 +522,7 @@ class DashboardConnectCommand(Command):
                     "-S",
                     control_path,
                     "-L",
-                    "%d:127.0.0.1:%d" % (args.port, args.port),
+                    "5151:127.0.0.1:%d" % args.port,
                     args.destination,
                 ]
             )
@@ -543,7 +543,7 @@ class DashboardConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_dashboard(port=args.port)
+        session = fos.launch_dashboard()
 
         _watch_session(session)
 
