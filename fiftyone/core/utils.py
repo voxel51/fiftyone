@@ -5,14 +5,12 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import atexit
 from base64 import b64encode, b64decode
 import importlib
 import io
 import itertools
 import logging
 import resource
-import signal
 import sys
 import types
 import zlib
@@ -309,20 +307,3 @@ def iter_batches(iterable, batch_size):
             return
 
         yield chunk
-
-
-def call_on_exit(callback):
-    """Registers the given callback function so that it will be called when the
-    process exits for (almost) any reason.
-
-    Covers the following cases:
-    -   normal program termination
-    -   a Python exception is raised
-    -   SIGTERM and SIGINT signals are received
-
-    Args:
-        callback: the function to execute upon termination
-    """
-    atexit.register(callback)
-    signal.signal(signal.SIGTERM, callback)
-    signal.signal(signal.SIGINT, callback)

@@ -20,6 +20,7 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=wildcard-import
 
 import argparse
+import atexit
 from collections import defaultdict
 import json
 import os
@@ -479,7 +480,25 @@ def _terminate_subprocess_on_exit(p):
         except:
             pass
 
-    fou.call_on_exit(handle_exit)
+    _call_on_exit(handle_exit)
+
+
+def _call_on_exit(callback):
+    """Registers the given callback function so that it will be called when the
+    process exits for (almost) any reason. Note that this should only be used
+    from non-interactive scripts because it intercepts ctrl+c.
+
+    Covers the following cases:
+    -   normal program termination
+    -   a Python exception is raised
+    -   SIGTERM and SIGINT signals are received
+
+    Args:
+        callback: the function to execute upon termination
+    """
+    atexit.register(callback)
+    signal.signal(signal.SIGTERM, callback)
+    signal.signal(signal.SIGINT, callback)
 
 
 class ZooCommand(Command):
