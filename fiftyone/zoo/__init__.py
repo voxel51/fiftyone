@@ -24,7 +24,6 @@ from future.utils import iteritems, itervalues
 
 import logging
 import os
-import warnings
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -178,11 +177,11 @@ def load_zoo_dataset(
 
     if fo.dataset_exists(dataset_name):
         if not drop_existing_dataset:
-            msg = (
+            logger.info(
                 "Loading existing dataset '%s'. To reload from disk, first "
-                "delete the existing dataset"
-            ) % dataset_name
-            warnings.warn(msg)
+                "delete the existing dataset",
+                dataset_name,
+            )
             return fo.load_dataset(dataset_name)
 
         fo.delete_dataset(dataset_name)
