@@ -11,10 +11,12 @@
                 <label>
                     <name>{{ label.name }}</name>
                     <attributes>
-{% if label.attributes %}
-                        <name>{{ label.attributes.name }}</name>
-                        <values>{{ label.attributes.values }}</value>
-{% endif %}
+{% for attribute in label.attributes %}
+                        <attribute>
+                            <name>{{ attribute.name }}</name>
+                            <values>{{ attribute.values }}</value>
+                        </attribute>
+{% endfor %}
                     </attributes>
                 </label>
 {% endfor %}

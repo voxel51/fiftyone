@@ -400,15 +400,21 @@ class CVATImageDataset(LabeledImageDataset):
                         <label>
                             <name>car</name>
                             <attributes>
-                                <name>type</name>
-                                <values>coupe,sedan,truck</values>
+                                <attribute>
+                                    <name>type</name>
+                                    <values>coupe,sedan,truck</values>
+                                </attribute>
+                                ...
                             </attributes>
                         </label>
                         <label>
                             <name>person</name>
                             <attributes>
-                                <name>gender</name>
-                                <values>male,female</values>
+                                <attribute>
+                                    <name>gender</name>
+                                    <values>male,female</values>
+                                </attribute>
+                                ...
                             </attributes>
                         </label>
                         ...
