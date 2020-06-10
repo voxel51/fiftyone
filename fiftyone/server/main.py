@@ -18,9 +18,11 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import json
 import logging
 import os
 
+from bson import json_util
 from flask import Flask, jsonify, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
 
@@ -158,7 +160,9 @@ class StateController(Namespace):
             return []
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [s.to_dict(extended=True) for s in view]
+        samples = [
+            json.loads(json_util.dumps(s.to_mongo_dict())) for s in view
+        ]
         more = False
         if len(samples) > page_length:
             samples = samples[:page_length]
