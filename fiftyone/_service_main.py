@@ -13,8 +13,11 @@ parent process is a Python interpreter that is in the process of shutting down,
 it cannot reliably kill its children. This script works around these issues by
 detecting when the parent process exits, terminating its children, and only
 then exiting itself.
-"""
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import collections
 import os
 import signal
@@ -87,6 +90,7 @@ if hasattr(os, "setpgrp"):
     # UNIX-only: prevent child process from receiving SIGINT/other signals
     # from the parent process
     os.setpgrp()
+
 # also explicitly ignore SIGINT for good measure (note that this MUST be done
 # before spinning up the child process, as the child inherits signal handlers)
 signal.signal(signal.SIGINT, signal.SIG_IGN)
