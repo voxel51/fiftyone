@@ -434,6 +434,20 @@ class DashboardViewCommand(Command):
             metavar="DATASET_DIR",
             help="the directory containing the dataset",
         )
+        parser.add_argument(
+            "-p",
+            "--port",
+            metavar="PORT",
+            default=5151,
+            type=int,
+            help="the port number to use",
+        )
+        parser.add_argument(
+            "-r",
+            "--remote",
+            action="store_true",
+            help="whether to launch a remote dashboard session",
+        )
 
     @staticmethod
     def execute(parser, args):
