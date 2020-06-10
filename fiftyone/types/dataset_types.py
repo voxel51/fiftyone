@@ -372,3 +372,60 @@ class ImageLabelsDataset(LabeledImageDataset):
     """
 
     pass
+
+
+class CVATImageDataset(LabeledImageDataset):
+    """A labeled dataset consisting of images and their associated multitask
+    predictions stored in CVAT image format (https://github.com/opencv/cvat).
+
+    FiftyOne exports datasets of this type on disk in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels.xml
+
+    where ``labels.xml`` is an XML file in the following format::
+
+        <?xml version="1.0" encoding="utf-8"?>
+        <annotations>
+            <version>1.1</version>
+            <meta>
+                <task>
+                    <size>51</size>
+                    <mode>annotation</mode>
+                    <labels>
+                        <label>
+                            <name>car</name>
+                            <attributes>
+                                <name>type</name>
+                                <values>coupe,sedan,truck</values>
+                            </attributes>
+                        </label>
+                        <label>
+                            <name>person</name>
+                            <attributes>
+                                <name>gender</name>
+                                <values>male,female</values>
+                            </attributes>
+                        </label>
+                        ...
+                    </labels>
+                </task>
+                <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
+            </meta>
+            <image id="1" name="<uuid1>.<ext>" width="640" height="480">
+                <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" type="sedan"></box>
+                ...
+            </image>
+            ...
+            <image id="51" name="<uuid51>.<ext>" width="640" height="480">
+                <box label="person" xtl="300" ytl="25" xbr="375" ybr="400" gender="female"></box>
+                ...
+            </image>
+        </annotations>
+    """
+
+    pass
