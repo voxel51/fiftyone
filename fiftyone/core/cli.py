@@ -439,6 +439,7 @@ class DashboardConnectCommand(Command):
             "-d",
             "--destination",
             metavar="DESTINATION",
+            type=str,
             help="the destination to connect to, e.g., [username@]hostname",
         )
         parser.add_argument(
@@ -453,19 +454,41 @@ class DashboardConnectCommand(Command):
     @staticmethod
     def execute(parser, args):
         if args.destination:
+            control_path = os.path.join(
+                foc.FIFTYONE_CONFIG_DIR, "tmp", "ssh.sock"
+            )
+            etau.ensure_basedir(control_path)
+
             # Port forwarding
             ret = subprocess.call(
                 [
                     "ssh",
                     "-f",
                     "-N",
+                    "-M",
+                    "-S",
+                    control_path,
                     "-L",
                     "%d:127.0.0.1:5151" % args.port,
-                    "%s" % args.destination,
+                    args.destination,
                 ]
             )
             if ret != 0:
                 raise RuntimeError("ssh failed with exit code %r" % ret)
+
+            def stop_port_forward():
+                subprocess.call(
+                    [
+                        "ssh",
+                        "-S",
+                        control_path,
+                        "-O",
+                        "exit",
+                        args.destination,
+                    ]
+                )
+
+            _call_on_exit(stop_port_forward)
 
         session = fos.launch_dashboard()
 
