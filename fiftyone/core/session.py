@@ -25,9 +25,10 @@ import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
 
 
+logger = logging.getLogger(__name__)
+
 # Global session singleton
 session = None
-logger = logging.getLogger(__name__)
 
 
 def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
@@ -153,6 +154,59 @@ class Session(foc.HasClient):
                 % (self.server_port, self.server_port, self.server_port)
             )
 
+    @property
+    def dataset(self):
+        """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
+        """
+        if self.view is not None:
+            return self.view._dataset
+
+        return self._dataset
+
+    @dataset.setter
+    @_update_state
+    def dataset(self, dataset):
+        self._dataset = dataset
+        self._view = None
+        self.state.selected = []
+
+    @_update_state
+    def clear_dataset(self):
+        """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
+        session, if any.
+        """
+        self.dataset = None
+
+    @property
+    def view(self):
+        """The :class:`fiftyone.core.view.DatasetView` connected to the
+        session, or ``None`` if no view is connected.
+        """
+        return self._view
+
+    @view.setter
+    @_update_state
+    def view(self, view):
+        self._view = view
+        if view is not None:
+            self._dataset = self._view._dataset
+
+        self.state.selected = []
+
+    @_update_state
+    def clear_view(self):
+        """Clears the current :class:`fiftyone.core.view.DatasetView` from the
+        session, if any.
+        """
+        self.view = None
+
+    @property
+    def selected(self):
+        """A list of sample IDs of the currently selected samples in the
+        FiftyOne app.
+        """
+        return list(self.state.selected)
+
     def open(self):
         """Opens the session.
 
@@ -177,67 +231,9 @@ class Session(foc.HasClient):
     def wait(self):
         """Waits for the session to be closed by the user."""
         if self._remote:
-            raise ValueError("Remote sessions cannot wait for the app to exit")
+            raise ValueError("Cannot `wait()` for remote sessions to close")
+
         self._app_service.wait()
-
-    # GETTERS #################################################################
-
-    @property
-    def dataset(self):
-        """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
-        """
-        if self.view is not None:
-            return self.view._dataset
-
-        return self._dataset
-
-    @property
-    def view(self):
-        """The :class:`fiftyone.core.view.DatasetView` connected to the
-        session, or ``None`` if no view is connected.
-        """
-        return self._view
-
-    @property
-    def selected(self):
-        """A list of sample IDs of the currently selected samples in the
-        FiftyOne app.
-        """
-        return list(self.state.selected)
-
-    # SETTERS #################################################################
-
-    @dataset.setter
-    @_update_state
-    def dataset(self, dataset):
-        self._dataset = dataset
-        self._view = None
-        self.state.selected = []
-
-    @view.setter
-    @_update_state
-    def view(self, view):
-        self._view = view
-        if view is not None:
-            self._dataset = self._view._dataset
-
-        self.state.selected = []
-
-    # CLEAR STATE #############################################################
-
-    @_update_state
-    def clear_dataset(self):
-        """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
-        session, if any.
-        """
-        self.dataset = None
-
-    @_update_state
-    def clear_view(self):
-        """Clears the current :class:`fiftyone.core.view.DatasetView` from the
-        session, if any.
-        """
-        self.view = None
 
     # PRIVATE #################################################################
 
