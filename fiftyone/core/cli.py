@@ -549,7 +549,7 @@ class DashboardConnectCommand(Command):
                     "-S",
                     control_path,
                     "-L",
-                    "%d:127.0.0.1:5151" % args.port,
+                    "5151:127.0.0.1:%d" % args.port,
                     args.destination,
                 ]
             )
@@ -565,7 +565,9 @@ class DashboardConnectCommand(Command):
                         "-O",
                         "exit",
                         args.destination,
-                    ]
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                 )
 
             fou.call_on_exit(stop_port_forward)
