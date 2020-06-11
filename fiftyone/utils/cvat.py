@@ -516,6 +516,8 @@ class CVATImageWriter(object):
 def load_cvat_image_annotations(xml_path):
     """Loads the CVAT image annotations from the given XML file.
 
+    See :class:`fiftyone.types.CVATImageDataset` for format details.
+
     Args:
         xml_path: the path to the annotations XML file
 
