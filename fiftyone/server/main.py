@@ -205,37 +205,6 @@ class StateController(Namespace):
 
         return _get_distributions(view, group)
 
-    def on_get_facets(self, _):
-        """Gets the facets for the current state.
-
-        Args:
-            _: the message, which is not used
-
-        Returns:
-            the list of facets
-        """
-        state = fos.StateDescription.from_dict(self.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.view()
-        else:
-            return []
-
-        return view._get_facets()
-
-    def on_set_facets(self, facets):
-        """Sets the facets for the current state.
-
-        Args:
-            facets: the facets string
-        """
-        _, value = facets.split(".")
-        state = fos.StateDescription.from_dict(self.state)
-        state.view = state.dataset.view().match_tag(value)
-        self.state = state.serialize()
-        emit("update", self.state, broadcast=True, include_self=True)
-
 
 def _get_distributions(view, group):
     pipeline = DISTRIBUTION_PIPELINES[group]

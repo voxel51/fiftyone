@@ -52,15 +52,16 @@ class BaseClient(socketio.ClientNamespace):
     def __init__(self, namespace, data_cls):
         self.data_cls = data_cls
         self.data = data_cls()
+        self.connected = False
         super(BaseClient, self).__init__(namespace)
 
     def on_connect(self):
         """Receives the "connect" event."""
-        pass
+        self.connected = True
 
     def on_disconnect(self):
         """Receives the "disconnect" event."""
-        pass
+        self.connected = False
 
     def on_update(self, data):
         """Receives an update.
