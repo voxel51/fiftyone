@@ -2,6 +2,7 @@
 
 cd "$(dirname "$0")"
 
+set -e
 ls dockerfiles | while read df; do
-    docker build -f "dockerfiles/$df" -t "fo-test-$df" dockerfiles
+    docker build -t "fo-test-$df" - < "dockerfiles/$df"
 done
