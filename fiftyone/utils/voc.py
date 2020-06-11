@@ -30,6 +30,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
@@ -77,9 +78,14 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
 
             {
                 "annotation": {
+                    ...
                     "object": [
                         {
                             "name": "chair",
+                            "pose": "Frontal",
+                            "truncated": "0",
+                            "difficult": "0",
+                            "occluded": "0",
                             "bndbox": {
                                 "xmin": "263",
                                 "ymin": "211",
@@ -100,68 +106,64 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
     """
 
     def __init__(self):
-        super().__init__(normalized=False)
+        super().__init__(
+            label_field=None, bounding_box_field=None, confidence_field=None
+        )
 
     def _parse_label(self, target, img=None):
         if etau.is_str(target):
             target = fou.load_xml_as_json_dict(target)
 
-        _objects = target["annotation"].get("object", [])
+        annotation = target["annotation"]
+        size = annotation["size"]
+        frame_size = (int(size["width"]), int(size(["height"])))
 
-        # Single detections must be wrapped in a list
-        if not isinstance(_objects, list):
-            _objects = [_objects]
-
-        objects = []
-        for obj in _objects:
-            bbox = obj["bndbox"]
-            xmin = int(bbox["xmin"])
-            ymin = int(bbox["ymin"])
-            xmax = int(bbox["xmax"])
-            ymax = int(bbox["ymax"])
-            objects.append(
-                {
-                    "label": obj["name"],
-                    "bounding_box": [xmin, ymin, xmax - xmin, ymax - ymin],
-                }
-            )
-
-        return super()._parse_label(objects, img=img)
+        objects = _ensure_list(annotation.get("object", []))
+        detections = [
+            VOCObject.from_annotation_dict(obj).to_detection(frame_size)
+            for obj in objects
+        ]
+        return fol.Detections(detections=detections)
 
 
 class VOCObject(object):
-    """Description of an object in VOC Detection format.
+    """An object in VOC detection format.
 
     Args:
         name: the object label
-        xmin: the top-left x coordinate
-        ymin: the top-left y coordinate
-        xmax: the bottom-right x coordinate
-        ymax: the bottom-right y coordinate
+        bndbox: a :class:`VOCBoundingBox`
         pose (None): the pose of the object
-        truncated (None): whether the object is truncated (0 or 1)
-        difficult (None): whether the object is considered difficult (0 or 1)
+        truncated (None): whether the object is truncated
+        difficult (None): whether the object is considered difficult
     """
 
     def __init__(
-        self,
-        name,
-        xmin,
-        ymin,
-        xmax,
-        ymax,
-        pose=None,
-        truncated=None,
-        difficult=None,
+        self, name, bndbox, pose=None, truncated=None, difficult=None,
     ):
         self.name = name
-        self.xmin = xmin
-        self.ymin = ymin
-        self.xmax = xmax
-        self.ymax = ymax
-        self.pose = pose or ""
-        self.truncated = truncated or ""
-        self.difficult = difficult or ""
+        self.bndbox = bndbox
+        self.pose = pose
+        self.truncated = truncated
+        self.difficult = difficult
+
+    @classmethod
+    def from_annotation_dict(cls, d):
+        """Creates a :class:`VOCObject` from a VOC annotation dict.
+
+        Args:
+            d: an annotation dict
+
+        Returns:
+            a :class:`VOCObject`
+        """
+        name = d["name"]
+        bndbox = VOCBoundingBox.from_bndbox_dict(d["bndbox"])
+        pose = d.get("pose", None)
+        truncated = d.get("truncated", None)
+        difficult = d.get("difficult", None)
+        return cls(
+            name, bndbox, pose=pose, truncated=truncated, difficult=difficult
+        )
 
     @classmethod
     def from_detection(cls, detection, metadata):
@@ -178,15 +180,120 @@ class VOCObject(object):
         """
         name = detection.label
 
-        width = metadata.width
-        height = metadata.height
-        x, y, w, h = detection.bounding_box
-        xmin = int(round(x * width))
-        ymin = int(round(y * height))
-        xmax = int(round((x + w) * width))
-        ymax = int(round((y + h) * height))
+        frame_size = (metadata.width, metadata.height)
+        bndbox = VOCBoundingBox.from_detection_format(
+            detection.bounding_box, frame_size
+        )
 
-        return cls(name, xmin, ymin, xmax, ymax)
+        pose = detection.get_attribute_value("pose", None)
+        truncated = detection.get_attribute_value("truncated", None)
+        difficult = detection.get_attribute_value("difficult", None)
+
+        return cls(
+            name, bndbox, pose=pose, truncated=truncated, difficult=difficult
+        )
+
+    def to_detection(self, frame_size):
+        """Returns a :class:`fiftyone.core.labels.Detection` representation of
+        the object.
+
+        Args:
+            frame_size: the ``(width, height)`` of the image
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detection`
+        """
+        label = self.name
+        bounding_box = self.bndbox.to_detection_format(frame_size)
+        detection = fol.Detection(label=label, bounding_box=bounding_box)
+
+        if self.pose:
+            # pylint: disable=unsupported-assignment-operation
+            detection.attributes["pose"] = fol.CategoricalAttribute(self.pose)
+
+        if self.truncated is not None:
+            # pylint: disable=unsupported-assignment-operation
+            detection.attributes["truncated"] = fol.BooleanAttribute(
+                self.truncated
+            )
+
+        if self.difficult is not None:
+            # pylint: disable=unsupported-assignment-operation
+            detection.attributes["difficult"] = fol.BooleanAttribute(
+                self.difficult
+            )
+
+        return detection
+
+
+class VOCBoundingBox(object):
+    """A bounding box in VOC detection format.
+
+    Args:
+        xmin: the top-left x coordinate
+        ymin: the top-left y coordinate
+        xmax: the bottom-right x coordinate
+        ymax: the bottom-right y coordinate
+    """
+
+    def __init__(self, xmin, ymin, xmax, ymax):
+        self.xmin = xmin
+        self.ymin = ymin
+        self.xmax = xmax
+        self.ymax = ymax
+
+    @classmethod
+    def from_bndbox_dict(cls, d):
+        """Creates a :class:`VOCBoundingBox` from a ``bndbox`` dict.
+
+        Args:
+            d: a ``bndbox`` dict
+
+        Returns:
+            a :class:`VOCBoundingBox`
+        """
+        return cls(
+            int(d["xmin"]), int(d["ymin"]), int(d["xmax"]), int(d["ymax"])
+        )
+
+    @classmethod
+    def from_detection_format(cls, bounding_box, frame_size):
+        """Creates a :class:`VOCBoundingBox` from a bounding box stored in
+        :class:`fiftyone.core.labels.Detection` format.
+
+        Args:
+            bounding_box: ``[x-top-left, y-top-left, width, height]``
+            frame_size: the ``(width, height)`` of the image
+
+        Returns:
+            a :class:`VOCBoundingBox`
+        """
+        x, y, w, h = bounding_box
+        width, height = frame_size
+        return cls(
+            int(width * x),
+            int(height * y),
+            int(width * (x + w)),
+            int(height * (y + h)),
+        )
+
+    def to_detection_format(self, frame_size):
+        """Returns a representation of the bounding box suitable for storing in
+        the ``bounding_box`` field of a
+        :class:`fiftyone.core.labels.Detection`.
+
+        Args:
+            frame_size: the ``(width, height)`` of the image
+
+        Returns:
+            ``[x-top-left, y-top-left, width, height]``
+        """
+        width, height = frame_size
+        x = self.xmin / width
+        y = self.ymin / height
+        w = (self.xmax - self.xmin) / width
+        h = (self.ymax - self.ymin) / height
+        return [x, y, w, h]
 
 
 class VOCAnnotationWriter(object):
@@ -230,6 +337,52 @@ class VOCAnnotationWriter(object):
             }
         )
         etau.write_file(xml_str, xml_path)
+
+
+def parse_voc_detection_dataset(dataset_dir):
+    """Parses the VOC detection dataset stored in the given directory.
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        a list of ``(img_path, image_metadata, detections)`` tuples
+    """
+    data_dir = os.path.join(dataset_dir, "data")
+    labels_dir = os.path.join(dataset_dir, "labels")
+
+    image_filenames = etau.list_files(data_dir, abs_paths=False)
+    labels_filenames = etau.list_files(labels_dir, abs_paths=False)
+
+    # @todo complete this
+    samples = []
+
+    """
+    for filename in filenames:
+        img_path = os.path.join(data_dir, filename)
+
+        if filename not in image_dict:
+            continue
+
+        image_dict = images[filename]
+        image_id = image_dict["id"]
+        width = image_dict["width"]
+        height = image_dict["height"]
+
+        metadata = fom.ImageMetadata(width=width, height=height)
+
+        frame_size = (width, height)
+        detections = fol.Detections(
+            detections=[
+                obj.to_detection(frame_size, classes)
+                for obj in annotations.get(image_id, [])
+            ]
+        )
+
+        samples.append((img_path, metadata, detections))
+    """
+
+    return samples
 
 
 def export_voc_detection_dataset(samples, label_field, dataset_dir):
@@ -285,3 +438,7 @@ def export_voc_detection_dataset(samples, label_field, dataset_dir):
             writer.write(label, metadata, out_img_path, out_anno_path)
 
     logger.info("Dataset created")
+
+
+def _ensure_list(value):
+    return [value] if not isinstance(value, list) else value
