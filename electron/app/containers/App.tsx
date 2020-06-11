@@ -67,7 +67,7 @@ function App(props: Props) {
   });
   const bodyStyle = {
     height: "100%",
-    marginLeft: 270,
+    marginLeft: 265,
   };
 
   return (

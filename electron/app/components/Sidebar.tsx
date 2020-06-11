@@ -24,11 +24,20 @@ const _Sidebar = (props) => {
       style={{
         position: "absolute",
         top: 0,
-        width: 270,
+        width: 265,
         height: "100%",
-        borderRight: "2px solid hsl(210, 20%, 50%)",
+        display: "grid",
+        gridTemplateRows: "16px 65px 16px 1fr",
+        borderRight: "1px solid hsl(210, 20%, 50%)",
       }}
     >
+      <div />
+      <Image
+        src={logo}
+        alt="FiftyOne"
+        style={{ display: "inline-block", padding: "0 16px" }}
+      />
+      <div style={{ borderBottom: "1px solid hsl(210, 20%, 50%)" }} />
       <Sidebar
         as={Menu}
         animation={"uncover"}
@@ -37,9 +46,6 @@ const _Sidebar = (props) => {
         visible={!loading}
         className="fo-sidebar"
       >
-        <Menu.Item as="h3">
-          <Image src={logo} alt="FiftyOne" />
-        </Menu.Item>
         <Menu.Item as="h3">
           {!connected
             ? "Not connected"

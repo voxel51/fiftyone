@@ -77,12 +77,14 @@ body {
 
 .fo-sidebar {
   background: hsl(210, 20%, 15%) !important;
-  overflow-y: overlay !important;
+  position: relative !important;
 }
 
 .fo-sidebar .item {
   margin: 1rem 0 1rem 0;
   border: none;
+  padding-left: 16px !important;
+  padding-right: 5px !important;
 }
 .fo-sidebar .item:before {
   background: none !important;
@@ -127,14 +129,16 @@ body {
 }
 
 ::-webkit-scrollbar-track,
-::-webkit-scrollbar-track:hover,
 ::-webkit-scrollbar-track:window-inactive {
   background: hsl(210, 20%, 15%) !important;
 }
 
 ::-webkit-scrollbar-thumb,
-::-webkit-scrollbar-thumb:hover,
 ::-webkit-scrollbar-thumb:window-inactive {
   border-radius: 6px !important;
+  background: hsl(210, 20%, 15%) !important;
+}
+
+*:hover::-webkit-scrollbar-thumb {
   background: hsl(210, 20%, 23%) !important;
 }

@@ -11,3 +11,4 @@
 @subMenuTextColor: @textColor;
 @borderRadius: 0;
 @itemVerticalPadding: 1rem;
+@secondaryPointingBorderWidth: 1px;
