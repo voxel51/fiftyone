@@ -53,11 +53,45 @@ class LabeledImageDataset(LabeledDataset):
     pass
 
 
+class ImageDirectory(UnlabeledImageDataset):
+    """A directory of images.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <filename1>.<ext>
+            <filename2>.<ext>
+
+    When reading datasets of this type, subfolders are recursively traversed.
+    """
+
+    pass
+
+
+class ImageClassificationDirectoryTree(LabeledImageDataset):
+    """A directory tree that defines an image classification dataset.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <classA>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+            <classB>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+    """
+
+    pass
+
+
 class ImageClassificationDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated
     classification labels.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -94,7 +128,7 @@ class TFImageClassificationDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated
     classification labels stored as TFRecords.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             tf.records-?????-of-?????
@@ -126,7 +160,7 @@ class ImageDetectionDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated object
     detections.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -177,7 +211,7 @@ class COCODetectionDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated object
     detections saved in COCO format (http://cocodataset.org/#home).
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -233,7 +267,7 @@ class VOCDetectionDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated object
     detections saved in VOC format (http://host.robots.ox.ac.uk/pascal/VOC).
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -295,7 +329,7 @@ class TFObjectDetectionDataset(LabeledImageDataset):
     detections stored as TFRecords in TF Object Detection API format
     (https://github.com/tensorflow/models/blob/master/research/object_detection).
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             tf.records-?????-of-?????
@@ -339,7 +373,7 @@ class ImageLabelsDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in ``eta.core.image.ImageLabels`` format.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -378,7 +412,7 @@ class CVATImageDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in CVAT image format (https://github.com/opencv/cvat).
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/

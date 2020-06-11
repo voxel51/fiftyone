@@ -18,13 +18,16 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import json
 import logging
 import os
 
-from flask import Flask, request, send_file
+from bson import json_util
+from flask import Flask, jsonify, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
 
 os.environ["FIFTYONE_SERVER"] = "1"
+import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.state as fos
 
@@ -48,6 +51,11 @@ def get_sample_media():
     """
     path = request.args.get("path")
     return send_file(path)
+
+
+@app.route("/fiftyone")
+def get_fiftyone_info():
+    return jsonify({"version": foc.VERSION})
 
 
 def _load_state(func):
@@ -152,7 +160,9 @@ class StateController(Namespace):
             return []
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [s.to_dict(extended=True) for s in view]
+        samples = [
+            json.loads(json_util.dumps(s.to_mongo_dict())) for s in view
+        ]
         more = False
         if len(samples) > page_length:
             samples = samples[:page_length]

@@ -24,7 +24,6 @@ from future.utils import iteritems, itervalues
 
 import logging
 import os
-import warnings
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -126,7 +125,6 @@ def load_zoo_dataset(
     splits=None,
     dataset_dir=None,
     download_if_necessary=True,
-    persistent=False,
     drop_existing_dataset=False,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
@@ -153,8 +151,6 @@ def load_zoo_dataset(
             :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
-        persistent (False): whether the dataset will persist in the database
-            once the session terminates
         drop_existing_dataset (False): whether to drop an existing dataset
             with the same name if it exists
 
@@ -178,12 +174,10 @@ def load_zoo_dataset(
 
     if fo.dataset_exists(dataset_name):
         if not drop_existing_dataset:
-            warnings.warn(
-                (
-                    "Loading existing dataset '%s'. To reload from disk, "
-                    "first delete the existing dataset"
-                )
-                % dataset_name
+            logger.info(
+                "Loading existing dataset '%s'. To reload from disk, first "
+                "delete the existing dataset",
+                dataset_name,
             )
             return fo.load_dataset(dataset_name)
 
@@ -192,8 +186,8 @@ def load_zoo_dataset(
     if splits is None and zoo_dataset.has_splits:
         splits = zoo_dataset.supported_splits
 
-    dataset = fo.Dataset(dataset_name, persistent=persistent)
-    format = info.format
+    dataset = fo.Dataset(dataset_name)
+    dataset_type = info.format
 
     if splits:
         for split in splits:
@@ -201,29 +195,10 @@ def load_zoo_dataset(
             tags = [split]
 
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
-            if issubclass(format, fot.ImageClassificationDataset):
-                dataset.add_image_classification_dataset(split_dir, tags=tags)
-            elif issubclass(format, fot.ImageDetectionDataset):
-                dataset.add_image_detection_dataset(split_dir, tags=tags)
-            elif issubclass(format, fot.ImageLabelsDataset):
-                dataset.add_image_labels_dataset(split_dir, tags=tags)
-            else:
-                raise ValueError(
-                    "Unsupported dataset format '%s'"
-                    % etau.get_class_name(format)
-                )
+            dataset.add_dir(split_dir, dataset_type, tags=tags)
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
-        if issubclass(format, fot.ImageClassificationDataset):
-            dataset.add_image_classification_dataset(dataset_dir)
-        elif issubclass(format, fot.ImageDetectionDataset):
-            dataset.add_image_detection_dataset(dataset_dir)
-        elif issubclass(format, fot.ImageLabelsDataset):
-            dataset.add_image_labels_dataset(dataset_dir)
-        else:
-            raise ValueError(
-                "Unsupported dataset format '%s'" % etau.get_class_name(format)
-            )
+        dataset.add_dir(dataset_dir, dataset_type)
 
     return dataset
 

@@ -22,10 +22,11 @@ A random 5% of the samples are duplicates, instead of the original samples.
 import os
 import random
 
-from tensorflow.keras.datasets import cifar100
-
 import eta.core.image as etai
 import eta.core.utils as etau
+
+etau.ensure_tf()
+from tensorflow.keras.datasets import cifar100
 
 
 DATASET_SIZE = 1000
