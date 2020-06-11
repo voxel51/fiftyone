@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
       - name: Build wheel (Linux)
         run: |
           cd package/db

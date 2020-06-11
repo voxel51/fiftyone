@@ -13,6 +13,9 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:

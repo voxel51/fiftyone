@@ -8,6 +8,9 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
       - name: Build wheel
         run: |
           python3 setup.py bdist_wheel
