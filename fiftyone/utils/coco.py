@@ -191,25 +191,26 @@ class COCOObject(object):
         return detection
 
 
-def load_coco_detection_dataset(dataset_dir):
-    """Loads the COCO detection dataset from the given directory.
+def parse_coco_detection_dataset(dataset_dir):
+    """Parses the COCO detection dataset stored in the given directory.
 
     Args:
         dataset_dir: the dataset directory
 
     Returns:
-        a geneator that emits ``(img_path, image_metadata, detections)`` tuples
+        a list of ``(img_path, image_metadata, detections)`` tuples
     """
     data_dir = os.path.join(dataset_dir, "data")
     labels_path = os.path.join(dataset_dir, "labels.json")
 
-    classes, images, annotations = load_coco_annotations(labels_path)
+    classes, images, annotations = load_coco_detection_annotations(labels_path)
 
     # Reindex by `filename`
     images = {i["filename"]: i for i in images.values()}
 
     filenames = etau.list_files(data_dir, abs_paths=False)
 
+    samples = []
     for filename in filenames:
         img_path = os.path.join(data_dir, filename)
 
@@ -231,10 +232,12 @@ def load_coco_detection_dataset(dataset_dir):
             ]
         )
 
-        yield img_path, metadata, detections
+        samples.append((img_path, metadata, detections))
+
+    return samples
 
 
-def load_coco_annotations(json_path):
+def load_coco_detection_annotations(json_path):
     """Loads the COCO annotations from the given JSON file.
 
     See :class:`fiftyone.types.COCODetectionDataset` for format details.
