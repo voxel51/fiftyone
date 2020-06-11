@@ -172,8 +172,8 @@ class Detection(ODMEmbeddedDocument):
     label = fof.StringField()
     bounding_box = fof.VectorField()
     confidence = fof.FloatField()
-    # attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
-    attributes = fof.EmbeddedDocumentField(Attributes)
+    attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
+    # attributes = fof.EmbeddedDocumentField(Attributes, default=Attributes())
 
 
 class Detections(ImageLabel):
