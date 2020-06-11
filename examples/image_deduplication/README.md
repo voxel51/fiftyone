@@ -43,15 +43,13 @@ This walkthrough requires the `tensorflow` package.
 pip install tensorflow
 ```
 
-## Import FiftyOne
+## Create a dataset
 
-Importing the main FiftyOne package is easy:
+First start a `python` or `ipython` session and import the `fiftyone` package.
 
-```py
+```python
 import fiftyone as fo
 ```
-
-## Create a dataset
 
 Let's use a utililty method provided by FiftyOne to load the image
 classification dataset from disk:
