@@ -98,6 +98,8 @@ class Service(object):
 class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
 
+    MIN_MONGO_VERSION = "3.6"
+
     @property
     def command(self):
         return [
@@ -123,22 +125,39 @@ class DatabaseService(Service):
 
     @staticmethod
     def find_mongod():
-        search_paths = [foc.FIFTYONE_DB_BIN_DIR] + os.environ["PATH"].split(
-            os.pathsep
-        )
+        search_paths = [
+            foc.FIFTYONE_DB_BIN_DIR,
+            os.path.join(foc.FIFTYONE_CONFIG_DIR, "bin"),
+        ] + os.environ["PATH"].split(os.pathsep)
+        searched = set()
+        attempts = []
         for folder in search_paths:
+            if folder in searched:
+                continue
+            searched.add(folder)
             mongod_path = os.path.join(folder, "mongod")
             if os.path.isfile(mongod_path):
                 ok, out, err = etau.communicate([mongod_path, "--version"])
+                out = out.decode(errors="ignore").strip()
+                err = err.decode(errors="ignore").strip()
+                mongod_version = None
                 if ok:
-                    match = re.search(
-                        r"db version.+?([\d\.]+)", out.decode(), re.I
-                    )
+                    match = re.search(r"db version.+?([\d\.]+)", out, re.I)
                     if match:
                         mongod_version = match.group(1)
-                        if Version(mongod_version) >= Version("3.6"):
+                        if Version(mongod_version) >= Version(
+                            DatabaseService.MIN_MONGO_VERSION
+                        ):
                             return mongod_path
-        raise RuntimeError("Could not find mongod >= 3.6")
+                attempts.append((mongod_path, mongod_version, err))
+        for path, version, err in attempts:
+            if version is not None:
+                logger.warn("%s: incompatible version %s" % (path, version))
+            else:
+                logger.error("%s: failed to launch: %s" % (path, err))
+        raise RuntimeError(
+            "Could not find mongod >= %s" % DatabaseService.MIN_MONGO_VERSION
+        )
 
 
 class ServerService(Service):
