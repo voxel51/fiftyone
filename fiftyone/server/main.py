@@ -23,10 +23,11 @@ import logging
 import os
 
 from bson import json_util
-from flask import Flask, request, send_file
+from flask import Flask, jsonify, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
 
 os.environ["FIFTYONE_SERVER"] = "1"
+import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.state as fos
 
@@ -50,6 +51,11 @@ def get_sample_media():
     """
     path = request.args.get("path")
     return send_file(path)
+
+
+@app.route("/fiftyone")
+def get_fiftyone_info():
+    return jsonify({"version": foc.VERSION})
 
 
 def _load_state(func):
