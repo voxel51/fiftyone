@@ -19,10 +19,10 @@
         <truncated>{{ object.truncated }}</truncated>
         <difficult>{{ object.difficult }}</difficult>
         <bndbox>
-            <xmin>{{ object.xmin }}</xmin>
-            <ymin>{{ object.ymin }}</ymin>
-            <xmax>{{ object.xmax }}</xmax>
-            <ymax>{{ object.ymax }}</ymax>
+            <xmin>{{ object.bndbox.xmin }}</xmin>
+            <ymin>{{ object.bndbox.ymin }}</ymin>
+            <xmax>{{ object.bndbox.xmax }}</xmax>
+            <ymax>{{ object.bndbox.ymax }}</ymax>
         </bndbox>
     </object>
 {% endfor %}
