@@ -35,6 +35,14 @@ The dataset is organized on disk as follows:
 As we will soon come to discover, some of these samples are duplicates and we
 have no clue which they are!
 
+### Requirements
+
+This walkthrough requires the `tensorflow` package.
+
+```bash
+pip install tensorflow
+```
+
 ## Import FiftyOne
 
 Importing the main FiftyOne package is easy:
