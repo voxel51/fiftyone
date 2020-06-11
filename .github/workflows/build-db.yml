@@ -18,13 +18,13 @@ jobs:
           python3 setup.py bdist_wheel --plat-name linux
       - name: Build wheel (Ubuntu 16.04)
         env:
-          - FIFTYONE_DB_BUILD_LINUX_DISTRO: ubuntu1604
+          FIFTYONE_DB_BUILD_LINUX_DISTRO: ubuntu1604
         run: |
           cd package/db
           python3 setup.py bdist_wheel --plat-name linux
       - name: Build wheel (Debian 9)
         env:
-          - FIFTYONE_DB_BUILD_LINUX_DISTRO: debian9
+          FIFTYONE_DB_BUILD_LINUX_DISTRO: debian9
         run: |
           cd package/db
           python3 setup.py bdist_wheel --plat-name linux
