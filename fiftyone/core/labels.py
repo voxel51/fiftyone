@@ -24,14 +24,17 @@ import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
 
-from fiftyone.core.odm.document import ODMEmbeddedDocument
+from fiftyone.core.odm.document import (
+    ODMEmbeddedDocument,
+    ODMDynamicEmbeddedDocument,
+)
 import fiftyone.core.fields as fof
 
 
 class Label(ODMEmbeddedDocument):
     """Base class for labels.
 
-    Label instances represent an atomic collection of labels associated with a
+    Label instances represent a logical collection of labels associated with a
     sample in a dataset. Label instances may represent concrete tasks such as
     image classification (:class:`Classification`) or image object detection
     (:class:`Detections`), or they may represent higher-level constructs such
@@ -42,7 +45,7 @@ class Label(ODMEmbeddedDocument):
 
 
 class ImageLabel(Label):
-    """Base class for labels attached to images."""
+    """Base class for labels associated with images."""
 
     meta = {"allow_inheritance": True}
 
@@ -57,22 +60,62 @@ class ImageLabel(Label):
 
 
 class Attribute(ODMEmbeddedDocument):
-    """An attribute.
+    """Base class for attributes.
+
+    Attribute instances represent an atomic piece of information, its
+    ``value``, usually embedded with a ``name`` within a dict field of another
+    :class:`Label` instance.
 
     Args:
-        label (None): the label string
-        confidence (None): a confidence in ``[0, 1]`` for the label
-        logits (None): logits associated with the labels
+        value (None): the attribute value
     """
 
     meta = {"allow_inheritance": True}
 
-    label = fof.StringField()
+    value = fof.Field()
+
+
+class Attributes(ODMDynamicEmbeddedDocument):
+    """A dynamic collection of :class:`Attribute` instances."""
+
+    pass
+
+
+class CategoricalAttribute(Attribute):
+    """A categorical attribute.
+
+    Args:
+        value (None): the attribute value
+        confidence (None): a confidence in ``[0, 1]`` for the value
+        logits (None): logits associated with the attribute
+    """
+
+    value = fof.StringField()
     confidence = fof.FloatField()
     logits = fof.VectorField()
 
 
-class Classification(Attribute, ImageLabel):
+class NumericAttribute(Attribute):
+    """A numeric attribute.
+
+    Args:
+        value (None): the attribute value
+    """
+
+    value = fof.FloatField()
+
+
+class BooleanAttribute(Attribute):
+    """A boolean attribute.
+
+    Args:
+        value (None): the attribute value
+    """
+
+    value = fof.BooleanField()
+
+
+class Classification(ImageLabel):
     """A classification label.
 
     See :class:`fiftyone.utils.data.ImageClassificationSampleParser` for a
@@ -85,6 +128,10 @@ class Classification(Attribute, ImageLabel):
     """
 
     meta = {"allow_inheritance": True}
+
+    label = fof.StringField()
+    confidence = fof.FloatField()
+    logits = fof.VectorField()
 
     def to_image_labels(self, attr_name="label"):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -125,7 +172,8 @@ class Detection(ODMEmbeddedDocument):
     label = fof.StringField()
     bounding_box = fof.VectorField()
     confidence = fof.FloatField()
-    attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
+    # attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
+    attributes = fof.EmbeddedDocumentField(Attributes)
 
 
 class Detections(ImageLabel):
