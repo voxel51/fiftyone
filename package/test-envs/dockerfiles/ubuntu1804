@@ -1,0 +1,10 @@
+FROM ubuntu:18.04
+
+RUN apt-get update && \
+    apt-get install -y libcurl4 openssl python3 python3-pip
+
+ENV PATH="/root/.local/bin:${PATH}"
+
+RUN pip3 install --user --upgrade pip setuptools wheel
+
+WORKDIR /test
