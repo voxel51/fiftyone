@@ -510,15 +510,7 @@ def _parse_voc_detection_labels(_):
 
 
 def _parse_coco_detection_labels_map(dataset):
-    labels_map = {
-        c["id"]: c["name"] for c in dataset.coco.dataset["categories"]
-    }
-
-    classes = []
-    for idx in range(max(labels_map) + 1):
-        classes.append(labels_map.get(idx, str(idx)))
-
-    return classes
+    return fouc.coco_categories_to_classes(dataset.coco.dataset["categories"])
 
 
 def _parse_classification_labels(dataset):

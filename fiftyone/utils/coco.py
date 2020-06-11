@@ -30,6 +30,7 @@ import eta.core.utils as etau
 import eta.core.serial as etas
 import eta.core.web as etaw
 
+import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
-    """Parser for samples in COCO Detection format.
+    """Parser for samples in COCO detection format.
 
     This implementation supports samples that are
     ``(image_or_path, annotations)`` tuples, where:
@@ -70,15 +71,24 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
     """
 
     def __init__(self):
-        super(COCODetectionSampleParser, self).__init__(
+        super().__init__(
             label_field="category_id",
             bounding_box_field="bbox",
             normalized=False,
         )
 
+    def _parse_detection(self, obj, img=None):
+        detection = super()._parse_detection(obj, img=img)
+        if "area" in obj:
+            area = fol.NumericAttribute(value=obj["area"])
+            # pylint: disable=unsupported-assignment-operation
+            detection.attributes["area"] = area
+
+        return detection
+
 
 class COCOObject(object):
-    """Description of an object in COCO Detection format.
+    """An object in COCO detection format.
 
     Args:
         id: the ID of the annotation
@@ -109,6 +119,18 @@ class COCOObject(object):
         self.area = area
         self.segmentation = segmentation or []
         self.iscrowd = iscrowd
+
+    @classmethod
+    def from_annotation_dict(cls, d):
+        """Creates a :class:`COCOObject` from a COCO annotation dict.
+
+        Args:
+            d: an annotation dict
+
+        Returns:
+            a :class:`COCOObject`
+        """
+        return cls(**d)
 
     @classmethod
     def from_detection(cls, detection, metadata, labels_map_rev=None):
@@ -142,6 +164,108 @@ class COCOObject(object):
         area = bbox[2] * bbox[3]
 
         return cls(None, None, category_id, bbox, area=area)
+
+    def to_detection(self, frame_size, classes):
+        """Returns a :class:`fiftyone.core.labels.Detection` representation of
+        the object.
+
+        Args:
+            frame_size: the ``(width, height)`` of the image
+            classes: the list of classes
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detection`
+        """
+        label = classes[self.category_id]
+
+        width, height = frame_size
+        x, y, w, h = self.bbox
+        bounding_box = [x / width, y / height, w / width, h / height]
+
+        detection = fol.Detection(label=label, bounding_box=bounding_box)
+
+        # @todo divide by `width * height`?
+        # pylint: disable=unsupported-assignment-operation
+        detection.attributes["area"] = fol.NumericAttribute(value=self.area)
+
+        return detection
+
+
+def load_coco_detection_dataset(dataset_dir):
+    """Loads the COCO detection dataset from the given directory.
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        a geneator that emits ``(img_path, image_metadata, detections)`` tuples
+    """
+    data_dir = os.path.join(dataset_dir, "data")
+    labels_path = os.path.join(dataset_dir, "labels.json")
+
+    classes, images, annotations = load_coco_annotations(labels_path)
+
+    # Reindex by `filename`
+    images = {i["filename"]: i for i in images.values()}
+
+    filenames = etau.list_files(data_dir, abs_paths=False)
+
+    for filename in filenames:
+        img_path = os.path.join(data_dir, filename)
+
+        if filename not in image_dict:
+            continue
+
+        image_dict = images[filename]
+        image_id = image_dict["id"]
+        width = image_dict["width"]
+        height = image_dict["height"]
+
+        metadata = fom.ImageMetadata(width=width, height=height)
+
+        frame_size = (width, height)
+        detections = fol.Detections(
+            detections=[
+                obj.to_detection(frame_size, classes)
+                for obj in annotations.get(image_id, [])
+            ]
+        )
+
+        yield img_path, metadata, detections
+
+
+def load_coco_annotations(json_path):
+    """Loads the COCO annotations from the given JSON file.
+
+    See :class:`fiftyone.types.COCODetectionDataset` for format details.
+
+    Args:
+        json_path: the path to the annotations JSON file
+
+    Returns:
+        classes: a list of classes
+        images: a dict mapping image filenames to image dicts
+        annotations: a dict mapping image IDs to list of :class:`COCOObject`
+            instances
+    """
+    d = etas.load_json(json_path)
+
+    # Load classes
+    categories = d.get("categories", None)
+    if categories:
+        classes = coco_categories_to_classes(categories)
+    else:
+        classes = None
+
+    # Load image metadata
+    images = {i["id"]: i for i in d.get("images", [])}
+
+    # Load annotations
+    annotations = defaultdict(list)
+    for a in d["annotations"]:
+        annotations[a["image_id"]].append(COCOObject.from_annotation_dict(a))
+
+    return classes, images, dict(annotations)
 
 
 def export_coco_detection_dataset(
@@ -266,6 +390,36 @@ def export_coco_detection_dataset(
 
 def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
+
+
+def coco_categories_to_classes(categories):
+    """Converts the COCO categories list to a class list.
+
+    The returned list contains all class IDs from ``[0, max_id]``, inclusive.
+
+    Args:
+        categories: a dict of the form::
+
+            [
+                ...
+                {
+                    "id": 2,
+                    "name": "cat",
+                    "supercategory": "none"
+                },
+                ...
+            ]
+
+    Returns:
+        a list of classes
+    """
+    labels_map = {c["id"]: c["name"] for c in categories}
+
+    classes = []
+    for idx in range(max(labels_map) + 1):
+        classes.append(labels_map.get(idx, str(idx)))
+
+    return classes
 
 
 def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
