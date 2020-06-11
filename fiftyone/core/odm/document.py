@@ -44,7 +44,7 @@ class SerializableDocument(object):
         return self.__repr__()
 
     def __repr__(self):
-        s = _pformat(self._to_str_dict())
+        s = _pformat(self._to_repr_dict())
         return "<%s: %s>" % (self._get_class_repr(), s)
 
     def __eq__(self, other):
@@ -56,7 +56,7 @@ class SerializableDocument(object):
     def __copy__(self):
         return self.copy()
 
-    def _to_str_dict(self):
+    def _to_repr_dict(self):
         d = {}
         for f in self._to_str_fields:
             if f.startswith("_"):
@@ -66,9 +66,7 @@ class SerializableDocument(object):
             if value is None:
                 continue
 
-            if isinstance(value, SerializableDocument):
-                d[f] = value._to_str_dict()
-            elif isinstance(value, ObjectId):
+            if isinstance(value, ObjectId):
                 d[f] = str(value)
             else:
                 d[f] = value
