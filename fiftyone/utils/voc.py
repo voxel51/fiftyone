@@ -100,7 +100,7 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
     """
 
     def __init__(self):
-        super(VOCDetectionSampleParser, self).__init__(normalized=False)
+        super().__init__(normalized=False)
 
     def _parse_label(self, target, img=None):
         if etau.is_str(target):
@@ -126,9 +126,7 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
                 }
             )
 
-        return super(VOCDetectionSampleParser, self)._parse_label(
-            objects, img=img
-        )
+        return super()._parse_label(objects, img=img)
 
 
 class VOCObject(object):
