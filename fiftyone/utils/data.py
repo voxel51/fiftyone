@@ -924,32 +924,29 @@ class ImageDetectionSampleParser(LabeledImageSampleParser):
         if etau.is_str(target):
             target = etas.load_json(target)
 
-        detections = []
-        for obj in target:
-            target = obj[self.label_field]
+        return fol.Detections(
+            detections=[self._parse_detection(obj, img=img) for obj in target]
+        )
 
-            try:
-                label = self.classes[target]
-            except:
-                label = target
+    def _parse_detection(self, obj, img=None):
+        label = obj[self.label_field]
 
-            tlx, tly, w, h = obj[self.bounding_box_field]
-            if not self.normalized:
-                tlx, tly, w, h = _to_rel_bounding_box(tlx, tly, w, h, img)
+        try:
+            label = self.classes[label]
+        except:
+            pass
 
-            bounding_box = [tlx, tly, w, h]
+        tlx, tly, w, h = obj[self.bounding_box_field]
+        if not self.normalized:
+            tlx, tly, w, h = _to_rel_bounding_box(tlx, tly, w, h, img)
 
-            confidence = obj.get(self.confidence_field, None)
+        bounding_box = [tlx, tly, w, h]
 
-            detections.append(
-                fol.Detection(
-                    label=label,
-                    bounding_box=bounding_box,
-                    confidence=confidence,
-                )
-            )
+        confidence = obj.get(self.confidence_field, None)
 
-        return fol.Detections(detections=detections)
+        return fol.Detection(
+            label=label, bounding_box=bounding_box, confidence=confidence,
+        )
 
 
 class ImageLabelsSampleParser(LabeledImageSampleParser):
