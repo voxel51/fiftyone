@@ -39,54 +39,65 @@ const Distribution = connect(({ distribution }) => {
   const isNumeric = _.indexOf(["int", "float"], type) >= 0;
   const padding = isNumeric ? 0 : 20;
   return (
-    <Segment style={{ overflowY: "auto", margin: "2rem 0" }}>
-      <Header as="h3">{`${name}: ${type}`}</Header>
-      <BarChart
-        ref={container}
-        height={500}
-        width={data.length * (barWidth + padding)}
-        barCategoryGap={"20px"}
-        data={data}
-        margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
-      >
-        <XAxis
-          dataKey="key"
-          type="category"
-          interval={isNumeric ? "preserveStartEnd" : 0}
-          height={100}
-          axisLine={false}
-          tick={<CustomizedAxisTick {...{ fill }} />}
-          tickLine={{ stroke }}
-        />
-        <YAxis
-          dataKey="count"
-          axisLine={false}
-          tick={{ fill }}
-          tickLine={{ stroke }}
-        />
-        <Tooltip
-          cursor={false}
-          contentStyle={{
-            background: "hsl(210, 20%, 23%)",
-            borderColor: "rgb(255, 109, 4)",
-          }}
-        />
-        <Bar
-          dataKey="count"
-          fill="rgb(255, 109, 4)"
-          barCategoryGap={0}
-          barSize={barWidth}
-        />
-      </BarChart>
-    </Segment>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        padding: "1rem",
+        overflow: "hidden",
+      }}
+    >
+      <Segment style={{ overflowY: "overlay" }}>
+        <Header as="h3">{`${name}: ${type}`}</Header>
+        <BarChart
+          ref={container}
+          height={500}
+          width={data.length * (barWidth + padding)}
+          barCategoryGap={"20px"}
+          data={data}
+          margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
+        >
+          <XAxis
+            dataKey="key"
+            type="category"
+            interval={isNumeric ? "preserveStartEnd" : 0}
+            height={100}
+            axisLine={false}
+            tick={<CustomizedAxisTick {...{ fill }} />}
+            tickLine={{ stroke }}
+          />
+          <YAxis
+            dataKey="count"
+            axisLine={false}
+            tick={{ fill }}
+            tickLine={{ stroke }}
+          />
+          <Tooltip
+            cursor={false}
+            contentStyle={{
+              background: "hsl(210, 20%, 23%)",
+              borderColor: "rgb(255, 109, 4)",
+            }}
+          />
+          <Bar
+            dataKey="count"
+            fill="rgb(255, 109, 4)"
+            barCategoryGap={0}
+            barSize={barWidth}
+          />
+        </BarChart>
+      </Segment>
+    </div>
   );
 });
 
 function NoDistributions({ name }) {
   return (
-    <Segment>
-      <Message>No {name}</Message>
-    </Segment>
+    <div style={{ padding: "1rem" }}>
+      <Segment>
+        <Message>No {name}</Message>
+      </Segment>
+    </div>
   );
 }
 

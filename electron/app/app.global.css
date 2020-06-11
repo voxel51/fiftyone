@@ -78,6 +78,7 @@ body {
 .fo-sidebar {
   background: hsl(210, 20%, 15%) !important;
   position: relative !important;
+  overflow-y: overlay !important;
 }
 
 .fo-sidebar .item {

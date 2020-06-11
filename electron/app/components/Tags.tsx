@@ -14,7 +14,7 @@ const Tags = (props) => {
   };
   const { tags } = displayData;
   let content;
-  if (tags) {
+  if (tags.length) {
     const styles = (t) => {
       if (activeTags[t.name]) {
         return { background: colors[t.color] };

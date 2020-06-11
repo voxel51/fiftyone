@@ -19,9 +19,11 @@ import connect from "../utils/connect";
 
 function NoDataset() {
   return (
-    <Segment>
-      <Message>No dataset loaded</Message>
-    </Segment>
+    <div style={{ padding: "1rem" }}>
+      <Segment>
+        <Message>No dataset loaded</Message>
+      </Segment>
+    </div>
   );
 }
 
@@ -113,6 +115,7 @@ function Dataset(props) {
           height: "100%",
           display: "grid",
           gridTemplateRows: "42px 1fr",
+          overflow: "hidden",
         }}
       >
         <Menu pointing secondary>
