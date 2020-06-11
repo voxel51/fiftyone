@@ -20,9 +20,11 @@ from builtins import *
 
 import logging
 import os
+import re
 import subprocess
 import sys
 
+from packaging.version import Version
 import requests
 
 import eta.core.utils as etau
@@ -96,13 +98,15 @@ class Service(object):
 class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
 
-    command = [
-        foc.DB_BIN_PATH,
-        "--dbpath",
-        foc.DB_PATH,
-        "--logpath",
-        foc.DB_LOG_PATH,
-    ]
+    @property
+    def command(self):
+        return [
+            DatabaseService.find_mongod(),
+            "--dbpath",
+            foc.DB_PATH,
+            "--logpath",
+            foc.DB_LOG_PATH,
+        ]
 
     def start(self):
         """Starts the DatabaseService."""
@@ -116,6 +120,25 @@ class DatabaseService(Service):
         import fiftyone.core.dataset as fod
 
         fod.delete_non_persistent_datasets()
+
+    @staticmethod
+    def find_mongod():
+        search_paths = [foc.FIFTYONE_DB_BIN_DIR] + os.environ["PATH"].split(
+            os.pathsep
+        )
+        for folder in search_paths:
+            mongod_path = os.path.join(folder, "mongod")
+            if os.path.isfile(mongod_path):
+                ok, out, err = etau.communicate([mongod_path, "--version"])
+                if ok:
+                    match = re.search(
+                        r"db version.+?([\d\.]+)", out.decode(), re.I
+                    )
+                    if match:
+                        mongod_version = match.group(1)
+                        if Version(mongod_version) >= Version("3.6"):
+                            return mongod_path
+        raise RuntimeError("Could not find mongod >= 3.6")
 
 
 class ServerService(Service):
