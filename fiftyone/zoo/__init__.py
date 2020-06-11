@@ -125,7 +125,6 @@ def load_zoo_dataset(
     splits=None,
     dataset_dir=None,
     download_if_necessary=True,
-    persistent=False,
     drop_existing_dataset=False,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
@@ -152,8 +151,6 @@ def load_zoo_dataset(
             :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
-        persistent (False): whether the dataset will persist in the database
-            once the session terminates
         drop_existing_dataset (False): whether to drop an existing dataset
             with the same name if it exists
 
@@ -189,7 +186,7 @@ def load_zoo_dataset(
     if splits is None and zoo_dataset.has_splits:
         splits = zoo_dataset.supported_splits
 
-    dataset = fo.Dataset(dataset_name, persistent=persistent)
+    dataset = fo.Dataset(dataset_name)
     dataset_type = info.format
 
     if splits:

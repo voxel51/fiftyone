@@ -484,7 +484,7 @@ class DashboardViewCommand(Command):
             splits = args.splits
             dataset_dir = args.dataset_dir
             dataset = foz.load_zoo_dataset(
-                name, splits=splits, dataset_dir=dataset_dir, persistent=False
+                name, splits=splits, dataset_dir=dataset_dir
             )
         else:
             # View a dataset on disk
@@ -835,8 +835,9 @@ class ZooLoadCommand(Command):
         splits = args.splits
         dataset_dir = args.dataset_dir
         dataset = foz.load_zoo_dataset(
-            name, splits=splits, dataset_dir=dataset_dir, persistent=True
+            name, splits=splits, dataset_dir=dataset_dir
         )
+        dataset.persistent = True
         print("Dataset '%s' created" % dataset.name)
 
 
