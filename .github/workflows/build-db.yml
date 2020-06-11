@@ -12,29 +12,30 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip setuptools wheel
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
       - name: Build wheel (Linux)
         run: |
           cd package/db
-          python3 setup.py bdist_wheel --plat-name linux
+          python setup.py bdist_wheel --plat-name linux
       - name: Build wheel (Ubuntu 16.04)
         env:
           FIFTYONE_DB_BUILD_LINUX_DISTRO: ubuntu1604
         run: |
           cd package/db
-          python3 setup.py bdist_wheel --plat-name linux
+          python setup.py bdist_wheel --plat-name linux
       - name: Build wheel (Debian 9)
         env:
           FIFTYONE_DB_BUILD_LINUX_DISTRO: debian9
         run: |
           cd package/db
-          python3 setup.py bdist_wheel --plat-name linux
+          python setup.py bdist_wheel --plat-name linux
       - name: Build wheel (macOS)
         run: |
           cd package/db
-          python3 setup.py bdist_wheel --plat-name mac
+          python setup.py bdist_wheel --plat-name mac
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:

@@ -8,12 +8,13 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip setuptools wheel
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
       - name: Build wheel
         run: |
-          python3 setup.py bdist_wheel
+          python setup.py bdist_wheel
       - name: Upload wheel
         uses: actions/upload-artifact@v2
         with:

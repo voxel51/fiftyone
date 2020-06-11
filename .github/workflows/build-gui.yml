@@ -13,9 +13,10 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip setuptools wheel
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:
@@ -39,10 +40,10 @@ jobs:
         run: yarn package-mac --publish never
       - name: Build wheel (Linux)
         working-directory: package/gui
-        run: python3 setup.py bdist_wheel --plat-name linux
+        run: python setup.py bdist_wheel --plat-name linux
       - name: Build wheel (macOS)
         working-directory: package/gui
-        run: python3 setup.py bdist_wheel --plat-name macOS
+        run: python setup.py bdist_wheel --plat-name macOS
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
