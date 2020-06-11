@@ -538,8 +538,8 @@ class DashboardConnectCommand(Command):
             )
             etau.ensure_basedir(control_path)
 
-            # Port forwarding
-            ret = subprocess.call(
+            # Setup port forwarding
+            p = subprocess.Popen(
                 [
                     "ssh",
                     "-f",
@@ -550,10 +550,13 @@ class DashboardConnectCommand(Command):
                     "-L",
                     "5151:127.0.0.1:%d" % args.port,
                     args.destination,
-                ]
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
-            if ret != 0:
-                raise RuntimeError("ssh failed with exit code %r" % ret)
+            _, stderr = p.communicate()
+            if p.returncode != 0:
+                raise RuntimeError(stderr.decode())
 
             def stop_port_forward():
                 subprocess.call(
