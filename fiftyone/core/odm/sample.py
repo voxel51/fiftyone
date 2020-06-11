@@ -170,9 +170,9 @@ class ODMSample(SerializableDocument):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
-    def _to_str_dict(self, for_repr=False):
+    def _to_str_dict(self):
         d = {"dataset_name": self.dataset_name}
-        d.update(super(ODMSample, self)._to_str_dict(for_repr=for_repr))
+        d.update(super(ODMSample, self)._to_str_dict())
         return d
 
     @classmethod
