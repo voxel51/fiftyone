@@ -36,7 +36,9 @@ import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
+import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
+import fiftyone.utils.voc as fouv
 import fiftyone.types as fot
 
 
@@ -539,6 +541,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset_dir, label_field=label_field, tags=tags
             )
 
+        if isinstance(dataset_type, fot.COCODetectionDataset):
+            return self.add_coco_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.VOCDetectionDataset):
+            return self.add_voc_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
         if isinstance(dataset_type, fot.ImageLabelsDataset):
             return self.add_image_labels_dataset(
                 dataset_dir, label_field=label_field, tags=tags
@@ -751,7 +763,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             filepath = os.path.abspath(os.path.expanduser(sample[0]))
 
             _samples.append(
-                fo.Sample(filepath=filepath, tags=tags, **{label_field: label})
+                fos.Sample(
+                    filepath=filepath, tags=tags, **{label_field: label},
+                )
             )
 
         return self.add_samples(_samples)
@@ -795,7 +809,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             dataset_dir: the directory containing the dataset
-                :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name of the field to use for the
                 labels
             tags (None): an optional list of tags to attach to each sample
@@ -807,6 +820,74 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.add_labeled_image_samples(
             samples, label_field=label_field, tags=tags
         )
+
+    def add_coco_detection_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given COCO detection dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.COCODetectionDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = fouc.parse_coco_detection_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_voc_detection_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given VOC detection dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = fouv.parse_voc_detection_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
 
     def add_image_labels_dataset(
         self, dataset_dir, label_field="ground_truth", tags=None
@@ -880,7 +961,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _samples = []
         for image_path in image_paths:
             filepath = os.path.abspath(os.path.expanduser(image_path))
-            _samples.append(fo.Sample(filepath=filepath, tags=tags))
+            _samples.append(fos.Sample(filepath=filepath, tags=tags))
 
         return self.add_samples(_samples)
 
