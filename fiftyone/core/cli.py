@@ -37,7 +37,6 @@ import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
-import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
 
