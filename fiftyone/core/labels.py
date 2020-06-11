@@ -31,6 +31,13 @@ from fiftyone.core.odm.document import (
 import fiftyone.core.fields as fof
 
 
+class _NoDefault(object):
+    pass
+
+
+no_default = _NoDefault()
+
+
 class Label(ODMEmbeddedDocument):
     """Base class for labels.
 
@@ -174,6 +181,32 @@ class Detection(ODMEmbeddedDocument):
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
     # attributes = fof.EmbeddedDocumentField(Attributes, default=Attributes())
+
+    def get_attribute_value(self, attr_name, default=no_default):
+        """Gets the value of the attribute with the given name.
+
+        Args:
+            attr_name: the attribute name
+            default (no_default): the default value to return if the attribute
+                does not exist. Can be ``None``. If no default value is
+                provided, an exception is raised if the attribute does not
+                exist
+
+        Returns:
+            the attribute value
+
+        Raises:
+            KeyError: if the attribute does not exist and no default value was
+                provided
+        """
+        try:
+            # pylint: disable=unsubscriptable-object
+            return self.attributes[attr_name].value
+        except KeyError:
+            if default is not no_default:
+                return default
+
+            raise
 
 
 class Detections(ImageLabel):
