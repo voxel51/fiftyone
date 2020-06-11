@@ -5,11 +5,14 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import atexit
 from base64 import b64encode, b64decode
 import importlib
 import io
+import itertools
 import logging
 import resource
+import signal
 import sys
 import types
 import zlib
@@ -18,6 +21,8 @@ import numpy as np
 import packaging.version
 
 import eta.core.utils as etau
+
+import fiftyone as fo
 
 
 logger = logging.getLogger(__name__)
@@ -224,6 +229,14 @@ class ResourceLimit(object):
                 raise
 
 
+class ProgressBar(etau.ProgressBar):
+    def __init__(self, *args, **kwargs):
+        quiet = not fo.config.show_progress_bars
+        super(ProgressBar, self).__init__(
+            *args, iters_str="samples", quiet=quiet, **kwargs
+        )
+
+
 def compute_filehash(filepath):
     """Computes the file hash of the given file.
 
@@ -275,3 +288,43 @@ def deserialize_numpy_array(numpy_bytes, ascii=False):
 
     with io.BytesIO(zlib.decompress(numpy_bytes)) as f:
         return np.load(f)
+
+
+def iter_batches(iterable, batch_size):
+    """Iterates over the given iterable in batches.
+
+    Args:
+        iterable: an iterable
+        batch_size: the desired batch size, or None to return the contents in
+            a single batch
+
+    Returns:
+        a generator that emits tuples of elements of the requested batch size
+        from the input iterable
+    """
+    it = iter(iterable)
+    while True:
+        chunk = tuple(itertools.islice(it, batch_size))
+        if not chunk:
+            return
+
+        yield chunk
+
+
+def call_on_exit(callback):
+    """Registers the given callback function so that it will be called when the
+    process exits for (almost) any reason
+
+    Note that this should only be used from non-interactive scripts because it
+    intercepts ctrl + c.
+
+    Covers the following cases:
+    -   normal program termination
+    -   a Python exception is raised
+    -   a SIGTERM signal is received
+
+    Args:
+        callback: the function to execute upon termination
+    """
+    atexit.register(callback)
+    signal.signal(signal.SIGTERM, lambda *args: callback())

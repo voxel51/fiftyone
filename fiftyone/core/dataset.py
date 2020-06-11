@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import datetime
+import inspect
 import logging
 import numbers
 import os
@@ -34,7 +35,9 @@ import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
@@ -373,7 +376,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return str(doc.id)
 
-    def add_samples(self, samples, expand_schema=True):
+    def add_samples(self, samples, expand_schema=True, _batch_size=128):
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -396,6 +399,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
+        sample_ids = []
+        with fou.ProgressBar(samples) as pb:
+            for batch in fou.iter_batches(samples, _batch_size):
+                sample_ids.extend(self._add_samples(batch, expand_schema))
+                pb.update(count=len(batch))
+
+        return sample_ids
+
+    def _add_samples(self, samples, expand_schema):
         if expand_schema:
             self._expand_schema(samples)
 
@@ -486,6 +498,53 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def reload(self):
         """Reloads all in-memory samples in the dataset from the database."""
         fos.Sample._reload_dataset_samples(self.name)
+
+    def add_dir(
+        self, dataset_dir, dataset_type, label_field="ground_truth", tags=None
+    ):
+        """Adds the contents of the given directory to the dataset.
+
+        Args:
+            dataset_dir: the dataset directory
+            dataset_type: the :class:`fiftyone.types.DatasetType` of the
+                dataset in the specified directory
+            label_field ("ground_truth"): the name of the field to use for the
+                labels (if applicable)
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples that were added to the dataset
+        """
+        if inspect.isclass(dataset_type):
+            dataset_type = dataset_type()
+
+        if isinstance(dataset_type, fot.ImageDirectory):
+            return self.add_images_dir(dataset_dir, recursive=True, tags=tags)
+
+        if isinstance(dataset_type, fot.ImageClassificationDirectoryTree):
+            samples, classes = foud.parse_image_classification_dir_tree(
+                dataset_dir
+            )
+            return self.add_image_classification_samples(
+                samples, classes=classes, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.ImageClassificationDataset):
+            return self.add_image_classification_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.ImageDetectionDataset):
+            return self.add_image_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.ImageLabelsDataset):
+            return self.add_image_labels_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        raise ValueError("Unsupported dataset type %s" % type(dataset_type))
 
     def add_image_classification_samples(
         self, samples, label_field="ground_truth", tags=None, classes=None,
@@ -943,6 +1002,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.add_images(image_paths, tags=tags)
 
     @classmethod
+    def from_dir(
+        cls,
+        dataset_dir,
+        dataset_type,
+        name=None,
+        label_field="ground_truth",
+        tags=None,
+    ):
+        """Creates a :class:`Dataset` from the contents of the given directory.
+
+        Args:
+            dataset_dir: the dataset directory
+            dataset_type: the :class:`fiftyone.types.DatasetType` of the
+                dataset in the specified directory
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            label_field ("ground_truth"): the name of the field to use for the
+                labels (if applicable)
+            tags (None): an optional list of tags to attach to each sample
+        """
+        if name is None:
+            name = get_default_dataset_name()
+
+        dataset = cls(name)
+        dataset.add_dir(
+            dataset_dir, dataset_type, label_field=label_field, tags=tags,
+        )
+        return dataset
+
+    @classmethod
     def from_image_classification_samples(
         cls,
         samples,
@@ -1392,9 +1481,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset
         """
         dataset = cls(d["name"])
-        dataset.add_samples(
-            [fos.Sample.from_dict(s, extended=True) for s in d["samples"]]
-        )
+        dataset.add_samples([fos.Sample.from_dict(s) for s in d["samples"]])
         return dataset
 
     @classmethod
@@ -1425,7 +1512,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_doc_cls.from_dict(d, extended=False)
         return self._load_sample_from_doc(doc)
 
-    def _load_sample_from_doc(self, doc):
+    @staticmethod
+    def _load_sample_from_doc(doc):
         return fos.Sample.from_doc(doc)
 
     def _get_query_set(self, **kwargs):
@@ -1446,6 +1534,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
 
 class DoesNotExistError(Exception):
+    """Exception raised when a dataset that does not exist is encountered."""
+
     pass
 
 

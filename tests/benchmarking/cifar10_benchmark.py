@@ -1,14 +1,14 @@
 """
-Benchmarking CRUD operations on CIFAR10
+Benchmarking CRUD operations on CIFAR10.
 
-Results are written to a log file: `benchmark_log.txt`
+Results are appended to `cifar10_benchmark.log`.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from collections import OrderedDict
-import pathlib
+import os
 import random
 import time
 
@@ -72,10 +72,5 @@ for _ in range(9):
     delete_sample_times.append(time.time() - start_time)
 RESULT["delete_samples"] = np.median(delete_sample_times)
 
-log_path = (
-    pathlib.Path(__file__)
-    .parent.absolute()
-    .joinpath("logs/cifar10_benchmark_log.txt")
-)
-
-write_result(log_path, RESULT)
+logpath = os.path.splitext(os.path.abspath(__file__))[0] + ".log"
+write_result(logpath, RESULT)

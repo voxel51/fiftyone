@@ -29,6 +29,8 @@ import os
 import io
 import struct
 
+from bson import json_util
+
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
 
 
@@ -102,7 +104,7 @@ def _fit_row(row, row_width, row_height):
         result.append(
             {
                 "coefficient": percent_width * row_height / row_width,
-                "sample": sample.to_dict(extended=True),
+                "sample": json.loads(json_util.dumps(sample.to_mongo_dict())),
                 "width": percent_width,
             }
         )

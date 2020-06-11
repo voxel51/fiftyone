@@ -17,7 +17,7 @@ _DEFAULT_DATABASE = "pymongo"
 def pymongo_one(n):
     client = pymongo.MongoClient()
     client.drop_database(_DEFAULT_DATABASE)
-    db = client.fiftyone
+    db = client.pymongo
     collection = db["test_pymongo_collection"]
 
     count = collection.count_documents({})
@@ -75,7 +75,7 @@ def pymongo_one(n):
 def pymongo_many(n):
     client = pymongo.MongoClient()
     client.drop_database(_DEFAULT_DATABASE)
-    db = client.fiftyone
+    db = client.pymongo
     collection = db["test_pymongo_collection"]
 
     count = collection.count_documents({})

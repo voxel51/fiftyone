@@ -18,18 +18,17 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import atexit
 import logging
-import signal
 
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
 
 
+logger = logging.getLogger(__name__)
+
 # Global session singleton
 session = None
-logger = logging.getLogger(__name__)
 
 
 def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
@@ -121,8 +120,8 @@ class Session(foc.HasClient):
         view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
             load
         port (5151): the port to use to connect the FiftyOne app.
-        remote (False): whether this is a remote session. Remote sessions do not
-            launch the FiftyOne app
+        remote (False): whether this is a remote session. Remote sessions do
+            not launch the FiftyOne app
     """
 
     _HC_NAMESPACE = "state"
@@ -148,16 +147,65 @@ class Session(foc.HasClient):
 
         if not self._remote:
             self._app_service = fos.AppService()
-            _close_on_exit(self)
+            logger.info("Dashboard launched")
         else:
             logger.info(
-                "You have launched a remote session and will need to configure "
-                "port forwarding. The current port number is %d.\n\n"
-                "Runnning the following command forwards this session to the default"
-                " port of 5151 on your local machine.\n"
-                "ssh -N -L %d:127.0.0.1:5151 username@this_machine_ip\n"
-                % (self.server_port, self.server_port)
+                _REMOTE_INSTRUCTIONS.strip()
+                % (self.server_port, self.server_port, self.server_port)
             )
+
+    @property
+    def dataset(self):
+        """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
+        """
+        if self.view is not None:
+            return self.view._dataset
+
+        return self._dataset
+
+    @dataset.setter
+    @_update_state
+    def dataset(self, dataset):
+        self._dataset = dataset
+        self._view = None
+        self.state.selected = []
+
+    @_update_state
+    def clear_dataset(self):
+        """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
+        session, if any.
+        """
+        self.dataset = None
+
+    @property
+    def view(self):
+        """The :class:`fiftyone.core.view.DatasetView` connected to the
+        session, or ``None`` if no view is connected.
+        """
+        return self._view
+
+    @view.setter
+    @_update_state
+    def view(self, view):
+        self._view = view
+        if view is not None:
+            self._dataset = self._view._dataset
+
+        self.state.selected = []
+
+    @_update_state
+    def clear_view(self):
+        """Clears the current :class:`fiftyone.core.view.DatasetView` from the
+        session, if any.
+        """
+        self.view = None
+
+    @property
+    def selected(self):
+        """A list of sample IDs of the currently selected samples in the
+        FiftyOne app.
+        """
+        return list(self.state.selected)
 
     def open(self):
         """Opens the session.
@@ -166,6 +214,7 @@ class Session(foc.HasClient):
         """
         if self._remote:
             raise ValueError("Remote sessions cannot launch the FiftyOne app")
+
         self._app_service.start()
 
     def close(self):
@@ -179,64 +228,12 @@ class Session(foc.HasClient):
         self._close = True
         self._update_state()
 
-    # GETTERS #################################################################
+    def wait(self):
+        """Waits for the session to be closed by the user."""
+        if self._remote:
+            raise ValueError("Cannot `wait()` for remote sessions to close")
 
-    @property
-    def dataset(self):
-        """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
-        """
-        if self.view is not None:
-            return self.view._dataset
-
-        return self._dataset
-
-    @property
-    def view(self):
-        """The :class:`fiftyone.core.view.DatasetView` connected to the
-        session, or ``None`` if no view is connected.
-        """
-        return self._view
-
-    @property
-    def selected(self):
-        """A list of sample IDs of the currently selected samples in the
-        FiftyOne app.
-        """
-        return list(self.state.selected)
-
-    # SETTERS #################################################################
-
-    @dataset.setter
-    @_update_state
-    def dataset(self, dataset):
-        self._dataset = dataset
-        self._view = None
-        self.state.selected = []
-
-    @view.setter
-    @_update_state
-    def view(self, view):
-        self._view = view
-        if view is not None:
-            self._dataset = self._view._dataset
-
-        self.state.selected = []
-
-    # CLEAR STATE #############################################################
-
-    @_update_state
-    def clear_dataset(self):
-        """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
-        session, if any.
-        """
-        self.dataset = None
-
-    @_update_state
-    def clear_view(self):
-        """Clears the current :class:`fiftyone.core.view.DatasetView` from the
-        session, if any.
-        """
-        self.view = None
+        self._app_service.wait()
 
     # PRIVATE #################################################################
 
@@ -250,13 +247,17 @@ class Session(foc.HasClient):
         )
 
 
-def _close_on_exit(session):
-    def handle_exit(*args):
-        try:
-            session.close()
-        except:
-            pass
+_REMOTE_INSTRUCTIONS = """
+You have launched a remote dashboard on port %d. To connect to this dashboard
+from another machine, issue the following command:
 
-    atexit.register(handle_exit)
-    signal.signal(signal.SIGTERM, handle_exit)
-    signal.signal(signal.SIGINT, handle_exit)
+fiftyone dashboard connect --destination [<username>@]<hostname> --port %d
+
+where `[<username>@]<hostname>` refers to your current machine. Alternatively,
+you can manually configure port forwarding on another machine as follows:
+
+ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
+
+and then connect to the dashboard on that machine using either
+`fiftyone dashboard connect` or from Python via `fiftyone.launch_dashboard()`.
+"""

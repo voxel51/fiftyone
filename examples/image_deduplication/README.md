@@ -14,7 +14,7 @@ python -m fiftyone.examples.image_deduplication.download_dataset
 ```
 
 The above script uses `tensorflow.keras.datasets` to download the dataset, so
-you must have TensorFlow installed.
+you must have [TensorFlow installed](https://www.tensorflow.org/install).
 
 The dataset is organized on disk as follows:
 
