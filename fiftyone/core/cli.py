@@ -487,6 +487,7 @@ class DashboardViewCommand(Command):
             )
         else:
             # View a dataset on disk
+            name = args.name
             dataset_dir = args.dataset_dir
             dataset_type = etau.get_class(args.type)
             dataset = fod.Dataset.from_dir(
