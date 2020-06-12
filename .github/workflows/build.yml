@@ -4,13 +4,20 @@ on: push
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-18.04
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
       - name: Build wheel
         run: |
-          python3 setup.py bdist_wheel
+          python setup.py bdist_wheel
       - name: Upload wheel
         uses: actions/upload-artifact@v2
         with:

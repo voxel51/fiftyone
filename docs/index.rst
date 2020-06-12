@@ -20,3 +20,10 @@ documentation, feel free to reach out to us at support@voxel51.com.
    install_guide
    examples/index
    api/fiftyone
+
+Additional resources:
+
+.. toctree::
+    :maxdepth: 1
+
+    linux_db_setup
