@@ -40,6 +40,9 @@ def _serialize(state):
     return StateDescription.from_dict(state.serialize()).serialize()
 
 
+WAIT = 0.2
+
+
 class ServerServiceTests(unittest.TestCase):
     """Tests for ServerService"""
 
@@ -58,6 +61,9 @@ class ServerServiceTests(unittest.TestCase):
     def setUpClass(cls):
         cls.dataset.add_sample(cls.sample1)
         cls.dataset.add_sample(cls.sample2)
+        cls.sample1["field"] = 1
+        cls.sample1.tags.append("tag")
+        cls.sample1.save()
 
     def tearDown(self):
         self._tmp = None
@@ -69,7 +75,7 @@ class ServerServiceTests(unittest.TestCase):
     def test_update(self):
         self.session.dataset = self.dataset
         session = _serialize(self.session.state)
-        time.sleep(0.2)
+        time.sleep(WAIT)
         client = self.client.data.serialize()
         self.assertEqual(session, client)
 
@@ -81,24 +87,40 @@ class ServerServiceTests(unittest.TestCase):
             self._tmp = state_dict
 
         self.client.emit("get_current_state", "", callback=callback)
-        time.sleep(0.2)
+        time.sleep(WAIT)
         client = self._tmp
         self.assertEqual(session, client)
 
     def test_selection(self):
         self.client.emit("add_selection", self.sample1.id)
-        time.sleep(0.2)
+        time.sleep(WAIT)
         self.assertIs(len(self.session.selected), 1)
         self.assertEqual(self.session.selected[0], self.sample1.id)
         self.client.emit("remove_selection", self.sample1.id)
-        time.sleep(0.2)
+        time.sleep(WAIT)
         self.assertIs(len(self.session.selected), 0)
 
     def test_page(self):
-        pass
+        self.session.dataset = self.dataset
+        time.sleep(WAIT)
+
+        def callback(result):
+            print(result)
+            self._tmp = result
+
+        self.client.emit("page", 1, callback=callback)
+        time.sleep(WAIT)
+        client = self._tmp
+        self.assertIs(len(client["results"]), 2)
 
     def test_lengths(self):
-        pass
+        def callback(data):
+            self._tmp = data
+
+        self.client.emit("lengths", "", callback=callback)
+        time.sleep(WAIT)
+        client = self._tmp
+        print(client)
 
     def test_get_distributions(self):
         pass
