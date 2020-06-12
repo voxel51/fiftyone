@@ -262,6 +262,12 @@ def _numeric_distribution_pipelines(view, pipeline, buckets=50):
         field_bounds = bounds[sub_pipeline][0]
         mn = field_bounds["min"]
         mx = field_bounds["max"]
+        if mn == mx:
+            if mx > 0:
+                mn = 0
+            else:
+                mx = 0
+
         step = (mx - mn) / buckets
         boundaries = [mn + step * s for s in range(0, buckets)]
 

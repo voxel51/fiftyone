@@ -14,11 +14,15 @@ unittest.TextTestRunner().run(singletest)
 |
 """
 import json
+import os
 import time
 import unittest
+import urllib
 
 from retrying import retry
 import socketio
+
+import eta.core.utils as etau
 
 import fiftyone as fo
 from fiftyone.constants import SERVER_ADDR
@@ -46,9 +50,12 @@ WAIT = 0.2
 class ServerServiceTests(unittest.TestCase):
     """Tests for ServerService"""
 
+    image_url = "https://user-images.githubusercontent.com/3719547/74191434-8fe4f500-4c21-11ea-8d73-555edfce0854.png"
+    test_one = os.path.abspath("./test_one.png")
+    test_two = os.path.abspath("./test_two.png")
     dataset = fo.Dataset("test")
-    sample1 = fo.Sample(filepath="test_one.png")
-    sample2 = fo.Sample(filepath="test_two.png")
+    sample1 = fo.Sample(filepath=test_one)
+    sample2 = fo.Sample(filepath=test_two)
     session = Session(remote=True)
     sio_client = socketio.Client()
     sio_client.eio.start_background_task = foc._start_background_task
@@ -59,13 +66,22 @@ class ServerServiceTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        urllib.request.urlretrieve(cls.image_url, cls.test_one)
+        etau.copy_file(cls.test_one, cls.test_two)
         cls.dataset.add_sample(cls.sample1)
         cls.dataset.add_sample(cls.sample2)
-        cls.sample1["field"] = 1
+        cls.sample1["scalar"] = 1
+        cls.sample1["label"] = fo.Classification(label="test")
         cls.sample1.tags.append("tag")
         cls.sample1.save()
 
+    @classmethod
+    def tearDownClass(cls):
+        etau.delete_file(cls.test_one)
+        etau.delete_file(cls.test_two)
+
     def tearDown(self):
+        self.session.dataset = None
         self._tmp = None
 
     def test_connect(self):
@@ -105,7 +121,6 @@ class ServerServiceTests(unittest.TestCase):
         time.sleep(WAIT)
 
         def callback(result):
-            print(result)
             self._tmp = result
 
         self.client.emit("page", 1, callback=callback)
@@ -114,16 +129,47 @@ class ServerServiceTests(unittest.TestCase):
         self.assertIs(len(client["results"]), 2)
 
     def test_lengths(self):
+        self.session.dataset = self.dataset
+        labels = self.dataset.view().get_label_fields()
+        tags = self.dataset.view().get_tags()
+
         def callback(data):
             self._tmp = data
 
         self.client.emit("lengths", "", callback=callback)
         time.sleep(WAIT)
         client = self._tmp
-        print(client)
+
+        def sort(l):
+            return sorted(l, key=lambda f: f["_id"]["field"])
+
+        self.assertEqual(sort(client["labels"]), sort(labels))
+        self.assertEqual(client["tags"], tags)
 
     def test_get_distributions(self):
-        pass
+        self.session.dataset = self.dataset
+        self.sample1.save()
+
+        def callback(data):
+            self._tmp = data
+
+        self.client.emit("get_distributions", "tags", callback=callback)
+        time.sleep(WAIT)
+        client = self._tmp
+        self.assertIs(len(client), 1)
+        self.assertEqual(client[0]["data"], [{"key": "tag", "count": 1}])
+
+        self.client.emit("get_distributions", "labels", callback=callback)
+        time.sleep(WAIT)
+        client = self._tmp
+        self.assertIs(len(client), 1)
+        self.assertEqual(client[0]["data"], [{"key": "test", "count": 1}])
+
+        self.client.emit("get_distributions", "scalars", callback=callback)
+        time.sleep(WAIT)
+        client = self._tmp
+        self.assertIs(len(client), 1)
+        self.assertEqual(client[0]["data"], [{"key": "null", "count": 2}])
 
 
 if __name__ == "__main__":
