@@ -262,6 +262,9 @@ def _numeric_distribution_pipelines(view, pipeline, buckets=50):
         field_bounds = bounds[sub_pipeline][0]
         mn = field_bounds["min"]
         mx = field_bounds["max"]
+
+        # if min and max are equal, we artifically create a boundary
+        # @todo alternative approach to scalar fields with only one value
         if mn == mx:
             if mx > 0:
                 mn = 0
