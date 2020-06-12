@@ -25,9 +25,12 @@ except ImportError:
 MONGODB_DOWNLOAD_URLS = {
     "linux": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.2.6.tgz",
     "mac": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz",
+    "ubuntu1604": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.6.tgz",
+    "debian9": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.2.6.tgz",
 }
 # mongodb binaries to distribute
 MONGODB_BINARIES = ["mongod"]
+LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
 
 class CustomBdistWheel(bdist_wheel):
@@ -68,6 +71,15 @@ class CustomBdistWheel(bdist_wheel):
             for k, v in MONGODB_DOWNLOAD_URLS.items()
             if self.plat_name.startswith(k)
         )
+        if LINUX_DISTRO is not None:
+            if not self.plat_name.startswith("linux"):
+                raise ValueError(
+                    "Cannot build for distro %r on platform %r"
+                    % (LINUX_DISTRO, self.plat_name)
+                )
+            if LINUX_DISTRO not in MONGODB_DOWNLOAD_URLS:
+                raise ValueError("Unrecognized distro: %r" % LINUX_DISTRO)
+            mongo_zip_url = MONGODB_DOWNLOAD_URLS[LINUX_DISTRO]
         mongo_zip_filename = os.path.basename(mongo_zip_url)
         mongo_zip_dest = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -107,8 +119,12 @@ cmdclass = {
     "bdist_wheel": CustomBdistWheel,
 }
 
+name_suffix = ""
+if LINUX_DISTRO:
+    name_suffix = "_" + LINUX_DISTRO
+
 setup(
-    name="fiftyone_db",
+    name="fiftyone_db" + name_suffix,
     version="0.1.0",
     description="Project FiftyOne database",
     author="Voxel51, Inc.",
