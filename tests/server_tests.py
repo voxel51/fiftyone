@@ -36,6 +36,10 @@ class TestClient(foc.BaseClient):
         super(TestClient, self).__init__("/state", StateDescription)
 
 
+def _serialize(state):
+    return StateDescription.from_dict(state.serialize()).serialize()
+
+
 class ServerServiceTests(unittest.TestCase):
     """Tests for ServerService"""
 
@@ -48,6 +52,7 @@ class ServerServiceTests(unittest.TestCase):
     receiver = TestClient()
     sio_receiver.register_namespace(receiver)
     foc._connect(sio_receiver, SERVER_ADDR % 5151)
+    _tmp = None
 
     @classmethod
     def setUpClass(cls):
@@ -55,8 +60,7 @@ class ServerServiceTests(unittest.TestCase):
         cls.dataset.add_sample(cls.sample2)
 
     def tearDown(self):
-        global receiver_result
-        receiver_result = None
+        self._tmp = None
 
     def test_connect(self):
         self.assertIs(self.session._hc_client.connected, True)
@@ -64,13 +68,21 @@ class ServerServiceTests(unittest.TestCase):
 
     def test_update(self):
         self.session.dataset = self.dataset
-        session = StateDescription.from_dict(
-            self.session.state.serialize()
-        ).serialize()
-        time.sleep(0.5)
-        receiver = StateDescription.from_dict(
-            self.receiver.data.serialize()
-        ).serialize()
+        session = _serialize(self.session.state)
+        time.sleep(0.2)
+        receiver = self.receiver.data.serialize()
+        self.assertEqual(session, receiver)
+
+    def test_get_current_state(self):
+        self.session.view = self.dataset.view().limit(1)
+        session = _serialize(self.session.state)
+
+        def callback(state_dict):
+            self._tmp = state_dict
+
+        self.receiver.emit("get_current_state", "", callback=callback)
+        time.sleep(0.2)
+        receiver = self._tmp
         self.assertEqual(session, receiver)
 
 
