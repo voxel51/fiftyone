@@ -47,11 +47,11 @@ class ServerServiceTests(unittest.TestCase):
     sample1 = fo.Sample(filepath="test_one.png")
     sample2 = fo.Sample(filepath="test_two.png")
     session = Session(remote=True)
-    sio_receiver = socketio.Client()
-    sio_receiver.eio.start_background_task = foc._start_background_task
-    receiver = TestClient()
-    sio_receiver.register_namespace(receiver)
-    foc._connect(sio_receiver, SERVER_ADDR % 5151)
+    sio_client = socketio.Client()
+    sio_client.eio.start_background_task = foc._start_background_task
+    client = TestClient()
+    sio_client.register_namespace(client)
+    foc._connect(sio_client, SERVER_ADDR % 5151)
     _tmp = None
 
     @classmethod
@@ -64,14 +64,14 @@ class ServerServiceTests(unittest.TestCase):
 
     def test_connect(self):
         self.assertIs(self.session._hc_client.connected, True)
-        self.assertIs(self.receiver.connected, True)
+        self.assertIs(self.client.connected, True)
 
     def test_update(self):
         self.session.dataset = self.dataset
         session = _serialize(self.session.state)
         time.sleep(0.2)
-        receiver = self.receiver.data.serialize()
-        self.assertEqual(session, receiver)
+        client = self.client.data.serialize()
+        self.assertEqual(session, client)
 
     def test_get_current_state(self):
         self.session.view = self.dataset.view().limit(1)
@@ -80,10 +80,28 @@ class ServerServiceTests(unittest.TestCase):
         def callback(state_dict):
             self._tmp = state_dict
 
-        self.receiver.emit("get_current_state", "", callback=callback)
+        self.client.emit("get_current_state", "", callback=callback)
         time.sleep(0.2)
-        receiver = self._tmp
-        self.assertEqual(session, receiver)
+        client = self._tmp
+        self.assertEqual(session, client)
+
+    def test_selection(self):
+        self.client.emit("add_selection", self.sample1.id)
+        time.sleep(0.2)
+        self.assertIs(len(self.session.selected), 1)
+        self.assertEqual(self.session.selected[0], self.sample1.id)
+        self.client.emit("remove_selection", self.sample1.id)
+        time.sleep(0.2)
+        self.assertIs(len(self.session.selected), 0)
+
+    def test_page(self):
+        pass
+
+    def test_lengths(self):
+        pass
+
+    def test_get_distributions(self):
+        pass
 
 
 if __name__ == "__main__":
