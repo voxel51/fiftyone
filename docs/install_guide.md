@@ -134,6 +134,10 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> exit()
 ```
 
+**Note for Linux users:** if you encounter an error related to MongoDB failing
+to start, such as "Could not find mongod", you may need to install additional
+packages. See the [Linux MongoDB setup guide](linux_db_setup) for details.
+
 Once FiftyOne is installed, you can proceed with any of the
 [examples](examples/index) in the documentation. The
 [Fifteen Minutes to FiftyOne](examples/fifteen_to_fiftyone) walkthrough is a

@@ -1,0 +1,22 @@
+FROM ubuntu:20.04
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --show-progress \
+        apt-transport-https \
+        libcurl4 \
+        libglib2.0 \
+        openssl \
+        python3 \
+        python3-pip
+
+# not available yet
+# RUN apt-get install -y wget && \
+#     wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | apt-key add - && \
+#     echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.2 multiverse" > /etc/apt/sources.list.d/mongodb-org-4.2.list && \
+#     apt-get update
+
+ENV PATH="/root/.local/bin:${PATH}"
+
+RUN pip3 install --user --upgrade pip setuptools wheel
+
+WORKDIR /test
