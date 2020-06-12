@@ -2,6 +2,25 @@ name: Build docs
 
 on:
   push:
+    branches:
+      - develop
+      - rel-*
+      - release-*
+    tags:
+      - v*
+    paths:
+      - .github/workflows/build-docs.yml
+      - docs/
+      - examples/
+      - fiftyone/
+      - "**.py"
+      - "**.md"
+      - "**.rst"
+  pull_request:
+    branches:
+      - develop
+      - rel-*
+      - release-*
     paths:
       - .github/workflows/build-docs.yml
       - docs/
