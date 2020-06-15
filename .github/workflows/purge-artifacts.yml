@@ -1,0 +1,12 @@
+# adapted from https://github.com/marketplace/actions/purge-artifacts
+name: Delete old artifacts
+on: push
+
+jobs:
+  delete-artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: kolpav/purge-artifacts-action@v1
+        with:
+          token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          expire-in: 12h
