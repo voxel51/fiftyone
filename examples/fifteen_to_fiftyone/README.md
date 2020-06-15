@@ -7,18 +7,23 @@ A 15 minute overview of using the FiftyOne tool.
 The walkthrough is provided as a [Jupyter Notebook](https://jupyter.org). The
 easiest way to run it is by installing Jupyter:
 
-```shell
+```sh
 pip install jupyter
 ```
 
 ## Running the walkthrough
 
-To launch the notebook, run:
+To launch the notebook on any machine with FiftyOne installed, run:
 
-```shell
-jupyter notebook 15to51.ipynb
+```sh
+python -m fiftyone.examples.fifteen_to_fiftyone
 ```
 
-## Copyright
+If you would like to directly work with this notebook, you can locate it on
+disk by running the following command:
 
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
+```sh
+NOTEBOOK_PATH="$(fiftyone constants EXAMPLES_DIR)/fifteen_to_fiftyone/15to51.ipynb"
+
+echo $NOTEBOOK_PATH
+```

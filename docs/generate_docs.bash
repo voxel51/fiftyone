@@ -8,14 +8,17 @@
 # voxel51.com
 #
 
+set -e
 cd "$(dirname "$0")/.."
 echo "**** Generating documentation"
+
+export FIFTYONE_DISABLE_SERVICES=1
 
 #
 # The syntax here is:
 #   sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, …]
 #
-sphinx-apidoc -f -o docs/source fiftyone fiftyone/experimental
+sphinx-apidoc -f --no-toc -o docs/api fiftyone fiftyone/experimental
 
 cd docs
 make html

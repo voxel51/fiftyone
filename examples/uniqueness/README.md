@@ -11,28 +11,39 @@ This walkthrough covers the following concepts:
 -   Identifying duplicate and near-duplicate images in your dataset
 -   Identifying the most unique/representative images in your dataset
 
+## Setup
+
+-   Install `torch` and `torchvision`, if necessary:
+
+```shell
+# Modify as necessary (e.g., GPU install). See https://pytorch.org for options
+pip install torch
+pip install torchvision
+```
+
 ## Part 1: Finding duplicate and near-duplicate images
 
 A common problem in dataset creation is duplicated data. Although this could be
-found using file-hashing---as in the `file_hashing` walkthrough---it is less
-possible when small manipulations have occurred in the data. Even more critical
-for workflows involving model training is the need to get as much power out of
-each data samples as possible; near-duplicates, which are samples that are
-exceptionally similar to one another, are intrinsically less valuable for the
-training scenario. Let's see if we can find such duplicates and near-duplicates
-in a common dataset: CIFAR-10.
+found using file hashing---as in the `image_deduplication` walkthrough---it is
+less possible when small manipulations have occurred in the data. Even more
+critical for workflows involving model training is the need to get as much
+power out of each data samples as possible; near-duplicates, which are samples
+that are exceptionally similar to one another, are intrinsically less valuable
+for the training scenario. Let's see if we can find such duplicates and
+near-duplicates in a common dataset: CIFAR-10.
 
 ### Load the dataset
 
-Open an IPython shell to begin. We will use the CIFAR-10 dataset, which is
+Open a Python shell to begin. We will use the CIFAR-10 dataset, which is
 available in the FiftyOne Dataset Zoo.
 
 ```py
 import fiftyone as fo
 import fiftyone.zoo as foz
 
-# Load the test split (automatically download if needed)
-dataset = foz.load_zoo_dataset("cifar10", split="test")
+# Load the CIFAR-10 test split
+# Downloads the dataset from the web if necessary
+dataset = foz.load_zoo_dataset("cifar10", splits=["test"])
 ```
 
 ### Compute uniqueness
@@ -55,7 +66,7 @@ about the dataset:
 
 ```py
 # Now the samples have a "uniqueness" field on them
-print(dataset.summary())
+print(dataset)
 print(dataset.view().first())
 ```
 
@@ -80,7 +91,7 @@ inspection. So, how do we get the information out of FiftyOne and back into
 your working environment. Easy! The `session` variable provides a bidirectional
 bridge between the dashboard and your Python environment. In this case, we will
 use the `session.selected` bridge. So, in the dashboard, click on some of the
-duplicates and near-duplicates. Then, execute the following code in the IPython
+duplicates and near-duplicates. Then, execute the following code in the Python
 shell.
 
 ```py
@@ -125,6 +136,13 @@ then skip the next steps.
    your API will automatically appear on the following page.
 4. Install the Flickr API: `pip install flickrapi`
 
+You will also need to enable ETA's storage support to run this script, if you
+haven't yet:
+
+```shell
+pip install --index https://pypi.voxel51.com voxel51-eta[storage]
+```
+
 Next, let's download three sets of images to process together. I suggest using
 three distinct object-nouns like "badger", "wolverine", and "kitten". For the
 actual downloading, we will use the provided `query_flickr.py` script:
@@ -134,9 +152,9 @@ actual downloading, we will use the provided `query_flickr.py` script:
 KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 SECRET=YYYYYYYYYYYYYYYY
 
-python query_flickr.py $KEY $SECRET "badger"
-python query_flickr.py $KEY $SECRET "wolverine"
-python query_flickr.py $KEY $SECRET "kitten"
+python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "badger"
+python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "wolverine"
+python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "kitten"
 ```
 
 The rest of this walkthrough assumes you've downloaded some images to your
@@ -144,7 +162,7 @@ local `.data/` directory.
 
 ### Load the data into FiftyOne
 
-In an IPython shell, let's now work through getting this data into FiftyOne and
+In a Python shell, let's now work through getting this data into FiftyOne and
 working with it.
 
 ```py
@@ -154,7 +172,7 @@ dataset = fo.Dataset.from_images_dir(
     "data", recursive=True, name="flickr-images"
 )
 
-print(dataset.summary())
+print(dataset)
 print(dataset.view().first())
 ```
 
@@ -182,7 +200,7 @@ Now, let's analyze the data. For example, we may want to understand what are
 the most unique images among the data as they may inform or harm model
 training; we may want to discover duplicates or redundant samples.
 
-Continuing in the same IPython session, let's compute and visualize uniqueness.
+Continuing in the same Python shell, let's compute and visualize uniqueness.
 
 ```py
 import fiftyone.brain as fob
@@ -190,7 +208,7 @@ import fiftyone.brain as fob
 fob.compute_uniqueness(dataset)
 
 # Now the samples have a "uniqueness" field on them
-print(dataset.summary())
+print(dataset)
 print(dataset.view().first())
 
 # Sort by uniqueness (most unique first)
@@ -202,7 +220,7 @@ session.view = rank_view
 
 Now, just visualizing the samples is interesting, but we want more. We want to
 get the most unique samples from our dataset so that we can use them in our
-work. Let's do just that. In the same IPython session, execute the following
+work. Let's do just that. In the same Python session, execute the following
 code.
 
 ```py
@@ -219,7 +237,3 @@ for filepath in ten_best:
 # Output to csv or json, send images to your annotation team, seek additional
 # similar data, etc.
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

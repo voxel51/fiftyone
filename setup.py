@@ -20,22 +20,28 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.1.2",
-            "fiftyone-gui>=0.1.2",
-            "fiftyone-db",
+            "fiftyone-brain>=0.1.4",
+            "fiftyone-gui>=0.2.0",
+            "fiftyone-db>=0.1.1",
         ]
 
 
 setup(
     name="fiftyone",
-    version="0.1.2",
+    version="0.2.0",
     description="Project FiftyOne",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages(),
+    packages=find_packages(exclude=["fiftyone.experimental"])
+    + ["fiftyone.examples"],
+    package_dir={"fiftyone.examples": "examples"},
     include_package_data=True,
+    exclude_package_data={
+        "fiftyone": ["experimental/*"],
+        "fiftyone.examples": ["archive/*", "data/*"],
+    },
     install_requires=[
         # third-party packages
         "argcomplete",
@@ -48,6 +54,8 @@ setup(
         "numpy",
         "packaging",
         "Pillow<7,>=6.2",
+        "pprintpp",
+        "psutil",
         "pymongo",
         "python-engineio[client]<3.12;python_version<'3'",
         "python-engineio[client];python_version>='3'",
@@ -57,7 +65,7 @@ setup(
         "setuptools",
         "tabulate",
         # internal packages
-        "voxel51-eta",
+        "voxel51-eta>=0.1.0.4",
     ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",

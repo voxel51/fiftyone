@@ -13,16 +13,21 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
-from future.utils import itervalues
 
 from collections import defaultdict
+from copy import deepcopy
+import json
 import os
 import weakref
 
+import eta.core.utils as etau
+
+import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 
 
@@ -36,7 +41,7 @@ class Sample(object):
 
     Args:
         filepath: the path to the data on disk
-        tags (None): the set of tags associated with the sample
+        tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample
     """
@@ -48,9 +53,13 @@ class Sample(object):
         self._doc = foo.ODMNoDatasetSample(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
+        self._dataset = self._get_dataset()
 
     def __str__(self):
         return str(self._doc)
+
+    def __repr__(self):
+        return repr(self._doc)
 
     def __getattr__(self, name):
         try:
@@ -67,8 +76,10 @@ class Sample(object):
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
-        # @todo(Tyler) __delattr__
-        raise NotImplementedError("Not yet implemented")
+        try:
+            self.__delitem__(name)
+        except KeyError:
+            super(Sample, self).__delattr__(name)
 
     def __getitem__(self, key):
         try:
@@ -82,11 +93,17 @@ class Sample(object):
     def __delitem__(self, key):
         try:
             return self.clear_field(key)
-        except AttributeError:
-            raise KeyError("Sample has no field '%s'" % key)
+        except ValueError as e:
+            raise KeyError(e.args[0])
 
     def __copy__(self):
         return self.copy()
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self._doc == other._doc
 
     @property
     def filename(self):
@@ -119,26 +136,10 @@ class Sample(object):
         """
         return self._doc.dataset_name
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
-        """Returns a schema dictionary describing the fields of this sample.
-
-        If the sample belongs to a dataset, the schema will apply to all
-        samples in the dataset.
-
-        Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
-
-        Returns:
-             a dictionary mapping field names to field types
-        """
-        return self._doc.get_field_schema(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
-        )
+    @property
+    def field_names(self):
+        """An ordered list of the names of the fields of this sample."""
+        return self._doc.field_names
 
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
@@ -178,69 +179,103 @@ class Sample(object):
             field_name: the name of the field to clear
 
         Raises:
-            AttributeError: if the field does not exist
+            ValueError: if the field does not exist
         """
         return self._doc.clear_field(field_name=field_name)
 
+    def compute_metadata(self):
+        """Populates the ``metadata`` field of the sample."""
+        mime_type = etau.guess_mime_type(self.filepath)
+        if mime_type.startswith("image"):
+            self.metadata = fom.ImageMetadata.build_for(self.filepath)
+        else:
+            self.metadata = fom.Metadata.build_for(self.filepath)
+
+        self.save()
+
     def copy(self):
-        """Returns a copy of the sample that has not been added to the
+        """Returns a deep copy of the sample that has not been added to the
         database.
 
         Returns:
             a :class:`Sample`
         """
-        return self.__class__(**self._doc.copy().to_dict())
+        kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
+        return self.__class__(**kwargs)
 
-    def to_dict(self, extended=False):
-        """Serializes the sample to a JSON dictionary.
+    def clone_doc(self, doc_cls=None):
+        """Returns a deep clone of the backing document of the sample.
 
         Args:
-            extended (False): whether to return extended JSON, i.e.,
-                ObjectIDs, Datetimes, etc. are serialized
+            doc_cls (None): a :class:`fiftyone.core.odm.ODMSample` class to
+                use for the backing document. By default, the backing document
+                class of the sample is used
+
+        Returns:
+            a :class:`fiftyone.core.odm.ODMSample`
+        """
+        if doc_cls is None:
+            doc_cls = self._doc.__class__
+
+        kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
+        return doc_cls(**kwargs)
+
+    def to_dict(self):
+        """Serializes the sample to a JSON dictionary.
+
+        Sample IDs are always excluded in this representation.
 
         Returns:
             a JSON dict
         """
-        return self._doc.to_dict(extended=extended)
+        d = self._doc.to_dict(extended=True)
+        d.pop("_id", None)
+        return d
 
     @classmethod
-    def from_dict(cls, doc_class, d, created=False, extended=False):
+    def from_dict(cls, d):
         """Loads the sample from a JSON dictionary.
 
-        Args:
-            doc_class:
-            d: a JSON dictionary
-            created (False): whether to consider the newly instantiated
-                document as brand new or as persisted already. The following
-                cases exist:
-
-                    * If ``True``, consider the document as brand new, no
-                      matter what data it is loaded with (i.e., even if an ID
-                      is loaded)
-
-                    * If ``False`` and an ID is NOT provided, consider the
-                      document as brand new
-
-                    * If ``False`` and an ID is provided, assume that the
-                      object has already been persisted (this has an impact on
-                      the subsequent call to ``.save()``)
-
-            extended (False): if ``False``, ObjectIDs, Datetimes, etc. are
-                expected to already be loaded
+        The returned sample will not belong to a dataset.
 
         Returns:
             a :class:`Sample`
         """
-        doc = doc_class.from_dict(d, created=created, extended=extended)
+        doc = foo.ODMNoDatasetSample.from_dict(d, extended=True)
         return cls.from_doc(doc)
 
-    def to_json(self):
-        """Returns a JSON string representation of the sample.
+    def to_json(self, pretty_print=False):
+        """Serializes the sample to a JSON string.
+
+        Args:
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
 
         Returns:
             a JSON string
         """
-        return self._doc.to_json()
+        return self._doc.to_json(pretty_print=pretty_print)
+
+    @classmethod
+    def from_json(cls, s):
+        """Loads the sample from a JSON string.
+
+        Args:
+            s: the JSON string
+
+        Returns:
+            a :class:`Sample`
+        """
+        return cls.from_dict(json.loads(s))
+
+    def to_mongo_dict(self):
+        """Serializes the sample to a BSON dictionary equivalent to the
+        representation that would be stored in the database.
+
+        Returns:
+            a BSON dict
+        """
+        return self._doc.to_dict(extended=False)
 
     @classmethod
     def from_doc(cls, doc):
@@ -248,13 +283,15 @@ class Sample(object):
         document.
 
         Args:
-            document: a :class:`fiftyone.core.odm.ODMDatasetSample`
+            document: a :class:`fiftyone.core.odm.ODMSample`
 
         Returns:
             a :class:`Sample`
         """
-        if not isinstance(doc, foo.ODMDatasetSample):
-            raise TypeError("Unexpected doc type: %s" % type(doc))
+        if isinstance(doc, foo.ODMNoDatasetSample):
+            sample = cls.__new__(cls)
+            sample._doc = doc
+            return sample
 
         if not doc.id:
             raise ValueError("`doc` is not saved to the database.")
@@ -270,8 +307,40 @@ class Sample(object):
         return sample
 
     def save(self):
-        """Saves the document to the database."""
+        """Saves the sample to the database."""
         self._doc.save()
+
+    def reload(self):
+        """Reload the sample from the database."""
+        self._doc.reload()
+
+    @classmethod
+    def _save_dataset_samples(cls, dataset_name):
+        """Saves all changes to samples instances in memory belonging to the
+        specified dataset to the database.
+
+        A samples only needs to be saved if it has non-persisted changes and
+        still exists in memory.
+
+        Args:
+            dataset_name: the name of the dataset to save.
+        """
+        for sample in cls._instances[dataset_name].values():
+            sample.save()
+
+    @classmethod
+    def _reload_dataset_samples(cls, dataset_name):
+        """Reloads the fields for sample instances in memory belonging to the
+        specified dataset from the database.
+
+        If multiple processes or users are accessing the same database this
+        will keep the dataset in sync.
+
+        Args:
+            dataset_name: the name of the dataset to reload.
+        """
+        for sample in cls._instances[dataset_name].values():
+            sample.reload()
 
     def _delete(self):
         """Deletes the document from the database."""
@@ -284,10 +353,8 @@ class Sample(object):
         """
         return self._doc.in_db
 
-    @property
-    def _dataset(self):
+    def _get_dataset(self):
         if self._in_db:
-            # @todo(Tyler) should this import be cached?
             from fiftyone.core.dataset import load_dataset
 
             return load_dataset(self.dataset_name)
@@ -307,16 +374,18 @@ class Sample(object):
                 % (foo.ODMDatasetSample, type(doc))
             )
 
-        self._doc = doc
-
         # ensure the doc is saved to the database
         if not doc.id:
             doc.save()
+
+        self._doc = doc
 
         # save weak reference
         dataset_instances = self._instances[doc.dataset_name]
         if self.id not in dataset_instances:
             dataset_instances[self.id] = self
+
+        self._dataset = self._get_dataset()
 
     @classmethod
     def _reset_backing_docs(cls, dataset_name, sample_ids):
@@ -339,6 +408,9 @@ class Sample(object):
 
         For use **only** when clearing a dataset.
         """
+        if dataset_name not in cls._instances:
+            return
+
         dataset_instances = cls._instances.pop(dataset_name)
         for sample in itervalues(dataset_instances):
             sample._doc = sample.copy()._doc

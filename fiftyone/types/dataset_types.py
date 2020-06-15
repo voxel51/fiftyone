@@ -53,11 +53,26 @@ class LabeledImageDataset(LabeledDataset):
     pass
 
 
+class ImageDirectory(UnlabeledImageDataset):
+    """A directory of images.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <filename1>.<ext>
+            <filename2>.<ext>
+
+    When reading datasets of this type, subfolders are recursively traversed.
+    """
+
+    pass
+
+
 class ImageClassificationDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated
     classification labels.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -69,17 +84,41 @@ class ImageClassificationDataset(LabeledImageDataset):
     where ``labels.json`` is a JSON file in the following format::
 
         {
-            "labels_map": {
-                <targetA>: <labelA>,
-                <targetB>: <labelB>,
+            "classes": [
+                <labelA>,
+                <labelB>,
                 ...
-            },
+            ],
             "labels": {
                 <uuid1>: <target1>,
                 <uuid2>: <target2>,
                 ...
             }
         }
+
+    If the ``classes`` field is provided, the ``target`` values are class IDs
+    that are mapped to class label strings via ``classes[target]``. If no
+    ``classes`` field is provided, then the ``target`` values directly store
+    the label strings.
+    """
+
+    pass
+
+
+class ImageClassificationDirectoryTree(LabeledImageDataset):
+    """A directory tree that defines an image classification dataset.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <classA>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+            <classB>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
     """
 
     pass
@@ -89,7 +128,7 @@ class ImageDetectionDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated object
     detections.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -101,15 +140,15 @@ class ImageDetectionDataset(LabeledImageDataset):
     where ``labels.json`` is a JSON file in the following format::
 
         {
-            "labels_map": {
-                <targetA>: <labelA>,
-                <targetB>: <labelB>,
+            "classes": [
+                <labelA>,
+                <labelB>,
                 ...
-            },
+            ],
             "labels": {
                 <uuid1>: [
                     {
-                        "label": <label>,
+                        "label": <target>,
                         "bounding_box": [
                             <top-left-x>, <top-left-y>, <width>, <height>
                         ],
@@ -126,6 +165,11 @@ class ImageDetectionDataset(LabeledImageDataset):
 
     and where the bounding box coordinates are expressed as relative values in
     ``[0, 1] x [0, 1]``.
+
+    If the ``classes`` field is provided, the ``target`` values are class IDs
+    that are mapped to class label strings via ``classes[target]``. If no
+    ``classes`` field is provided, then the ``target`` values directly store
+    the label strings.
     """
 
     pass
@@ -135,7 +179,7 @@ class ImageLabelsDataset(LabeledImageDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in ``eta.core.image.ImageLabels`` format.
 
-    FiftyOne exports datasets of this type on disk in the following format::
+    Datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/

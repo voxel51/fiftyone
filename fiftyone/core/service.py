@@ -18,11 +18,14 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import atexit
 import logging
 import os
-import signal
+import re
 import subprocess
+import sys
+
+from packaging.version import Version
+import requests
 
 import eta.core.utils as etau
 
@@ -35,35 +38,77 @@ logger = logging.getLogger(__name__)
 class Service(object):
     """Interface for FiftyOne services.
 
-    All services must implement :func:`Service.start` and :func:`Service.stop`.
+    All services must define a ``command`` property.
+
+    Services are run in an isolated Python subprocess (see ``_service_main.py``)
+    to ensure that they are shut down when the main Python process exits. The
+    ``command`` and ``working_dir`` properties control the execution of the
+    service in the subprocess.
     """
 
-    _DEVNULL = open(os.devnull, "wb")
-    _SUPPRESS = {"stderr": _DEVNULL, "stdout": _DEVNULL}
+    working_dir = "."
 
     def __init__(self):
         """Creates (starts) the Service."""
         self._system = os.system
-        self._is_server = os.environ.get("FIFTYONE_SERVER", False)
+        self._is_server = os.environ.get(
+            "FIFTYONE_SERVER", False
+        ) or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
+        self.child = None
         if not self._is_server:
             self.start()
 
     def __del__(self):
         """Deletes (stops) the Service."""
         if not self._is_server:
-            self.stop()
+            try:
+                self.stop()
+            except:
+                # something probably failed due to interpreter shutdown, which
+                # will be handled by _service_main.py
+                pass
+
+    @property
+    def command(self):
+        raise NotImplementedError("subclasses must define `command`")
 
     def start(self):
         """Starts the Service."""
-        raise NotImplementedError("subclasses must implement `start()`")
+        service_main_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "_service_main.py",
+        )
+        self.child = subprocess.Popen(
+            [sys.executable, service_main_path] + self.command,
+            cwd=self.working_dir,
+            stdin=subprocess.PIPE,
+        )
 
     def stop(self):
         """Stops the Service."""
-        raise NotImplementedError("subclasses must implement `stop()`")
+        self.child.stdin.close()
+        self.child.wait()
+
+    def wait(self):
+        """Waits for the Service to exit and returns its exit code."""
+        return self.child.wait()
 
 
 class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
+
+    MIN_MONGO_VERSION = "3.6"
+
+    @property
+    def command(self):
+        return [
+            DatabaseService.find_mongod(),
+            "--dbpath",
+            foc.DB_PATH,
+            "--logpath",
+            foc.DB_LOG_PATH,
+        ]
 
     def start(self):
         """Starts the DatabaseService."""
@@ -71,35 +116,95 @@ class DatabaseService(Service):
             if not os.path.isdir(folder):
                 os.makedirs(folder)
 
-        etau.call(foc.START_DB, **self._SUPPRESS)
+        super().start()
 
-        # Drop the entire database (lightweight!)
-        import fiftyone.core.odm as foo
+        # Drop non-persistent datasets
+        import fiftyone.core.dataset as fod
 
-        foo.drop_database()
+        fod.delete_non_persistent_datasets()
 
-    def stop(self):
-        """Stops the DatabaseService."""
-        self._system(foc.STOP_DB)
+    @staticmethod
+    def find_mongod():
+        search_paths = [
+            foc.FIFTYONE_DB_BIN_DIR,
+            os.path.join(foc.FIFTYONE_CONFIG_DIR, "bin"),
+        ] + os.environ["PATH"].split(os.pathsep)
+        searched = set()
+        attempts = []
+        for folder in search_paths:
+            if folder in searched:
+                continue
+            searched.add(folder)
+            mongod_path = os.path.join(folder, "mongod")
+            if os.path.isfile(mongod_path):
+                ok, out, err = etau.communicate([mongod_path, "--version"])
+                out = out.decode(errors="ignore").strip()
+                err = err.decode(errors="ignore").strip()
+                mongod_version = None
+                if ok:
+                    match = re.search(r"db version.+?([\d\.]+)", out, re.I)
+                    if match:
+                        mongod_version = match.group(1)
+                        if Version(mongod_version) >= Version(
+                            DatabaseService.MIN_MONGO_VERSION
+                        ):
+                            return mongod_path
+                attempts.append((mongod_path, mongod_version, err))
+        for path, version, err in attempts:
+            if version is not None:
+                logger.warn("%s: incompatible version %s" % (path, version))
+            else:
+                logger.error("%s: failed to launch: %s" % (path, err))
+        raise RuntimeError(
+            "Could not find mongod >= %s" % DatabaseService.MIN_MONGO_VERSION
+        )
 
 
 class ServerService(Service):
     """Service that controls the FiftyOne web server."""
+
+    working_dir = foc.SERVER_DIR
 
     def __init__(self, port):
         self._port = port
         super(ServerService, self).__init__()
 
     def start(self):
-        """Starts the ServerService."""
-        cmd = " ".join(foc.START_SERVER) % self._port
-        with etau.WorkingDir(foc.SERVER_DIR):
-            etau.call(cmd.split(" "), **self._SUPPRESS)
-        _close_on_exit(self)
+        server_version = None
+        try:
+            server_version = requests.get(
+                "http://127.0.0.1:%i/fiftyone" % self._port, timeout=2
+            ).json()["version"]
+        except Exception:
+            # There is likely not a fiftyone server running (remote or local),
+            # so start a local server. If there actually is a fiftyone server
+            # running that didn't respond to /fiftyone, the local server will
+            # fail to start but the dashboard will still connect successfully.
+            super().start()
 
-    def stop(self):
-        """Stops the ServerService."""
-        self._system(foc.STOP_SERVER % self._port)
+        if server_version is not None:
+            logger.info("Connected to fiftyone on local port %i" % self._port)
+            if server_version != foc.VERSION:
+                logger.warn(
+                    "Server version (%s) does not match client version (%s)"
+                    % (server_version, foc.VERSION)
+                )
+
+    @property
+    def command(self):
+        command = [
+            "gunicorn",
+            "-w",
+            "1",
+            "--worker-class",
+            "eventlet",
+            "-b",
+            "127.0.0.1:%d" % self._port,
+            "main:app",
+        ]
+        if foc.DEV_INSTALL:
+            command += ["--reload"]
+        return command
 
     @property
     def port(self):
@@ -110,57 +215,22 @@ class ServerService(Service):
 class AppService(Service):
     """Service that controls the FiftyOne app."""
 
-    def start(self):
-        """Starts the AppService."""
+    working_dir = foc.FIFTYONE_APP_DIR
+
+    @property
+    def command(self):
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             if os.path.isfile("FiftyOne.AppImage"):
                 # linux
                 args = ["./FiftyOne.AppImage"]
+            elif os.path.isdir("FiftyOne.app"):
+                args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
             elif os.path.isfile("package.json"):
                 # dev build
                 args = ["yarn", "dev"]
-            elif os.path.isdir("FiftyOne.app"):
-                # -W: wait for the app to terminate
-                # -n: open a new instance of the app
-                # TODO: the app doesn't run as a subprocess of `open`, so it
-                # won't get killed by stop()
-                args = ["open", "-W", "-n", "./FiftyOne.app"]
             else:
                 raise RuntimeError(
                     "Could not find FiftyOne dashboard in %r"
                     % foc.FIFTYONE_APP_DIR
                 )
-        # TODO: python <3.3 compat
-        self.process = subprocess.Popen(
-            args,
-            cwd=foc.FIFTYONE_APP_DIR,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
-    def stop(self):
-        """Stops the AppService."""
-        # TODO: python <3.3 compat
-        if not getattr(self, "process", None):
-            return
-        self.process.send_signal(signal.SIGINT)
-        try:
-            self.process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            logger.warning(
-                "Dashboard exit timed out; killing (PID = %i)",
-                self.process.pid,
-            )
-            self.process.kill()
-
-
-def _close_on_exit(service):
-    def handle_exit(*args):
-        try:
-            service.stop()
-        except:
-            pass
-
-    atexit.register(handle_exit)
-    signal.signal(signal.SIGTERM, handle_exit)
-    signal.signal(signal.SIGINT, handle_exit)
+        return args

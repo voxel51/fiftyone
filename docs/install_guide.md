@@ -101,9 +101,9 @@ dealing with virtual environments frequently:
     [here](https://docs.python.org/3/library/venv.html), with information on
     additional arguments that the `venv` command accepts.
 -   There is a similar
-    [`virtualenv` package](https://pypi.org/project/virtualenv/) (installable
+    ["virtualenv" package](https://pypi.org/project/virtualenv/) (installable
     with `pip`) that supports older Python versions.
--   [`virtualenvwrapper`](https://virtualenvwrapper.readthedocs.io/en/latest/)
+-   [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/)
     adds some convenient shell support for creating and managing virtual
     environments.
 
@@ -125,16 +125,23 @@ $ python
 Python 3.6.9 (default, Apr 18 2020, 01:56:04)
 [GCC 8.4.0] on linux
 Type "help", "copyright", "credits" or "license" for more information.
+>>>
 >>> import fiftyone as fo
 >>> fo.__file__
 '.../env/lib/python3.X/site-packages/fiftyone/__init__.py'
+>>>
 >>> session = fo.launch_dashboard()
 >>> exit()
 ```
 
-Once FiftyOne is installed, you can proceed with any of the examples in the
-documentation. The "Fifteen minutes to FiftyOne" walkthrough is a good place to
-start.
+**Note for Linux users:** if you encounter an error related to MongoDB failing
+to start, such as "Could not find mongod", you may need to install additional
+packages. See the [Linux MongoDB setup guide](linux_db_setup) for details.
+
+Once FiftyOne is installed, you can proceed with any of the
+[examples](examples/index) in the documentation. The
+[Fifteen Minutes to FiftyOne](examples/fifteen_to_fiftyone) walkthrough is a
+good place to start.
 
 ## Installing extra packages
 
@@ -150,6 +157,19 @@ environment (with `pip install` followed by the given package names):
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.
 
-## Copyright
+## Upgrading FiftyOne
 
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
+Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
+upgrade an existing FiftyOne installation in-place:
+
+```sh
+pip install --index https://pypi.voxel51.com --upgrade fiftyone
+```
+
+## Uninstalling FiftyOne
+
+FiftyOne and all of its subpackages can be uninstalled with:
+
+```sh
+pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
+```

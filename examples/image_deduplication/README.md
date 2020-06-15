@@ -6,12 +6,15 @@ remove duplicate images from your dataset.
 ## Download the data
 
 First we download the dataset to disk. The dataset is a 1000 sample subset of
-CIFAR100, a dataset of 32x32 pixel images with one of 100 different
+CIFAR-100, a dataset of 32x32 pixel images with one of 100 different
 classification labels such as `apple`, `bicycle`, `porcupine`, etc.
 
 ```bash
-python download_dataset.py
+python -m fiftyone.examples.image_deduplication.download_dataset
 ```
+
+The above script uses `tensorflow.keras.datasets` to download the dataset, so
+you must have [TensorFlow installed](https://www.tensorflow.org/install).
 
 The dataset is organized on disk as follows:
 
@@ -32,22 +35,26 @@ The dataset is organized on disk as follows:
 As we will soon come to discover, some of these samples are duplicates and we
 have no clue which they are!
 
-## Walkthrough
+### Requirements
 
-### 0. Import FiftyOne
+This walkthrough requires the `tensorflow` package.
 
-Importing the main FiftyOne package is easy:
+```bash
+pip install tensorflow
+```
+
+## Create a dataset
+
+First start a `python` or `ipython` session and import the `fiftyone` package.
 
 ```python
 import fiftyone as fo
 ```
 
-### 1. Create a dataset
-
 Let's use a utililty method provided by FiftyOne to load the image
 classification dataset from disk:
 
-```python
+```py
 import os
 
 import fiftyone.utils.data as foud
@@ -56,121 +63,120 @@ dataset_name = "cifar100_with_duplicates"
 
 src_data_dir = os.path.join("/tmp/fiftyone", dataset_name)
 
-samples, _ = foud.parse_image_classification_dir_tree(src_data_dir)
+samples, classes = foud.parse_image_classification_dir_tree(src_data_dir)
 dataset = fo.Dataset.from_image_classification_samples(
-    samples, name=dataset_name
+    samples, name=dataset_name, classes=classes
 )
 ```
 
-### 2. Explore the dataset
+## Explore the dataset
 
 We can poke around in the dataset:
 
-```python
+```py
 # Print summary information about the dataset
-print(dataset.summary())
+print(dataset)
 
 # Print a random sample
 print(dataset.view().take(1).first())
 ```
 
-Create a view that filters only `mountain`
+Create a view that contains only samples whose ground truth label is
+`mountain`:
 
-```python
+```py
 view = dataset.view().match({"ground_truth.label": "mountain"})
 
 # Print summary information about the view
-print(view.summary())
+print(view)
 
 # Print the first sample in the view
 print(view.first())
 ```
 
-Create a view that sorts labels reverse-alphabetically
+Create a view with samples sorted by their ground truth labels in reverse
+alphabetical order:
 
-```python
+```py
 view = dataset.view().sort_by("ground_truth.label", reverse=True)
 
-print(view.summary())
+print(view)
 print(view.first())
 ```
 
-### 3. Visualize the dataset
+## Visualize the dataset
 
 Start browsing the dataset:
 
-```python
+```py
 session = fo.launch_dashboard(dataset=dataset)
 ```
 
 Narrow your scope to 10 random samples:
 
-```python
+```py
 session.view = dataset.view().take(10)
 ```
 
-Select some samples in the GUI and access their IDs from code!
+Click on some some samples in the GUI to select them and access their IDs from
+code!
 
-```python
+```py
 # Get the IDs of the currently selected samples in the dashboard
 sample_ids = session.selected
 ```
 
 Create a view that contains your currently selected samples:
 
-```python
+```py
 selected_view = dataset.view().select(session.selected)
 ```
 
 Update the dashboard to only show your selected samples:
 
-```python
+```py
 session.view = selected_view
 ```
 
-### 4. Compute file hashes
+## Compute file hashes
 
 Iterate over the samples and compute their file hashes:
 
-```python
+```py
 import fiftyone.core.utils as fou
 
 for sample in dataset:
     sample["file_hash"] = fou.compute_filehash(sample.filepath)
     sample.save()
 
-print(dataset.summary())
+print(dataset)
 ```
 
 We have two ways to visualize this new information:
 
-1. From your terminal:
+-   From your terminal:
 
-```python
+```py
 sample = dataset.view().first()
 print(sample)
 ```
 
-2. By refreshing the dashboard:
+-   By refreshing the dashboard:
 
-```python
+```py
 session.dataset = dataset
 ```
 
-### 5. Check for duplicates
+## Check for duplicates
 
-Now let's use a more powerful query to search for duplicate files, i.e., those
-with the same file hashses:
+Now let's use a simple Python statement to locate the duplicate files in the
+dataset, i.e., those with the same file hashses:
 
-```python
-pipeline = [
-    # Find all unique file hashes
-    {"$group": {"_id": "$file_hash", "count": {"$sum": 1}}},
-    # Filter out file hashes with a count of 1
-    {"$match": {"count": {"$gt": 1}}},
-]
+```py
+from collections import Counter
 
-dup_filehashes = [d["_id"] for d in dataset.aggregate(pipeline)]
+filehash_counts = Counter(sample.file_hash for sample in dataset)
+dup_filehashes = [k for k, v in filehash_counts.items() if v > 1]
 
 print("Number of duplicate file hashes: %d" % len(dup_filehashes))
 ```
@@ -178,7 +184,7 @@ print("Number of duplicate file hashes: %d" % len(dup_filehashes))
 Now let's create a view that contains only the samples with these duplicate
 file hashes:
 
-```python
+```py
 dup_view = (
     dataset.view()
     # Extract samples with duplicate file hashes
@@ -188,22 +194,21 @@ dup_view = (
 )
 
 print("Number of images that have a duplicate: %d" % len(dup_view))
-
 print("Number of duplicates: %d" % (len(dup_view) - len(dup_filehashes)))
 ```
 
 Of course, we can always use the dashboard to visualize our work!
 
-```python
+```py
 session.view = dup_view
 ```
 
-### 6. Delete duplicates
+## Delete duplicates
 
 Now let's delete the duplicate samples from the dataset using our `dup_view` to
 restrict our attention to known duplicates:
 
-```python
+```py
 print("Length of dataset before: %d" % len(dataset))
 
 _dup_filehashes = set()
@@ -220,14 +225,34 @@ print("Length of dataset after: %d" % len(dataset))
 print("Number of unique file hashes: %d" % len({s.file_hash for s in dataset}))
 ```
 
-### 7. Export the deduplicated dataset
+## Export the deduplicated dataset
 
 Finally, let's export a fresh copy of our now-duplicate-free dataset:
 
-```python
-dataset.export(label_field="ground_truth", export_dir="/tmp/fiftyone/export")
+```py
+EXPORT_DIR = "/tmp/fiftyone/export"
+
+dataset.export(label_field="ground_truth", export_dir=EXPORT_DIR)
 ```
 
-## Copyright
+Check out the contents of `/tmp/fiftyone/export` on disk to see how the data is
+organized.
 
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
+You can load the deduplicated dataset that you exported back into FiftyOne at
+any time as follows:
+
+```py
+no_dups_dataset = fo.Dataset.from_image_classification_dataset(
+    EXPORT_DIR, name="no_duplicates"
+)
+
+print(no_dups_dataset)
+```
+
+## Cleanup
+
+You can cleanup the files generated by this tutorial by running:
+
+```shell
+rm -rf /tmp/fiftyone
+```

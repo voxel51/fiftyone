@@ -12,28 +12,10 @@ find mistakes in your labels. It covers the following concepts:
 
 -   Install `torch` and `torchvision`, if necessary:
 
-```
+```shell
+# Modify as necessary (e.g., GPU install). See https://pytorch.org for options
 pip install torch
 pip install torchvision
-```
-
--   Download the test split of the CIFAR-10 dataset to
-    `~/fiftyone/cifar10/test`:
-
-```py
-#
-# This will soon be replaced with
-#   fiftyone zoo download cifar10 --split test
-#
-
-import fiftyone.zoo as foz
-import fiftyone.core.config as foc
-import fiftyone.core.odm as foo
-
-# It is safe to run this multiple times; the data will not be re-downloaded
-foc.set_config_settings(default_ml_backend="torch")
-foz.load_zoo_dataset("cifar10")
-foo.drop_database()
 ```
 
 -   Download a pretrained CIFAR-10 PyTorch model
@@ -63,21 +45,23 @@ import random
 import fiftyone as fo
 import fiftyone.zoo as foz
 
-dataset = foz.load_zoo_dataset("cifar10")
+# Load the CIFAR-10 test split
+# Downloads the dataset from the web if necessary
+dataset = foz.load_zoo_dataset("cifar10", splits=["test"])
 
-# @todo load this from ZooDatasetInfo
-labels_map = (
-    "airplane,automobile,bird,cat,deer,dog,frog,horse,ship,truck".split(",")
-)
+# Get the CIFAR-10 classes list
+info = foz.load_zoo_dataset_info("cifar10")
+classes = info.classes
 
-# Artificially make 10% of sample labels mistakes
-for sample in dataset.view().take(1000):
+# Artificially corrupt 10% of the labels
+_num_mistakes = int(0.1 * len(dataset))
+for sample in dataset.view().take(_num_mistakes):
     mistake = random.randint(0, 9)
-    while labels_map[mistake] == sample.ground_truth.label:
+    while classes[mistake] == sample.ground_truth.label:
         mistake = random.randint(0, 9)
 
     sample.tags.append("mistake")
-    sample["ground_truth"] = fo.Classification(label=labels_map[mistake])
+    sample.ground_truth = fo.Classification(label=classes[mistake])
     sample.save()
 ```
 
@@ -86,14 +70,14 @@ performed:
 
 ```py
 # Verify that the `mistake` tag is now in the dataset's schema
-print(dataset.summary())
+print(dataset)
 
 # Count the number of samples with the `mistake` tag
 num_mistakes = len(dataset.view().match_tag("mistake"))
 print("%d ground truth labels are now mistakes" % num_mistakes)
 ```
 
-## Run predictions on the dataset
+## Add predictions to the dataset
 
 Using an off-the-shelf model, let's now add predictions to the dataset, which
 are necessary for us to deduce some understanding of the possible label
@@ -174,7 +158,7 @@ for imgs, sample_ids in data_loader:
         sample = dataset[sample_id]
         sample.tags.append("processed")
         sample[model_name] = fo.Classification(
-            label=labels_map[prediction], logits=logits,
+            label=classes[prediction], logits=logits,
         )
         sample.save()
 ```
@@ -199,13 +183,13 @@ Now we can run a method from FiftyOne that estimates the mistakenness of the
 ground samples for which we generated predictions:
 
 ```py
-import fiftyone.brain.mistakenness as fbm
+import fiftyone.brain as fob
 
 # Get samples for which we added predictions
 h_view = dataset.view().match_tag("processed")
 
 # Compute mistakenness
-fbm.compute_mistakenness(h_view, model_name, label_field="ground_truth")
+fob.compute_mistakenness(h_view, model_name, label_field="ground_truth")
 ```
 
 The above method added `mistakenness` field to all samples for which we added
@@ -219,7 +203,7 @@ mistake_view = (dataset.view()
 )
 
 # Print some information about the view
-print(mistake_view.summary())
+print(mistake_view)
 
 # Inspect the first few samples
 print(mistake_view.head())
@@ -243,7 +227,3 @@ session.view = dataset.view().match_tag("mistake")
 # Show the samples we processed in rank order by the mistakenness
 session.view = mistake_view
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

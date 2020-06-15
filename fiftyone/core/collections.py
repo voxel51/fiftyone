@@ -20,9 +20,11 @@ from builtins import *
 
 import logging
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -33,6 +35,12 @@ class SampleCollection(object):
     """Abstract class representing a collection of
     :class:`fiftyone.core.sample.Sample` instances.
     """
+
+    def __str__(self):
+        return self.summary()
+
+    def __repr__(self):
+        return self.summary()
 
     def __bool__(self):
         return len(self) > 0
@@ -53,9 +61,6 @@ class SampleCollection(object):
 
     def __iter__(self):
         return self.iter_samples()
-
-    def __repr__(self):
-        return self.summary()
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -80,6 +85,20 @@ class SampleCollection(object):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
+
+    def compute_metadata(self, overwrite=False):
+        """Populates the ``metadata`` field of all samples in the collection.
+
+        Any samples with existing metadata are skipped, unless
+        ``overwrite == True`.
+
+        Args:
+            overwrite (False): whether to overwrite existing metadata
+        """
+        with fou.ProgressBar() as pb:
+            for sample in pb(self):
+                if sample.metadata is None or overwrite:
+                    sample.compute_metadata()
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the collection.
@@ -128,3 +147,39 @@ class SampleCollection(object):
                 "Cannot export labels of type '%s'"
                 % etau.get_class_name(labels[0])
             )
+
+    def to_dict(self):
+        """Returns a JSON dictionary representation of the collection.
+
+        The samples will be written as a list in a top-level ``samples`` field
+        of the returned dictionary.
+
+        Returns:
+            a JSON dict
+        """
+        return {"samples": [s.to_dict() for s in self]}
+
+    def to_json(self, pretty_print=False):
+        """Returns a JSON string representation of the collection.
+
+        The samples will be written as a list in a top-level ``samples`` field
+        of the returned dictionary.
+
+        Args:
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
+
+        Returns:
+            a JSON string
+        """
+        return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
+
+    def write_json(self, json_path, pretty_print=False):
+        """Writes the colllection to disk
+
+        Args:
+            json_path: the path to write the JSON
+            pretty_print (False): whether to render the JSON in human readable
+                format with newlines and indentations
+        """
+        etas.write_json(self.to_dict(), json_path, pretty_print=pretty_print)

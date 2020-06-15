@@ -55,17 +55,17 @@ export default class MenuBuilder {
 
   buildDarwinTemplate() {
     const subMenuAbout: DarwinMenuItemConstructorOptions = {
-      label: "Electron",
+      label: "FiftyOne",
       submenu: [
         {
-          label: "About ElectronReact",
+          label: "About FiftyOne",
           selector: "orderFrontStandardAboutPanel:",
         },
         { type: "separator" },
         { label: "Services", submenu: [] },
         { type: "separator" },
         {
-          label: "Hide ElectronReact",
+          label: "Hide FiftyOne",
           accelerator: "Command+H",
           selector: "hide:",
         },
@@ -173,29 +173,23 @@ export default class MenuBuilder {
       label: "Help",
       submenu: [
         {
-          label: "Learn More",
+          label: "Email",
           click() {
-            shell.openExternal("https://electronjs.org");
+            shell.openExternal("mailto:support@voxel51.com");
           },
         },
         {
           label: "Documentation",
           click() {
+            shell.openExternal("https://voxel51.com/docs/fiftyone");
+          },
+        },
+        {
+          label: "Slack",
+          click() {
             shell.openExternal(
-              "https://github.com/electron/electron/tree/master/docs#readme"
+              "https://voxel51.slack.com/app_redirect?channel=C0154574MKJ"
             );
-          },
-        },
-        {
-          label: "Community Discussions",
-          click() {
-            shell.openExternal("https://www.electronjs.org/community");
-          },
-        },
-        {
-          label: "Search Issues",
-          click() {
-            shell.openExternal("https://github.com/electron/electron/issues");
           },
         },
       ],
@@ -222,10 +216,6 @@ export default class MenuBuilder {
       {
         label: "&File",
         submenu: [
-          {
-            label: "&Open",
-            accelerator: "Ctrl+O",
-          },
           {
             label: "&Close",
             accelerator: "Ctrl+W",
@@ -293,29 +283,23 @@ export default class MenuBuilder {
         label: "Help",
         submenu: [
           {
-            label: "Learn More",
+            label: "Email",
             click() {
-              shell.openExternal("https://electronjs.org");
+              shell.openExternal("mailto:support@voxel51.com");
             },
           },
           {
             label: "Documentation",
             click() {
+              shell.openExternal("https://voxel51.com/docs/fiftyone");
+            },
+          },
+          {
+            label: "Slack",
+            click() {
               shell.openExternal(
-                "https://github.com/electron/electron/tree/master/docs#readme"
+                "https://voxel51.slack.com/app_redirect?channel=C0154574MKJ"
               );
-            },
-          },
-          {
-            label: "Community Discussions",
-            click() {
-              shell.openExternal("https://www.electronjs.org/community");
-            },
-          },
-          {
-            label: "Search Issues",
-            click() {
-              shell.openExternal("https://github.com/electron/electron/issues");
             },
           },
         ],
