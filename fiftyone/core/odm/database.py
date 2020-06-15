@@ -18,14 +18,23 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from mongoengine import connect
+import mongoengine
 
 _DEFAULT_DATABASE = "fiftyone"
 
 
-_db = connect(_DEFAULT_DATABASE)
+_db = None
+
+
+def connect():
+    """Returns a connection to the default database."""
+    global _db
+    if _db is None:
+        _db = mongoengine.connect(_DEFAULT_DATABASE)
+    return _db
 
 
 def drop_database():
     """Drops the database."""
-    _db.drop_database(_DEFAULT_DATABASE)
+    db = connect()
+    db.drop_database(_DEFAULT_DATABASE)
