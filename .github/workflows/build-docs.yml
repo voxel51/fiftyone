@@ -3,7 +3,7 @@ name: Build docs
 on:
   push:
     branches:
-      - develop
+      # - develop
       - rel-*
       - release-*
     tags:
@@ -18,7 +18,7 @@ on:
       - "**.rst"
   pull_request:
     branches:
-      - develop
+      # - develop
       - rel-*
       - release-*
     paths:

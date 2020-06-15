@@ -3,7 +3,7 @@ name: Build DB
 on:
   push:
     branches:
-      - develop
+      # - develop
       - rel-*
       - release-*
     tags:
@@ -13,7 +13,7 @@ on:
       - .github/workflows/build-db.yml
   pull_request:
     branches:
-      - develop
+      # - develop
       - rel-*
       - release-*
     paths:

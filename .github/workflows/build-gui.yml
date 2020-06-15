@@ -3,7 +3,7 @@ name: Build GUI
 on:
   push:
     branches:
-      - develop
+      # - develop
       - rel-*
       - release-*
     tags:
@@ -14,7 +14,7 @@ on:
       - .github/workflows/build-gui.yml
   pull_request:
     branches:
-      - develop
+      # - develop
       - rel-*
       - release-*
     paths:
