@@ -94,6 +94,122 @@ class CVATImageSampleParser(foud.LabeledImageSampleParser):
         return cvat_image.to_image_labels()
 
 
+class CVATTaskLabels(object):
+    """Description of the labels in a CVAT image annotation task.
+
+    Args:
+        labels (None): a list of label dicts in the following format::
+
+            [
+                {
+                    "name": "car",
+                    "attributes": [
+                        {
+                            "name": "type"
+                            "values": "coupe,sedan,truck"
+                        },
+                        ...
+                    }
+                },
+                ...
+            ]
+    """
+
+    def __init__(self, labels=None):
+        self.labels = labels or []
+
+    @classmethod
+    def from_cvat_images(cls, cvat_images):
+        """Creates a :class:`CVATTaskLabels` instance that describes the active
+        schema of the given annotations.
+
+        Args:
+            cvat_images: a list of :class:`CVATImage` instances
+
+        Returns:
+            a :class:`CVATTaskLabels`
+        """
+        schema = etai.ImageLabelsSchema()
+        for cvat_image in cvat_images:
+            for box in cvat_image.boxes:
+                _label = box.label
+                schema.add_object_label(_label)
+                for attr in box.attributes:
+                    _attr = etad.CategoricalAttribute(attr.name, attr.value)
+                    schema.add_object_attribute(_label, _attr)
+
+        return cls.from_schema(schema)
+
+    @classmethod
+    def from_labels_dict(cls, d):
+        """Creates a :class:`CVATTaskLabels` instance from the ``<labels>``
+        tag of a CVAT image annotation XML file.
+
+        Args:
+            d: a dict representation of a ``<labels>`` tag
+
+        Returns:
+            a :class:`CVATTaskLabels`
+        """
+        labels = _ensure_list(d.get("label", []))
+        return cls(labels=labels)
+
+    @classmethod
+    def from_schema(cls, schema):
+        """Creates a :class:`CVATTaskLabels` instance from an
+        ``eta.core.image.ImageLabelsSchema``.
+
+        Args:
+            schema: an ``eta.core.image.ImageLabelsSchema``
+
+        Returns:
+            a :class:`CVATTaskLabels`
+        """
+        labels = []
+        for obj_schemas in schema.objects:
+            for label, obj_schema in obj_schemas.iter_objects():
+                attributes = []
+                for name, attr_schema in obj_schema.attrs.iter_attributes():
+                    if isinstance(
+                        attr_schema, etad.CategoricalAttributeSchema
+                    ):
+                        attributes.append(
+                            {
+                                "name": name,
+                                "values": ",".join(
+                                    sorted(attr_schema.categories)
+                                ),
+                            }
+                        )
+
+                labels.append(
+                    {"name": label, "attributes": attributes,}
+                )
+
+        return cls(labels=labels)
+
+    def to_schema(self):
+        """Returns an ``eta.core.image.ImageLabelsSchema`` representation of
+        the task labels.
+
+        Returns:
+            an ``eta.core.image.ImageLabelsSchema``
+        """
+        schema = etai.ImageLabelsSchema()
+
+        for label in self.labels:
+            _label = label["name"]
+            schema.add_object_label(_label)
+            for attribute in label.get("attributes", []):
+                _name = attribute["name"]
+                _values = attribute["values"].split(",")
+                for _value in _values:
+                    _attr = etad.CategoricalAttribute(_name, _value.strip())
+                    schema.add_object_attribute(_label, _attr)
+
+        return schema
+
+
 class CVATImage(object):
     """An annotated image in CVAT image format.
 
@@ -172,7 +288,6 @@ class CVATImage(object):
         name = d["@name"]
         width = d["@width"]
         height = d["@height"]
-        frame_size = (width, height)
 
         boxes = []
         for box in _ensure_list(d.get("box", [])):
@@ -362,123 +477,7 @@ class CVATAttribute(object):
         self.value = value
 
 
-class CVATTaskLabels(object):
-    """Description of the labels in a CVAT image annotation task.
-
-    Args:
-        labels (None): a list of label dicts in the following format::
-
-            [
-                {
-                    "name": "car",
-                    "attributes": [
-                        {
-                            "name": "type"
-                            "values": "coupe,sedan,truck"
-                        },
-                        ...
-                    }
-                },
-                ...
-            ]
-    """
-
-    def __init__(self, labels=None):
-        self.labels = labels or []
-
-    @classmethod
-    def from_cvat_images(cls, cvat_images):
-        """Creates a :class:`CVATTaskLabels` instance that describes the active
-        schema of the given annotations.
-
-        Args:
-            cvat_images: a list of :class:`CVATImage` instances
-
-        Returns:
-            a :class:`CVATTaskLabels`
-        """
-        schema = etai.ImageLabelsSchema()
-        for cvat_image in cvat_images:
-            for box in cvat_image.boxes:
-                _label = box.label
-                schema.add_object_label(_label)
-                for attr in box.attributes:
-                    _attr = etad.CategoricalAttribute(attr.name, attr.value)
-                    schema.add_object_attribute(_label, _attr)
-
-        return cls.from_schema(schema)
-
-    @classmethod
-    def from_labels_dict(cls, d):
-        """Creates a :class:`CVATTaskLabels` instance from the ``<labels>``
-        tag of a CVAT image annotation XML file.
-
-        Args:
-            d: a dict representation of a ``<labels>`` tag
-
-        Returns:
-            a :class:`CVATTaskLabels`
-        """
-        labels = _ensure_list(d.get("label", []))
-        return cls(labels=labels)
-
-    @classmethod
-    def from_schema(cls, schema):
-        """Creates a :class:`CVATTaskLabels` instance from an
-        ``eta.core.image.ImageLabelsSchema``.
-
-        Args:
-            schema: an ``eta.core.image.ImageLabelsSchema``
-
-        Returns:
-            a :class:`CVATTaskLabels`
-        """
-        labels = []
-        for obj_schemas in schema.objects:
-            for label, obj_schema in obj_schemas.iter_objects():
-                attributes = []
-                for name, attr_schema in obj_schema.attrs.iter_attributes():
-                    if isinstance(
-                        attr_schema, etad.CategoricalAttributeSchema
-                    ):
-                        attributes.append(
-                            {
-                                "name": name,
-                                "values": ",".join(
-                                    sorted(attr_schema.categories)
-                                ),
-                            }
-                        )
-
-                labels.append(
-                    {"name": label, "attributes": attributes,}
-                )
-
-        return cls(labels=labels)
-
-    def to_schema(self):
-        """Returns an ``eta.core.image.ImageLabelsSchema`` representation of
-        the task labels.
-
-        Returns:
-            an ``eta.core.image.ImageLabelsSchema``
-        """
-        schema = etai.ImageLabelsSchema()
-
-        for label in self.labels:
-            _label = label["name"]
-            schema.add_object_label(_label)
-            for attribute in label.get("attributes", []):
-                _name = attribute["name"]
-                _values = attribute["values"].split(",")
-                for _value in _values:
-                    _attr = etad.CategoricalAttribute(_name, _value.strip())
-                    schema.add_object_attribute(_label, _attr)
-
-        return schema
-
-
-class CVATImageWriter(object):
+class CVATImageAnnotationWriter(object):
     """Class for writing annotations in CVAT image format.
 
     See :class:`fiftyone.types.CVATImageDataset` for format details.
@@ -511,6 +510,44 @@ class CVATImageWriter(object):
             }
         )
         etau.write_file(xml_str, xml_path)
+
+
+def parse_cvat_image_dataset(dataset_dir):
+    """Parses the CVAT image dataset stored in the given directory.
+
+    See :class:`fiftyone.types.CVATImageDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        a list of ``(img_path, image_metadata, detections)`` tuples
+    """
+    data_dir = os.path.join(dataset_dir, "data")
+    labels_path = os.path.join(dataset_dir, "labels.xml")
+
+    _, cvat_images = load_cvat_image_annotations(labels_path)
+
+    # Index by filename
+    images_map = {i.name: i for i in cvat_images}
+
+    filenames = etau.list_files(data_dir, abs_paths=False)
+
+    samples = []
+    for filename in filenames:
+        img_path = os.path.join(data_dir, filename)
+
+        cvat_image = images_map[filename]
+
+        metadata = fom.ImageMetadata(
+            width=cvat_image.width, height=cvat_image.height,
+        )
+
+        detections = cvat_image.to_detections()
+
+        samples.append((img_path, metadata, detections))
+
+    return samples
 
 
 def load_cvat_image_annotations(xml_path):
@@ -610,7 +647,7 @@ def export_cvat_image_dataset(samples, label_field, dataset_dir):
     cvat_task_labels = CVATTaskLabels.from_cvat_images(cvat_images)
 
     # Write annotations
-    writer = CVATImageWriter()
+    writer = CVATImageAnnotationWriter()
     writer.write(cvat_task_labels, cvat_images, labels_path)
 
     logger.info("Dataset created")
