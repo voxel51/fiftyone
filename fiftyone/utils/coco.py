@@ -25,7 +25,6 @@ from datetime import datetime
 import logging
 import os
 
-import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.serial as etas
 import eta.core.web as etaw
@@ -194,6 +193,8 @@ class COCOObject(object):
 def parse_coco_detection_dataset(dataset_dir):
     """Parses the COCO detection dataset stored in the given directory.
 
+    See :class:`fiftyone.types.COCODetectionDataset` for format details.
+
     Args:
         dataset_dir: the dataset directory
 
@@ -205,8 +206,8 @@ def parse_coco_detection_dataset(dataset_dir):
 
     classes, images, annotations = load_coco_detection_annotations(labels_path)
 
-    # Reindex by `filename`
-    images = {i["filename"]: i for i in images.values()}
+    # Index by filename
+    images_map = {i["filename"]: i for i in images.values()}
 
     filenames = etau.list_files(data_dir, abs_paths=False)
 
@@ -214,10 +215,7 @@ def parse_coco_detection_dataset(dataset_dir):
     for filename in filenames:
         img_path = os.path.join(data_dir, filename)
 
-        if filename not in image_dict:
-            continue
-
-        image_dict = images[filename]
+        image_dict = images_map[filename]
         image_id = image_dict["id"]
         width = image_dict["width"]
         height = image_dict["height"]
@@ -391,10 +389,6 @@ def export_coco_detection_dataset(
     logger.info("Dataset created")
 
 
-def _to_labels_map_rev(classes):
-    return {c: i for i, c in enumerate(classes)}
-
-
 def coco_categories_to_classes(categories):
     """Converts the COCO categories list to a class list.
 
@@ -521,3 +515,7 @@ _ANNOTATION_PATHS = {
         "validation": "annotations/instances_val2017.json",
     },
 }
+
+
+def _to_labels_map_rev(classes):
+    return {c: i for i, c in enumerate(classes)}
