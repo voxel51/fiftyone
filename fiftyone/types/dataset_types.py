@@ -215,8 +215,8 @@ class COCODetectionDataset(LabeledImageDataset):
 
         <dataset_dir>/
             data/
-                <file_name0>
-                <file_name1>
+                <filename0>
+                <filename1>
                 ...
             labels.json
 
@@ -238,7 +238,7 @@ class COCODetectionDataset(LabeledImageDataset):
                 {
                     "id": 0,
                     "license": null,
-                    "file_name": <file_name0>,
+                    "file_name": <filename0>,
                     "height": 480,
                     "width": 640,
                     "date_captured": null
@@ -369,48 +369,9 @@ class TFObjectDetectionDataset(LabeledImageDataset):
     pass
 
 
-class ImageLabelsDataset(LabeledImageDataset):
-    """A labeled dataset consisting of images and their associated multitask
-    predictions stored in ``eta.core.image.ImageLabels`` format.
-
-    Datasets of this type are read/written in the following format::
-
-        <dataset_dir>/
-            data/
-                <uuid1>.<ext>
-                <uuid2>.<ext>
-                ...
-            labels/
-                <uuid1>.json
-                <uuid2>.json
-                ...
-            manifest.json
-
-    where ``manifest.json`` is a JSON file in the following format::
-
-        {
-            "type": "eta.core.datasets.LabeledImageDataset",
-            "description": "",
-            "index": [
-                {
-                    "data": "data/<uuid1>.<ext>",
-                    "labels": "labels/<uuid1>.json"
-                },
-                ...
-            ]
-        }
-
-    and where each labels JSON file is stored in ``eta.core.image.ImageLabels``
-    format. See https://voxel51.com/docs/api/#types-imagelabels for more
-    details.
-    """
-
-    pass
-
-
 class CVATImageDataset(LabeledImageDataset):
-    """A labeled dataset consisting of images and their associated multitask
-    predictions stored in CVAT image format (https://github.com/opencv/cvat).
+    """A labeled dataset consisting of images and their associated object
+    detections stored in CVAT image format (https://github.com/opencv/cvat).
 
     Datasets of this type are read/written in the following format::
 
@@ -466,6 +427,45 @@ class CVATImageDataset(LabeledImageDataset):
                 ...
             </image>
         </annotations>
+    """
+
+    pass
+
+
+class ImageLabelsDataset(LabeledImageDataset):
+    """A labeled dataset consisting of images and their associated multitask
+    predictions stored in ``eta.core.image.ImageLabels`` format.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.json
+                <uuid2>.json
+                ...
+            manifest.json
+
+    where ``manifest.json`` is a JSON file in the following format::
+
+        {
+            "type": "eta.core.datasets.LabeledImageDataset",
+            "description": "",
+            "index": [
+                {
+                    "data": "data/<uuid1>.<ext>",
+                    "labels": "labels/<uuid1>.json"
+                },
+                ...
+            ]
+        }
+
+    and where each labels JSON file is stored in ``eta.core.image.ImageLabels``
+    format. See https://voxel51.com/docs/api/#types-imagelabels for more
+    details.
     """
 
     pass
