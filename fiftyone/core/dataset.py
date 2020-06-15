@@ -36,8 +36,10 @@ import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
-import fiftyone.utils.coco as fouc
+import fiftyone.utils.coco as fouco
+import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
+import fiftyone.utils.tf as fout
 import fiftyone.utils.voc as fouv
 import fiftyone.types as fot
 
@@ -536,6 +538,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset_dir, label_field=label_field, tags=tags
             )
 
+        if isinstance(dataset_type, fot.TFImageClassificationDataset):
+            return self.add_tf_image_classification_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
         if isinstance(dataset_type, fot.ImageDetectionDataset):
             return self.add_image_detection_dataset(
                 dataset_dir, label_field=label_field, tags=tags
@@ -548,6 +555,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if isinstance(dataset_type, fot.VOCDetectionDataset):
             return self.add_voc_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.TFObjectDetectionDataset):
+            return self.add_tf_object_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.CVATImageDataset):
+            return self.add_cvat_image_dataset(
                 dataset_dir, label_field=label_field, tags=tags
             )
 
@@ -840,7 +857,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        samples = fouc.parse_coco_detection_dataset(dataset_dir)
+        samples = fouco.parse_coco_detection_dataset(dataset_dir)
 
         _samples = []
         for img_path, metadata, detections in samples:
@@ -875,6 +892,131 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of IDs of the samples in the dataset
         """
         samples = fouv.parse_voc_detection_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_tf_image_classification_dataset(
+        self,
+        dataset_dir,
+        label_field="ground_truth",
+        tags=None,
+        images_dir=None,
+        image_format=None,
+    ):
+        """Adds the given TF image classification dataset stored on disk to the
+        dataset.
+
+        See :class:`fiftyone.types.TFImageClassificationDataset` for format
+        details.
+
+        The images are read in-memory and written to ``images_dir``.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Classification` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+            images_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        tf_records_patt = os.path.join(dataset_dir, "*")
+        samples = fout.from_tf_records(tf_records_patt)
+
+        sample_parser = fout.TFImageClassificationSampleParser()
+
+        return self.ingest_labeled_image_samples(
+            samples,
+            label_field=label_field,
+            tags=tags,
+            dataset_dir=images_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+    def add_tf_object_detection_dataset(
+        self,
+        dataset_dir,
+        label_field="ground_truth",
+        tags=None,
+        images_dir=None,
+        image_format=None,
+    ):
+        """Adds the given TF object detection dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.TFObjectDetectionDataset` for format
+        details.
+
+        The images are read in-memory and written to ``images_dir``.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+            images_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        tf_records_patt = os.path.join(dataset_dir, "*")
+        samples = fout.from_tf_records(tf_records_patt)
+
+        sample_parser = fout.TFObjectDetectionSampleParser()
+
+        return self.ingest_labeled_image_samples(
+            samples,
+            label_field=label_field,
+            tags=tags,
+            dataset_dir=images_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+    def add_cvat_image_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given CVAT image dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.CVATImageDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = foucv.parse_cvat_image_dataset(dataset_dir)
 
         _samples = []
         for img_path, metadata, detections in samples:
