@@ -310,7 +310,7 @@ class ZooDatasetInfo(etas.Serializable):
 
     Args:
         zoo_dataset: the :class:`ZooDataset` instance for the dataset
-        format: the :class:`fiftyone.types.DatasetType` of the dataset
+        format: the :class:`fiftyone.types.Dataset` type of the dataset
         num_samples: the total number of samples in all downloaded splits of
             the dataset
         downloaded_splits (None): a dict of :class:`ZooDatasetSplitInfo`
@@ -352,7 +352,7 @@ class ZooDatasetInfo(etas.Serializable):
     @property
     def format_cls(self):
         """The fully-qualified class string for the
-        :class:`fiftyone.types.DatasetType` of the dataset.
+        :class:`fiftyone.types.Dataset` type of the dataset.
         """
         return etau.get_class_name(self.format)
 
@@ -637,7 +637,7 @@ class ZooDataset(object):
                 not have splits
 
         Returns:
-            format: the :class:`fiftyone.types.DatasetType` of the dataset
+            format: the :class:`fiftyone.types.Dataset` type of the dataset
             num_samples: the number of samples in the split
             classes: an optional list of class label strings
         """
