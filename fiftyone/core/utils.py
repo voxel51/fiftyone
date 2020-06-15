@@ -11,7 +11,6 @@ import importlib
 import io
 import itertools
 import logging
-import resource
 import signal
 import sys
 import types
@@ -192,8 +191,9 @@ class ResourceLimit(object):
             # temporarily do things with up to 4096 open files
 
     Args:
-        limit: the resource to limit. See the documentation of the
-            `resource` module for supported values
+        limit: the name of the resource to limit. Must be the name of a
+            constant in the `resource` module starting with `RLIMIT`. See the
+            documentation of the `resource` module for supported values
         soft: a new soft limit to apply, which cannot exceed the hard limit
         hard: a new hard limit to apply, which cannot exceed the current
             hard limit
@@ -201,8 +201,18 @@ class ResourceLimit(object):
             if the resource limit change is not successful
     """
 
-    def __init__(self, limit, soft=None, hard=None, warn_on_failure=False):
-        self._limit = limit
+    def __init__(
+        self, limit_name, soft=None, hard=None, warn_on_failure=False
+    ):
+        if not limit_name.startswith("RLIMIT_"):
+            raise ValueError("Invalid limit name: %r")
+
+        try:
+            import resource
+        except ImportError:
+            return
+
+        self._limit = getattr(resource, limit_name)
         self._soft = soft
         self._hard = hard
         self._soft_orig = None
@@ -210,6 +220,11 @@ class ResourceLimit(object):
         self._warn_on_failure = warn_on_failure
 
     def __enter__(self):
+        try:
+            import resource
+        except ImportError:
+            return
+
         self._soft_orig, self._hard_orig = resource.getrlimit(self._limit)
         soft = self._soft or self._soft_orig
         hard = self._hard or self._hard_orig
@@ -220,6 +235,11 @@ class ResourceLimit(object):
         self._set_resource_limit(self._soft_orig, self._hard_orig)
 
     def _set_resource_limit(self, soft, hard):
+        try:
+            import resource
+        except ImportError:
+            return
+
         try:
             resource.setrlimit(self._limit, (soft, hard))
         except ValueError as e:
