@@ -1011,16 +1011,36 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset1 = fo.Dataset(dataset_name % 1)
         dataset2 = fo.Dataset(dataset_name % 2)
 
+        # Dataset.add_sample()
+
         sample = fo.Sample(filepath="test.png")
 
         sample_id = dataset1.add_sample(sample)
         self.assertIs(dataset1[sample_id], sample)
         self.assertEqual(sample.dataset_name, dataset1.name)
 
-        sample_id = dataset2.add_sample(sample)
-        sample2 = dataset2[sample_id]
+        sample_id2 = dataset2.add_sample(sample)
+        self.assertNotEqual(sample_id2, sample_id)
+
+        sample2 = dataset2[sample_id2]
         self.assertIs(dataset1[sample.id], sample)
-        self.assertIsNot(dataset2[sample_id], sample)
+        self.assertIsNot(dataset2[sample_id2], sample)
+        self.assertEqual(sample2.dataset_name, dataset2.name)
+
+        # Dataset.add_samples()
+
+        sample = fo.Sample(filepath="test2.png")
+
+        sample_id = dataset1.add_samples([sample])[0]
+        self.assertIs(dataset1[sample_id], sample)
+        self.assertEqual(sample.dataset_name, dataset1.name)
+
+        sample_id2 = dataset2.add_samples([sample])[0]
+        self.assertNotEqual(sample_id2, sample_id)
+
+        sample2 = dataset2[sample_id2]
+        self.assertIs(dataset1[sample.id], sample)
+        self.assertIsNot(dataset2[sample_id2], sample)
         self.assertEqual(sample2.dataset_name, dataset2.name)
 
     @drop_datasets

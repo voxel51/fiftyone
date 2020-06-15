@@ -371,10 +371,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
+        d.pop("_id", None)  # remove the ID if in DB
         self._collection.insert_one(d)  # adds "_id" to `d`
         doc = self._sample_doc_cls.from_dict(d, extended=False)
 
-        sample._set_backing_doc(doc)
+        if not sample._in_db:
+            sample._set_backing_doc(doc)
 
         return str(doc.id)
 
@@ -413,23 +415,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expand_schema:
             self._expand_schema(samples)
 
-        samples = [
-            sample.copy() if sample._in_db else sample for sample in samples
-        ]
-
         for sample in samples:
             self._validate_sample(sample)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
-        self._collection.insert_many(dicts)
-        docs = [
-            self._sample_doc_cls.from_dict(d, extended=False) for d in dicts
-        ]
+        for d in dicts:
+            d.pop("_id", None)  # remove the ID if in DB
+        self._collection.insert_many(dicts)  # adds "_id" to `d`
 
-        for sample, doc in zip(samples, docs):
-            sample._set_backing_doc(doc)
+        for sample, d in zip(samples, dicts):
+            if not sample._in_db:
+                doc = self._sample_doc_cls.from_dict(d, extended=False)
+                sample._set_backing_doc(doc)
 
-        return [str(doc.id) for doc in docs]
+        return [str(d["_id"]) for d in dicts]
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
