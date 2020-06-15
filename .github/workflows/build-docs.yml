@@ -6,6 +6,8 @@ on:
       # - develop
       - rel-*
       - release-*
+      - docs-*
+      - github-actions-*
     tags:
       - v*
     paths:

@@ -6,6 +6,7 @@ on:
       - develop
       - rel-*
       - release-*
+      - github-actions-*
     tags:
       - v*
   pull_request:
