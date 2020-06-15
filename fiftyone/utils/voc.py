@@ -26,7 +26,6 @@ import os
 
 import jinja2
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
@@ -112,18 +111,141 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
 
     def _parse_label(self, target, img=None):
         if etau.is_str(target):
-            target = fou.load_xml_as_json_dict(target)
+            annotation = VOCAnnotation.from_xml(target)
+        else:
+            annotation = VOCAnnotation.from_dict(target)
 
-        annotation = target["annotation"]
-        size = annotation["size"]
-        frame_size = (int(size["width"]), int(size(["height"])))
+        return annotation.to_detections()
 
-        objects = _ensure_list(annotation.get("object", []))
-        detections = [
-            VOCObject.from_annotation_dict(obj).to_detection(frame_size)
-            for obj in objects
-        ]
+
+class VOCAnnotation(object):
+    """Class representing a VOC annotations file.
+
+    Args:
+        path (None): the path to the image on disk
+        folder (None): the name of the folder containing the image
+        filename (None): the image filename
+        segmented (None): whether the objects are segmented
+        metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
+            instance
+        objects (None): a list of :class:`VOCObject` instances
+    """
+
+    def __init__(
+        self,
+        path=None,
+        folder=None,
+        filename=None,
+        segmented=None,
+        metadata=None,
+        objects=None,
+    ):
+        if folder is None and path:
+            folder = os.path.basename(os.path.dirname(path))
+
+        if filename is None and path:
+            filename = os.path.basename(path)
+
+        self.path = path
+        self.folder = folder
+        self.filename = filename
+        self.segmented = segmented or False
+        self.metadata = metadata
+        self.objects = objects or []
+
+    def to_detections(self):
+        """Returns a :class:`fiftyone.core.labels.Detections` representation of
+        the objects in the annotation.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detections`
+        """
+        if self.metadata is None:
+            raise ValueError(
+                "Must have metadata in order to convert to `Detections` format"
+            )
+
+        frame_size = (self.metadata.width, self.metadata.height)
+        detections = [obj.to_detection(frame_size) for obj in self.objects]
         return fol.Detections(detections=detections)
+
+    @classmethod
+    def from_labeled_image(cls, img_path, metadata, detections):
+        """Creates a :class:`VOCAnnotation` instance for the given labeled
+        image data.
+
+        Args:
+            img_path: the path to the image on disk
+            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` instance
+                for the image
+            detections: a :class:`fiftyone.core.labels.Detections`
+
+        Returns:
+            a :class:`VOCAnnotation`
+        """
+        objects = []
+        for detection in detections.detections:
+            obj = VOCObject.from_detection(detection, metadata)
+            objects.append(obj)
+
+        return cls(
+            path=img_path, segmented=False, metadata=metadata, objects=objects
+        )
+
+    @classmethod
+    def from_xml(cls, xml_path):
+        """Creates a :class:`VOCAnnotation` instance from an XML annotations
+        file.
+
+        Args:
+            xml_path: the path to the XML file
+
+        Returns:
+            a :class:`VOCAnnotation`
+        """
+        d = fou.load_xml_as_json_dict(xml_path)
+        return cls.from_dict(d)
+
+    @classmethod
+    def from_dict(cls, d):
+        """Creates a :class:`VOCAnnotation` instance from a JSON dict
+        representation.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            a :class:`VOCAnnotation`
+        """
+        annotation = d["annotation"]
+
+        folder = d.get("folder", None)
+        filename = d.get("filename", None)
+        path = d["path"]
+
+        segmented = d.get("segmented", None)
+
+        if "size" in annotation:
+            size = annotation["size"]
+            metadata = fom.ImageMetadata(
+                width=int(size["width"]),
+                height=int(size["height"]),
+                num_channels=int(size["depth"]),
+            )
+        else:
+            metadata = None
+
+        _objects = _ensure_list(annotation.get("object", []))
+        objects = [VOCObject.from_annotation_dict(do) for do in _objects]
+
+        return cls(
+            path=path,
+            folder=folder,
+            filename=filename,
+            segmented=segmented,
+            metadata=metadata,
+            objects=objects,
+        )
 
 
 class VOCObject(object):
@@ -308,32 +430,29 @@ class VOCAnnotationWriter(object):
         )
         self.template = environment.get_template("voc_annotation_template.xml")
 
-    def write(self, detections, metadata, img_path, xml_path):
+    def write(self, annotation, xml_path):
         """Writes the annotations to disk.
 
         Args:
-            detections: a :class:`fiftyone.core.labels.Detections`
-            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` instance
-                for the image
-            img_path: the path to the image on disk
-            xml_path: the path to write the annotations XML file
+            annotation: a :class:`VOCAnnotation` instance
+            xml_path: the path to write the annotation XML file
         """
-        objects = []
-        for detection in detections.detections:
-            obj = VOCObject.from_detection(detection, metadata)
-            objects.append(obj)
+        if annotation.metadata is not None:
+            metadata = annotation.metadata
+        else:
+            metadata = fom.ImageMetadata()
 
         xml_str = self.template.render(
             {
-                "path": img_path,
-                "filename": os.path.basename(img_path),
-                "folder": os.path.basename(os.path.dirname(img_path)),
+                "path": annotation.path,
+                "filename": annotation.filename,
+                "folder": annotation.folder,
                 "width": metadata.width,
                 "height": metadata.height,
                 "depth": metadata.num_channels,
                 "database": "",
-                "segmented": "",
-                "objects": objects,
+                "segmented": 1 if annotation.segmented else 0,
+                "objects": annotation.objects,
             }
         )
         etau.write_file(xml_str, xml_path)
@@ -341,6 +460,8 @@ class VOCAnnotationWriter(object):
 
 def parse_voc_detection_dataset(dataset_dir):
     """Parses the VOC detection dataset stored in the given directory.
+
+    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -351,38 +472,57 @@ def parse_voc_detection_dataset(dataset_dir):
     data_dir = os.path.join(dataset_dir, "data")
     labels_dir = os.path.join(dataset_dir, "labels")
 
-    image_filenames = etau.list_files(data_dir, abs_paths=False)
-    labels_filenames = etau.list_files(labels_dir, abs_paths=False)
+    img_uuids_to_paths = {
+        os.path.splitext(f)[0]: os.path.join(data_dir, f)
+        for f in etau.list_files(data_dir, abs_paths=False)
+    }
 
-    # @todo complete this
+    anno_paths = etau.list_files(labels_dir, abs_paths=True)
+
     samples = []
+    for anno_path in anno_paths:
+        annotation = load_voc_detection_annotations(anno_path)
 
-    """
-    for filename in filenames:
-        img_path = os.path.join(data_dir, filename)
+        #
+        # Use image filename from annotation file if possible. Otherwise, use
+        # the filename to locate the corresponding image
+        #
 
-        if filename not in image_dict:
-            continue
+        if annotation.filename:
+            uuid = os.path.splitext(annotation.filename)[0]
+        elif annotation.path:
+            uuid = os.path.splitext(os.path.basename(annotation.path))[0]
+        else:
+            uuid = None
 
-        image_dict = images[filename]
-        image_id = image_dict["id"]
-        width = image_dict["width"]
-        height = image_dict["height"]
+        if uuid not in img_uuids_to_paths:
+            uuid = os.path.splitext(os.path.basename(anno_path))[0]
 
-        metadata = fom.ImageMetadata(width=width, height=height)
+        img_path = img_uuids_to_paths[uuid]
 
-        frame_size = (width, height)
-        detections = fol.Detections(
-            detections=[
-                obj.to_detection(frame_size, classes)
-                for obj in annotations.get(image_id, [])
-            ]
-        )
+        if annotation.metadata is None:
+            annotation.metadata = fom.ImageMetadata.build_for(img_path)
 
+        metadata = annotation.metadata
+
+        detections = annotation.to_detections()
         samples.append((img_path, metadata, detections))
-    """
 
     return samples
+
+
+def load_voc_detection_annotations(xml_path):
+    """Loads the VOC detection annotations from the given XML file.
+
+    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+
+    Args:
+        xml_path: the path to the annotations XML file
+
+    Returns:
+        a :class:`VOCAnnotation` instance
+    """
+    return VOCAnnotation.from_xml(xml_path)
 
 
 def export_voc_detection_dataset(samples, label_field, dataset_dir):
@@ -435,7 +575,10 @@ def export_voc_detection_dataset(samples, label_field, dataset_dir):
                 metadata = fom.ImageMetadata.build_for(img_path)
 
             label = sample[label_field]
-            writer.write(label, metadata, out_img_path, out_anno_path)
+            annotation = VOCAnnotation.from_labeled_image(
+                out_img_path, metadata, label
+            )
+            writer.write(annotation, out_anno_path)
 
     logger.info("Dataset created")
 
