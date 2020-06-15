@@ -183,6 +183,13 @@ class Sample(object):
         """
         return self._doc.clear_field(field_name=field_name)
 
+    def iter_fields(self):
+        """Returns an iterator over the field (name, value) pairs of the
+        sample.
+        """
+        for field_name in self.field_names:
+            yield field_name, self.get_field(field_name)
+
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
         mime_type = etau.guess_mime_type(self.filepath)
@@ -200,25 +207,8 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
+        kwargs = {f: deepcopy(self[f]) for f in self.field_names}
         return self.__class__(**kwargs)
-
-    def clone_doc(self, doc_cls=None):
-        """Returns a deep clone of the backing document of the sample.
-
-        Args:
-            doc_cls (None): a :class:`fiftyone.core.odm.ODMSample` class to
-                use for the backing document. By default, the backing document
-                class of the sample is used
-
-        Returns:
-            a :class:`fiftyone.core.odm.ODMSample`
-        """
-        if doc_cls is None:
-            doc_cls = self._doc.__class__
-
-        kwargs = {f: deepcopy(getattr(self._doc, f)) for f in self.field_names}
-        return doc_cls(**kwargs)
 
     def to_dict(self):
         """Serializes the sample to a JSON dictionary.
@@ -266,7 +256,8 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        return cls.from_dict(json.loads(s))
+        doc = foo.ODMNoDatasetSample.from_json(s)
+        return cls.from_doc(doc)
 
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
