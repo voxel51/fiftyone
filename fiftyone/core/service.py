@@ -98,6 +98,10 @@ class Service(object):
 class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
 
+    MONGOD_EXE_NAME = "mongod"
+    if sys.platform.startswith("win"):
+        MONGOD_EXE_NAME += ".exe"
+
     MIN_MONGO_VERSION = "3.6"
 
     @property
@@ -135,7 +139,7 @@ class DatabaseService(Service):
             if folder in searched:
                 continue
             searched.add(folder)
-            mongod_path = os.path.join(folder, "mongod")
+            mongod_path = os.path.join(folder, DatabaseService.MONGOD_EXE_NAME)
             if os.path.isfile(mongod_path):
                 ok, out, err = etau.communicate([mongod_path, "--version"])
                 out = out.decode(errors="ignore").strip()
