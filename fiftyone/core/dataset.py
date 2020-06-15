@@ -259,10 +259,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fov.DatasetView(self)
 
     def get_field_schema(self, ftype=None, embedded_doc_type=None):
-        """Returns a schema dictionary describing the fields of this sample.
-
-        If the sample belongs to a dataset, the schema will apply to all
-        samples in the dataset.
+        """Returns a schema dictionary describing the fields of the samples in
+        the dataset.
 
         Args:
             ftype (None): an optional field type to which to restrict the
@@ -510,7 +508,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.DatasetType` of the
+            dataset_type: the :class:`fiftyone.types.Dataset` type of the
                 dataset in the specified directory
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
@@ -1237,7 +1235,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.DatasetType` of the
+            dataset_type: the :class:`fiftyone.types.Dataset` type of the
                 dataset in the specified directory
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
