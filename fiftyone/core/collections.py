@@ -21,11 +21,16 @@ from builtins import *
 import logging
 
 import eta.core.serial as etas
-import eta.core.utils as etau
 
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+import fiftyone.types as fot
+import fiftyone.utils.coco as fouco
+import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
+import fiftyone.utils.tf as fout
+import fiftyone.utils.voc as fouv
 
 
 logger = logging.getLogger(__name__)
@@ -70,14 +75,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement summary()")
 
-    def get_tags(self):
-        """Returns the list of tags in the collection.
-
-        Returns:
-            a list of tags
-        """
-        raise NotImplementedError("Subclass must implement get_tags()")
-
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.
 
@@ -85,6 +82,31 @@ class SampleCollection(object):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
+
+    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+        """Returns a schema dictionary describing the fields of the samples in
+        the collection.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:``fiftyone.core.fields.Field``
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
+
+        Returns:
+             a dictionary mapping field names to field types
+        """
+        raise NotImplementedError("Subclass must implement get_field_schema()")
+
+    def get_tags(self):
+        """Returns the list of tags in the collection.
+
+        Returns:
+            a list of tags
+        """
+        raise NotImplementedError("Subclass must implement get_tags()")
 
     def compute_metadata(self, overwrite=False):
         """Populates the ``metadata`` field of all samples in the collection.
@@ -112,37 +134,66 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement aggregate()")
 
-    # @todo give user more control over export format/schema here...
-    def export(self, label_field, export_dir):
-        """Exports the samples in the collection to disk as a labeled dataset,
-        using the given label field as labels.
-
-        The format of the dataset on disk will depend on the
-        :class:`fiftyone.core.labels.Label` class of the labels in the
-        specified group.
+    def export(
+        self, export_dir, label_field=None, dataset_type=None, **kwargs
+    ):
+        """Exports the samples in the collection to disk as a labeled dataset.
 
         Args:
-            label_field: the name of the label field to export
             export_dir: the directory to which to export
+            label_field (None): the name of the label field to export. If not
+                specified, the first field of compatible type to
+                ``dataset_type`` is exported
+            dataset_type (None): the :class:`fiftyone.types.Dataset` format in
+                which to export. If not specified, the default type for
+                ``label_field`` is used
         """
-        if not self:
-            logger.warning("No samples to export; returning now")
-            return
+        if label_field is None:
+            label_fields = self.get_field_schema(
+                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+            )
+            # @todo implement this
 
-        label = next(self.iter_samples())
-        if isinstance(label, fol.Classification):
+        if dataset_type is None:
+            sample = next(self.iter_samples())
+            label = sample[label_field]
+            label_type = type(label)
+            # @todo implement this
+
+        if isinstance(dataset_type, fot.ImageClassificationDataset):
             foud.export_image_classification_dataset(
-                self, label_field, export_dir
+                self, label_field, export_dir, **kwargs
             )
-        elif isinstance(label, fol.Detections):
-            foud.export_image_detection_dataset(self, label_field, export_dir)
-        elif isinstance(label, fol.ImageLabels):
-            foud.export_image_labels_dataset(self, label_field, export_dir)
+        elif isinstance(dataset_type, fot.TFImageClassificationDataset):
+            fout.export_tf_image_classification_dataset(
+                self, label_field, export_dir, **kwargs
+            )
+        elif isinstance(dataset_type, fot.ImageDetectionDataset):
+            foud.export_image_detection_dataset(
+                self, label_field, export_dir, **kwargs
+            )
+        elif isinstance(dataset_type, fot.COCODetectionDataset):
+            return fouco.export_coco_detection_dataset(
+                self, label_field, export_dir, **kwargs
+            )
+        elif isinstance(dataset_type, fot.VOCDetectionDataset):
+            return fouv.export_voc_detection_dataset(
+                self, label_field, export_dir, **kwargs
+            )
+        elif isinstance(dataset_type, fot.TFObjectDetectionDataset):
+            return fout.export_tf_object_detection_dataset(
+                self, label_field, export_dir, **kwargs
+            )
+        elif isinstance(dataset_type, fot.CVATImageDataset):
+            return foucv.export_cvat_image_dataset(
+                self, label_field, export_dir, **kwargs
+            )
+        elif isinstance(dataset_type, fot.ImageLabelsDataset):
+            foud.export_image_labels_dataset(
+                self, label_field, export_dir, **kwargs
+            )
         else:
-            raise ValueError(
-                "Cannot export labels of type '%s'"
-                % etau.get_class_name(label)
-            )
+            raise ValueError("Unsupported dataset type '%s'" % dataset_type)
 
     def to_dict(self):
         """Returns a JSON dictionary representation of the collection.
