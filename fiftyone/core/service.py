@@ -119,9 +119,9 @@ class DatabaseService(Service):
         super().start()
 
         # Set up a default connection
-        import fiftyone.core.odm.database as food
+        import fiftyone.core.odm as foo
 
-        food.connect()
+        foo.get_db_conn()
 
         # Drop non-persistent datasets
         import fiftyone.core.dataset as fod
