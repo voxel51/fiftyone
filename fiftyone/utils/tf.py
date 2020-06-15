@@ -25,7 +25,6 @@ import os
 
 import contextlib2
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
@@ -565,7 +564,7 @@ def export_tf_object_detection_dataset(
     if classes is None:
         classes = set()
         for sample in samples:
-            for detection in samples[label_field].detections:
+            for detection in sample[label_field].detections:
                 classes.add(detection.label)
 
         classes = sorted(classes)
