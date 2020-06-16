@@ -88,6 +88,11 @@ jobs:
         with:
           name: wheel-macos
           path: package/gui/dist/*macos*.whl
+      - name: Upload wheel (Windows)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-windows
+          path: package/gui/dist/*win*.whl
 
   publish:
     runs-on: ubuntu-18.04
