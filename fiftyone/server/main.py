@@ -29,13 +29,14 @@ from flask_socketio import emit, Namespace, SocketIO
 os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.odm as foo
 import fiftyone.core.state as fos
 
 from util import get_image_size
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
-
+foo.get_db_conn()
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "fiftyone"
 
