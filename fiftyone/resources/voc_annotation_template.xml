@@ -10,13 +10,13 @@
         <height>{{ height }}</height>
         <depth>{{ depth }}</depth>
     </size>
-    <segmented>{{ segmented }}</segmented>
+    <segmented>{{ 1 if segmented else 0 }}</segmented>
 {% for object in objects %}
     <object>
         <name>{{ object.name }}</name>
-        <pose>{{ object.pose }}</pose>
-        <truncated>{{ object.truncated }}</truncated>
-        <difficult>{{ object.difficult }}</difficult>
+        <pose>{{ object.pose if object.pose else "" }}</pose>
+        <truncated>{{ 1 if object.truncated else 0 }}</truncated>
+        <difficult>{{ 1 if object.difficult else 0 }}</difficult>
         <bndbox>
             <xmin>{{ object.bndbox.xmin }}</xmin>
             <ymin>{{ object.bndbox.ymin }}</ymin>
