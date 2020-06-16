@@ -485,7 +485,9 @@ class CVATImageAnnotationWriter(object):
 
     def __init__(self):
         environment = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(foc.RESOURCES_DIR)
+            loader=jinja2.FileSystemLoader(foc.RESOURCES_DIR),
+            trim_blocks=True,
+            lstrip_blocks=True,
         )
         self.template = environment.get_template(
             "cvat_image_annotation_template.xml"

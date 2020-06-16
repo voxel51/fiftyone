@@ -1,4 +1,3 @@
-#jinja2: lstrip_blocks: "True", trim_blocks: "True"
 <?xml version="1.0" encoding="utf-8"?>
 <annotations>
     <version>{{ version }}</version>
