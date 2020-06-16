@@ -287,9 +287,13 @@ class DatasetsCreateCommand(Command):
     """Tools for creating FiftyOne datasets.
 
     Examples::
-        # Creates a persistent dataset from the given data on disk
+
+        # Creates a dataset from the given data on disk
         fiftyone datasets create \\
-            --name <name> --type <type> --dataset-dir <dataset-dir>
+            --name <name> --dataset-dir <dataset-dir> --type <type>
+
+        # Creates a dataset from the given samples JSON file
+        fiftyone datasets create --json-path <json-path>
     """
 
     @staticmethod
@@ -298,27 +302,45 @@ class DatasetsCreateCommand(Command):
             "-n", "--name", metavar="NAME", help="a name for the dataset",
         )
         parser.add_argument(
-            "-t",
-            "--type",
-            required=True,
-            metavar="TYPE",
-            help="the `fiftyone.types.Dataset` type of the dataset",
-        )
-        parser.add_argument(
             "-d",
             "--dataset-dir",
-            required=True,
             metavar="DATASET_DIR",
             help="the directory containing the dataset",
+        )
+        parser.add_argument(
+            "-j",
+            "--json-path",
+            metavar="JSON_PATH",
+            help="the path to a samples JSON file to load",
+        )
+        parser.add_argument(
+            "-t",
+            "--type",
+            metavar="TYPE",
+            help=(
+                "the type of the dataset (a subclass of "
+                "`fiftyone.types.BaseDataset`)"
+            ),
         )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
         dataset_dir = args.dataset_dir
-        dataset_type = etau.get_class(args.type)
+        json_path = args.json_path
+        dataset_type = etau.get_class(args.type) if args.type else None
 
-        dataset = fod.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+        if dataset_dir:
+            dataset = fod.Dataset.from_dir(
+                dataset_dir, dataset_type, name=name
+            )
+        elif json_path:
+            dataset = fod.Dataset.from_json(json_path, name=name)
+        else:
+            raise ValueError(
+                "Either `dataset_dir` or `json_path` must be provided"
+            )
+
         dataset.persistent = True
 
         print("Dataset '%s' created" % dataset.name)
@@ -502,6 +524,9 @@ class DashboardViewCommand(Command):
         # View a zoo dataset in the dashboard
         fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
 
+        # View a dataset stored in JSON format on disk in the dashboard
+        fiftyone dashboard view --json-path <json-path>
+
         # View the dataset in a remote dashboard session
         fiftyone dashboard view ... --remote
     """
@@ -540,6 +565,12 @@ class DashboardViewCommand(Command):
             help="the dataset splits to load",
         )
         parser.add_argument(
+            "-j",
+            "--json-path",
+            metavar="JSON_PATH",
+            help="the path to a samples JSON file to view",
+        )
+        parser.add_argument(
             "-p",
             "--port",
             metavar="PORT",
@@ -564,14 +595,19 @@ class DashboardViewCommand(Command):
             dataset = foz.load_zoo_dataset(
                 name, splits=splits, dataset_dir=dataset_dir
             )
-        else:
-            # View a dataset on disk
+        elif args.dataset_dir:
+            # View a dataset from a directory
             name = args.name
             dataset_dir = args.dataset_dir
             dataset_type = etau.get_class(args.type)
             dataset = fod.Dataset.from_dir(
                 dataset_dir, dataset_type, name=name
             )
+        elif args.json_path:
+            # View a dataset from a JSON file
+            name = args.name
+            json_path = args.json_path
+            dataset = fod.Dataset.from_json(json_path, name=name)
 
         session = fos.launch_dashboard(
             dataset=dataset, port=args.port, remote=args.remote
