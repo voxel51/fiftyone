@@ -843,22 +843,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples, label_field=label_field, tags=tags
         )
 
-    def add_images_dir(self, images_dir, recursive=False, tags=None):
+    def add_images_dir(self, images_dir, recursive=True, tags=None):
         """Adds the given directory of images to the dataset.
+
+        See :class:`fiftyone.types.ImageDirectory` for format details. In
+        particular, note that files with non-image MIME types are omitted.
 
         This operation does not read the images.
 
         Args:
             images_dir: a directory of images
-            recursive (False): whether to recursively traverse subdirectories
+            recursive (True): whether to recursively traverse subdirectories
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
             a list of IDs of the samples in the dataset
         """
-        image_paths = etau.list_files(
-            images_dir, abs_paths=True, recursive=recursive
-        )
+        image_paths = foud.parse_images_dir(images_dir, recursive=recursive)
         return self.add_images(image_paths, tags=tags)
 
     def add_images_patt(self, image_patt, tags=None):

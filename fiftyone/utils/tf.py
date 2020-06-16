@@ -48,9 +48,7 @@ def from_images_dir(images_dir, recursive=False, num_parallel_calls=None):
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
-    image_paths = etau.list_files(
-        images_dir, abs_paths=True, recursive=recursive
-    )
+    image_paths = foud.parse_images_dir(images_dir, recursive=recursive)
     return from_images(image_paths, num_parallel_calls=num_parallel_calls)
 
 
