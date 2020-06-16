@@ -77,7 +77,10 @@ jobs:
         run: python setup.py bdist_wheel --plat-name linux
       - name: Build wheel (macOS)
         working-directory: package/gui
-        run: python setup.py bdist_wheel --plat-name macOS
+        run: python setup.py bdist_wheel --plat-name mac
+      - name: Build wheel (Windows)
+        working-directory: package/gui
+        run: python setup.py bdist_wheel --plat-name win
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
