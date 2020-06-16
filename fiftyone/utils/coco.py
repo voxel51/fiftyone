@@ -86,7 +86,7 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
         return detection
 
 
-class COCOObject(object):
+class COCOObject(etas.Serializable):
     """An object in COCO detection format.
 
     Args:
@@ -129,7 +129,7 @@ class COCOObject(object):
         Returns:
             a :class:`COCOObject`
         """
-        return cls(**d)
+        return cls.from_dict(d)
 
     @classmethod
     def from_detection(cls, detection, metadata, labels_map_rev=None):
@@ -188,6 +188,34 @@ class COCOObject(object):
         detection.attributes["area"] = fol.NumericAttribute(value=self.area)
 
         return detection
+
+    def attributes(self):
+        """Returns a list of class attributes to be serialized.
+
+        Returns:
+            a list of class attributes
+        """
+        return [
+            "id",
+            "image_id",
+            "category_id",
+            "bbox",
+            "area",
+            "segmentation",
+            "iscrowd",
+        ]
+
+    @classmethod
+    def from_dict(cls, d):
+        """Creates a :class:`COCOObject` from a JSON dictionary.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            a :class:`COCOObject`
+        """
+        return cls(**d)
 
 
 def parse_coco_detection_dataset(dataset_dir):
