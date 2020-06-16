@@ -96,6 +96,13 @@ if hasattr(os, "setpgrp"):
 signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
+popen_kwargs = {}
+if sys.platform.startswith("win"):
+    # CREATE_NEW_PROCESS_GROUP: disable ctrl-c
+    # https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags?redirectedfrom=MSDN
+    popen_kwargs["creationflags"] = 0x00000200
+
+
 # use psutil's wrapper around subprocess.Popen for convenience (e.g. it makes
 # finding the child's children significantly easier)
 child = psutil.Popen(
@@ -103,6 +110,7 @@ child = psutil.Popen(
     stdin=subprocess.DEVNULL,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
+    **popen_kwargs,
 )
 child_stdout = ChildStreamMonitor(child.stdout)
 child_stderr = ChildStreamMonitor(child.stderr)
