@@ -329,7 +329,7 @@ class VOCObject(object):
         bounding_box = self.bndbox.to_detection_format(frame_size)
         detection = fol.Detection(label=label, bounding_box=bounding_box)
 
-        if self.pose:
+        if self.pose is not None:
             # pylint: disable=unsupported-assignment-operation
             detection.attributes["pose"] = fol.CategoricalAttribute(self.pose)
 
@@ -453,7 +453,7 @@ class VOCAnnotationWriter(object):
                 "height": metadata.height,
                 "depth": metadata.num_channels,
                 "database": "",
-                "segmented": 1 if annotation.segmented else 0,
+                "segmented": annotation.segmented,
                 "objects": annotation.objects,
             }
         )

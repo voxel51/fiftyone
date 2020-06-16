@@ -106,7 +106,7 @@ class CVATTaskLabels(object):
                     "attributes": [
                         {
                             "name": "type"
-                            "values": "coupe,sedan,truck"
+                            "categories": ["coupe", "sedan", "truck"]
                         },
                         ...
                     }
@@ -166,25 +166,22 @@ class CVATTaskLabels(object):
             a :class:`CVATTaskLabels`
         """
         labels = []
-        for obj_schemas in schema.objects:
-            for label, obj_schema in obj_schemas.iter_objects():
-                attributes = []
-                for name, attr_schema in obj_schema.attrs.iter_attributes():
-                    if isinstance(
-                        attr_schema, etad.CategoricalAttributeSchema
-                    ):
-                        attributes.append(
-                            {
-                                "name": name,
-                                "values": ",".join(
-                                    sorted(attr_schema.categories)
-                                ),
-                            }
-                        )
+        obj_schemas = schema.objects
+        for label in sorted(obj_schemas.schema):
+            obj_schema = obj_schemas.schema[label]
+            obj_attr_schemas = obj_schema.attrs
+            attributes = []
+            for name in sorted(obj_attr_schemas.schema):
+                attr_schema = obj_attr_schemas.schema[name]
+                if isinstance(attr_schema, etad.CategoricalAttributeSchema):
+                    attributes.append(
+                        {
+                            "name": name,
+                            "categories": sorted(attr_schema.categories),
+                        }
+                    )
 
-                labels.append(
-                    {"name": label, "attributes": attributes,}
-                )
+            labels.append({"name": label, "attributes": attributes})
 
         return cls(labels=labels)
 
@@ -202,9 +199,9 @@ class CVATTaskLabels(object):
             schema.add_object_label(_label)
             for attribute in label.get("attributes", []):
                 _name = attribute["name"]
-                _values = attribute["values"].split(",")
-                for _value in _values:
-                    _attr = etad.CategoricalAttribute(_name, _value.strip())
+                _categories = attribute["categories"]
+                for _value in _categories:
+                    _attr = etad.CategoricalAttribute(_name, _value)
                     schema.add_object_attribute(_label, _attr)
 
         return schema
