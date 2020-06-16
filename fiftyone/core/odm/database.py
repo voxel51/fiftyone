@@ -22,23 +22,23 @@ from mongoengine import connect
 import pymongo
 
 _DEFAULT_DATABASE = "fiftyone"
-_db = None
+_client = None
 
 
 def _connect():
-    global _db
-    if _db is None:
-        _db = connect(_DEFAULT_DATABASE)
+    global _client
+    if _client is None:
+        connect(_DEFAULT_DATABASE)
+        _client = pymongo.MongoClient()
 
 
 def get_db_conn():
     """Creates a connection to the database"""
     _connect()
-    return pymongo.MongoClient()[_DEFAULT_DATABASE]
+    return _client[_DEFAULT_DATABASE]
 
 
 def drop_database():
     """Drops the database."""
     _connect()
-    client = pymongo.MongoClient()
-    client.drop_database(_DEFAULT_DATABASE)
+    _client.drop_database(_DEFAULT_DATABASE)
