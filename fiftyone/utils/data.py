@@ -317,6 +317,45 @@ def to_image_labels_dataset(
     logger.info("Dataset created")
 
 
+def export_images(samples, dataset_dir):
+    """Exports the images in the given samples to the given directory.
+
+    See :class:`fiftyone.types.ImageDirectory` for format details.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appended to the base
+    filename.
+
+    Args:
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        dataset_dir: the directory to which to write the dataset
+    """
+    logger.info(
+        "Writing samples to '%s' in '%s' format...",
+        dataset_dir,
+        etau.get_class_name(fot.ImageDirectory),
+    )
+
+    etau.ensure_dir(dataset_dir)
+
+    data_filename_counts = defaultdict(int)
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            img_path = sample.filepath
+            name, ext = os.path.splitext(os.path.basename(img_path))
+            data_filename_counts[name] += 1
+
+            count = data_filename_counts[name]
+            if count > 1:
+                name += "-%d" + count
+
+            out_img_path = os.path.join(dataset_dir, name + ext)
+            etau.copy_file(img_path, out_img_path)
+
+    logger.info("Dataset created")
+
+
 def export_image_classification_dataset(samples, label_field, dataset_dir):
     """Exports the given samples to disk as an image classification dataset.
 
