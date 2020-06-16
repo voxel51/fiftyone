@@ -12,7 +12,7 @@ import {
 
 import Distributions from "../components/Distributions";
 import InfoItem from "../components/InfoItem";
-import Player51 from "../components/Player51";
+import Player51 from "../components/Player51/Player51";
 import Samples from "../components/Samples";
 import Search from "../components/Search";
 import routes from "../constants/routes.json";

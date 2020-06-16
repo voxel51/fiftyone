@@ -4,6 +4,55 @@
  */
 @import "./player51/src/css/player51.css";
 
+:root {
+  --color-primary: rgb(255, 109, 4);
+  --color-primary-muted: rgb(208, 87, 0);
+  --color-primary-saturated: rgb(255, 240, 229);
+
+  --color-secondary: rgb(73, 156, 239);
+  --color-secondary-saturated: rgb(165, 205, 247);
+
+  --color-tertiary: rgb(109, 4, 255);
+  --color-tertiary-saturated: rgb(182, 129, 255);
+
+  --gray-dark1: rgb(23, 25, 28);
+  --gray-dark2: rgb(33, 37, 41);
+  --gray-dark3: rgb(108, 117, 125);
+  --gray-neutral: rgb(166, 167, 169);
+  --gray-light3: rgb(232, 233, 233);
+  --gray-light2: rgb(244, 244, 244);
+  --gray-light1: rgb(255, 255, 255);
+
+  --transparent: rgba(0, 0, 0, 0);
+
+  --green-check: rgb(83, 182, 129);
+  --purple-check: rgb(265, 100, 51);
+
+  --text-brand: var(--color-primary);
+  --text-primary: var(--gray-dark1);
+  --text-primary-on-light: var(--gray-dark1);
+  --text-primary-on-dark: var(--gray-light1);
+  --text-secondary-on-light: var(--gray-dark3);
+  --text-secondary-on-dark: var(--gray-neutral);
+  --text-tertiary-on-light: var(--gray-light2);
+  --text-tertiary-on-dark: var(--gray-light3);
+
+  --fontsize-body: 1.8rem;
+  --fontsize-body-smaller: 1.4rem;
+  --fontsize-body-smallest: 1.25rem;
+
+  --bg-brand: var(--color-primary);
+  --bg-light-primary: var(--gray-light1);
+  --bg-light-secondary: var(--gray-light2);
+  --bg-dark-primary: var(--gray-dark2);
+  --bg-dark-secondary: var(--gray-dark1);
+  /* gray-dark2 with transparency */
+  --bg-modal: rgba(33, 37, 41, 0.75);
+
+  --padding-x: 10rem;
+  --padding-y: 10rem;
+}
+
 body {
   position: relative;
   height: 100vh;
