@@ -523,6 +523,25 @@ def export_image_labels_dataset(samples, label_field, dataset_dir):
     logger.info("Dataset created")
 
 
+def parse_images_dir(dataset_dir, recursive=True):
+    """Parses the contents of the given directory of images.
+
+    See :class:`fiftyone.types.ImageDirectory` for format details. In
+    particular, note that files with non-image MIME types are omitted.
+
+    Args:
+        dataset_dir: the dataset directory
+        recursive (True): whether to recursively traverse subdirectories
+
+    Returns:
+        a list of image paths
+    """
+    filepaths = etau.list_files(
+        dataset_dir, abs_paths=True, recursive=recursive
+    )
+    return [p for p in filepaths if etai.is_image_mime_type(p)]
+
+
 def parse_image_classification_dataset(dataset_dir, sample_parser=None):
     """Parses the contents of the image classification dataset backed by the
     given directory.

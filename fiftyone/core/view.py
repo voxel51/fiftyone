@@ -420,7 +420,7 @@ class DatasetView(foc.SampleCollection):
         if pipeline is None:
             pipeline = []
 
-        return self._dataset._get_query_set().aggregate(
+        return self._dataset.aggregate(
             [s.to_mongo() for s in self._pipeline] + pipeline
         )
 

@@ -12,13 +12,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-from builtins import *
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+
 from mongoengine import connect
+import pymongo
 
 _DEFAULT_DATABASE = "fiftyone"
 
@@ -26,6 +27,12 @@ _DEFAULT_DATABASE = "fiftyone"
 _db = connect(_DEFAULT_DATABASE)
 
 
+def get_db_conn():
+    """Creates a connection to the database"""
+    return pymongo.MongoClient()[_DEFAULT_DATABASE]
+
+
 def drop_database():
     """Drops the database."""
-    _db.drop_database(_DEFAULT_DATABASE)
+    client = pymongo.MongoClient()
+    client.drop_database(_DEFAULT_DATABASE)
