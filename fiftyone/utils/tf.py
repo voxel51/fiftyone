@@ -160,7 +160,7 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
 
 
 def from_tf_records(
-    tf_records_patt, buffer_size=None, num_parallel_reads=None,
+    tf_records_patt, buffer_size=None, num_parallel_reads=None
 ):
     """Creates a ``tf.data.Dataset`` for the TFRecords at the given path(s).
 
