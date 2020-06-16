@@ -19,41 +19,68 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 
-class Dataset(object):
-    """Abstract base type for datasets."""
+class BaseDataset(object):
+    """Base type for datasets."""
 
     pass
 
 
-class UnlabeledDataset(Dataset):
-    """Abstract type representing an unlabeled collection of data samples."""
+class BaseUnlabeledDataset(BaseDataset):
+    """Base type for datasets that represent an unlabeled collection of data
+    samples.
+    """
 
     pass
 
 
-class UnlabeledImageDataset(UnlabeledDataset):
-    """Abstract type representing an unlabeled collection of images."""
+class BaseUnlabeledImageDataset(BaseUnlabeledDataset):
+    """Base type for datasets that represent an unlabeled collection of images.
+    """
 
     pass
 
 
-class LabeledDataset(Dataset):
-    """Abstract type representing a collection of data samples and their
+class BaseLabeledDataset(BaseDataset):
+    """Base type for datasets that represent a collection of data samples and
+    their associated labels.
+    """
+
+    pass
+
+
+class BaseLabeledImageDataset(BaseLabeledDataset):
+    """Base type for datasets that represent a collection of images and their
     associated labels.
     """
 
     pass
 
 
-class LabeledImageDataset(LabeledDataset):
-    """Abstract type representing a collection of images and their associated
-    labels.
+class BaseImageClassificationDataset(BaseLabeledImageDataset):
+    """Base type for datasets that represent a collection of images and a set
+    of associated classification labels.
     """
 
     pass
 
 
-class ImageDirectory(UnlabeledImageDataset):
+class BaseImageDetectionDataset(BaseLabeledImageDataset):
+    """Base type for datasets that represent a collection of images and a set
+    of associated object detections.
+    """
+
+    pass
+
+
+class BaseImageLabelsDataset(BaseLabeledImageDataset):
+    """Base type for datasets that represent a collection of images and a set
+    of associated multitask predictions.
+    """
+
+    pass
+
+
+class ImageDirectory(BaseUnlabeledImageDataset):
     """A directory of images.
 
     Datasets of this type are read/written in the following format::
@@ -68,26 +95,7 @@ class ImageDirectory(UnlabeledImageDataset):
     pass
 
 
-class ImageClassificationDirectoryTree(LabeledImageDataset):
-    """A directory tree that defines an image classification dataset.
-
-    Datasets of this type are read/written in the following format::
-
-        <dataset_dir>/
-            <classA>/
-                <image1>.<ext>
-                <image2>.<ext>
-                ...
-            <classB>/
-                <image1>.<ext>
-                <image2>.<ext>
-                ...
-    """
-
-    pass
-
-
-class ImageClassificationDataset(LabeledImageDataset):
+class ImageClassificationDataset(BaseImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
     classification labels.
 
@@ -124,7 +132,26 @@ class ImageClassificationDataset(LabeledImageDataset):
     pass
 
 
-class TFImageClassificationDataset(LabeledImageDataset):
+class ImageClassificationDirectoryTree(BaseImageClassificationDataset):
+    """A directory tree that defines an image classification dataset.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <classA>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+            <classB>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+    """
+
+    pass
+
+
+class TFImageClassificationDataset(BaseImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
     classification labels stored as TFRecords.
 
@@ -156,7 +183,7 @@ class TFImageClassificationDataset(LabeledImageDataset):
     pass
 
 
-class ImageDetectionDataset(LabeledImageDataset):
+class ImageDetectionDataset(BaseImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections.
 
@@ -207,7 +234,7 @@ class ImageDetectionDataset(LabeledImageDataset):
     pass
 
 
-class COCODetectionDataset(LabeledImageDataset):
+class COCODetectionDataset(BaseImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections saved in COCO format (http://cocodataset.org/#home).
 
@@ -263,7 +290,7 @@ class COCODetectionDataset(LabeledImageDataset):
     pass
 
 
-class VOCDetectionDataset(LabeledImageDataset):
+class VOCDetectionDataset(BaseImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections saved in VOC format (http://host.robots.ox.ac.uk/pascal/VOC).
 
@@ -324,7 +351,7 @@ class VOCDetectionDataset(LabeledImageDataset):
     pass
 
 
-class TFObjectDetectionDataset(LabeledImageDataset):
+class TFObjectDetectionDataset(BaseImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections stored as TFRecords in TF Object Detection API format
     (https://github.com/tensorflow/models/blob/master/research/object_detection).
@@ -369,7 +396,7 @@ class TFObjectDetectionDataset(LabeledImageDataset):
     pass
 
 
-class CVATImageDataset(LabeledImageDataset):
+class CVATImageDataset(BaseImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections stored in CVAT image format (https://github.com/opencv/cvat).
 
@@ -432,7 +459,7 @@ class CVATImageDataset(LabeledImageDataset):
     pass
 
 
-class ImageLabelsDataset(LabeledImageDataset):
+class ImageLabelsDataset(BaseImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in ``eta.core.image.ImageLabels`` format.
 

@@ -508,8 +508,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.Dataset` type of the
-                dataset in the specified directory
+            dataset_type: the type of the dataset in the specified directory,
+                a subclass of :class:`fiftyone.types.BaseDataset`
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
@@ -1235,8 +1235,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.Dataset` type of the
-                dataset in the specified directory
+            dataset_type: the type of the dataset in the specified directory,
+                a subclass of :class:`fiftyone.types.BaseDataset`
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name of the field to use for the

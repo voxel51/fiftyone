@@ -310,7 +310,8 @@ class ZooDatasetInfo(etas.Serializable):
 
     Args:
         zoo_dataset: the :class:`ZooDataset` instance for the dataset
-        format: the :class:`fiftyone.types.Dataset` type of the dataset
+        format: the dataset type, a subclass of
+            :class:`fiftyone.types.BaseDataset`
         num_samples: the total number of samples in all downloaded splits of
             the dataset
         downloaded_splits (None): a dict of :class:`ZooDatasetSplitInfo`
@@ -351,8 +352,8 @@ class ZooDatasetInfo(etas.Serializable):
 
     @property
     def format_cls(self):
-        """The fully-qualified class string for the
-        :class:`fiftyone.types.Dataset` type of the dataset.
+        """The fully-qualified class string of the dataset type, a subclass of
+        :class:`fiftyone.types.BaseDataset`.
         """
         return etau.get_class_name(self.format)
 
@@ -526,8 +527,8 @@ class ZooDataset(object):
         return os.path.join(dataset_dir, "info.json")
 
     def download_and_prepare(self, dataset_dir, split=None, splits=None):
-        """Downloads the dataset and prepares it for use in the given directory
-        as a :class:`fiftyone.types.LabeledDataset`.
+        """Downloads the dataset and prepares it for use in the given
+        directory.
 
         If the requested splits have already been downloaded, they are not
         re-downloaded.
@@ -626,8 +627,7 @@ class ZooDataset(object):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, splits):
         """Internal implementation of downloading the dataset and preparing it
-        for use in the given directory as a
-        class:`fiftyone.types.LabeledDataset`.
+        for use in the given directory.
 
         Args:
             dataset_dir: the directory in which to construct the dataset
@@ -637,7 +637,8 @@ class ZooDataset(object):
                 not have splits
 
         Returns:
-            format: the :class:`fiftyone.types.Dataset` type of the dataset
+            format: the dataset type, a subclass of
+                :class:`fiftyone.types.BaseDataset`
             num_samples: the number of samples in the split
             classes: an optional list of class label strings
         """

@@ -445,7 +445,10 @@ class DashboardViewCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help="the `fiftyone.types.Dataset` type of the dataset",
+            help=(
+                "the dataset type (a subclass of "
+                "`fiftyone.types.BaseDataset`)"
+            ),
         )
         parser.add_argument(
             "-z",
