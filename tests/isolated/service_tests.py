@@ -56,9 +56,9 @@ def test_db():
     with cleanup_subprocesses(strict=True):
         db = fos.DatabaseService()
         db.start()
-        wait_for_subprocess("mongod")
+        wait_for_subprocess(db.MONGOD_EXE_NAME)
         db.stop()
-        assert "mongod" not in get_child_process_names()
+        assert db.MONGOD_EXE_NAME not in get_child_process_names()
 
 
 def test_server():

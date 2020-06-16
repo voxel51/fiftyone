@@ -25,6 +25,7 @@ import subprocess
 import sys
 
 from packaging.version import Version
+import psutil
 import requests
 
 import eta.core.utils as etau
@@ -79,7 +80,9 @@ class Service(object):
             "..",
             "_service_main.py",
         )
-        self.child = subprocess.Popen(
+        # use psutil's Popen wrapper because its wait() more reliably waits
+        # for the process to exit on Windows
+        self.child = psutil.Popen(
             [sys.executable, service_main_path] + self.command,
             cwd=self.working_dir,
             stdin=subprocess.PIPE,
