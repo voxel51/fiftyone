@@ -62,7 +62,8 @@ class ImageDirectory(UnlabeledImageDataset):
             <filename1>.<ext>
             <filename2>.<ext>
 
-    When reading datasets of this type, subfolders are recursively traversed.
+    When reading datasets of this type, subfolders are recursively traversed,
+    and files with non-image MIME types are omitted.
     """
 
     pass

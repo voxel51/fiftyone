@@ -373,12 +373,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         d = sample.to_mongo_dict()
         d.pop("_id", None)  # remove the ID if in DB
         self._collection.insert_one(d)  # adds "_id" to `d`
-        doc = self._sample_doc_cls.from_dict(d, extended=False)
 
         if not sample._in_db:
+            doc = self._sample_doc_cls.from_dict(d, extended=False)
             sample._set_backing_doc(doc)
 
-        return str(doc.id)
+        return str(d["_id"])
 
     def add_samples(self, samples, expand_schema=True, _batch_size=128):
         """Adds the given samples to the dataset.
@@ -843,22 +843,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples, label_field=label_field, tags=tags
         )
 
-    def add_images_dir(self, images_dir, recursive=False, tags=None):
+    def add_images_dir(self, images_dir, recursive=True, tags=None):
         """Adds the given directory of images to the dataset.
+
+        See :class:`fiftyone.types.ImageDirectory` for format details. In
+        particular, note that files with non-image MIME types are omitted.
 
         This operation does not read the images.
 
         Args:
             images_dir: a directory of images
-            recursive (False): whether to recursively traverse subdirectories
+            recursive (True): whether to recursively traverse subdirectories
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
             a list of IDs of the samples in the dataset
         """
-        image_paths = etau.list_files(
-            images_dir, abs_paths=True, recursive=recursive
-        )
+        image_paths = foud.parse_images_dir(images_dir, recursive=recursive)
         return self.add_images(image_paths, tags=tags)
 
     def add_images_patt(self, image_patt, tags=None):
