@@ -412,6 +412,53 @@ def export_image_classification_dataset(samples, label_field, dataset_dir):
     logger.info("Dataset created")
 
 
+def export_image_classification_dir_tree(samples, label_field, dataset_dir):
+    """Exports the given samples to disk as an image classification directory
+    tree.
+
+    See :class:`fiftyone.types.ImageClassificationDirectoryTree` for format
+    details.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appended to the base
+    filename.
+
+    Args:
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        label_field: the name of the
+            :class:`fiftyone.core.labels.Classification` field of the samples
+            to export
+        dataset_dir: the directory to which to write the dataset
+    """
+    logger.info(
+        "Writing samples to '%s' in '%s' format...",
+        dataset_dir,
+        etau.get_class_name(fot.ImageClassificationDirectoryTree),
+    )
+
+    etau.ensure_dir(dataset_dir)
+
+    data_filename_counts = defaultdict(int)
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            label = sample[label_field].label
+
+            img_path = sample.filepath
+            name, ext = os.path.splitext(os.path.basename(img_path))
+            key = (label, name)
+            data_filename_counts[key] += 1
+
+            count = data_filename_counts[key]
+            if count > 1:
+                name += "-%d" + count
+
+            out_img_path = os.path.join(dataset_dir, label, name + ext)
+            etau.copy_file(img_path, out_img_path)
+
+    logger.info("Dataset created")
+
+
 def export_image_detection_dataset(samples, label_field, dataset_dir):
     """Exports the given samples to disk as an image detection dataset.
 
@@ -582,6 +629,45 @@ def parse_image_classification_dataset(dataset_dir, sample_parser=None):
     return samples
 
 
+def parse_image_classification_dir_tree(dataset_dir):
+    """Parses the contents of the given image classification dataset directory
+    tree, which should have the following format::
+
+        <dataset_dir>/
+            <classA>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+            <classB>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        samples: a list of ``(image_path, target)`` pairs
+        classes: a list of class label strings
+    """
+    # Get classes
+    classes = sorted(etau.list_subdirs(dataset_dir))
+    labels_map_rev = {c: i for i, c in enumerate(classes)}
+
+    # Generate dataset
+    glob_patt = os.path.join(dataset_dir, "*", "*")
+    samples = []
+    for path in etau.get_glob_matches(glob_patt):
+        chunks = path.split(os.path.sep)
+        if any(s.startswith(".") for s in chunks[-2:]):
+            continue
+
+        target = labels_map_rev[chunks[-2]]
+        samples.append((path, target))
+
+    return samples, classes
+
+
 def parse_image_detection_dataset(dataset_dir, sample_parser=None):
     """Parses the contents of the image detection dataset backed by the given
     directory.
@@ -648,45 +734,6 @@ def parse_image_labels_dataset(dataset_dir, sample_parser=None):
     ):
         label = sample_parser.parse_label((image_path, image_labels))
         yield image_path, label
-
-
-def parse_image_classification_dir_tree(dataset_dir):
-    """Parses the contents of the given image classification dataset directory
-    tree, which should have the following format::
-
-        <dataset_dir>/
-            <classA>/
-                <image1>.<ext>
-                <image2>.<ext>
-                ...
-            <classB>/
-                <image1>.<ext>
-                <image2>.<ext>
-                ...
-
-    Args:
-        dataset_dir: the dataset directory
-
-    Returns:
-        samples: a list of ``(image_path, target)`` pairs
-        classes: a list of class label strings
-    """
-    # Get classes
-    classes = sorted(etau.list_subdirs(dataset_dir))
-    labels_map_rev = {c: i for i, c in enumerate(classes)}
-
-    # Generate dataset
-    glob_patt = os.path.join(dataset_dir, "*", "*")
-    samples = []
-    for path in etau.get_glob_matches(glob_patt):
-        chunks = path.split(os.path.sep)
-        if any(s.startswith(".") for s in chunks[-2:]):
-            continue
-
-        target = labels_map_rev[chunks[-2]]
-        samples.append((path, target))
-
-    return samples, classes
 
 
 class SampleParser(object):

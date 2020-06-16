@@ -211,6 +211,10 @@ class SampleCollection(object):
             foud.export_image_classification_dataset(
                 self, label_field, export_dir, **kwargs
             )
+        elif isinstance(dataset_type, fot.ImageClassificationDirectoryTree):
+            foud.export_image_classification_dir_tree(
+                self, label_field, export_dir, **kwargs
+            )
         elif isinstance(dataset_type, fot.TFImageClassificationDataset):
             fout.export_tf_image_classification_dataset(
                 self, label_field, export_dir, **kwargs
