@@ -130,6 +130,7 @@ class DatabaseService(Service):
 
     @staticmethod
     def find_mongod():
+        """Returns the path to the `mongod` executable."""
         search_paths = [
             foc.FIFTYONE_DB_BIN_DIR,
             os.path.join(foc.FIFTYONE_CONFIG_DIR, "bin"),
