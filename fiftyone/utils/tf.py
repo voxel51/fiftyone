@@ -473,7 +473,7 @@ class TFObjectDetectionSampleWriter(TFRecordSampleWriter):
             "image/object/bbox/ymin": _float_list_feature(ymins),
             "image/object/bbox/ymax": _float_list_feature(ymaxs),
             "image/object/class/text": _bytes_list_feature(texts),
-            "image/object/class/label": _bytes_list_feature(labels),
+            "image/object/class/label": _int64_list_feature(labels),
         }
 
         return tf.train.Example(features=tf.train.Features(feature=feature))
