@@ -306,7 +306,8 @@ class TFImageClassificationSampleParser(
         return img.numpy()
 
     def _parse_label(self, features):
-        return fol.Classification(features["label"])
+        label = features["label"].numpy().decode()
+        return fol.Classification(label=label)
 
 
 class TFObjectDetectionSampleParser(
@@ -340,18 +341,19 @@ class TFObjectDetectionSampleParser(
         return img.numpy()
 
     def _parse_label(self, features):
-        xmins = features["image/object/bbox/xmin"]
-        xmaxs = features["image/object/bbox/xmax"]
-        ymins = features["image/object/bbox/ymin"]
-        ymaxs = features["image/object/bbox/ymax"]
-        texts = features["image/object/class/text"]
+        xmins = features["image/object/bbox/xmin"].numpy()
+        xmaxs = features["image/object/bbox/xmax"].numpy()
+        ymins = features["image/object/bbox/ymin"].numpy()
+        ymaxs = features["image/object/bbox/ymax"].numpy()
+        texts = features["image/object/class/text"].numpy()
         detections = []
         for xmin, xmax, ymin, ymax, text in zip(
             xmins, xmaxs, ymins, ymaxs, texts
         ):
+            label = text.decode()
             detections.append(
                 fol.Detection(
-                    label=text,
+                    label=label,
                     bounding_box=[xmin, ymin, xmax - xmin, ymax - ymin],
                 )
             )
