@@ -230,10 +230,14 @@ class AppService(Service):
     def command(self):
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             if os.path.isfile("FiftyOne.AppImage"):
-                # linux
+                # Linux
                 args = ["./FiftyOne.AppImage"]
             elif os.path.isdir("FiftyOne.app"):
+                # macOS
                 args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
+            elif os.path.isfile("FiftyOne.exe"):
+                # Windows
+                args = ["FiftyOne.exe"]
             elif os.path.isfile("package.json"):
                 # dev build
                 args = ["yarn", "dev"]
