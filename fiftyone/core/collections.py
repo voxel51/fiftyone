@@ -194,7 +194,7 @@ class SampleCollection(object):
                 ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
             )
             for field, field_type in label_fields.items():
-                if isinstance(field_type.document_type, label_type):
+                if issubclass(field_type.document_type, label_type):
                     label_field = field
                     break
 
