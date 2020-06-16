@@ -230,6 +230,7 @@ class DatasetsCommand(Command):
         _register_command(subparsers, "list", DatasetsListCommand)
         _register_command(subparsers, "info", DatasetsInfoCommand)
         _register_command(subparsers, "create", DatasetsCreateCommand)
+        _register_command(subparsers, "export", DatasetsExportCommand)
         _register_command(subparsers, "delete", DatasetsDeleteCommand)
 
     @staticmethod
@@ -321,6 +322,81 @@ class DatasetsCreateCommand(Command):
         dataset.persistent = True
 
         print("Dataset '%s' created" % dataset.name)
+
+
+class DatasetsExportCommand(Command):
+    """Tools for exporting FiftyOne datasets.
+
+    Examples::
+
+        # Exports the dataset with the given type
+        fiftyone datasets export \\
+            --name <name> --export-dir <export-dir> --type <type> \
+            --label-field <label-field>
+
+        # Exports the dataset in JSON format
+        fiftyone datasets export --name <name> --json-path <json-path>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-n",
+            "--name",
+            required=True,
+            metavar="NAME",
+            help="the name of the dataset to export",
+        )
+        parser.add_argument(
+            "-d",
+            "--export-dir",
+            metavar="EXPORT_DIR",
+            help="the directory in which to export the dataset",
+        )
+        parser.add_argument(
+            "-j",
+            "--json-path",
+            metavar="JSON_PATH",
+            help="the path to export the dataset in JSON format",
+        )
+        parser.add_argument(
+            "-f",
+            "--label-field",
+            metavar="LABEL_FIELD",
+            help="the name of the label field to export",
+        )
+        parser.add_argument(
+            "-t",
+            "--type",
+            metavar="TYPE",
+            help=(
+                "the format in which to export the dataset (a subclass of "
+                "`fiftyone.types.BaseDataset`)"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        export_dir = args.export_dir
+        json_path = args.json_path
+        label_field = args.label_field
+        dataset_type = etau.get_class(args.type) if args.type else None
+
+        dataset = fod.load_dataset(name)
+
+        if export_dir:
+            dataset.export(
+                export_dir, label_field=label_field, dataset_type=dataset_type
+            )
+            print("Dataset '%s' exported to '%s'" % (name, export_dir))
+        elif json_path:
+            dataset.write_json(json_path)
+            print("Dataset '%s' exported to '%s'" % (name, json_path))
+        else:
+            raise ValueError(
+                "Either `export_dir` or `json_path` must be provided"
+            )
 
 
 class DatasetsDeleteCommand(Command):
