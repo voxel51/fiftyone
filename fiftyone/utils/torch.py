@@ -139,23 +139,3 @@ def from_image_classification_dir_tree(dataset_dir):
         a ``torchvision.datasets.ImageFolder``
     """
     return torchvision.datasets.ImageFolder(dataset_dir)
-
-
-def from_labeled_image_dataset(labeled_dataset, attr_name):
-    """Creates a ``torch.utils.data.Dataset`` for the given
-    ``eta.core.datasets.LabeledImageDataset``.
-
-    Args:
-        labeled_dataset: a ``eta.core.datasets.LabeledImageDataset``
-        attr_name: the name of the frame attribute to extract as label
-
-    Returns:
-        a :class:`TorchImageClassificationDataset`
-    """
-    image_paths = list(labeled_dataset.iter_data_paths)
-    labels = []
-    for image_labels in labeled_dataset.iter_labels():
-        label = image_labels.attrs.get_attr_value_with_name(attr_name)
-        labels.append(label)
-
-    return TorchImageClassificationDataset(image_paths, labels)
