@@ -19,10 +19,10 @@ import unittest
 
 from mongoengine.errors import (
     FieldDoesNotExist,
-    NotUniqueError,
     ValidationError,
 )
 import numpy as np
+from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -817,6 +817,8 @@ class SampleInDatasetTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             dataset.add_sample(sample)
 
+        self.assertEqual(len(dataset), 0)
+
     @drop_datasets
     def test_dataset_clear(self):
         dataset_name = self.test_dataset_clear.__name__
@@ -921,6 +923,9 @@ class SampleInDatasetTest(unittest.TestCase):
         with self.assertRaises(FieldDoesNotExist):
             dataset.add_sample(sample, expand_schema=False)
 
+        # ensure sample was not inserted
+        self.assertEqual(len(dataset), 0)
+
         dataset.add_sample(sample)
         fields = dataset.get_field_schema()
         self.assertIsInstance(fields[field_name], fo.IntField)
@@ -956,8 +961,11 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset.add_sample(sample)
 
         # add duplicate filepath
-        with self.assertRaises(NotUniqueError):
+        with self.assertRaises(DuplicateKeyError):
             dataset.add_sample(fo.Sample(filepath=filepath))
+        # @todo(Tyler)
+        # with self.assertRaises(DuplicateKeyError):
+        #     dataset.add_samples([fo.Sample(filepath=filepath)])
         self.assertEqual(len(dataset), 1)
 
         # update assign
@@ -1003,16 +1011,36 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset1 = fo.Dataset(dataset_name % 1)
         dataset2 = fo.Dataset(dataset_name % 2)
 
+        # Dataset.add_sample()
+
         sample = fo.Sample(filepath="test.png")
 
         sample_id = dataset1.add_sample(sample)
         self.assertIs(dataset1[sample_id], sample)
         self.assertEqual(sample.dataset_name, dataset1.name)
 
-        sample_id = dataset2.add_sample(sample)
-        sample2 = dataset2[sample_id]
+        sample_id2 = dataset2.add_sample(sample)
+        self.assertNotEqual(sample_id2, sample_id)
+
+        sample2 = dataset2[sample_id2]
         self.assertIs(dataset1[sample.id], sample)
-        self.assertIsNot(dataset2[sample_id], sample)
+        self.assertIsNot(dataset2[sample_id2], sample)
+        self.assertEqual(sample2.dataset_name, dataset2.name)
+
+        # Dataset.add_samples()
+
+        sample = fo.Sample(filepath="test2.png")
+
+        sample_id = dataset1.add_samples([sample])[0]
+        self.assertIs(dataset1[sample_id], sample)
+        self.assertEqual(sample.dataset_name, dataset1.name)
+
+        sample_id2 = dataset2.add_samples([sample])[0]
+        self.assertNotEqual(sample_id2, sample_id)
+
+        sample2 = dataset2[sample_id2]
+        self.assertIs(dataset1[sample.id], sample)
+        self.assertIsNot(dataset2[sample_id2], sample)
         self.assertEqual(sample2.dataset_name, dataset2.name)
 
     @drop_datasets
@@ -1298,6 +1326,12 @@ class SerializationTest(unittest.TestCase):
         d = label1.to_dict()
         self.assertEqual(fo.Classification.from_dict(d), label1)
 
+        s = label1.to_json(pretty_print=False)
+        self.assertEqual(fo.Classification.from_json(s), label1)
+
+        s = label1.to_json(pretty_print=True)
+        self.assertEqual(fo.Classification.from_json(s), label1)
+
     def test_sample_no_dataset(self):
         sample1 = fo.Sample(
             filepath="~/Desktop/test.png",
@@ -1366,6 +1400,37 @@ class SerializationTest(unittest.TestCase):
         self.assertNotEqual(s1, sample1)
 
         self.assertEqual(s1, s2)
+
+
+class AggregationTest(unittest.TestCase):
+    @drop_datasets
+    def test_aggregate(self):
+        dataset_name = self.test_aggregate.__name__
+        dataset = fo.Dataset(dataset_name)
+        dataset.add_samples(
+            [
+                fo.Sample("1.jpg", tags=["tag1"]),
+                fo.Sample("2.jpg", tags=["tag1", "tag2"]),
+                fo.Sample("3.jpg", tags=["tag2", "tag3"]),
+            ]
+        )
+
+        counts = {
+            "tag1": 2,
+            "tag2": 2,
+            "tag3": 1,
+        }
+
+        pipeline = [
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+        ]
+
+        for ds in dataset, dataset.view():
+            for d in ds.aggregate(pipeline):
+                tag = d["_id"]
+                count = d["count"]
+                self.assertEqual(count, counts[tag])
 
 
 if __name__ == "__main__":

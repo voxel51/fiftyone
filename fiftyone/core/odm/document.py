@@ -139,8 +139,8 @@ class SerializableDocument(object):
         Returns:
             the document
         """
-        d = json.loads(s)
-        return cls.from_dict(d, extended=True)
+        d = json_util.loads(s)
+        return cls.from_dict(d, extended=False)
 
 
 class ODMDocument(SerializableDocument, Document):
@@ -214,7 +214,8 @@ class ODMDocument(SerializableDocument, Document):
             except Exception:
                 pass
 
-        return cls.from_json(json_util.dumps(d))
+        bson_data = json_util.loads(json_util.dumps(d))
+        return cls._from_son(bson_data)
 
     def _to_json(self):
         # @todo(Tyler) mongoengine snippet, to be replaced
@@ -255,7 +256,8 @@ class ODMEmbeddedDocument(SerializableDocument, EmbeddedDocument):
             except Exception:
                 pass
 
-        return cls.from_json(json_util.dumps(d))
+        bson_data = json_util.loads(json_util.dumps(d))
+        return cls._from_son(bson_data)
 
     def _to_json(self):
         # @todo(Tyler) mongoengine snippet, to be replaced

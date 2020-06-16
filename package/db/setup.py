@@ -125,7 +125,7 @@ if LINUX_DISTRO:
 
 setup(
     name="fiftyone_db" + name_suffix,
-    version="0.1.0",
+    version="0.1.1",
     description="Project FiftyOne database",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
