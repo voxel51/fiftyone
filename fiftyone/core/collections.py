@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import inspect
 import logging
 
 import eta.core.serial as etas
@@ -137,30 +138,76 @@ class SampleCollection(object):
     def export(
         self, export_dir, label_field=None, dataset_type=None, **kwargs
     ):
-        """Exports the samples in the collection to disk as a labeled dataset.
+        """Exports the samples in the collection to disk.
 
         Args:
             export_dir: the directory to which to export
             label_field (None): the name of the label field to export. If not
                 specified, the first field of compatible type to
                 ``dataset_type`` is exported
-            dataset_type (None): the :class:`fiftyone.types.Dataset` format in
-                which to export. If not specified, the default type for
-                ``label_field`` is used
+            dataset_type (None): the dataset type in which to export. Must be a
+                subclass of :class:`fiftyone.types.BaseDataset`. If not
+                specified, the default type for ``label_field`` is used. If
+                neither ``label_field`` nor ``dataset_type`` is provided, the
+                raw images are exported
         """
-        if label_field is None:
+        if not self:
+            logger.info("No samples to export")
+            return
+
+        if dataset_type is not None and inspect.isclass(dataset_type):
+            dataset_type = dataset_type()
+
+        # If no dataset type was provided, choose the default type for the
+        # label field
+        if dataset_type is None:
+            # If no label field was provided, just export unlabeled images
+            if label_field is None:
+                dataset_type = fot.ImageDirectory()
+            else:
+                sample = next(self.iter_samples())
+                label = sample[label_field]
+                if isinstance(label, fol.Classification):
+                    dataset_type = fot.ImageClassificationDataset()
+                elif isinstance(label, fol.Detections):
+                    dataset_type = fot.ImageDetectionDataset()
+                elif isinstance(label, fol.ImageLabels):
+                    dataset_type = fot.ImageLabelsDataset()
+                else:
+                    raise ValueError("Unsupported label type %s" % type(label))
+
+        # If no label field was provided, choose the first label field that is
+        # compatible with the dataset type
+        if label_field is None and not isinstance(
+            dataset_type, fot.ImageDirectory
+        ):
+            if isinstance(dataset_type, fot.BaseImageClassificationDataset):
+                label_type = fol.Classification
+            elif isinstance(dataset_type, fot.BaseImageDetectionDataset):
+                label_type = fol.Detections
+            elif isinstance(dataset_type, fot.BaseImageLabelsDataset):
+                label_type = fol.ImageLabels
+            else:
+                raise ValueError("Unsupported dataset type %s" % dataset_type)
+
             label_fields = self.get_field_schema(
                 ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
             )
-            # @todo implement this
+            for field, field_type in label_fields.items():
+                if isinstance(field_type.document_type, label_type):
+                    label_field = field
+                    break
 
-        if dataset_type is None:
-            sample = next(self.iter_samples())
-            label = sample[label_field]
-            label_type = type(label)
-            # @todo implement this
+            if label_field is None:
+                raise ValueError(
+                    "No compatible label field of type %s found to export a "
+                    "dataset with type %s" % (label_type, dataset_type)
+                )
 
-        if isinstance(dataset_type, fot.ImageClassificationDataset):
+        # Export the dataset
+        if isinstance(dataset_type, fot.ImageDirectory):
+            foud.export_images(self, export_dir, **kwargs)
+        elif isinstance(dataset_type, fot.ImageClassificationDataset):
             foud.export_image_classification_dataset(
                 self, label_field, export_dir, **kwargs
             )
@@ -173,19 +220,19 @@ class SampleCollection(object):
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.COCODetectionDataset):
-            return fouco.export_coco_detection_dataset(
+            fouco.export_coco_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.VOCDetectionDataset):
-            return fouv.export_voc_detection_dataset(
+            fouv.export_voc_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.TFObjectDetectionDataset):
-            return fout.export_tf_object_detection_dataset(
+            fout.export_tf_object_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.CVATImageDataset):
-            return foucv.export_cvat_image_dataset(
+            foucv.export_cvat_image_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.ImageLabelsDataset):
@@ -193,7 +240,7 @@ class SampleCollection(object):
                 self, label_field, export_dir, **kwargs
             )
         else:
-            raise ValueError("Unsupported dataset type '%s'" % dataset_type)
+            raise ValueError("Unsupported dataset type %s" % dataset_type)
 
     def to_dict(self):
         """Returns a JSON dictionary representation of the collection.
