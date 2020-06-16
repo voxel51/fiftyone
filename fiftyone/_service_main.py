@@ -19,6 +19,7 @@ then exiting itself.
 |
 """
 import collections
+import enum
 import os
 import signal
 import subprocess
@@ -28,9 +29,29 @@ import threading
 import psutil
 
 
+lock = threading.Lock()
+
 # global flag set when either the parent or child has terminated, to trigger
 # shutdown of the current process (and children as necessary)
 exiting = threading.Event()
+
+
+class ExitMode(enum.IntEnum):
+    CHILD = 1
+    PARENT = 2
+
+
+# set to indicate whether the child or parent exited first
+exit_mode = None
+
+
+def trigger_exit(mode):
+    """Start the shutdown process."""
+    with lock:
+        global exit_mode
+        if exit_mode is None:
+            exit_mode = ExitMode(mode)
+    exiting.set()
 
 
 class ChildStreamMonitor(object):
@@ -62,7 +83,7 @@ class ChildStreamMonitor(object):
             chunk = self.stream.read(1024)
             if not chunk:
                 # EOF - subprocess has exited, so trigger shutdown
-                exiting.set()
+                trigger_exit(ExitMode.CHILD)
                 break
             self.output_deque.appendleft(chunk)
 
@@ -123,7 +144,7 @@ def monitor_stdin():
     """
     while len(sys.stdin.read(1024)):
         pass
-    exiting.set()
+    trigger_exit(ExitMode.PARENT)
 
 
 def shutdown():
@@ -146,11 +167,7 @@ def shutdown():
 
     child.terminate()
     child.wait()
-    if child.returncode > 0:
-        if command[0] == "yarn" and child.returncode == 1:
-            # yarn sometimes returns this when its children are killed, but it
-            # can be safely ignored
-            return
+    if exit_mode == ExitMode.CHILD and child.returncode > 0:
         sys.stdout.buffer.write(child_stdout.to_bytes())
         sys.stdout.flush()
         sys.stderr.write(
