@@ -31,7 +31,13 @@ export default Machine({
     focused: {
       on: {
         SUBMIT: "submitting",
-        UNFOCUS: "clicked",
+        UNFOCUS: "unfocusing",
+      },
+    },
+    unfocusing: {
+      invoke: {
+        src: "onUnfocus",
+        onDone: { target: "unfocused" },
       },
     },
     hovering: {

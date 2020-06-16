@@ -8,11 +8,15 @@ import indicatorFormMachine from "./IndicatorForm.machine.ts";
 const IndicatorForm = styled.input`
   width: 100%;
   height: 100%;
-  right: 0;
+  max-width: 3rem;
+  max-height: 2rem;
+  border: none;
+
+  :focus ;
 `;
 
 export default function () {
   const [state, send] = useMachine(indicatorFormMachine);
-
-  return <IndicatorForm>1000</IndicatorForm>;
+  const { value } = state.context;
+  return <IndicatorForm sendvalue={value} />;
 }
