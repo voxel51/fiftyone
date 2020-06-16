@@ -608,6 +608,11 @@ class DashboardViewCommand(Command):
             name = args.name
             json_path = args.json_path
             dataset = fod.Dataset.from_json(json_path, name=name)
+        else:
+            raise ValueError(
+                "Either `zoo_dataset`, `dataset_dir`, or `json_path` must be "
+                "provided"
+            )
 
         session = fos.launch_dashboard(
             dataset=dataset, port=args.port, remote=args.remote
