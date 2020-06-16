@@ -269,7 +269,7 @@ class SampleCollection(object):
         return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
 
     def write_json(self, json_path, pretty_print=False):
-        """Writes the colllection to disk
+        """Writes the colllection to disk in JSON format.
 
         Args:
             json_path: the path to write the JSON
