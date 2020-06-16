@@ -114,7 +114,7 @@ def from_image_paths_and_labels(image_paths, labels, num_parallel_calls=None):
 
     return tf.data.Dataset.from_tensor_slices(
         (list(image_paths), list(labels))
-    ).map(parse_sample, num_parallel_calls=num_parallel_calls,)
+    ).map(parse_sample, num_parallel_calls=num_parallel_calls)
 
 
 def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
