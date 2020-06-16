@@ -73,7 +73,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
-    scripts=["fiftyone/fiftyone"],
+    entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=2.7",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )
