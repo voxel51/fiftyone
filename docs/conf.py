@@ -35,6 +35,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "m2r",
+    "nbsphinx",
 ]
 
 # Types of class members to generate documentation for.
