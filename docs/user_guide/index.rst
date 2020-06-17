@@ -1,37 +1,30 @@
 User Guide
 ==========
 
-**Concept-focused**
+
+FiftyOne Dataset Basics
+_______________________
 
 
-* What are FiftyOne datasets?
-* Datasets, Samples, Fields
-* Dataset views
-* Label fields
-* Using the App
-* Supported dataset types
+Using a Dataset
+_______________
 
-   * Image classification
-   * Object detection
-   * Semantic segmentation
-   * Instance segmentation
 
-* Dataset formats
+Making a Dataset
+________________
 
-   * Image directory
-   * COCO Detection
-   * VOC Detection
-   * TF Object Detection
-   * CVAT Image
-   * Custom
 
-* Importing datasets
-* Exporting datasets
-* Brain
+Viewing Datasets in the App
+___________________________
 
-   * Label mistakes
-   * Uniqueness
-   * Hardness
+
+FiftyOne Brain
+______________
+
+
+Command Line Interface
+______________________
+
 
 .. toctree::
    :maxdepth: 1
