@@ -116,6 +116,16 @@ class BooleanAttribute(Attribute):
     value = fof.BooleanField()
 
 
+class VectorAttribute(Attribute):
+    """A vector attribute.
+
+    Args:
+        value (None): the attribute value
+    """
+
+    value = fof.VectorField()
+
+
 class Classification(ImageLabel):
     """A classification label.
 
