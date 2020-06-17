@@ -60,5 +60,8 @@ Adding samples to your training dataset to improve your model’s performance
 .. toctree::
     :glob:
     :maxdepth: 1
+    :hidden:
 
-    *
+   uniqueness/README
+   label_mistakes
+   model_inference
