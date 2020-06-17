@@ -40,6 +40,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.coco as fouco
 import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
+import fiftyone.utils.kitti as fouk
 import fiftyone.utils.tf as fout
 import fiftyone.utils.voc as fouv
 import fiftyone.types as fot
@@ -572,6 +573,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset_dir, label_field=label_field, tags=tags
             )
 
+        if isinstance(dataset_type, fot.KITTIDetectionDataset):
+            return self.add_kitti_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
         if isinstance(dataset_type, fot.TFObjectDetectionDataset):
             return self.add_tf_object_detection_dataset(
                 dataset_dir, label_field=label_field, tags=tags
@@ -906,6 +912,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of IDs of the samples in the dataset
         """
         samples = fouv.parse_voc_detection_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_kitti_detection_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given KITTI detection dataset stored on disk to the
+        dataset.
+
+        See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = fouk.parse_kitti_detection_dataset(dataset_dir)
 
         _samples = []
         for img_path, metadata, detections in samples:

@@ -30,6 +30,7 @@ import fiftyone.types as fot
 import fiftyone.utils.coco as fouco
 import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
+import fiftyone.utils.kitti as fouk
 import fiftyone.utils.tf as fout
 import fiftyone.utils.voc as fouv
 
@@ -229,6 +230,10 @@ class SampleCollection(object):
             )
         elif isinstance(dataset_type, fot.VOCDetectionDataset):
             fouv.export_voc_detection_dataset(
+                self, label_field, export_dir, **kwargs
+            )
+        elif isinstance(dataset_type, fot.KITTIDetectionDataset):
+            fouk.export_kitti_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.TFObjectDetectionDataset):
