@@ -579,8 +579,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset_dir, label_field=label_field, tags=tags
             )
 
-        if isinstance(dataset_type, fot.BDDDetectionDataset):
-            return self.add_bdd_detection_dataset(
+        if isinstance(dataset_type, fot.BDDDataset):
+            return self.add_bdd_dataset(
                 dataset_dir, label_field=label_field, tags=tags
             )
 
@@ -967,40 +967,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self.add_samples(_samples)
 
-    def add_bdd_detection_dataset(
-        self, dataset_dir, label_field="ground_truth", tags=None
-    ):
-        """Adds the given BDD detection dataset stored on disk to the dataset.
-
-        See :class:`fiftyone.types.BDDDetectionDataset` for format details.
-
-        The labels will be stored in the ``label_field`` of the samples in
-        :class:`fiftyone.core.labels.ImageLabels` format.
-
-        Args:
-            dataset_dir: the directory containing the dataset
-            label_field ("ground_truth"): the name of the field to use for the
-                labels
-            tags (None): an optional list of tags to attach to each sample
-
-        Returns:
-            a list of IDs of the samples in the dataset
-        """
-        samples = foub.parse_bdd_detection_dataset(dataset_dir)
-
-        _samples = []
-        for img_path, metadata, detections in samples:
-            _samples.append(
-                fos.Sample(
-                    filepath=img_path,
-                    metadata=metadata,
-                    tags=tags,
-                    **{label_field: detections},
-                )
-            )
-
-        return self.add_samples(_samples)
-
     def add_tf_image_classification_dataset(
         self,
         dataset_dir,
@@ -1112,6 +1078,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of IDs of the samples in the dataset
         """
         samples = foucv.parse_cvat_image_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_bdd_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given BDD dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.BDDDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.ImageLabels` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = foub.parse_bdd_dataset(dataset_dir)
 
         _samples = []
         for img_path, metadata, detections in samples:

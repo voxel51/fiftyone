@@ -43,8 +43,8 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-class BDDDetectionSampleParser(foud.ImageLabelsSampleParser):
-    """Parser for samples in BDD detection format.
+class BDDSampleParser(foud.ImageLabelsSampleParser):
+    """Parser for samples in BDD format.
 
     This implementation supports samples that are
     ``(image_or_path, anno_or_path)`` tuples, where:
@@ -86,7 +86,7 @@ class BDDDetectionSampleParser(foud.ImageLabelsSampleParser):
 
           or the path to such a JSON file on disk.
 
-    See :class:`fiftyone.types.BDDDetectionDataset` for more format details.
+    See :class:`fiftyone.types.BDDDataset` for more format details.
     """
 
     def parse_image(self, sample):
@@ -146,10 +146,10 @@ class BDDDetectionSampleParser(foud.ImageLabelsSampleParser):
         return _parse_bdd_annotation(labels, frame_size)
 
 
-def parse_bdd_detection_dataset(dataset_dir):
-    """Parses the BDD detection dataset stored in the given directory.
+def parse_bdd_dataset(dataset_dir):
+    """Parses the BDD dataset stored in the given directory.
 
-    See :class:`fiftyone.types.BDDDetectionDataset` for more format details.
+    See :class:`fiftyone.types.BDDDataset` for more format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -160,7 +160,7 @@ def parse_bdd_detection_dataset(dataset_dir):
     data_dir = os.path.join(dataset_dir, "data")
     labels_path = os.path.join(dataset_dir, "labels.json")
 
-    anno_dict_map = load_bdd_detection_annotations(labels_path)
+    anno_dict_map = load_bdd_annotations(labels_path)
 
     filenames = etau.list_files(data_dir, abs_paths=False)
 
@@ -179,10 +179,10 @@ def parse_bdd_detection_dataset(dataset_dir):
     return samples
 
 
-def load_bdd_detection_annotations(json_path):
-    """Loads the BDD detection annotations from the given JSON file.
+def load_bdd_annotations(json_path):
+    """Loads the BDD annotations from the given JSON file.
 
-    See :class:`fiftyone.types.BDDDetectionDataset` for more format details.
+    See :class:`fiftyone.types.BDDDataset` for more format details.
 
     Args:
         json_path: the path to the annotations JSON file
@@ -194,10 +194,10 @@ def load_bdd_detection_annotations(json_path):
     return {d["name"]: d for d in annotations}
 
 
-def export_bdd_detection_dataset(samples, label_field, dataset_dir):
-    """Exports the given samples to disk as a BDD detection dataset.
+def export_bdd_dataset(samples, label_field, dataset_dir):
+    """Exports the given samples to disk as a BDD dataset.
 
-    See :class:`fiftyone.types.BDDDetectionDataset` for more format details.
+    See :class:`fiftyone.types.BDDDataset` for more format details.
 
     The raw images are directly copied to their destinations, maintaining their
     original formats and names, unless a name conflict would occur, in which
@@ -216,7 +216,7 @@ def export_bdd_detection_dataset(samples, label_field, dataset_dir):
     logger.info(
         "Writing samples to '%s' in '%s' format...",
         dataset_dir,
-        etau.get_class_name(fot.BDDDetectionDataset),
+        etau.get_class_name(fot.BDDDataset),
     )
 
     etau.ensure_dir(data_dir)

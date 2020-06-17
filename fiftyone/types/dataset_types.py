@@ -393,59 +393,6 @@ class KITTIDetectionDataset(BaseImageDetectionDataset):
     pass
 
 
-class BDDDetectionDataset(BaseImageDetectionDataset):
-    """A labeled dataset consisting of images and their associated object
-    detections saved in Berkeley DeepDrive (BDD) format
-    (https://bdd-data.berkeley.edu).
-
-    Datasets of this type are read/written in the following format::
-
-        <dataset_dir>/
-            data/
-                <filename0>
-                <filename1>
-                ...
-            labels.json
-
-    where ``labels.json`` is a JSON file in the following format::
-
-        [
-            {
-                "attributes": {
-                    "scene": "city street",
-                    "timeofday": "daytime",
-                    "weather": "overcast"
-                },
-                "labels": [
-                    {
-                        "attributes": {
-                            "occluded": false,
-                            "trafficLightColor": "none",
-                            "truncated": false
-                        },
-                        "box2d": {
-                            "x1": 1000.698742,
-                            "x2": 1040.626872,
-                            "y1": 281.992415,
-                            "y2": 326.91156
-                        },
-                        "category": "traffic sign",
-                        "id": 0,
-                        "manualAttributes": true,
-                        "manualShape": true
-                    },
-                    ...
-                ],
-                "name": <filename0>,
-                ...
-            },
-            ...
-        ]
-    """
-
-    pass
-
-
 class TFObjectDetectionDataset(BaseImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections stored as TFRecords in TF Object Detection API format
@@ -588,6 +535,59 @@ class ImageLabelsDataset(BaseImageLabelsDataset):
     and where each labels JSON file is stored in ``eta.core.image.ImageLabels``
     format. See https://voxel51.com/docs/api/#types-imagelabels for more
     details.
+    """
+
+    pass
+
+
+class BDDDataset(BaseImageLabelsDataset):
+    """A labeled dataset consisting of images and their associated multitask
+    predictions saved in Berkeley DeepDrive (BDD) format
+    (https://bdd-data.berkeley.edu).
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <filename0>
+                <filename1>
+                ...
+            labels.json
+
+    where ``labels.json`` is a JSON file in the following format::
+
+        [
+            {
+                "attributes": {
+                    "scene": "city street",
+                    "timeofday": "daytime",
+                    "weather": "overcast"
+                },
+                "labels": [
+                    {
+                        "attributes": {
+                            "occluded": false,
+                            "trafficLightColor": "none",
+                            "truncated": false
+                        },
+                        "box2d": {
+                            "x1": 1000.698742,
+                            "x2": 1040.626872,
+                            "y1": 281.992415,
+                            "y2": 326.91156
+                        },
+                        "category": "traffic sign",
+                        "id": 0,
+                        "manualAttributes": true,
+                        "manualShape": true
+                    },
+                    ...
+                ],
+                "name": <filename0>,
+                ...
+            },
+            ...
+        ]
     """
 
     pass
