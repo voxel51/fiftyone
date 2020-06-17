@@ -87,11 +87,11 @@ class CVATImageSampleParser(foud.LabeledImageSampleParser):
             sample: the sample
 
         Returns:
-            a :class:`fiftyone.core.labels.ImageLabels` instance
+            a :class:`fiftyone.core.labels.Detections` instance
         """
         d = sample[1]
         cvat_image = CVATImage.from_image_dict(d)
-        return cvat_image.to_image_labels()
+        return cvat_image.to_detections()
 
 
 class CVATTaskLabels(object):
@@ -226,29 +226,6 @@ class CVATImage(object):
         self.boxes = boxes or []
 
     @classmethod
-    def from_image_labels(cls, image_labels, metadata):
-        """Creates a :class:`CVATImage` from a
-        :class:`fiftyone.core.labels.ImageLabels`.
-
-        Args:
-            image_labels: a :class:`fiftyone.core.labels.ImageLabels`
-            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
-                image
-
-        Returns:
-            a :class:`CVATImage`
-        """
-        width = metadata.width
-        height = metadata.height
-
-        boxes = [
-            CVATBox.from_detected_object(o, metadata)
-            for o in image_labels.labels.objects
-        ]
-
-        return cls(None, None, width, height, boxes=boxes)
-
-    @classmethod
     def from_detections(cls, detections, metadata):
         """Creates a :class:`CVATImage` from a
         :class:`fiftyone.core.labels.Detections`.
@@ -291,21 +268,6 @@ class CVATImage(object):
             boxes.append(CVATBox.from_box_dict(box))
 
         return cls(id, name, width, height, boxes=boxes)
-
-    def to_image_labels(self):
-        """Returns a :class:`fiftyone.core.labels.ImageLabels` representation
-        of the annotations.
-
-        Returns:
-            a :class:`fiftyone.core.labels.ImageLabels`
-        """
-        frame_size = (self.width, self.height)
-        image_labels = etai.ImageLabels()
-        for box in self.boxes:
-            dobj = box.to_detected_object(frame_size)
-            image_labels.add_object(dobj)
-
-        return fol.ImageLabels(labels=image_labels)
 
     def to_detections(self):
         """Returns a :class:`fiftyone.core.labels.Detections` representation of
@@ -630,8 +592,7 @@ def export_cvat_image_dataset(samples, label_field, dataset_dir):
     Args:
         samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
         label_field: the name of the :class:`fiftyone.core.labels.Detections`
-            or :class:`fiftyone.core.labels.ImageLabels` field of the samples
-            to export
+            field of the samples to export
         dataset_dir: the directory to which to write the dataset
     """
     data_dir = os.path.join(dataset_dir, "data")
@@ -667,13 +628,8 @@ def export_cvat_image_dataset(samples, label_field, dataset_dir):
             if metadata is None:
                 metadata = fom.ImageMetadata.build_for(img_path)
 
-            label = sample[label_field]
-            if isinstance(label, fol.ImageLabels):
-                cvat_image = CVATImage.from_image_labels(label, metadata)
-            elif isinstance(label, fol.Detections):
-                cvat_image = CVATImage.from_detections(label, metadata)
-            else:
-                raise ValueError("Unsupported label type %s" % type(label))
+            detections = sample[label_field]
+            cvat_image = CVATImage.from_detections(detections, metadata)
 
             cvat_image.id = idx
             cvat_image.name = out_filename
