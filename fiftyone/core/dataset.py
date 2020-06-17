@@ -165,7 +165,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     raw media is stored on disk and the dataset provides paths to the data.
 
     Args:
-        name: the name of the dataset
+        name (None): the name of the dataset. By default,
+            :func:`get_default_dataset_name` is used
         persistent (False): whether the dataset will persist in the database
             once the session terminates.
 
@@ -173,7 +174,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ValueError: if ``create == False`` and the dataset does not exist
     """
 
-    def __init__(self, name, persistent=False, _create=True):
+    def __init__(self, name=None, persistent=False, _create=True):
+        if name is None:
+            name = get_default_dataset_name()
+
         self._name = name
         self._deleted = False
 
@@ -1341,9 +1345,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_dir(
             dataset_dir, dataset_type, label_field=label_field, tags=tags,
@@ -1399,9 +1400,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_classification_samples(
             samples, label_field=label_field, tags=tags, classes=classes
@@ -1471,9 +1469,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_detection_samples(
             samples, label_field=label_field, tags=tags, classes=classes
@@ -1519,9 +1514,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_labels_samples(
             samples, label_field=label_field, tags=tags
@@ -1572,9 +1564,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_labeled_image_samples(
             samples,
@@ -1608,9 +1597,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_classification_dataset(
             dataset_dir, label_field=label_field, tags=tags
@@ -1640,9 +1626,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_detection_dataset(
             dataset_dir, label_field=label_field, tags=tags
@@ -1672,9 +1655,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_labels_dataset(
             dataset_dir, label_field=label_field, tags=tags
@@ -1699,9 +1679,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_images_dir(images_dir, recursive=recursive, tags=tags)
         return dataset
@@ -1721,9 +1698,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_images_patt(image_patt, tags=tags)
         return dataset
@@ -1743,9 +1717,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_images(image_paths, tags=tags)
         return dataset
