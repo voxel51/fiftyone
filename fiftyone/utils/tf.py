@@ -323,16 +323,28 @@ class TFObjectDetectionSampleParser(
     _FEATURES = {
         "image/height": tf.io.FixedLenFeature([], tf.int64),
         "image/width": tf.io.FixedLenFeature([], tf.int64),
-        "image/filename": tf.io.FixedLenFeature([], tf.int64),
+        "image/filename": tf.io.FixedLenFeature([], tf.string),
         "image/source_id": tf.io.FixedLenFeature([], tf.string),
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
         "image/format": tf.io.FixedLenFeature([], tf.string),
-        "image/object/bbox/xmin": tf.io.FixedLenFeature([], tf.float64),
-        "image/object/bbox/xmax": tf.io.FixedLenFeature([], tf.float64),
-        "image/object/bbox/ymin": tf.io.FixedLenFeature([], tf.float64),
-        "image/object/bbox/ymax": tf.io.FixedLenFeature([], tf.float64),
-        "image/object/class/text": tf.io.FixedLenFeature([], tf.string),
-        "image/object/class/label": tf.io.FixedLenFeature([], tf.int64),
+        "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
+            [], tf.float32, allow_missing=True
+        ),
+        "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature(
+            [], tf.float32, allow_missing=True
+        ),
+        "image/object/bbox/ymin": tf.io.FixedLenSequenceFeature(
+            [], tf.float32, allow_missing=True
+        ),
+        "image/object/bbox/ymax": tf.io.FixedLenSequenceFeature(
+            [], tf.float32, allow_missing=True
+        ),
+        "image/object/class/text": tf.io.FixedLenSequenceFeature(
+            [], tf.string, allow_missing=True
+        ),
+        "image/object/class/label": tf.io.FixedLenSequenceFeature(
+            [], tf.int64, allow_missing=True
+        ),
     }
 
     def _parse_image(self, features):
