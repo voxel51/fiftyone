@@ -2,6 +2,23 @@ name: Build GUI
 
 on:
   push:
+    branches:
+      # - develop
+      - rel-*
+      - release-*
+      - gui-*
+      - github-actions-*
+    tags:
+      - gui-v*
+    paths:
+      - electron/
+      - package/gui/
+      - .github/workflows/build-gui.yml
+  pull_request:
+    branches:
+      # - develop
+      - rel-*
+      - release-*
     paths:
       - electron/
       - package/gui/
