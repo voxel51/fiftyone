@@ -82,23 +82,18 @@ class ServerServiceTests(unittest.TestCase):
         etau.delete_file(cls.test_one)
         etau.delete_file(cls.test_two)
 
-    def tearDown(self):
-        self.session.dataset = None
-        self._tmp = None
-        self.client.response = False
-
-    def test_connect(self):
+    def step_connect(self):
         self.assertIs(self.session._hc_client.connected, True)
         self.assertIs(self.client.connected, True)
 
-    def test_update(self):
+    def step_update(self):
         self.session.dataset = self.dataset
         self.wait_for_response()
         session = _serialize(self.session.state)
         client = self.client.data.serialize()
         self.assertEqual(session, client)
 
-    def test_get_current_state(self):
+    def step_get_current_state(self):
         self.session.view = self.dataset.view().limit(1)
         self.wait_for_response()
         session = _serialize(self.session.state)
@@ -108,7 +103,7 @@ class ServerServiceTests(unittest.TestCase):
         client = self.wait_for_response()
         self.assertEqual(session, client)
 
-    def test_selection(self):
+    def step_selection(self):
         self.client.emit("add_selection", self.sample1.id)
         self.wait_for_response(session=True)
         self.assertIs(len(self.session.selected), 1)
@@ -118,14 +113,14 @@ class ServerServiceTests(unittest.TestCase):
         self.wait_for_response(session=True)
         self.assertIs(len(self.session.selected), 0)
 
-    def test_page(self):
+    def step_page(self):
         self.session.dataset = self.dataset
         self.wait_for_response()
         self.client.emit("page", 1, callback=self.client_callback)
         client = self.wait_for_response()
         self.assertIs(len(client["results"]), 2)
 
-    def test_lengths(self):
+    def step_lengths(self):
         self.session.dataset = self.dataset
         self.wait_for_response()
         labels = self.dataset.view().get_label_fields()
@@ -140,7 +135,7 @@ class ServerServiceTests(unittest.TestCase):
         self.assertEqual(sort(client["labels"]), sort(labels))
         self.assertEqual(client["tags"], tags)
 
-    def test_get_distributions(self):
+    def step_get_distributions(self):
         self.session.dataset = self.dataset
         self.wait_for_response()
 
@@ -165,6 +160,15 @@ class ServerServiceTests(unittest.TestCase):
         self.assertIs(len(client), 1)
         self.assertEqual(client[0]["data"], [{"key": "null", "count": 2}])
 
+    def test_steps(self):
+        for name, step in self.steps():
+            try:
+                step()
+                self.session.dataset = None
+                self.client.response = None
+            except Exception as e:
+                self.fail("{} failed ({}: {})".format(step, type(e), e))
+
     def wait_for_response(self, timeout=3, session=False):
         start_time = time.time()
         while time.time() < start_time + timeout:
@@ -183,6 +187,11 @@ class ServerServiceTests(unittest.TestCase):
 
     def client_callback(self, data):
         self.client.response = data
+
+    def steps(self):
+        for name in dir(self):
+            if name.startswith("step"):
+                yield name, getattr(self, name)
 
 
 if __name__ == "__main__":
