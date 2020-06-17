@@ -1,4 +1,3 @@
-========
 FiftyOne
 ========
 
@@ -11,6 +10,7 @@ to help in creating valuable and diverse datasets.
    :align: center
 
 Teaser video that summarizes a typical usage of FiftyOne
+
 * visualize data
 * query, sort, tag
 * compute useful metrics like mistakedness, uniqueness
@@ -20,6 +20,7 @@ Overview
 
 Goal
 ____
+
 High-level overview of the value-add of the tool, with calls to action that
 enable the user to dive into more details at the right altitude (e.g., install,
 getting started, basic tutorials, advanced tutorials, use case-centric
@@ -27,6 +28,7 @@ workflows)
 
 Contents
 ________
+
 * Links to tutorial homepage
 * Link to getting started homepage
 * Links to concrete use cases (“solutions to common problems”)
