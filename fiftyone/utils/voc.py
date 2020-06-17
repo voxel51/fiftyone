@@ -39,30 +39,6 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-VOC_DETECTION_CLASSES = [
-    "aeroplane",
-    "bicycle",
-    "bird",
-    "boat",
-    "bottle",
-    "bus",
-    "car",
-    "cat",
-    "chair",
-    "cow",
-    "diningtable",
-    "dog",
-    "horse",
-    "motorbike",
-    "person",
-    "pottedplant",
-    "sheep",
-    "sofa",
-    "train",
-    "tvmonitor",
-]
-
-
 class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
     """Parser for samples in PASCAL VOC Detection format.
 
@@ -149,7 +125,7 @@ class VOCAnnotation(object):
         self.path = path
         self.folder = folder
         self.filename = filename
-        self.segmented = segmented or False
+        self.segmented = segmented
         self.metadata = metadata
         self.objects = objects or []
 
@@ -188,9 +164,7 @@ class VOCAnnotation(object):
             obj = VOCObject.from_detection(detection, metadata)
             objects.append(obj)
 
-        return cls(
-            path=img_path, segmented=False, metadata=metadata, objects=objects
-        )
+        return cls(path=img_path, metadata=metadata, objects=objects)
 
     @classmethod
     def from_xml(cls, xml_path):
@@ -219,11 +193,11 @@ class VOCAnnotation(object):
         """
         annotation = d["annotation"]
 
-        folder = d.get("folder", None)
-        filename = d.get("filename", None)
-        path = d["path"]
+        folder = annotation.get("folder", None)
+        filename = annotation.get("filename", None)
+        path = annotation["path"]
 
-        segmented = d.get("segmented", None)
+        segmented = annotation.get("segmented", None)
 
         if "size" in annotation:
             size = annotation["size"]
@@ -256,17 +230,25 @@ class VOCObject(object):
         bndbox: a :class:`VOCBoundingBox`
         pose (None): the pose of the object
         truncated (None): whether the object is truncated
-        difficult (None): whether the object is considered difficult
+        difficult (None): whether the object is difficult
+        occluded (None): whether the object is occluded
     """
 
     def __init__(
-        self, name, bndbox, pose=None, truncated=None, difficult=None,
+        self,
+        name,
+        bndbox,
+        pose=None,
+        truncated=None,
+        difficult=None,
+        occluded=None,
     ):
         self.name = name
         self.bndbox = bndbox
         self.pose = pose
         self.truncated = truncated
         self.difficult = difficult
+        self.occluded = occluded
 
     @classmethod
     def from_annotation_dict(cls, d):
@@ -283,8 +265,14 @@ class VOCObject(object):
         pose = d.get("pose", None)
         truncated = d.get("truncated", None)
         difficult = d.get("difficult", None)
+        occluded = d.get("occluded", None)
         return cls(
-            name, bndbox, pose=pose, truncated=truncated, difficult=difficult
+            name,
+            bndbox,
+            pose=pose,
+            truncated=truncated,
+            difficult=difficult,
+            occluded=occluded,
         )
 
     @classmethod
@@ -310,9 +298,15 @@ class VOCObject(object):
         pose = detection.get_attribute_value("pose", None)
         truncated = detection.get_attribute_value("truncated", None)
         difficult = detection.get_attribute_value("difficult", None)
+        occluded = detection.get_attribute_value("occluded", None)
 
         return cls(
-            name, bndbox, pose=pose, truncated=truncated, difficult=difficult
+            name,
+            bndbox,
+            pose=pose,
+            truncated=truncated,
+            difficult=difficult,
+            occluded=occluded,
         )
 
     def to_detection(self, frame_size):
@@ -331,18 +325,26 @@ class VOCObject(object):
 
         if self.pose is not None:
             # pylint: disable=unsupported-assignment-operation
-            detection.attributes["pose"] = fol.CategoricalAttribute(self.pose)
+            detection.attributes["pose"] = fol.CategoricalAttribute(
+                value=self.pose
+            )
 
         if self.truncated is not None:
             # pylint: disable=unsupported-assignment-operation
-            detection.attributes["truncated"] = fol.BooleanAttribute(
-                self.truncated
+            detection.attributes["truncated"] = fol.CategoricalAttribute(
+                value=self.truncated
             )
 
         if self.difficult is not None:
             # pylint: disable=unsupported-assignment-operation
-            detection.attributes["difficult"] = fol.BooleanAttribute(
-                self.difficult
+            detection.attributes["difficult"] = fol.CategoricalAttribute(
+                value=self.difficult
+            )
+
+        if self.occluded is not None:
+            # pylint: disable=unsupported-assignment-operation
+            detection.attributes["occluded"] = fol.CategoricalAttribute(
+                value=self.occluded
             )
 
         return detection
@@ -452,7 +454,7 @@ class VOCAnnotationWriter(object):
                 "width": metadata.width,
                 "height": metadata.height,
                 "depth": metadata.num_channels,
-                "database": "",
+                "database": None,
                 "segmented": annotation.segmented,
                 "objects": annotation.objects,
             }
@@ -587,3 +589,27 @@ def export_voc_detection_dataset(samples, label_field, dataset_dir):
 
 def _ensure_list(value):
     return [value] if not isinstance(value, list) else value
+
+
+VOC_DETECTION_CLASSES = [
+    "aeroplane",
+    "bicycle",
+    "bird",
+    "boat",
+    "bottle",
+    "bus",
+    "car",
+    "cat",
+    "chair",
+    "cow",
+    "diningtable",
+    "dog",
+    "horse",
+    "motorbike",
+    "person",
+    "pottedplant",
+    "sheep",
+    "sofa",
+    "train",
+    "tvmonitor",
+]
