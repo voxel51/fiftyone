@@ -108,4 +108,3 @@ documentation, feel free to reach out to us at support@voxel51.com.
    :caption: API Reference
 
    api/fiftyone
-

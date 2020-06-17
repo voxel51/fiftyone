@@ -2,3 +2,4 @@ m2r==0.2.1
 Sphinx==2.4.4
 sphinxcontrib-napoleon==0.7
 sphinx-rtd-theme==0.4.3
+nbsphinx==0.7.1

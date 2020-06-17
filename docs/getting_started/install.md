@@ -1,4 +1,9 @@
-# FiftyOne Installation Guide
+# Install FiftyOne
+
+## TODO
+
+Simple page that provides steps that user can copy-paste into their terminal to
+install the software, on Mac, Linux, or Windows
 
 This document describes how to install FiftyOne in a
 [virtual environment](https://docs.python.org/3/tutorial/venv.html). Using a
