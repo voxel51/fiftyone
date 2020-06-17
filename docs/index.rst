@@ -16,9 +16,34 @@ documentation, feel free to reach out to us at support@voxel51.com.
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
+   :caption: Getting Started
 
+   overview
    install_guide
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Tutorials
+
    examples/index
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Common Recipes
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: User Guide
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: API Reference
+
    api/fiftyone
 
 Additional resources:
