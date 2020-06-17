@@ -135,7 +135,7 @@ class CVATTaskLabels(object):
                 _label = box.label
                 schema.add_object_label(_label)
                 for attr in box.attributes:
-                    _attr = etad.CategoricalAttribute(attr.name, attr.value)
+                    _attr = attr.to_eta_attribute()
                     schema.add_object_attribute(_label, _attr)
 
         return cls.from_schema(schema)
@@ -283,8 +283,8 @@ class CVATImage(object):
         """
         id = d["@id"]
         name = d["@name"]
-        width = d["@width"]
-        height = d["@height"]
+        width = int(d["@width"])
+        height = int(d["@height"])
 
         boxes = []
         for box in _ensure_list(d.get("box", [])):
@@ -359,7 +359,7 @@ class CVATBox(object):
         xbr = xtl + w
         ybr = ytl + h
 
-        attributes = [CVATAttribute(a.name, a.value) for a in dobj.attrs]
+        attributes = [CVATAttribute.from_eta_attribute(a) for a in dobj.attrs]
 
         return cls(label, xtl, ytl, xbr, ybr, attributes=attributes)
 
@@ -403,12 +403,14 @@ class CVATBox(object):
 
         label = d.pop("@label")
 
-        xtl = d.pop("@xtl")
-        ytl = d.pop("@ytl")
-        xbr = d.pop("@xbr")
-        ybr = d.pop("@ybr")
+        xtl = int(d.pop("@xtl"))
+        ytl = int(d.pop("@ytl"))
+        xbr = int(d.pop("@xbr"))
+        ybr = int(d.pop("@ybr"))
 
-        attributes = [CVATAttribute(name, value) for name, value in d.items()]
+        attributes = [
+            CVATAttribute.from_anno(name, value) for name, value in d.items()
+        ]
 
         return cls(label, xtl, ytl, xbr, ybr, attributes=attributes)
 
@@ -428,10 +430,7 @@ class CVATBox(object):
             self.xtl, self.ytl, self.xbr, self.ybr, frame_size=frame_size
         )
         attrs = etad.AttributeContainer(
-            attrs=[
-                etad.CategoricalAttribute(a.name, a.value)
-                for a in self.attributes
-            ]
+            attrs=[a.to_eta_attribute() for a in self.attributes]
         )
 
         return etao.DetectedObject(
@@ -458,7 +457,11 @@ class CVATBox(object):
             (self.ybr - self.ytl) / height,
         ]
 
-        return fol.Detection(label=label, bounding_box=bounding_box)
+        attributes = {a.name: a.to_eta_attribute() for a in self.attributes}
+
+        return fol.Detection(
+            label=label, bounding_box=bounding_box, attributes=attributes,
+        )
 
 
 class CVATAttribute(object):
@@ -472,6 +475,41 @@ class CVATAttribute(object):
     def __init__(self, name, value):
         self.name = name
         self.value = value
+
+    @classmethod
+    def from_anno(cls, name, value):
+        """Creates a :class:`CVATAttribute` from the given annotation info.
+
+        Args:
+            name: the attribute name
+            value: the attribute value
+
+        Returns:
+            a :class:`CVATAttribute`
+        """
+        return cls(name, value)
+
+    @classmethod
+    def from_eta_attribute(cls, attr):
+        """Creates a :class:`CVATAttribute` from an
+        ``eta.core.data.Attribute``.
+
+        Args:
+            attr: an ``eta.core.data.Attribute``
+
+        Returns:
+            a :class:`CVATAttribute`
+        """
+        return cls(attr.name, attr.value)
+
+    def to_eta_attribute(self):
+        """Returns an ``eta.core.data.Attribute`` representation of the
+        attribute.
+
+        Returns:
+            an ``eta.core.data.Attribute``
+        """
+        return etad.CategoricalAttribute(self.name, self.value)
 
 
 class CVATImageAnnotationWriter(object):
