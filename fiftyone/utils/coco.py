@@ -374,8 +374,8 @@ def export_coco_detection_dataset(
                 }
             )
 
-            label = sample[label_field]
-            for detection in label.detections:
+            detections = sample[label_field]
+            for detection in detections.detections:
                 anno_id += 1
                 _classes.add(detection.label)
                 obj = COCOObject.from_detection(

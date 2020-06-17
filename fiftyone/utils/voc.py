@@ -578,9 +578,9 @@ def export_voc_detection_dataset(samples, label_field, dataset_dir):
             if metadata is None:
                 metadata = fom.ImageMetadata.build_for(img_path)
 
-            label = sample[label_field]
+            detections = sample[label_field]
             annotation = VOCAnnotation.from_labeled_image(
-                out_img_path, metadata, label
+                out_img_path, metadata, detections
             )
             writer.write(annotation, out_anno_path)
 
