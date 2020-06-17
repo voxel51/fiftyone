@@ -237,7 +237,7 @@ def parse_coco_detection_dataset(dataset_dir):
     classes, images, annotations = load_coco_detection_annotations(labels_path)
 
     # Index by filename
-    images_map = {i["filename"]: i for i in images.values()}
+    images_map = {i["file_name"]: i for i in images.values()}
 
     filenames = etau.list_files(data_dir, abs_paths=False)
 
