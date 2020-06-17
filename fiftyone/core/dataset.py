@@ -579,11 +579,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset_dir, label_field=label_field, tags=tags
             )
 
-        if isinstance(dataset_type, fot.BDDDataset):
-            return self.add_bdd_dataset(
-                dataset_dir, label_field=label_field, tags=tags
-            )
-
         if isinstance(dataset_type, fot.TFObjectDetectionDataset):
             return self.add_tf_object_detection_dataset(
                 dataset_dir, label_field=label_field, tags=tags
@@ -596,6 +591,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if isinstance(dataset_type, fot.ImageLabelsDataset):
             return self.add_image_labels_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.BDDDataset):
+            return self.add_bdd_dataset(
                 dataset_dir, label_field=label_field, tags=tags
             )
 
@@ -839,6 +839,52 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples, label_field=label_field, tags=tags
         )
 
+    def add_tf_image_classification_dataset(
+        self,
+        dataset_dir,
+        label_field="ground_truth",
+        tags=None,
+        images_dir=None,
+        image_format=None,
+    ):
+        """Adds the given TF image classification dataset stored on disk to the
+        dataset.
+
+        See :class:`fiftyone.types.TFImageClassificationDataset` for format
+        details.
+
+        The images are read in-memory and written to ``images_dir``.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Classification` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+            images_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        tf_records_patt = os.path.join(dataset_dir, "*")
+        samples = fout.from_tf_records(tf_records_patt)
+
+        sample_parser = fout.TFImageClassificationSampleParser()
+
+        return self.ingest_labeled_image_samples(
+            samples,
+            label_field=label_field,
+            tags=tags,
+            dataset_dir=images_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
     def add_image_detection_dataset(
         self, dataset_dir, label_field="ground_truth", tags=None
     ):
@@ -967,52 +1013,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self.add_samples(_samples)
 
-    def add_tf_image_classification_dataset(
-        self,
-        dataset_dir,
-        label_field="ground_truth",
-        tags=None,
-        images_dir=None,
-        image_format=None,
-    ):
-        """Adds the given TF image classification dataset stored on disk to the
-        dataset.
-
-        See :class:`fiftyone.types.TFImageClassificationDataset` for format
-        details.
-
-        The images are read in-memory and written to ``images_dir``.
-
-        The labels will be stored in the ``label_field`` of the samples in
-        :class:`fiftyone.core.labels.Classification` format.
-
-        Args:
-            dataset_dir: the directory containing the dataset
-            label_field ("ground_truth"): the name of the field to use for the
-                labels
-            tags (None): an optional list of tags to attach to each sample
-            images_dir (None): the directory in which the images will be
-                written. By default, :func:`get_default_dataset_dir` is used
-            image_format (``fiftyone.config.default_image_ext``): the image
-                format to use to write the images to disk
-
-        Returns:
-            a list of IDs of the samples in the dataset
-        """
-        tf_records_patt = os.path.join(dataset_dir, "*")
-        samples = fout.from_tf_records(tf_records_patt)
-
-        sample_parser = fout.TFImageClassificationSampleParser()
-
-        return self.ingest_labeled_image_samples(
-            samples,
-            label_field=label_field,
-            tags=tags,
-            dataset_dir=images_dir,
-            sample_parser=sample_parser,
-            image_format=image_format,
-        )
-
     def add_tf_object_detection_dataset(
         self,
         dataset_dir,
@@ -1092,6 +1092,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self.add_samples(_samples)
 
+    def add_image_labels_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given image labels dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.ImageLabels` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = foud.parse_image_labels_dataset(dataset_dir)
+        return self.add_labeled_image_samples(
+            samples, label_field=label_field, tags=tags
+        )
+
     def add_bdd_dataset(
         self, dataset_dir, label_field="ground_truth", tags=None
     ):
@@ -1125,30 +1149,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         return self.add_samples(_samples)
-
-    def add_image_labels_dataset(
-        self, dataset_dir, label_field="ground_truth", tags=None
-    ):
-        """Adds the given image labels dataset stored on disk to the dataset.
-
-        See :class:`fiftyone.types.ImageLabelsDataset` for format details.
-
-        The labels will be stored in the ``label_field`` of the samples in
-        :class:`fiftyone.core.labels.ImageLabels` format.
-
-        Args:
-            dataset_dir: the directory containing the dataset
-            label_field ("ground_truth"): the name of the field to use for the
-                labels
-            tags (None): an optional list of tags to attach to each sample
-
-        Returns:
-            a list of IDs of the samples in the dataset
-        """
-        samples = foud.parse_image_labels_dataset(dataset_dir)
-        return self.add_labeled_image_samples(
-            samples, label_field=label_field, tags=tags
-        )
 
     def add_images_dir(self, images_dir, recursive=True, tags=None):
         """Adds the given directory of images to the dataset.

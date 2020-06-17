@@ -237,8 +237,6 @@ class SampleCollection(object):
             fouk.export_kitti_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
-        elif isinstance(dataset_type, fot.BDDDataset):
-            foub.export_bdd_dataset(self, label_field, export_dir, **kwargs)
         elif isinstance(dataset_type, fot.TFObjectDetectionDataset):
             fout.export_tf_object_detection_dataset(
                 self, label_field, export_dir, **kwargs
@@ -251,6 +249,8 @@ class SampleCollection(object):
             foud.export_image_labels_dataset(
                 self, label_field, export_dir, **kwargs
             )
+        elif isinstance(dataset_type, fot.BDDDataset):
+            foub.export_bdd_dataset(self, label_field, export_dir, **kwargs)
         else:
             raise ValueError("Unsupported dataset type %s" % dataset_type)
 
