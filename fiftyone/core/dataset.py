@@ -102,7 +102,12 @@ def get_default_dataset_name():
     Returns:
         a dataset name
     """
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.datetime.now()
+    name = now.strftime("%Y-%m-%d %H.%M.%S")
+    if name in list_dataset_names():
+        name = now.strftime("%Y-%m-%d %H.%M.%S.%f")
+
+    return name
 
 
 def get_default_dataset_dir(name):
