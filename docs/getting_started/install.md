@@ -179,14 +179,14 @@ FiftyOne and all of its subpackages can be uninstalled with:
 pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
 ```
 
-# Linux MongoDB Setup Guide
+## Linux MongoDB Setup Guide
 
 FiftyOne relies on a version of MongoDB that works on Ubuntu 18.04 and several
 other modern distributions. If this version does not work on your distribution,
 there are alternative builds available, or you can use an existing installation
 of MongoDB.
 
-## Installing alternative builds with `pip`
+### Installing alternative builds with `pip`
 
 Alternative builds are available as pip packages for the distributions listed
 below, and can be installed by running the corresponding command. Note that
@@ -194,19 +194,19 @@ these packages must be installed _after_ the `fiftyone` package; if you install
 `fiftyone` afterwards, you can fix your MongoDB installation by adding
 `--force-reinstall` to the commands below.
 
-### Ubuntu 16.04
+#### Ubuntu 16.04
 
 ```
 pip install --index https://pypi.voxel51.com fiftyone-db-ubuntu1604
 ```
 
-### Debian 9
+#### Debian 9
 
 ```
 pip install --index https://pypi.voxel51.com fiftyone-db-debian9
 ```
 
-## Installing MongoDB manually
+### Installing MongoDB manually
 
 FiftyOne also supports using an existing MongoDB installation (version 3.6 or
 newer). This can be installed through many distributions' package managers.

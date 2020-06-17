@@ -2,8 +2,8 @@
 
 This directory is a set of examples for interacting with a MongoDB database.
 
-This code is **NOT** dependent on the `fiftyone` python module. It stands as
-an example of using MongoDB for the use case of image dataset representation.
+This code is **NOT** dependent on the `fiftyone` python module. It stands as an
+example of using MongoDB for the use case of image dataset representation.
 
 ## Requirements
 
@@ -12,10 +12,11 @@ pip install pymongo
 ```
 
 You will also need to
-[install MongoDB](https://www.mongodb.com/download-center/community). Note
-that this is different from the `fiftyone` install process.
+[install MongoDB](https://www.mongodb.com/download-center/community). Note that
+this is different from the `fiftyone` install process.
 
 You will also need to have downloaded the example CIFAR100 dataset via:
+
 ```bash
 python ../download_data.py
 ```

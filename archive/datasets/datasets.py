@@ -29,8 +29,8 @@ def show_sample(dataset):
 
     plt.imshow(img)
     plt.title(
-        "Dataset root: %s\nNumber of samples: %d\nSample image: %s" % (
-            dataset.root, len(dataset), target_label)
+        "Dataset root: %s\nNumber of samples: %d\nSample image: %s"
+        % (dataset.root, len(dataset), target_label)
     )
     plt.show()
 
@@ -43,8 +43,8 @@ def show_coco_sample(dataset):
     plt.imshow(img)
     dataset.coco.showAnns(target)
     plt.title(
-        "Dataset root: %s\nNumber of samples: %d" % (
-            dataset.root, len(dataset))
+        "Dataset root: %s\nNumber of samples: %d"
+        % (dataset.root, len(dataset))
     )
     plt.show()
 
@@ -82,11 +82,17 @@ show_sample(mnist)
 COCO_DIR = os.path.join(DATASETS_DIR, "coco")
 
 COCO_TRAIN_ZIP_PATH = os.path.join(COCO_DIR, "train2017.zip")
-etaw.download_file("http://images.cocodataset.org/zips/train2017.zip", path=COCO_TRAIN_ZIP_PATH)
+etaw.download_file(
+    "http://images.cocodataset.org/zips/train2017.zip",
+    path=COCO_TRAIN_ZIP_PATH,
+)
 etau.extract_zip(COCO_TRAIN_ZIP_PATH)
 
 COCO_ANNO_ZIP_PATH = os.path.join(COCO_DIR, "annotations_trainval2017.zip")
-etaw.download_file("http://images.cocodataset.org/annotations/annotations_trainval2017.zip", path=COCO_ANNO_ZIP_PATH)
+etaw.download_file(
+    "http://images.cocodataset.org/annotations/annotations_trainval2017.zip",
+    path=COCO_ANNO_ZIP_PATH,
+)
 etau.extract_zip(COCO_ANNO_ZIP_PATH)
 
 coco_data_path = os.path.join(COCO_DIR, "train2017")

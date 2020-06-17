@@ -58,10 +58,9 @@ Adding samples to your training dataset to improve your model’s performance
    * Brain method used: compute_hardness()
 
 .. toctree::
-    :glob:
-    :maxdepth: 1
-    :hidden:
+   :maxdepth: 1
+   :hidden:
 
    uniqueness/README
-   label_mistakes
-   model_inference
+   label_mistakes/README
+   model_inference/README

@@ -13,7 +13,6 @@ Others...
 
 
 .. toctree::
-    :glob:
-    :maxdepth: 1
+   :maxdepth: 1
 
-    *
+   image_deduplication/README

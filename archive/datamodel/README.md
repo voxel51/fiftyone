@@ -31,15 +31,16 @@ Data is downloaded as:
 
 ## Scripts
 
-- `drop_database.py`: clear the database at anytime
+-   `drop_database.py`: clear the database at anytime
 
-- `ingest_data.py`: read CIFAR100 data into the database
+-   `ingest_data.py`: read CIFAR100 data into the database
 
-- `explore_dataset.py`: snippets for exploring the database and example dataset
+-   `explore_dataset.py`: snippets for exploring the database and example
+    dataset
 
-- `view_example.py`: snippets for querying the example dataset
+-   `view_example.py`: snippets for querying the example dataset
 
-- `sample_example.py`: snippets for working with an individual sample
+-   `sample_example.py`: snippets for working with an individual sample
 
-- `session_example.py`: example using a `Session` which interacts 1-to-1 with
-  the GUI
+-   `session_example.py`: example using a `Session` which interacts 1-to-1 with
+    the GUI

@@ -34,7 +34,8 @@ User Guide
    * Hardness
 
 .. toctree::
-    :glob:
-    :maxdepth: 1
+   :maxdepth: 1
+   :hidden:
 
-    *
+   dataset_creation/README
+   15to51.ipynb
