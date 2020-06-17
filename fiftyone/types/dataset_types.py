@@ -388,6 +388,13 @@ class KITTIDetectionDataset(BaseImageDetectionDataset):
     3       | location   | 3D object location ``(x, y, z)`` in camera coordinates (in meters) | 0
     1       | rotation_y | Rotation around the y-axis in camera coordinates, in ``[-pi, pi]` | 0
     1       | score      | ``(optional)`` A float confidence for the detection |
+
+    The ``default`` column above indicates the default value that will be used
+    when writing datasets in this type whose samples do not contain the
+    necessary field(s).
+
+    When reading datasets of this type, all columns after the four ``bbox``
+    columns may be omitted.
     """
 
     pass
@@ -411,8 +418,8 @@ class TFObjectDetectionDataset(BaseImageDetectionDataset):
             "image/height": tf.io.FixedLenFeature([], tf.int64),
             "image/width": tf.io.FixedLenFeature([], tf.int64),
 
-            # Image filename is used for both of these
-            "image/filename": tf.io.FixedLenFeature([], tf.int64),
+            # Image filename is used for both of these when writing
+            "image/filename": tf.io.FixedLenFeature([], tf.string),
             "image/source_id": tf.io.FixedLenFeature([], tf.string),
 
             # Encoded image bytes
@@ -422,16 +429,16 @@ class TFObjectDetectionDataset(BaseImageDetectionDataset):
             "image/format": tf.io.FixedLenFeature([], tf.string),
 
             # Normalized bounding box coordinates in `[0, 1]`
-            "image/object/bbox/xmin": tf.io.FixedLenFeature([], tf.float64),
-            "image/object/bbox/xmax": tf.io.FixedLenFeature([], tf.float64),
-            "image/object/bbox/ymin": tf.io.FixedLenFeature([], tf.float64),
-            "image/object/bbox/ymax": tf.io.FixedLenFeature([], tf.float64),
+            "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature([], tf.float32, allow_missing=True),
+            "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature([], tf.float32, allow_missing=True),
+            "image/object/bbox/ymin": tf.io.FixedLenSequenceFeature([], tf.float32, allow_missing=True),
+            "image/object/bbox/ymax": tf.io.FixedLenSequenceFeature([], tf.float32, allow_missing=True),
 
             # Class label string
-            "image/object/class/text": tf.io.FixedLenFeature([], tf.string),
+            "image/object/class/text": tf.io.FixedLenSequenceFeature([], tf.string, allow_missing=True),
 
             # Integer class ID
-            "image/object/class/label": tf.io.FixedLenFeature([], tf.int64),
+            "image/object/class/label": tf.io.FixedLenSequenceFeature([], tf.int64, allow_missing=True)
         }
     """
 
