@@ -836,7 +836,7 @@ class ZooInfoCommand(Command):
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", nargs="?", help="the name of the dataset"
+            "name", metavar="NAME", help="the name of the dataset"
         )
         parser.add_argument(
             "-b",
