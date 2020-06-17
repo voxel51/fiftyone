@@ -87,7 +87,7 @@ for example_dir in os.listdir("../examples"):
     if example_dir == "archive":
         continue
 
-    rst_path = os.path.join("examples", example_dir + ".rst")
+    rst_path = os.path.join("tutorials", example_dir + ".rst")
     with open(rst_path, "w") as f:
         print("Creating " + rst_path)
         f.write(example_rst_template.format(example_dir=example_dir))
