@@ -349,6 +349,45 @@ class VOCDetectionDataset(BaseImageDetectionDataset):
             </object>
             ...
         </annotation>
+
+    When writing datasets in this format, samples with no values for certain
+    (like ``pose`` in the above example) are left empty.
+    """
+
+    pass
+
+
+class KITTIDetectionDataset(BaseImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections saved in KITTI format
+    (http://www.cvlibs.net/datasets/kitti/eval_object.php).
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.txt
+                <uuid2>.txt
+
+    where the labels TXT files are space-delimited files where each row
+    corresponds to an object and the 15 (and optional 16th score) columns have
+    the following meanings:
+
+    \# cols | name       | description | default
+    ------- | ---------- | ----------- | --------
+    1       | type       | The object label | -
+    1       | truncated  | A float in ``[0, 1]``, where 0 is non-truncated and 1 is truncated, where truncated refers to the object leaving image boundaries | 0
+    1       | occluded   | An int in ``(0, 1, 2, 3)`` indicating occlusion state, where:<br>0 = fully visible<br>1 = partly occluded<br>2 = largely occluded<br>3 = unknown | 0
+    1       | alpha      | Observation angle of the object, in ``[-pi, pi]` | 0
+    4       | bbox       | 2D bounding box of object in the image, in pixels, in the format ``[x-top-left, y-top-left, x-bottom-right, y-bottom-right]`` | -
+    3       | dimensions | 3D object dimensions, in meters, in the format ``[height, width, length]`` | 0
+    3       | location   | 3D object location ``(x, y, z)`` in camera coordinates (in meters) | 0
+    1       | rotation_y | Rotation around the y-axis in camera coordinates, in ``[-pi, pi]` | 0
+    1       | score      | ``(optional)`` A float confidence for the detection |
     """
 
     pass
