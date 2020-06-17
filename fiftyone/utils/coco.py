@@ -367,10 +367,11 @@ def export_coco_detection_dataset(
             images.append(
                 {
                     "id": image_id,
-                    "license": None,
                     "file_name": filename,
                     "height": metadata.height,
                     "width": metadata.width,
+                    "license": None,
+                    "coco_url": None,
                 }
             )
 
