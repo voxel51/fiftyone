@@ -7,3 +7,20 @@ _____________________
 
 Add or Remove Fields
 ____________________
+
+
+Iterating
+_________
+
+
+Sorting
+_______
+
+
+Searching
+_________
+
+
+Modifying
+_________
+
