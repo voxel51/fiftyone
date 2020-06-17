@@ -5,17 +5,28 @@ FiftyOne
 FiftyOne is a cutting-edge, Python-based tool for the visual data scientist to
 help in creating valuable and diverse datasets.
 
-This documentation includes an :doc:`installation guide <getting_started/install>` and
-documentation covering the :doc:`fiftyone Python package <api/fiftyone>`. See
-below for a full table of contents.
-
-Overview
-========
+.. image:: images/video_placeholder.png
+   :alt: Overview Video
+   :width: 80%
+   :align: center
 
 Teaser video that summarizes a typical usage of FiftyOne
 - visualize data
 - query, sort, tag
 - compute useful metrics like mistakedness, uniqueness
+
+Overview
+========
+
+Goal
+____
+High-level overview of the value-add of the tool, with calls to action that enable the user to dive into more details at the right altitude (e.g., install, getting started, basic tutorials, advanced tutorials, use case-centric workflows)
+
+Contents
+________
+- Links to tutorial homepage
+- Link to getting started homepage
+- Links to concrete use cases (“solutions to common problems”)
 
 Value Proposition: What problems are you solving for me?
 1. Your data has problems that are holding back the performance of your models
