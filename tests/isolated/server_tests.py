@@ -165,7 +165,7 @@ class ServerServiceTests(unittest.TestCase):
             try:
                 step()
                 self.session.dataset = None
-                self.client.response = None
+                self.wait_for_response()
             except Exception as e:
                 self.fail("{} failed ({}: {})".format(step, type(e), e))
 
