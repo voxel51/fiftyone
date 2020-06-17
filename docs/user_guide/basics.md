@@ -9,7 +9,7 @@ custom labels.
 `Datasets` are composed of `Samples` which contain `Fields`, all of which can
 be dynamically created, modified and deleted.
 
-### Samples
+## Samples
 
 `Samples` are the elements of `Datasets` that store all the information related
 to a given image. Any `Sample` must include a file path to an image.
@@ -18,14 +18,8 @@ to a given image. Any `Sample` must include a file path to an image.
 sample = fo.Sample(filepath="/path/to/image.png")
 ```
 
-### Fields
+## Fields
 
-### Tags
+## Tags
 
-### Views
-
-## Using a Dataset
-
-### Add or Remove Samples
-
-### Add or Remove Fields
+## Views

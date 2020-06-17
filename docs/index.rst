@@ -101,6 +101,7 @@ documentation, feel free to reach out to us at support@voxel51.com.
    user_guide/using_dataset
    user_guide/app
    user_guide/brain
+   user_guide/cli
 
 .. toctree::
    :maxdepth: 2
