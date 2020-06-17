@@ -79,9 +79,10 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
     def _parse_detection(self, obj, img=None):
         detection = super()._parse_detection(obj, img=img)
         if "area" in obj:
-            area = fol.NumericAttribute(value=obj["area"])
             # pylint: disable=unsupported-assignment-operation
-            detection.attributes["area"] = area
+            detection.attributes["area"] = fol.NumericAttribute(
+                value=obj["area"]
+            )
 
         return detection
 
@@ -116,7 +117,7 @@ class COCOObject(etas.Serializable):
         self.category_id = category_id
         self.bbox = bbox
         self.area = area
-        self.segmentation = segmentation or []
+        self.segmentation = segmentation
         self.iscrowd = iscrowd
 
     @classmethod
@@ -155,12 +156,12 @@ class COCOObject(etas.Serializable):
         height = metadata.height
         x, y, w, h = detection.bounding_box
         bbox = [
-            int(round(x * width)),
-            int(round(y * height)),
-            int(round(w * width)),
-            int(round(h * height)),
+            round(x * width, 1),
+            round(y * height, 1),
+            round(w * width, 1),
+            round(h * height, 1),
         ]
-        area = bbox[2] * bbox[3]
+        area = round(bbox[2] * bbox[3], 1)
 
         return cls(None, None, category_id, bbox, area=area)
 
@@ -183,9 +184,10 @@ class COCOObject(etas.Serializable):
 
         detection = fol.Detection(label=label, bounding_box=bounding_box)
 
-        # @todo divide by `width * height`?
-        # pylint: disable=unsupported-assignment-operation
-        detection.attributes["area"] = fol.NumericAttribute(value=self.area)
+        if self.area is not None:
+            # pylint: disable=unsupported-assignment-operation
+            area = self.area / (width * height)
+            detection.attributes["area"] = fol.NumericAttribute(value=area)
 
         return detection
 
