@@ -19,9 +19,9 @@ documentation, feel free to reach out to us at support@voxel51.com.
    :hidden:
    :caption: Getting Started
 
-   overview
-   install_guide
-   linux_db_setup
+   getting_started/overview
+   getting_started/install_guide
+   getting_started/linux_db_setup
 
 .. toctree::
    :maxdepth: 2

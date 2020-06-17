@@ -1,4 +1,5 @@
-# FiftyOne Overview
+Overview
+========
 
 Teaser video that summarizes a typical usage of FiftyOne
 - visualize data
@@ -13,6 +14,8 @@ Value Proposition: What problems are you solving for me?
 How does FiftyOne help?
 
 Capabilities
+------------
+
 - (Each capability links to a tutorial for more details)
 - Finding annotation mistakes
 - Removing duplicate images
@@ -20,6 +23,7 @@ Capabilities
 - Adding samples to your training dataset to improve your model’s performance
 
 Concepts
+--------
+
 - (Each concept links to a user guide section for more details)
 - Using dataset views to search and filter your data
-
