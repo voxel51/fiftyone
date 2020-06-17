@@ -21,23 +21,28 @@ documentation, feel free to reach out to us at support@voxel51.com.
 
    overview
    install_guide
+   linux_db_setup
 
 .. toctree::
    :maxdepth: 2
    :hidden:
    :caption: Tutorials
 
-   examples/index
+   tutorials/index
 
 .. toctree::
    :maxdepth: 2
    :hidden:
    :caption: Common Recipes
 
+   common_recipes/index
+
 .. toctree::
    :maxdepth: 2
    :hidden:
    :caption: User Guide
+
+   user_guide/index
 
 .. toctree::
    :maxdepth: 2
@@ -45,10 +50,3 @@ documentation, feel free to reach out to us at support@voxel51.com.
    :caption: API Reference
 
    api/fiftyone
-
-Additional resources:
-
-.. toctree::
-    :maxdepth: 1
-
-    linux_db_setup

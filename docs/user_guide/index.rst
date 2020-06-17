@@ -1,5 +1,5 @@
-FiftyOne Examples
-=================
+User Guide
+==========
 
 .. toctree::
     :glob:
