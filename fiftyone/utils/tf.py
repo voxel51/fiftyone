@@ -493,10 +493,44 @@ class TFObjectDetectionSampleWriter(TFRecordSampleWriter):
         return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
+def parse_tf_image_classification_dataset(dataset_dir):
+    """Parses the TF image classification dataset stored in the given
+    directory.
+
+    See :class:`fiftyone.types.TFImageClassificationDataset` for format
+    details.
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        a ``tf.data.Dataset`` that emits ``tf.train.Example`` protos that can
+        be parsed by a :class:`TFImageClassificationSampleParser`
+    """
+    tf_records_patt = os.path.join(dataset_dir, "*")
+    return from_tf_records(tf_records_patt)
+
+
+def parse_tf_object_detection_dataset(dataset_dir):
+    """Parses the TF object detection dataset stored in the given directory.
+
+    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+
+    Returns:
+        a ``tf.data.Dataset`` that emits ``tf.train.Example`` protos that can
+        be parsed by a :class:`TFObjectDetectionSampleParser`
+    """
+    tf_records_patt = os.path.join(dataset_dir, "*")
+    return from_tf_records(tf_records_patt)
+
+
 def export_tf_image_classification_dataset(
     samples, label_field, dataset_dir, num_shards=None
 ):
-    """Exports the given samples to disk as image classification TFRecords.
+    """Exports the given samples to disk as a TF image classification dataset.
 
     See :class:`fiftyone.types.TFImageClassificationDataset` for format
     details.
@@ -554,8 +588,7 @@ def export_tf_image_classification_dataset(
 def export_tf_object_detection_dataset(
     samples, label_field, dataset_dir, classes=None, num_shards=None
 ):
-    """Exports the given samples to disk as TFRecords in TF Object Detection
-    API format.
+    """Exports the given samples to disk as a TF object detection dataset.
 
     See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
 

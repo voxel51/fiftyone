@@ -875,11 +875,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        tf_records_patt = os.path.join(dataset_dir, "*")
-        samples = fout.from_tf_records(tf_records_patt)
-
+        samples = fout.parse_tf_image_classification_dataset(dataset_dir)
         sample_parser = fout.TFImageClassificationSampleParser()
-
         return self.ingest_labeled_image_samples(
             samples,
             label_field=label_field,
@@ -1025,7 +1022,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         images_dir=None,
         image_format=None,
     ):
-        """Adds the given TF object detection dataset stored on disk to the dataset.
+        """Adds the given TF object detection dataset stored on disk to the
+        dataset.
 
         See :class:`fiftyone.types.TFObjectDetectionDataset` for format
         details.
@@ -1048,11 +1046,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
-        tf_records_patt = os.path.join(dataset_dir, "*")
-        samples = fout.from_tf_records(tf_records_patt)
-
+        samples = fout.parse_tf_object_detection_dataset(dataset_dir)
         sample_parser = fout.TFObjectDetectionSampleParser()
-
         return self.ingest_labeled_image_samples(
             samples,
             label_field=label_field,
