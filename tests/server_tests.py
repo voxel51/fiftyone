@@ -44,7 +44,7 @@ def _serialize(state):
     return StateDescription.from_dict(state.serialize()).serialize()
 
 
-WAIT = 0.2
+WAIT = 0.5
 
 
 class ServerServiceTests(unittest.TestCase):
