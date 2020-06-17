@@ -5,7 +5,7 @@ FiftyOne
 FiftyOne is a cutting-edge, Python-based tool for the visual data scientist to
 help in creating valuable and diverse datasets.
 
-This documentation includes an :doc:`installation guide <install_guide>` and
+This documentation includes an :doc:`installation guide <getting_started/install>` and
 documentation covering the :doc:`fiftyone Python package <api/fiftyone>`. See
 below for a full table of contents.
 
@@ -51,7 +51,7 @@ documentation, feel free to reach out to us at support@voxel51.com.
    :hidden:
    :caption: Getting Started
 
-   getting_started/install_guide
+   getting_started/install
    getting_started/linux_db_setup
 
 .. toctree::
