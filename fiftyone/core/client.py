@@ -19,9 +19,10 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
-from retrying import retry
+import signal
 import threading
 
+from retrying import retry
 import socketio
 
 import fiftyone.constants as foc
@@ -55,6 +56,9 @@ class BaseClient(socketio.ClientNamespace):
         self.connected = False
         self.updated = False
         super(BaseClient, self).__init__(namespace)
+        # disable socketio's interrupt handler because it closes the connection
+        # on ctrl-c in interactive sessions
+        signal.signal(signal.SIGINT, signal.default_int_handler)
 
     def on_connect(self):
         """Receives the "connect" event."""
