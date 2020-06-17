@@ -324,8 +324,9 @@ class VOCDetectionDataset(BaseImageDetectionDataset):
             <object>
                 <name>cat</name>
                 <pose></pose>
-                <truncated></truncated>
-                <difficult></difficult>
+                <truncated>0</truncated>
+                <difficult>0</difficult>
+                <occluded>0</occluded>
                 <bndbox>
                     <xmin>256</xmin>
                     <ymin>200</ymin>
@@ -336,8 +337,9 @@ class VOCDetectionDataset(BaseImageDetectionDataset):
             <object>
                 <name>dog</name>
                 <pose></pose>
-                <truncated></truncated>
-                <difficult></difficult>
+                <truncated>1</truncated>
+                <difficult>1</difficult>
+                <occluded>1</occluded>
                 <bndbox>
                     <xmin>128</xmin>
                     <ymin>100</ymin>
