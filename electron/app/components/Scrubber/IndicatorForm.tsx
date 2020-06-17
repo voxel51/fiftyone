@@ -7,16 +7,19 @@ import indicatorFormMachine from "./IndicatorForm.machine.ts";
 
 const IndicatorForm = styled.input`
   width: 100%;
-  height: 100%;
   max-width: 3rem;
-  max-height: 2rem;
+  height: 2rem;
   border: none;
+  padding: 0;
 
-  :focus ;
+  &:focus {
+    outline: none;
+    padding: 0;
+  }
 `;
 
 export default function () {
   const [state, send] = useMachine(indicatorFormMachine);
   const { value } = state.context;
-  return <IndicatorForm sendvalue={value} />;
+  return <IndicatorForm value={value} />;
 }
