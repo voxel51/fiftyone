@@ -53,6 +53,7 @@ class BaseClient(socketio.ClientNamespace):
         self.data_cls = data_cls
         self.data = data_cls()
         self.connected = False
+        self.updated = False
         super(BaseClient, self).__init__(namespace)
 
     def on_connect(self):
@@ -69,6 +70,7 @@ class BaseClient(socketio.ClientNamespace):
         Args:
             data: the new data
         """
+        self.updated = True
         self.data = self.data_cls.from_dict(data)
 
     def update(self, data):

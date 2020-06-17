@@ -33,18 +33,20 @@ from fiftyone.core.session import Session
 from fiftyone.core.state import StateDescription
 
 
-class TestClient(foc.BaseClient):
-    """TestClient receiver to check results of events"""
+class AppClient(foc.BaseClient):
+    """AppClient simulates the Application"""
 
     def __init__(self):
-        super(TestClient, self).__init__("/state", StateDescription)
+        self.response = None
+        super(AppClient, self).__init__("/state", StateDescription)
+
+    def on_update(self, data):
+        super(AppClient, self).on_update(data)
+        self.response = True
 
 
 def _serialize(state):
     return StateDescription.from_dict(state.serialize()).serialize()
-
-
-WAIT = 0.5
 
 
 class ServerServiceTests(unittest.TestCase):
@@ -59,7 +61,7 @@ class ServerServiceTests(unittest.TestCase):
     session = Session(remote=True)
     sio_client = socketio.Client()
     sio_client.eio.start_background_task = foc._start_background_task
-    client = TestClient()
+    client = AppClient()
     sio_client.register_namespace(client)
     foc._connect(sio_client, SERVER_ADDR % 5151)
     _tmp = None
@@ -83,6 +85,7 @@ class ServerServiceTests(unittest.TestCase):
     def tearDown(self):
         self.session.dataset = None
         self._tmp = None
+        self.client.response = False
 
     def test_connect(self):
         self.assertIs(self.session._hc_client.connected, True)
@@ -90,55 +93,46 @@ class ServerServiceTests(unittest.TestCase):
 
     def test_update(self):
         self.session.dataset = self.dataset
+        self.wait_for_response()
         session = _serialize(self.session.state)
-        time.sleep(WAIT)
         client = self.client.data.serialize()
         self.assertEqual(session, client)
 
     def test_get_current_state(self):
         self.session.view = self.dataset.view().limit(1)
+        self.wait_for_response()
         session = _serialize(self.session.state)
-
-        def callback(state_dict):
-            self._tmp = state_dict
-
-        self.client.emit("get_current_state", "", callback=callback)
-        time.sleep(WAIT)
-        client = self._tmp
+        self.client.emit(
+            "get_current_state", "", callback=self.client_callback
+        )
+        client = self.wait_for_response()
         self.assertEqual(session, client)
 
     def test_selection(self):
         self.client.emit("add_selection", self.sample1.id)
-        time.sleep(WAIT)
+        self.wait_for_response(session=True)
         self.assertIs(len(self.session.selected), 1)
         self.assertEqual(self.session.selected[0], self.sample1.id)
+
         self.client.emit("remove_selection", self.sample1.id)
-        time.sleep(WAIT)
+        self.wait_for_response(session=True)
         self.assertIs(len(self.session.selected), 0)
 
     def test_page(self):
         self.session.dataset = self.dataset
-        time.sleep(WAIT)
-
-        def callback(result):
-            self._tmp = result
-
-        self.client.emit("page", 1, callback=callback)
-        time.sleep(WAIT)
-        client = self._tmp
+        self.wait_for_response()
+        self.client.emit("page", 1, callback=self.client_callback)
+        client = self.wait_for_response()
         self.assertIs(len(client["results"]), 2)
 
     def test_lengths(self):
         self.session.dataset = self.dataset
+        self.wait_for_response()
         labels = self.dataset.view().get_label_fields()
         tags = self.dataset.view().get_tags()
 
-        def callback(data):
-            self._tmp = data
-
-        self.client.emit("lengths", "", callback=callback)
-        time.sleep(WAIT)
-        client = self._tmp
+        self.client.emit("lengths", "", callback=self.client_callback)
+        client = self.wait_for_response()
 
         def sort(l):
             return sorted(l, key=lambda f: f["_id"]["field"])
@@ -148,28 +142,47 @@ class ServerServiceTests(unittest.TestCase):
 
     def test_get_distributions(self):
         self.session.dataset = self.dataset
-        self.sample1.save()
+        self.wait_for_response()
 
-        def callback(data):
-            self._tmp = data
-
-        self.client.emit("get_distributions", "tags", callback=callback)
-        time.sleep(WAIT)
-        client = self._tmp
+        self.client.emit(
+            "get_distributions", "tags", callback=self.client_callback
+        )
+        client = self.wait_for_response()
         self.assertIs(len(client), 1)
         self.assertEqual(client[0]["data"], [{"key": "tag", "count": 1}])
 
-        self.client.emit("get_distributions", "labels", callback=callback)
-        time.sleep(WAIT)
-        client = self._tmp
+        self.client.emit(
+            "get_distributions", "labels", callback=self.client_callback
+        )
+        client = self.wait_for_response()
         self.assertIs(len(client), 1)
         self.assertEqual(client[0]["data"], [{"key": "test", "count": 1}])
 
-        self.client.emit("get_distributions", "scalars", callback=callback)
-        time.sleep(WAIT)
-        client = self._tmp
+        self.client.emit(
+            "get_distributions", "scalars", callback=self.client_callback
+        )
+        client = self.wait_for_response()
         self.assertIs(len(client), 1)
         self.assertEqual(client[0]["data"], [{"key": "null", "count": 2}])
+
+    def wait_for_response(self, timeout=3, session=False):
+        start_time = time.time()
+        while time.time() < start_time + timeout:
+            if session:
+                if self.session._hc_client.updated:
+                    self.session._hc_client.updated = False
+                    return
+            elif self.client.response:
+                response = self.client.response
+                self.client.response = None
+
+                return response
+            time.sleep(0.2)
+
+        raise RuntimeError("No response after %f" % timeout)
+
+    def client_callback(self, data):
+        self.client.response = data
 
 
 if __name__ == "__main__":
