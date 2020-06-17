@@ -82,6 +82,16 @@ class Attribute(ODMEmbeddedDocument):
     value = fof.Field()
 
 
+class BooleanAttribute(Attribute):
+    """A boolean attribute.
+
+    Args:
+        value (None): the attribute value
+    """
+
+    value = fof.BooleanField()
+
+
 class CategoricalAttribute(Attribute):
     """A categorical attribute.
 
@@ -104,16 +114,6 @@ class NumericAttribute(Attribute):
     """
 
     value = fof.FloatField()
-
-
-class BooleanAttribute(Attribute):
-    """A boolean attribute.
-
-    Args:
-        value (None): the attribute value
-    """
-
-    value = fof.BooleanField()
 
 
 class VectorAttribute(Attribute):
