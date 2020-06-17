@@ -37,6 +37,7 @@ import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
+import fiftyone.utils.bdd as foub
 import fiftyone.utils.coco as fouco
 import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
@@ -578,6 +579,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset_dir, label_field=label_field, tags=tags
             )
 
+        if isinstance(dataset_type, fot.BDDDetectionDataset):
+            return self.add_bdd_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
         if isinstance(dataset_type, fot.TFObjectDetectionDataset):
             return self.add_tf_object_detection_dataset(
                 dataset_dir, label_field=label_field, tags=tags
@@ -947,6 +953,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of IDs of the samples in the dataset
         """
         samples = fouk.parse_kitti_detection_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_bdd_detection_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given BDD detection dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.BDDDetectionDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.ImageLabels` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = foub.parse_bdd_detection_dataset(dataset_dir)
 
         _samples = []
         for img_path, metadata, detections in samples:

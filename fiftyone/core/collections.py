@@ -27,6 +27,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
+import fiftyone.utils.bdd as foub
 import fiftyone.utils.coco as fouco
 import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
@@ -234,6 +235,10 @@ class SampleCollection(object):
             )
         elif isinstance(dataset_type, fot.KITTIDetectionDataset):
             fouk.export_kitti_detection_dataset(
+                self, label_field, export_dir, **kwargs
+            )
+        elif isinstance(dataset_type, fot.BDDDetectionDataset):
+            foub.export_bdd_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.TFObjectDetectionDataset):
