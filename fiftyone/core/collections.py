@@ -115,7 +115,7 @@ class SampleCollection(object):
         """Populates the ``metadata`` field of all samples in the collection.
 
         Any samples with existing metadata are skipped, unless
-        ``overwrite == True`.
+        ``overwrite == True``.
 
         Args:
             overwrite (False): whether to overwrite existing metadata

@@ -42,8 +42,8 @@ class TorchImageDataset(Dataset):
 
     Args:
         image_paths: an iterable of image paths
-        sample_ids (None): an iterable of
-            :attribute:`fiftyone.core.sample.Sample.id` IDs
+        sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
+            IDs
         transform (None): an optional transform to apply to the images
     """
 
@@ -83,8 +83,8 @@ class TorchImageClassificationDataset(Dataset):
     Args:
         image_paths: an iterable of image paths
         targets: an iterable of targets
-        sample_ids (None): an iterable of
-            :attribute:`fiftyone.core.sample.Sample.id` IDs
+        sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
+            IDs
         transform (None): an optional transform to apply to the images
     """
 
