@@ -82,12 +82,6 @@ class Attribute(ODMEmbeddedDocument):
     value = fof.Field()
 
 
-class Attributes(ODMDynamicEmbeddedDocument):
-    """A dynamic collection of :class:`Attribute` instances."""
-
-    pass
-
-
 class CategoricalAttribute(Attribute):
     """A categorical attribute.
 
@@ -180,7 +174,6 @@ class Detection(ODMEmbeddedDocument):
     bounding_box = fof.VectorField()
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
-    # attributes = fof.EmbeddedDocumentField(Attributes, default=Attributes())
 
     def get_attribute_value(self, attr_name, default=no_default):
         """Gets the value of the attribute with the given name.
