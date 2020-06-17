@@ -49,7 +49,6 @@ setup(
         "Flask",
         "flask-socketio",
         "future",
-        "gunicorn",
         "mongoengine",
         "numpy",
         "packaging",

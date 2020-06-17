@@ -205,17 +205,11 @@ class ServerService(Service):
     @property
     def command(self):
         command = [
-            "gunicorn",
-            "-w",
-            "1",
-            "--worker-class",
-            "eventlet",
-            "-b",
-            "127.0.0.1:%d" % self._port,
-            "main:app",
+            sys.executable,
+            "main.py",
+            "--port",
+            str(self.port),
         ]
-        if foc.DEV_INSTALL:
-            command += ["--reload"]
         return command
 
     @property

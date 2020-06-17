@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import argparse
 import json
 import logging
 import os
@@ -317,4 +318,8 @@ socketio.on_namespace(StateController("/state"))
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=5000)
+    args = parser.parse_args()
+
+    socketio.run(app, port=args.port, debug=foc.DEV_INSTALL)
