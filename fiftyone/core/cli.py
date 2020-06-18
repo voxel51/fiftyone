@@ -1068,7 +1068,7 @@ class ZooInfoCommand(Command):
             dataset_dir, info = downloaded_datasets[name]
             print(dataset_dir)
             print("\n***** Dataset info *****")
-            _print_dict_as_json(info.serialize())
+            print(info)
 
 
 class ZooDownloadCommand(Command):
