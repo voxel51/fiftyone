@@ -310,7 +310,7 @@ class DatasetsCommand(Command):
 
 
 class DatasetsListCommand(Command):
-    """Tools for listing FiftyOne datasets.
+    """List FiftyOne datasets.
 
     Examples::
 
@@ -334,7 +334,7 @@ class DatasetsListCommand(Command):
 
 
 class DatasetsInfoCommand(Command):
-    """Tools for listing information about FiftyOne datasets.
+    """Print information about FiftyOne datasets.
 
     Examples::
 
@@ -530,22 +530,17 @@ class DatasetsExportCommand(Command):
     Examples::
 
         # Exports the dataset with the given type
-        fiftyone datasets export \\
-            --name <name> --export-dir <export-dir> --type <type> \
-            --label-field <label-field>
+        fiftyone datasets export <name> \\
+            --export-dir <export-dir> --type <type> --label-field <label-field>
 
         # Exports the dataset in JSON format
-        fiftyone datasets export --name <name> --json-path <json-path>
+        fiftyone datasets export <name> --json-path <json-path>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "-n",
-            "--name",
-            required=True,
-            metavar="NAME",
-            help="the name of the dataset to export",
+            "name", metavar="NAME", help="the name of the dataset to export",
         )
         parser.add_argument(
             "-d",
@@ -636,7 +631,7 @@ class DashboardCommand(Command):
 
 
 class DashboardLaunchCommand(Command):
-    """Tools for launching the FiftyOne Dashboard.
+    """Launch the FiftyOne Dashboard.
 
     Examples::
 
@@ -691,8 +686,8 @@ def _watch_session(session, remote=False):
 
 
 class DashboardViewCommand(Command):
-    """Tools for viewing datasets in the FiftyOne Dashboard without persisting
-    them to the database.
+    """View datasets in the FiftyOne Dashboard without persisting them to the
+    database.
 
     Examples::
 
@@ -800,7 +795,7 @@ class DashboardViewCommand(Command):
 
 
 class DashboardConnectCommand(Command):
-    """Tools for connecting to a remote FiftyOne Dashboard.
+    """Connect to a remote FiftyOne Dashboard.
 
     Examples::
 
@@ -895,7 +890,7 @@ class ZooCommand(Command):
 
 
 class ZooListCommand(Command):
-    """Tools for listing datasets in the FiftyOne Dataset Zoo.
+    """Listi datasets in the FiftyOne Dataset Zoo.
 
     Examples::
 
@@ -999,7 +994,7 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
 
 
 class ZooInfoCommand(Command):
-    """Tools for printing info about downloaded zoo datasets.
+    """Print information about downloaded zoo datasets.
 
     Examples::
 
@@ -1055,7 +1050,7 @@ class ZooInfoCommand(Command):
 
 
 class ZooDownloadCommand(Command):
-    """Tools for downloading zoo datasets.
+    """Download zoo datasets.
 
     Examples::
 
@@ -1097,7 +1092,7 @@ class ZooDownloadCommand(Command):
 
 
 class ZooLoadCommand(Command):
-    """Tools for loading zoo datasets as persistent FiftyOne datasets.
+    """Load zoo datasets as persistent FiftyOne datasets.
 
     Examples::
 
