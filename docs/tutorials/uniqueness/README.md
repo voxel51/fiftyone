@@ -152,9 +152,9 @@ actual downloading, we will use the provided `query_flickr.py` script:
 KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 SECRET=YYYYYYYYYYYYYYYY
 
-python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "badger"
-python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "wolverine"
-python -m fiftyone.examples.uniqueness.query_flickr $KEY $SECRET "kitten"
+python -m fiftyone.tutorials.uniqueness.query_flickr $KEY $SECRET "badger"
+python -m fiftyone.tutorials.uniqueness.query_flickr $KEY $SECRET "wolverine"
+python -m fiftyone.tutorials.uniqueness.query_flickr $KEY $SECRET "kitten"
 ```
 
 The rest of this walkthrough assumes you've downloaded some images to your

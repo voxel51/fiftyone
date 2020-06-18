@@ -10,7 +10,7 @@ CIFAR-100, a dataset of 32x32 pixel images with one of 100 different
 classification labels such as `apple`, `bicycle`, `porcupine`, etc.
 
 ```bash
-python -m fiftyone.examples.image_deduplication.download_dataset
+python -m fiftyone.common_recipes.image_deduplication.download_dataset
 ```
 
 The above script uses `tensorflow.keras.datasets` to download the dataset, so
