@@ -6,7 +6,7 @@ to help in creating valuable and diverse datasets.
 
 .. image:: images/video_placeholder.png
    :alt: Overview Video
-   :width: 80%
+   :width: 100%
    :align: center
 
 Teaser video that summarizes a typical usage of FiftyOne
