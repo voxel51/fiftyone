@@ -455,6 +455,3 @@ def train_epoch(state, timer, train_batches, valid_batches, train_steps=default_
         'valid': union({'time': valid_time}, valid_summary),
         'total time': timer.total_time
     }
-
-
-
