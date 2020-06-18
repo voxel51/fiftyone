@@ -25,7 +25,7 @@ repos:
         name: ipynb-strip
         language: system
         files: \.ipynb$
-        entry: jupyter nbconvert --clear-output
+        entry: jupyter nbconvert --clear-output --ClearOutputPreprocessor.enabled=True
         args: ["--log-level=ERROR"]
   - repo: https://github.com/prettier/prettier
     rev: 2.0.5
