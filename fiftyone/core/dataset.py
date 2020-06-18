@@ -528,7 +528,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset_type,
         label_field="ground_truth",
         tags=None,
-        **kwargs,
+        **kwargs
     ):
         """Adds the contents of the given directory to the dataset.
 
@@ -1356,7 +1356,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field="ground_truth",
         tags=None,
-        **kwargs,
+        **kwargs
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
 
