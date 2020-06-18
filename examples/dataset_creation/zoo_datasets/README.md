@@ -461,6 +461,38 @@ Loading 'cifar10' split 'test'
 Dataset 'cifar10-test' created
 ```
 
+## Controlling where zoo datasets are downloaded
+
+By default, zoo datasets are downloaded into subdirectories of
+`fiftyone.config.default_dataset_dir` corresponding to their names.
+
+You can customize this directory in any of the following ways:
+
+-   Directly editing your FiftyOne config at `~/.fiftyone/config.json`
+
+```shell
+# Print your current config
+fiftyone config
+
+# Locate your config, and then edit it
+fiftyone constants FIFTYONE_CONFIG_PATH
+```
+
+-   Setting the `FIFTYONE_DEFAULT_DATASET_DIR` environment variable
+
+```shell
+# Customize where zoo datasets are downloaded
+export FIFTYONE_DEFAULT_DATASET_DIR=/your/custom/directory
+```
+
+-   Setting the `default_dataset_dir` config setting from your Python code
+
+```py
+# Customize where zoo datasets are downloaded
+import fiftyone.core.config as foc
+foc.set_config_settings(default_dataset_dir="/your/custom/directory")
+```
+
 ## Customizing your ML backend
 
 Behind the scenes, FiftyOne uses the
@@ -488,7 +520,7 @@ You can customize this backend in any of the following ways:
 # Print your current config
 fiftyone config
 
-# Locate your config
+# Locate your config, and then edit it
 fiftyone constants FIFTYONE_CONFIG_PATH
 ```
 
