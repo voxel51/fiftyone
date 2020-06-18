@@ -1,11 +1,32 @@
-Making a Dataset
+Loading a Dataset
 ================
+
+.. default-role:: code
+
+FiftyOne supports automatic loading of `Datasets` stored in various common
+formats. If your labeled data is stored in a custom format, don't worry, FiftyOne provides support for easily loading your custom data as well.
+
 
 Supported Types
 _______________
 
-Image Classification
---------------------
+FiftyOne `Datasets` currently support image data, either unlabeled or with one
+of the following label types:
+
+* Image Classification
+
+* Object Detection
+
+* Semantic Segmentation
+
+* Instance Segmentation
+
+
+Dataset Formats
+_______________
+
+Image Directory
+---------------
 
 COCO Detection
 --------------
@@ -19,11 +40,15 @@ TF Object Detection
 CVAT Image
 ----------
 
+
+FiftyOne Zoo
+------------
+
+FiftyOne provides a dataset zoo 
+
+
 Custom
 ------
-
-Dataset Formats
-_______________
 
 
 Importing Datasets

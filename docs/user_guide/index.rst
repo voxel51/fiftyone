@@ -6,23 +6,43 @@ User Guides
 .. rubric:: :doc:`FiftyOne Dataset Basics <basics>`: 
 
 Learn about FiftyOne `Datasets` and
-their relation to `Samples`, `Fields`, `Tags` and `Views`.
+their relation to `Samples`, `Fields`, `Tags` and 
+`Views`::
+    import fiftyone as fo
+    dataset = fo.Dataset(name="my_dataset")
+    sample = fo.Sample(filepath="path/to/img.png")
+    dataset.add_sample(sample)
+    sample.tags += ["train"]
+    sample["integer_field"] = 51
 
 
-.. rubric:: :doc:`Making a Datset <making_dataset>`: 
+.. rubric:: :doc:`Loading a Dataset <making_dataset>`: 
 
-Create a `Dataset` either from an
-existing supported dataset format or from scratch.
+Load a `Dataset` either using an
+existing supported dataset format or from scratch::
+    dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
 
 
-.. rubric:: :doc:`Using a Datset <using_dataset>`: 
+.. rubric:: :doc:`Using a Dataset <using_dataset>`: 
 
-Use your `Dataset` to search, sort, and modify your data.
-
+Use your `Dataset` to search, sort, and modify your 
+data::
+    view = (
+        dataset.view()
+        .match({"tags": "test"})
+        .exists("metadata")
+        .sort_by("filepath")[:3]
+        .take(2)
+    )
 
 .. rubric:: :doc:`Viewing Datasets in the App <app>`: 
 
 Visualize your `Dataset` in the FiftyOne App and see your changes in real time. 
+
+.. image:: ../images/dog.png
+   :alt: App 
+   :align: center
+   :target: app.html
 
 
 .. rubric:: :doc:`FiftyOne Brain <brain>`: 

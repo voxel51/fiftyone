@@ -36,7 +36,7 @@ setup(
     license="",
     packages=find_packages(exclude=["fiftyone.experimental"])
     + ["fiftyone.examples"],
-    package_dir={"fiftyone.examples": "examples"},
+    package_dir={"fiftyone.examples": "docs"},
     include_package_data=True,
     exclude_package_data={
         "fiftyone": ["experimental/*"],
