@@ -19,11 +19,10 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
+import contextlib
 import logging
 import multiprocessing
 import os
-
-import contextlib2
 
 import eta.core.utils as etau
 
@@ -213,7 +212,8 @@ def _write_sharded_tf_records(examples, tf_records_path, num_shards):
         tf_records_patt % (i, num_shards) for i in range(1, num_shards + 1)
     ]
 
-    with contextlib2.ExitStack() as exit_stack:
+    with contextlib.ExitStack() as exit_stack:
+        # pylint: disable=no-member
         writers = [
             exit_stack.enter_context(tf.io.TFRecordWriter(path))
             for path in tf_records_paths

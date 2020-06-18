@@ -1,5 +1,4 @@
 argcomplete==1.11.0
-contextlib2==0.5.5
 eventlet==0.25.2
 flask-socketio==4.3.0
 Flask==1.1.2
