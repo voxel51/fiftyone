@@ -1,42 +1,53 @@
 FiftyOne
 ========
 
+In the modern age of deep learning, **quality data** is quickly becoming the
+most important factor to successful machine learning. And unlike those neatly
+curated research datasets, real world problems means data that is partially
+labeled, unbalanced, mislabeled, misrepresentative...you name it.
+
+Is bad data holding back the performance of your models?
+
+If you answered no, are you sure? Or are you being overly optimistic?
+
+For the vast majority of cases, improving dataset quality is going to be the
+highest return on investment for boosting model performance. This could mean
+many things, such as:
+
+1. adding new samples that increase diversity
+2. removing redundant samples that do not benefit performance and bloat the
+   dataset unnecessarily
+3. modifying labels due to annotation mistakes
+
+It is time to start seeing the dataset as a dynamic and evolving part of the
+machine learning "code", and this is where **FiftyOne** comes in.
+
 **FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
-to help in creating valuable and diverse datasets.
+to help in creating valuable and diverse datasets. **FiftyOne**:
+
+* provides powerful capabilities for understanding and modifying datasets
+  in ways that will best improve model performance
+* facilitates good practice and organization in shepherding data
+* makes it easy to rapidly gain intuitions and efficiently wrangle data
+
+Improving your dataset means better models, clearer and more meaningful
+evaluation results and a more efficient means to all of this.
 
 .. image:: images/video_placeholder.png
    :alt: Overview Video
    :width: 100%
    :align: center
 
-Teaser video that summarizes a typical usage of FiftyOne
+Where to go from here? You could...
 
-* visualize data
-* query, sort, tag
-* compute useful metrics like mistakedness, uniqueness
-
-**Goal**
-
-High-level overview of the value-add of the tool, with calls to action that
-enable the user to dive into more details at the right altitude (e.g., install,
-getting started, basic tutorials, advanced tutorials, use case-centric
-workflows)
-
-**Contents**
-
-Value Proposition: What problems are you solving for me?
-
-1. Your data has problems that are holding back the performance of your models
-2. Dataset wrangling is tedious, laborious, and not-sexy. At the same time,
-   gaining an intuitive understanding of your data is key to improving your
-   model’s performance
-3. ROI for Data Scientists: Improving your data diversity is the biggest return
-   on investment that you can make to improving the accuracy/performance of
-   your model. - this needs to be emphasized - that FiftyONe is for data
-   scientists - it’s not just about data wrangling - it’s for data scientists
-   to help them build better models by making data interaction more accessible]
-
-How does FiftyOne help?
+* start by :doc:`Installing FiftyOne<getting_started/install>`
+* try one of the :doc:`Tutorials<tutorials/index>` that demonstrate the unique
+  capabilites of FiftyOne
+* explore the :doc:`Common Recipes<common_recipes/index>` for integrating
+  FiftyOne into your current workflow
+* check the :doc:`User Guide<user_guide/index>` for detailed "How To..." of
+  a specific tasks you may be trying to accomplish
+* view the :doc:`API Reference<api/fiftyone>`
 
 Capabilities
 ____________
