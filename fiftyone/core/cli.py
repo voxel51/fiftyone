@@ -878,6 +878,7 @@ class ZooCommand(Command):
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "list", ZooListCommand)
+        _register_command(subparsers, "find", ZooFindCommand)
         _register_command(subparsers, "info", ZooInfoCommand)
         _register_command(subparsers, "download", ZooDownloadCommand)
         _register_command(subparsers, "load", ZooLoadCommand)
@@ -888,7 +889,7 @@ class ZooCommand(Command):
 
 
 class ZooListCommand(Command):
-    """Listi datasets in the FiftyOne Dataset Zoo.
+    """List datasets in the FiftyOne Dataset Zoo.
 
     Examples::
 
@@ -989,6 +990,29 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
     )
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
+
+
+class ZooFindCommand(Command):
+    """Locate the downloaded zoo dataset on disk.
+
+    Examples::
+
+        # Print the location of the downloaded zoo dataset on disk
+        fiftyone zoo find <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+
+        dataset_dir = foz.find_zoo_dataset(name)
+        print(dataset_dir)
 
 
 class ZooInfoCommand(Command):

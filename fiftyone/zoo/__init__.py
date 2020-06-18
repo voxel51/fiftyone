@@ -50,7 +50,7 @@ def list_zoo_datasets():
     for d in itervalues(_get_zoo_datasets()):
         datasets |= d.keys()
 
-    return list(datasets)
+    return sorted(datasets)
 
 
 def list_downloaded_zoo_datasets(base_dir=None):
@@ -203,8 +203,29 @@ def load_zoo_dataset(
     return dataset
 
 
+def find_zoo_dataset(name):
+    """Returns the directory containing the given zoo dataset.
+
+    The dataset must be downloaded. Use :func:`download_zoo_dataset` to
+    download datasets.
+
+    Args:
+        name: the name of the zoo dataset
+
+    Returns:
+        the directory containing the dataset
+    """
+    zoo_dataset, dataset_dir = _parse_dataset_details(name, None)
+    try:
+        zoo_dataset.load_info(dataset_dir)
+    except OSError:
+        raise ValueError("Dataset '%s' is not downloaded" % name)
+
+    return dataset_dir
+
+
 def load_zoo_dataset_info(name, dataset_dir=None):
-    """Loads the :class:`ZooDatasetInfo` for the specified dataset.
+    """Loads the :class:`ZooDatasetInfo` for the specified zoo dataset.
 
     The dataset must be downloaded. Use :func:`download_zoo_dataset` to
     download datasets.
