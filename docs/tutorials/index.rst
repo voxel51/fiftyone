@@ -1,5 +1,5 @@
-FiftyOne Tutorials
-==================
+Tutorials
+=========
 
 Problem/solution focused
 
