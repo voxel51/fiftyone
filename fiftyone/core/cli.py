@@ -508,6 +508,8 @@ class DatasetsStreamCommand(Command):
 
         dataset = fod.load_dataset(name)
 
+        # @todo support Windows and other environments without `less`
+        # Look at pydoc.pager() for inspiration?
         p = subprocess.Popen(
             ["less", "-F", "-R", "-S", "-X", "-K"],
             shell=True,
