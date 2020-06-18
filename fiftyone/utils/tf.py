@@ -39,12 +39,12 @@ import tensorflow as tf
 logger = logging.getLogger(__name__)
 
 
-def from_images_dir(images_dir, recursive=False, num_parallel_calls=None):
+def from_images_dir(images_dir, recursive=True, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given directory of images.
 
     Args:
         images_dir: a directory of images
-        recursive (False): whether to recursively traverse subdirectories
+        recursive (True): whether to recursively traverse subdirectories
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for

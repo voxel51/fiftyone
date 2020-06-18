@@ -548,14 +548,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type = dataset_type()
 
         if isinstance(dataset_type, fot.ImageDirectory):
-            return self.add_images_dir(dataset_dir, recursive=True, tags=tags)
+            return self.add_images_dir(dataset_dir, tags=tags, **kwargs)
 
         if isinstance(dataset_type, fot.ImageClassificationDirectoryTree):
-            samples, classes = foud.parse_image_classification_dir_tree(
-                dataset_dir
-            )
-            return self.add_image_classification_samples(
-                samples, classes=classes, label_field=label_field, tags=tags
+            return self.add_image_classification_dir_tree(
+                dataset_dir, label_field=label_field, tags=tags
             )
 
         if isinstance(dataset_type, fot.ImageClassificationDataset):
@@ -846,6 +843,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples = foud.parse_image_classification_dataset(dataset_dir)
         return self.add_labeled_image_samples(
             samples, label_field=label_field, tags=tags
+        )
+
+    def add_image_classification_dir_tree(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given image classification directory tree stored on disk to
+        the dataset.
+
+        See :class:`fiftyone.types.ImageClassificationDirectoryTree` for format
+        details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Classification` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples, classes = foud.parse_image_classification_dir_tree(
+            dataset_dir
+        )
+        return self.add_image_classification_samples(
+            samples, label_field=label_field, tags=tags, classes=classes
         )
 
     def add_tf_image_classification_dataset(
@@ -1154,7 +1179,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self.add_samples(_samples)
 
-    def add_images_dir(self, images_dir, recursive=True, tags=None):
+    def add_images_dir(self, images_dir, tags=None, recursive=True):
         """Adds the given directory of images to the dataset.
 
         See :class:`fiftyone.types.ImageDirectory` for format details. In
@@ -1164,8 +1189,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             images_dir: a directory of images
-            recursive (True): whether to recursively traverse subdirectories
             tags (None): an optional list of tags to attach to each sample
+            recursive (True): whether to recursively traverse subdirectories
 
         Returns:
             a list of IDs of the samples in the dataset
@@ -1667,25 +1692,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return dataset
 
     @classmethod
-    def from_images_dir(
-        cls, images_dir, recursive=False, name=None, tags=None
-    ):
+    def from_images_dir(cls, images_dir, name=None, tags=None, recursive=True):
         """Creates a :class:`Dataset` from the given directory of images.
 
         This operation does not read the images.
 
         Args:
             images_dir: a directory of images
-            recursive (False): whether to recursively traverse subdirectories
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional list of tags to attach to each sample
+            recursive (True): whether to recursively traverse subdirectories
 
         Returns:
             a :class:`Dataset`
         """
         dataset = cls(name)
-        dataset.add_images_dir(images_dir, recursive=recursive, tags=tags)
+        dataset.add_images_dir(images_dir, tags=tags, recursive=recursive)
         return dataset
 
     @classmethod
