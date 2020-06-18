@@ -15,23 +15,14 @@ Teaser video that summarizes a typical usage of FiftyOne
 * query, sort, tag
 * compute useful metrics like mistakedness, uniqueness
 
-Overview
-========
-
-Goal
-____
+**Goal**
 
 High-level overview of the value-add of the tool, with calls to action that
 enable the user to dive into more details at the right altitude (e.g., install,
 getting started, basic tutorials, advanced tutorials, use case-centric
 workflows)
 
-Contents
-________
-
-* Links to tutorial homepage
-* Link to getting started homepage
-* Links to concrete use cases (“solutions to common problems”)
+**Contents**
 
 Value Proposition: What problems are you solving for me?
 
@@ -48,58 +39,49 @@ Value Proposition: What problems are you solving for me?
 How does FiftyOne help?
 
 Capabilities
-------------
+____________
 
-* (Each capability links to a tutorial for more details)
-* Finding annotation mistakes
-* Removing duplicate images
-* Bootstrapping a training dataset from raw images
-* Adding samples to your training dataset to improve your model’s performance
+**FiftyOne** provides advanced capabilities that will turbocharge your
+machine learning workflow.
+
+* Automatically detect label annotation mistakes.
+  :doc:`Try Now >><tutorials/label_mistakes/README>`
+* Remove duplicate images.
+  :doc:`Try Now >><tutorials/uniqueness/README>`
+* Bootstrap your training dataset with raw images.
+  **:doc:`TODO >>`**
+* Add the optimal samples to your training dataset for improving your model’s
+  performance.
+  **:doc:`TODO >>`**
 
 Concepts
---------
+________
 
-* (Each concept links to a user guide section for more details)
-* Using dataset views to search and filter your data
+**FiftyOne** is comprised of...
+
+* a core library that enables powerful dataset representation including
+  efficient search and manipulation and saved fields for samples such as tags
+  and model predictions.
+  :doc:`Learn More >><user_guide/basics>`
+* a GUI application that provides easy visualization datasets sliced into any
+  aspect you need. The only limitation is imagination!
+  :doc:`Learn More >><user_guide/app>`
+* the FiftyOne Brain, which provides the :ref:`Capabilities` mentioned above.
+  :doc:`Learn More >><user_guide/brain>`
 
 
 Support
--------
+_______
 
 If you run into any issue with FiftyOne that cannot be resolved wih this
 documentation, feel free to reach out to us at support@voxel51.com.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :hidden:
-   :caption: Getting Started
 
    getting_started/install
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: Tutorials
-
    tutorials/index
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: Common Recipes
-
    common_recipes/index
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: User Guide
-
    user_guide/index
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: API Reference
-
    api/fiftyone
