@@ -524,7 +524,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reload_dataset_samples(self.name)
 
     def add_dir(
-        self, dataset_dir, dataset_type, label_field="ground_truth", tags=None
+        self,
+        dataset_dir,
+        dataset_type,
+        label_field="ground_truth",
+        tags=None,
+        **kwargs,
     ):
         """Adds the contents of the given directory to the dataset.
 
@@ -560,7 +565,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if isinstance(dataset_type, fot.TFImageClassificationDataset):
             return self.add_tf_image_classification_dataset(
-                dataset_dir, label_field=label_field, tags=tags
+                dataset_dir, label_field=label_field, tags=tags, **kwargs
             )
 
         if isinstance(dataset_type, fot.ImageDetectionDataset):
@@ -585,7 +590,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if isinstance(dataset_type, fot.TFObjectDetectionDataset):
             return self.add_tf_object_detection_dataset(
-                dataset_dir, label_field=label_field, tags=tags
+                dataset_dir, label_field=label_field, tags=tags, **kwargs
             )
 
         if isinstance(dataset_type, fot.CVATImageDataset):
@@ -1327,6 +1332,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field="ground_truth",
         tags=None,
+        **kwargs,
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
 
@@ -1342,7 +1348,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dataset = cls(name)
         dataset.add_dir(
-            dataset_dir, dataset_type, label_field=label_field, tags=tags,
+            dataset_dir,
+            dataset_type,
+            label_field=label_field,
+            tags=tags,
+            **kwargs,
         )
         return dataset
 
