@@ -29,13 +29,14 @@ from flask_socketio import emit, Namespace, SocketIO
 os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.odm as foo
 import fiftyone.core.state as fos
 
 from util import get_image_size
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
-
+foo.get_db_conn()
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "fiftyone"
 
@@ -205,37 +206,6 @@ class StateController(Namespace):
 
         return _get_distributions(view, group)
 
-    def on_get_facets(self, _):
-        """Gets the facets for the current state.
-
-        Args:
-            _: the message, which is not used
-
-        Returns:
-            the list of facets
-        """
-        state = fos.StateDescription.from_dict(self.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.view()
-        else:
-            return []
-
-        return view._get_facets()
-
-    def on_set_facets(self, facets):
-        """Sets the facets for the current state.
-
-        Args:
-            facets: the facets string
-        """
-        _, value = facets.split(".")
-        state = fos.StateDescription.from_dict(self.state)
-        state.view = state.dataset.view().match_tag(value)
-        self.state = state.serialize()
-        emit("update", self.state, broadcast=True, include_self=True)
-
 
 def _get_distributions(view, group):
     pipeline = DISTRIBUTION_PIPELINES[group]
@@ -293,6 +263,15 @@ def _numeric_distribution_pipelines(view, pipeline, buckets=50):
         field_bounds = bounds[sub_pipeline][0]
         mn = field_bounds["min"]
         mx = field_bounds["max"]
+
+        # if min and max are equal, we artifically create a boundary
+        # @todo alternative approach to scalar fields with only one value
+        if mn == mx:
+            if mx > 0:
+                mn = 0
+            else:
+                mx = 0
+
         step = (mx - mn) / buckets
         boundaries = [mn + step * s for s in range(0, buckets)]
 
