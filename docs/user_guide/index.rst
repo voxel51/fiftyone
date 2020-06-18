@@ -4,7 +4,7 @@ User Guides
 .. default-role:: code
 
 :doc:`FiftyOne Dataset Basics <basics>`: Learn about FiftyOne `Datasets` and
-their relation to `Samples`, `Fields`, `Tags` and `Views`. testing
+their relation to `Samples`, `Fields`, `Tags` and `Views`.
 
 :doc:`Making a Datset <making_dataset>`: Create a `Dataset` either from an
 existing supported dataset format or from scratch.
