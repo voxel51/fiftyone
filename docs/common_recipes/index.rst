@@ -14,5 +14,8 @@ Others...
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
 
+   data_audit.ipynb
+   visualize_errors.ipynb
    image_deduplication/README
