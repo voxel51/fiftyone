@@ -1,10 +1,10 @@
 Common Recipes
 ==============
 
-**FiftyOne** turbocharges your current workflows, transforming hours of
-scripting into minutes so that you can focus on your models!
+**FiftyOne** *turbocharges your current workflows, transforming hours of*
+*scripting into minutes so that you can focus on your models!*
 
-Browse the "recipe" workflows to find out how you can use **FiftyOne** to
+Browse these "recipe" workflows to find out how you can use **FiftyOne** to
 enhance your workflow.
 
 :doc:`Dataset Audit <data_audit>`: Browse your dataset and audit a
@@ -21,4 +21,4 @@ for unexpected factors and interesting patterns.
 
    data_audit.ipynb
    visualize_errors.ipynb
-   image_deduplication/README
+   image_deduplication.ipynb
