@@ -24,7 +24,8 @@ import logging
 import numbers
 import os
 
-from mongoengine.errors import DoesNotExist
+from bson import ObjectId
+from mongoengine.errors import DoesNotExist, FieldDoesNotExist
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -173,7 +174,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._meta, self._sample_doc_cls = _load_dataset(name)
 
     def __len__(self):
-        return self._get_query_set().count()
+        return self._collection.count_documents({})
 
     def __getitem__(self, sample_id):
         if isinstance(sample_id, numbers.Integral):
@@ -329,7 +330,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the set of distinct values
         """
-        return set(self._get_query_set().distinct(field))
+        return set(self._collection.distinct(field))
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -367,14 +368,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if sample._in_db:
             sample = sample.copy()
 
-        doc = sample.clone_doc(doc_cls=self._sample_doc_cls)
+        self._validate_sample(sample)
 
-        if sample._in_db:
-            doc.save()
-        else:
+        d = sample.to_mongo_dict()
+        d.pop("_id", None)  # remove the ID if in DB
+        self._collection.insert_one(d)  # adds "_id" to `d`
+
+        if not sample._in_db:
+            doc = self._sample_doc_cls.from_dict(d, extended=False)
             sample._set_backing_doc(doc)
 
-        return str(doc.id)
+        return str(d["_id"])
 
     def add_samples(self, samples, expand_schema=True, _batch_size=128):
         """Adds the given samples to the dataset.
@@ -411,15 +415,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expand_schema:
             self._expand_schema(samples)
 
-        docs = self._get_query_set().insert(
-            [s.clone_doc(doc_cls=self._sample_doc_cls) for s in samples]
-        )
+        for sample in samples:
+            self._validate_sample(sample)
 
-        for sample, doc in zip(samples, docs):
+        dicts = [sample.to_mongo_dict() for sample in samples]
+        for d in dicts:
+            d.pop("_id", None)  # remove the ID if in DB
+        self._collection.insert_many(dicts)  # adds "_id" to `d`
+
+        for sample, d in zip(samples, dicts):
             if not sample._in_db:
+                doc = self._sample_doc_cls.from_dict(d, extended=False)
                 sample._set_backing_doc(doc)
 
-        return [str(doc.id) for doc in docs]
+        return [str(d["_id"]) for d in dicts]
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
@@ -433,12 +442,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if not isinstance(sample_or_id, fos.Sample):
             sample_id = sample_or_id
-            sample = self[sample_id]
         else:
-            sample = sample_or_id
-            sample_id = sample.id
+            sample_id = sample_or_id.id
 
-        sample._delete()
+        self._collection.delete_one({"_id": ObjectId(sample_id)})
+
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=[sample_id]
         )
@@ -460,7 +468,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             else sample_or_id
             for sample_or_id in samples_or_ids
         ]
-        self._get_query_set(id__in=sample_ids).delete()
+
+        sample_object_ids = [ObjectId(id) for id in sample_ids]
+        self._collection.delete_many({"_id": {"$in": sample_object_ids}})
+
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=sample_ids
         )
@@ -832,22 +843,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples, label_field=label_field, tags=tags
         )
 
-    def add_images_dir(self, images_dir, recursive=False, tags=None):
+    def add_images_dir(self, images_dir, recursive=True, tags=None):
         """Adds the given directory of images to the dataset.
+
+        See :class:`fiftyone.types.ImageDirectory` for format details. In
+        particular, note that files with non-image MIME types are omitted.
 
         This operation does not read the images.
 
         Args:
             images_dir: a directory of images
-            recursive (False): whether to recursively traverse subdirectories
+            recursive (True): whether to recursively traverse subdirectories
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
             a list of IDs of the samples in the dataset
         """
-        image_paths = etau.list_files(
-            images_dir, abs_paths=True, recursive=recursive
-        )
+        image_paths = foud.parse_images_dir(images_dir, recursive=recursive)
         return self.add_images(image_paths, tags=tags)
 
     def add_images_patt(self, image_patt, tags=None):
@@ -1444,7 +1456,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if pipeline is None:
             pipeline = []
 
-        return self._get_query_set().aggregate(pipeline)
+        return self._collection.aggregate(pipeline)
 
     def serialize(self):
         """Serializes the dataset.
@@ -1498,6 +1510,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         d = etas.load_json(path_or_str)
         return cls.from_dict(d)
 
+    @property
+    def _collection_name(self):
+        return self._sample_doc_cls._meta["collection"]
+
+    @property
+    def _collection(self):
+        return foo.get_db_conn()[self._collection_name]
+
     def _expand_schema(self, samples):
         fields = self.get_field_schema()
         for sample in samples:
@@ -1532,6 +1552,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for field_name, field in fields_dict.items()
         )
 
+    def _validate_sample(self, sample):
+        fields = self.get_field_schema()
+
+        non_existest_fields = {
+            fn for fn in sample.field_names if fn not in fields
+        }
+
+        if non_existest_fields:
+            msg = "The fields %s do not exist on the dataset '%s'" % (
+                non_existest_fields,
+                self.name,
+            )
+            raise FieldDoesNotExist(msg)
+
+        for field_name, value in sample.iter_fields():
+            field = fields[field_name]
+            if value is None and field.null:
+                continue
+            field.validate(value)
+
 
 class DoesNotExistError(Exception):
     """Exception raised when a dataset that does not exist is encountered."""
@@ -1561,6 +1601,11 @@ def _create_dataset(name, persistent=False):
         persistent=persistent,
     )
     _meta.save()
+
+    # Create indexes
+    collection_name = _sample_doc_cls._meta["collection"]
+    collection = foo.get_db_conn()[collection_name]
+    collection.create_index("filepath", unique=True)
 
     return _meta, _sample_doc_cls
 
