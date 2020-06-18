@@ -207,8 +207,11 @@ class ResourceLimit(object):
         if not limit_name.startswith("RLIMIT_"):
             raise ValueError("Invalid limit name: %r")
 
+        self._supported_platform = False
         try:
             import resource
+
+            self._supported_platform = True
         except ImportError:
             return
 
@@ -220,10 +223,10 @@ class ResourceLimit(object):
         self._warn_on_failure = warn_on_failure
 
     def __enter__(self):
-        try:
-            import resource
-        except ImportError:
+        if not self._supported_platform:
             return
+
+        import resource
 
         self._soft_orig, self._hard_orig = resource.getrlimit(self._limit)
         soft = self._soft or self._soft_orig
@@ -232,13 +235,16 @@ class ResourceLimit(object):
         return self
 
     def __exit__(self, *args):
+        if not self._supported_platform:
+            return
+
         self._set_resource_limit(self._soft_orig, self._hard_orig)
 
     def _set_resource_limit(self, soft, hard):
-        try:
-            import resource
-        except ImportError:
+        if not self._supported_platform:
             return
+
+        import resource
 
         try:
             resource.setrlimit(self._limit, (soft, hard))
