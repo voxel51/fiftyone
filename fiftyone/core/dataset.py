@@ -489,6 +489,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_name=self.name, sample_ids=sample_ids
         )
 
+    def save(self):
+        """Saves all modified in-memory samples in the dataset to the database.
+
+        Only samples with non-persisted changes will be processed.
+        """
+        fos.Sample._save_dataset_samples(self.name)
+
+    def reload(self):
+        """Reloads all in-memory samples in the dataset from the database."""
+        fos.Sample._reload_dataset_samples(self.name)
+
     def clear(self):
         """Removes all samples from the dataset.
 
@@ -501,27 +512,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def delete(self):
         """Deletes the dataset.
 
-        Once deleted, only `Dataset.name` and `Dataset.deleted` will be valid
-        attributes. Accessing any other attributes or methods will raise a
-        :class:`DatasetError`
+        Once deleted, only the ``name`` and ``deleted`` attributes of a dataset
+        may be accessed.
 
-        If reference to a sample exists in memory, the sample's dataset
-        will be "unset" such that `sample.in_dataset == False`
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
         """
         self.clear()
         self._meta.delete()
         self._deleted = True
-
-    def save(self):
-        """Saves all modified in-memory samples in the dataset to the database.
-
-        Only samples with non-persisted changes will be processed.
-        """
-        fos.Sample._save_dataset_samples(self.name)
-
-    def reload(self):
-        """Reloads all in-memory samples in the dataset from the database."""
-        fos.Sample._reload_dataset_samples(self.name)
 
     def add_dir(
         self,
