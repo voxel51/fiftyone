@@ -98,7 +98,7 @@ class ImageDirectory(BaseUnlabeledImageDataset):
 
 class ImageClassificationDataset(BaseImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
-    classification labels.
+    classification labels stored in a simple JSON format.
 
     Datasets of this type are read/written in the following format::
 
@@ -134,7 +134,8 @@ class ImageClassificationDataset(BaseImageClassificationDataset):
 
 
 class ImageClassificationDirectoryTree(BaseImageClassificationDataset):
-    """A directory tree that defines an image classification dataset.
+    """A directory tree whose subfolders define an image classification
+    dataset.
 
     Datasets of this type are read/written in the following format::
 
@@ -186,7 +187,7 @@ class TFImageClassificationDataset(BaseImageClassificationDataset):
 
 class ImageDetectionDataset(BaseImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections.
+    detections stored in a simple JSON format.
 
     Datasets of this type are read/written in the following format::
 
