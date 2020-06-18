@@ -21,9 +21,11 @@ from future.utils import iteritems, itervalues
 
 import argparse
 from collections import defaultdict
+import io
 import json
 import os
 import subprocess
+import sys
 import time
 
 import argcomplete
@@ -230,6 +232,9 @@ class DatasetsCommand(Command):
         _register_command(subparsers, "list", DatasetsListCommand)
         _register_command(subparsers, "info", DatasetsInfoCommand)
         _register_command(subparsers, "create", DatasetsCreateCommand)
+        _register_command(subparsers, "head", DatasetsHeadCommand)
+        _register_command(subparsers, "tail", DatasetsTailCommand)
+        _register_command(subparsers, "stream", DatasetsStreamCommand)
         _register_command(subparsers, "export", DatasetsExportCommand)
         _register_command(subparsers, "delete", DatasetsDeleteCommand)
 
@@ -344,6 +349,113 @@ class DatasetsCreateCommand(Command):
         dataset.persistent = True
 
         print("Dataset '%s' created" % dataset.name)
+
+
+class DatasetsHeadCommand(Command):
+    """Prints the first few samples in a FiftyOne dataset.
+
+    Examples::
+
+        # Prints the first few samples in a dataset
+        fiftyone datasets head <name>
+
+        # Prints the given number of samples from the head of a dataset
+        fiftyone datasets head <name> --num-samples <num-samples>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset"
+        )
+        parser.add_argument(
+            "-n",
+            "--num-samples",
+            metavar="NUM_SAMPLES",
+            type=int,
+            default=3,
+            help="the number of samples to print",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        num_samples = args.num_samples
+
+        dataset = fod.load_dataset(name)
+        print(dataset.view().head(num_samples=num_samples))
+
+
+class DatasetsTailCommand(Command):
+    """Prints the last few samples in a FiftyOne dataset.
+
+    Examples::
+
+        # Prints the last few samples in a dataset
+        fiftyone datasets tail <name>
+
+        # Prints the given number of samples from the tail of a dataset
+        fiftyone datasets tail <name> --num-samples <num-samples>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset"
+        )
+        parser.add_argument(
+            "-n",
+            "--num-samples",
+            metavar="NUM_SAMPLES",
+            type=int,
+            default=3,
+            help="the number of samples to print",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        num_samples = args.num_samples
+
+        dataset = fod.load_dataset(name)
+        print(dataset.view().tail(num_samples=num_samples))
+
+
+class DatasetsStreamCommand(Command):
+    """Streams the samples in a FiftyOne dataset.
+
+    Examples::
+
+        # Stream the samples of the dataset
+        fiftyone datasets stream <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+
+        dataset = fod.load_dataset(name)
+
+        p = subprocess.Popen(
+            ["less", "-F", "-R", "-S", "-X", "-K"],
+            shell=True,
+            stdin=subprocess.PIPE,
+        )
+
+        try:
+            with io.TextIOWrapper(p.stdin, errors="backslashreplace") as pipe:
+                for sample in dataset:
+                    pipe.write(str(sample) + "\n")
+
+            p.wait()
+        except (KeyboardInterrupt, OSError):
+            pass
 
 
 class DatasetsExportCommand(Command):
