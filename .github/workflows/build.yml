@@ -1,6 +1,19 @@
 name: Build
 
-on: push
+on:
+  push:
+    branches:
+      - develop
+      - rel-*
+      - release-*
+      - github-actions-*
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - develop
+      - rel-*
+      - release-*
 
 jobs:
   build:

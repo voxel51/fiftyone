@@ -2,6 +2,22 @@ name: Build DB
 
 on:
   push:
+    branches:
+      # - develop
+      - rel-*
+      - release-*
+      - db-*
+      - github-actions-*
+    tags:
+      - db-v*
+    paths:
+      - package/db/
+      - .github/workflows/build-db.yml
+  pull_request:
+    branches:
+      # - develop
+      - rel-*
+      - release-*
     paths:
       - package/db/
       - .github/workflows/build-db.yml
