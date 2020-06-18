@@ -83,6 +83,7 @@ class FiftyOneCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
+        _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "dashboard", DashboardCommand)
         _register_command(subparsers, "zoo", ZooCommand)
@@ -221,6 +222,71 @@ def _render_constant_value(value):
         value = value[: (_MAX_CONSTANT_VALUE_COL_WIDTH - 4)] + " ..."
 
     return value
+
+
+class ConvertCommand(Command):
+    """Tools for converting datasets on disk into different formats.
+
+    Examples::
+
+        # Converts an image classification directory tree to TFRecords format
+        fiftyone convert \\
+            --input-dir /path/to/image-classification-directory-tree \\
+            --input-type fiftyone.types.ImageClassificationDirectoryTree \\
+            --output-dir /path/for/tf-image-classification-dataset \\
+            --output-type fiftyone.types.TFImageClassificationDataset
+
+        # Converts a COCO detection dataset to CVAT image format
+        fiftyone convert \\
+            --input-dir /path/to/coco-detection-dataset \\
+            --input-type fiftyone.types.COCODetectionDataset \\
+            --output-dir /path/for/cvat-image-dataset \\
+            --output-type fiftyone.types.CVATImageDataset
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "--input-dir",
+            metavar="INPUT_DIR",
+            help="the directory containing the dataset",
+        )
+        parser.add_argument(
+            "--input-type",
+            metavar="INPUT_TYPE",
+            help=(
+                "the type of the input dataset (a subclass of "
+                "`fiftyone.types.BaseDataset`)"
+            ),
+        )
+        parser.add_argument(
+            "--output-dir",
+            metavar="OUTPUT_DIR",
+            help="the directory to which to write the output dataset",
+        )
+        parser.add_argument(
+            "--output-type",
+            metavar="OUTPUT_TYPE",
+            help=(
+                "the desired output dataset type (a subclass of "
+                "`fiftyone.types.BaseDataset`)"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        input_dir = args.input_dir
+        input_type = etau.get_class(args.input_type)
+
+        output_dir = args.output_dir
+        output_type = etau.get_class(args.output_type)
+
+        dataset = fod.Dataset.from_dir(
+            input_dir, input_type, label_field="label"
+        )
+        dataset.export(
+            output_dir, label_field="label", dataset_type=output_type
+        )
 
 
 class DatasetsCommand(Command):
