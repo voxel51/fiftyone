@@ -190,7 +190,7 @@ class ServerServiceTests(unittest.TestCase):
 
     def steps(self):
         for name in dir(self):
-            if name.startswith("step"):
+            if name.startswith("step_"):
                 yield name, getattr(self, name)
 
 
