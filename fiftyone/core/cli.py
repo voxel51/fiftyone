@@ -39,6 +39,7 @@ import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
+import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
 
@@ -281,12 +282,7 @@ class ConvertCommand(Command):
         output_dir = args.output_dir
         output_type = etau.get_class(args.output_type)
 
-        dataset = fod.Dataset.from_dir(
-            input_dir, input_type, label_field="label"
-        )
-        dataset.export(
-            output_dir, label_field="label", dataset_type=output_type
-        )
+        foud.convert_dataset(input_dir, input_type, output_dir, output_type)
 
 
 class DatasetsCommand(Command):

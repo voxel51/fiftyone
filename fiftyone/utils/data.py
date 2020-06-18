@@ -20,6 +20,7 @@ from future.utils import iteritems
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
+import inspect
 import logging
 import os
 
@@ -37,6 +38,48 @@ import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
+
+
+def convert_dataset(input_dir, input_type, output_dir, output_type):
+    """Converts the dataset in the given input directory to another format in
+    the specified output directory.
+
+    Args:
+        input_dir: the input dataset directory
+        input_type: the type of the input dataset, a subclass of
+            :class:`fiftyone.types.BaseDataset`
+        output_dir: the directory to which to write the output dataset
+        output_type: the type of output dataset to write, a subclass of
+            :class:`fiftyone.types.BaseDataset`
+    """
+    if inspect.isclass(input_type):
+        input_type = input_type()
+
+    if inspect.isclass(output_type):
+        output_type = output_type()
+
+    if isinstance(
+        input_type,
+        (fot.TFImageClassificationDataset, fot.TFObjectDetectionDataset),
+    ):
+        # Unpack the images from the TFRecords into a temporary directory
+        with etau.TempDir() as images_dir:
+            _convert_dataset(
+                input_dir,
+                input_type,
+                output_dir,
+                output_type,
+                images_dir=images_dir,
+            )
+    else:
+        _convert_dataset(input_dir, input_type, output_dir, output_type)
+
+
+def _convert_dataset(input_dir, input_type, output_dir, output_type, **kwargs):
+    dataset = fo.Dataset.from_dir(
+        input_dir, input_type, label_field="label", **kwargs
+    )
+    dataset.export(output_dir, label_field="label", dataset_type=output_type)
 
 
 def parse_labeled_images(
