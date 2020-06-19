@@ -560,7 +560,8 @@ class DashboardConnectCommand(Command):
                 ]
             )
             if ret != 0:
-                raise RuntimeError("ssh failed with exit code %r" % ret)
+                print("ssh failed with exit code %r" % ret)
+                return
 
             def stop_port_forward():
                 subprocess.call(
