@@ -328,7 +328,7 @@ if __name__ == "__main__":
     app.logger.addHandler(logging.FileHandler(log_path, mode="w"))
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=5000)
+    parser.add_argument("--port", type=int, default=5151)
     args = parser.parse_args()
 
     socketio.run(app, port=args.port, debug=foc.DEV_INSTALL)
