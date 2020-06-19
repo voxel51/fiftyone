@@ -6,22 +6,18 @@ FiftyOne
 If you are looking to boost your model performance, chances are improving
 dataset quality is going to provide the highest return on investment.
 
-Is bad data holding back the performance of your models? No? Are you sure?? Or
-are you being overly optimistic?
-
 **FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
 to help in creating valuable and diverse datasets. Work efficiently to achieve
-better models and clearer and more meaningful evaluation results.
+better models and more meaningful metrics.
 
-What are some typical things I may be trying to achieve with FiftyOne?
-
-Improving your dataset! The dataset should be dynamic and evolving part of the
-machine learning "code". This means:
+The dataset should be dynamic and evolving part of the machine learning "code".
+This means:
 
 1. adding new samples that increase diversity
 2. removing redundant samples that do not benefit performance and bloat the
    dataset unnecessarily
-3. modifying labels due to annotation mistakes, change in schema, or something else
+3. modifying labels due to annotation mistakes, change in schema, or something
+   else
 
 .. image:: images/video_placeholder.png
    :alt: Overview Video
@@ -83,8 +79,7 @@ documentation, feel free to reach out to us at support@voxel51.com.
    :hidden:
 
    getting_started/install
-
-tutorials/index
-common_recipes/index
-user_guide/index
-api/fiftyone
+   tutorials/index
+   common_recipes/index
+   user_guide/index
+   api/fiftyone
