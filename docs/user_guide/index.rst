@@ -3,21 +3,57 @@ User Guides
 
 .. default-role:: code
 
-:doc:`FiftyOne Dataset Basics <basics>`: Learn about FiftyOne `Datasets` and
-their relation to `Samples`, `Fields`, `Tags` and `Views`.
+.. rubric:: :doc:`FiftyOne Dataset Basics <basics>`: 
 
-:doc:`Making a Datset <making_dataset>`: Create a `Dataset` either from an
-existing supported dataset format or from scratch.
+Learn about FiftyOne `Datasets` and
+their relation to `Samples`, `Fields`, `Tags` and 
+`Views`::
+    import fiftyone as fo
+    dataset = fo.Dataset(name="my_dataset")
+    sample = fo.Sample(filepath="path/to/img.png")
+    dataset.add_sample(sample)
+    sample.tags += ["train"]
+    sample["integer_field"] = 51
 
-:doc:`Using a Datset <using_dataset>`: Use your `Dataset` to search, sort, and modify your data.
 
-:doc:`Viewing Datasets in the App <app>`: Visualize your `Dataset` in the FiftyOne App and see your changes in real time. 
+.. rubric:: :doc:`Loading a Dataset <making_dataset>`: 
 
-:doc:`FiftyOne Brain <brain>`: Use the FiftyOne Brain to automatically get insights into your `Dataset`.
+Load a `Dataset` either using an
+existing supported dataset format or from scratch::
+    dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
 
-:doc:`Dataset Creation Examples <dataset_creation/README>`
 
-:doc:`Fifteen Minutes to FiftyOne <15to51>`
+.. rubric:: :doc:`Using a Dataset <using_dataset>`: 
+
+Use your `Dataset` to search, sort, and modify your 
+data::
+    view = (
+        dataset.view()
+        .match({"tags": "test"})
+        .exists("metadata")
+        .sort_by("filepath")[:3]
+        .take(2)
+    )
+
+.. rubric:: :doc:`Viewing Datasets in the App <app>`: 
+
+Visualize your `Dataset` in the FiftyOne App and see your changes in real time. 
+
+.. image:: ../images/dog.png
+   :alt: App 
+   :align: center
+   :target: app.html
+
+
+.. rubric:: :doc:`FiftyOne Brain <brain>`: 
+
+Use the FiftyOne Brain to automatically get insights into your `Dataset`.
+
+
+.. rubric:: :doc:`Dataset Creation Examples <dataset_creation/README>`
+
+
+.. rubric:: :doc:`Fifteen Minutes to FiftyOne <15to51>`
 
 .. toctree::
    :maxdepth: 1
