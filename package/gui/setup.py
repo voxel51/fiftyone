@@ -27,6 +27,9 @@ class CustomBdistWheel(bdist_wheel):
             # we only distribute 64-bit Linux binaries, even though Electron
             # also provides 32-bit binaries
             self.plat_name = "linux_x86_64"
+        elif self.plat_name.startswith("win"):
+            # we only distribute 64-bit Windows binaries
+            self.plat_name = "win_amd64"
         else:
             raise ValueError(
                 "Unsupported target platform: %r" % self.plat_name
@@ -56,6 +59,8 @@ class CustomBdistWheel(bdist_wheel):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
         elif self.plat_name.startswith("mac"):
             apps = glob.glob(os.path.join(release_dir, "mac", "FiftyOne*.app"))
+        elif self.plat_name.startswith("win"):
+            apps = glob.glob(os.path.join(release_dir, "FiftyOne*.exe"))
         else:
             raise ValueError(
                 "Unsupported target platform: %r" % self.plat_name
@@ -76,7 +81,8 @@ class CustomBdistWheel(bdist_wheel):
             os.mkdir(bin_dir)
         if os.path.isfile(app_path):
             # use copy2 to maintain executable permission
-            shutil.copy2(app_path, os.path.join(bin_dir, "FiftyOne.AppImage"))
+            ext = os.path.splitext(app_path)[-1]
+            shutil.copy2(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
         elif os.path.isdir(app_path):
             # Mac app bundle
             shutil.copytree(app_path, os.path.join(bin_dir, "FiftyOne.app"))
@@ -90,7 +96,7 @@ cmdclass = {
 
 setup(
     name="fiftyone_gui",
-    version="0.2.0",
+    version="0.2.1beta1",
     description="Project FiftyOne dashboard",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
