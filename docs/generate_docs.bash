@@ -12,6 +12,8 @@ set -e
 cd "$(dirname "$0")/.."
 echo "**** Generating documentation"
 
+export FIFTYONE_HEADLESS=1
+
 #
 # The syntax here is:
 #   sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, …]
