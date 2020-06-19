@@ -60,10 +60,8 @@ Use the FiftyOne Brain to automatically get insights into your `Dataset`.
    :hidden:
    
    basics
-   making_dataset
+   dataset_creation/index
    using_dataset
    app
    brain
    cli
-   dataset_creation/README
-   15to51.ipynb

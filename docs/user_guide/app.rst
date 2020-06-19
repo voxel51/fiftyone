@@ -107,7 +107,8 @@ FiftyOne App locally by starting python and running the following commands::
     fos.launch_dashboard()
 
 
-
+.. code-block:: python
+    test code 
 
 
 Using the FiftyOne App
