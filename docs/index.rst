@@ -1,7 +1,7 @@
 FiftyOne
 ========
 
-*Data is king in the modern age of deep learning.*
+    *"Data is king in the artificial intelligence world."*
 
 If you are looking to boost your model performance, chances are improving
 dataset quality is going to provide the highest return on investment.
@@ -9,6 +9,13 @@ dataset quality is going to provide the highest return on investment.
 **FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
 to help in creating valuable and diverse datasets. Work efficiently to achieve
 better models and more meaningful metrics.
+
+    *"Become one with the data."*
+
+FiftyOne does more than improve your dataset; it gets you closer to your data.
+Rapidly gain insight by visualizing samples overlayed with with dynamic and
+queryable fields such as ground truth/prediction labels, tags (dataset splits)
+and much more!
 
 The dataset should be dynamic and evolving part of the machine learning "code".
 This means:
@@ -55,17 +62,21 @@ ________
 
 The **Core Library** provides a lightweight and structured yet dynamic dataset
 representation. Efficiently query and manipulate your dataset by adding custom
-tags, model predictions and more.::
-    import fiftyone as fo
+tags, model predictions and more.
 
-    dataset = fo.Dataset(name="my_dataset")
-    sample = fo.Sample(filepath="path/to/img.png")
-    dataset.add_sample(sample)
-    sample.tags += ["train"]
-    sample["integer_field"] = 51
-    view = dataset.view().match_tag("test").sort_by("integer_field")[5:10]
-    for sample in view:
-        ...
+.. code-block:: python
+   :linenos:
+
+   import fiftyone as fo
+
+   dataset = fo.Dataset(name="my_dataset")
+   sample = fo.Sample(filepath="path/to/img.png")
+   dataset.add_sample(sample)
+   sample.tags += ["train"]
+   sample["integer_field"] = 51
+   view = dataset.view().match_tag("test").sort_by("integer_field")[5:10]
+   for sample in view:
+       ...
 
 .. rubric:: :doc:`Interactive Visual App<user_guide/app>`:
 
@@ -82,11 +93,15 @@ slice your dataset into any aspect you need.
 .. rubric:: :doc:`FiftyOne Brain<user_guide/brain>`:
 
 The **Brain** provides powerful :ref:`capabilities` for modifying datasets in
-ways that will best improve model performance.::
-    import fiftyone.brain as fob
+ways that will best improve model performance.
 
-    fob.compute_uniqueness(dataset)
-    rank_view = dataset.view().sort_by("uniqueness")
+.. code-block:: python
+   :linenos:
+
+   import fiftyone.brain as fob
+
+   fob.compute_uniqueness(dataset)
+   rank_view = dataset.view().sort_by("uniqueness")
 
 What Next?
 __________
