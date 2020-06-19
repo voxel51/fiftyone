@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import argparse
 import json
 import logging
 import os
@@ -25,6 +26,8 @@ import os
 from bson import json_util
 from flask import Flask, jsonify, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
+
+import eta.core.utils as etau
 
 os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
@@ -317,4 +320,15 @@ socketio.on_namespace(StateController("/state"))
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    log_path = os.path.join(
+        foc.FIFTYONE_CONFIG_DIR, "var", "log", "server.log"
+    )
+    etau.ensure_basedir(log_path)
+    # pylint: disable=no-member
+    app.logger.addHandler(logging.FileHandler(log_path, mode="w"))
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=5151)
+    args = parser.parse_args()
+
+    socketio.run(app, port=args.port, debug=foc.DEV_INSTALL)

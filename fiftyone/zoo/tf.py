@@ -20,7 +20,6 @@ from builtins import *
 
 import logging
 import os
-import resource
 
 import eta.core.utils as etau
 
@@ -738,9 +737,7 @@ def _download_and_prepare(
     # Prevents ResourceExhaustedError that can arise...
     # https://github.com/tensorflow/datasets/issues/1441#issuecomment-581660890
     #
-    with fou.ResourceLimit(
-        resource.RLIMIT_NOFILE, soft=4096, warn_on_failure=True
-    ):
+    with fou.ResourceLimit("RLIMIT_NOFILE", soft=4096, warn_on_failure=True):
         dataset, info = download_fcn(scratch_dir)
 
     classes = get_class_labels_fcn(info)

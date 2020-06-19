@@ -28,7 +28,7 @@ class BdistWheelCustom(bdist_wheel):
 
 setup(
     name="fiftyone",
-    version="0.2.0",
+    version="0.2.1",
     description="Project FiftyOne",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
@@ -48,7 +48,6 @@ setup(
         "Flask",
         "flask-socketio",
         "future",
-        "gunicorn",
         "mongoengine",
         "numpy",
         "packaging",
@@ -64,7 +63,7 @@ setup(
         "setuptools",
         "tabulate",
         # internal packages
-        "voxel51-eta>=0.1.0.4",
+        "voxel51-eta>=0.1.1",
     ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
@@ -72,7 +71,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
-    scripts=["fiftyone/fiftyone"],
+    entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=2.7",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )
