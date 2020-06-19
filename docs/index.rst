@@ -24,32 +24,29 @@ This means:
    :width: 100%
    :align: center
 
-Where to go from here? You could...
-
-* start by :doc:`Installing FiftyOne<getting_started/install>`
-* try one of the :doc:`Tutorials<tutorials/index>` that demonstrate the unique
-  capabilites of FiftyOne
-* explore the :doc:`Common Recipes<common_recipes/index>` for integrating
-  FiftyOne into your current workflow
-* check the :doc:`User Guides<user_guide/index>` for detailed "How To..." of
-  a specific tasks you may be trying to accomplish
-* view the :doc:`API Reference<api/fiftyone>`
-
 Capabilities
 ____________
 
-**FiftyOne** provides advanced capabilities that will turbocharge your
+FiftyOne provides advanced capabilities that will turbocharge your
 machine learning workflow.
 
-* Automatically detect label annotation mistakes.
-  :doc:`Try Now >><tutorials/label_mistakes/README>`
-* Remove duplicate images.
-  :doc:`Try Now >><tutorials/uniqueness/README>`
-* Bootstrap your training dataset with raw images.
-  **:doc:`TODO >>`**
-* Add the optimal samples to your training dataset for improving your model’s
-  performance.
-  **:doc:`TODO >>`**
+.. rubric:: :doc:`Detection of Annotation Mistakes<tutorials/label_mistakes/README>`:
+
+Automatically detect label annotation mistakes.
+
+.. rubric:: :doc:`Remove Redundant Images<tutorials/uniqueness/README>`:
+
+Find and remove similar samples in your dataset to reduce
+redundancy.
+
+.. rubric:: :doc:`Bootstrap A Training Dataset<tutorials/???.ipynb>`:
+
+Bootstrap your training dataset with raw images.
+
+.. rubric:: :doc:`Add Optimal New Samples<tutorials/???.ipynb>`:
+
+Add the optimal samples to your training dataset for improving your model’s
+performance.
 
 Concepts
 ________
@@ -91,6 +88,18 @@ ways that will best improve model performance.::
     fob.compute_uniqueness(dataset)
     rank_view = dataset.view().sort_by("uniqueness")
 
+What Next?
+__________
+
+Where should you go from here? You could...
+
+* ...start by :doc:`installing FiftyOne<getting_started/install>`.
+* ...try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
+  capabilites of FiftyOne.
+* ...explore the :doc:`common recipes<common_recipes/index>` for integrating
+  FiftyOne into your current workflow.
+* ...check the :doc:`user guides<user_guide/index>` for detailed "How To..." of
+  a specific task you are trying to accomplish.
 
 Support
 _______
