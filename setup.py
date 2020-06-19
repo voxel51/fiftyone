@@ -35,13 +35,12 @@ setup(
     url="https://github.com/voxel51/fiftyone",
     license="",
     packages=find_packages(exclude=["fiftyone.experimental"])
-    + ["fiftyone.examples"],
-    package_dir={"fiftyone.examples": "docs"},
-    include_package_data=True,
-    exclude_package_data={
-        "fiftyone": ["experimental/*"],
-        "fiftyone.examples": ["archive/*", "data/*"],
+    + ["fiftyone.common_recipes", "fiftyone.tutorials"],
+    package_dir={
+        "fiftyone.common_recipes": "docs/common_recipes",
+        "fiftyone.tutorials": "docs/tutorials",
     },
+    include_package_data=True,
     install_requires=[
         # third-party packages
         "argcomplete",

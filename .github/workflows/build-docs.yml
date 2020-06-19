@@ -44,9 +44,15 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
+          sudo apt-get install pandoc
           pip install -e . --index https://pypi.voxel51.com
           pip install -r requirements/docs.txt
           pip install tensorflow torch torchvision
+      - name: Install fiftyone-db
+        working-directory: package/db
+        run: |
+          python setup.py bdist_wheel
+          pip install dist/*.whl
       - name: Build docs
         run: |
           ./docs/generate_docs.bash

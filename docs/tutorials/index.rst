@@ -1,16 +1,14 @@
-FiftyOne Tutorials
-==================
+Tutorials
+=========
 
 Problem/solution focused
 
-Goal
-____
+**Goal**
 
 * Provide simple, compelling examples that demonstrate best-practices usages of
   FiftyOne to accomplish key components of the FiftyOne value-proposition
 
-Contents
-________
+**Contents**
 
 * Homepage that presents a table of contents that enables the user to quickly
   locate the tutorial that is most interesting to them/relevant to their use
@@ -26,8 +24,7 @@ ________
    * Clearly tie back to an element of the FiftyOne value proposition. This
      connection should be clearly stated
 
-Tutorials
-_________
+**Tutorials**
 
 Finding annotation mistakes
 

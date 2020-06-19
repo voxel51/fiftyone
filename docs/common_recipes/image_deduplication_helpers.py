@@ -31,6 +31,7 @@ from tensorflow.keras.datasets import cifar100
 
 DATASET_SIZE = 1000
 DATASET_DIR = os.path.join("/tmp/fiftyone/cifar100_with_duplicates")
+CORRUPTION_RATE = 0.05
 
 FINE_CLASSES = [
     "apple",
@@ -136,30 +137,45 @@ FINE_CLASSES = [
 ]
 
 
-# if not empty, delete current contents
-etau.ensure_empty_dir(DATASET_DIR, cleanup=True)
+def download_dataset():
+    print(
+        "Downloading dataset of %d samples to:\n\t%s"
+        % (DATASET_SIZE, DATASET_DIR)
+    )
+    print(
+        "and corrupting the data (%d%% duplicates)" % (100 * CORRUPTION_RATE)
+    )
 
-(_, _), (x_test, y_test) = cifar100.load_data(label_mode="fine")
+    # if not empty, delete current contents
+    etau.ensure_empty_dir(DATASET_DIR, cleanup=True)
 
-dataset_size = min(DATASET_SIZE, 10000)
+    (_, _), (x_test, y_test) = cifar100.load_data(label_mode="fine")
 
-x = x_test[:dataset_size, :]
-y = y_test[:dataset_size, :]
+    dataset_size = min(DATASET_SIZE, 10000)
 
-for i in range(x.shape[0]):
-    if random.random() > 0.95:
-        # pick a random sample 5% of the time
-        idx = random.randint(0, x.shape[0])
-    else:
-        idx = i
+    x = x_test[:dataset_size, :]
+    y = y_test[:dataset_size, :]
 
-    # get label
-    fine_label = FINE_CLASSES[y[idx, 0]]
+    for i in range(x.shape[0]):
+        if random.random() > 0.95:
+            # pick a random sample 5% of the time
+            idx = random.randint(0, x.shape[0])
+        else:
+            idx = i
 
-    # read image
-    img = x[idx, :]
+        # get label
+        fine_label = FINE_CLASSES[y[idx, 0]]
 
-    rel_img_path = os.path.join(fine_label, "%d.jpg" % i)
-    abs_img_path = os.path.join(DATASET_DIR, rel_img_path)
+        # read image
+        img = x[idx, :]
 
-    etai.write(img, abs_img_path)
+        rel_img_path = os.path.join(fine_label, "%d.jpg" % i)
+        abs_img_path = os.path.join(DATASET_DIR, rel_img_path)
+
+        etai.write(img, abs_img_path)
+
+    print("Download successful")
+
+
+if __name__ == "__main__":
+    download_dataset()

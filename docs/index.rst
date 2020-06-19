@@ -1,42 +1,39 @@
 FiftyOne
 ========
 
+*Data is king in the modern age of deep learning.*
+
+If you are looking to boost your model performance, chances are improving
+dataset quality is going to provide the highest return on investment.
+
 **FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
-to help in creating valuable and diverse datasets.
+to help in creating valuable and diverse datasets. Work efficiently to achieve
+better models and more meaningful metrics.
+
+The dataset should be dynamic and evolving part of the machine learning "code".
+This means:
+
+1. adding new samples that increase diversity
+2. removing redundant samples that do not benefit performance and bloat the
+   dataset unnecessarily
+3. modifying labels due to annotation mistakes, change in schema, or something
+   else
 
 .. image:: images/video_placeholder.png
    :alt: Overview Video
-   :width: 80%
+   :width: 100%
    :align: center
 
-Teaser video that summarizes a typical usage of FiftyOne
+Where to go from here? You could...
 
-* visualize data
-* query, sort, tag
-* compute useful metrics like mistakedness, uniqueness
-
-**Goal**
-
-High-level overview of the value-add of the tool, with calls to action that
-enable the user to dive into more details at the right altitude (e.g., install,
-getting started, basic tutorials, advanced tutorials, use case-centric
-workflows)
-
-**Contents**
-
-Value Proposition: What problems are you solving for me?
-
-1. Your data has problems that are holding back the performance of your models
-2. Dataset wrangling is tedious, laborious, and not-sexy. At the same time,
-   gaining an intuitive understanding of your data is key to improving your
-   model’s performance
-3. ROI for Data Scientists: Improving your data diversity is the biggest return
-   on investment that you can make to improving the accuracy/performance of
-   your model. - this needs to be emphasized - that FiftyONe is for data
-   scientists - it’s not just about data wrangling - it’s for data scientists
-   to help them build better models by making data interaction more accessible]
-
-How does FiftyOne help?
+* start by :doc:`Installing FiftyOne<getting_started/install>`
+* try one of the :doc:`Tutorials<tutorials/index>` that demonstrate the unique
+  capabilites of FiftyOne
+* explore the :doc:`Common Recipes<common_recipes/index>` for integrating
+  FiftyOne into your current workflow
+* check the :doc:`User Guide<user_guide/index>` for detailed "How To..." of
+  a specific tasks you may be trying to accomplish
+* view the :doc:`API Reference<api/fiftyone>`
 
 Capabilities
 ____________
@@ -59,15 +56,16 @@ ________
 
 **FiftyOne** is comprised of...
 
-* a core library that enables powerful dataset representation including
-  efficient search and manipulation and saved fields for samples such as tags
-  and model predictions.
+* a **core library** that provides a lightweight and structured yet dynamic
+  dataset representation. Efficiently query and manipulate your dataset by
+  adding custom tags, model predictions and more.
   :doc:`Learn More >><user_guide/basics>`
-* a GUI application that provides easy visualization datasets sliced into any
-  aspect you need. The only limitation is imagination!
+* a **GUI application** that makes it easy to rapidly gain intuitions.
+  Visualize labels, bounding boxes and segmentations overlayed on the samples
+  and sort, query and slice your dataset into any aspect you need.
   :doc:`Learn More >><user_guide/app>`
-* the FiftyOne Brain, which provides the :ref:`Capabilities` mentioned above.
-  :doc:`Learn More >><user_guide/brain>`
+* the **FiftyOne Brain**, which provides powerful :ref:`Capabilities` for
+  modifying datasets in ways that will best improve model performance.
 
 
 Support
