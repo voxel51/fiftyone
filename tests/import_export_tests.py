@@ -9,6 +9,7 @@ import random
 import os
 
 import numpy as np
+import pytest
 
 import eta.core.data as etad
 import eta.core.geometry as etag
@@ -18,6 +19,18 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+
+
+@pytest.fixture
+def basedir():
+    with etau.TempDir() as tmpdir:
+        print(tmpdir)
+        yield tmpdir
+
+
+@pytest.fixture
+def img():
+    return np.random.randint(255, size=(32, 32, 3), dtype=np.uint8)
 
 
 def make_classification_dataset(name, img, images_dir, num_samples=4):
@@ -225,16 +238,5 @@ def test_image_labels_datasets(basedir, img):
     dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
 
 
-def run(test):
-    # Create a test image
-    img = np.random.randint(255, size=(32, 32, 3), dtype=np.uint8)
-
-    # Run test backed by a temporary directory
-    with etau.TempDir() as tmpdir:
-        test(tmpdir, img)
-
-
 if __name__ == "__main__":
-    run(test_classification_datasets)
-    run(test_detection_datasets)
-    run(test_image_labels_datasets)
+    pytest.main([__file__])
