@@ -534,12 +534,12 @@ class DashboardConnectCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        if sys.platform.startswith("win"):
-            raise RuntimeError(
-                "This command is currently not supported on Windows."
-            )
-
         if args.destination:
+            if sys.platform.startswith("win"):
+                raise RuntimeError(
+                    "This command is currently not supported on Windows."
+                )
+
             control_path = os.path.join(
                 foc.FIFTYONE_CONFIG_DIR, "tmp", "ssh.sock"
             )
