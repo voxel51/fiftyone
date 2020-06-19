@@ -2,12 +2,11 @@ import React, { useState, useLayoutEffect, useRef, useEffect } from "react";
 import styled from "styled-components";
 import { useSpring, animated } from "react-spring";
 import { useMove } from "react-use-gesture";
-
-import { useMachine } from "@xstate/react";
+import { useRecoilValue } from "recoil";
 
 import "../../app.global.css";
 import IndicatorForm from "./IndicatorForm";
-import indicatorMachine from "./Indicator.machine.ts";
+import { mainSize } from "../../state/atoms";
 
 const Indicator = styled(animated.div)`
   width: 3rem;
@@ -15,35 +14,26 @@ const Indicator = styled(animated.div)`
   position: absolute;
   margin-top: -16px;
   right: 0;
+  cursor: pointer;
+  background: var(--mostly-transparent);
 `;
 
 export default function () {
-  const targetRef = useRef();
-  const [height, setHeight] = useState(null);
-  const [{ top }, set] = useSpring(() => ({ top: 0 }));
+  const mainSizeValue = useRecoilValue(mainSize);
+  const [{ top }, set] = useSpring(() => ({ top: 35 }));
 
   const bind = useMove(
-    ({ xy: [px, py], dragging }) => {
-      set({ top: py });
+    ({ xy: [_, py], dragging }) => {
+      const newTop = Math.min(mainSizeValue[1] - 19, Math.max(py, 16));
+      set({ top: newTop });
     },
     {
       domTarget: document.body,
-      bounds: {
-        top: 16,
-        bottom: height,
-      },
-    },
-    [height]
+    }
   );
 
-  useEffect(() => {
-    if (targetRef.current) {
-      setHeight(targetRef.current.parentNode.offsetHeight);
-    }
-  }, [targetRef]);
-
   return (
-    <Indicator {...bind()} style={{ top }} ref={targetRef}>
+    <Indicator {...bind()} style={{ top }}>
       <IndicatorForm />
     </Indicator>
   );

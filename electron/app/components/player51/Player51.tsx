@@ -76,16 +76,14 @@ export default ({
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
-  const [player, setPlayer] = useState(
-    new Player51({
-      media: {
-        src: src,
-        type: "image/jpg",
-      },
-      overlay: overlay,
-      colorMap: colorMap,
-    })
-  );
+  const player = new Player51({
+    media: {
+      src: src,
+      type: "image/jpg",
+    },
+    overlay: overlay,
+    colorMap: colorMap,
+  });
   const props = thumbnail
     ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
     : {};

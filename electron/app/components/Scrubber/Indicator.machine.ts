@@ -2,31 +2,37 @@ import { Machine } from "xstate";
 
 export default Machine({
   id: "indicator",
-
-  initial: "unclicked",
-
-  context: {
-    index: 0,
-    velocity: 0,
-    acceleration: 0,
-  },
+  type: "parellel",
 
   states: {
-    unclicked: {
-      on: {
-        CLICK: "clicked",
-      },
-    },
-    clicked: {
-      on: {
-        RELEASE: "unclicked",
-        DRAGGING: "dragging",
+    hovering: {
+      initial: "no",
+      states: {
+        no: {
+          on: {
+            MOUSEOVER: "yes",
+          },
+        },
+        yes: {
+          on: {
+            MOUSEOUT: "no",
+          },
+        },
       },
     },
     dragging: {
-      on: {
-        RELEASE: "unclicked",
-        STOPPING: "clicked",
+      initial: "no",
+      states: {
+        no: {
+          on: {
+            CLICK: "yes",
+          },
+        },
+        yes: {
+          on: {
+            MOUSEOUT: "no",
+          },
+        },
       },
     },
   },

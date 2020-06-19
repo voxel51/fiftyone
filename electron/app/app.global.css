@@ -23,6 +23,7 @@
   --gray-light2: rgb(244, 244, 244);
   --gray-light1: rgb(255, 255, 255);
 
+  --mostly-transparent: rgba(255, 255, 255, 0.8);
   --transparent: rgba(0, 0, 0, 0);
 
   --green-check: rgb(83, 182, 129);
@@ -51,6 +52,12 @@
 
   --padding-x: 10rem;
   --padding-y: 10rem;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 body {

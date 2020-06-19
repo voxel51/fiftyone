@@ -1,6 +1,6 @@
 import React from "react";
-import { action } from "@storybook/addon-actions";
 
+import { Container } from "./utils";
 import Indicator from "./Indicator";
 
 export default {
@@ -8,4 +8,8 @@ export default {
   title: "Indicator",
 };
 
-export const indicator = () => <Indicator />;
+export const indicator = () => (
+  <Container>
+    <Indicator />
+  </Container>
+);

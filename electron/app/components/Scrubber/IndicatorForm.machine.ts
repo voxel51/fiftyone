@@ -1,55 +1,41 @@
-import { Machine } from "xstate";
+import { Machine, assign } from "xstate";
 
-export default Machine({
-  id: "indicator-form",
+export default Machine(
+  {
+    id: "IndicatorForm",
 
-  initial: "unfocused",
+    initial: "blurred",
 
-  context: {
-    value: 0,
-    error: null,
-  },
+    context: {
+      currentInput: "",
+    },
 
-  states: {
-    unfocused: {
-      on: {
-        MOUSE_OVER: "mouseOver",
+    states: {
+      blurred: {
+        on: {
+          FOCUS: {
+            target: "focused",
+            actions: ["assignCurrentInput"],
+          },
+        },
       },
-    },
-    mouseOver: {
-      invoke: {
-        src: "onHover",
-        onDone: { target: "hovering" },
-      },
-    },
-    mouseOut: {
-      invoke: {
-        src: "onMouseOut",
-        onDone: { target: "unfocused" },
-      },
-    },
-    focused: {
-      on: {
-        SUBMIT: "submitting",
-        UNFOCUS: "unfocusing",
-      },
-    },
-    unfocusing: {
-      invoke: {
-        src: "onUnfocus",
-        onDone: { target: "unfocused" },
-      },
-    },
-    hovering: {
-      on: {
-        MOUSE_OUT: "mouseOut",
-      },
-    },
-    submitting: {
-      invoke: {
-        src: "onSubmit",
-        onDone: { target: "unfocused" },
+      focused: {
+        on: {
+          BLUR: "blurred",
+          TYPE: {
+            target: "focused",
+            actions: ["assignCurrentInput"],
+          },
+        },
       },
     },
   },
-});
+  {
+    actions: {
+      assignCurrentInput: assign({
+        currentInput: (ctx, e) =>
+          e.payload !== undefined ? e.payload : ctx.currentInput,
+      }),
+    },
+  }
+);
