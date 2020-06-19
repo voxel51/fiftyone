@@ -27,7 +27,7 @@ ____________
 FiftyOne provides advanced capabilities that will turbocharge your
 machine learning workflow.
 
-.. rubric:: :doc:`Detect of Annotation Mistakes<tutorials/label_mistakes>`:
+.. rubric:: :doc:`Detect Annotation Mistakes<tutorials/label_mistakes>`:
 
 Automatically detect label annotation mistakes.
 
