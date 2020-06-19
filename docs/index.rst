@@ -56,7 +56,7 @@ ________
 
 .. rubric:: :doc:`FiftyOne Core Library<user_guide/basics>`:
 
-The **core library** provides a lightweight and structured yet dynamic dataset
+The **Core Library** provides a lightweight and structured yet dynamic dataset
 representation. Efficiently query and manipulate your dataset by adding custom
 tags, model predictions and more.::
     import fiftyone as fo
@@ -72,7 +72,7 @@ tags, model predictions and more.::
 
 .. rubric:: :doc:`Interactive Visual App<user_guide/app>`:
 
-The **app** makes it easy to rapidly gain intuitions. Visualize labels,
+The **App** makes it easy to rapidly gain intuitions. Visualize labels,
 bounding boxes and segmentations overlayed on the samples and sort, query and
 slice your dataset into any aspect you need.
 
@@ -84,7 +84,7 @@ slice your dataset into any aspect you need.
 
 .. rubric:: :doc:`FiftyOne Brain<user_guide/brain>`:
 
-The **brain** provides powerful :ref:`capabilities` for modifying datasets in
+The **Brain** provides powerful :ref:`capabilities` for modifying datasets in
 ways that will best improve model performance.::
     import fiftyone.brain as fob
 
