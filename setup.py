@@ -6,8 +6,6 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
