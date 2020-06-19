@@ -23,6 +23,7 @@ import argparse
 from collections import defaultdict
 import json
 import os
+import sys
 import subprocess
 import time
 
@@ -533,6 +534,11 @@ class DashboardConnectCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        if sys.platform.startswith("win"):
+            raise RuntimeError(
+                "This command is currently not supported on Windows."
+            )
+
         if args.destination:
             control_path = os.path.join(
                 foc.FIFTYONE_CONFIG_DIR, "tmp", "ssh.sock"
