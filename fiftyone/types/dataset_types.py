@@ -252,7 +252,14 @@ class COCODetectionDataset(BaseImageDetectionDataset):
     where ``labels.json`` is a JSON file in the following format::
 
         {
-            "info": {...},
+            "info": {
+                "year": "",
+                "version": "",
+                "description": "Exported from FiftyOne",
+                "contributor": "",
+                "url": "https://voxel51.com/fiftyone",
+                "date_created": "2020-06-19T09:48:27"
+            },
             "licenses": [],
             "categories": [
                 ...
@@ -312,7 +319,7 @@ class VOCDetectionDataset(BaseImageDetectionDataset):
         <annotation>
             <folder>data</folder>
             <filename>image.ext</filename>
-            <path>/path/to/dataset/data/image.ext</path>
+            <path>/path/to/dataset-dir/data/image.ext</path>
             <source>
                 <database></database>
             </source>
@@ -352,7 +359,7 @@ class VOCDetectionDataset(BaseImageDetectionDataset):
         </annotation>
 
     When writing datasets in this format, samples with no values for certain
-    (like ``pose`` in the above example) are left empty.
+    attributes (like ``pose`` in the above example) are left empty.
     """
 
     pass

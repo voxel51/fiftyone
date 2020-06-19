@@ -77,7 +77,7 @@ class Command(object):
 
 
 class FiftyOneCommand(Command):
-    """FiftyOne command-line interface."""
+    """The FiftyOne command-line interface."""
 
     @staticmethod
     def setup(parser):
@@ -226,7 +226,7 @@ def _render_constant_value(value):
 
 
 class ConvertCommand(Command):
-    """Tools for converting datasets on disk into different formats.
+    """Convert datasets on disk between supported formats.
 
     Examples::
 
@@ -484,11 +484,11 @@ class DatasetsTailCommand(Command):
 
 
 class DatasetsStreamCommand(Command):
-    """Streams the samples in a FiftyOne dataset.
+    """Stream samples in a FiftyOne dataset to the terminal.
 
     Examples::
 
-        # Stream the samples of the dataset
+        # Stream the samples of the dataset to the terminal
         fiftyone datasets stream <name>
     """
 
@@ -523,15 +523,15 @@ class DatasetsStreamCommand(Command):
 
 
 class DatasetsExportCommand(Command):
-    """Tools for exporting FiftyOne datasets.
+    """Export FiftyOne datasets to disk in supported formats.
 
     Examples::
 
-        # Exports the dataset with the given type
+        # Exports the dataset to disk in the specified format
         fiftyone datasets export <name> \\
             --export-dir <export-dir> --type <type> --label-field <label-field>
 
-        # Exports the dataset in JSON format
+        # Exports the dataset to disk in JSON format
         fiftyone datasets export <name> --json-path <json-path>
     """
 
@@ -593,7 +593,7 @@ class DatasetsExportCommand(Command):
 
 
 class DatasetsDeleteCommand(Command):
-    """Tools for deleting FiftyOne datasets.
+    """Delete FiftyOne datasets.
 
     Examples::
 

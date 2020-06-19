@@ -1,24 +1,29 @@
-# Command-Line Interface Guide
+# Command-Line Interface (CLI)
 
 Installing FiftyOne automatically installs `fiftyone`, a command-line interface
-(CLI) for interacting with the FiftyOne tool. This utility provides access to
-many useful features, including creating and inspecting datasets, visualizing
+(CLI) for interacting with FiftyOne. This utility provides access to many
+useful features, including creating and inspecting datasets, visualizing
 datasets in the dashboard, exporting datasets and converting dataset formats,
 and downloading datasets from the FiftyOne Dataset Zoo.
 
-This document provides an overview of using the CLI.
-
 ## Quickstart
 
-To see the available top-level commands, type `fiftyone --help`.
+To see the available top-level commands, type:
+
+```
+fiftyone --help
+```
 
 You can learn more about any available subcommand via
-`fiftyone <command> --help`.
+
+```
+fiftyone <command> --help
+```
 
 For example, to see your current FiftyOne config, you can execute
 `fiftyone config`.
 
-## Tab completion
+### Tab completion
 
 To enable tab completion in `bash`, add the following line to your `~/.bashrc`:
 
@@ -40,17 +45,19 @@ To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 eval `register-python-argcomplete --shell tcsh fiftyone`
 ```
 
-## Usage
+## FiftyOne CLI
 
-The following usage information was generated via `fiftyone --all-help`:
+The FiftyOne command-line interface.
+
+#### Command
 
 ```
-*******************************************************************************
-usage: fiftyone [-h] [-v] [--all-help]
-                {config,constants,convert,datasets,dashboard,zoo} ...
+fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,dashboard,zoo} ...
+```
 
-FiftyOne command-line interface.
+#### Arguments
 
+```
 optional arguments:
   -h, --help            show this help message and exit
   -v, --version         show version info
@@ -60,32 +67,25 @@ available commands:
   {config,constants,convert,datasets,dashboard,zoo}
     config              Tools for working with your FiftyOne config.
     constants           Print constants from `fiftyone.constants`.
-    convert             Tools for converting datasets on disk into different
-                        formats.
+    convert             Convert datasets on disk between supported formats.
     datasets            Tools for working with FiftyOne datasets.
     dashboard           Tools for working with the FiftyOne Dashboard.
     zoo                 Tools for working with the FiftyOne Dataset Zoo.
+```
 
-
-*******************************************************************************
-usage: fiftyone config [-h] [-l] [-s] [FIELD]
+## FiftyOne config
 
 Tools for working with your FiftyOne config.
 
-    Examples::
+#### Command
 
-        # Print your entire config
-        fiftyone config
+```
+fiftyone config [-h] [-l] [-s] [FIELD]
+```
 
-        # Print a specific config field
-        fiftyone config <field>
+#### Arguments
 
-        # Print the location of your config
-        fiftyone config --locate
-
-        # Save your current config to disk
-        fiftyone config --save
-
+```
 positional arguments:
   FIELD         a config field
 
@@ -93,50 +93,76 @@ optional arguments:
   -h, --help    show this help message and exit
   -l, --locate  print the location of your config on disk
   -s, --save    save your current config to disk
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone constants [-h] [CONSTANT]
+```shell
+# Print your entire config
+fiftyone config
+```
+
+```shell
+# Print a specific config field
+fiftyone config <field>
+```
+
+```shell
+# Print the location of your config
+fiftyone config --locate
+```
+
+```shell
+# Save your current config to disk
+fiftyone config --save
+```
+
+## Print constants
 
 Print constants from `fiftyone.constants`.
 
-    Examples::
+#### Command
 
-        # Print all constants
-        fiftyone constants
+```
+fiftyone constants [-h] [CONSTANT]
+```
 
-        # Print a specific constant
-        fiftyone constants <CONSTANT>
+#### Arguments
 
+```
 positional arguments:
   CONSTANT    the constant to print
 
 optional arguments:
   -h, --help  show this help message and exit
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone convert [-h] [--input-dir INPUT_DIR] [--input-type INPUT_TYPE]
-                        [--output-dir OUTPUT_DIR] [--output-type OUTPUT_TYPE]
+```shell
+# Print all constants
+fiftyone constants
+```
 
-Tools for converting datasets on disk into different formats.
+```shell
+# Print a specific constant
+fiftyone constants <CONSTANT>
+```
 
-    Examples::
+## Convert dataset formats on disk
 
-        # Converts an image classification directory tree to TFRecords format
-        fiftyone convert \
-            --input-dir /path/to/image-classification-directory-tree \
-            --input-type fiftyone.types.ImageClassificationDirectoryTree \
-            --output-dir /path/for/tf-image-classification-dataset \
-            --output-type fiftyone.types.TFImageClassificationDataset
+Convert datasets on disk between supported formats.
 
-        # Converts a COCO detection dataset to CVAT image format
-        fiftyone convert \
-            --input-dir /path/to/coco-detection-dataset \
-            --input-type fiftyone.types.COCODetectionDataset \
-            --output-dir /path/for/cvat-image-dataset \
-            --output-type fiftyone.types.CVATImageDataset
+#### Command
 
+```
+fiftyone convert [-h] [--input-dir INPUT_DIR] [--input-type INPUT_TYPE]
+                 [--output-dir OUTPUT_DIR] [--output-type OUTPUT_TYPE]
+```
+
+#### Arguments
+
+```
 optional arguments:
   -h, --help            show this help message and exit
   --input-dir INPUT_DIR
@@ -147,14 +173,42 @@ optional arguments:
                         the directory to which to write the output dataset
   --output-type OUTPUT_TYPE
                         the desired output dataset type (a subclass of `fiftyone.types.BaseDataset`)
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone datasets [-h] [--all-help]
-                         {list,info,create,head,tail,stream,export,delete} ...
+```shell
+# Converts an image classification directory tree to TFRecords format
+fiftyone convert \
+    --input-dir /path/to/image-classification-directory-tree \
+    --input-type fiftyone.types.ImageClassificationDirectoryTree \
+    --output-dir /path/for/tf-image-classification-dataset \
+    --output-type fiftyone.types.TFImageClassificationDataset
+```
+
+```shell
+# Converts a COCO detection dataset to CVAT image format
+fiftyone convert \
+    --input-dir /path/to/coco-detection-dataset \
+    --input-type fiftyone.types.COCODetectionDataset \
+    --output-dir /path/for/cvat-image-dataset \
+    --output-type fiftyone.types.CVATImageDataset
+```
+
+## Working with FiftyOne datasets
 
 Tools for working with FiftyOne datasets.
 
+#### Command
+
+```
+fiftyone datasets [-h] [--all-help]
+                  {list,info,create,head,tail,stream,export,delete} ...
+```
+
+#### Arguments
+
+```
 optional arguments:
   -h, --help            show this help message and exit
   --all-help            show help recurisvely and exit
@@ -167,56 +221,74 @@ available commands:
     head                Prints the first few samples in a FiftyOne dataset.
     tail                Prints the last few samples in a FiftyOne dataset.
     stream              Streams the samples in a FiftyOne dataset.
-    export              Tools for exporting FiftyOne datasets.
-    delete              Tools for deleting FiftyOne datasets.
+    export              Export FiftyOne datasets to disk in supported formats.
+    delete              Delete FiftyOne datasets.
+```
 
-
-*******************************************************************************
-usage: fiftyone datasets list [-h]
+### List datasets
 
 List FiftyOne datasets.
 
-    Examples::
+#### Command
 
-        # List available datasets
-        fiftyone datasets list
+```
+fiftyone datasets list [-h]
+```
 
+#### Arguments
+
+```
 optional arguments:
   -h, --help  show this help message and exit
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone datasets info [-h] NAME
+```shell
+# List available datasets
+fiftyone datasets list
+```
+
+### Print dataset information
 
 Print information about FiftyOne datasets.
 
-    Examples::
+#### Command
 
-        # Print information about the given dataset
-        fiftyone datasets info <name>
+```
+fiftyone datasets info [-h] NAME
+```
 
+#### Arguments
+
+```
 positional arguments:
   NAME        the name of the dataset
 
 optional arguments:
   -h, --help  show this help message and exit
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone datasets create [-h] [-n NAME] [-d DATASET_DIR] [-j JSON_PATH]
-                                [-t TYPE]
+```shell
+# Print information about the given dataset
+fiftyone datasets info <name>
+```
+
+### Create datasets
 
 Tools for creating FiftyOne datasets.
 
-    Examples::
+#### Command
 
-        # Creates a dataset from the given data on disk
-        fiftyone datasets create \
-            --name <name> --dataset-dir <dataset-dir> --type <type>
+```
+fiftyone datasets create [-h] [-n NAME] [-d DATASET_DIR] [-j JSON_PATH] [-t TYPE]
+```
 
-        # Creates a dataset from the given samples JSON file
-        fiftyone datasets create --json-path <json-path>
+#### Arguments
 
+```
 optional arguments:
   -h, --help            show this help message and exit
   -n NAME, --name NAME  a name for the dataset
@@ -225,21 +297,34 @@ optional arguments:
   -j JSON_PATH, --json-path JSON_PATH
                         the path to a samples JSON file to load
   -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone datasets head [-h] [-n NUM_SAMPLES] NAME
+```shell
+# Creates a dataset from the given data on disk
+fiftyone datasets create \
+    --name <name> --dataset-dir <dataset-dir> --type <type>
+```
+
+```shell
+# Creates a dataset from the given samples JSON file
+fiftyone datasets create --json-path <json-path>
+```
+
+### Print dataset head
 
 Prints the first few samples in a FiftyOne dataset.
 
-    Examples::
+#### Command
 
-        # Prints the first few samples in a dataset
-        fiftyone datasets head <name>
+```
+fiftyone datasets head [-h] [-n NUM_SAMPLES] NAME
+```
 
-        # Prints the given number of samples from the head of a dataset
-        fiftyone datasets head <name> --num-samples <num-samples>
+#### Arguments
 
+```
 positional arguments:
   NAME                  the name of the dataset
 
@@ -247,21 +332,33 @@ optional arguments:
   -h, --help            show this help message and exit
   -n NUM_SAMPLES, --num-samples NUM_SAMPLES
                         the number of samples to print
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone datasets tail [-h] [-n NUM_SAMPLES] NAME
+```shell
+# Prints the first few samples in a dataset
+fiftyone datasets head <name>
+```
+
+```shell
+# Prints the given number of samples from the head of a dataset
+fiftyone datasets head <name> --num-samples <num-samples>
+```
+
+### Print dataset tail
 
 Prints the last few samples in a FiftyOne dataset.
 
-    Examples::
+#### Command
 
-        # Prints the last few samples in a dataset
-        fiftyone datasets tail <name>
+```
+fiftyone datasets tail [-h] [-n NUM_SAMPLES] NAME
+```
 
-        # Prints the given number of samples from the tail of a dataset
-        fiftyone datasets tail <name> --num-samples <num-samples>
+#### Arguments
 
+```
 positional arguments:
   NAME                  the name of the dataset
 
@@ -269,41 +366,61 @@ optional arguments:
   -h, --help            show this help message and exit
   -n NUM_SAMPLES, --num-samples NUM_SAMPLES
                         the number of samples to print
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone datasets stream [-h] NAME
+```shell
+# Prints the last few samples in a dataset
+fiftyone datasets tail <name>
+```
 
-Streams the samples in a FiftyOne dataset.
+```shell
+# Prints the given number of samples from the tail of a dataset
+fiftyone datasets tail <name> --num-samples <num-samples>
+```
 
-    Examples::
+### Stream samples to the terminal
 
-        # Stream the samples of the dataset
-        fiftyone datasets stream <name>
+Stream samples in a FiftyOne dataset to the terminal.
 
+#### Command
+
+```
+fiftyone datasets stream [-h] NAME
+```
+
+#### Arguments
+
+```
 positional arguments:
   NAME        the name of the dataset
 
 optional arguments:
   -h, --help  show this help message and exit
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH]
-                                [-f LABEL_FIELD] [-t TYPE]
-                                NAME
+```shell
+# Stream the samples of the dataset to the terminal
+fiftyone datasets stream <name>
+```
 
-Tools for exporting FiftyOne datasets.
+### Export datasets
 
-    Examples::
+Export FiftyOne datasets to disk in supported formats.
 
-        # Exports the dataset with the given type
-        fiftyone datasets export <name> \
-            --export-dir <export-dir> --type <type> --label-field <label-field>
+#### Command
 
-        # Exports the dataset in JSON format
-        fiftyone datasets export <name> --json-path <json-path>
+```
+fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH] [-f LABEL_FIELD]
+                         [-t TYPE] NAME
+```
 
+#### Arguments
+
+```
 positional arguments:
   NAME                  the name of the dataset to export
 
@@ -316,30 +433,61 @@ optional arguments:
   -f LABEL_FIELD, --label-field LABEL_FIELD
                         the name of the label field to export
   -t TYPE, --type TYPE  the format in which to export the dataset (a subclass of `fiftyone.types.BaseDataset`)
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone datasets delete [-h] NAME
+```shell
+# Exports the dataset to disk in the specified format
+fiftyone datasets export <name> \
+    --export-dir <export-dir> --type <type> --label-field <label-field>
+```
 
-Tools for deleting FiftyOne datasets.
+```shell
+# Exports the dataset to disk in JSON format
+fiftyone datasets export <name> --json-path <json-path>
+```
 
-    Examples::
+### Delete datasets
 
-        # Delete the dataset with the given name
-        fiftyone datasets delete <name>
+Delete FiftyOne datasets.
 
+#### Command
+
+```
+fiftyone datasets delete [-h] NAME
+```
+
+#### Arguments
+
+```
 positional arguments:
   NAME        the name of the dataset
 
 optional arguments:
   -h, --help  show this help message and exit
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone dashboard [-h] [--all-help] {launch,view,connect} ...
+```shell
+# Delete the dataset with the given name
+fiftyone datasets delete <name>
+```
+
+## Working with the FiftyOne Dashboard
 
 Tools for working with the FiftyOne Dashboard.
 
+#### Command
+
+```
+fiftyone dashboard [-h] [--all-help] {launch,view,connect} ...
+```
+
+#### Arguments
+
+```
 optional arguments:
   -h, --help            show this help message and exit
   --all-help            show help recurisvely and exit
@@ -349,21 +497,21 @@ available commands:
     launch              Launch the FiftyOne Dashboard.
     view                View datasets in the FiftyOne Dashboard without persisting them to the
     connect             Connect to a remote FiftyOne Dashboard.
+```
 
-
-*******************************************************************************
-usage: fiftyone dashboard launch [-h] [-p PORT] [-r] NAME
+### Launch the dashboard
 
 Launch the FiftyOne Dashboard.
 
-    Examples::
+#### Command
 
-        # Launches the dashboard with the given dataset
-        fiftyone dashboard launch <name>
+```
+fiftyone dashboard launch [-h] [-p PORT] [-r] NAME
+```
 
-        # Launches a remote dashboard session
-        fiftyone dashboard launch <name> --remote
+#### Arguments
 
+```
 positional arguments:
   NAME                  the name of the dataset to open
 
@@ -371,30 +519,36 @@ optional arguments:
   -h, --help            show this help message and exit
   -p PORT, --port PORT  the port number to use
   -r, --remote          whether to launch a remote dashboard session
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone dashboard view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
-                               [-z NAME] [-s SPLITS [SPLITS ...]]
-                               [-j JSON_PATH] [-p PORT] [-r]
+```shell
+# Launches the dashboard with the given dataset
+fiftyone dashboard launch <name>
+```
+
+```shell
+# Launches a remote dashboard session
+fiftyone dashboard launch <name> --remote
+```
+
+### View datasets in dashboard
 
 View datasets in the FiftyOne Dashboard without persisting them to the
-    database.
+database.
 
-    Examples::
+#### Command
 
-        # View a dataset stored on disk in the dashboard
-        fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+```
+fiftyone dashboard view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
+                        [-z NAME] [-s SPLITS [SPLITS ...]]
+                        [-j JSON_PATH] [-p PORT] [-r]
+```
 
-        # View a zoo dataset in the dashboard
-        fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
+#### Arguments
 
-        # View a dataset stored in JSON format on disk in the dashboard
-        fiftyone dashboard view --json-path <json-path>
-
-        # View the dataset in a remote dashboard session
-        fiftyone dashboard view ... --remote
-
+```
 optional arguments:
   -h, --help            show this help message and exit
   -n NAME, --name NAME  a name for the dataset
@@ -409,79 +563,157 @@ optional arguments:
                         the path to a samples JSON file to view
   -p PORT, --port PORT  the port number to use
   -r, --remote          whether to launch a remote dashboard session
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone dashboard connect [-h] [-d DESTINATION] [-p PORT]
+```shell
+# View a dataset stored on disk in the dashboard
+fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+```
+
+```shell
+# View a zoo dataset in the dashboard
+fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
+```
+
+```shell
+# View a dataset stored in JSON format on disk in the dashboard
+fiftyone dashboard view --json-path <json-path>
+```
+
+```shell
+# View the dataset in a remote dashboard session
+fiftyone dashboard view ... --remote
+```
+
+### Connect to remote dashboard
 
 Connect to a remote FiftyOne Dashboard.
 
-    Examples::
+#### Command
 
-        # Connect to a remote dashboard with port forwarding already configured
-        fiftyone dashboard connect
+```
+fiftyone dashboard connect [-h] [-d DESTINATION] [-p PORT]
+```
 
-        # Connects to a remote dashboard session
-        fiftyone dashboard connect --destination <destination> --port <port>
+#### Arguments
 
+```
 optional arguments:
   -h, --help            show this help message and exit
   -d DESTINATION, --destination DESTINATION
                         the destination to connect to, e.g., [username@]hostname
   -p PORT, --port PORT  the remote port to connect to
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone zoo [-h] [--all-help] {list,info,download,load} ...
+```shell
+# Connect to a remote dashboard with port forwarding already configured
+fiftyone dashboard connect
+```
+
+```shell
+# Connects to a remote dashboard session
+fiftyone dashboard connect --destination <destination> --port <port>
+```
+
+## FiftyOne Dataset Zoo
 
 Tools for working with the FiftyOne Dataset Zoo.
 
+#### Command
+
+```
+fiftyone zoo [-h] [--all-help] {list,find,info,download,load} ...
+```
+
+#### Arguments
+
+```
 optional arguments:
   -h, --help            show this help message and exit
   --all-help            show help recurisvely and exit
 
 available commands:
-  {list,info,download,load}
-    list                Listi datasets in the FiftyOne Dataset Zoo.
+  {list,find,info,download,load}
+    list                List datasets in the FiftyOne Dataset Zoo.
+    find                Locate the downloaded zoo dataset on disk.
     info                Print information about downloaded zoo datasets.
     download            Download zoo datasets.
     load                Load zoo datasets as persistent FiftyOne datasets.
+```
 
+### List datasets in zoo
 
-*******************************************************************************
-usage: fiftyone zoo list [-h] [-b BASE_DIR]
+List datasets in the FiftyOne Dataset Zoo.
 
-Listi datasets in the FiftyOne Dataset Zoo.
+#### Command
 
-    Examples::
+```
+fiftyone zoo list [-h] [-b BASE_DIR]
+```
 
-        # List available datasets
-        fiftyone zoo list
+#### Arguments
 
-        # List available datasets, using the specified base directory to search
-        # for downloaded datasets
-        fiftyone zoo list --base-dir <base-dir>
-
+```
 optional arguments:
   -h, --help            show this help message and exit
   -b BASE_DIR, --base-dir BASE_DIR
                         a custom base directory in which to search for downloaded datasets
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone zoo info [-h] [-b BASE_DIR] NAME
+```shell
+# List available datasets
+fiftyone zoo list
+```
 
-Print information about downloaded zoo datasets.
+```shell
+# List available datasets, using the specified base directory to search for downloaded datasets
+fiftyone zoo list --base-dir <base-dir>
+```
 
-    Examples::
+### Find zoo datasets on disk
 
-        # Print information about a downloaded zoo dataset
-        fiftyone zoo info <name>
+Locate the downloaded zoo dataset on disk.
 
-        # Print information about the zoo dataset downloaded to the specified
-        # base directory
-        fiftyone zoo info <name> --base-dir <base-dir>
+#### Command
 
+```
+fiftyone zoo find [-h] NAME
+```
+
+#### Arguments
+
+```
+positional arguments:
+  NAME        the name of the dataset
+
+optional arguments:
+  -h, --help  show this help message and exit
+```
+
+#### Examples
+
+```shell
+# Print the location of the downloaded zoo dataset on disk
+fiftyone zoo find <name>
+```
+
+### Print information about zoo datasets
+
+#### Command
+
+```
+fiftyone zoo info [-h] [-b BASE_DIR] NAME
+```
+
+#### Arguments
+
+```
 positional arguments:
   NAME                  the name of the dataset
 
@@ -489,25 +721,33 @@ optional arguments:
   -h, --help            show this help message and exit
   -b BASE_DIR, --base-dir BASE_DIR
                         a custom base directory in which to search for downloaded datasets
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone zoo download [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR]
-                             NAME
+```shell
+# Print information about a downloaded zoo dataset
+fiftyone zoo info <name>
+```
 
-Download zoo datasets.
+```shell
+# Print information about the zoo dataset downloaded to the specified base directory
+fiftyone zoo info <name> --base-dir <base-dir>
+```
 
-    Examples::
+### Download zoo datasets
 
-        # Download the entire zoo dataset
-        fiftyone zoo download <name>
+Download datasets from the FiftyOne Dataset Zoo.
 
-        # Download the specified split(s) of the zoo dataset
-        fiftyone zoo download <name> --splits <split1> ...
+#### Command
 
-        # Download to the zoo dataset to a custom directory
-        fiftyone zoo download <name> --dataset-dir <dataset-dir>
+```
+fiftyone zoo download [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
+```
 
+#### Arguments
+
+```
 positional arguments:
   NAME                  the name of the dataset
 
@@ -517,24 +757,38 @@ optional arguments:
                         the dataset splits to download
   -d DATASET_DIR, --dataset-dir DATASET_DIR
                         a custom directory to which to download the dataset
+```
 
+#### Examples
 
-*******************************************************************************
-usage: fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
+```shell
+# Download the entire zoo dataset
+fiftyone zoo download <name>
+```
+
+```shell
+# Download the specified split(s) of the zoo dataset
+fiftyone zoo download <name> --splits <split1> ...
+```
+
+```shell
+# Download to the zoo dataset to a custom directory
+fiftyone zoo download <name> --dataset-dir <dataset-dir>
+```
+
+### Load zoo datasets
 
 Load zoo datasets as persistent FiftyOne datasets.
 
-    Examples::
+#### Command
 
-        # Load the zoo dataset with the given name
-        fiftyone zoo load <name>
+```
+fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
+```
 
-        # Load the specified split(s) of the zoo dataset
-        fiftyone zoo load <name> --splits <split1> ...
+#### Arguments
 
-        # Load the zoo dataset from a custom directory
-        fiftyone zoo load <name> --dataset-dir <dataset-dir>
-
+```
 positional arguments:
   NAME                  the name of the dataset
 
@@ -544,4 +798,21 @@ optional arguments:
                         the dataset splits to load
   -d DATASET_DIR, --dataset-dir DATASET_DIR
                         a custom directory in which the dataset is downloaded
+```
+
+#### Examples
+
+```shell
+# Load the zoo dataset with the given name
+fiftyone zoo load <name>
+```
+
+```shell
+# Load the specified split(s) of the zoo dataset
+fiftyone zoo load <name> --splits <split1> ...
+```
+
+```shell
+# Load the zoo dataset from a custom directory
+fiftyone zoo load <name> --dataset-dir <dataset-dir>
 ```
