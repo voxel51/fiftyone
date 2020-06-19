@@ -58,6 +58,6 @@ Adding samples to your training dataset to improve your model’s performance
    :maxdepth: 1
    :hidden:
 
-   uniqueness/README
-   label_mistakes/README
-   model_inference/README
+   uniqueness.ipynb
+   label_mistakes.ipynb
+   model_inference.ipynb
