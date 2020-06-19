@@ -1,3 +1,12 @@
+"""
+Builds a list of all children of a process, then waits for the process and
+all of its children to exit. Note that this does not (currently) detect any
+new subprocesses that launch after this script is started.
+
+Usage:
+    python subprocess_monitor.py PROCESS_ID
+"""
+
 import os, psutil, sys
 
 _format_cache = {}
