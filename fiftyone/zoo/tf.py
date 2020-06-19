@@ -18,8 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import resource
-
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.imagenet as foui
@@ -699,9 +697,7 @@ def _download_and_prepare(
     # Prevents ResourceExhaustedError that can arise...
     # https://github.com/tensorflow/datasets/issues/1441#issuecomment-581660890
     #
-    with fou.ResourceLimit(
-        resource.RLIMIT_NOFILE, soft=4096, warn_on_failure=True
-    ):
+    with fou.ResourceLimit("RLIMIT_NOFILE", soft=4096, warn_on_failure=True):
         dataset, info = download_fcn(scratch_dir)
 
     classes = get_class_labels_fcn(info)

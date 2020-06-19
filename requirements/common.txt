@@ -2,8 +2,6 @@ argcomplete==1.11.0
 eventlet==0.25.2
 flask-socketio==4.3.0
 Flask==1.1.2
-gunicorn==19.10.0;python_version<"3"
-gunicorn==20.0.4;python_version>="3"
 Jinja2==2.10.1
 mongoengine<0.20.0;python_version<"3"
 mongoengine==0.20.0;python_version>="3"

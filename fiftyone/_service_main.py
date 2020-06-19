@@ -19,6 +19,7 @@ then exiting itself.
 |
 """
 import collections
+import enum
 import os
 import signal
 import subprocess
@@ -28,9 +29,29 @@ import threading
 import psutil
 
 
+lock = threading.Lock()
+
 # global flag set when either the parent or child has terminated, to trigger
 # shutdown of the current process (and children as necessary)
 exiting = threading.Event()
+
+
+class ExitMode(enum.IntEnum):
+    CHILD = 1
+    PARENT = 2
+
+
+# set to indicate whether the child or parent exited first
+exit_mode = None
+
+
+def trigger_exit(mode):
+    """Start the shutdown process."""
+    with lock:
+        global exit_mode
+        if exit_mode is None:
+            exit_mode = ExitMode(mode)
+    exiting.set()
 
 
 class ChildStreamMonitor(object):
@@ -62,7 +83,7 @@ class ChildStreamMonitor(object):
             chunk = self.stream.read(1024)
             if not chunk:
                 # EOF - subprocess has exited, so trigger shutdown
-                exiting.set()
+                trigger_exit(ExitMode.CHILD)
                 break
             self.output_deque.appendleft(chunk)
 
@@ -96,6 +117,13 @@ if hasattr(os, "setpgrp"):
 signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
+popen_kwargs = {}
+if sys.platform.startswith("win"):
+    # CREATE_NEW_PROCESS_GROUP: disable ctrl-c
+    # https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags?redirectedfrom=MSDN
+    popen_kwargs["creationflags"] = 0x00000200
+
+
 # use psutil's wrapper around subprocess.Popen for convenience (e.g. it makes
 # finding the child's children significantly easier)
 child = psutil.Popen(
@@ -103,6 +131,7 @@ child = psutil.Popen(
     stdin=subprocess.DEVNULL,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
+    **popen_kwargs,
 )
 child_stdout = ChildStreamMonitor(child.stdout)
 child_stderr = ChildStreamMonitor(child.stderr)
@@ -115,7 +144,7 @@ def monitor_stdin():
     """
     while len(sys.stdin.read(1024)):
         pass
-    exiting.set()
+    trigger_exit(ExitMode.PARENT)
 
 
 def shutdown():
@@ -127,22 +156,14 @@ def shutdown():
     # subprocesses of the child process first
     for subchild in child.children(recursive=True):
         try:
-            if "gunicorn" in subchild.name():
-                # gunicorn tends to ignore SIGTERM, so send SIGKILL instead
-                subchild.kill()
-            else:
-                subchild.terminate()
+            subchild.terminate()
         except psutil.NoSuchProcess:
             # we may have already caused it to exit by killing its parent
             pass
 
     child.terminate()
     child.wait()
-    if child.returncode > 0:
-        if command[0] == "yarn" and child.returncode == 1:
-            # yarn sometimes returns this when its children are killed, but it
-            # can be safely ignored
-            return
+    if exit_mode == ExitMode.CHILD and child.returncode > 0:
         sys.stdout.buffer.write(child_stdout.to_bytes())
         sys.stdout.flush()
         sys.stderr.write(

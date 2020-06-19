@@ -24,6 +24,7 @@ from collections import defaultdict
 import io
 import json
 import os
+import sys
 import subprocess
 import sys
 import time
@@ -825,13 +826,18 @@ class DashboardConnectCommand(Command):
     @staticmethod
     def execute(parser, args):
         if args.destination:
+            if sys.platform.startswith("win"):
+                raise RuntimeError(
+                    "This command is currently not supported on Windows."
+                )
+
             control_path = os.path.join(
                 foc.FIFTYONE_CONFIG_DIR, "tmp", "ssh.sock"
             )
             etau.ensure_basedir(control_path)
 
-            # Setup port forwarding
-            p = subprocess.Popen(
+            # Port forwarding
+            ret = subprocess.call(
                 [
                     "ssh",
                     "-f",
@@ -842,13 +848,11 @@ class DashboardConnectCommand(Command):
                     "-L",
                     "5151:127.0.0.1:%d" % args.port,
                     args.destination,
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                ]
             )
-            _, stderr = p.communicate()
-            if p.returncode != 0:
-                raise RuntimeError(stderr.decode())
+            if ret != 0:
+                print("ssh failed with exit code %r" % ret)
+                return
 
             def stop_port_forward():
                 subprocess.call(
