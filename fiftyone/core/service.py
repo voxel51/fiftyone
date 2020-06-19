@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import multiprocessing
 import os
 import re
 import subprocess
@@ -52,9 +53,11 @@ class Service(object):
     def __init__(self):
         """Creates (starts) the Service."""
         self._system = os.system
-        self._is_server = os.environ.get(
-            "FIFTYONE_SERVER", False
-        ) or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
+        self._is_server = (
+            os.environ.get("FIFTYONE_SERVER", False)
+            or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
+            or multiprocessing.current_process().name != "MainProcess"
+        )
         self.child = None
         if not self._is_server:
             self.start()
