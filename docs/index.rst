@@ -1,37 +1,27 @@
 FiftyOne
 ========
 
-In the modern age of deep learning, **quality data** is quickly becoming the
-most important factor to successful machine learning. And unlike those neatly
-curated research datasets, real world problems means data that is partially
-labeled, unbalanced, mislabeled, misrepresentative...you name it.
+*Data is king in the modern age of deep learning.*
 
-Is bad data holding back the performance of your models?
+If you are looking to boost your model performance, chances are improving
+dataset quality is going to provide the highest return on investment.
 
-If you answered no, are you sure? Or are you being overly optimistic?
+Is bad data holding back the performance of your models? No? Are you sure?? Or
+are you being overly optimistic?
 
-For the vast majority of cases, improving dataset quality is going to be the
-highest return on investment for boosting model performance. This could mean
-many things, such as:
+**FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
+to help in creating valuable and diverse datasets. Work efficiently to achieve
+better models and clearer and more meaningful evaluation results.
+
+What are some typical things I may be trying to achieve with FiftyOne?
+
+Improving your dataset! The dataset should be dynamic and evolving part of the
+machine learning "code". This means:
 
 1. adding new samples that increase diversity
 2. removing redundant samples that do not benefit performance and bloat the
    dataset unnecessarily
-3. modifying labels due to annotation mistakes
-
-It is time to start seeing the dataset as a dynamic and evolving part of the
-machine learning "code", and this is where **FiftyOne** comes in.
-
-**FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
-to help in creating valuable and diverse datasets. **FiftyOne**:
-
-* provides powerful capabilities for understanding and modifying datasets
-  in ways that will best improve model performance
-* facilitates good practice and organization in shepherding data
-* makes it easy to rapidly gain intuitions and efficiently wrangle data
-
-Improving your dataset means better models, clearer and more meaningful
-evaluation results and a more efficient means to all of this.
+3. modifying labels due to annotation mistakes, change in schema, or something else
 
 .. image:: images/video_placeholder.png
    :alt: Overview Video
@@ -70,15 +60,16 @@ ________
 
 **FiftyOne** is comprised of...
 
-* a core library that enables powerful dataset representation including
-  efficient search and manipulation and saved fields for samples such as tags
-  and model predictions.
+* a **core library** that provides a lightweight and structured yet dynamic
+  dataset representation. Efficiently query and manipulate your dataset by
+  adding custom tags, model predictions and more.
   :doc:`Learn More >><user_guide/basics>`
-* a GUI application that provides easy visualization datasets sliced into any
-  aspect you need. The only limitation is imagination!
+* a **GUI application** that makes it easy to rapidly gain intuitions.
+  Visualize labels, bounding boxes and segmentations overlayed on the samples
+  and sort, query and slice your dataset into any aspect you need.
   :doc:`Learn More >><user_guide/app>`
-* the FiftyOne Brain, which provides the :ref:`Capabilities` mentioned above.
-  :doc:`Learn More >><user_guide/brain>`
+* the **FiftyOne Brain**, which provides powerful :ref:`Capabilities` for
+  modifying datasets in ways that will best improve model performance.
 
 
 Support
@@ -92,7 +83,8 @@ documentation, feel free to reach out to us at support@voxel51.com.
    :hidden:
 
    getting_started/install
-   tutorials/index
-   common_recipes/index
-   user_guide/index
-   api/fiftyone
+
+tutorials/index
+common_recipes/index
+user_guide/index
+api/fiftyone
