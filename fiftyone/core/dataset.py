@@ -333,6 +333,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def distinct(self, field):
         """Finds all distinct values of a sample field across the dataset.
+
         If the field is a list, the distinct values will be distinct elements
         across all sample field lists.
 
