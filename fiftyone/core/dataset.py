@@ -57,7 +57,7 @@ def list_dataset_names():
         a list of :class:`Dataset` names
     """
     # pylint: disable=no-member
-    return list(foo.ODMDataset.objects.distinct("name"))
+    return sorted(foo.ODMDataset.objects.distinct("name"))
 
 
 def dataset_exists(name):
