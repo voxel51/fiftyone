@@ -27,7 +27,7 @@ ____________
 FiftyOne provides advanced capabilities that will turbocharge your
 machine learning workflow.
 
-.. rubric:: :doc:`Detection of Annotation Mistakes<tutorials/label_mistakes/README>`:
+.. rubric:: :doc:`Detection of Annotation Mistakes<tutorials/label_mistakes>`:
 
 Automatically detect label annotation mistakes.
 
@@ -36,11 +36,11 @@ Automatically detect label annotation mistakes.
 Find and remove similar samples in your dataset to reduce
 redundancy.
 
-.. rubric:: :doc:`Bootstrap a Training Dataset<tutorials/???.ipynb>`:
+.. rubric:: :doc:`Bootstrap a Training Dataset<tutorials/???>`:
 
 Bootstrap your training dataset with raw images.
 
-.. rubric:: :doc:`Add Optimal New Samples<tutorials/???.ipynb>`:
+.. rubric:: :doc:`Add Optimal New Samples<tutorials/???>`:
 
 Add the optimal samples to your training dataset for improving your model’s
 performance.
