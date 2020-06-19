@@ -104,13 +104,13 @@ __________
 
 Where should you go from here? You could...
 
-* ...start by :doc:`installing FiftyOne<getting_started/install>`.
-* ...try one of the :doc:`tutorials<tutorials/index>` that demonstrate the
-  unique capabilites of FiftyOne.
-* ...explore the :doc:`common recipes<common_recipes/index>` for integrating
+* start by :doc:`installing FiftyOne<getting_started/install>`.
+* try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
+  capabilities of FiftyOne.
+* explore the :doc:`common recipes<common_recipes/index>` for integrating
   FiftyOne into your current workflow.
-* ...check the :doc:`user guides<user_guide/index>` for detailed "How To..." of
-  a specific task you are trying to accomplish.
+* check the :doc:`user guides<user_guide/index>` for detailed "How To..." of a
+  specific task you are trying to accomplish.
 
 Support
 _______
