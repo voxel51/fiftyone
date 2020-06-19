@@ -165,7 +165,7 @@ class ServerServiceTests(unittest.TestCase):
             try:
                 step()
                 self.session.dataset = None
-                self.client.response = None
+                self.wait_for_response()
             except Exception as e:
                 self.fail("{} failed ({}: {})".format(step, type(e), e))
 
@@ -190,7 +190,7 @@ class ServerServiceTests(unittest.TestCase):
 
     def steps(self):
         for name in dir(self):
-            if name.startswith("step"):
+            if name.startswith("step_"):
                 yield name, getattr(self, name)
 
 

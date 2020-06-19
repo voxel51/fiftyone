@@ -58,12 +58,29 @@ jobs:
       - name: Package GUI (macOS)
         working-directory: electron
         run: yarn package-mac --publish never
+      - name: Package GUI (Windows)
+        working-directory: electron
+        # from https://www.electron.build/multi-platform-build#docker
+        # removed node_modules mount to use existing packages
+        run: |
+          docker run --rm \
+           --env-file <(env | grep -iE 'DEBUG|NODE_|ELECTRON_|YARN_|NPM_|CI|CIRCLE|TRAVIS_TAG|TRAVIS|TRAVIS_REPO_|TRAVIS_BUILD_|TRAVIS_BRANCH|TRAVIS_PULL_REQUEST_|APPVEYOR_|CSC_|GH_|GITHUB_|BT_|AWS_|STRIP|BUILD_') \
+           --env ELECTRON_CACHE="/root/.cache/electron" \
+           --env ELECTRON_BUILDER_CACHE="/root/.cache/electron-builder" \
+           -v ${PWD}:/project \
+           -v ~/.cache/electron:/root/.cache/electron \
+           -v ~/.cache/electron-builder:/root/.cache/electron-builder \
+           electronuserland/builder:wine \
+           yarn package-win --publish never
       - name: Build wheel (Linux)
         working-directory: package/gui
         run: python setup.py bdist_wheel --plat-name linux
       - name: Build wheel (macOS)
         working-directory: package/gui
-        run: python setup.py bdist_wheel --plat-name macOS
+        run: python setup.py bdist_wheel --plat-name mac
+      - name: Build wheel (Windows)
+        working-directory: package/gui
+        run: python setup.py bdist_wheel --plat-name win
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
@@ -74,6 +91,11 @@ jobs:
         with:
           name: wheel-macos
           path: package/gui/dist/*macos*.whl
+      - name: Upload wheel (Windows)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-windows
+          path: package/gui/dist/*win*.whl
 
   publish:
     runs-on: ubuntu-18.04
