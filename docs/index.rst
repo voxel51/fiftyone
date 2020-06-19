@@ -27,11 +27,11 @@ ____________
 FiftyOne provides advanced capabilities that will turbocharge your
 machine learning workflow.
 
-.. rubric:: :doc:`Detection of Annotation Mistakes<tutorials/label_mistakes>`:
+.. rubric:: :doc:`Detect of Annotation Mistakes<tutorials/label_mistakes>`:
 
 Automatically detect label annotation mistakes.
 
-.. rubric:: :doc:`Remove Redundant Images<tutorials/uniqueness/README>`:
+.. rubric:: :doc:`Remove Redundant Images<tutorials/uniqueness>`:
 
 Find and remove similar samples in your dataset to reduce
 redundancy.
