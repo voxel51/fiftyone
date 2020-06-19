@@ -23,6 +23,13 @@ be dynamically created, modified and deleted.
 `Datasets` do not store all images in memory, instead storing image paths and then
 caching data as needed.
 
+
+`Datasets` should be thought of as unordered collections. `Samples` can be
+added to them and they can be accessed by key. However, slicing and sorting
+of `Datasets` is done through the use of `Views`. `Views` allow for an ordered
+look into the `Dataset` or a subset of the `Dataset` along user specified axes.
+
+
 Samples
 _______
 
