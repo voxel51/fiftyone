@@ -7,13 +7,13 @@ If you are looking to boost your model performance, chances are improving
 dataset quality is going to provide the highest return on investment.
 **FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
 to help in creating valuable and diverse datasets. Work efficiently with
-FiftyOne to achieve better models and more meaningful metrics.
+FiftyOne to achieve better models with dependable performance.
 
     *"Become one with the data."*
 
 FiftyOne does more than improve your dataset; it gets you closer to your data.
 Rapidly gain insight by visualizing samples overlayed with with dynamic and
-queryable fields such as ground truth & predicted labels, dataset splits, and
+queryable fields such as ground truth and predicted labels, dataset splits, and
 much more!
 
 .. image:: images/video_placeholder.png
@@ -36,7 +36,7 @@ Automatically detect label annotation mistakes.
 Find and remove similar samples in your dataset to reduce
 redundancy.
 
-.. rubric:: :doc:`Bootstrap A Training Dataset<tutorials/???.ipynb>`:
+.. rubric:: :doc:`Bootstrap a Training Dataset<tutorials/???.ipynb>`:
 
 Bootstrap your training dataset with raw images.
 
@@ -50,9 +50,9 @@ ________
 
 .. rubric:: :doc:`FiftyOne Core Library<user_guide/basics>`:
 
-The **Core Library** provides a lightweight and structured yet dynamic dataset
-representation. Efficiently query and manipulate your dataset by adding custom
-tags, model predictions and more.
+The **Core Library** provides a structured yet dynamic dataset representation.
+Efficiently query and manipulate your dataset by adding custom tags, model
+predictions and more.
 
 .. code-block:: python
    :linenos:
@@ -68,6 +68,12 @@ tags, model predictions and more.
    for sample in view:
        ...
 
+.. note::
+   FiftyOne is designed to be lightweight by default. See our
+   :doc:`Loading a Dataset<user_guide/making_dataset>`
+   guide to find out how to get your data into FiftyOne.
+
+
 .. rubric:: :doc:`Interactive Visual App<user_guide/app>`:
 
 The **App** makes it easy to rapidly gain intuitions. Visualize labels,
@@ -82,7 +88,7 @@ slice your dataset into any aspect you need.
 
 .. rubric:: :doc:`FiftyOne Brain<user_guide/brain>`:
 
-The **Brain** provides powerful :ref:`capabilities` for modifying datasets in
+The **Brain** provides powerful :ref:`capabilities<Capabilities>` for modifying datasets in
 ways that will best improve model performance.
 
 .. code-block:: python
