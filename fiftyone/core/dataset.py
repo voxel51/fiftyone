@@ -67,7 +67,7 @@ def dataset_exists(name):
         name: the name of the dataset
 
     Returns:
-        True if the dataset exists
+        True/False
     """
     try:
         # pylint: disable=no-member
