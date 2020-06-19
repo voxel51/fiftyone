@@ -5,26 +5,16 @@ FiftyOne
 
 If you are looking to boost your model performance, chances are improving
 dataset quality is going to provide the highest return on investment.
-
 **FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
-to help in creating valuable and diverse datasets. Work efficiently to achieve
-better models and more meaningful metrics.
+to help in creating valuable and diverse datasets. Work efficiently with
+FiftyOne to achieve better models and more meaningful metrics.
 
     *"Become one with the data."*
 
 FiftyOne does more than improve your dataset; it gets you closer to your data.
 Rapidly gain insight by visualizing samples overlayed with with dynamic and
-queryable fields such as ground truth/prediction labels, tags (dataset splits)
-and much more!
-
-The dataset should be dynamic and evolving part of the machine learning "code".
-This means:
-
-1. adding new samples that increase diversity
-2. removing redundant samples that do not benefit performance and bloat the
-   dataset unnecessarily
-3. modifying labels due to annotation mistakes, change in schema, or something
-   else
+queryable fields such as ground truth & predicted labels, dataset splits, and
+much more!
 
 .. image:: images/video_placeholder.png
    :alt: Overview Video
@@ -109,8 +99,8 @@ __________
 Where should you go from here? You could...
 
 * ...start by :doc:`installing FiftyOne<getting_started/install>`.
-* ...try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
-  capabilites of FiftyOne.
+* ...try one of the :doc:`tutorials<tutorials/index>` that demonstrate the
+  unique capabilites of FiftyOne.
 * ...explore the :doc:`common recipes<common_recipes/index>` for integrating
   FiftyOne into your current workflow.
 * ...check the :doc:`user guides<user_guide/index>` for detailed "How To..." of
