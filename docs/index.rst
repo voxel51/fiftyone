@@ -31,7 +31,7 @@ Where to go from here? You could...
   capabilites of FiftyOne
 * explore the :doc:`Common Recipes<common_recipes/index>` for integrating
   FiftyOne into your current workflow
-* check the :doc:`User Guide<user_guide/index>` for detailed "How To..." of
+* check the :doc:`User Guides<user_guide/index>` for detailed "How To..." of
   a specific tasks you may be trying to accomplish
 * view the :doc:`API Reference<api/fiftyone>`
 
@@ -54,18 +54,42 @@ machine learning workflow.
 Concepts
 ________
 
-**FiftyOne** is comprised of...
+.. rubric:: :doc:`FiftyOne Core Library<user_guide/basics>`:
 
-* a **core library** that provides a lightweight and structured yet dynamic
-  dataset representation. Efficiently query and manipulate your dataset by
-  adding custom tags, model predictions and more.
-  :doc:`Learn More >><user_guide/basics>`
-* a **GUI application** that makes it easy to rapidly gain intuitions.
-  Visualize labels, bounding boxes and segmentations overlayed on the samples
-  and sort, query and slice your dataset into any aspect you need.
-  :doc:`Learn More >><user_guide/app>`
-* the **FiftyOne Brain**, which provides powerful :ref:`Capabilities` for
-  modifying datasets in ways that will best improve model performance.
+The **core library** provides a lightweight and structured yet dynamic dataset
+representation. Efficiently query and manipulate your dataset by adding custom
+tags, model predictions and more.::
+    import fiftyone as fo
+
+    dataset = fo.Dataset(name="my_dataset")
+    sample = fo.Sample(filepath="path/to/img.png")
+    dataset.add_sample(sample)
+    sample.tags += ["train"]
+    sample["integer_field"] = 51
+    view = dataset.view().match_tag("test").sort_by("integer_field")[5:10]
+    for sample in view:
+        ...
+
+.. rubric:: :doc:`Interactive Visual App<user_guide/app>`:
+
+The **app** makes it easy to rapidly gain intuitions. Visualize labels,
+bounding boxes and segmentations overlayed on the samples and sort, query and
+slice your dataset into any aspect you need.
+
+.. image:: images/dog.png
+   :alt: App
+   :width: 75%
+   :align: center
+   :target: user_guide/app.html
+
+.. rubric:: :doc:`FiftyOne Brain<user_guide/brain>`:
+
+The **brain** provides powerful :ref:`capabilities` for modifying datasets in
+ways that will best improve model performance.::
+    import fiftyone.brain as fob
+
+    fob.compute_uniqueness(dataset)
+    rank_view = dataset.view().sort_by("uniqueness")
 
 
 Support
