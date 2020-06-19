@@ -1,5 +1,5 @@
 Viewing Datasets in the App
-==========================
+===========================
 
 .. default-role:: code
 
@@ -15,14 +15,14 @@ The workflow when working with FiftyOne is to open interactive python
 interface that allows you to view the `Dataset` as well as any `Views` into the
 `Dataset`.
 
-`Sessions` are the python objects that contain the instance of the 
+`Sessions` are the python objects that contain the instance of the
 app::
     import fiftyone as fo
     session = fo.launch_dashboard()
 
 
 .. image:: ../images/empty_dashboard.png
-   :alt: App Startup Page 
+   :alt: App Startup Page
    :align: center
 
 
@@ -33,7 +33,7 @@ app::
     session.dataset = dataset
 
 .. image:: ../images/cifar10.png
-   :alt: Cifar10 
+   :alt: Cifar10
    :align: center
 
 
@@ -47,7 +47,7 @@ the first 10 `Samples` to display.::
 
 
 .. image:: ../images/cifar10_sorted.png
-   :alt: Cifar10 Sorted 
+   :alt: Cifar10 Sorted
    :align: center
 
 
@@ -79,7 +79,7 @@ Option 1
 ^^^^^^^^
 
 On the local machine, the :doc:`FiftyOne CLI <cli>` can be used to
-forward the port `5151` and open the FiftyOne App locally. 
+forward the port `5151` and open the FiftyOne App locally.
 In a local terminal, run the command::
     # Option 1: Local Machine (Terminal)
     fiftyone dashboard connect --destination username@remote_machine_ip --port 5151
@@ -90,10 +90,10 @@ Option 2
 
 Alternatively, the port forwarding and App launching steps can be run
 separately.
-Open two terminal windows on the **local machine**. 
+Open two terminal windows on the **local machine**.
 In order to forward the port `5151` from the remote machine to the local
 machine, run the following command directly in one of the terminal windows and
-leave this command running:: 
+leave this command running::
     # Option 2: Local Machine (Terminal)
     ssh -N -L 5151:127.0.0.1:5151 username@remote_machine_ip
 
@@ -113,6 +113,6 @@ FiftyOne App locally by starting python and running the following commands::
 Using the FiftyOne App
 ______________________
 
-The App has various functionality built into the user interface itself. 
+The App has various functionality built into the user interface itself.
 
 
