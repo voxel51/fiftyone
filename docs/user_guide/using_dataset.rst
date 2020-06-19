@@ -135,11 +135,13 @@ Adding Fields
 `Fields` are added to a `Samples` one at a 
 time::
     sample["integer_field"] = 51
+    sample.save()
 
 
 `Fields` can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
 `dict`, or more complex data structures like `Labels`::
     sample["ground_truth"] = fo.Classification(label="alligator")
+    sample.save()
 
 Whenever a new `Field` is added to one `Sample` in a `Dataset`, that `Field` is
 added to all other `Samples` in the `Dataset` with the value `None`.
@@ -147,10 +149,13 @@ added to all other `Samples` in the `Dataset` with the value `None`.
 A `Field` must be the same type across every `Sample` in the `Dataset`. Setting
 a `Field` to an inappropriate type raises a `ValidationError`::
     sample2.integer_field = "a string"
+    sample2.save()
 
     Out:
         Error: a string could not be converted to int
 
+
+**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.** 
 
 Removing Fields
 ---------------
@@ -192,7 +197,7 @@ images::
     sample.tags += ["new_tag"]
     sample.save()
 
-**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used to update the** `Dataset` `Tags`
+**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.** 
 
 
 Views
@@ -251,7 +256,7 @@ array slicing::
 
     view.skip(2).limit(3)
 
-    view()[2:5]
+    view[2:5]
 
 For efficiency, slicing only works if a `:` is 
 provided::
