@@ -16,7 +16,7 @@ their relation to `Samples`, `Fields`, `Tags` and
     sample["integer_field"] = 51
 
 
-.. rubric:: :doc:`Loading a Dataset <making_dataset>`: 
+.. rubric:: :doc:`Loading a Dataset <dataset_creation/index>`: 
 
 Load a `Dataset` either using an
 existing supported dataset format or from scratch::
