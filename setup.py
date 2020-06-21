@@ -26,7 +26,7 @@ class BdistWheelCustom(bdist_wheel):
 
 setup(
     name="fiftyone",
-    version="0.2.0",
+    version="0.2.1",
     description="Project FiftyOne",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
@@ -63,7 +63,7 @@ setup(
         "tabulate",
         "xmltodict",
         # internal packages
-        "voxel51-eta>=0.1.0.4",
+        "voxel51-eta>=0.1.1",
     ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
