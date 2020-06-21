@@ -3,7 +3,7 @@ Using a Dataset
 
 .. default-role:: code
 
-After a `Dataset` has been :doc:`loaded or created <making_dataset>`, FiftyOne
+After a `Dataset` has been loaded or created, FiftyOne
 provides powerful functionality to inspect, search, and modify it from a
 `Dataset`-wide down to a `Sample` level.
 

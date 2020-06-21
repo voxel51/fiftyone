@@ -74,10 +74,6 @@ Use the FiftyOne Brain to automatically get insights into your `Dataset`
    rank_view = dataset.view().sort_by("uniqueness")
 
 
-.. rubric:: :doc:`Dataset Creation Examples <dataset_creation/README>`
-
-
-.. rubric:: :doc:`Fifteen Minutes to FiftyOne <15to51>`
 
 .. toctree::
    :maxdepth: 1
