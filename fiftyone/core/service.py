@@ -19,12 +19,14 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import logging
+import multiprocessing
 import os
 import re
 import subprocess
 import sys
 
 from packaging.version import Version
+import psutil
 import requests
 
 import eta.core.utils as etau
@@ -47,20 +49,27 @@ class Service(object):
     """
 
     working_dir = "."
+    allow_headless = False
 
     def __init__(self):
         """Creates (starts) the Service."""
         self._system = os.system
-        self._is_server = os.environ.get(
-            "FIFTYONE_SERVER", False
-        ) or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
+        self._disabled = (
+            os.environ.get("FIFTYONE_SERVER", False)
+            or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
+            or multiprocessing.current_process().name != "MainProcess"
+            or (
+                os.environ.get("FIFTYONE_HEADLESS", False)
+                and not self.allow_headless
+            )
+        )
         self.child = None
-        if not self._is_server:
+        if not self._disabled:
             self.start()
 
     def __del__(self):
         """Deletes (stops) the Service."""
-        if not self._is_server:
+        if not self._disabled:
             try:
                 self.stop()
             except:
@@ -79,7 +88,9 @@ class Service(object):
             "..",
             "_service_main.py",
         )
-        self.child = subprocess.Popen(
+        # use psutil's Popen wrapper because its wait() more reliably waits
+        # for the process to exit on Windows
+        self.child = psutil.Popen(
             [sys.executable, service_main_path] + self.command,
             cwd=self.working_dir,
             stdin=subprocess.PIPE,
@@ -97,6 +108,12 @@ class Service(object):
 
 class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
+
+    allow_headless = True
+
+    MONGOD_EXE_NAME = "mongod"
+    if sys.platform.startswith("win"):
+        MONGOD_EXE_NAME += ".exe"
 
     MIN_MONGO_VERSION = "3.6"
 
@@ -141,7 +158,7 @@ class DatabaseService(Service):
             if folder in searched:
                 continue
             searched.add(folder)
-            mongod_path = os.path.join(folder, "mongod")
+            mongod_path = os.path.join(folder, DatabaseService.MONGOD_EXE_NAME)
             if os.path.isfile(mongod_path):
                 ok, out, err = etau.communicate([mongod_path, "--version"])
                 out = out.decode(errors="ignore").strip()
@@ -170,6 +187,7 @@ class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
     working_dir = foc.SERVER_DIR
+    allow_headless = True
 
     def __init__(self, port):
         self._port = port
@@ -199,17 +217,11 @@ class ServerService(Service):
     @property
     def command(self):
         command = [
-            "gunicorn",
-            "-w",
-            "1",
-            "--worker-class",
-            "eventlet",
-            "-b",
-            "127.0.0.1:%d" % self._port,
-            "main:app",
+            sys.executable,
+            "main.py",
+            "--port",
+            str(self.port),
         ]
-        if foc.DEV_INSTALL:
-            command += ["--reload"]
         return command
 
     @property
@@ -227,10 +239,14 @@ class AppService(Service):
     def command(self):
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
             if os.path.isfile("FiftyOne.AppImage"):
-                # linux
+                # Linux
                 args = ["./FiftyOne.AppImage"]
             elif os.path.isdir("FiftyOne.app"):
+                # macOS
                 args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
+            elif os.path.isfile("FiftyOne.exe"):
+                # Windows
+                args = ["FiftyOne.exe"]
             elif os.path.isfile("package.json"):
                 # dev build
                 args = ["yarn", "dev"]

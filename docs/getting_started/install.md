@@ -61,6 +61,12 @@ leading `.` or space):
 . env/bin/activate
 ```
 
+On Windows, run this command instead:
+
+```
+env\Scripts\activate.bat
+```
+
 After running this command, your shell prompt should begin with `(env)`, which
 indicates that the virtual environment has been activated. This state will only
 affect your current shell, so if you start a new shell, you will need to
@@ -75,7 +81,8 @@ Python 3.6.9
 ```
 
 Also note that `python` and `pip` live inside the `env` folder (in this output,
-the path to the current folder is replaced with `...`):
+the path to the current folder is replaced with `...`; on Windows, replace
+`which` with `where`):
 
 ```sh
 $ which python
@@ -143,6 +150,12 @@ Type "help", "copyright", "credits" or "license" for more information.
 to start, such as "Could not find mongod", you may need to install additional
 packages. See the [Linux MongoDB setup guide](linux_db_setup) for details.
 
+**Note for Windows users:** If you encounter errors related to missing
+`msvcp140.dll`, you will need to install the 64-bit Visual Studio 2015 C++
+redistributable library, available
+[here](https://www.microsoft.com/en-us/download/details.aspx?id=48145) (choose
+the x64 version).
+
 Once FiftyOne is installed, you can proceed with any of the
 [examples](examples/index) in the documentation. The
 [Fifteen Minutes to FiftyOne](examples/fifteen_to_fiftyone) walkthrough is a
@@ -154,10 +167,15 @@ Note that you may want to install additional packages in the virtual
 environment (with `pip install` followed by the given package names):
 
 -   `ipython` to follow along with interactive examples more easily
--   `tensorflow` for examples requiring TensorFlow (depending on your system,
-    other versions may be required)
+-   `tensorflow` for examples requiring TensorFlow. The installation process
+    can vary depending on your system, so consult the
+    [Tensorflow documentation](https://www.tensorflow.org/install) for specific
+    instructions.
 -   `tensorflow-datasets` for examples that rely on loading TensorFlow datasets
--   `torch` and `torchvision` for examples requiring PyTorch
+-   `torch` and `torchvision` for examples requiring PyTorch. The installation
+    process can vary depending on your system, so consult the
+    [PyTorch documentation](https://pytorch.org/get-started/locally/) for
+    specific instructions.
 
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.

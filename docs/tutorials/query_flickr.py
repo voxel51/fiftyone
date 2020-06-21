@@ -16,29 +16,31 @@ import flickrapi
 import eta.core.storage as etas
 
 
-def main(args):
+def query_flickr(
+    key, secret, query, number=50, path="data", query_in_path=True
+):
     # Flickr api access key
-    flickr = flickrapi.FlickrAPI(args.key, args.secret, cache=True)
+    flickr = flickrapi.FlickrAPI(key, secret, cache=True)
 
     # could also query by tags and tag_mode='all'
     photos = flickr.walk(
-        text=args.query, extras="url_c", per_page=50, sort="relevance"
+        text=query, extras="url_c", per_page=50, sort="relevance"
     )
 
     urls = []
-    for photo in takewhile(lambda _: len(urls) < args.number, photos):
+    for photo in takewhile(lambda _: len(urls) < number, photos):
         url = photo.get("url_c")
         if url is not None:
             urls.append(url)
 
-    if args.query_in_path:
-        basedir = os.path.join(args.path, args.query)
+    if query_in_path:
+        basedir = os.path.join(path, query)
     else:
-        basedir = args.path
+        basedir = path
 
     print(
         "Downloading %d images matching query '%s' to '%s'"
-        % (len(urls), args.query, basedir)
+        % (len(urls), query, basedir)
     )
     client = etas.HTTPStorageClient()
     for url in urls:
@@ -77,4 +79,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args)
+    query_flickr(
+        key=args.key,
+        secret=args.secret,
+        query=args.query,
+        number=args.number,
+        path=args.path,
+        query_in_path=args.query_in_path,
+    )

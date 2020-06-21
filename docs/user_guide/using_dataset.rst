@@ -24,7 +24,7 @@ corresponding image on disk. The image is not read at this point::
 Adding Samples
 --------------
 
-`Samples` an easily be added to an existing 
+`Samples` an easily be added to an existing
 `Dataset`::
     dataset = fo.Dataset(name="example_dataset")
     dataset.add_sample(sample)
@@ -34,15 +34,15 @@ automatically updated::
     print(sample.in_dataset)
     print(sample.dataset_name)
 
-    Out: 
+    Out:
         True
         example_dataset
 
-Every `Sample` in a `Dataset` is given a unique ID when it is 
+Every `Sample` in a `Dataset` is given a unique ID when it is
 added::
     print(sample.id)
 
-    Out: 
+    Out:
         5ee0ebd72ceafe13e7741c42
 
 A batch of multiple `Samples` can be added to a `Dataset` at the same time by providing a
@@ -65,10 +65,10 @@ list of `Samples`::
 Accessing Samples in Dataset
 ----------------------------
 
-FiftyOne provides multiple ways to access `Samples` in a 
+FiftyOne provides multiple ways to access `Samples` in a
 `Dataset`.
 
-`Datasets` are iterable allowing all `Samples` to be accessed one at a 
+`Datasets` are iterable allowing all `Samples` to be accessed one at a
 time::
     for sample in dataset:
         print(sample)
@@ -94,7 +94,7 @@ time or in a batch::
 
     dataset.remove_samples([sample_id2, sample_id3])
 
-`Samples` can also be removed from a `Dataset` by using the `Sample` 
+`Samples` can also be removed from a `Dataset` by using the `Sample`
 instance::
     sample = dataset[sample_id]
     dataset.remove_sample(sample)
@@ -118,7 +118,7 @@ and also contain the `ListField` `tags`.
 Accessing Fields
 ----------------
 
-Available `Fields` can be found at a `Sample` or `Dataset` 
+Available `Fields` can be found at a `Sample` or `Dataset`
 level::
     sample.field_names
     dataset.get_field_schema()
@@ -132,7 +132,7 @@ attribute access::
 Adding Fields
 --------------------------
 
-`Fields` are added to a `Samples` one at a 
+`Fields` are added to a `Samples` one at a
 time::
     sample["integer_field"] = 51
     sample.save()
@@ -155,16 +155,16 @@ a `Field` to an inappropriate type raises a `ValidationError`::
         Error: a string could not be converted to int
 
 
-**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.** 
+**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.**
 
 Removing Fields
 ---------------
 
-`Fields` can be deleted from every `Sample` in a 
+`Fields` can be deleted from every `Sample` in a
 `Dataset`::
     dataset.delete_sample_field("integer_field")
 
-`Fields` can be deleted from a `Sample` using 
+`Fields` can be deleted from a `Sample` using
 `del`. Unlike the previous method, this does not remove the `Field` from the
 `Dataset`, it just sets the value of the `Field` to the default value for the
 `Sample`::
@@ -181,7 +181,7 @@ images::
     dataset = fo.Dataset("tagged_dataset")
 
     dataset.add_samples(
-        [   
+        [
             fo.Sample(filepath="path/to/img1.png", tags=["train"]),
             fo.Sample(filepath="path/to/img2.png", tags=["test", "low_quality"]),
         ]
@@ -192,30 +192,30 @@ images::
     Out:
         {"test", "low_quality", "train"}
 
-`Tags` can be added to a `Sample` like a standard python 
+`Tags` can be added to a `Sample` like a standard python
 `list`::
     sample.tags += ["new_tag"]
     sample.save()
 
-**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.** 
+**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.**
 
 
 Views
 _____
 
 Since `Datasets` are unordered collections, `Samples`
-cannot be easily be accessed. 
+cannot be easily be accessed.
 In the previous `Sample` section, two ways of accessing `Samples` were
 presented. FiftyOne provides a more flexible method of accessing `Samples` through the use of `Views`.
 
 
-The default view of a `Dataset` is a look at the entire 
+The default view of a `Dataset` is a look at the entire
 `Dataset`. By default, it is sorted arbitrarily::
     print(dataset.view())
 
     Out: fiftyone.core.view.DatasetView
 
-Basic ways to explore `Views` are 
+Basic ways to explore `Views` are
 available::
     print(len(dataset.view()))
 
@@ -223,7 +223,7 @@ available::
 
     Out:
         2
-        
+
         Dataset:        interesting_dataset
         Num samples:    2
         Tags:           ['test', 'train']
@@ -258,7 +258,7 @@ array slicing::
 
     view[2:5]
 
-For efficiency, slicing only works if a `:` is 
+For efficiency, slicing only works if a `:` is
 provided::
     view[0]
 
@@ -289,7 +289,7 @@ A `View` can also be filtered to only include `Samples` for which a given
 Sorting
 -------
 
-The `Samples` in a `View` can be sorted (forward or in reverse) by any 
+The `Samples` in a `View` can be sorted (forward or in reverse) by any
 `Field`::
     view = dataset.view().sort_by("filepath")
     view = dataset.view().sort_by("id", reverse=True)
@@ -298,7 +298,7 @@ The `Samples` in a `View` can be sorted (forward or in reverse) by any
 Querying
 ---------
 
-`Views` can be queried using `match()`. The syntax follows 
+`Views` can be queried using `match()`. The syntax follows
 `MongoDB queries <https://docs.mongodb.com/manual/tutorial/query-documents/>`_::
     # Get only samples with the tag "train"
     view = dataset.view().match({"tags": "train"})
@@ -307,7 +307,7 @@ Querying
 Chaining Operations
 -------------------
 
-All of the aformentioned operations can be chained 
+All of the aformentioned operations can be chained
 together::
     complex_view = (
         dataset.view()
@@ -319,8 +319,8 @@ together::
 
 
 Modify a Dataset
---------------
+----------------
 
-A `Dataset` can then be updated to remove all `Samples` in a given 
+A `Dataset` can then be updated to remove all `Samples` in a given
 `View`::
     dataset.remove_samples(view)

@@ -1,5 +1,5 @@
 Loading a Dataset
-================
+=================
 
 .. default-role:: code
 
@@ -10,7 +10,7 @@ formats. If your labeled data is stored in a custom format, don't worry, FiftyOn
 Supported Types
 _______________
 
-FiftyOne `Datasets` currently support image data, either unlabeled or labeled with any 
+FiftyOne `Datasets` currently support image data, either unlabeled or labeled with any
 of the following label types:
 
 * Image Classification
@@ -62,13 +62,13 @@ dataset that can be downloaded and loaded into Fiftyone in a single command::
     # Print a few samples from the dataset
     print(dataset.view().head())
 
-Behind the scenes, Fiftyone uses `Tensorflow Datasets <https://www.tensorflow.org/datasets>`_ or 
-`TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_ 
-depending on which ML library you have installed. In order to load datasets 
-using TF, you must have the 
-`tensorflow-datasets <https://pypi.org/project/tensorflow-datasets/>`_ package 
-installed on your machine. In order to load datasets using PyTorch, you must have 
-the `torch <https://pypi.org/project/torch/>`_ and 
+Behind the scenes, Fiftyone uses `Tensorflow Datasets <https://www.tensorflow.org/datasets>`_ or
+`TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_
+depending on which ML library you have installed. In order to load datasets
+using TF, you must have the
+`tensorflow-datasets <https://pypi.org/project/tensorflow-datasets/>`_ package
+installed on your machine. In order to load datasets using PyTorch, you must have
+the `torch <https://pypi.org/project/torch/>`_ and
 `torchvision <https://pypi.org/project/torchvision/>`_ packages installed.
 
 
