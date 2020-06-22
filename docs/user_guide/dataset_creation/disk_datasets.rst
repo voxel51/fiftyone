@@ -121,7 +121,7 @@ images.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         <filename1>.<ext>
@@ -195,7 +195,7 @@ labels stored in a simple JSON format.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -293,7 +293,7 @@ dataset.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 .. code:: shell
 
@@ -377,7 +377,7 @@ labels stored as
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         tf.records-?????-of-?????
@@ -482,7 +482,7 @@ stored in a simple JSON format.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -595,7 +595,7 @@ saved in `COCO format <http://cocodataset.org/#home>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -720,7 +720,7 @@ saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -776,9 +776,6 @@ where the labels XML files are in the following format:
         </object>
         ...
     </annotation>
-
-When writing datasets in this format, samples with no values for certain
-attributes (like ``pose`` in the above example) are left empty.
 
 Python library
 ~~~~~~~~~~~~~~
@@ -851,7 +848,7 @@ format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -897,10 +894,6 @@ have the following meanings:
 +----------+-------------+-------------------------------------------------------------+---------+
 | 1        | score       | ``(optional)`` A float confidence for the detection         |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-
-The ``default`` column above indicates the default value that will be
-used when writing datasets in this type whose samples do not contain the
-necessary field(s).
 
 When reading datasets of this type, all columns after the four ``bbox``
 columns may be omitted.
@@ -975,7 +968,7 @@ stored in `CVAT image format <https://github.com/opencv/cvat>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -1103,7 +1096,7 @@ format <https://voxel51.com/docs/api/#types-imagelabels>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -1205,7 +1198,7 @@ consisting of images and their associated multitask predictions saved in
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
