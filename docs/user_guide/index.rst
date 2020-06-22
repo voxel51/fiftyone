@@ -50,6 +50,17 @@ data
        .take(2)
    )
 
+
+.. rubric:: :doc:`Exporting a Dataset <export_dataset>`:
+
+Export your `Dataset` to disk in any number of formats
+
+.. code-block:: python
+    :linenos:
+    dataset_type = fo.types.COCODetectionDataset
+    dataset.export(export_dir, dataset_type=dataset_type)
+
+
 .. rubric:: :doc:`Viewing Datasets in the App <app>`: 
 
 Visualize your `Dataset` in the FiftyOne App and see your changes in real time. 
@@ -82,6 +93,7 @@ Use the FiftyOne Brain to automatically get insights into your `Dataset`
    basics
    dataset_creation/index
    using_dataset
+   export_dataset
    app
    brain
    cli

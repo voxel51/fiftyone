@@ -116,4 +116,90 @@ ______________________
 
 The App has various functionality built into the user interface itself.
 
+Accessing Selected Samples
+--------------------------
+
+As previously explained, a `Session` lets you modify what is seen in the App by
+modifying the python object in the terminal. Additionally, you can also use the App to
+select samples and bring those into your python terminal.
+
+First select samples in the App.
+
+.. image:: ../images/cifar10_selected.png
+   :alt: Cifar10 Selected
+   :align: center
+
+
+Second, load those samples into python::
+
+    selected = session.selected
+    
+    print(selected)
+
+    Out:
+    ['5ef0eef405059ebb0ddfa6cc',
+     '5ef0eef405059ebb0ddfa7c4',
+      '5ef0eef405059ebb0ddfa86e']
+
+
+Viewing a Sample
+----------------
+
+A sample can be double clicked to view a large version of it in a sidebar. This
+sidebar also contains the fields of the sample.
+
+.. image:: ../images/cifar10_sidebar.png
+    :alt: Cifar10 Sidebar
+    :align: center
+        
+
+Tabs
+----
+
+The four tabs, Samples, Labels, Tags, and Scalars let you visualize different
+aspects and statistics about your dataset.
+
+
+Samples
+^^^^^^^
+
+This is the default tab that lets you visualize and select your image samples.
+
+.. image:: ../images/cifar10.png
+   :alt: Cifar10
+   :align: center
+
+
+Labels
+^^^^^^
+
+The Labels tab shows a distribution of labels of the currently loaded `Dataset`
+or `View`.
+
+.. image:: ../images/cifar10_labels.png
+   :alt: Cifar10 Labels
+   :align: center
+
+
+
+Tags
+^^^^
+
+Any tags that were added and their corresponding counts will show up under the
+Tags tab.
+
+.. image:: ../images/cifar10_tags.png
+   :alt: Cifar10 Tags
+   :align: center
+
+
+Scalars
+^^^^^^^
+
+Scalar fields, for example if you computed `uniqueness` on your dataset, will
+be displayed under the Scalars tab.
+
+.. image:: ../images/cifar10_scalars.png
+   :alt: Cifar10 Scalars
+   :align: center
 
