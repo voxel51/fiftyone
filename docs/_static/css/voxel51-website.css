@@ -119,6 +119,157 @@
   text-decoration: underline;
 }
 
+/* mobile responsive nav elements all here */
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  /* navs do not stay at top in mobile mode */
+  .stay_at_top {
+    position: relative;
+  }
+
+  .nav__main {
+    font-size: var(--fontsize-body-smaller);
+
+    padding: 1rem 3rem;
+
+    z-index: 100;
+    min-width: 100vw;
+    height: 50px;
+
+    position: relative;
+  }
+
+  .nav__main__logo {
+    width: 100%;
+    min-width: 100%;
+    height: 50px;
+
+    padding: 0.5rem;
+
+    display: flex;
+    justify-content: center;
+  }
+
+  .nav__main img,
+  .nav__main__logo img {
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  #nav__main__mobilebutton--on {
+    display: block;
+    position: absolute;
+    right: 1rem;
+  }
+
+  #nav__main__mobilebutton--off {
+    display: none;
+    position: absolute;
+    right: 1rem;
+  }
+
+  #nav__main__mobilebutton--on a,
+  #nav__main__mobilebutton--off a {
+    color: var(--text-secondary-on-dark);
+  }
+
+  #nav__main__items {
+    display: none;
+    z-index: 102;
+
+    background-color: var(--bg-dark-primary);
+    width: 100%;
+
+    position: absolute;
+    left: 0;
+    top: 100%;
+
+    padding: 1rem 3rem;
+  }
+
+  #nav__main__items .nav__item {
+    z-index: 102;
+  }
+
+  .nav__spacer {
+    display: none;
+  }
+
+  .nav__divider {
+    display: none;
+  }
+
+  .nav__dropdown {
+    position: relative;
+    display: block;
+  }
+
+  .nav__dropdown .arrow-up--light-primary {
+    display: none;
+  }
+
+  .nav__dropdown__trigger {
+    cursor: inherit;
+  }
+
+  .nav__dropdown__menu {
+    display: block;
+    position: relative;
+    background-color: inherit;
+
+    left: inherit;
+
+    margin-top: 0rem;
+    padding: 0rem 3rem;
+  }
+
+  .nav__dropdown__menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .nav__dropdown__menu a {
+    color: var(--text-secondary-on-dark);
+  }
+
+  .nav__dropdown:hover .nav__dropdown__trigger {
+    color: var(--text-secondary-on-dark);
+  }
+
+  .nav__dropdown:hover .nav__dropdown__menu {
+    display: block;
+  }
+
+  /* functionality now is to make the product nav disappear in phone view and only show logo */
+
+  .nav__product {
+    z-index: 99;
+  }
+
+  .nav__product__items {
+    display: none;
+  }
+
+  .nav__product__logo {
+    width: 100%;
+    min-width: 100%;
+    height: 40px;
+
+    padding: 0.5rem;
+
+    display: flex;
+    justify-content: center;
+  }
+
+  .nav__product img,
+  .nav__product__logo img {
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+  }
+} /* end of media query for mobile responsive nav */
+
 /* BodyPart
  * This is a div in the body section
  */
