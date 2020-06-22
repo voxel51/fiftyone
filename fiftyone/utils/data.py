@@ -779,8 +779,146 @@ def parse_image_labels_dataset(dataset_dir, sample_parser=None):
         yield image_path, label
 
 
+class DatasetImporter(object):
+    """Base interface for importing datasets stored on disk into FiftyOne.
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    def __init__(self, dataset_dir):
+        self.dataset_dir = dataset_dir
+
+    def __enter__(self):
+        self.setup()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.get_next_sample()
+
+    def setup(self):
+        """Performs any necessary setup before importing the first sample in
+        the dataset.
+
+        This method is called when the importer's context manager interface is
+        entered, :function:`DatasetImporter.__enter__`.
+        """
+        pass
+
+    def close(self):
+        """Performs any necessary actions after the last sample has been
+        imported.
+
+        This method is called when the importer's context manager interface is
+        exited, :function:`DatasetImporter.__exit__`.
+        """
+        pass
+
+    def get_next_sample(self):
+        """Returns the next sample in the dataset.
+
+        Returns:
+            subclass-specific information for the sample
+        """
+        raise NotImplementedError("subclass must implement get_next_sample()")
+
+
+class UnlabeledImageDatasetImporter(DatasetImporter):
+    """Interface for importing datasets of unlabeled image samples.
+
+    Example Usage::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset(...)
+
+        importer = UnlabeledImageDatasetImporter(dataset_dir, ...)
+        with importer:
+            for image_path, image_metadata in importer:
+                dataset.add_sample(
+                    fo.Sample(filepath=image_path, metadata=image_metadata)
+                )
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    @property
+    def has_image_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
+        """
+        raise NotImplementedError("subclass must implement has_image_metadata")
+
+    def get_next_sample(self):
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            an ``(image_path, image_metadata)`` tuple, where:
+            -   ``image_path`` is the path to the image on disk
+            -   ``image_metadata`` is an
+                :class:`fiftyone.core.metadata.ImageMetadata` instances for the
+                image, or ``None`` if :property:`has_image_metadata` is
+                ``False``
+        """
+        raise NotImplementedError("subclass must implement get_next_sample()")
+
+
+class LabeledImageDatasetImporter(DatasetImporter):
+    """Interface for importing datasets of labeled image samples.
+
+    Example Usage::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset(...)
+        label_field = ...
+
+        importer = LabeledImageDatasetImporter(dataset_dir, ...)
+        with importer:
+            for image_path, image_metadata, label in importer:
+                dataset.add_sample(
+                    fo.Sample(
+                        filepath=image_path,
+                        metadata=image_metadata,
+                        **{label_field: label},
+                    )
+                )
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    @property
+    def has_image_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
+        """
+        raise NotImplementedError("subclass must implement has_image_metadata")
+
+    def get_next_sample(self):
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            an  ``(image_path, image_metadata, label)`` tuple, where:
+            -   ``image_path`` is the path to the image on disk
+            -   ``image_metadata`` is an
+                :class:`fiftyone.core.metadata.ImageMetadata` instances for the
+                image, or ``None`` if :property:`has_image_metadata` is
+                ``False``
+            -   ``label`` is a :class:`fiftyone.core.label.Label` instance
+        """
+        raise NotImplementedError("subclass must implement get_next_sample()")
+
+
 class SampleParser(object):
-    """Abstract interface for parsing samples emitted by dataset iterators."""
+    """Interface for parsing samples emitted by dataset iterators."""
 
     def parse(self, sample):
         """Parses the given sample.
