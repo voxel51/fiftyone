@@ -1,5 +1,11 @@
-import { useEffect } from "react";
-import _ from "lodash";
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
+import ResizeObserver from "resize-observer-polyfill";
 import { useSetRecoilState } from "recoil";
 
 import { mainSize, mainTop, mousePosition } from "./atoms";
@@ -24,25 +30,25 @@ export const useTrackMousePosition = () => {
   }, []);
 };
 
-export const useTrackMain = (ref) => {
-  let timeout;
-  const setMainSize = useSetRecoilState(mainSize);
-  const setMainTop = useSetRecoilState(mainTop);
-  useEffect(() => {
-    const handleResize = _.debounce(() => {
-      if (timeout) {
-        window.cancelAnimationFrame(timeout);
-      }
+export const useResizeObserver = () => {
+  const [entry, setEntry] = useState({});
+  const [node, setNode] = useState(null);
+  const observer = useRef(null);
 
-      timeout = window.requestAnimationFrame(() => {
-        setMainSize([ref.current.offsetWidth, ref.current.offsetHeight]);
-        setMainTop(ref.current.getBoundingClientRect().top);
-      });
-    }, 500);
-    window.addEventListener("resize", handleResize);
-    setMainSize([ref.current.offsetWidth, ref.current.offsetHeight]);
-    return (_) => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [ref.current]);
+  const disconnect = useCallback(() => {
+    const { current } = observer;
+    current && current.disconnect();
+  }, []);
+
+  const observe = useCallback(() => {
+    observer.current = new ResizeObserver(([entry]) => setEntry(entry));
+    node && observer.current.observe(node);
+  }, [node]);
+
+  useLayoutEffect(() => {
+    observe();
+    return () => disconnect();
+  }, [disconnect, observe]);
+
+  return [setNode, entry];
 };

@@ -9,16 +9,17 @@ import {
   currentListHeight,
   isDraggingIndicator,
 } from "./atoms";
-import { getAction } from "connected-react-router";
 
 export const indicatorIndex = selector({
   key: "indicatorIndex",
   get: ({ get }) => {
-    const mp = get(mousePosition);
+    const [unused, mpt] = get(mousePosition);
     const mt = get(mainTop);
     const ms = get(mainSize);
     const vc = get(viewCount);
-    return Math.min(vc - 1, parseInt(((mp[1] - mt) / (ms[1] - 16)) * (vc - 1)));
+    const numerator = Math.max(mpt, 0) - mt;
+    const denominator = ms[1] - 16;
+    return Math.min(vc - 1, parseInt((numerator / denominator) * (vc - 1)));
   },
 });
 
@@ -73,7 +74,6 @@ export const currentListTop = selector({
     const perc = idi
       ? get(indicatorIndexPercentage)
       : get(currentIndexPercentage);
-    console.log(idi, mh, clh, perc);
     return Math.max(0, clh - mh) * perc;
   },
 });

@@ -9,7 +9,6 @@ import { currentIndex, viewCount } from "../../state/atoms";
 import { indicatorIndex } from "../../state/selectors";
 
 import indicatorFormMachine from "./IndicatorForm.machine.ts";
-import { stat } from "fs";
 
 const IndicatorForm = animated(styled.input`
   width: 3rem;

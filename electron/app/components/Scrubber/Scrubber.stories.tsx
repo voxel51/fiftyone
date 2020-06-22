@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import styled from "styled-components";
 import { useSpring, animated } from "react-spring";
 import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useScroll } from "react-use-gesture";
 
 import { currentListTop } from "../../state/selectors";
 import { currentListHeight, viewCount } from "../../state/atoms";
@@ -32,7 +33,8 @@ const ImagesContainer = styled.div`
   width: 100%;
   height: 100%;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overyflow-y: scroll;
 `;
 
 const ImageDiv = animated(styled.div`
@@ -42,7 +44,8 @@ const ImageDiv = animated(styled.div`
   padding: 0 1rem;
 `);
 
-const Images = ({ targetRef }) => {
+const Images = ({ targetRef, scrollRef }) => {
+  const ref = useRef();
   const setCurrentListHeight = useSetRecoilState(currentListHeight);
   const currentListTopValue = useRecoilValue(currentListTop);
   const viewCountValue = useRecoilValue(viewCount);
@@ -64,12 +67,13 @@ const Images = ({ targetRef }) => {
 
 export const scrubber = () => {
   const ref = useRef();
+  const scrollRef = useRef();
 
   return (
     <Container>
       <Grid>
-        <ImagesContainer>
-          <Images targetRef={ref} />
+        <ImagesContainer ref={scrollRef}>
+          <Images targetRef={ref} scrollRef={scrollRef} />
         </ImagesContainer>
         <Scrubber targetRef={ref} />
       </Grid>

@@ -20,6 +20,7 @@ const Indicator = styled(animated.div)`
 `;
 
 export default function () {
+  const ref = useRef();
   const mainSizeValue = useRecoilValue(mainSize);
   const setCurrentIndex = useSetRecoilState(currentIndex);
   const indicatorIndexValue = useRecoilValue(indicatorIndex);
@@ -40,25 +41,27 @@ export default function () {
     setIsDraggingIndicator(!isDraggingIndicatorValue);
   };
 
-  const bind = useGesture(
+  const bindMove = useGesture(
     {
       onMove: gestureHandler,
-      onDrag: gestureHandler,
-      onDragStart: toggleDrag,
-      onDragEnd: toggleDrag,
     },
     {
       domTarget: document.body,
     }
   );
 
+  const bindDrag = useGesture(
+    {
+      onDragStart: toggleDrag,
+      onDragEnd: toggleDrag,
+    },
+    {
+      domTarget: ref.current,
+    }
+  );
+
   return (
-    <Indicator
-      {...bind()}
-      style={{ top }}
-      onDragStart={toggleDrag}
-      onDragEnd={toggleDrag}
-    >
+    <Indicator {...bindMove()} {...bindDrag()} style={{ top }} ref={ref}>
       <IndicatorForm />
     </Indicator>
   );
