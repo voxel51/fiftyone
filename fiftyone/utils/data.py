@@ -917,6 +917,145 @@ class LabeledImageDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement get_next_sample()")
 
 
+class DatasetExporter(object):
+    """Base interface for exporting :class:`fiftyone.core.dataset.Dataset`
+    samples to disk.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        self.export_dir = export_dir
+
+    def __enter__(self):
+        self.setup()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def setup(self):
+        """Performs any necessary setup before exporting the first sample in
+        the dataset.
+
+        This method is called when the exporter's context manager interface is
+        entered, :function:`DatasetExporter.__enter__`.
+        """
+        pass
+
+    def close(self):
+        """Performs any necessary actions after the last sample has been
+        exported.
+
+        This method is called when the importer's context manager interface is
+        exited, :function:`DatasetExporter.__exit__`.
+        """
+        pass
+
+    def export_sample(self, *args, **kwargs):
+        """Exports the given sample to the dataset.
+
+        Args:
+            *args: subclass-specific positional arguments
+            **kwargs: subclass-specific keyword arguments
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
+class UnlabeledImageDatasetExporter(DatasetExporter):
+    """Interface for exporting datasets of unlabeled image samples.
+
+    Example Usage::
+
+        import fiftyone as fo
+
+        samples = ...  # Dataset, DatasetView, etc
+
+        exporter = UnlabeledImageDatasetExporter(dataset_dir, ...)
+        with exporter:
+            for sample in samples:
+                image_path = sample.filepath
+                metadata = sample.metadata
+                if exporter.requires_image_metadata and metadata is None:
+                    metadata = fo.ImageMetadata.build_for(image_path)
+
+                exporter.export_sample(image_path, metadata=metadata)
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    @property
+    def requires_image_metadata(self):
+        """Whether this exporter requires
+        :class:`fiftyone.core.metadata.ImageMetadata` instances for each sample
+        being exported.
+        """
+        raise NotImplementedError(
+            "subclass must implement requires_image_metadata"
+        )
+
+    def export_sample(self, image_path, metadata=None):
+        """Exports the given sample to the dataset.
+
+        Args:
+            image_path: the path to the image
+            metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
+                isinstance for the sample. Only required when
+                :property:`requires_image_metadata` is ``True``
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
+class LabeledImageDatasetExporter(DatasetExporter):
+    """Interface for exporting datasets of labeled image samples.
+
+    Example Usage::
+
+        import fiftyone as fo
+
+        samples = ...  # Dataset, DatasetView, etc
+        label_field = ...
+
+        exporter = LabeledImageDatasetExporter(dataset_dir, ...)
+        with exporter:
+            for sample in samples:
+                image_path = sample.filepath
+                label = sample[label_field]
+                metadata = sample.metadata
+                if exporter.requires_image_metadata and metadata is None:
+                    metadata = fo.ImageMetadata.build_for(image_path)
+
+                exporter.export_sample(image_path, label, metadata=metadata)
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    @property
+    def requires_image_metadata(self):
+        """Whether this exporter requires
+        :class:`fiftyone.core.metadata.ImageMetadata` instances for each sample
+        being exported.
+        """
+        raise NotImplementedError(
+            "subclass must implement requires_image_metadata"
+        )
+
+    def export_sample(self, image_path, label, metadata=None):
+        """Exports the given sample to the dataset.
+
+        Args:
+            image_path: the path to the image
+            label: a :class:`fiftyone.core.labels.Label` instance
+            metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
+                isinstance for the sample. Only required when
+                :property:`requires_image_metadata` is ``True``
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
 class SampleParser(object):
     """Interface for parsing samples emitted by dataset iterators."""
 
