@@ -32,9 +32,12 @@ FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
-EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
+EXAMPLES_DIR = os.path.join(FIFTYONE_DIR, "examples")  # prod install
+if not os.path.isdir(EXAMPLES_DIR):
+    EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")  # dev install
+
 DEV_INSTALL = os.path.isdir(
-    os.path.abspath(
+    os.path.normpath(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
     )
 )
@@ -67,6 +70,6 @@ SERVER_ADDR = "http://127.0.0.1:%d"
 try:
     from fiftyone.gui import FIFTYONE_APP_DIR
 except ImportError:
-    FIFTYONE_APP_DIR = os.path.abspath(
+    FIFTYONE_APP_DIR = os.path.normpath(
         os.path.join(FIFTYONE_DIR, "../electron")
     )
