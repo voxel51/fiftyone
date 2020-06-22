@@ -3,10 +3,59 @@
 FiftyOne provides native support for loading labeled datasets from disk in a
 variety of common formats.
 
+## Basic recipe
+
+### Python library
+
+The interface for importing datasets is conveniently exposed via the
+`Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to import
+datasets from disk in any supported format by simply specifiying the path to
+their containing directory on disk and the type of the dataset.
+
+The basic syntax is simple:
+
+```py
+import fiftyone as fo
+
+# A name for the FiftyOne dataset
+name = "my-coco-dataset"
+
+# The directory containing the dataset to import
+dataset_dir = "/path/to/dataset"
+
+# The type of the dataset being imported
+# Any subclass of `fiftyone.types.BaseDataset` is supported
+dataset_type = fo.types.COCODetectionDataset  # for example
+
+# Import the dataset!
+dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+```
+
+### CLI
+
+FiftyOne datasets can also be created from datasets on disk via the
+`fiftyone datasets create` CLI command:
+
+```shell
+# Creates a dataset from the given data on disk
+fiftyone datasets create \
+    --name <name> --dataset-dir <dataset-dir> --type <type>
+```
+
+where the arguments are as follows:
+
+```
+  -n NAME, --name NAME  a name for the dataset
+  -d DATASET_DIR, --dataset-dir DATASET_DIR
+                        the directory containing the dataset
+  -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+```
+
+### Supported formats
+
 Each supported dataset type is represented by a subclass of
 `fiftyone.types.BaseDataset`, which is used by the Python library and CLI to
-refer to the corresponding dataset format when reading/writing datasets on
-disk.
+refer to the corresponding dataset format when reading the dataset from disk.
 
 | Dataset Type                                      | Description                                                                                                                                                                                                       |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -29,7 +78,7 @@ The `fiftyone.types.ImageDirectory` type represents a directory of images.
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -101,7 +150,7 @@ in a simple JSON format.
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -197,7 +246,7 @@ directory tree whose subfolders define an image classification dataset.
 
 ### Disk format
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
 ```
 <dataset_dir>/
@@ -276,7 +325,7 @@ as [TFRecords](https://www.tensorflow.org/tutorials/load_data/tfrecord).
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -380,7 +429,7 @@ JSON format.
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -489,7 +538,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -611,7 +660,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -669,9 +718,6 @@ where the labels XML files are in the following format:
     ...
 </annotation>
 ```
-
-When writing datasets in this format, samples with no values for certain
-attributes (like `pose` in the above example) are left empty.
 
 ### Python library
 
@@ -736,7 +782,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -764,10 +810,6 @@ meanings:
 | 1                 | location   | 3D object location `(x, y, z)` in camera coordinates (in meters)                                                                                       | 0       |
 | 1                 | rotation_y | Rotation around the y-axis in camera coordinates, in `[-pi, pi]`                                                                                       | 0       |
 | 1                 | score      | `(optional)` A float confidence for the detection                                                                                                      |         |
-
-The `default` column above indicates the default value that will be used when
-writing datasets in this type whose samples do not contain the necessary
-field(s).
 
 When reading datasets of this type, all columns after the four `bbox` columns
 may be omitted.
@@ -835,7 +877,7 @@ consisting of images and their associated object detections stored in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -957,7 +999,7 @@ consisting of images and their associated multitask predictions stored in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -1054,7 +1096,7 @@ images and their associated multitask predictions saved in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
