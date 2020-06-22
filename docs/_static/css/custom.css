@@ -40,13 +40,17 @@
   --bg-light-secondary: var(--gray-light2);
   --bg-dark-primary: var(--gray-dark2);
   --bg-dark-secondary: var(--gray-dark1);
+
+  --padding-x: 10rem;
+  --padding-y: 10rem;
 }
 
 /* sphinx-rtd-theme overrides */
 
 .wy-nav-side {
   border-right: 2px solid var(--gray-light3);
-  top: 90px;
+  padding-top: 90px;
+  z-index: -1;
 }
 
 .wy-side-nav-search {
@@ -81,6 +85,9 @@
   flex-wrap: nowrap;
   justify-content: space-between;
   align-items: center;
+
+  /* overrides */
+  font-size: 18px;
 }
 
 @media screen and (min-width: 1240px) {
