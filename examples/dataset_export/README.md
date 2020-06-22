@@ -1,61 +1,74 @@
-# Disk Dataset Examples
+# Dataset Export Example
 
-FiftyOne provides native support for loading labeled datasets from disk in a
-variety of common formats.
+FiftyOne provides native support for exporting datasets to disk in a variety of
+common formats.
 
 ## Basic recipe
 
 ### Python library
 
-The interface for importing datasets is conveniently exposed via the
-`Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to import
-datasets from disk in any supported format by simply specifiying the path to
-their containing directory on disk and the type of the dataset.
+The interface for exporting datasets is conveniently exposed via the
+`Dataset.export()` and `DatasetView.export()` methods, which makes it easy to
+export entire datasets as well as arbitrary subsets of your datasets that you
+have identified by constructing a view.
 
 The basic syntax is simple:
 
 ```py
 import fiftyone as fo
 
-# A name for the FiftyOne dataset
-name = "my-coco-dataset"
+# The Dataset or DatasetView containing the samples you wish to export
+dataset_or_view = fo.Dataset(...)
 
-# The directory containing the dataset to import
-dataset_dir = "/path/to/dataset"
+# The directory to which to write the exported dataset
+export_dir = "/path/for/export"
 
-# The type of the dataset being imported
+# The name of the sample field containing the label that you wish to export
+# Used when exporting labeled datasets (e.g., classification or detection)
+label_field = "ground_truth"  # for example
+
+# The type of dataset to export
 # Any subclass of `fiftyone.types.BaseDataset` is supported
 dataset_type = fo.types.COCODetectionDataset  # for example
 
-# Import the dataset!
-dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+# Export the dataset!
+dataset_or_view.export(
+    export_dir, label_field=label_field, dataset_type=dataset_type
+)
 ```
+
+Note the `label_field` argument in the above example, which specifies the
+particular label field that you wish to export. This is necessary your FiftyOne
+dataset contains multiple label fields.
 
 ### CLI
 
-FiftyOne datasets can also be created from datasets on disk via the
-`fiftyone datasets create` CLI command:
+FiftyOne datasets can also be exported via the `fiftyone datasets export` CLI
+command:
 
 ```shell
-# Creates a dataset from the given data on disk
-fiftyone datasets create \
-    --name <name> --dataset-dir <dataset-dir> --type <type>
+# Exports the dataset to disk in the specified format
+fiftyone datasets export <name> \
+    --export-dir <export-dir> --type <type> --label-field <label-field>
 ```
 
 where the arguments are as follows:
 
 ```
-  -n NAME, --name NAME  a name for the dataset
-  -d DATASET_DIR, --dataset-dir DATASET_DIR
-                        the directory containing the dataset
-  -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+  NAME                  the name of the dataset to export
+
+  -d EXPORT_DIR, --export-dir EXPORT_DIR
+                        the directory in which to export the dataset
+  -f LABEL_FIELD, --label-field LABEL_FIELD
+                        the name of the label field to export
+  -t TYPE, --type TYPE  the format in which to export the dataset (a subclass of `fiftyone.types.BaseDataset`)
 ```
 
 ### Supported formats
 
 Each supported dataset type is represented by a subclass of
 `fiftyone.types.BaseDataset`, which is used by the Python library and CLI to
-refer to the corresponding dataset format when reading the dataset from disk.
+refer to the corresponding dataset format when writing the dataset to disk.
 
 | Dataset Type                                      | Description                                                                                                                                                                                                       |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,7 +91,7 @@ The `fiftyone.types.ImageDirectory` type represents a directory of images.
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -86,59 +99,35 @@ Datasets of this type are read in the following format:
     <filename2>.<ext>
 ```
 
-When reading datasets of this type, subfolders are recursively traversed, and
-files with non-image MIME types are omitted.
-
 ### Python library
 
-To load a directory of images as a FiftyOne dataset, you can execute:
+To export the images in a FiftyOne dataset as a directory of images on disk,
+you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-images-dir"
-dataset_dir = "/path/to/images-dir"
+export_dir = "/path/for/images-dir"
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory, name=name)
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
 
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
+# Export the dataset
+dataset_or_view.export(export_dir, dataset_type=fo.types.ImageDirectory)
 ```
 
 ### CLI
 
-To load a directory of images as a FiftyOne dataset, you can execute:
+To export the images in a FiftyOne dataset as a directory of images on disk,
+you can execute:
 
 ```shell
-NAME=my-images-dir
-DATASET_DIR=/path/to/images-dir
+NAME=my-dataset
+EXPORT_DIR=/path/to/images-dir
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.ImageDirectory
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view a directory of images in the FiftyOne Dashboard without creating a
-persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/images-dir
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
     --type fiftyone.types.ImageDirectory
 ```
 
@@ -150,7 +139,7 @@ in a simple JSON format.
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -184,58 +173,40 @@ provided, then the `target` values directly store the label strings.
 
 ### Python library
 
-To load an image classification dataset stored in the above format as a
-FiftyOne dataset, you can execute:
+To export a FiftyOne dataset as an image classification dataset stored on disk
+in the above format, you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-image-classification-dataset"
-dataset_dir = "/path/to/image-classification-dataset"
+export_dir = "/path/for/image-classification-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.ImageClassificationDataset, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.ImageClassificationDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load an image classification dataset stored in the above format as a
-FiftyOne dataset, you can execute:
+To export a FiftyOne dataset as an image classification dataset stored on disk
+in the above format, you can execute:
 
 ```shell
-NAME=my-image-classification-dataset
-DATASET_DIR=/path/to/image-classification-dataset
+NAME=my-dataset
+EXPORT_DIR=/path/for/image-classification-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.ImageClassificationDataset
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view an image classification dataset in the FiftyOne Dashboard without
-creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/image-classification-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.ImageClassificationDataset
 ```
 
@@ -246,7 +217,7 @@ directory tree whose subfolders define an image classification dataset.
 
 ### Disk format
 
-Datasets of this type are read in the following format::
+Datasets of this type are exported in the following format::
 
 ```
 <dataset_dir>/
@@ -262,58 +233,40 @@ Datasets of this type are read in the following format::
 
 ### Python library
 
-To load an image classification directory tree stored in the above format as a
-FiftyOne dataset, you can execute:
+To export a FiftyOne dataset as an image classification directory tree stored
+on disk in the above format, you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-image-classification-dir-tree"
-dataset_dir = "/path/to/image-classification-dir-tree"
+export_dir = "/path/for/image-classification-dir-tree"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.ImageClassificationDirectoryTree, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.ImageClassificationDirectoryTree,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load an image classification directory tree stored in the above format as a
-FiftyOne dataset, you can execute:
+To export a FiftyOne dataset as an image classification directory tree stored
+on disk in the above format, you can execute:
 
 ```shell
-NAME=my-image-classification-dir-tree
-DATASET_DIR=/path/to/image-classification-dir-tree
+NAME=my-dataset
+EXPORT_DIR=/path/for/image-classification-dir-tree
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.ImageClassificationDirectoryTree
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view an image classification directory tree in the FiftyOne Dashboard
-without creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/image-classification-dir-tree
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.ImageClassificationDirectoryTree
 ```
 
@@ -325,7 +278,7 @@ as [TFRecords](https://www.tensorflow.org/tutorials/load_data/tfrecord).
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -355,69 +308,40 @@ following format:
 
 ### Python library
 
-To load an image classification dataset stored as a directory of TFRecords in
-the above format, you can execute:
+To export a FiftyOne dataset as a directory of TFRecords in the above format,
+you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-tf-image-classification-dataset"
-dataset_dir = "/path/to/tf-image-classification-dataset"
-images_dir = "/path/for/images"
+export_dir = "/path/for/tf-image-classification-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir,
-    fo.types.TFImageClassificationDataset,
-    name=name,
-    images_dir=images_dir
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.TFImageClassificationDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
-
-When the above command is executed, the images in the TFRecords will be written
-to the provided `images_dir`, which is required because FiftyOne datasets must
-make their images available as invididual files on disk.
 
 ### CLI
 
-To load an image classification dataset stored as a directory of TFRecords in
-the above format, you can execute:
+To export a FiftyOne dataset as a directory of TFRecords in the above format,
+you can execute:
 
 ```shell
-NAME=my-tf-image-classification-dataset
-DATASET_DIR=/path/to/tf-image-classification-dataset
-IMAGES_DIR=/path/for/images
+NAME=my-dataset
+EXPORT_DIR=/path/for/tf-image-classification-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.TFImageClassificationDataset
-    --images-dir
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view an image classification dataset stored as a directory of TFRecords in
-the FiftyOne Dashboard without creating a persistent FiftyOne dataset, you can
-execute:
-
-```shell
-DATASET_DIR=/path/to/tf-image-classification-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.TFImageClassificationDataset
 ```
 
@@ -429,7 +353,7 @@ JSON format.
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -477,56 +401,40 @@ provided, then the `target` values directly store the label strings.
 
 ### Python library
 
-To load an image detection dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as an image detection dataset in the above format,
+you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-image-detection-dataset"
-dataset_dir = "/path/to/image-detection-dataset"
+export_dir = "/path/for/image-detection-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.ImageDetectionDataset, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.ImageDetectionDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load an image detection dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as an image detection dataset in the above format,
+you can execute:
 
 ```shell
-NAME=my-image-detection-dataset
-DATASET_DIR=/path/to/image-detection-dataset
+NAME=my-dataset
+EXPORT_DIR=/path/for/image-detection-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.ImageDetectionDataset
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view an image detection dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/image-detection-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.ImageDetectionDataset
 ```
 
@@ -538,7 +446,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -599,56 +507,40 @@ where `labels.json` is a JSON file in the following format:
 
 ### Python library
 
-To load a COCO detection dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a COCO detection dataset in the above format,
+you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-coco-detection-dataset"
-dataset_dir = "/path/to/coco-detection-dataset"
+export_dir = "/path/for/image-detection-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.COCODetectionDataset, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.COCODetectionDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load a COCO detection dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a COCO detection dataset in the above format,
+you can execute:
 
 ```shell
-NAME=my-coco-detection-dataset
-DATASET_DIR=/path/to/coco-detection-dataset
+NAME=my-dataset
+EXPORT_DIR=/path/for/coco-detection-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.COCODetectionDataset
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view a COCO detection dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/coco-detection-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.COCODetectionDataset
 ```
 
@@ -660,7 +552,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -719,58 +611,45 @@ where the labels XML files are in the following format:
 </annotation>
 ```
 
+Samples with no values for certain attributes (like `pose` in the above
+example) are left empty.
+
 ### Python library
 
-To load a VOC detection dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a VOC detection dataset in the above format,
+you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-voc-detection-dataset"
-dataset_dir = "/path/to/voc-detection-dataset"
+export_dir = "/path/for/voc-detection-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.VOCDetectionDataset, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.VOCDetectionDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load a VOC detection dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a VOC detection dataset in the above format,
+you can execute:
 
 ```shell
-NAME=my-voc-detection-dataset
-DATASET_DIR=/path/to/voc-detection-dataset
+NAME=my-dataset
+EXPORT_DIR=/path/for/voc-detection-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.VOCDetectionDataset
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view a VOC detection dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/voc-detection-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.VOCDetectionDataset
 ```
 
@@ -782,7 +661,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -811,61 +690,46 @@ meanings:
 | 1                 | rotation_y | Rotation around the y-axis in camera coordinates, in `[-pi, pi]`                                                                                       | 0       |
 | 1                 | score      | `(optional)` A float confidence for the detection                                                                                                      |         |
 
-When reading datasets of this type, all columns after the four `bbox` columns
-may be omitted.
+The `default` column above indicates the default value that will be used when
+writing datasets in this type whose samples do not contain the necessary
+field(s).
 
 ### Python library
 
-To load a KITTI detection dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a KITTI detection dataset in the above format,
+you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-kitti-detection-dataset"
-dataset_dir = "/path/to/kitti-detection-dataset"
+export_dir = "/path/for/kitti-detection-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.KITTIDetectionDataset, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.KITTIDetectionDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load a KITTI detection dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a KITTI detection dataset in the above format,
+you can execute:
 
 ```shell
-NAME=my-kitti-detection-dataset
-DATASET_DIR=/path/to/kitti-detection-dataset
+NAME=my-dataset
+EXPORT_DIR=/path/for/kitti-detection-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.KITTIDetectionDataset
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view a KITTI detection dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/kitti-detection-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.KITTIDetectionDataset
 ```
 
@@ -877,7 +741,7 @@ consisting of images and their associated object detections stored in
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -938,56 +802,40 @@ where `labels.xml` is an XML file in the following format:
 
 ### Python library
 
-To load a CVAT image dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a CVAT image dataset in the above format, you
+can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-cvat-image-dataset"
-dataset_dir = "/path/to/cvat-image-dataset"
+export_dir = "/path/for/cvat-image-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.CVATImageDataset, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.CVATImageDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load a CVAT image dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a CVAT image dataset in the above format, you
+can execute:
 
 ```shell
-NAME=my-cvat-image-dataset
-DATASET_DIR=/path/to/cvat-image-dataset
+NAME=my-dataset
+EXPORT_DIR=/path/for/cvat-image-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.CVATImageDataset
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view a CVAT image dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/cvat-image-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.CVATImageDataset
 ```
 
@@ -999,7 +847,7 @@ consisting of images and their associated multitask predictions stored in
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -1035,56 +883,40 @@ and where each labels JSON file is stored in
 
 ### Python library
 
-To load an image labels dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as an image labels dataset in the above format,
+you can execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-image-labels-dataset"
-dataset_dir = "/path/to/image-labels-dataset"
+export_dir = "/path/for/image-labels-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.ImageLabelsDataset, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.ImageLabelsDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load an image labels dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as an image labels dataset in the above format,
+you can execute:
 
 ```shell
-NAME=my-image-labels-dataset
-DATASET_DIR=/path/to/image-labels-dataset
+NAME=my-dataset
+EXPORT_DIR=/path/for/image-labels-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.ImageLabelsDataset
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view an image labels dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/image-labels-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.ImageLabelsDataset
 ```
 
@@ -1096,7 +928,7 @@ images and their associated multitask predictions saved in
 
 ### Disk format
 
-Datasets of this type are read in the following format:
+Datasets of this type are exported in the following format:
 
 ```
 <dataset_dir>/
@@ -1146,55 +978,39 @@ where `labels.json` is a JSON file in the following format:
 
 ### Python library
 
-To load a BDD dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a BDD dataset in the above format, you can
+execute:
 
 ```py
 import fiftyone as fo
 
-name = "my-bdd-dataset"
-dataset_dir = "/path/to/bdd-dataset"
+export_dir = "/path/for/bdd-dataset"
+label_field = "ground_truth"  # for example
 
-# Create the dataset
-dataset = fo.Dataset.from_dir(
-    dataset_dir, fo.types.BDDDataset, name=name
+# The Dataset or DatasetView to export
+dataset_or_view = fo.Dataset(...)
+
+# Export the dataset
+dataset_or_view.export(
+    export_dir,
+    label_field=label_field,
+    dataset_type=fo.types.BDDDataset,
 )
-
-# View summary info about the dataset
-print(dataset)
-
-# Print the first few samples in the dataset
-print(dataset.view().head())
 ```
 
 ### CLI
 
-To load a BDD dataset stored in the above format, you can execute:
+To export a FiftyOne dataset as a BDD dataset in the above format, you can
+execute:
 
 ```shell
-NAME=my-bdd-dataset
-DATASET_DIR=/path/to/bdd-dataset
+NAME=my-dataset
+EXPORT_DIR=/path/for/bdd-dataset
+LABEL_FIELD=ground_truth  # for example
 
-# Create the dataset
-fiftyone datasets create \
-    --name $NAME \
-    --dataset-dir $DATASET_DIR \
-    --type fiftyone.types.BDDDataset
-
-# View summary info about the dataset
-fiftyone datasets info $NAME
-
-# Print the first few samples in the dataset
-fiftyone datasets head $NAME
-```
-
-To view a BDD dataset stored in the above format in the FiftyOne Dashboard
-without creating a persistent FiftyOne dataset, you can execute:
-
-```shell
-DATASET_DIR=/path/to/bdd-dataset
-
-# View the dataset in the dashboard
-fiftyone dashboard view \
-    --dataset-dir $DATASET_DIR \
+# Export the dataset
+fiftyone datasets export $NAME \
+    --export-dir $EXPORT_DIR \
+    --label-field $LABEL_FIELD \
     --type fiftyone.types.BDDDataset
 ```
