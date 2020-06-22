@@ -21,6 +21,23 @@ FiftyOne:
   FiftyOne by providing the samples and their fields in a variety of formats.
 
 
+
+**Quick Start**: Load and view a directory of images in FiftyOne by entering the
+following commands into Python::
+
+    import fiftyone as fo
+
+    name = "my-images-dir"
+    dataset_dir = "/path/to/images-dir"
+
+    # Create the dataset
+    dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory,
+    name=name)
+
+    # Visualize the dataset
+    session = fo.launch_dashboard(dataset=dataset)
+
+
 .. toctree::
    :maxdepth: 1
    :hidden:
