@@ -27,13 +27,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
-import fiftyone.utils.bdd as foub
-import fiftyone.utils.coco as fouco
-import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
-import fiftyone.utils.kitti as fouk
-import fiftyone.utils.tf as fout
-import fiftyone.utils.voc as fouv
 
 
 logger = logging.getLogger(__name__)
@@ -218,6 +212,8 @@ class SampleCollection(object):
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.TFImageClassificationDataset):
+            import fiftyone.utils.tf as fout
+
             fout.export_tf_image_classification_dataset(
                 self, label_field, export_dir, **kwargs
             )
@@ -226,22 +222,32 @@ class SampleCollection(object):
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.COCODetectionDataset):
+            import fiftyone.utils.coco as fouco
+
             fouco.export_coco_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.VOCDetectionDataset):
+            import fiftyone.utils.voc as fouv
+
             fouv.export_voc_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.KITTIDetectionDataset):
+            import fiftyone.utils.kitti as fouk
+
             fouk.export_kitti_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.TFObjectDetectionDataset):
+            import fiftyone.utils.tf as fout
+
             fout.export_tf_object_detection_dataset(
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.CVATImageDataset):
+            import fiftyone.utils.cvat as foucv
+
             foucv.export_cvat_image_dataset(
                 self, label_field, export_dir, **kwargs
             )
@@ -250,6 +256,8 @@ class SampleCollection(object):
                 self, label_field, export_dir, **kwargs
             )
         elif isinstance(dataset_type, fot.BDDDataset):
+            import fiftyone.utils.bdd as foub
+
             foub.export_bdd_dataset(self, label_field, export_dir, **kwargs)
         else:
             raise ValueError("Unsupported dataset type %s" % dataset_type)
