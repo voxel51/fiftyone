@@ -3,10 +3,59 @@
 FiftyOne provides native support for loading labeled datasets from disk in a
 variety of common formats.
 
+## Basic recipe
+
+### Python library
+
+The interface for importing datasets is conveniently exposed via the
+`Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to import
+datasets from disk in any supported format by simply specifiying the path to
+their containing directory on disk and the type of the dataset.
+
+The basic syntax is simple:
+
+```py
+import fiftyone as fo
+
+# A name for the FiftyOne dataset
+name = "my-coco-dataset"
+
+# The directory containing the dataset to import
+dataset_dir = "/path/to/dataset"
+
+# The type of the dataset being imported
+# Any subclass of `fiftyone.types.BaseDataset` is supported
+dataset_type = fo.types.COCODetectionDataset  # for example
+
+# Import the dataset!
+dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+```
+
+### CLI
+
+FiftyOne datasets can also be created from datasets on disk via the
+`fiftyone datasets create` CLI command:
+
+```shell
+# Creates a dataset from the given data on disk
+fiftyone datasets create \
+    --name <name> --dataset-dir <dataset-dir> --type <type>
+```
+
+where the arguments are as follows:
+
+```
+  -n NAME, --name NAME  a name for the dataset
+  -d DATASET_DIR, --dataset-dir DATASET_DIR
+                        the directory containing the dataset
+  -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+```
+
+### Supported formats
+
 Each supported dataset type is represented by a subclass of
 `fiftyone.types.BaseDataset`, which is used by the Python library and CLI to
-refer to the corresponding dataset format when reading/writing datasets on
-disk.
+refer to the corresponding dataset format when reading the dataset from disk.
 
 | Dataset Type                                      | Description                                                                                                                                                                                                       |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
