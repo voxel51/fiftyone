@@ -118,3 +118,181 @@
 .nav__item--brand a:hover {
   text-decoration: underline;
 }
+
+/* BodyPart
+ * This is a div in the body section
+ */
+.body_part {
+  min-width: 100%;
+  padding: var(--padding-y) var(--padding-x); /* -x padding has to be here to have the background extend to viewport edges; */
+}
+
+@media screen and (min-width: 1240px) {
+  .body_part {
+    padding: var(--padding-y) calc((100vw - 1040px) / 2);
+  }
+}
+
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .body_part {
+    padding: 6rem 3rem;
+  }
+}
+
+/* FOOTER */
+/* Footer uses grid to keep everything aligned. */
+.footer {
+  display: grid;
+  grid-template-columns: 20% 25% 15% 40%;
+  grid-template-rows: 1fr 1fr auto;
+  grid-template-areas:
+    "logo address . links"
+    ". contact . links"
+    "copyright copyright copyright icons";
+
+  background: var(--bg-dark-secondary);
+  color: var(--text-secondary-on-dark);
+  font-size: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+.footer a {
+  color: var(--text-secondary-on-dark);
+}
+
+.footer__copyright {
+  grid-area: copyright;
+  align-self: end;
+  justify-self: start;
+
+  padding-top: 3rem;
+}
+
+.footer__icons {
+  grid-area: icons;
+  align-self: end;
+  justify-self: end;
+
+  padding-top: 3rem;
+}
+
+.footer__logo {
+  grid-area: logo;
+  align-self: start;
+  justify-self: start;
+}
+
+.footer__logo img {
+  width: 80%;
+}
+
+.footer__address {
+  grid-area: address;
+}
+
+.footer__contact {
+  grid-area: contact;
+}
+
+.footer__links {
+  grid-area: links;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.footer__links a {
+  display: block;
+}
+
+.footer__links--col1 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.footer__links--col2 {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.footer__links--col3 {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+/* Use Media Query for Mobile to Change Footer Completely */
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .footer {
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "logo"
+      "copyright"
+      "icons";
+
+    background: var(--bg-dark-secondary);
+    color: var(--text-secondary-on-dark);
+    font-size: 1.2rem;
+    padding-top: 3rem;
+    padding-bottom: 1rem;
+
+    justify-items: center;
+    align-items: center;
+  }
+
+  .footer__copyright {
+    grid-area: copyright;
+
+    align-self: center;
+    justify-self: center;
+
+    padding-top: 1rem;
+  }
+
+  .footer__icons {
+    grid-area: icons;
+    align-self: center;
+    justify-self: center;
+
+    padding-top: 1rem;
+    font-size: 1.5rem;
+  }
+
+  .footer__logo {
+    grid-area: logo;
+    align-self: center;
+    justify-self: center;
+    text-align: center;
+  }
+
+  .footer__logo img {
+    width: 50%;
+  }
+
+  .footer__address {
+    display: none;
+  }
+
+  .footer__contact {
+    display: none;
+  }
+
+  .footer__links {
+    display: none;
+  }
+}
+
+/* lists.  info: https://www.blustemy.io/styling-inline-lists-in-css/ */
+.list-inline {
+  list-style: none;
+  padding: 0;
+}
+
+.list-inline > li {
+  display: inline;
+}
+
+.list-inline > li:not(:last-child) {
+  padding-right: 2rem;
+}

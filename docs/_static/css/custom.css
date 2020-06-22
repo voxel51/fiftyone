@@ -25,3 +25,21 @@
 .nav__main {
   font-size: 18px;
 }
+
+.footer {
+  padding: 20px 0;
+  background-color: inherit;
+  color: gray;
+  font-size: 15px;
+  grid-template-columns: 20% 25% 10px 45%;
+}
+
+.footer a {
+  color: gray;
+  line-height: 30px;
+}
+
+.footer .nav__item--brand {
+  font-size: 18px;
+  line-height: 18px;
+}
