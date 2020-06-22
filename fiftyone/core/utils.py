@@ -18,6 +18,7 @@ import zlib
 
 import numpy as np
 import packaging.version
+import xmltodict
 
 import eta.core.utils as etau
 
@@ -55,6 +56,15 @@ def ensure_torch():
     """
     _ensure_package("torch")
     _ensure_package("torchvision")
+
+
+def ensure_pycocotools():
+    """Verifies that pycocotools is installed on the host machine.
+
+    Raises:
+        ImportError: if ``pycocotools`` could not be imported
+    """
+    _ensure_package("pycocotools")
 
 
 def _ensure_package(package_name, min_version=None):
@@ -150,6 +160,19 @@ class LazyModule(types.ModuleType):
         # Update this object's dict so that attribute references are efficient
         # (__getattr__ is only called on lookups that fail)
         self.__dict__.update(module.__dict__)
+
+
+def load_xml_as_json_dict(xml_path):
+    """Loads the XML file as a JSON dictionary.
+
+    Args:
+        xml_path: the path to the XML file
+
+    Returns:
+        a JSON dict
+    """
+    with open(xml_path, "rb") as f:
+        return xmltodict.parse(f.read())
 
 
 def parse_serializable(obj, cls):

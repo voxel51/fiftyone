@@ -1,13 +1,67 @@
 Common Dataset Examples
 =======================
 
-FiftyOne provides native support for loading labeled datasets from disk
-in a variety of common formats.
+FiftyOne provides native support for loading labeled datasets from disk in a
+variety of common formats.
+
+Basic recipe
+------------
+
+Python library
+~~~~~~~~~~~~~~
+
+The interface for importing datasets is conveniently exposed via the
+`Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to import
+datasets from disk in any supported format by simply specifiying the path to
+their containing directory on disk and the type of the dataset.
+
+The basic syntax is simple:
+
+.. code:: py
+
+    import fiftyone as fo
+
+    # A name for the FiftyOne dataset
+    name = "my-coco-dataset"
+
+    # The directory containing the dataset to import
+    dataset_dir = "/path/to/dataset"
+
+    # The type of the dataset being imported
+    # Any subclass of `fiftyone.types.BaseDataset` is supported
+    dataset_type = fo.types.COCODetectionDataset  # for example
+
+    # Import the dataset!
+    dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+
+CLI
+~~~
+
+FiftyOne datasets can also be created from datasets on disk via the
+`fiftyone datasets create` CLI command:
+
+.. code:: shell
+
+    # Creates a dataset from the given data on disk
+    fiftyone datasets create \
+        --name <name> --dataset-dir <dataset-dir> --type <type>
+
+where the arguments are as follows:
+
+.. code:: shell
+
+      -n NAME, --name NAME  a name for the dataset
+      -d DATASET_DIR, --dataset-dir DATASET_DIR
+                            the directory containing the dataset
+      -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+
+Supported formats
+~~~~~~~~~~~~~~~~~
 
 Each supported dataset type is represented by a subclass of
 ``fiftyone.types.BaseDataset``, which is used by the Python library and
-CLI to refer to the corresponding dataset format when reading/writing
-datasets on disk.
+CLI to refer to the corresponding dataset format when reading the dataset
+from disk.
 
 +-----------------------------------------------------+------------------------------------------------------------+
 | Dataset Type                                        | Description                                                |
@@ -67,7 +121,7 @@ images.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         <filename1>.<ext>
@@ -141,7 +195,7 @@ labels stored in a simple JSON format.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -239,7 +293,7 @@ dataset.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 .. code:: shell
 
@@ -323,7 +377,7 @@ labels stored as
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         tf.records-?????-of-?????
@@ -366,7 +420,7 @@ TFRecords in the above format, you can execute:
         dataset_dir,
         fo.types.TFImageClassificationDataset,
         name=name,
-        images_dir=images_dir
+        images_dir=images_dir,
     )
 
     # View summary info about the dataset
@@ -428,7 +482,7 @@ stored in a simple JSON format.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -541,7 +595,7 @@ saved in `COCO format <http://cocodataset.org/#home>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -666,7 +720,7 @@ saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -722,9 +776,6 @@ where the labels XML files are in the following format:
         </object>
         ...
     </annotation>
-
-When writing datasets in this format, samples with no values for certain
-attributes (like ``pose`` in the above example) are left empty.
 
 Python library
 ~~~~~~~~~~~~~~
@@ -797,7 +848,7 @@ format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -843,10 +894,6 @@ have the following meanings:
 +----------+-------------+-------------------------------------------------------------+---------+
 | 1        | score       | ``(optional)`` A float confidence for the detection         |         |
 +----------+-------------+-------------------------------------------------------------+---------+
-
-The ``default`` column above indicates the default value that will be
-used when writing datasets in this type whose samples do not contain the
-necessary field(s).
 
 When reading datasets of this type, all columns after the four ``bbox``
 columns may be omitted.
@@ -921,7 +968,7 @@ stored in `CVAT image format <https://github.com/opencv/cvat>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -1049,7 +1096,7 @@ format <https://voxel51.com/docs/api/#types-imagelabels>`__.
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -1151,7 +1198,7 @@ consisting of images and their associated multitask predictions saved in
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
     <dataset_dir>/
         data/
@@ -1208,9 +1255,7 @@ To load a BDD dataset stored in the above format, you can execute:
     dataset_dir = "/path/to/bdd-dataset"
 
     # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.BDDDataset, name=name
-    )
+    dataset = fo.Dataset.from_dir(dataset_dir, fo.types.BDDDataset, name=name)
 
     # View summary info about the dataset
     print(dataset)

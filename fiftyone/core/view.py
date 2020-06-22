@@ -106,43 +106,6 @@ class DatasetView(foc.SampleCollection):
         view._pipeline = deepcopy(self._pipeline)
         return view
 
-    def add_stage(self, stage):
-        """Adds a :class:`fiftyone.core.stages.ViewStage` to the current view,
-        returning a new view.
-
-        Args:
-            stage: a :class:`fiftyone.core.stages.ViewStage`
-        """
-        return self._copy_with_new_stage(stage)
-
-    def aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the view.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before aggregation.
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        if pipeline is None:
-            pipeline = []
-
-        return self._dataset.aggregate(
-            [s.to_mongo() for s in self._pipeline] + pipeline
-        )
-
-    def serialize(self):
-        """Serializes the view.
-
-        Returns:
-            a JSON representation of the view
-        """
-        return {
-            "dataset": self._dataset.serialize(),
-            "view": json_util.dumps([s._serialize() for s in self._pipeline]),
-        }
-
     def summary(self):
         """Returns a string summary of the view.
 
@@ -172,22 +135,6 @@ class DatasetView(foc.SampleCollection):
                 pipeline_str,
             ]
         )
-
-    def to_dict(self):
-        """Returns a JSON dictionary representation of the view.
-
-        Returns:
-            a JSON dict
-        """
-        d = {
-            "name": self._dataset.name,
-            "num_samples": len(self),
-            "tags": list(self.get_tags()),
-            "sample_fields": self._dataset._get_fields_dict(),
-            "pipeline_stages": [str(d) for d in self._pipeline],
-        }
-        d.update(super(DatasetView, self).to_dict())
-        return d
 
     def head(self, num_samples=3):
         """Returns a string representation of the first few samples in the
@@ -231,6 +178,49 @@ class DatasetView(foc.SampleCollection):
         """
         return self[-1:].first()
 
+    def iter_samples(self):
+        """Returns an iterator over the samples in the view.
+
+        Returns:
+            an iterator over :class:`fiftyone.core.sample.Sample` instances
+        """
+        for d in self.aggregate():
+            yield self._dataset._load_sample_from_dict(d)
+
+    def iter_samples_with_index(self):
+        """Returns an iterator over the samples in the view together with
+        their integer index in the collection.
+
+        Returns:
+            an iterator that emits ``(index, sample)`` tuples, where:
+                - ``index`` is an integer index relative to the offset, where
+                  ``offset <= view_idx < offset + limit``
+                - ``sample`` is a :class:`fiftyone.core.sample.Sample`
+        """
+        offset = self._get_latest_offset()
+        iterator = self.iter_samples()
+        for idx, sample in enumerate(iterator, start=offset):
+            yield idx, sample
+
+    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+        """Returns a schema dictionary describing the fields of the samples in
+        the view.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:``fiftyone.core.fields.Field``
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
+
+        Returns:
+             a dictionary mapping field names to field types
+        """
+        return self._dataset.get_field_schema(
+            ftype=ftype, embedded_doc_type=embedded_doc_type
+        )
+
     def get_tags(self):
         """Returns the list of tags in the collection.
 
@@ -262,30 +252,6 @@ class DatasetView(foc.SampleCollection):
         ]
         return [f for f in self.aggregate(pipeline)]
 
-    def iter_samples(self):
-        """Returns an iterator over the samples in the view.
-
-        Returns:
-            an iterator over :class:`fiftyone.core.sample.Sample` instances
-        """
-        for d in self.aggregate():
-            yield self._dataset._load_sample_from_dict(d)
-
-    def iter_samples_with_index(self):
-        """Returns an iterator over the samples in the view together with
-        their integer index in the collection.
-
-        Returns:
-            an iterator that emits ``(index, sample)`` tuples, where:
-                - ``index`` is an integer index relative to the offset, where
-                  ``offset <= view_idx < offset + limit``
-                - ``sample`` is a :class:`fiftyone.core.sample.Sample`
-        """
-        offset = self._get_latest_offset()
-        iterator = self.iter_samples()
-        for idx, sample in enumerate(iterator, start=offset):
-            yield idx, sample
-
     @classmethod
     def list_stage_methods(cls):
         """Returns a list of all available :class:`DatasetView` stage methods,
@@ -295,6 +261,15 @@ class DatasetView(foc.SampleCollection):
             a list of :class:`DatasetView` method names
         """
         return list(view_stage.all)
+
+    def add_stage(self, stage):
+        """Adds a :class:`fiftyone.core.stages.ViewStage` to the current view,
+        returning a new view.
+
+        Args:
+            stage: a :class:`fiftyone.core.stages.ViewStage`
+        """
+        return self._copy_with_new_stage(stage)
 
     @view_stage
     def match(self, filter):
@@ -431,6 +406,50 @@ class DatasetView(foc.SampleCollection):
             a :class:`DatasetView`
         """
         return self.add_stage(fos.Exclude(sample_ids))
+
+    def aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the view.
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to append to the view's pipeline before aggregation.
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        if pipeline is None:
+            pipeline = []
+
+        return self._dataset.aggregate(
+            [s.to_mongo() for s in self._pipeline] + pipeline
+        )
+
+    def serialize(self):
+        """Serializes the view.
+
+        Returns:
+            a JSON representation of the view
+        """
+        return {
+            "dataset": self._dataset.serialize(),
+            "view": json_util.dumps([s._serialize() for s in self._pipeline]),
+        }
+
+    def to_dict(self):
+        """Returns a JSON dictionary representation of the view.
+
+        Returns:
+            a JSON dict
+        """
+        d = {
+            "name": self._dataset.name,
+            "num_samples": len(self),
+            "tags": list(self.get_tags()),
+            "sample_fields": self._dataset._get_fields_dict(),
+            "pipeline_stages": [str(d) for d in self._pipeline],
+        }
+        d.update(super(DatasetView, self).to_dict())
+        return d
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:
