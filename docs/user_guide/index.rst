@@ -57,6 +57,7 @@ Export your `Dataset` to disk in any number of formats
 
 .. code-block:: python
     :linenos:
+
     dataset_type = fo.types.COCODetectionDataset
     dataset.export(export_dir, dataset_type=dataset_type)
 
