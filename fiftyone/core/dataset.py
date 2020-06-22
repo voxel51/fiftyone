@@ -37,7 +37,13 @@ import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
+import fiftyone.utils.bdd as foub
+import fiftyone.utils.coco as fouco
+import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
+import fiftyone.utils.kitti as fouk
+import fiftyone.utils.tf as fout
+import fiftyone.utils.voc as fouv
 import fiftyone.types as fot
 
 
@@ -51,7 +57,7 @@ def list_dataset_names():
         a list of :class:`Dataset` names
     """
     # pylint: disable=no-member
-    return list(foo.ODMDataset.objects.distinct("name"))
+    return sorted(foo.ODMDataset.objects.distinct("name"))
 
 
 def dataset_exists(name):
@@ -61,7 +67,7 @@ def dataset_exists(name):
         name: the name of the dataset
 
     Returns:
-        True if the dataset exists
+        True/False
     """
     try:
         # pylint: disable=no-member
@@ -98,7 +104,12 @@ def get_default_dataset_name():
     Returns:
         a dataset name
     """
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.datetime.now()
+    name = now.strftime("%Y.%m.%d.%H.%M.%S")
+    if name in list_dataset_names():
+        name = now.strftime("%Y.%m.%d.%H.%M.%S.%f")
+
+    return name
 
 
 def get_default_dataset_dir(name):
@@ -154,7 +165,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     raw media is stored on disk and the dataset provides paths to the data.
 
     Args:
-        name: the name of the dataset
+        name (None): the name of the dataset. By default,
+            :func:`get_default_dataset_name` is used
         persistent (False): whether the dataset will persist in the database
             once the session terminates.
 
@@ -162,7 +174,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ValueError: if ``create == False`` and the dataset does not exist
     """
 
-    def __init__(self, name, persistent=False, _create=True):
+    def __init__(self, name=None, persistent=False, _create=True):
+        if name is None:
+            name = get_default_dataset_name()
+
         self._name = name
         self._deleted = False
 
@@ -256,10 +271,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fov.DatasetView(self)
 
     def get_field_schema(self, ftype=None, embedded_doc_type=None):
-        """Returns a schema dictionary describing the fields of this sample.
-
-        If the sample belongs to a dataset, the schema will apply to all
-        samples in the dataset.
+        """Returns a schema dictionary describing the fields of the samples in
+        the dataset.
 
         Args:
             ftype (None): an optional field type to which to restrict the
@@ -320,6 +333,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def distinct(self, field):
         """Finds all distinct values of a sample field across the dataset.
+
         If the field is a list, the distinct values will be distinct elements
         across all sample field lists.
 
@@ -476,6 +490,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_name=self.name, sample_ids=sample_ids
         )
 
+    def save(self):
+        """Saves all modified in-memory samples in the dataset to the database.
+
+        Only samples with non-persisted changes will be processed.
+        """
+        fos.Sample._save_dataset_samples(self.name)
+
+    def reload(self):
+        """Reloads all in-memory samples in the dataset from the database."""
+        fos.Sample._reload_dataset_samples(self.name)
+
     def clear(self):
         """Removes all samples from the dataset.
 
@@ -488,37 +513,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def delete(self):
         """Deletes the dataset.
 
-        Once deleted, only `Dataset.name` and `Dataset.deleted` will be valid
-        attributes. Accessing any other attributes or methods will raise a
-        :class:`DatasetError`
+        Once deleted, only the ``name`` and ``deleted`` attributes of a dataset
+        may be accessed.
 
-        If reference to a sample exists in memory, the sample's dataset
-        will be "unset" such that `sample.in_dataset == False`
+        If reference to a sample exists in memory, the sample object will be
+        updated such that ``sample.in_dataset == False``.
         """
         self.clear()
         self._meta.delete()
         self._deleted = True
 
-    def save(self):
-        """Saves all modified in-memory samples in the dataset to the database.
-
-        Only samples with non-persisted changes will be processed.
-        """
-        fos.Sample._save_dataset_samples(self.name)
-
-    def reload(self):
-        """Reloads all in-memory samples in the dataset from the database."""
-        fos.Sample._reload_dataset_samples(self.name)
-
     def add_dir(
-        self, dataset_dir, dataset_type, label_field="ground_truth", tags=None
+        self,
+        dataset_dir,
+        dataset_type,
+        label_field="ground_truth",
+        tags=None,
+        **kwargs
     ):
         """Adds the contents of the given directory to the dataset.
 
         Args:
             dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.DatasetType` of the
-                dataset in the specified directory
+            dataset_type: the type of the dataset in the specified directory,
+                a subclass of :class:`fiftyone.types.BaseDataset`
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
@@ -530,14 +548,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type = dataset_type()
 
         if isinstance(dataset_type, fot.ImageDirectory):
-            return self.add_images_dir(dataset_dir, recursive=True, tags=tags)
+            return self.add_images_dir(dataset_dir, tags=tags, **kwargs)
 
         if isinstance(dataset_type, fot.ImageClassificationDirectoryTree):
-            samples, classes = foud.parse_image_classification_dir_tree(
-                dataset_dir
-            )
-            return self.add_image_classification_samples(
-                samples, classes=classes, label_field=label_field, tags=tags
+            return self.add_image_classification_dir_tree(
+                dataset_dir, label_field=label_field, tags=tags
             )
 
         if isinstance(dataset_type, fot.ImageClassificationDataset):
@@ -545,13 +560,48 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 dataset_dir, label_field=label_field, tags=tags
             )
 
+        if isinstance(dataset_type, fot.TFImageClassificationDataset):
+            return self.add_tf_image_classification_dataset(
+                dataset_dir, label_field=label_field, tags=tags, **kwargs
+            )
+
         if isinstance(dataset_type, fot.ImageDetectionDataset):
             return self.add_image_detection_dataset(
                 dataset_dir, label_field=label_field, tags=tags
             )
 
+        if isinstance(dataset_type, fot.COCODetectionDataset):
+            return self.add_coco_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.VOCDetectionDataset):
+            return self.add_voc_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.KITTIDetectionDataset):
+            return self.add_kitti_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.TFObjectDetectionDataset):
+            return self.add_tf_object_detection_dataset(
+                dataset_dir, label_field=label_field, tags=tags, **kwargs
+            )
+
+        if isinstance(dataset_type, fot.CVATImageDataset):
+            return self.add_cvat_image_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
         if isinstance(dataset_type, fot.ImageLabelsDataset):
             return self.add_image_labels_dataset(
+                dataset_dir, label_field=label_field, tags=tags
+            )
+
+        if isinstance(dataset_type, fot.BDDDataset):
+            return self.add_bdd_dataset(
                 dataset_dir, label_field=label_field, tags=tags
             )
 
@@ -762,7 +812,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             filepath = os.path.abspath(os.path.expanduser(sample[0]))
 
             _samples.append(
-                fo.Sample(filepath=filepath, tags=tags, **{label_field: label})
+                fos.Sample(
+                    filepath=filepath, tags=tags, **{label_field: label},
+                )
             )
 
         return self.add_samples(_samples)
@@ -793,6 +845,77 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples, label_field=label_field, tags=tags
         )
 
+    def add_image_classification_dir_tree(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given image classification directory tree stored on disk to
+        the dataset.
+
+        See :class:`fiftyone.types.ImageClassificationDirectoryTree` for format
+        details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Classification` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples, classes = foud.parse_image_classification_dir_tree(
+            dataset_dir
+        )
+        return self.add_image_classification_samples(
+            samples, label_field=label_field, tags=tags, classes=classes
+        )
+
+    def add_tf_image_classification_dataset(
+        self,
+        dataset_dir,
+        label_field="ground_truth",
+        tags=None,
+        images_dir=None,
+        image_format=None,
+    ):
+        """Adds the given TF image classification dataset stored on disk to the
+        dataset.
+
+        See :class:`fiftyone.types.TFImageClassificationDataset` for format
+        details.
+
+        The images are read in-memory and written to ``images_dir``.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Classification` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+            images_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = fout.parse_tf_image_classification_dataset(dataset_dir)
+        sample_parser = fout.TFImageClassificationSampleParser()
+        return self.ingest_labeled_image_samples(
+            samples,
+            label_field=label_field,
+            tags=tags,
+            dataset_dir=images_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
     def add_image_detection_dataset(
         self, dataset_dir, label_field="ground_truth", tags=None
     ):
@@ -806,7 +929,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             dataset_dir: the directory containing the dataset
-                :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name of the field to use for the
                 labels
             tags (None): an optional list of tags to attach to each sample
@@ -818,6 +940,186 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.add_labeled_image_samples(
             samples, label_field=label_field, tags=tags
         )
+
+    def add_coco_detection_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given COCO detection dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.COCODetectionDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = fouco.parse_coco_detection_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_voc_detection_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given VOC detection dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = fouv.parse_voc_detection_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_kitti_detection_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given KITTI detection dataset stored on disk to the
+        dataset.
+
+        See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = fouk.parse_kitti_detection_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_tf_object_detection_dataset(
+        self,
+        dataset_dir,
+        label_field="ground_truth",
+        tags=None,
+        images_dir=None,
+        image_format=None,
+    ):
+        """Adds the given TF object detection dataset stored on disk to the
+        dataset.
+
+        See :class:`fiftyone.types.TFObjectDetectionDataset` for format
+        details.
+
+        The images are read in-memory and written to ``images_dir``.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+            images_dir (None): the directory in which the images will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            image_format (``fiftyone.config.default_image_ext``): the image
+                format to use to write the images to disk
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = fout.parse_tf_object_detection_dataset(dataset_dir)
+        sample_parser = fout.TFObjectDetectionSampleParser()
+        return self.ingest_labeled_image_samples(
+            samples,
+            label_field=label_field,
+            tags=tags,
+            dataset_dir=images_dir,
+            sample_parser=sample_parser,
+            image_format=image_format,
+        )
+
+    def add_cvat_image_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given CVAT image dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.CVATImageDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.Detections` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = foucv.parse_cvat_image_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
 
     def add_image_labels_dataset(
         self, dataset_dir, label_field="ground_truth", tags=None
@@ -843,7 +1145,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples, label_field=label_field, tags=tags
         )
 
-    def add_images_dir(self, images_dir, recursive=True, tags=None):
+    def add_bdd_dataset(
+        self, dataset_dir, label_field="ground_truth", tags=None
+    ):
+        """Adds the given BDD dataset stored on disk to the dataset.
+
+        See :class:`fiftyone.types.BDDDataset` for format details.
+
+        The labels will be stored in the ``label_field`` of the samples in
+        :class:`fiftyone.core.labels.ImageLabels` format.
+
+        Args:
+            dataset_dir: the directory containing the dataset
+            label_field ("ground_truth"): the name of the field to use for the
+                labels
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        samples = foub.parse_bdd_dataset(dataset_dir)
+
+        _samples = []
+        for img_path, metadata, detections in samples:
+            _samples.append(
+                fos.Sample(
+                    filepath=img_path,
+                    metadata=metadata,
+                    tags=tags,
+                    **{label_field: detections},
+                )
+            )
+
+        return self.add_samples(_samples)
+
+    def add_images_dir(self, images_dir, tags=None, recursive=True):
         """Adds the given directory of images to the dataset.
 
         See :class:`fiftyone.types.ImageDirectory` for format details. In
@@ -853,8 +1189,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             images_dir: a directory of images
-            recursive (True): whether to recursively traverse subdirectories
             tags (None): an optional list of tags to attach to each sample
+            recursive (True): whether to recursively traverse subdirectories
 
         Returns:
             a list of IDs of the samples in the dataset
@@ -892,7 +1228,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _samples = []
         for image_path in image_paths:
             filepath = os.path.abspath(os.path.expanduser(image_path))
-            _samples.append(fo.Sample(filepath=filepath, tags=tags))
+            _samples.append(fos.Sample(filepath=filepath, tags=tags))
 
         return self.add_samples(_samples)
 
@@ -1021,25 +1357,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name=None,
         label_field="ground_truth",
         tags=None,
+        **kwargs
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
 
         Args:
             dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.DatasetType` of the
-                dataset in the specified directory
+            dataset_type: the type of the dataset in the specified directory,
+                a subclass of :class:`fiftyone.types.BaseDataset`
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_dir(
-            dataset_dir, dataset_type, label_field=label_field, tags=tags,
+            dataset_dir,
+            dataset_type,
+            label_field=label_field,
+            tags=tags,
+            **kwargs,
         )
         return dataset
 
@@ -1092,9 +1430,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_classification_samples(
             samples, label_field=label_field, tags=tags, classes=classes
@@ -1164,9 +1499,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_detection_samples(
             samples, label_field=label_field, tags=tags, classes=classes
@@ -1212,9 +1544,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_labels_samples(
             samples, label_field=label_field, tags=tags
@@ -1265,9 +1594,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_labeled_image_samples(
             samples,
@@ -1301,9 +1627,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_classification_dataset(
             dataset_dir, label_field=label_field, tags=tags
@@ -1333,9 +1656,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_detection_dataset(
             dataset_dir, label_field=label_field, tags=tags
@@ -1365,9 +1685,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_image_labels_dataset(
             dataset_dir, label_field=label_field, tags=tags
@@ -1375,28 +1692,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return dataset
 
     @classmethod
-    def from_images_dir(
-        cls, images_dir, recursive=False, name=None, tags=None
-    ):
+    def from_images_dir(cls, images_dir, name=None, tags=None, recursive=True):
         """Creates a :class:`Dataset` from the given directory of images.
 
         This operation does not read the images.
 
         Args:
             images_dir: a directory of images
-            recursive (False): whether to recursively traverse subdirectories
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional list of tags to attach to each sample
+            recursive (True): whether to recursively traverse subdirectories
 
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
-        dataset.add_images_dir(images_dir, recursive=recursive, tags=tags)
+        dataset.add_images_dir(images_dir, tags=tags, recursive=recursive)
         return dataset
 
     @classmethod
@@ -1414,9 +1726,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_images_patt(image_patt, tags=tags)
         return dataset
@@ -1436,9 +1745,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if name is None:
-            name = get_default_dataset_name()
-
         dataset = cls(name)
         dataset.add_images(image_paths, tags=tags)
         return dataset
@@ -1482,33 +1788,49 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return d
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, name=None):
         """Loads a :class:`Dataset` from a JSON dictionary generated by
-        :func:`Dataset.to_dict`.
+        :func:`fiftyone.core.collections.SampleCollection.to_dict`.
+
+        The JSON dictionary can contain an export of any
+        :class:`fiftyone.core.collections.SampleCollection`, e.g.,
+        :class:`Dataset` or :class:`fiftyone.core.view.DatasetView`.
 
         Args:
-            d: a JSON dictionary generated by :func:`Dataset.to_dict`
+            d: a JSON dictionary
+            name (None): a name for the new dataset. By default, ``d["name"]``
+                is used
 
         Returns:
-            a :class:`Dataset
+            a :class:`Dataset`
         """
-        dataset = cls(d["name"])
+        if name is None:
+            name = d["name"]
+
+        dataset = cls(name)
         dataset.add_samples([fos.Sample.from_dict(s) for s in d["samples"]])
         return dataset
 
     @classmethod
-    def from_json(cls, path_or_str):
+    def from_json(cls, path_or_str, name=None):
         """Loads a :class:`Dataset` from JSON generated by
-        :func:`Dataset.write_json` or :func:`Dataset.to_json`.
+        :func:`fiftyone.core.collections.SampleCollection.write_json` or
+        :func:`fiftyone.core.collections.SampleCollection.to_json`.
+
+        The JSON file can contain an export of any
+        :class:`fiftyone.core.collections.SampleCollection`, e.g.,
+        :class:`Dataset` or :class:`fiftyone.core.view.DatasetView`.
 
         Args:
             path_or_str: the path to a JSON file on disk or a JSON string
+            name (None): a name for the new dataset. By default, ``d["name"]``
+                is used
 
         Returns:
-            a :class:`Dataset
+            a :class:`Dataset`
         """
         d = etas.load_json(path_or_str)
-        return cls.from_dict(d)
+        return cls.from_dict(d, name=name)
 
     @property
     def _collection_name(self):

@@ -2,6 +2,7 @@ argcomplete==1.11.0
 eventlet==0.25.2
 flask-socketio==4.3.0
 Flask==1.1.2
+Jinja2==2.10.1
 mongoengine<0.20.0;python_version<"3"
 mongoengine==0.20.0;python_version>="3"
 packaging==20.3
@@ -15,3 +16,4 @@ python-socketio[client]==4.5.1;python_version>="3"
 setuptools==44.0.0;python_version<"3"
 setuptools==45.2.0;python_version>="3"
 tabulate==0.8.5
+xmltodict==0.12.0

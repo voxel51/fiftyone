@@ -38,6 +38,11 @@ from .core.fields import (
 from .core.labels import (
     Label,
     ImageLabel,
+    Attribute,
+    BooleanAttribute,
+    CategoricalAttribute,
+    NumericAttribute,
+    VectorAttribute,
     Classification,
     Detection,
     Detections,

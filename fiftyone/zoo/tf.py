@@ -18,20 +18,13 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import logging
-import os
-
-import eta.core.utils as etau
-
 import fiftyone.core.utils as fou
-import fiftyone.utils.data as foud
 import fiftyone.types as fot
+import fiftyone.utils.imagenet as foui
+import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
 tfds = fou.lazy_import("tensorflow_datasets", callback=fou.ensure_tfds)
-
-
-logger = logging.getLogger(__name__)
 
 
 class TFDSDataset(foz.ZooDataset):
@@ -62,10 +55,6 @@ class MNISTDataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("test", "train")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -111,10 +100,6 @@ class FashionMNISTDataset(TFDSDataset):
     def supported_splits(self):
         return ("test", "train")
 
-    @property
-    def default_split(self):
-        return "test"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -159,10 +144,6 @@ class CIFAR10Dataset(TFDSDataset):
     def supported_splits(self):
         return ("test", "train")
 
-    @property
-    def default_split(self):
-        return "test"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -206,10 +187,6 @@ class CIFAR100Dataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("test", "train")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -257,10 +234,6 @@ class Caltech101Dataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("test", "train")
-
-    @property
-    def default_split(self):
-        return "test"
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -311,8 +284,8 @@ class ImageNet2012Dataset(TFDSDataset):
             train split: ILSVRC2012_img_train.tar
        validation split: ILSVRC2012_img_val.tar
 
-    You need to register on http://www.image-net.org/download-images in
-    order to get the link to download the dataset.
+    You must register at http://www.image-net.org/download-images in order to
+    get the link to download the dataset.
 
     Dataset size:
         144.02 GiB
@@ -329,11 +302,10 @@ class ImageNet2012Dataset(TFDSDataset):
     def supported_splits(self):
         return ("train", "validation")
 
-    @property
-    def default_split(self):
-        return "validation"
-
     def _download_and_prepare(self, dataset_dir, _, split):
+        # Ensure that the source files have been manually downloaded
+        foui.ensure_imagenet_manual_download(dataset_dir, split)
+
         if split == "validation":
             _split = "val"
         else:
@@ -341,7 +313,7 @@ class ImageNet2012Dataset(TFDSDataset):
 
         def download_fcn(_):
             return tfds.load(
-                "imagenet",
+                "imagenet2012",
                 split=_split,
                 data_dir=dataset_dir,
                 download=False,
@@ -388,11 +360,7 @@ class COCO2014Dataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "test2015", "train", "validation")
-
-    @property
-    def default_split(self):
-        return "validation"
+        return ("test", "train", "validation")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -408,7 +376,9 @@ class COCO2014Dataset(TFDSDataset):
             "label"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser(normalized=False)
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox", normalized=False,
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -448,10 +418,6 @@ class COCO2017Dataset(TFDSDataset):
     def supported_splits(self):
         return ("test", "train", "validation")
 
-    @property
-    def default_split(self):
-        return "validation"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -467,7 +433,7 @@ class COCO2017Dataset(TFDSDataset):
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser(
-            bounding_box_field="bbox"
+            bounding_box_field="bbox", normalized=False,
         )
         return _download_and_prepare(
             dataset_dir,
@@ -505,10 +471,6 @@ class KITTIDataset(TFDSDataset):
     def supported_splits(self):
         return ("test", "train", "validation")
 
-    @property
-    def default_split(self):
-        return "test"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -523,7 +485,9 @@ class KITTIDataset(TFDSDataset):
             "type"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser(label_field="type")
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox", label_field="type",
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -560,10 +524,6 @@ class VOC2007Dataset(TFDSDataset):
     def supported_splits(self):
         return ("train", "validation", "test")
 
-    @property
-    def default_split(self):
-        return "validation"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -578,7 +538,9 @@ class VOC2007Dataset(TFDSDataset):
             "label"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox"
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -615,10 +577,6 @@ class VOC2012Dataset(TFDSDataset):
     def supported_splits(self):
         return ("train", "validation", "test")
 
-    @property
-    def default_split(self):
-        return "validation"
-
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
             return tfds.load(
@@ -633,7 +591,9 @@ class VOC2012Dataset(TFDSDataset):
             "label"
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageDetectionSampleParser()
+        sample_parser = _TFDSImageDetectionSampleParser(
+            bounding_box_field="bbox"
+        )
         return _download_and_prepare(
             dataset_dir,
             scratch_dir,
@@ -746,13 +706,13 @@ def _download_and_prepare(
 
     if isinstance(sample_parser, foud.ImageClassificationSampleParser):
         write_dataset_fcn = foud.to_image_classification_dataset
-        format = fot.ImageClassificationDataset
+        dataset_type = fot.ImageClassificationDataset()
     elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
         write_dataset_fcn = foud.to_image_detection_dataset
-        format = fot.ImageDetectionDataset
+        dataset_type = fot.ImageDetectionDataset()
     elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
         write_dataset_fcn = foud.to_image_labels_dataset
-        format = fot.ImageLabelsDataset
+        dataset_type = fot.ImageLabelsDataset()
     else:
         raise ValueError("Unsupported sample parser: %s" % sample_parser)
 
@@ -770,4 +730,4 @@ def _download_and_prepare(
         num_samples=num_samples,
     )
 
-    return format, num_samples, classes
+    return dataset_type, num_samples, classes
