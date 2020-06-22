@@ -1,12 +1,13 @@
 import React, { useState, useLayoutEffect, useRef, useEffect } from "react";
 import styled from "styled-components";
 import { useSpring, animated } from "react-spring";
-import { useMove } from "react-use-gesture";
-import { useRecoilValue } from "recoil";
+import { useGesture } from "react-use-gesture";
+import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
 
 import "../../app.global.css";
 import IndicatorForm from "./IndicatorForm";
-import { mainSize } from "../../state/atoms";
+import { mainSize, isDraggingIndicator, currentIndex } from "../../state/atoms";
+import { indicatorIndex } from "../../state/selectors";
 
 const Indicator = styled(animated.div)`
   width: 3rem;
@@ -20,12 +21,31 @@ const Indicator = styled(animated.div)`
 
 export default function () {
   const mainSizeValue = useRecoilValue(mainSize);
+  const setCurrentIndex = useSetRecoilState(currentIndex);
+  const indicatorIndexValue = useRecoilValue(indicatorIndex);
+  const [isDraggingIndicatorValue, setIsDraggingIndicator] = useRecoilState(
+    isDraggingIndicator
+  );
   const [{ top }, set] = useSpring(() => ({ top: 35 }));
 
-  const bind = useMove(
-    ({ xy: [_, py], dragging }) => {
-      const newTop = Math.min(mainSizeValue[1] - 19, Math.max(py, 16));
-      set({ top: newTop });
+  const gestureHandler = ({ xy: [_, py], dragging }) => {
+    const newTop = Math.min(mainSizeValue[1] - 19, Math.max(py, 16));
+    set({ top: newTop });
+  };
+
+  const toggleDrag = (e) => {
+    if (isDraggingIndicatorValue) {
+      setCurrentIndex(indicatorIndexValue);
+    }
+    setIsDraggingIndicator(!isDraggingIndicatorValue);
+  };
+
+  const bind = useGesture(
+    {
+      onMove: gestureHandler,
+      onDrag: gestureHandler,
+      onDragStart: toggleDrag,
+      onDragEnd: toggleDrag,
     },
     {
       domTarget: document.body,
@@ -33,7 +53,12 @@ export default function () {
   );
 
   return (
-    <Indicator {...bind()} style={{ top }}>
+    <Indicator
+      {...bind()}
+      style={{ top }}
+      onDragStart={toggleDrag}
+      onDragEnd={toggleDrag}
+    >
       <IndicatorForm />
     </Indicator>
   );

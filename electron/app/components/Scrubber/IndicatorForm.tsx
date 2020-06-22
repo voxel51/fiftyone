@@ -27,11 +27,11 @@ const IndicatorForm = animated(styled.input`
 `);
 
 export default function () {
+  const [state, send] = useMachine(indicatorFormMachine);
   const ref = useRef();
   const indicatorIndexValue = useRecoilValue(indicatorIndex);
   const viewCountValue = useRecoilValue(viewCount);
   const setCurrentIndex = useSetRecoilState(currentIndex);
-  const [state, send] = useMachine(indicatorFormMachine);
   const focused = state.value === "focused" || state.value === "typing";
   const props = useSpring({
     width: focused ? "2.5rem" : "3rem",
@@ -63,8 +63,8 @@ export default function () {
     const nextInputEmpty = !nextInput.length;
     const nextInputInt = parseInt(nextInput);
     const payload =
-      (nextInputInt <= viewCountValue && nextInputInt >= 0) || nextInputEmpty
-        ? nextInput
+      (nextInputInt < viewCountValue && nextInputInt >= 0) || nextInputEmpty
+        ? nextInputInt
         : currentInput;
     send({ type: "TYPE", payload });
   };

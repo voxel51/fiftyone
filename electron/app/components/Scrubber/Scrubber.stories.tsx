@@ -46,7 +46,6 @@ const Images = ({ targetRef }) => {
   const setCurrentListHeight = useSetRecoilState(currentListHeight);
   const currentListTopValue = useRecoilValue(currentListTop);
   const viewCountValue = useRecoilValue(viewCount);
-
   useEffect(() => {
     setCurrentListHeight(targetRef.current.offsetHeight);
   }, [targetRef.current]);

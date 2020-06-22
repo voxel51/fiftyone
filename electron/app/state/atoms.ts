@@ -34,3 +34,8 @@ export const currentListHeight = atom({
   key: "currentListHeight",
   default: 0,
 });
+
+export const isDraggingIndicator = atom({
+  key: "isDraggingIndicator",
+  default: false,
+});

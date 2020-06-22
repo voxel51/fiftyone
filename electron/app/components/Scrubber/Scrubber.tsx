@@ -57,7 +57,7 @@ export default function () {
   const springs = useSprings(
     sectionsValue.length,
     sectionsValue.map((s) => ({
-      top: Math.max(32, (s / viewCountValue) * (mh - 32) + 32),
+      top: Math.max(32, (s / (viewCountValue - 1)) * (mh - 35) + 32),
     }))
   );
   return (
