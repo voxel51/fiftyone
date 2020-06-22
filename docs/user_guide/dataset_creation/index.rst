@@ -25,6 +25,6 @@ FiftyOne:
    :maxdepth: 1
    :hidden:
    
-   disk_datasets
-   zoo_datasets
-   custom_datasets
+   Common Datasets <disk_datasets>
+   Zoo Datasets <zoo_datasets>
+   Custom Datasets <custom_datasets>
