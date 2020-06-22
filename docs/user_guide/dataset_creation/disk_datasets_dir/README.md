@@ -78,7 +78,7 @@ The `fiftyone.types.ImageDirectory` type represents a directory of images.
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -150,7 +150,7 @@ in a simple JSON format.
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -246,7 +246,7 @@ directory tree whose subfolders define an image classification dataset.
 
 ### Disk format
 
-Datasets of this type are read/written in the following format::
+Datasets of this type are read in the following format::
 
 ```
 <dataset_dir>/
@@ -325,7 +325,7 @@ as [TFRecords](https://www.tensorflow.org/tutorials/load_data/tfrecord).
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -429,7 +429,7 @@ JSON format.
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -538,7 +538,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -660,7 +660,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -718,9 +718,6 @@ where the labels XML files are in the following format:
     ...
 </annotation>
 ```
-
-When writing datasets in this format, samples with no values for certain
-attributes (like `pose` in the above example) are left empty.
 
 ### Python library
 
@@ -785,7 +782,7 @@ consisting of images and their associated object detections saved in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -813,10 +810,6 @@ meanings:
 | 1                 | location   | 3D object location `(x, y, z)` in camera coordinates (in meters)                                                                                       | 0       |
 | 1                 | rotation_y | Rotation around the y-axis in camera coordinates, in `[-pi, pi]`                                                                                       | 0       |
 | 1                 | score      | `(optional)` A float confidence for the detection                                                                                                      |         |
-
-The `default` column above indicates the default value that will be used when
-writing datasets in this type whose samples do not contain the necessary
-field(s).
 
 When reading datasets of this type, all columns after the four `bbox` columns
 may be omitted.
@@ -884,7 +877,7 @@ consisting of images and their associated object detections stored in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -1006,7 +999,7 @@ consisting of images and their associated multitask predictions stored in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
@@ -1103,7 +1096,7 @@ images and their associated multitask predictions saved in
 
 ### Disk format
 
-Datasets of this type are read/written in the following format:
+Datasets of this type are read in the following format:
 
 ```
 <dataset_dir>/
