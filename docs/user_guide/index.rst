@@ -39,21 +39,11 @@ the Dataset Zoo.
 
 .. code-block:: python
 
-   common_format_dataset = fo.Dataset.from_dir(
+   dataset = fo.Dataset.from_dir(
        dataset_dir="/path/to/dataset",
        dataset_type=fo.types.COCODetectionDataset,
        name="my-coco-format-dataset",
    )
-
-   zoo_dataset = foz.get_zoo_dataset("cifar10")
-
-   custom_format_dataset = fo.Dataset(name="my-custom-format-dataset")
-   _samples = []
-   for image_path, target in samples:
-       _samples.append(fo.Sample(...))
-   dataset.add_samples(_samples)
-
-   ...
 
 .. rubric:: :doc:`Using datasets <using_dataset>`
 
