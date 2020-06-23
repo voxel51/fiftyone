@@ -3,14 +3,18 @@ User Guide
 
 .. default-role:: code
 
-Welcome to FiftyOne User Guide! Each section in this guide provides an
-example-centric deep dive into a core feature of FiftyOne, with the goal of
-getting you up-and-running with FiftyOne on your data quickly and easily.
+Welcome to the FiftyOne User Guide!
+
+Each section in this guide provides an example-centric deep dive into a core
+feature of FiftyOne, with the goal of getting you up-and-running with FiftyOne
+on your data quickly and easily.
+
+Click-through to investigate a topic in more detail.
 
 .. rubric:: :doc:`FiftyOne Dataset basics <basics>`
 
 Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
-`Tags` and `DatasetViews`:
+`Tags` and `DatasetViews`.
 
 .. code-block:: python
 
@@ -30,18 +34,18 @@ Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
     for sample in view:
         print(sample)
 
-.. rubric:: :doc:`Loading a Dataset <dataset_creation/index>`
+.. rubric:: :doc:`Loading datasets <dataset_creation/index>`
 
-Load a `Dataset` either using an existing supported dataset format or from
-scratch:
+Load a dataset into FiftyOne using standard formats, custom formats, or from
+the Dataset Zoo.
 
 .. code-block:: python
 
    dataset = fo.Dataset.from_images_dir("/path/to/images")
 
-.. rubric:: :doc:`Using a Dataset <using_dataset>`:
+.. rubric:: :doc:`Using datasets <using_dataset>`
 
-Use your `Dataset` to search, sort, and modify your data:
+Use a FiftyOne Dataset to search, sort, and modify your data:
 
 .. code-block:: python
 
@@ -53,17 +57,18 @@ Use your `Dataset` to search, sort, and modify your data:
        .limit(5)
    )
 
-.. rubric:: :doc:`Exporting a Dataset <export_dataset>`
+.. rubric:: :doc:`Exporting datasets <export_dataset>`
 
-Export your `Dataset` to disk in any number of formats:
+Export your dataset to disk in any number of formats.
 
 .. code-block:: python
 
     dataset.export(export_dir, dataset_type=fo.types.COCODetectionDataset)
 
-.. rubric:: :doc:`Visualizing Datasets in the App <app>`
+.. rubric:: :doc:`Visualizing datasets in the App <app>`
 
-Visualize your `Dataset` in the FiftyOne App and see your changes in real time.
+Visualize your dataset in the FiftyOne App and visualize your changes to it in
+real-time.
 
 .. image:: ../images/dog.png
    :alt: App
@@ -71,7 +76,7 @@ Visualize your `Dataset` in the FiftyOne App and see your changes in real time.
    :align: center
    :target: app.html
 
-.. rubric:: :doc:`FiftyOne Brain <brain>`:
+.. rubric:: :doc:`FiftyOne Brain <brain>`
 
 Use the FiftyOne Brain to automatically get insights into your `Dataset`
 
