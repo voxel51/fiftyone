@@ -35,9 +35,6 @@
 /* voxel51-website.css overrides */
 
 .nav__main {
-  background-color: var(--bg-light-primary);
-  color: var(--text-primary-on-light);
-  border-bottom: 2px solid var(--gray-light3);
   font-size: 18px;
   padding-left: 0;
   padding-right: 20px;
@@ -53,14 +50,6 @@
   text-align: right;
   width: 100%;
   max-width: 800px;
-}
-
-.nav__item a {
-  color: var(--text-primary-on-light);
-}
-
-.nav__item--brand a {
-  color: var(--color-primary);
 }
 
 .footer {
