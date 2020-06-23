@@ -1,6 +1,6 @@
 import React from "react";
+import styled from "styled-components";
 
-import { Container } from "../utils";
 import Thumbnail from "./Player51";
 
 export default {
@@ -8,4 +8,12 @@ export default {
   title: "Player51/Thumbnail",
 };
 
-export const thumbnail = () => <Container>Hello</Container>;
+const Container = styled.div`
+  width: 300px;
+`;
+
+export const thumbnail = () => (
+  <Container>
+    <Thumbnail />
+  </Container>
+);

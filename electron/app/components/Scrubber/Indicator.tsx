@@ -6,14 +6,13 @@ import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
 
 import "../../app.global.css";
 import IndicatorForm from "./IndicatorForm";
-import { mainSize, isDraggingIndicator, currentIndex } from "../../state/atoms";
-import { indicatorIndex } from "../../state/selectors";
+import { mainSize, isDraggingIndicator } from "../../state/atoms";
+import { indicatorIndex, currentIndex } from "../../state/selectors";
 
 const Indicator = styled(animated.div)`
   width: 3rem;
   border-bottom: 3px solid var(--color-primary);
   position: absolute;
-  margin-top: -16px;
   right: 0;
   cursor: pointer;
   background: var(--mostly-transparent);
@@ -27,18 +26,19 @@ export default function () {
   const [isDraggingIndicatorValue, setIsDraggingIndicator] = useRecoilState(
     isDraggingIndicator
   );
-  const [{ top }, set] = useSpring(() => ({ top: 35 }));
+  const [{ top }, set] = useSpring(() => ({ top: 0 }));
 
   const gestureHandler = ({ xy: [_, py], dragging }) => {
-    const newTop = Math.min(mainSizeValue[1] - 19, Math.max(py, 16));
+    const newTop = Math.min(mainSizeValue[1] - 35, Math.max(py - 16, 0));
     set({ top: newTop });
   };
 
   const toggleDrag = (e) => {
-    if (isDraggingIndicatorValue) {
-      setCurrentIndex(indicatorIndexValue);
-    }
     setIsDraggingIndicator(!isDraggingIndicatorValue);
+  };
+
+  const onDrag = () => {
+    setCurrentIndex(indicatorIndexValue);
   };
 
   const bindMove = useGesture(
@@ -54,6 +54,7 @@ export default function () {
     {
       onDragStart: toggleDrag,
       onDragEnd: toggleDrag,
+      onDrag: onDrag,
     },
     {
       domTarget: ref.current,

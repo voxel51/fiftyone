@@ -1,12 +1,12 @@
 import React, { useRef, useState } from "react";
 import styled from "styled-components";
 import { useMachine } from "@xstate/react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue, useRecoilState } from "recoil";
 import { useSpring, animated } from "react-spring";
 
 import "../../app.global.css";
-import { currentIndex, viewCount } from "../../state/atoms";
-import { indicatorIndex } from "../../state/selectors";
+import { viewCount } from "../../state/atoms";
+import { currentIndex, indicatorIndex } from "../../state/selectors";
 
 import indicatorFormMachine from "./IndicatorForm.machine.ts";
 
@@ -30,7 +30,7 @@ export default function () {
   const ref = useRef();
   const indicatorIndexValue = useRecoilValue(indicatorIndex);
   const viewCountValue = useRecoilValue(viewCount);
-  const setCurrentIndex = useSetRecoilState(currentIndex);
+  const [currentIndexValue, setCurrentIndex] = useRecoilState(currentIndex);
   const focused = state.value === "focused" || state.value === "typing";
   const props = useSpring({
     width: focused ? "2.5rem" : "3rem",

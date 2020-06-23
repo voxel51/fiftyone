@@ -9,8 +9,12 @@ import {
 } from "recoil";
 import { useWheel } from "react-use-gesture";
 
-import { currentListTop } from "../../state/selectors";
-import { currentListHeight, viewCount } from "../../state/atoms";
+import {
+  currentListTop,
+  currentListHeight,
+  viewCount,
+} from "../../state/atoms";
+import { currentListTopRange } from "../../state/selectors";
 import { Container } from "../utils";
 import Scrubber from "./Scrubber";
 
@@ -73,13 +77,16 @@ const ScrubberDemo = () => {
   const [currentListTopValue, setCurrentListTop] = useRecoilState(
     currentListTop
   );
+  const [minTop, maxTop] = useRecoilValue(currentListTopRange);
   const ref = useRef();
   const containerRef = useRef();
   const bind = useWheel((s) => {
     const {
       delta: [_, y],
     } = s;
-    setCurrentListTop(currentListTopValue + y);
+    setCurrentListTop(
+      Math.min(Math.max(currentListTopValue + y, minTop), maxTop)
+    );
   });
 
   return (
@@ -97,7 +104,7 @@ const ScrubberDemo = () => {
 export const scrubber = () => {
   return (
     <RecoilRoot>
-      <ScrubberDemo />
+      <ScrubberDemo key={1} />
     </RecoilRoot>
   );
 };

@@ -1,13 +1,15 @@
-import { selector } from "recoil";
+import { selector, selectorFamily } from "recoil";
 
+import { getPage, getSocket } from "../utils/socket";
 import {
-  currentIndex,
   mousePosition,
   viewCount,
   mainSize,
   mainTop,
   currentListHeight,
   isDraggingIndicator,
+  currentListTop,
+  itemsPerRequest,
 } from "./atoms";
 
 export const indicatorIndex = selector({
@@ -19,7 +21,10 @@ export const indicatorIndex = selector({
     const vc = get(viewCount);
     const numerator = Math.max(mpt, 0) - mt;
     const denominator = ms[1] - 16;
-    return Math.min(vc - 1, parseInt((numerator / denominator) * (vc - 1)));
+    return Math.min(
+      Math.max(vc - 1, 0),
+      parseInt((numerator / denominator) * (vc - 1))
+    );
   },
 });
 
@@ -45,42 +50,102 @@ export const currentIndexIndicatorTop = selector({
 export const currentIndexPercentage = selector({
   key: "currentIndexPercentage",
   get: ({ get }) => {
+    const clt = get(currentListTop);
+    const clh = get(currentListHeight);
+    const [unused, mh] = get(mainSize);
+    const range = clh - mh;
+
+    if (range <= 0) return 0;
+    return clt / range;
+  },
+  set: ({ get, set }, newValue) => {
+    const clh = get(currentListHeight);
+    const [unused, mh] = get(mainSize);
+    const max = clh - mh;
+    const min = 0;
+    set(currentListTop, newValue * (clh - mh));
+  },
+});
+
+export const currentIndex = selector({
+  key: "currentIndex",
+  get: ({ get }) => {
+    const cip = get(currentIndexPercentage);
     const vc = get(viewCount);
-    const ci = get(currentIndex);
-    const perc = vc === 0 ? 0 : ci / (vc - 1);
-    return perc;
+    return Math.round(cip * Math.max(0, vc - 1));
+  },
+  set: ({ get, set }, newValue) => {
+    const vc = get(viewCount);
+    set(currentIndexPercentage, newValue / (vc - 1));
+  },
+});
+
+export const currentListTopRange = selector({
+  key: "currentListTopRange",
+  get: ({ get }) => {
+    const [unused, mh] = get(mainSize);
+    const clh = get(currentListHeight);
+    return [0, clh - mh];
+  },
+});
+
+export const numTicks = selector({
+  key: "numTicks",
+  get: ({ get }) => get(viewCount) / 5,
+});
+
+export const ticks = selector({
+  key: "ticks",
+  get: ({ get }) => {
+    const ns = get(numTicks);
+    return [...Array(ns).keys()].map((i) => 5 * i);
+  },
+});
+
+export const viewPortWindow = selector({
+  key: "viewPortWindow",
+  get: ({ get }) => {
+    const [unused, mh] = get(mainSize);
+    const clt = get(currentListTop);
+    return [clt, clt + mh];
   },
 });
 
 export const numSections = selector({
   key: "numSections",
-  get: ({ get }) => get(viewCount) / 5,
-});
-
-export const sections = selector({
-  key: "sections",
   get: ({ get }) => {
-    const ns = get(numSections);
-    return [...Array(ns).keys()].map((i) => 5 * i);
-  },
-});
-
-export const currentListTop = selector({
-  key: "currentListTop",
-  get: ({ get }) => {
-    const clh = get(currentListHeight);
-    const idi = get(isDraggingIndicator);
-    const [unused, mh] = get(mainSize);
-    const perc = idi
-      ? get(indicatorIndexPercentage)
-      : get(currentIndexPercentage);
-    return Math.max(0, clh - mh) * perc;
-  },
-  set: ({ set, get }, newValue) => {
-    const clh = get(currentListHeight);
-    const [unused, mh] = get(mainSize);
     const vc = get(viewCount);
-    const range = Math.max(clh - mh, 0);
-    set(currentIndex, Math.floor((newValue / range) * (vc - 1)));
+    const breakpoints = [...Array(5).keys()].map((i) => Math.pow(10, i + 3));
+    for (const i = 0; i < breakpoints.length; i++) {
+      const breakpoint = breakpoints[i];
+      if (vc <= breakpoint) return Math.ceil(vc / Math.pow(10, i + 1));
+    }
+    return Math.ceil(vc / Math.pow(10, breakpoints.length));
+  },
+});
+
+export const visibleSections = selectorFamily({
+  key: "sectionsToRender",
+  get: ({ get }) => {},
+});
+
+export const sectionSegmentIndices = selectorFamily({
+  key: "sectionSegmentIndices",
+  get: (sectionIndex) => ({ get }) => {},
+});
+
+export const segmentItemIndices = selectorFamily({
+  key: "segmentItemIndices",
+  get: (segmentIndex) => ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    const start = segmentIndex * ipr;
+    return [...Array(ipr).keys()].map((i) => start + i);
+  },
+});
+
+export const segmentData = selectorFamily({
+  key: "segmentData",
+  get: (segmentIndex) => async ({ get }) => {
+    return await getPage(getSocket(5151, "state"), segmentIndex);
   },
 });

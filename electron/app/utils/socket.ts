@@ -1,5 +1,6 @@
 import io from "socket.io-client";
 import { useEffect } from "react";
+import { getPageUrl } from "../../test/e2e/helpers";
 
 const sockets = {};
 
@@ -13,6 +14,12 @@ export function getSocket(server, name) {
     );
   }
   return sockets[server][name];
+}
+
+export function getPage(socket, page) {
+  return new Promise(function (resolve) {
+    socket.emit("page", page, resolve);
+  });
 }
 
 export function useSubscribe(socket, event, callback) {

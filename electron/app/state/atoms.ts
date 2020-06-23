@@ -1,4 +1,4 @@
-import { atom } from "recoil";
+import { atom, atomFamily } from "recoil";
 
 export const indicatorPosition = atom({
   key: "indicatorPosition",
@@ -25,8 +25,8 @@ export const viewCount = atom({
   default: 0,
 });
 
-export const currentIndex = atom({
-  key: "currentIndex",
+export const currentListTop = atom({
+  key: "currentListTop",
   default: 0,
 });
 
@@ -38,4 +38,17 @@ export const currentListHeight = atom({
 export const isDraggingIndicator = atom({
   key: "isDraggingIndicator",
   default: false,
+});
+
+export const itemsPerRequest = atom({
+  key: "itemsPerRequest",
+  default: 50,
+});
+
+export const fields = atomFamily({
+  key: "field",
+  default: {
+    active: true,
+    color: "#CCCCCC",
+  },
 });

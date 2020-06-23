@@ -6,7 +6,7 @@ import { useRecoilValue } from "recoil";
 import "../../app.global.css";
 import Indicator from "./Indicator";
 import { mainSize, viewCount } from "../../state/atoms";
-import { currentIndexIndicatorTop, sections } from "../../state/selectors";
+import { currentIndexIndicatorTop, ticks } from "../../state/selectors";
 
 const Scrubber = styled.div`
   width: 100%;
@@ -51,12 +51,12 @@ const IndexIndicator = () => {
 };
 
 export default function () {
-  const sectionsValue = useRecoilValue(sections);
+  const ticksValue = useRecoilValue(ticks);
   const viewCountValue = useRecoilValue(viewCount);
   const [unused, mh] = useRecoilValue(mainSize);
   const springs = useSprings(
-    sectionsValue.length,
-    sectionsValue.map((s) => ({
+    ticksValue.length,
+    ticksValue.map((s) => ({
       top: Math.max(32, (s / (viewCountValue - 1)) * (mh - 35) + 32),
     }))
   );
