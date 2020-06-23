@@ -1,5 +1,5 @@
-User Guide
-==========
+FiftyOne User Guide
+===================
 
 .. default-role:: code
 

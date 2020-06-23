@@ -1,5 +1,5 @@
-Recipes
-=======
+FiftyOne Recipes
+================
 
 .. default-role:: code
 

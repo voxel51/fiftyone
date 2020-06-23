@@ -160,8 +160,8 @@ documentation, feel free to reach out to us at support@voxel51.com.
    :maxdepth: 1
    :hidden:
 
-   getting_started/install
-   tutorials/index
-   recipes/index
-   user_guide/index
-   api/fiftyone
+   Installation<getting_started/install>
+   Tutorials<tutorials/index>
+   Recipes<recipes/index>
+   User Guide<user_guide/index>
+   API Documentation<api/fiftyone>

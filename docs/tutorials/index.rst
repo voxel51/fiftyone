@@ -1,5 +1,5 @@
-Tutorials
-=========
+FiftyOne Tutorials
+==================
 
 .. default-role:: code
 
