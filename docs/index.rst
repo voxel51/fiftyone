@@ -31,38 +31,46 @@ learning workflows.
 
 Automatically detect label annotation mistakes.
 
-See the :doc:`label mistakes tutorial<tutorials/label_mistakes>` to explore
-this capability.
+.. note::
+
+    See the :doc:`label mistakes tutorial<tutorials/label_mistakes>` to explore
+    this capability.
 
 .. rubric:: Removing redundant images
 
 Find and remove similar samples in your dataset to reduce redundancy and avoid
 accidental class/concept imbalance in your model training loop.
 
-See the :doc:`uniqueness tutorial<tutorials/uniqueness>` to explore this
-capability.
+.. note::
+
+    See the :doc:`uniqueness tutorial<tutorials/uniqueness>` to explore this
+    capability.
 
 .. rubric:: Bootstrapping training datasets from raw images
 
 Bootstrap your training dataset with raw images.
 
-Tutorial coming soon!
+.. note::
+
+    Tutorial coming soon!
 
 .. rubric:: Adding optimal samples to your dataset
 
 Add the optimal samples to your training dataset for improving your model’s
 performance.
 
-Tutorial coming soon!
+.. note::
+
+    Tutorial coming soon!
 
 Concepts
 ________
 
-.. rubric:: The :doc:`FiftyOne Core Library<user_guide/basics>`
+.. rubric:: :doc:`The FiftyOne Core Library<user_guide/basics>`
 
-The **FiftyOne Core Library** provides a structured yet dynamic representation
-to explore your datasets. You can efficiently query and manipulate your dataset
-by adding custom tags, model predictions and more.
+FiftyOne's core library provides a structured yet dynamic representation to
+explore your datasets. You can efficiently query and manipulate your dataset by
+adding custom tags, model predictions and more.
 
 .. code-block:: python
 
@@ -87,12 +95,13 @@ by adding custom tags, model predictions and more.
     formats out-of-the-box, and it also provides the extensibility to load
     datasets in custom formats.
 
-    Check out our :doc:`loading common datasets<user_guide/dataset_creation>`
-    guide to see how to load your data into FiftyOne today.
+    Check out the
+    :doc:`loading datasets guide<user_guide/dataset_creation/index>` to see how
+    to load your data into FiftyOne today.
 
-.. rubric:: The :doc:`FiftyOne App<user_guide/app>`
+.. rubric:: :doc:`The FiftyOne App<user_guide/app>`
 
-The **FiftyOne App** is a graphical user interface (GUI) that makes it easy to
+The FiftyOne App is a graphical user interface (GUI) that makes it easy to
 rapidly gain intuition into your datasets. You can visualize labels, bounding
 boxes and segmentations overlayed on the samples; sort, query and slice your
 dataset into any aspect you need; and more.
@@ -104,12 +113,12 @@ dataset into any aspect you need; and more.
    :target: user_guide/app.html
 
 
-.. rubric:: The :doc:`FiftyOne Brain<user_guide/brain>`
+.. rubric:: :doc:`The FiftyOne Brain<user_guide/brain>`
 
-The **FiftyOne Brain** is a library of powerful machine learning-powered
-:ref:`capabilities<Capabilities>` that can provide insights into your datasets
-and recommend ways to modify your datasets that will improve the performance of
-your models.
+The FiftyOne Brain is a library of powerful machine learning-powered
+:ref:`capabilities<Capabilities>` that provide insights into your datasets and
+recommend ways to modify your datasets that will lead to measurably better
+performance of your models.
 
 .. code-block:: python
 
