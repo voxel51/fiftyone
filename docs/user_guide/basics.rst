@@ -3,11 +3,13 @@ FiftyOne Dataset Basics
 
 .. default-role:: code
 
-Fiftyone `Datasets` allow you to easily :doc:`load <dataset_creation/index>`,
-:doc:`view <app>`, and :doc:`modify <using_dataset>` your image datasets along
-with any related labels (classification, detection, segmentation, etc).
+The FiftyOne `Dataset` class allows you to easily
+:doc:`load <dataset_creation/index>`, :doc:`modify <using_dataset>` and
+:doc:`visualize <app>` your data along with any related labels
+(classification, detection, segmentation, etc).
 
-`Datasets` can be visualized in the :doc:`FiftyOne App <app>`.
+`Dataset` is the understood format that can be visualized in the
+:doc:`FiftyOne App <app>`.
 
 .. image:: ../images/dog.png
    :alt: App
@@ -19,8 +21,8 @@ ________
 
 `Datasets` are composed of `Samples` which contain `Fields`, all of which can
 be dynamically created, modified and deleted.
-`Datasets` do not store all images in memory, instead storing image paths and
-then caching data as needed.
+FiftyOne uses a lightweight non-relational database to store `Datasets`, so
+usage is easy on your computer's memory and scalable.
 
 `Datasets` should be thought of as unordered collections. `Samples` can be
 added to them and they can be accessed by key. However, slicing and sorting
@@ -56,21 +58,23 @@ When unset, the default `Field` value will be `None`.
 Tags
 ____
 
-`Tags` are simply a list of strings. This field is automatically included on
-all `Samples` (defaulting to an empty list):
+`Sample.tags` is a default `Field` of any `Sample`. Tags are simply a list of
+strings and can be used to tag a `Sample` as part of a train/test split or any
+other tagging that you would like:
 
 .. code-block:: python
 
     sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
-    sample.tags += ["my_tag"]
+    sample.tags += ["my_favorite_samples"]
     print(sample.tags)
 
 .. code-block:: plain
 
-    ["train", "my_tag"]
+    ["train", "my_favorite_samples"]
 
 DatasetViews
 ____________
 
-`DatasetViews` are ways of taking your `Dataset` and looking at subsets of it
-without worrying about augmenting the `Dataset` itself.
+`DatasetViews` are a powerful and fast tool for taking your `Dataset` and
+looking at subsets of it without worrying about augmenting the `Dataset`
+itself.
