@@ -46,9 +46,10 @@ ______
 If `Datasets` are a table where `Samples` are the rows, then `Fields` are the
 columns. Every attribute that a `Sample` contains is a `Field`.
 
-`Fields` can be dynamically created, modified, and deleted.
-When a new `Field` is added to a `Sample` in a `Dataset`, then all other
-`Samples` are updated to include this new `Field` with a `null` value.
+`Fields` can be dynamically created, modified, and deleted. When a new `Field`
+is assigned for a `Sample` in a `Dataset`, it is automatically added to the
+`Dataset`'s schema and thus accessible on each other `Sample` in the `Dataset`.
+When unset, the default `Field` value will be `None`.
 
 Tags
 ____
@@ -64,7 +65,7 @@ all `Samples` (defaulting to an empty list):
 
 .. code-block:: plain
 
-    Out: ["train", "my_tag"]
+    ["train", "my_tag"]
 
 DatasetViews
 ____________
