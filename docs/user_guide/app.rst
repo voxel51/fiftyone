@@ -125,7 +125,7 @@ select samples and bring those into your python terminal.
 
 First select samples in the App.
 
-.. image:: ../images/cifar10_selected.png
+.. image:: ../images/cifar10_selected.gif
    :alt: Cifar10 Selected
    :align: center
 
