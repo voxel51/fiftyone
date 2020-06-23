@@ -10,8 +10,10 @@ your datasets and turn your good models into *great models*.
 
 .. rubric:: :doc:`Exploring image uniqueness with FiftyOne <uniqueness>`
 
-During the training loop for a model, the best results will be seen when
-training on unique data. This tutorial shows how FiftyOne can automatically
+A dataset with predominantly unique data is going to give the best results
+during training. Furthermore, if very similar or duplicate data is present in
+both training and validation/test splits, evaluation results may not be
+reliable. This tutorial shows how FiftyOne can automatically
 find near-duplicate images in your datasets and recommend the most unique
 samples in your data to start your model training off right.
 
