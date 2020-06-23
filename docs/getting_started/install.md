@@ -1,11 +1,6 @@
-# Install FiftyOne
+# Installation
 
-## TODO
-
-Simple page that provides steps that user can copy-paste into their terminal to
-install the software, on Mac, Linux, or Windows
-
-This document describes how to install FiftyOne in a
+This page describes how to install FiftyOne in a
 [virtual environment](https://docs.python.org/3/tutorial/venv.html). Using a
 virtual environment is strongly recommended because it allows maintaining an
 isolated environment in which FiftyOne and its dependencies can be installed.
@@ -14,16 +9,13 @@ versions already installed on your machine.
 
 ## Prerequisites
 
-Before starting this guide, you will need a working Python installation.
-FiftyOne currently requires **Python 3.6** or newer. On Linux, we recommended
-installing Python through your system package manager (APT, YUM, etc.) if it is
-available. On other platforms, Python can be downloaded
-[from python.org](https://www.python.org/downloads/). To verify that a suitable
+You will need a working Python installation. FiftyOne currently requires
+**Python 3.6** or newer. On Linux, we recommended installing Python through
+your system package manager (APT, YUM, etc.) if it is available. On other
+platforms, Python can be downloaded
+[from python.org](https://www.python.org/downloads). To verify that a suitable
 Python version is installed and accessible, run `python3 --version` or
 `python --version`.
-
-This guide also assumes that you are comfortable using a command line for basic
-operations (running commands, moving between folders, etc.).
 
 ## Creating a virtual environment
 
@@ -113,8 +105,9 @@ dealing with virtual environments frequently:
     [here](https://docs.python.org/3/library/venv.html), with information on
     additional arguments that the `venv` command accepts.
 -   There is a similar
-    ["virtualenv" package](https://pypi.org/project/virtualenv/) (installable
-    with `pip`) that supports older Python versions.
+    [virtualenv package](https://pypi.org/project/virtualenv/) (installable
+    with `pip` via `pip install virtualenv`) that supports older Python
+    versions.
 -   [virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/)
     adds some convenient shell support for creating and managing virtual
     environments.
@@ -146,15 +139,15 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>> exit()
 ```
 
-**Note for Linux users:** if you encounter an error related to MongoDB failing
-to start, such as "Could not find mongod", you may need to install additional
-packages. See the [Linux MongoDB setup guide](linux_db_setup) for details.
+**Linux users:** if you encounter an error related to MongoDB failing to start,
+such as "Could not find mongod", you may need to install additional packages.
+See the [Linux MongoDB setup guide](linux_db_setup) for details.
 
-**Note for Windows users:** If you encounter errors related to missing
-`msvcp140.dll`, you will need to install the 64-bit Visual Studio 2015 C++
-redistributable library, available
-[here](https://www.microsoft.com/en-us/download/details.aspx?id=48145) (choose
-the x64 version).
+**Windows users:** If you encounter errors related to missing `msvcp140.dll`,
+you will need to install the 64-bit Visual Studio 2015 C++ redistributable
+library,
+[available here](https://www.microsoft.com/en-us/download/details.aspx?id=48145)
+(choose the x64 version).
 
 Once FiftyOne is installed, you can proceed with any of the
 [examples](examples/index) in the documentation. The
@@ -163,8 +156,11 @@ good place to start.
 
 ## Installing extra packages
 
-Note that you may want to install additional packages in the virtual
-environment (with `pip install` followed by the given package names):
+Various tutorials and guides that we provide on this site require additional
+packages in order to run. If you encounter a missing package, you will see
+helpful instructions on what you need to install. Or, you can preemptively
+install what you'll need by installing the following additional packages (via
+`pip`) in your virtual environment:
 
 -   `ipython` to follow along with interactive examples more easily
 -   `tensorflow` for examples requiring TensorFlow. The installation process
@@ -183,7 +179,7 @@ you can install only what you need.
 ## Upgrading FiftyOne
 
 Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
-upgrade an existing FiftyOne installation in-place:
+upgrade an existing FiftyOne installation:
 
 ```sh
 pip install --index https://pypi.voxel51.com --upgrade fiftyone
@@ -253,4 +249,4 @@ build environment:
     target_arch: x86_64
 ```
 
-Verify that the version number after "db version" is at least 3.6.
+Verify that the db version is at least 3.6.
