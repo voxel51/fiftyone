@@ -24,6 +24,13 @@
 
 .nav__main {
   font-size: 18px;
+  padding-left: 0;
+  justify-content: unset;
+}
+
+.nav__main__logo {
+  width: 300px;
+  padding-left: 30px;
 }
 
 .footer {
