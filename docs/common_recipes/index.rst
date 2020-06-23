@@ -15,22 +15,19 @@ enhance your workflow.
 .. Rapidly hone in on which samples it is making errors on and visually inspect
 .. for unexpected factors and interesting patterns.
 
-.. rubric:: :doc:`Image Deduplication <image_deduplication>`: 
+.. rubric:: :doc:`Image Deduplication <image_deduplication>`:
 
 Turn your data into a FiftyOne ``Dataset`` to automatically find and view
 duplicate images.
-
 
 .. rubric:: :doc:`Model Inference-in-the-Loop with FiftyOne <model_inference>`:
 
 Add FiftyOne to your model training and analysis loop to get a unique view into
 what your model is learning.
 
-
-
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   image_deduplication.ipynb
-   model_inference.ipynb
+   Image deduplication<image_deduplication.ipynb>
+   Model inference in-the-loop<model_inference.ipynb>

@@ -1,9 +1,9 @@
-User Guides
-===========
+User Guide
+==========
 
 .. default-role:: code
 
-.. rubric:: :doc:`FiftyOne Dataset Basics <basics>`: 
+.. rubric:: :doc:`FiftyOne Dataset Basics <basics>`:
 
 Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
 `Tags` and `Views`
@@ -23,7 +23,7 @@ Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
        ...
 
 
-.. rubric:: :doc:`Loading a Dataset <dataset_creation/index>`: 
+.. rubric:: :doc:`Loading a Dataset <dataset_creation/index>`:
 
 Load a `Dataset` either using an
 existing supported dataset format or from scratch
@@ -34,9 +34,9 @@ existing supported dataset format or from scratch
    dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
 
 
-.. rubric:: :doc:`Using a Dataset <using_dataset>`: 
+.. rubric:: :doc:`Using a Dataset <using_dataset>`:
 
-Use your `Dataset` to search, sort, and modify your 
+Use your `Dataset` to search, sort, and modify your
 data
 
 .. code-block:: python
@@ -62,9 +62,9 @@ Export your `Dataset` to disk in any number of formats
     dataset.export(export_dir, dataset_type=dataset_type)
 
 
-.. rubric:: :doc:`Viewing Datasets in the App <app>`: 
+.. rubric:: :doc:`Viewing Datasets in the App <app>`:
 
-Visualize your `Dataset` in the FiftyOne App and see your changes in real time. 
+Visualize your `Dataset` in the FiftyOne App and see your changes in real time.
 
 .. image:: ../images/dog.png
    :alt: App
@@ -73,7 +73,7 @@ Visualize your `Dataset` in the FiftyOne App and see your changes in real time.
    :target: app.html
 
 
-.. rubric:: :doc:`FiftyOne Brain <brain>`: 
+.. rubric:: :doc:`FiftyOne Brain <brain>`:
 
 Use the FiftyOne Brain to automatically get insights into your `Dataset`
 
@@ -87,7 +87,7 @@ Use the FiftyOne Brain to automatically get insights into your `Dataset`
 
 
 .. rubric:: :doc:`Command Line Interface <cli>`:
-    
+
 FiftyOne functionality can be accessed directly from the command line without
 ever needing to open Python.
 
@@ -95,8 +95,8 @@ ever needing to open Python.
 
     # Creates a dataset from the given data on disk
     fiftyone datasets create \
-        --name my_dataset --dataset-dir /path/to/data 
-    
+        --name my_dataset --dataset-dir /path/to/data
+
     # Launch the FiftyOne App
     fiftyone dashboard launch my_dataset
 
@@ -106,7 +106,7 @@ ever needing to open Python.
 .. toctree::
    :maxdepth: 1
    :hidden:
-   
+
    basics
    dataset_creation/index
    using_dataset
