@@ -1,5 +1,7 @@
-Zoo Dataset Examples
+Loading Zoo Datasets
 ====================
+
+.. default-role:: code
 
 FiftyOne provides a Dataset Zoo that contains a collection of common
 datasets that you can download and load into FiftyOne via a few simple
@@ -520,6 +522,7 @@ You can customize this directory in any of the following ways:
 
     # Customize where zoo datasets are downloaded
     import fiftyone.core.config as foc
+
     foc.set_config_settings(default_dataset_dir="/your/custom/directory")
 
 Customizing your ML backend
@@ -569,4 +572,5 @@ You can customize this backend in any of the following ways:
 
     # Use the `torch` backend
     import fiftyone.core.config as foc
+
     foc.set_config_settings(default_ml_backend="torch")

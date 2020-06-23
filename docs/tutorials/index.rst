@@ -1,8 +1,11 @@
 Tutorials
 =========
 
-Find out how FiftyOne can refine your data and turn your good models into great
-models.
+.. default-role:: code
+
+Welcome to FiftyOne tutorials! Each tutorial below is a curated demonstration
+of how FiftyOne can help refine your datasets and turn your good models into
+great models.
 
 .. rubric:: :doc:`Exploring image uniqueness with FiftyOne <uniqueness>`
 

@@ -3,66 +3,65 @@ User Guide
 
 .. default-role:: code
 
-.. rubric:: :doc:`FiftyOne Dataset Basics <basics>`:
+Welcome to FiftyOne User Guide! Each section in this guide provides an
+example-centric deep dive into a core feature of FiftyOne, with the goal of
+getting you up-and-running with FiftyOne on your data quickly and easily.
+
+.. rubric:: :doc:`FiftyOne Dataset basics <basics>`
 
 Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
-`Tags` and `Views`
+`Tags` and `DatasetViews`:
 
 .. code-block:: python
-   :linenos:
 
-   import fiftyone as fo
+    import fiftyone as fo
 
-   dataset = fo.Dataset(name="my_dataset")
-   sample = fo.Sample(filepath="path/to/img.png")
-   dataset.add_sample(sample)
-   sample.tags += ["train"]
-   sample["integer_field"] = 51
-   view = dataset.view().match_tag("test").sort_by("integer_field")[5:10]
-   for sample in view:
-       ...
+    dataset = fo.Dataset(name="my_dataset")
+    sample = fo.Sample(filepath="path/to/img.png")
+    dataset.add_sample(sample)
+    sample.tags += ["train"]
+    sample["custom_field"] = 51
+    view = (
+        dataset.view()
+        .match_tag("test")
+        .sort_by("custom_field", reverse=True)
+        .limit(10)
+    )
+    for sample in view:
+        print(sample)
 
+.. rubric:: :doc:`Loading a Dataset <dataset_creation/index>`
 
-.. rubric:: :doc:`Loading a Dataset <dataset_creation/index>`:
-
-Load a `Dataset` either using an
-existing supported dataset format or from scratch
+Load a `Dataset` either using an existing supported dataset format or from
+scratch:
 
 .. code-block:: python
-   :linenos:
 
-   dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
-
+   dataset = fo.Dataset.from_images_dir("/path/to/images")
 
 .. rubric:: :doc:`Using a Dataset <using_dataset>`:
 
-Use your `Dataset` to search, sort, and modify your
-data
+Use your `Dataset` to search, sort, and modify your data:
 
 .. code-block:: python
-   :linenos:
 
    view = (
        dataset.view()
        .match({"tags": "test"})
        .exists("metadata")
-       .sort_by("filepath")[:3]
-       .take(2)
+       .sort_by("filepath")
+       .limit(5)
    )
 
+.. rubric:: :doc:`Exporting a Dataset <export_dataset>`
 
-.. rubric:: :doc:`Exporting a Dataset <export_dataset>`:
-
-Export your `Dataset` to disk in any number of formats
+Export your `Dataset` to disk in any number of formats:
 
 .. code-block:: python
-    :linenos:
 
-    dataset_type = fo.types.COCODetectionDataset
-    dataset.export(export_dir, dataset_type=dataset_type)
+    dataset.export(export_dir, dataset_type=fo.types.COCODetectionDataset)
 
-
-.. rubric:: :doc:`Viewing Datasets in the App <app>`:
+.. rubric:: :doc:`Visualizing Datasets in the App <app>`
 
 Visualize your `Dataset` in the FiftyOne App and see your changes in real time.
 
@@ -72,24 +71,21 @@ Visualize your `Dataset` in the FiftyOne App and see your changes in real time.
    :align: center
    :target: app.html
 
-
 .. rubric:: :doc:`FiftyOne Brain <brain>`:
 
 Use the FiftyOne Brain to automatically get insights into your `Dataset`
 
 .. code-block:: python
-   :linenos:
 
    import fiftyone.brain as fob
 
    fob.compute_uniqueness(dataset)
    rank_view = dataset.view().sort_by("uniqueness")
 
+.. rubric:: :doc:`Command Line Interface <cli>`
 
-.. rubric:: :doc:`Command Line Interface <cli>`:
-
-FiftyOne functionality can be accessed directly from the command line without
-ever needing to open Python.
+FiftyOne functionality can be accessed directly from the command line via the
+FiftyOne Command Line Interface (CLI):
 
 .. code:: shell
 
@@ -100,17 +96,14 @@ ever needing to open Python.
     # Launch the FiftyOne App
     fiftyone dashboard launch my_dataset
 
-
-
-
 .. toctree::
-   :maxdepth: 1
-   :hidden:
+    :maxdepth: 1
+    :hidden:
 
-   basics
-   dataset_creation/index
-   using_dataset
-   export_dataset
-   app
-   brain
-   cli
+    Dataset basics<basics>
+    Loading datasets<dataset_creation/index>
+    Using datasets<using_dataset>
+    Exporting datasets<export_dataset>
+    Viewing datasets in the App<app>
+    FiftyOne Brain<brain>
+    Command-Line Interface<cli>

@@ -1,5 +1,5 @@
-Command-Line Interface (CLI)
-============================
+FiftyOne Command-Line Interface (CLI)
+=====================================
 
 Installing FiftyOne automatically installs ``fiftyone``, a command-line
 interface (CLI) for interacting with FiftyOne. This utility provides

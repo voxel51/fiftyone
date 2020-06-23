@@ -1,5 +1,7 @@
-Custom Dataset Examples
+Loading Custom Datasets
 =======================
+
+.. default-role:: code
 
 FiftyOne datasets are composed of ``fiftyone.core.sample.Sample``
 instances, and FiftyOne provides the ability for you to construct your
@@ -295,9 +297,7 @@ image classification dataset stored in-memory:
     # Create the dataset
     dataset = fo.Dataset("test-dataset")
     dataset.ingest_labeled_image_samples(
-        samples,
-        dataset_dir="/tmp/dataset",
-        sample_parser=sample_parser,
+        samples, dataset_dir="/tmp/dataset", sample_parser=sample_parser,
     )
 
     # View summary info about the dataset
