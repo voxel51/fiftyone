@@ -11,7 +11,7 @@ also provides support for easily loading custom data formats as well.
 
 There are three basic ways to load data into FiftyOne:
 
-- **:doc:`Common datasets<common_datasets>`**: FiftyOne natively supports loading
+- :doc:`Common datasets<common_datasets>`: FiftyOne natively supports loading
   datasets in a variety of common formats, including
   `COCO <https://cocodataset.org/#home>`_,
   `VOC <http://host.robots.ox.ac.uk/pascal/VOC>`_,
