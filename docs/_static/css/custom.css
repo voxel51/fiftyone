@@ -1,6 +1,7 @@
 /* sphinx-rtd-theme overrides */
 
 .wy-nav-side {
+  background-color: white;
   border-right: 2px solid var(--gray-light3);
   margin-top: 90px;
 }
@@ -17,6 +18,18 @@
   border-width: 0;
   border-radius: 3px;
   background-color: var(--gray-light3);
+}
+
+.wy-menu-vertical a {
+  color: #404040;
+}
+
+.wy-menu-vertical a:hover {
+  background-color: #d6d6d6;
+}
+
+.wy-menu-vertical a:active {
+  background-color: var(--color-primary);
 }
 
 /* voxel51-website.css overrides */
