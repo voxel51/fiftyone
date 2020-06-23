@@ -2,8 +2,7 @@
 
 .wy-nav-side {
   border-right: 2px solid var(--gray-light3);
-  padding-top: 90px;
-  z-index: -1;
+  margin-top: 90px;
 }
 
 .wy-side-nav-search {
