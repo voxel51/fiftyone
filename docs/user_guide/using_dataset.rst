@@ -10,6 +10,103 @@ functionality to inspect, search, and modify it from a `Dataset`-wide down to a
 The following sections provide details of how to use various aspects of
 FiftyOne `Datasets`.
 
+Datasets
+________
+
+Instantiating a `Dataset` creates a **new** dataset.
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    dataset1 = fo.Dataset(name="my_first_dataset")
+    dataset2 = fo.Dataset(name="my_second_dataset")
+    dataset3 = fo.Dataset(name="my_third_dataset")
+
+Check to see what datasets exist at any time via `list_dataset_names()`.
+
+.. code-block:: python
+
+    print(fo.list_dataset_names())
+
+.. code-block:: plain
+
+    ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
+
+Load a dataset using `load_dataset()`. Dataset objects are singletons. Cool!
+
+.. code-block:: python
+
+    dataset2_reference = fo.load_dataset("my_second_dataset")
+    print(dataset2_reference is dataset2)
+
+.. code-block:: plain
+
+    True
+
+If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
+`load_dataset()` you're going to have a bad time.
+
+.. code-block:: python
+
+    dataset3_reference = fo.Dataset(name="my_third_dataset")
+
+.. code-block:: plain
+
+    ValueError: Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
+
+.. code-block:: python
+
+    dataset4 = fo.load_dataset(name="my_fourth_dataset")
+
+.. code-block:: plain
+
+    fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
+
+By default, datasets are non-persistent. Non-persistent datasets are wiped
+from FiftyOne on exit of the python process. This means any data in the
+FiftyOne backing database is deleted, however files on disk are untouched.
+
+To make a dataset persistent, set the attribute to `True`.
+
+.. code-block:: python
+
+    dataset1.persistent = True
+    quit()
+
+Start a new session:
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    print(fo.list_dataset_names())
+
+.. code-block:: plain
+
+    ['my_first_dataset']
+
+Delete a dataset explicitly via `Dataset.delete()`. Once a dataset is deleted,
+any existing reference in memory will be in a volatile state. `Dataset.name`
+and `Dataset.deleted` will still be valid attributes, but calling any other
+attribute or method will raise a `DoesNotExistError`.
+
+.. code-block:: python
+
+    dataset = fo.load_dataset("my_first_dataset")
+    dataset.delete()
+    print(fo.list_dataset_names())
+    print(dataset.name)
+    print(dataset.deleted)
+    print(dataset.persistent)
+
+.. code-block:: plain
+
+    []
+    my_first_dataset
+    True
+    fiftyone.core.dataset.DoesNotExistError: Dataset 'my_first_dataset' is deleted
+
 Samples
 _______
 
@@ -18,7 +115,6 @@ corresponding image on disk. The image is not read at this point:
 
 .. code-block:: python
 
-    import fiftyone as fo
     sample = fo.Sample(filepath="path/to/image.png")
 
 Adding Samples
