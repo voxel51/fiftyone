@@ -31,19 +31,20 @@ learning workflows.
 
 Annotations mistakes create an artificial ceiling on the performance of your
 models. However, finding these mistakes by hand is at least as arduous as the
-original annotation was, especially in cases of larger datasets. FiftyOne
-provides a quantitative `mistakenness` measure that can automatically identify
-possible label mistakes in your datasets.
-:doc:`>>Try Now<tutorials/label_mistakes>`
+original annotation work! FiftyOne provides a `mistakenness` tool that can
+automatically identify possible label mistakes in your datasets.
+
+:doc:`>> Try it now!<tutorials/label_mistakes>`
 
 .. rubric:: Removing redundant images
 
 During the training loop for a model, the best results will be seen when
 training on unique data. For example, finding and removing similar samples in
 your dataset cam avoid accidental concept imbalance that can bias the learning
-of your model. FiftyOne provides a `uniqueness` measure that can automatically
+of your model. FiftyOne provides a `uniqueness` tool that can automatically
 identify duplicate or near-duplicate images in your datasets.
-:doc:`>>Try Now<tutorials/uniqueness>`
+
+:doc:`>> Try it now!<tutorials/uniqueness>`
 
 .. rubric:: Bootstrapping training datasets from raw images
 
@@ -51,10 +52,9 @@ In the early stages of a machine learning workflow, ML engineers inevitably ask
 themselves: *what data should I select to annotate?* This is a critical
 question, as acquiring high quality ground truth annotations is an expensive
 and time consuming process. FiftyOne provides methods that can automatically
-identify a diverse subset of your raw (unlabeled) dataset that you should send
-for annotation, enabling you to bootsrap a curated training dataset that can
-lead to demonstrably better model performance on a limited time/annotation
-budget.
+recommend unlabeled samples from your dataset to send for annotation, enabling
+you to bootsrap a training dataset that leads to demonstrably better model
+performance.
 
 .. note::
 
@@ -62,16 +62,12 @@ budget.
 
 .. rubric:: Adding optimal samples to your dataset
 
-While a model is training, it will learn to understand attributes of certain
-samples faster than others. The natural question arises: *what types of data
-should I add to my training dataset to provide the largest incremental
-improvement to the performance of my model?* FiftyOne provides methods that
-automatically measure how easy or diffiult it is for your model to understand
-the samples in  your dataset. These insights can be leveraged to mine hard
-samples from your data lake, a tried and true measure of mature machine
-learning processes. For example, FiftyOne enables you to select unlabeled
-samples that are the most valuable to have annotated and fed back into the
-system as training samples.
+While training, ML models understand attributes of certain samples faster than
+others. The natural question arises: *what new samples should I add to my
+training dataset to provide the largest incremental improvement to the
+performance of my model?* FiftyOne provides methods for mining hard samples
+from your datasets, a tried and true measure of mature machine
+learning processes.
 
 .. note::
 
@@ -146,7 +142,7 @@ __________
 
 Where should you go from here? You could...
 
-* Start by :doc:`installing FiftyOne<getting_started/install>`.
+* :doc:`Install FiftyOne<getting_started/install>`.
 * Try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
   capabilities of FiftyOne.
 * Explore :doc:`recipes<recipes/index>` for integrating FiftyOne into
