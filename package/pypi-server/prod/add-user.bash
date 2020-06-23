@@ -7,4 +7,5 @@ fi
 username="$1"
 
 cd "$(dirname "$0")"
-htpasswd -sc htpasswd.txt "$username"
+touch htpasswd.txt
+htpasswd htpasswd.txt "$username"

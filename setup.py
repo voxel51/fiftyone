@@ -20,15 +20,15 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.1.3",
-            "fiftyone-gui>=0.1.3",
-            "fiftyone-db",
+            "fiftyone-brain>=0.1.4",
+            "fiftyone-gui>=0.2.0",
+            "fiftyone-db>=0.1.1",
         ]
 
 
 setup(
     name="fiftyone",
-    version="0.1.3",
+    version="0.2.1",
     description="Project FiftyOne",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
@@ -49,7 +49,6 @@ setup(
         "Flask",
         "flask-socketio",
         "future",
-        "gunicorn",
         "mongoengine",
         "numpy",
         "packaging",
@@ -65,7 +64,7 @@ setup(
         "setuptools",
         "tabulate",
         # internal packages
-        "voxel51-eta",
+        "voxel51-eta>=0.1.1",
     ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
@@ -73,7 +72,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
-    scripts=["fiftyone/fiftyone"],
+    entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=2.7",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )

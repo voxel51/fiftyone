@@ -35,15 +35,21 @@ The dataset is organized on disk as follows:
 As we will soon come to discover, some of these samples are duplicates and we
 have no clue which they are!
 
-## Import FiftyOne
+### Requirements
 
-Importing the main FiftyOne package is easy:
+This walkthrough requires the `tensorflow` package.
 
-```py
-import fiftyone as fo
+```bash
+pip install tensorflow
 ```
 
 ## Create a dataset
+
+First start a `python` or `ipython` session and import the `fiftyone` package.
+
+```python
+import fiftyone as fo
+```
 
 Let's use a utililty method provided by FiftyOne to load the image
 classification dataset from disk:

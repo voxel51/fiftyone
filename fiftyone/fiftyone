@@ -1,9 +1,0 @@
-#!/usr/bin/env python
-# FiftyOne command-line utility.
-#
-# Copyright 2017-2020, Voxel51, Inc.
-# voxel51.com
-#
-from fiftyone.core.cli import main
-
-main()
