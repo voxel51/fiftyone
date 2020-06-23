@@ -25,12 +25,19 @@
 .nav__main {
   font-size: 18px;
   padding-left: 0;
+  padding-right: 20px;
   justify-content: unset;
 }
 
 .nav__main__logo {
   width: 300px;
   padding-left: 30px;
+}
+
+#nav__main__items {
+  text-align: right;
+  width: 100%;
+  max-width: 800px;
 }
 
 .footer {
