@@ -1,5 +1,7 @@
-Exporting a Dataset
-======================
+Exporting FiftyOne Datasets
+===========================
+
+.. default-role:: code
 
 FiftyOne provides native support for exporting datasets to disk in a
 variety of common formats.
@@ -1067,9 +1069,7 @@ can execute:
 
     # Export the dataset
     dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.BDDDataset,
+        export_dir, label_field=label_field, dataset_type=fo.types.BDDDataset,
     )
 
 CLI

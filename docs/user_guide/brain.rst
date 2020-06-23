@@ -63,9 +63,9 @@ predictions of a pre-trained model:
     fob.compute_uniqueness(dataset)
 
 **Input**: An unlabeled (or labeled) image dataset.  There are
-:doc:`recipes<../common_recipes/index>` for building datasets from a wide
-variety of image formats, ranging from a simple directory of images to
-complicated dataset structures like `MS-COCO <https://cocodataset.org/#home>`_.
+:doc:`recipes<../recipes/index>` for building datasets from a wide variety of
+image formats, ranging from a simple directory of images to complicated dataset
+structures like `MS-COCO <https://cocodataset.org/#home>`_.
 
 **Output**: A scalar-valued field per `sample` that ranks the uniqueness of
 that sample (higher value means more unique).  The default name of this field

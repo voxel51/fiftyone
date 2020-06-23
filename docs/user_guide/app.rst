@@ -1,5 +1,5 @@
-Viewing Datasets in the App
-===========================
+Viewing Datasets in the FiftyOne App
+====================================
 
 .. default-role:: code
 
@@ -108,7 +108,7 @@ FiftyOne App locally by starting python and running the following commands::
 
 
 .. code-block:: python
-    test code 
+    test code
 
 
 Using the FiftyOne App
@@ -125,7 +125,7 @@ select samples and bring those into your python terminal.
 
 First select samples in the App.
 
-.. image:: ../images/cifar10_selected.png
+.. image:: ../images/cifar10_selected.gif
    :alt: Cifar10 Selected
    :align: center
 
@@ -133,7 +133,7 @@ First select samples in the App.
 Second, load those samples into python::
 
     selected = session.selected
-    
+
     print(selected)
 
     Out:
@@ -151,7 +151,7 @@ sidebar also contains the fields of the sample.
 .. image:: ../images/cifar10_sidebar.png
     :alt: Cifar10 Sidebar
     :align: center
-        
+
 
 Tabs
 ----

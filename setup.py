@@ -32,10 +32,9 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages()
-    + ["fiftyone.common_recipes", "fiftyone.tutorials"],
+    packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
     package_dir={
-        "fiftyone.common_recipes": "docs/common_recipes",
+        "fiftyone.recipes": "docs/recipes",
         "fiftyone.tutorials": "docs/tutorials",
     },
     include_package_data=True,

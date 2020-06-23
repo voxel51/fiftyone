@@ -1,5 +1,7 @@
-Common Dataset Examples
+Loading Common Datasets
 =======================
+
+.. default-role:: code
 
 FiftyOne provides native support for loading labeled datasets from disk in a
 variety of common formats.
