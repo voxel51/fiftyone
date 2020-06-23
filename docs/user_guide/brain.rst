@@ -3,9 +3,9 @@ FiftyOne Brain
 
 .. default-role:: code
 
-The FiftyOne Brain provides powerful machine learning techniques that help 
-achieve the goal of transformation how you handle data from an art into a 
-measurable science.  FiftyOne Brain operations require the installation of 
+The FiftyOne Brain provides powerful machine learning techniques that are
+designed to transform how you curate your data from an art into a measurable
+science.  FiftyOne Brain operations require the installation of
 `torch` and `tensorflow`.
 
 
