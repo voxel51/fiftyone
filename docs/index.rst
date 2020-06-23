@@ -34,7 +34,7 @@ models. However, finding these mistakes by hand is at least as arduous as the
 original annotation work! FiftyOne provides a `mistakenness` tool that can
 automatically identify possible label mistakes in your datasets.
 
-:doc:`Try it now!<tutorials/label_mistakes>`
+:doc:`>> Try it now!<tutorials/label_mistakes>`
 
 .. rubric:: Removing redundant images
 
@@ -44,7 +44,7 @@ your dataset cam avoid accidental concept imbalance that can bias the learning
 of your model. FiftyOne provides a `uniqueness` tool that can automatically
 identify duplicate or near-duplicate images in your datasets.
 
-:doc:`Try it now!<tutorials/uniqueness>`
+:doc:`>> Try it now!<tutorials/uniqueness>`
 
 .. rubric:: Bootstrapping training datasets from raw images
 
