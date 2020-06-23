@@ -8,7 +8,7 @@ import {
 import ResizeObserver from "resize-observer-polyfill";
 import { useSetRecoilState } from "recoil";
 
-import { mainSize, mainTop, mousePosition } from "./atoms";
+import { mousePosition } from "./atoms";
 
 export const useTrackMousePosition = () => {
   let timeout;

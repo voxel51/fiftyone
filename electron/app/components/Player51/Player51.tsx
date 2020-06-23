@@ -62,41 +62,16 @@ const loadOverlay = (sample, colors) => {
   return [imgLabels, colorMap];
 };
 
-export default ({
-  colors,
-  thumbnail,
-  sample,
-  src,
-  style,
-  onClick,
-  onDoubleClick,
-  activeLabels,
-}) => {
-  const [overlay, colorMap] = loadOverlay(sample, colors);
-  const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
+export default () => {
   const [initLoad, setInitLoad] = useState(false);
-  const id = uuid();
-  const player = new Player51({
-    media: {
-      src: src,
-      type: "image/jpg",
-    },
-    overlay: overlay,
-    colorMap: colorMap,
-  });
-  const props = thumbnail
-    ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
-    : {};
   useEffect(() => {
     if (!initLoad) {
-      if (thumbnail) {
-        player.thumbnailMode();
-      }
-      player.render(id, activeLabels);
+      player.thumbnailMode();
+      player.render("player-id", {});
       setInitLoad(true);
     } else {
-      player.renderer.processFrame(activeLabels);
+      player.renderer.processFrame({});
     }
-  }, [activeLabels]);
-  return <div id={id} style={style} {...props} />;
+  });
+  return <div id={"player-id"} style={style} />;
 };

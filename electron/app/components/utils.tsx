@@ -4,8 +4,8 @@ import _ from "lodash";
 import styled from "styled-components";
 import { useSetRecoilState } from "recoil";
 
-import { viewCount, mainTop, mainSize } from "../../state/atoms";
-import { useTrackMousePosition, useResizeObserver } from "../../state/hooks";
+import { viewCount, mainTop, mainSize } from "../state/atoms";
+import { useTrackMousePosition, useResizeObserver } from "../state/hooks";
 
 const StyledContainer = styled.div`
   width: 100%;

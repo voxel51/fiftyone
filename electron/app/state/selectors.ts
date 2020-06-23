@@ -76,4 +76,11 @@ export const currentListTop = selector({
       : get(currentIndexPercentage);
     return Math.max(0, clh - mh) * perc;
   },
+  set: ({ set, get }, newValue) => {
+    const clh = get(currentListHeight);
+    const [unused, mh] = get(mainSize);
+    const vc = get(viewCount);
+    const range = Math.max(clh - mh, 0);
+    set(currentIndex, Math.floor((newValue / range) * (vc - 1)));
+  },
 });

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Container } from "./utils";
+import { Container } from "../utils";
 import Indicator from "./Indicator";
 
 export default {

@@ -1,12 +1,17 @@
 import React, { useRef, useEffect, useState } from "react";
 import styled from "styled-components";
 import { useSpring, animated } from "react-spring";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { useScroll } from "react-use-gesture";
+import {
+  RecoilRoot,
+  useRecoilValue,
+  useSetRecoilState,
+  useRecoilState,
+} from "recoil";
+import { useWheel } from "react-use-gesture";
 
 import { currentListTop } from "../../state/selectors";
 import { currentListHeight, viewCount } from "../../state/atoms";
-import { Container } from "./utils";
+import { Container } from "../utils";
 import Scrubber from "./Scrubber";
 
 export default {
@@ -33,8 +38,7 @@ const ImagesContainer = styled.div`
   width: 100%;
   height: 100%;
   position: relative;
-  overflow-x: hidden;
-  overyflow-y: scroll;
+  overflow: hidden;
 `;
 
 const ImageDiv = animated(styled.div`
@@ -44,14 +48,14 @@ const ImageDiv = animated(styled.div`
   padding: 0 1rem;
 `);
 
-const Images = ({ targetRef, scrollRef }) => {
-  const ref = useRef();
+const Images = ({ targetRef }) => {
   const setCurrentListHeight = useSetRecoilState(currentListHeight);
   const currentListTopValue = useRecoilValue(currentListTop);
   const viewCountValue = useRecoilValue(viewCount);
   useEffect(() => {
     setCurrentListHeight(targetRef.current.offsetHeight);
   }, [targetRef.current]);
+
   const props = useSpring({
     top: -1 * currentListTopValue,
   });
@@ -65,18 +69,35 @@ const Images = ({ targetRef, scrollRef }) => {
   );
 };
 
-export const scrubber = () => {
+const ScrubberDemo = () => {
+  const [currentListTopValue, setCurrentListTop] = useRecoilState(
+    currentListTop
+  );
   const ref = useRef();
-  const scrollRef = useRef();
+  const containerRef = useRef();
+  const bind = useWheel((s) => {
+    const {
+      delta: [_, y],
+    } = s;
+    setCurrentListTop(currentListTopValue + y);
+  });
 
   return (
     <Container>
       <Grid>
-        <ImagesContainer ref={scrollRef}>
-          <Images targetRef={ref} scrollRef={scrollRef} />
+        <ImagesContainer {...bind()} ref={containerRef}>
+          <Images targetRef={ref} containerRef={containerRef} />
         </ImagesContainer>
         <Scrubber targetRef={ref} />
       </Grid>
     </Container>
+  );
+};
+
+export const scrubber = () => {
+  return (
+    <RecoilRoot>
+      <ScrubberDemo />
+    </RecoilRoot>
   );
 };
