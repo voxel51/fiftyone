@@ -1,11 +1,12 @@
 # Installation
 
 This page describes how to install FiftyOne in a
-[virtual environment](https://docs.python.org/3/tutorial/venv.html). Using a
-virtual environment is strongly recommended because it allows maintaining an
-isolated environment in which FiftyOne and its dependencies can be installed.
-FiftyOne has many dependencies, some versions of which may conflict with
-versions already installed on your machine.
+[virtual environment](https://docs.python.org/3/tutorial/venv.html).
+
+Using a virtual environment is strongly recommended because it allows
+maintaining an isolated environment in which FiftyOne and its dependencies can
+be installed. FiftyOne has many dependencies, some versions of which may
+conflict with versions already installed on your machine.
 
 ## Prerequisites
 

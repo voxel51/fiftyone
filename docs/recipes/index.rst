@@ -3,10 +3,12 @@ Recipes
 
 .. default-role:: code
 
-Welcome to FiftyOne recipes! FiftyOne turbocharges your current workflows,
-transforming hours of scripting into minutes so that you can focus on your
-models. Browse the recipes below to see how you can leverage FiftyOne to
-enhance key parts of your machine learning workflows.
+Welcome to FiftyOne recipes!
+
+FiftyOne turbocharges your current workflows, transforming hours of scripting
+into minutes so that you can focus on your models. Browse the recipes below to
+see how you can leverage FiftyOne to enhance key parts of your machine learning
+workflows.
 
 .. :rubric: :doc:`Dataset Audit <data_audit>`
 
