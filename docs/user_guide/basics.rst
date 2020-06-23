@@ -43,8 +43,10 @@ to a given image. Any `Sample` must include a file path to an image:
 Fields
 ______
 
-If `Datasets` are a table where `Samples` are the rows, then `Fields` are the
-columns. Every attribute that a `Sample` contains is a `Field`.
+A `Field` is a special attribute of a `Sample` that is shared across all
+`Samples` in a `Dataset`.
+If a `Dataset` were a table where each row is a `Sample`, then each column
+would be a `Field`.
 
 `Fields` can be dynamically created, modified, and deleted. When a new `Field`
 is assigned for a `Sample` in a `Dataset`, it is automatically added to the
