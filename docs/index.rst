@@ -39,6 +39,8 @@ automatically identify possible label mistakes in your datasets.
     See the :doc:`label mistakes tutorial<tutorials/label_mistakes>` to explore
     this capability.
 
+:doc:`>>Try Now<tutorials/label_mistakes>`
+
 .. rubric:: Removing redundant images
 
 During the training loop for a model, the best results will be seen when
@@ -47,10 +49,7 @@ your dataset cam avoid accidental concept imbalance that can bias the learning
 of your model. FiftyOne provides a `uniqueness` tool that can automatically
 identify duplicate or near-duplicate images in your datasets.
 
-.. note::
-
-    See the :doc:`uniqueness tutorial<tutorials/uniqueness>` to explore this
-    capability.
+:doc:`>>Try Now<tutorials/uniqueness>`
 
 .. rubric:: Bootstrapping training datasets from raw images
 
