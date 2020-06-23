@@ -28,14 +28,7 @@ duplicate and near-duplicate images from your dataset.
 
 .. code-block:: python
 
-    # Compute File Hash
-    for sample in dataset:
-        sample["file_hash"] = fou.compute_filehash(sample.filepath)
-        sample.save()
-
     # Find Duplicates
-    filehash_counts = Counter(sample.file_hash for sample in dataset)
-    dup_filehashes = [k for k, v in filehash_counts.items() if v > 1]
     dup_view = (
         dataset.view()
         # Extract samples with duplicate file hashes
