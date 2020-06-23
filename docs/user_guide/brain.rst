@@ -149,3 +149,7 @@ The FiftyOne Brain hardness measure defines hard samples as those for which the
 prediction model is unsure about what label to assign.  This measure
 incorporates prediction confidence and logits in a tuned model that has
 demonstrated empirical value in many model training exercises.
+
+.. note::
+
+    Tutorial coming soon!
