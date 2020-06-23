@@ -18,7 +18,7 @@ export FIFTYONE_HEADLESS=1
 # The syntax here is:
 #   sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, …]
 #
-sphinx-apidoc -f --no-toc -o docs/api fiftyone fiftyone/experimental
+sphinx-apidoc -f --no-toc -o docs/api fiftyone
 
 cd docs
 make html
