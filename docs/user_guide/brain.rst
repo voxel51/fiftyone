@@ -58,10 +58,10 @@ predictions of a pre-trained model:
 
     fob.compute_uniqueness(dataset)
 
-**Input**: An unlabeled (or labeled) image dataset.  There are :doc:`recipes
-<../common_recipes/index>` for building datasets from a wide variety of image
-formats, ranging from a simple directory of images to complicated dataset
-structures like MS COCO.
+**Input**: An unlabeled (or labeled) image dataset.  There are
+:doc:`recipes<../common_recipes/index>` for building datasets from a wide
+variety of image formats, ranging from a simple directory of images to
+complicated dataset structures like `MS-COCO <https://cocodataset.org/#home>`_.
 
 **Output**: A scalar-valued field per `sample` that ranks the uniqueness of
 that sample (higher value means more unique).  The default name of this field
@@ -75,21 +75,20 @@ ranks `samples` based on their relative *similarity* to other `samples`.  Those
 that are close to other samples are not unique whereas those that are far from
 most other samples are more unique.
 
-
 Label Mistakes
 ______________
 
 Correct annotations are crucial in developing high performing models. Using the
 FiftyOne Brain and the predictions of a pre-trained model, you can identify
-possible labels mistakes in your datasets:
+possible labels mistakes in your `Datasets`:
 
 .. code-block:: python
 
-   import fiftyone.brain as fob
+    import fiftyone.brain as fob
 
-   fob.compute_mistakenness(
-       samples, pred_field="my_model", label_field="ground_truth"
-   )
+    fob.compute_mistakenness(
+        samples, pred_field="my_model", label_field="ground_truth"
+    )
 
 **Input**: Label mistakes operate on samples for which there are both human
 annotations (`label_field` in the example block) and model predictions
@@ -104,7 +103,6 @@ could be done perfectly then the approach would sufficiently replace your
 prediction model).  The FiftyOne Brain uses a proprietary scoring model that
 ranks samples for which your prediction model is highly confident but wrong
 (according to the human annotation label) as a high chance of being a mistake.
-
 
 Sample Hardness
 _______________

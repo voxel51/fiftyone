@@ -37,13 +37,7 @@ import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
-import fiftyone.utils.bdd as foub
-import fiftyone.utils.coco as fouco
-import fiftyone.utils.cvat as foucv
 import fiftyone.utils.data as foud
-import fiftyone.utils.kitti as fouk
-import fiftyone.utils.tf as fout
-import fiftyone.utils.voc as fouv
 import fiftyone.types as fot
 
 
@@ -905,6 +899,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        import fiftyone.utils.tf as fout
+
         samples = fout.parse_tf_image_classification_dataset(dataset_dir)
         sample_parser = fout.TFImageClassificationSampleParser()
         return self.ingest_labeled_image_samples(
@@ -960,6 +956,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        import fiftyone.utils.coco as fouco
+
         samples = fouco.parse_coco_detection_dataset(dataset_dir)
 
         _samples = []
@@ -994,6 +992,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        import fiftyone.utils.voc as fouv
+
         samples = fouv.parse_voc_detection_dataset(dataset_dir)
 
         _samples = []
@@ -1029,6 +1029,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        import fiftyone.utils.kitti as fouk
+
         samples = fouk.parse_kitti_detection_dataset(dataset_dir)
 
         _samples = []
@@ -1076,6 +1078,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        import fiftyone.utils.tf as fout
+
         samples = fout.parse_tf_object_detection_dataset(dataset_dir)
         sample_parser = fout.TFObjectDetectionSampleParser()
         return self.ingest_labeled_image_samples(
@@ -1106,6 +1110,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        import fiftyone.utils.cvat as foucv
+
         samples = foucv.parse_cvat_image_dataset(dataset_dir)
 
         _samples = []
@@ -1164,6 +1170,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        import fiftyone.utils.bdd as foub
+
         samples = foub.parse_bdd_dataset(dataset_dir)
 
         _samples = []
