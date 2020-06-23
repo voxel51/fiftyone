@@ -24,61 +24,109 @@ much more!
 Capabilities
 ____________
 
-FiftyOne provides advanced capabilities that will turbocharge your
-machine learning workflow.
+FiftyOne provides advanced capabilities that will turbocharge your machine
+learning workflows.
 
-.. rubric:: :doc:`Detect Annotation Mistakes<tutorials/label_mistakes>`:
+.. rubric:: Finding annotation mistakes
 
-Automatically detect label annotation mistakes.
+Annotations mistakes create an artificial ceiling on the performance of your
+models. However, finding these mistakes by hand is at least as arduous as the
+original annotation was, especially in cases of larger datasets. FiftyOne
+provides a quantitative `mistakenness` measure that can automatically identify
+possible label mistakes in your datasets.
 
-.. rubric:: :doc:`Remove Redundant Images<tutorials/uniqueness>`:
+.. note::
 
-Find and remove similar samples in your dataset to reduce
-redundancy.
+    See the :doc:`label mistakes tutorial<tutorials/label_mistakes>` to explore
+    this capability.
 
-.. rubric:: :doc:`Bootstrap a Training Dataset<tutorials/???>`:
+.. rubric:: Removing redundant images
 
-Bootstrap your training dataset with raw images.
+During the training loop for a model, the best results will be seen when
+training on unique data. For example, finding and removing similar samples in
+your dataset cam avoid accidental concept imbalance that can bias the learning
+of your model. FiftyOne provides a `uniqueness` measure that can automatically
+identify duplicate or near-duplicate images in your datasets.
 
-.. rubric:: :doc:`Add Optimal New Samples<tutorials/???>`:
+.. note::
 
-Add the optimal samples to your training dataset for improving your model’s
-performance.
+    See the :doc:`uniqueness tutorial<tutorials/uniqueness>` to explore this
+    capability.
+
+.. rubric:: Bootstrapping training datasets from raw images
+
+In the early stages of a machine learning workflow, ML engineers inevitably ask
+themselves: *what data should I select to annotate?* This is a critical
+question, as acquiring high quality ground truth annotations is an expensive
+and time consuming process. FiftyOne provides methods that can automatically
+identify a diverse subset of your raw (unlabeled) dataset that you should send
+for annotation, enabling you to bootsrap a curated training dataset that can
+lead to demonstrably better model performance on a limited time/annotation
+budget.
+
+.. note::
+
+    Tutorial coming soon!
+
+.. rubric:: Adding optimal samples to your dataset
+
+While a model is training, it will learn to understand attributes of certain
+samples faster than others. The natural question arises: *what types of data
+should I add to my training dataset to provide the largest incremental
+improvement to the performance of my model?* FiftyOne provides methods that
+automatically measure how easy or diffiult it is for your model to understand
+the samples in  your dataset. These insights can be leveraged to mine hard
+samples from your data lake, a tried and true measure of mature machine
+learning processes. For example, FiftyOne enables you to select unlabeled
+samples that are the most valuable to have annotated and fed back into the
+system as training samples.
+
+.. note::
+
+    Tutorial coming soon!
 
 Concepts
 ________
 
-.. rubric:: :doc:`FiftyOne Core Library<user_guide/basics>`:
+.. rubric:: :doc:`The FiftyOne Core Library<user_guide/basics>`
 
-The **Core Library** provides a structured yet dynamic dataset representation.
-Efficiently query and manipulate your dataset by adding custom tags, model
-predictions and more.
+FiftyOne's core library provides a structured yet dynamic representation to
+explore your datasets. You can efficiently query and manipulate your dataset by
+adding custom tags, model predictions and more.
 
 .. code-block:: python
-   :linenos:
 
-   import fiftyone as fo
+    import fiftyone as fo
 
-   dataset = fo.Dataset(name="my_dataset")
-   sample = fo.Sample(filepath="path/to/img.png")
-   dataset.add_sample(sample)
-   sample.tags += ["train"]
-   sample["integer_field"] = 51
-   view = dataset.view().match_tag("test").sort_by("integer_field")[5:10]
-   for sample in view:
-       ...
+    dataset = fo.Dataset("my_dataset")
+
+    sample = fo.Sample(filepath="path/to/img.png")
+    sample.tags.append("train")
+    sample["custom_field"] = 51
+
+    dataset.add_sample(sample)
+
+    view = dataset.view().match_tag("train").sort_by("custom_field").limit(10)
+
+    for sample in view:
+        print(sample)
 
 .. note::
-   FiftyOne is designed to be lightweight by default. See our
-   :doc:`Loading a Dataset<user_guide/making_dataset>`
-   guide to find out how to get your data into FiftyOne.
+    FiftyOne is designed to be lightweight and flexible, so it is easy to load
+    your datasets. FiftyOne supports loading datasets in a variety of common
+    formats out-of-the-box, and it also provides the extensibility to load
+    datasets in custom formats.
 
+    Check out the
+    :doc:`loading datasets guide<user_guide/dataset_creation/index>` to see how
+    to load your data into FiftyOne today.
 
-.. rubric:: :doc:`Interactive Visual App<user_guide/app>`:
+.. rubric:: :doc:`The FiftyOne App<user_guide/app>`
 
-The **App** makes it easy to rapidly gain intuitions. Visualize labels,
-bounding boxes and segmentations overlayed on the samples and sort, query and
-slice your dataset into any aspect you need.
+The FiftyOne App is a graphical user interface (GUI) that makes it easy to
+rapidly gain intuition into your datasets. You can visualize labels, bounding
+boxes and segmentations overlayed on the samples; sort, query and slice your
+dataset into any aspect you need; and more.
 
 .. image:: images/dog.png
    :alt: App
@@ -86,13 +134,15 @@ slice your dataset into any aspect you need.
    :align: center
    :target: user_guide/app.html
 
-.. rubric:: :doc:`FiftyOne Brain<user_guide/brain>`:
 
-The **Brain** provides powerful :ref:`capabilities<Capabilities>` for modifying datasets in
-ways that will best improve model performance.
+.. rubric:: :doc:`The FiftyOne Brain<user_guide/brain>`
+
+The FiftyOne Brain is a library of powerful machine learning-powered
+:ref:`capabilities<Capabilities>` that provide insights into your datasets and
+recommend ways to modify your datasets that will lead to measurably better
+performance of your models.
 
 .. code-block:: python
-   :linenos:
 
    import fiftyone.brain as fob
 
@@ -104,13 +154,13 @@ __________
 
 Where should you go from here? You could...
 
-* start by :doc:`installing FiftyOne<getting_started/install>`.
-* try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
+* Start by :doc:`installing FiftyOne<getting_started/install>`.
+* Try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
   capabilities of FiftyOne.
-* explore the :doc:`common recipes<common_recipes/index>` for integrating
+* Explore :doc:`common recipes<common_recipes/index>` for integrating
   FiftyOne into your current workflow.
-* check the :doc:`user guides<user_guide/index>` for detailed "How To..." of a
-  specific task you are trying to accomplish.
+* Consult the :doc:`user guide<user_guide/index>` for detailed instructions on
+  how to accomplish various tasks with FiftyOne.
 
 Support
 _______

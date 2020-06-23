@@ -4,7 +4,7 @@ Tutorials
 Find out how FiftyOne can refine your data and turn your good models into great
 models.
 
-.. rubric:: :doc:`Exploring Image Uniqueness with FiftyOne <uniqueness>`:
+.. rubric:: :doc:`Exploring image uniqueness with FiftyOne <uniqueness>`:
 
 Let FiftyOne find the most unique samples in your data to start your model
 training off right.
@@ -20,5 +20,5 @@ possible label mistakes in your datasets.
    :maxdepth: 1
    :hidden:
 
-   uniqueness.ipynb
-   label_mistakes.ipynb
+   Exploring image uniqueness<uniqueness.ipynb>
+   Finding label mistakes<label_mistakes.ipynb>
