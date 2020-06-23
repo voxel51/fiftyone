@@ -5,8 +5,7 @@ FiftyOne Brain
 
 The FiftyOne Brain provides powerful machine learning techniques that are
 designed to transform how you curate your data from an art into a measurable
-science.  FiftyOne Brain operations require the installation of
-`torch` and `tensorflow`.
+science.
 
 The FiftyOne Brain methods are useful across the stages of the machine learning
 workflow:
@@ -36,8 +35,13 @@ workflow:
   the most valuable to have annotated and fed back into the system as training
   samples, for example.
 
-Each of these functions have a detailed :doc:`tutorial <../tutorials/index>`
+Each of these functions has a detailed :doc:`tutorial <../tutorials/index>`
 demonstrating a workflow.
+
+.. note::
+
+    FiftyOne Brain operations require the installation of `torch` and
+    `tensorflow`
 
 Image Uniqueness
 ________________
@@ -75,6 +79,11 @@ ranks `samples` based on their relative *similarity* to other `samples`.  Those
 that are close to other samples are not unique whereas those that are far from
 most other samples are more unique.
 
+.. note::
+
+    Check out the :doc:`uniqueness tutorial<../tutorials/uniqueness>` to see an
+    example use case of the Brain's uniqueness method.
+
 Label Mistakes
 ______________
 
@@ -103,6 +112,11 @@ could be done perfectly then the approach would sufficiently replace your
 prediction model).  The FiftyOne Brain uses a proprietary scoring model that
 ranks samples for which your prediction model is highly confident but wrong
 (according to the human annotation label) as a high chance of being a mistake.
+
+.. note::
+
+    Check out the :doc:`label mistakes tutorial<../tutorials/label_mistakes>`
+    to see an example use case of the Brain's mistakenness method.
 
 Sample Hardness
 _______________
