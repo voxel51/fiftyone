@@ -1,5 +1,5 @@
-User Guides
-===========
+User Guide
+==========
 
 .. default-role:: code
 
