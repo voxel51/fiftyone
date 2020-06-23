@@ -87,7 +87,7 @@ class BaseClient(socketio.ClientNamespace):
         self.emit("update", data.serialize())
 
 
-@retry(wait_fixed=500, stop_max_attempt_number=5)
+@retry(wait_fixed=1000, stop_max_attempt_number=10)
 def _connect(sio, addr):
     sio.connect(addr)
 
