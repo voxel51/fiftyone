@@ -10,8 +10,6 @@ into minutes so that you can focus on your models. Browse the recipes below to
 see how you can leverage FiftyOne to enhance key parts of your machine learning
 workflows.
 
-Click-through to view a recipe of interest.
-
 .. :rubric: :doc:`Dataset Audit <data_audit>`
 
 .. Browse your dataset and audit a subset in order to estimate the accuracy of
@@ -30,12 +28,24 @@ duplicate and near-duplicate images from your dataset.
 
 .. code-block:: python
 
-    # Find duplicates
-    fob.compute_uniqueness(dataset)
-    dups_view = dataset.view().sort_by("uniqueness")
+    # Compute File Hash
+    for sample in dataset:
+        sample["file_hash"] = fou.compute_filehash(sample.filepath)
+        sample.save()
+
+    # Find Duplicates
+    filehash_counts = Counter(sample.file_hash for sample in dataset)
+    dup_filehashes = [k for k, v in filehash_counts.items() if v > 1]
+    dup_view = (
+        dataset.view()
+        # Extract samples with duplicate file hashes
+        .match({"file_hash": {"$in": dup_filehashes}})
+        # Sort by file hash so duplicates will be adjacent
+        .sort_by("file_hash")
+    )
 
     # Visualize in dashboard
-    fo.launch_dashboard(view=dups_view)
+    fo.launch_dashboard(view=dup_view)
 
 .. rubric:: :doc:`Add model predictions to a datasets<model_inference>`
 
