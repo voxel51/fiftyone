@@ -56,7 +56,7 @@ identify duplicate or near-duplicate images in your datasets.
 .. rubric:: Bootstrapping training datasets from raw images
 
 In the early stages of a machine learning workflow, ML engineers inevitably ask
-themselves "what data should I select to annotate?" This is a critical
+themselves: *what data should I select to annotate?* This is a critical
 question, as acquiring high quality ground truth annotations is an expensive
 and time consuming process. FiftyOne provides methods that can automatically
 identify a diverse subset of your raw (unlabeled) dataset that you should send
@@ -71,9 +71,9 @@ budget.
 .. rubric:: Adding optimal samples to your dataset
 
 While a model is training, it will learn to understand attributes of certain
-samples faster than others. The natural question arises: "what types of data
+samples faster than others. The natural question arises: *what types of data
 should I add to my training dataset to provide the largest incremental
-improvement to the performance of my model?" FiftyOne provides methods that
+improvement to the performance of my model?* FiftyOne provides methods that
 automatically measure how easy or diffiult it is for your model to understand
 the samples in  your dataset. These insights can be leveraged to mine hard
 samples from your data lake, a tried and true measure of mature machine
