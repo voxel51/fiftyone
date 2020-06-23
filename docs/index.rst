@@ -157,8 +157,8 @@ Where should you go from here? You could...
 * Start by :doc:`installing FiftyOne<getting_started/install>`.
 * Try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
   capabilities of FiftyOne.
-* Explore :doc:`common recipes<common_recipes/index>` for integrating
-  FiftyOne into your current workflow.
+* Explore :doc:`recipes<recipes/index>` for integrating FiftyOne into
+  your current ML workflows.
 * Consult the :doc:`user guide<user_guide/index>` for detailed instructions on
   how to accomplish various tasks with FiftyOne.
 
@@ -174,6 +174,6 @@ documentation, feel free to reach out to us at support@voxel51.com.
 
    getting_started/install
    tutorials/index
-   common_recipes/index
+   recipes/index
    user_guide/index
    api/fiftyone
