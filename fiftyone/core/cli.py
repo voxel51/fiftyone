@@ -231,14 +231,14 @@ class ConvertCommand(Command):
 
     Examples::
 
-        # Converts an image classification directory tree to TFRecords format
+        # Convert an image classification directory tree to TFRecords format
         fiftyone convert \\
             --input-dir /path/to/image-classification-directory-tree \\
             --input-type fiftyone.types.ImageClassificationDirectoryTree \\
             --output-dir /path/for/tf-image-classification-dataset \\
             --output-type fiftyone.types.TFImageClassificationDataset
 
-        # Converts a COCO detection dataset to CVAT image format
+        # Convert a COCO detection dataset to CVAT image format
         fiftyone convert \\
             --input-dir /path/to/coco-detection-dataset \\
             --input-type fiftyone.types.COCODetectionDataset \\
@@ -356,11 +356,11 @@ class DatasetsCreateCommand(Command):
 
     Examples::
 
-        # Creates a dataset from the given data on disk
+        # Create a dataset from the given data on disk
         fiftyone datasets create \\
             --name <name> --dataset-dir <dataset-dir> --type <type>
 
-        # Creates a dataset from the given samples JSON file
+        # Create a dataset from the given samples JSON file
         fiftyone datasets create --json-path <json-path>
     """
 
@@ -419,10 +419,10 @@ class DatasetsHeadCommand(Command):
 
     Examples::
 
-        # Prints the first few samples in a dataset
+        # Print the first few samples in a dataset
         fiftyone datasets head <name>
 
-        # Prints the given number of samples from the head of a dataset
+        # Print the given number of samples from the head of a dataset
         fiftyone datasets head <name> --num-samples <num-samples>
     """
 
@@ -454,10 +454,10 @@ class DatasetsTailCommand(Command):
 
     Examples::
 
-        # Prints the last few samples in a dataset
+        # Print the last few samples in a dataset
         fiftyone datasets tail <name>
 
-        # Prints the given number of samples from the tail of a dataset
+        # Print the given number of samples from the tail of a dataset
         fiftyone datasets tail <name> --num-samples <num-samples>
     """
 
@@ -528,11 +528,11 @@ class DatasetsExportCommand(Command):
 
     Examples::
 
-        # Exports the dataset to disk in the specified format
+        # Export the dataset to disk in the specified format
         fiftyone datasets export <name> \\
             --export-dir <export-dir> --type <type> --label-field <label-field>
 
-        # Exports the dataset to disk in JSON format
+        # Export the dataset to disk in JSON format
         fiftyone datasets export <name> --json-path <json-path>
     """
 
@@ -634,10 +634,10 @@ class DashboardLaunchCommand(Command):
 
     Examples::
 
-        # Launches the dashboard with the given dataset
+        # Launch the dashboard with the given dataset
         fiftyone dashboard launch <name>
 
-        # Launches a remote dashboard session
+        # Launch a remote dashboard session
         fiftyone dashboard launch <name> --remote
     """
 
@@ -801,7 +801,7 @@ class DashboardConnectCommand(Command):
         # Connect to a remote dashboard with port forwarding already configured
         fiftyone dashboard connect
 
-        # Connects to a remote dashboard session
+        # Connect to a remote dashboard session
         fiftyone dashboard connect --destination <destination> --port <port>
     """
 
