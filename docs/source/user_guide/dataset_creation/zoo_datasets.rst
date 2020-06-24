@@ -10,17 +10,42 @@ commands.
 You can interact with the Dataset Zoo either via the Python library or
 the CLI.
 
-Python library
---------------
-
-Listing zoo datasets
-~~~~~~~~~~~~~~~~~~~~
-
 .. tabs::
 
   .. group-tab:: python
 
     The Dataset Zoo is accessible via the ``fiftyone.zoo`` package.
+
+  .. group-tab:: CLI
+
+    The ``fiftyone zoo`` CLI command provides convenient utilities for
+    working with datasets in the FiftyOne Dataset Zoo:
+
+    ::
+
+        $ fiftyone zoo -h
+
+        usage: fiftyone zoo [-h] [--all-help] {list,info,download,load} ...
+
+        Tools for working with the FiftyOne Dataset Zoo.
+
+        optional arguments:
+          -h, --help            show this help message and exit
+          --all-help            show help recurisvely and exit
+
+        available commands:
+          {list,info,download,load}
+            list                Tools for listing datasets in the FiftyOne Dataset Zoo.
+            info                Tools for printing info about downloaded zoo datasets.
+            download            Tools for downloading zoo datasets.
+            load                Tools for loading zoo datasets as persistent FiftyOne datasets.
+
+Listing zoo datasets
+--------------------
+
+.. tabs::
+
+  .. group-tab:: python
 
     You can list the available zoo datasets via the
     ``fiftyone.zoo.list_zoo_datasets()`` method:
@@ -73,7 +98,7 @@ Listing zoo datasets
         }
 
 Getting information about zoo datasets
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. tabs::
 
@@ -170,7 +195,7 @@ Getting information about zoo datasets
         }
 
 Downloading zoo datasets
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
 .. tabs::
 
@@ -252,7 +277,7 @@ Downloading zoo datasets
         Dataset info written to '~/fiftyone/cifar10/info.json'
 
 Loading zoo datasets into FiftyOne
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------
 
 .. tabs::
 
@@ -322,33 +347,8 @@ Loading zoo datasets into FiftyOne
          100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
 
-CLI
----
-
-The ``fiftyone zoo`` CLI command provides convenient utilities for
-working with datasets in the FiftyOne Dataset Zoo:
-
-::
-
-    $ fiftyone zoo -h
-
-    usage: fiftyone zoo [-h] [--all-help] {list,info,download,load} ...
-
-    Tools for working with the FiftyOne Dataset Zoo.
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
-
-    available commands:
-      {list,info,download,load}
-        list                Tools for listing datasets in the FiftyOne Dataset Zoo.
-        info                Tools for printing info about downloaded zoo datasets.
-        download            Tools for downloading zoo datasets.
-        load                Tools for loading zoo datasets as persistent FiftyOne datasets.
-
 Listing zoo datasets
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 You can access information about the available zoo datasets via the
 ``fiftyone zoo list`` command:
@@ -422,7 +422,7 @@ indicates your default ML backend, which will be used in case a given
 split is available through multiple sources.
 
 Getting information about zoo datasets
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can view detailed information about a dataset (either downloaded or
 not) via the ``fiftyone zoo info`` command:
