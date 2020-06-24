@@ -14,7 +14,7 @@ also provides support for easily create custom data formats as well.
     database.
 
     Note, however, that samples only store the `filepath` to the media, not the
-    raw media itself; FiftyOne does not create duplicate copies of your data!
+    raw media itself. FiftyOne does not create duplicate copies of your data!
 
 **Dataset formats**
 
