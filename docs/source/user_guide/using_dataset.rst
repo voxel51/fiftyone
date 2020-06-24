@@ -163,8 +163,8 @@ providing a list of `Samples`:
             fo.Sample(filepath="/path/to/img2.jpg"),
             fo.Sample(filepath="/path/to/img3.jpg"),
         ]
-    );
-    print(len(dataset)
+    )
+    print(len(dataset))
 
 .. code-block:: plain
 

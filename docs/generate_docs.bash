@@ -40,23 +40,20 @@ THIS_DIR=$(dirname "$0")
 
 if [[ ${CLEAN_BUILD} = true ]]; then
     echo "**** Deleting existing build directories ****"
-    rm -rf "${THIS_DIR}/api"
+    rm -rf "${THIS_DIR}/source/api"
     rm -rf "${THIS_DIR}/build"
 fi
 
 
 echo "**** Generating documentation ****"
 
-#
-# The syntax here is:
-#   sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, …]
-#
+# sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, …]
 cd "${THIS_DIR}/.."
-sphinx-apidoc -f --no-toc -o docs/api fiftyone
+sphinx-apidoc -f --no-toc -o docs/source/api fiftyone
 
-cd docs
-make html
-cd ..
+# sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
+cd "${THIS_DIR}"
+sphinx-build -M html source build
 
-echo "**** Documentation complete"
+echo "**** Documentation complete ****"
 printf "To view the docs, open:\n\ndocs/build/html/index.html\n\n"

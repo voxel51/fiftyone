@@ -1,8 +1,16 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""
+Sphinx configuration file.
+
+For a full list of available options, see:
+https://www.sphinx-doc.org/en/master/usage/configuration.html
+
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import fiftyone.constants as foc
+
 
 # -- Path setup --------------------------------------------------------------
 
@@ -14,11 +22,9 @@
 # -- Project information -----------------------------------------------------
 
 project = "FiftyOne"
-copyright = "2017-2020, Voxel51, Inc"
-author = "Voxel51, Inc."
-
-# The full version, including alpha/beta/rc tags
-release = "0.1.0"
+copyright = foc.COPYRIGHT
+author = foc.AUTHOR
+release = foc.VERSION
 
 
 # -- General configuration ---------------------------------------------------
@@ -55,7 +61,7 @@ m2r_parse_relative_links = True
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["dev_guide.md"]
+exclude_patterns = []
 
 
 # -- Options for HTML output -------------------------------------------------
