@@ -1266,8 +1266,6 @@ where `labels.json` is a JSON file in the following format:
         # Print the first few samples in the dataset
         print(dataset.view().head())
 
-.. tabs::
-
   .. group-tab:: CLI
 
     To load a BDD dataset stored in the above format, you can execute:
