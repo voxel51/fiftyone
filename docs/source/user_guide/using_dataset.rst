@@ -45,8 +45,6 @@ If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
     dataset3_reference = fo.Dataset(name="my_third_dataset")
     # Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
 
-.. code-block:: python
-
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
     # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
@@ -69,6 +67,9 @@ Start a new session:
 
     print(fo.list_dataset_names())
     # ['my_first_dataset']
+
+Note that `my_second_dataset` and `my_third_dataset` have been wiped because
+they were not persistent.
 
 Delete a dataset explicitly via `Dataset.delete()`. Once a dataset is deleted,
 any existing reference in memory will be in a volatile state. `Dataset.name`
@@ -105,7 +106,7 @@ corresponding image on disk. The image is not read at this point:
 Adding Samples to a Dataset
 ---------------------------
 
-`Samples` an easily be added to an existing `Dataset`:
+A `Sample` can easily be added to an existing `Dataset`:
 
 .. code-block:: python
 
@@ -161,7 +162,7 @@ FiftyOne provides multiple ways to access `Samples` in a `Dataset`.
     for sample in dataset:
         print(sample)
 
-A `Sample` can be accessed directly from a `Dataset` by it's ID. The `Samples`
+A `Sample` can be accessed directly from a `Dataset` by its ID. The `Samples`
 that are returned when accessing a `Dataset` will always provide the same
 instance:
 
@@ -187,15 +188,30 @@ time or in a batch:
 
     dataset.remove_samples([sample_id2, sample_id3])
 
-`Samples` can also be removed from a `Dataset` by using the `Sample` instance:
+`Samples` can also be removed from a `Dataset` by using the sample's ID or the
+`Sample` instance:
 
 .. code-block:: python
 
+    dataset.remove_sample(sample_id)
+
+    # or equivalently:
     sample = dataset[sample_id]
     dataset.remove_sample(sample)
 
-If the `Sample` is in memory, it will behaving the same as a `Sample` that has
-never been added to the `Dataset`.
+In the latter case, where the `Sample` is in memory, it will behave the same as
+a `Sample` that has never been added to the `Dataset`:
+
+.. code-block:: python
+
+    print(sample.in_dataset)
+    # False
+
+    print(sample.dataset_name)
+    # None
+
+    print(sample.id)
+    # None
 
 Fields
 ______
