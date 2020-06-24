@@ -42,6 +42,12 @@ if [[ ${CLEAN_BUILD} = true ]]; then
 fi
 
 
+if ! python -c "import pytorch_sphinx_theme; pytorch_sphinx_theme.__version__" 2>/dev/null; then
+    echo "**** Installing theme ****"
+    pip install -e "${THIS_DIR}/../pytorch_sphinx_theme"
+fi
+
+
 echo "**** Generating documentation ****"
 
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]

@@ -1,3 +1,6 @@
 [submodule "electron/app/player51"]
 	path = electron/app/player51
 	url = ../../voxel51/player51.git
+[submodule "pytorch_sphinx_theme"]
+	path = pytorch_sphinx_theme
+	url = ../../pytorch/pytorch_sphinx_theme
