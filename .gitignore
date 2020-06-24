@@ -12,6 +12,9 @@ __pycache__
 
 *~
 
+build/
+dist/
+
 /docs/build/
 /docs/api/
 /eta/
