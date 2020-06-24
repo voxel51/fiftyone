@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # Generates documentation for FiftyOne.
 #
-# Usage:
-#   bash docs/generate_docs.bash
-#
 # Copyright 2017-2020, Voxel51, Inc.
 # voxel51.com
 #
@@ -47,7 +44,7 @@ fi
 
 echo "**** Generating documentation ****"
 
-# sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, …]
+# sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 cd "${THIS_DIR}/.."
 sphinx-apidoc -f --no-toc -o docs/source/api fiftyone
 
