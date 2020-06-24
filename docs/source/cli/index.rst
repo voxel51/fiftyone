@@ -1,49 +1,52 @@
 FiftyOne Command-Line Interface (CLI)
 =====================================
 
-Installing FiftyOne automatically installs ``fiftyone``, a command-line
-interface (CLI) for interacting with FiftyOne. This utility provides access to
-many useful features, including creating and inspecting datasets, visualizing
+.. default-role:: code
+
+Installing FiftyOne automatically installs `fiftyone`, a command-line interface
+(CLI) for interacting with FiftyOne. This utility provides access to many
+useful features, including creating and inspecting datasets, visualizing
 datasets in the dashboard, exporting datasets and converting dataset formats,
 and downloading datasets from the FiftyOne Dataset Zoo.
 
 Quickstart
 ----------
 
-To see the available top-level commands, type::
+To see the available top-level commands, type:
+
+.. code-block:: text
 
     fiftyone --help
 
-You can learn more about any available subcommand via::
+You can learn more about any available subcommand via:
+
+.. code-block:: text
 
     fiftyone <command> --help
 
 For example, to see your current FiftyOne config, you can execute
-``fiftyone config``.
+`fiftyone config`.
 
 Tab completion
 ~~~~~~~~~~~~~~
 
-To enable tab completion in ``bash``, add the following line to your
-``~/.bashrc``:
+To enable tab completion in `bash`, add the following line to your `~/.bashrc`:
 
-.. code:: shell
+.. code-block:: shell
 
     eval "$(register-python-argcomplete fiftyone)"
 
-To enable tab completion in ``zsh``, add these lines to your
-``~/.zshrc``:
+To enable tab completion in `zsh`, add these lines to your `~/.zshrc`:
 
-.. code:: shell
+.. code-block:: shell
 
     autoload bashcompinit
     bashcompinit
     eval "$(register-python-argcomplete fiftyone)"
 
-To enable tab completion in ``tcsh``, add these lines to your
-``~/.tcshrc``:
+To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 
-.. code:: shell
+.. code-block:: shell
 
     eval `register-python-argcomplete --shell tcsh fiftyone`
 
@@ -52,13 +55,13 @@ FiftyOne CLI
 
 The FiftyOne command-line interface.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,dashboard,zoo} ...
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -79,13 +82,13 @@ FiftyOne config
 
 Tools for working with your FiftyOne config.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone config [-h] [-l] [-s] [FIELD]
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       FIELD         a config field
@@ -120,15 +123,15 @@ Tools for working with your FiftyOne config.
 Print constants
 ---------------
 
-Print constants from ``fiftyone.constants``.
+Print constants from `fiftyone.constants`.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone constants [-h] [CONSTANT]
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       CONSTANT    the constant to print
@@ -138,12 +141,12 @@ Print constants from ``fiftyone.constants``.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Print all constants
     fiftyone constants
 
-.. code:: shell
+.. code-block:: shell
 
     # Print a specific constant
     fiftyone constants <CONSTANT>
@@ -153,14 +156,14 @@ Convert dataset formats
 
 Convert datasets on disk between supported formats.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone convert [-h] [--input-dir INPUT_DIR] [--input-type INPUT_TYPE]
                      [--output-dir OUTPUT_DIR] [--output-type OUTPUT_TYPE]
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -175,18 +178,18 @@ Convert datasets on disk between supported formats.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
-    # Converts an image classification directory tree to TFRecords format
+    # Convert an image classification directory tree to TFRecords format
     fiftyone convert \
         --input-dir /path/to/image-classification-directory-tree \
         --input-type fiftyone.types.ImageClassificationDirectoryTree \
         --output-dir /path/for/tf-image-classification-dataset \
         --output-type fiftyone.types.TFImageClassificationDataset
 
-.. code:: shell
+.. code-block:: shell
 
-    # Converts a COCO detection dataset to CVAT image format
+    # Convert a COCO detection dataset to CVAT image format
     fiftyone convert \
         --input-dir /path/to/coco-detection-dataset \
         --input-type fiftyone.types.COCODetectionDataset \
@@ -198,14 +201,14 @@ FiftyOne datasets
 
 Tools for working with FiftyOne datasets.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets [-h] [--all-help]
                       {list,info,create,head,tail,stream,export,delete} ...
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -227,20 +230,20 @@ List datasets
 
 List FiftyOne datasets.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets list [-h]
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help  show this help message and exit
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # List available datasets
     fiftyone datasets list
@@ -250,13 +253,13 @@ Print dataset information
 
 Print information about FiftyOne datasets.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets info [-h] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME        the name of the dataset
@@ -266,7 +269,7 @@ Print information about FiftyOne datasets.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Print information about the given dataset
     fiftyone datasets info <name>
@@ -276,13 +279,13 @@ Create datasets
 
 Tools for creating FiftyOne datasets.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets create [-h] [-n NAME] [-d DATASET_DIR] [-j JSON_PATH] [-t TYPE]
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -295,15 +298,15 @@ Tools for creating FiftyOne datasets.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
-    # Creates a dataset from the given data on disk
+    # Create a dataset from the given data on disk
     fiftyone datasets create \
         --name <name> --dataset-dir <dataset-dir> --type <type>
 
 .. code:: shell
 
-    # Creates a dataset from the given samples JSON file
+    # Create a dataset from the given samples JSON file
     fiftyone datasets create --json-path <json-path>
 
 Print dataset head
@@ -311,13 +314,13 @@ Print dataset head
 
 Prints the first few samples in a FiftyOne dataset.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets head [-h] [-n NUM_SAMPLES] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME                  the name of the dataset
@@ -329,12 +332,12 @@ Prints the first few samples in a FiftyOne dataset.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Prints the first few samples in a dataset
     fiftyone datasets head <name>
 
-.. code:: shell
+.. code-block:: shell
 
     # Prints the given number of samples from the head of a dataset
     fiftyone datasets head <name> --num-samples <num-samples>
@@ -344,13 +347,13 @@ Print dataset tail
 
 Prints the last few samples in a FiftyOne dataset.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets tail [-h] [-n NUM_SAMPLES] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME                  the name of the dataset
@@ -362,14 +365,14 @@ Prints the last few samples in a FiftyOne dataset.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
-    # Prints the last few samples in a dataset
+    # Print the last few samples in a dataset
     fiftyone datasets tail <name>
 
-.. code:: shell
+.. code-block:: shell
 
-    # Prints the given number of samples from the tail of a dataset
+    # Print the given number of samples from the tail of a dataset
     fiftyone datasets tail <name> --num-samples <num-samples>
 
 Stream samples to the terminal
@@ -377,13 +380,13 @@ Stream samples to the terminal
 
 Stream samples in a FiftyOne dataset to the terminal.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets stream [-h] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME        the name of the dataset
@@ -393,7 +396,7 @@ Stream samples in a FiftyOne dataset to the terminal.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Stream the samples of the dataset to the terminal
     fiftyone datasets stream <name>
@@ -403,14 +406,14 @@ Export datasets
 
 Export FiftyOne datasets to disk in supported formats.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH] [-f LABEL_FIELD]
                              [-t TYPE] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME                  the name of the dataset to export
@@ -427,15 +430,15 @@ Export FiftyOne datasets to disk in supported formats.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
-    # Exports the dataset to disk in the specified format
+    # Export the dataset to disk in the specified format
     fiftyone datasets export <name> \
         --export-dir <export-dir> --type <type> --label-field <label-field>
 
 .. code:: shell
 
-    # Exports the dataset to disk in JSON format
+    # Export the dataset to disk in JSON format
     fiftyone datasets export <name> --json-path <json-path>
 
 Delete datasets
@@ -443,13 +446,13 @@ Delete datasets
 
 Delete FiftyOne datasets.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone datasets delete [-h] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME        the name of the dataset
@@ -459,7 +462,7 @@ Delete FiftyOne datasets.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Delete the dataset with the given name
     fiftyone datasets delete <name>
@@ -469,13 +472,13 @@ FiftyOne Dashboard
 
 Tools for working with the FiftyOne Dashboard.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone dashboard [-h] [--all-help] {launch,view,connect} ...
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -492,13 +495,13 @@ Launch the dashboard
 
 Launch the FiftyOne Dashboard.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone dashboard launch [-h] [-p PORT] [-r] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME                  the name of the dataset to open
@@ -510,14 +513,14 @@ Launch the FiftyOne Dashboard.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
-    # Launches the dashboard with the given dataset
+    # Launch the dashboard with the given dataset
     fiftyone dashboard launch <name>
 
-.. code:: shell
+.. code-block:: shell
 
-    # Launches a remote dashboard session
+    # Launch a remote dashboard session
     fiftyone dashboard launch <name> --remote
 
 View datasets in dashboard
@@ -526,7 +529,7 @@ View datasets in dashboard
 View datasets in the FiftyOne Dashboard without persisting them to the
 database.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone dashboard view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
                             [-z NAME] [-s SPLITS [SPLITS ...]]
@@ -534,7 +537,7 @@ database.
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -553,22 +556,22 @@ database.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # View a dataset stored on disk in the dashboard
     fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
 
-.. code:: shell
+.. code-block:: shell
 
     # View a zoo dataset in the dashboard
     fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
 
-.. code:: shell
+.. code-block:: shell
 
     # View a dataset stored in JSON format on disk in the dashboard
     fiftyone dashboard view --json-path <json-path>
 
-.. code:: shell
+.. code-block:: shell
 
     # View the dataset in a remote dashboard session
     fiftyone dashboard view ... --remote
@@ -578,13 +581,13 @@ Connect to remote dashboard
 
 Connect to a remote FiftyOne Dashboard.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone dashboard connect [-h] [-d DESTINATION] [-p PORT]
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -594,14 +597,14 @@ Connect to a remote FiftyOne Dashboard.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Connect to a remote dashboard with port forwarding already configured
     fiftyone dashboard connect
 
-.. code:: shell
+.. code-block:: shell
 
-    # Connects to a remote dashboard session
+    # Connect to a remote dashboard session
     fiftyone dashboard connect --destination <destination> --port <port>
 
 FiftyOne Dataset Zoo
@@ -609,13 +612,13 @@ FiftyOne Dataset Zoo
 
 Tools for working with the FiftyOne Dataset Zoo.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone zoo [-h] [--all-help] {list,find,info,download,load} ...
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -634,13 +637,13 @@ List datasets in zoo
 
 List datasets in the FiftyOne Dataset Zoo.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone zoo list [-h] [-b BASE_DIR]
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -649,12 +652,12 @@ List datasets in the FiftyOne Dataset Zoo.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # List available datasets
     fiftyone zoo list
 
-.. code:: shell
+.. code-block:: shell
 
     # List available datasets, using the specified base directory to search for downloaded datasets
     fiftyone zoo list --base-dir <base-dir>
@@ -664,13 +667,13 @@ Find zoo datasets on disk
 
 Locate the downloaded zoo dataset on disk.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone zoo find [-h] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME        the name of the dataset
@@ -680,7 +683,7 @@ Locate the downloaded zoo dataset on disk.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Print the location of the downloaded zoo dataset on disk
     fiftyone zoo find <name>
@@ -690,13 +693,13 @@ Show zoo dataset info
 
 Print information about datasets in the FiftyOne Dataset Zoo.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone zoo info [-h] [-b BASE_DIR] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME                  the name of the dataset
@@ -708,12 +711,12 @@ Print information about datasets in the FiftyOne Dataset Zoo.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Print information about a downloaded zoo dataset
     fiftyone zoo info <name>
 
-.. code:: shell
+.. code-block:: shell
 
     # Print information about the zoo dataset downloaded to the specified base directory
     fiftyone zoo info <name> --base-dir <base-dir>
@@ -723,13 +726,13 @@ Download zoo datasets
 
 Download datasets from the FiftyOne Dataset Zoo.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone zoo download [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME                  the name of the dataset
@@ -743,17 +746,17 @@ Download datasets from the FiftyOne Dataset Zoo.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Download the entire zoo dataset
     fiftyone zoo download <name>
 
-.. code:: shell
+.. code-block:: shell
 
     # Download the specified split(s) of the zoo dataset
     fiftyone zoo download <name> --splits <split1> ...
 
-.. code:: shell
+.. code-block:: shell
 
     # Download to the zoo dataset to a custom directory
     fiftyone zoo download <name> --dataset-dir <dataset-dir>
@@ -763,13 +766,13 @@ Load zoo datasets
 
 Load zoo datasets as persistent FiftyOne datasets.
 
-.. code:: shell
+.. code-block:: text
 
     fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
 
 **Arguments**
 
-.. code:: shell
+.. code-block:: text
 
     positional arguments:
       NAME                  the name of the dataset
@@ -783,17 +786,17 @@ Load zoo datasets as persistent FiftyOne datasets.
 
 **Examples**
 
-.. code:: shell
+.. code-block:: shell
 
     # Load the zoo dataset with the given name
     fiftyone zoo load <name>
 
-.. code:: shell
+.. code-block:: shell
 
     # Load the specified split(s) of the zoo dataset
     fiftyone zoo load <name> --splits <split1> ...
 
-.. code:: shell
+.. code-block:: shell
 
     # Load the zoo dataset from a custom directory
     fiftyone zoo load <name> --dataset-dir <dataset-dir>
