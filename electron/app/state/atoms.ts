@@ -63,7 +63,12 @@ export const itemPosition = atomFamily({
   default: null,
 });
 
-export const gridMargin = atome({
+export const itemLoadingHeight = atom({
+  key: "itemLoadingHeight",
+  default: 120,
+});
+
+export const gridMargin = atom({
   key: "gridMargin",
   default: 4,
 });
