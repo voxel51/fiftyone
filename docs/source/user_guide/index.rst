@@ -32,10 +32,10 @@ tags and |DatasetView|.
     for sample in view:
         print(sample)
 
-.. rubric:: :doc:`Loading datasets <dataset_creation/index>`
+.. rubric:: :doc:`Creating FiftyOne Datasets <dataset_creation/index>`
 
-Load a |Dataset| into FiftyOne using standard formats, custom formats, or from
-the Dataset Zoo.
+Get your data into a FiftyOne |Dataset| using standard formats, custom formats,
+or load an open-source dataset via the Dataset Zoo.
 
 .. code-block:: python
 
@@ -94,7 +94,7 @@ Use the FiftyOne Brain to automatically get insights into your |Dataset|
     :hidden:
 
     Dataset basics<basics>
-    Loading datasets<dataset_creation/index>
+    Creating datasets<dataset_creation/index>
     Using datasets<using_dataset>
     Exporting datasets<export_dataset>
     Viewing datasets in the App<app>

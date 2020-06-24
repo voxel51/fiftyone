@@ -1,61 +1,56 @@
-Loading Common Format Datasets
+Creating Common Format Datasets
 ===============================
 
 .. default-role:: code
 
-FiftyOne provides native support for loading labeled datasets from disk in a
+FiftyOne provides native support for ingesting labeled datasets from disk in a
 variety of common formats.
 
 Basic recipe
 ------------
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-The interface for importing datasets is conveniently exposed via the
-`Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to import
-datasets from disk in any supported format by simply specifiying the path to
-their containing directory on disk and the type of the dataset.
+  .. group-tab:: python
 
-The basic syntax is simple:
+    The interface for ingesting datasets is conveniently exposed via the
+    `Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to
+    get data from disk in any supported format by simply specifying the
+    path to their containing directory on disk and the type of the dataset.
 
-.. code-block:: python
+    .. code-block:: python
 
-    import fiftyone as fo
+        import fiftyone as fo
 
-    # A name for the FiftyOne dataset
-    name = "my-coco-dataset"
+        # A name for the FiftyOne dataset
+        name = "my-coco-dataset"
 
-    # The directory containing the dataset to import
-    dataset_dir = "/path/to/dataset"
+        # The directory containing the dataset to import
+        dataset_dir = "/path/to/dataset"
 
-    # The type of the dataset being imported
-    # Any subclass of `fiftyone.types.BaseDataset` is supported
-    dataset_type = fo.types.COCODetectionDataset  # for example
+        # The type of the dataset being imported
+        # Any subclass of `fiftyone.types.BaseDataset` is supported
+        dataset_type = fo.types.COCODetectionDataset  # for example
 
-    # Import the dataset!
-    dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+        # Import the dataset!
+        dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
-CLI
-~~~
+  .. group-tab:: CLI
 
-FiftyOne datasets can also be created from datasets on disk via the
-`fiftyone datasets create` CLI command:
+    .. code:: shell
 
-.. code:: shell
+        # Creates a dataset from the given data on disk
+        fiftyone datasets create \
+            --name <name> --dataset-dir <dataset-dir> --type <type>
 
-    # Creates a dataset from the given data on disk
-    fiftyone datasets create \
-        --name <name> --dataset-dir <dataset-dir> --type <type>
+    The arguments are as follows:
 
-where the arguments are as follows:
+    .. code:: text
 
-.. code:: text
-
-      -n NAME, --name NAME  a name for the dataset
-      -d DATASET_DIR, --dataset-dir DATASET_DIR
-                            the directory containing the dataset
-      -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+          -n NAME, --name NAME  a name for the dataset
+          -d DATASET_DIR, --dataset-dir DATASET_DIR
+                                the directory containing the dataset
+          -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
 
 Supported formats
 ~~~~~~~~~~~~~~~~~
@@ -132,60 +127,60 @@ Datasets of this type are read in the following format:
 When reading datasets of this type, subfolders are recursively traversed, and
 files with non-image MIME types are omitted.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load a directory of images as a FiftyOne dataset, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from a directory of images, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-images-dir"
-    dataset_dir = "/path/to/images-dir"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory, name=name)
+        name = "my-images-dir"
+        dataset_dir = "/path/to/images-dir"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory, name=name)
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load a directory of images as a FiftyOne dataset, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from a directory of images, you can execute:
 
-    NAME=my-images-dir
-    DATASET_DIR=/path/to/images-dir
+    .. code:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageDirectory
+      NAME=my-images-dir
+      DATASET_DIR=/path/to/images-dir
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+      # Create the dataset
+      fiftyone datasets create \
+          --name $NAME \
+          --dataset-dir $DATASET_DIR \
+          --type fiftyone.types.ImageDirectory
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+      # View summary info about the dataset
+      fiftyone datasets info $NAME
 
-To view a directory of images in the FiftyOne Dashboard without creating
-a persistent FiftyOne dataset, you can execute:
+      # Print the first few samples in the dataset
+      fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view a directory of images in the FiftyOne Dashboard without creating
+    a persistent FiftyOne dataset, you can execute:
 
-    DATASET_DIR=/path/to/images-dir
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageDirectory
+        DATASET_DIR=/path/to/images-dir
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageDirectory
 
 Image classification datasets
 -----------------------------
@@ -229,64 +224,64 @@ If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load an image classification dataset stored in the above format as a
-FiftyOne dataset, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from an image classification dataset stored in
+    the above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-image-classification-dataset"
-    dataset_dir = "/path/to/image-classification-dataset"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.ImageClassificationDataset, name=name
-    )
+        name = "my-image-classification-dataset"
+        dataset_dir = "/path/to/image-classification-dataset"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.ImageClassificationDataset, name=name
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load an image classification dataset stored in the above format as a
-FiftyOne dataset, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from an image classification dataset stored in
+    the above format, you can execute:
 
-    NAME=my-image-classification-dataset
-    DATASET_DIR=/path/to/image-classification-dataset
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageClassificationDataset
+        NAME=my-image-classification-dataset
+        DATASET_DIR=/path/to/image-classification-dataset
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageClassificationDataset
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view an image classification dataset in the FiftyOne Dashboard without
-creating a persistent FiftyOne dataset, you can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view an image classification dataset in the FiftyOne Dashboard without
+    creating a persistent FiftyOne dataset, you can execute:
 
-    DATASET_DIR=/path/to/image-classification-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageClassificationDataset
+        DATASET_DIR=/path/to/image-classification-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageClassificationDataset
 
 Image classification directory tree
 -----------------------------------
@@ -311,64 +306,64 @@ Datasets of this type are read in the following format:
             <image2>.<ext>
             ...
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load an image classification directory tree stored in the above
-format as a FiftyOne dataset, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from an image classification directory tree
+    stored in the above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-image-classification-dir-tree"
-    dataset_dir = "/path/to/image-classification-dir-tree"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.ImageClassificationDirectoryTree, name=name
-    )
+        name = "my-image-classification-dir-tree"
+        dataset_dir = "/path/to/image-classification-dir-tree"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.ImageClassificationDirectoryTree, name=name
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load an image classification directory tree stored in the above
-format as a FiftyOne dataset, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from an image classification directory tree
+    stored in the above format, you can execute:
 
-    NAME=my-image-classification-dir-tree
-    DATASET_DIR=/path/to/image-classification-dir-tree
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageClassificationDirectoryTree
+        NAME=my-image-classification-dir-tree
+        DATASET_DIR=/path/to/image-classification-dir-tree
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageClassificationDirectoryTree
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view an image classification directory tree in the FiftyOne Dashboard
-without creating a persistent FiftyOne dataset, you can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view an image classification directory tree in the FiftyOne Dashboard
+    without creating a persistent FiftyOne dataset, you can execute:
 
-    DATASET_DIR=/path/to/image-classification-dir-tree
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageClassificationDirectoryTree
+        DATASET_DIR=/path/to/image-classification-dir-tree
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageClassificationDirectoryTree
 
 TF image classification dataset
 -------------------------------
@@ -408,75 +403,75 @@ following format:
         "label": tf.io.FixedLenFeature([], tf.string),
     }
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load an image classification dataset stored as a directory of TFRecords in
-the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from an image classification dataset stored as
+    a directory of TFRecords in the above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-tf-image-classification-dataset"
-    dataset_dir = "/path/to/tf-image-classification-dataset"
-    images_dir = "/path/for/images"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir,
-        fo.types.TFImageClassificationDataset,
-        name=name,
-        images_dir=images_dir,
-    )
+        name = "my-tf-image-classification-dataset"
+        dataset_dir = "/path/to/tf-image-classification-dataset"
+        images_dir = "/path/for/images"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir,
+            fo.types.TFImageClassificationDataset,
+            name=name,
+            images_dir=images_dir,
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-When the above command is executed, the images in the TFRecords will be written
-to the provided `images_dir`, which is required because FiftyOne datasets must
-make their images available as invididual files on disk.
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-CLI
-~~~
+    When the above command is executed, the images in the TFRecords will be
+    written to the provided `images_dir`, which is required because FiftyOne
+    datasets must make their images available as invididual files on disk.
 
-To load an image classification dataset stored as a directory of TFRecords in
-the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from an image classification dataset stored as
+    a directory of TFRecords in the above format, you can execute:
 
-    NAME=my-tf-image-classification-dataset
-    DATASET_DIR=/path/to/tf-image-classification-dataset
-    IMAGES_DIR=/path/for/images
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.TFImageClassificationDataset
-        --images-dir
+        NAME=my-tf-image-classification-dataset
+        DATASET_DIR=/path/to/tf-image-classification-dataset
+        IMAGES_DIR=/path/for/images
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.TFImageClassificationDataset
+            --images-dir
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view an image classification dataset stored as a directory of TFRecords in
-the FiftyOne Dashboard without creating a persistent FiftyOne dataset, you can
-execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view an image classification dataset stored as a directory of TFRecords
+    in the FiftyOne Dashboard without creating a persistent FiftyOne dataset,
+    you can execute:
 
-    DATASET_DIR=/path/to/tf-image-classification-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.TFImageClassificationDataset
+        DATASET_DIR=/path/to/tf-image-classification-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.TFImageClassificationDataset
 
 Image detection dataset
 -----------------------
@@ -534,63 +529,65 @@ If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load an image detection dataset stored in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from an image detection dataset stored in the
+    above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-image-detection-dataset"
-    dataset_dir = "/path/to/image-detection-dataset"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.ImageDetectionDataset, name=name
-    )
+        name = "my-image-detection-dataset"
+        dataset_dir = "/path/to/image-detection-dataset"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.ImageDetectionDataset, name=name
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load an image detection dataset stored in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from an image detection dataset stored in the
+    above format, you can execute:
 
-    NAME=my-image-detection-dataset
-    DATASET_DIR=/path/to/image-detection-dataset
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageDetectionDataset
+        NAME=my-image-detection-dataset
+        DATASET_DIR=/path/to/image-detection-dataset
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageDetectionDataset
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view an image detection dataset stored in the above format in the
-FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
-can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view an image detection dataset stored in the above format in the
+    FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
+    can execute:
 
-    DATASET_DIR=/path/to/image-detection-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageDetectionDataset
+        DATASET_DIR=/path/to/image-detection-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageDetectionDataset
 
 COCO detection dataset
 ----------------------
@@ -661,62 +658,64 @@ where ``labels.json`` is a JSON file in the following format:
         ]
     }
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load a COCO detection dataset stored in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from a COCO detection dataset stored in the
+    above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-coco-detection-dataset"
-    dataset_dir = "/path/to/coco-detection-dataset"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.COCODetectionDataset, name=name
-    )
+        name = "my-coco-detection-dataset"
+        dataset_dir = "/path/to/coco-detection-dataset"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.COCODetectionDataset, name=name
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load a COCO detection dataset stored in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from a COCO detection dataset stored in the
+    above format, you can execute:
 
-    NAME=my-coco-detection-dataset
-    DATASET_DIR=/path/to/coco-detection-dataset
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.COCODetectionDataset
+        NAME=my-coco-detection-dataset
+        DATASET_DIR=/path/to/coco-detection-dataset
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.COCODetectionDataset
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view a COCO detection dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view a COCO detection dataset stored in the above format in the FiftyOne
+    Dashboard without creating a persistent FiftyOne dataset, you can execute:
 
-    DATASET_DIR=/path/to/coco-detection-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.COCODetectionDataset
+        DATASET_DIR=/path/to/coco-detection-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.COCODetectionDataset
 
 VOC detection dataset
 ---------------------
@@ -787,63 +786,65 @@ where the labels XML files are in the following format:
         ...
     </annotation>
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load a VOC detection dataset stored in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from a VOC detection dataset stored in the
+    above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-voc-detection-dataset"
-    dataset_dir = "/path/to/voc-detection-dataset"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.VOCDetectionDataset, name=name
-    )
+        name = "my-voc-detection-dataset"
+        dataset_dir = "/path/to/voc-detection-dataset"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.VOCDetectionDataset, name=name
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load a VOC detection dataset stored in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from a VOC detection dataset stored in the
+    above format, you can execute:
 
-    NAME=my-voc-detection-dataset
-    DATASET_DIR=/path/to/voc-detection-dataset
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.VOCDetectionDataset
+        NAME=my-voc-detection-dataset
+        DATASET_DIR=/path/to/voc-detection-dataset
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.VOCDetectionDataset
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view a VOC detection dataset stored in the above format in the
-FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
-can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view a VOC detection dataset stored in the above format in the
+    FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
+    can execute:
 
-    DATASET_DIR=/path/to/voc-detection-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.VOCDetectionDataset
+        DATASET_DIR=/path/to/voc-detection-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.VOCDetectionDataset
 
 KITTI detection dataset
 -----------------------
@@ -907,62 +908,65 @@ meanings:
 When reading datasets of this type, all columns after the four `bbox` columns
 may be omitted.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load a KITTI detection dataset stored in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from a KITTI detection dataset stored in the
+    above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-kitti-detection-dataset"
-    dataset_dir = "/path/to/kitti-detection-dataset"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.KITTIDetectionDataset, name=name
-    )
+        name = "my-kitti-detection-dataset"
+        dataset_dir = "/path/to/kitti-detection-dataset"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.KITTIDetectionDataset, name=name
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load a KITTI detection dataset stored in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from a KITTI detection dataset stored in the
+    above format, you can execute:
 
-    NAME=my-kitti-detection-dataset
-    DATASET_DIR=/path/to/kitti-detection-dataset
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.KITTIDetectionDataset
+        NAME=my-kitti-detection-dataset
+        DATASET_DIR=/path/to/kitti-detection-dataset
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.KITTIDetectionDataset
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view a KITTI detection dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view a KITTI detection dataset stored in the above format in the
+    FiftyOne Dashboard without creating a persistent FiftyOne dataset, you can
+    execute:
 
-    DATASET_DIR=/path/to/kitti-detection-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.KITTIDetectionDataset
+        DATASET_DIR=/path/to/kitti-detection-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.KITTIDetectionDataset
 
 CVAT image dataset
 ------------------
@@ -1033,62 +1037,64 @@ where `labels.xml` is an XML file in the following format:
         </image>
     </annotations>
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load a CVAT image dataset stored in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from a CVAT image dataset stored in the
+    above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-cvat-image-dataset"
-    dataset_dir = "/path/to/cvat-image-dataset"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.CVATImageDataset, name=name
-    )
+        name = "my-cvat-image-dataset"
+        dataset_dir = "/path/to/cvat-image-dataset"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.CVATImageDataset, name=name
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load a CVAT image dataset stored in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from a CVAT image dataset stored in the
+    above format, you can execute:
 
-    NAME=my-cvat-image-dataset
-    DATASET_DIR=/path/to/cvat-image-dataset
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.CVATImageDataset
+        NAME=my-cvat-image-dataset
+        DATASET_DIR=/path/to/cvat-image-dataset
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.CVATImageDataset
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view a CVAT image dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view a CVAT image dataset stored in the above format in the FiftyOne
+    Dashboard without creating a persistent FiftyOne dataset, you can execute:
 
-    DATASET_DIR=/path/to/cvat-image-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.CVATImageDataset
+        DATASET_DIR=/path/to/cvat-image-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.CVATImageDataset
 
 Multitask image labels dataset
 ------------------------------
@@ -1134,62 +1140,64 @@ where `manifest.json` is a JSON file in the following format:
 and where each labels JSON file is stored in
 `eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load an image labels dataset stored in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from an image labels dataset stored in the
+    above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-image-labels-dataset"
-    dataset_dir = "/path/to/image-labels-dataset"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(
-        dataset_dir, fo.types.ImageLabelsDataset, name=name
-    )
+        name = "my-image-labels-dataset"
+        dataset_dir = "/path/to/image-labels-dataset"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.ImageLabelsDataset, name=name
+        )
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load an image labels dataset stored in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from an image labels dataset stored in the
+    above format, you can execute:
 
-    NAME=my-image-labels-dataset
-    DATASET_DIR=/path/to/image-labels-dataset
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageLabelsDataset
+        NAME=my-image-labels-dataset
+        DATASET_DIR=/path/to/image-labels-dataset
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageLabelsDataset
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view an image labels dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view an image labels dataset stored in the above format in the FiftyOne
+    Dashboard without creating a persistent FiftyOne dataset, you can execute:
 
-    DATASET_DIR=/path/to/image-labels-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageLabelsDataset
+        DATASET_DIR=/path/to/image-labels-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageLabelsDataset
 
 BDD dataset
 -----------
@@ -1249,57 +1257,59 @@ where `labels.json` is a JSON file in the following format:
         ...
     ]
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load a BDD dataset stored in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To create a FiftyOne dataset from a BDD dataset stored in the above format,
+    you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-bdd-dataset"
-    dataset_dir = "/path/to/bdd-dataset"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(dataset_dir, fo.types.BDDDataset, name=name)
+        name = "my-bdd-dataset"
+        dataset_dir = "/path/to/bdd-dataset"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.BDDDataset, name=name)
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load a BDD dataset stored in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To create a FiftyOne dataset from a BDD dataset stored in the above format,
+    you can execute:
 
-    NAME=my-bdd-dataset
-    DATASET_DIR=/path/to/bdd-dataset
+    .. code-block:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.BDDDataset
+        NAME=my-bdd-dataset
+        DATASET_DIR=/path/to/bdd-dataset
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.BDDDataset
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
 
-To view a BDD dataset stored in the above format in the FiftyOne Dashboard
-without creating a persistent FiftyOne dataset, you can execute:
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view a BDD dataset stored in the above format in the FiftyOne Dashboard
+    without creating a persistent FiftyOne dataset, you can execute:
 
-    DATASET_DIR=/path/to/bdd-dataset
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.BDDDataset
+        DATASET_DIR=/path/to/bdd-dataset
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.BDDDataset
