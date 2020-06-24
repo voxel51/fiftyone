@@ -37,8 +37,8 @@ setup(
     license="",
     packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
     package_dir={
-        "fiftyone.recipes": "docs/recipes",
-        "fiftyone.tutorials": "docs/tutorials",
+        "fiftyone.recipes": "docs/source/recipes",
+        "fiftyone.tutorials": "docs/source/tutorials",
     },
     include_package_data=True,
     install_requires=[
