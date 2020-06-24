@@ -51,18 +51,23 @@ Replace `python3` at the beginning of a command if your Python executable has a
 different name. This will create a new virtual environment in the `env` folder,
 with standalone copies of Python and pip, as well as an isolated location to
 install packages to. However, this environment will not be used until it is
-*activated*. To activate the virtual environment, run the following command
-(do not omit the leading `.`):
+*activated*. To activate the virtual environment, run the following command:
 
-.. code-block:: shell
+.. tabs::
 
-   . env/bin/activate
+  .. group-tab:: Linux/macOS
 
-On Windows, run this command instead:
+    .. code-block:: shell
 
-.. code-block:: text
+      . env/bin/activate
 
-   env\Scripts\activate.bat
+    Be sure to include the leading `.`
+
+  .. group-tab:: Windows
+
+    .. code-block:: text
+
+       env\Scripts\activate.bat
 
 After running this command, your shell prompt should begin with `(env)` , which
 indicates that the virtual environment has been activated. This state will only
@@ -75,18 +80,32 @@ of this guide. For example:
 .. code-block:: shell
 
    $ python --version
-   Python 3.6.9
+   Python 3.8.3
 
 Also note that `python` and `pip` live inside the `env` folder (in this output,
-the path to the current folder is replaced with `...`; on Windows, replace
-`which` with `where`):
+the path to the current folder is replaced with `...`):
 
-.. code-block:: shell
+.. tabs::
 
-   $ which python
-   .../env/bin/python
-   $ which pip
-   .../env/bin/pip
+  .. group-tab:: Linux/macOS
+
+    .. code-block:: shell
+
+      $ which python
+      .../env/bin/python
+      $ which pip
+      .../env/bin/pip
+
+  .. group-tab:: Windows
+
+    .. code-block:: text
+
+      > where python
+      ...\env\Scripts\python.exe
+      C:\Program Files\Python38\python.exe
+      > where pip
+      ...\env\Scripts\pip.exe
+      C:\Program Files\Python38\Scripts\pip.exe
 
 Before you continue, you should upgrade `pip` and some related packages in the
 virtual environment. FiftyOne's packages rely on some newer pip features, so
@@ -217,13 +236,19 @@ these packages must be installed *after* the `fiftyone` package; if you install
 `fiftyone` afterwards, you can fix your MongoDB installation by adding
 `--force-reinstall` to the commands below.
 
-.. code-block:: shell
+.. tabs::
 
-   # Ubuntu 16.04
-   pip install --index https://pypi.voxel51.com fiftyone-db-ubuntu1604
+  .. tab:: Ubuntu 16.04
 
-   # Debian 9
-   pip install --index https://pypi.voxel51.com fiftyone-db-debian9
+    .. code-block:: shell
+
+      pip install --index https://pypi.voxel51.com fiftyone-db-ubuntu1604
+
+  .. tab:: Debian 9
+
+    .. code-block:: shell
+
+      pip install --index https://pypi.voxel51.com fiftyone-db-debian9
 
 Manual installation
 ~~~~~~~~~~~~~~~~~~~
@@ -255,4 +280,4 @@ which should produce output that looks like this:
        distarch: x86_64
        target_arch: x86_64
 
-Verify that the db version is at least 3.6.
+Verify that the version after "db version" is at least 3.6.

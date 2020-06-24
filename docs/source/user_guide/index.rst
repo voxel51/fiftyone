@@ -1,6 +1,8 @@
 FiftyOne User Guide
 ===================
 
+.. include:: ../substitutions.rst
+
 .. default-role:: code
 
 Welcome to the FiftyOne User Guide!
@@ -27,7 +29,7 @@ Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
         dataset.view()
         .match_tag("test")
         .sort_by("custom_field", reverse=True)
-        .limit(10)
+        .limit(1)
     )
     for sample in view:
         print(sample)

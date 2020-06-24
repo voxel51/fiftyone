@@ -40,6 +40,7 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "m2r",
     "nbsphinx",
+    "sphinx_tabs.tabs",
 ]
 
 # Types of class members to generate documentation for.
@@ -90,6 +91,7 @@ html_context = {
     "link_careers": "https://voxel51.com/careers/",
     "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
     "link_demo": "https://voxel51.com/demo/",
+    "link_docs_fiftyone": "https://voxel51.com/docs/fiftyone/",
     "link_fiftyone": "https://voxel51.com/fiftyone/",
     "link_github": "https://github.com/",
     "link_home": "https://voxel51.com/",

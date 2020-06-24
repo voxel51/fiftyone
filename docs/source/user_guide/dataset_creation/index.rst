@@ -11,7 +11,7 @@ also provides support for easily loading custom data formats as well.
 
 There are three basic ways to load data into FiftyOne:
 
-- :doc:`Common datasets<common_datasets>`: FiftyOne natively supports loading
+- :doc:`Common format datasets<common_datasets>`: FiftyOne natively supports loading
   datasets in a variety of common formats, including
   `COCO <https://cocodataset.org/#home>`_,
   `VOC <http://host.robots.ox.ac.uk/pascal/VOC>`_,
@@ -27,7 +27,7 @@ There are three basic ways to load data into FiftyOne:
   `ImageNet <http://www.image-net.org>`_
   that can be downloaded and loaded into FiftyOne via a single line of code.
 
-- :doc:`Custom datasets<custom_datasets>`: If your data is stored in a custom
+- :doc:`Custom format datasets<custom_datasets>`: If your data is stored in a custom
   format, you can easily load it into FiftyOne by directly adding the samples
   and their fields to a FiftyOne Dataset in a variety of formats. You can even
   provide your own sample parser to automate this process.
@@ -61,6 +61,6 @@ Or, perform the same action via the CLI:
    :maxdepth: 1
    :hidden:
 
-   Common datasets <common_datasets>
+   Common format datasets <common_datasets>
    Zoo datasets <zoo_datasets>
-   Custom datasets <custom_datasets>
+   Custom format datasets <custom_datasets>

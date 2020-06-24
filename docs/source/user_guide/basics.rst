@@ -8,6 +8,12 @@ The FiftyOne `Dataset` class allows you to easily
 :doc:`visualize <app>` your data along with any related labels
 (classification, detection, segmentation, etc).
 
+
+.. note::
+    Checkout out our :doc:`dataset loading guide <dataset_creation/index>` to load
+    your dataset into FiftyOne.
+
+
 `Dataset` is the understood format that can be visualized in the
 :doc:`FiftyOne App <app>`.
 

@@ -1,5 +1,5 @@
-Loading Common Datasets
-=======================
+Loading Common Format Datasets
+===============================
 
 .. default-role:: code
 
