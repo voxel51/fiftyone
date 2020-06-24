@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from datetime import datetime
 import os
 import sys
 
@@ -52,6 +53,7 @@ AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
 VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
+COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
 # MongoDB setup
 try:
