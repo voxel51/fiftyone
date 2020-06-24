@@ -49,22 +49,27 @@ class Service(object):
     """
 
     working_dir = "."
+    allow_headless = False
 
     def __init__(self):
         """Creates (starts) the Service."""
         self._system = os.system
-        self._is_server = (
+        self._disabled = (
             os.environ.get("FIFTYONE_SERVER", False)
             or os.environ.get("FIFTYONE_DISABLE_SERVICES", False)
             or multiprocessing.current_process().name != "MainProcess"
+            or (
+                os.environ.get("FIFTYONE_HEADLESS", False)
+                and not self.allow_headless
+            )
         )
         self.child = None
-        if not self._is_server:
+        if not self._disabled:
             self.start()
 
     def __del__(self):
         """Deletes (stops) the Service."""
-        if not self._is_server:
+        if not self._disabled:
             try:
                 self.stop()
             except:
@@ -104,6 +109,8 @@ class Service(object):
 class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
 
+    allow_headless = True
+
     MONGOD_EXE_NAME = "mongod"
     if sys.platform.startswith("win"):
         MONGOD_EXE_NAME += ".exe"
@@ -140,6 +147,7 @@ class DatabaseService(Service):
 
     @staticmethod
     def find_mongod():
+        """Returns the path to the `mongod` executable."""
         search_paths = [
             foc.FIFTYONE_DB_BIN_DIR,
             os.path.join(foc.FIFTYONE_CONFIG_DIR, "bin"),
@@ -179,6 +187,7 @@ class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
     working_dir = foc.SERVER_DIR
+    allow_headless = True
 
     def __init__(self, port):
         self._port = port

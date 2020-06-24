@@ -18,8 +18,8 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from datetime import datetime
 import os
-import sys
 
 try:
     from importlib.metadata import metadata  # Python 3.8
@@ -32,9 +32,6 @@ FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
-EXAMPLES_DIR = os.path.join(FIFTYONE_DIR, "examples")  # prod install
-if not os.path.isdir(EXAMPLES_DIR):
-    EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")  # dev install
 
 DEV_INSTALL = os.path.isdir(
     os.path.normpath(
@@ -52,6 +49,7 @@ AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
 VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
+COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
 # MongoDB setup
 try:
