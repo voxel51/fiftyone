@@ -52,3 +52,18 @@ export const fields = atomFamily({
     color: "#CCCCCC",
   },
 });
+
+export const segmentIsLoaded = atomFamily({
+  key: "segmentIsLoaded",
+  default: false,
+});
+
+export const itemPosition = atomFamily({
+  key: "itemPosition",
+  default: null,
+});
+
+export const gridMargin = atome({
+  key: "gridMargin",
+  default: 4,
+});

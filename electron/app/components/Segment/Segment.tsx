@@ -6,43 +6,43 @@ import { itemsPerRequest } from "../../state/atoms";
 import { segmentItemIndices, segmentData } from "../../state/selectors";
 
 const SegmentDiv = styled.div`
+  position: relative;
   width: 400px;
   height: 400px;
 `;
 
 const LoadingTile = styled.div`
   width: 100%;
-  height: 80px;
+  height: 120px;
   background: #ccc;
 `;
 
-const LoadingDiv = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+const Spacer = styled.div`
+  width: 100%;
+  height: 120px;
 `;
 
-export const Loading = () => {
-  const itemsPerRequestValue = useRecoilValue(itemsPerRequest);
+const Loading = ({ index }) => {
+  const itemsIndicesValue = useRecoilValue(segmentItemIndices(index));
   return (
-    <>
-      {temsPerRequestValue.map((k) => (
-        <LoadingTile />
+    <LoadingDiv>
+      {itemsIndicesValue.map((k) => (
+        <>
+          <Spacer className="spacer" key={`spacer-${k}`} />
+          <LoadingTile key={k} />
+        </>
       ))}
-    </>
+      <Spacer key="end-row" />
+    </LoadingDiv>
   );
 };
 
 const Segment = ({ index }) => {
   const itemIndicesValue = useRecoilValue(segmentItemIndices(index));
-  const segmentDataValue = useRecoilValue(segmentData(index));
 
-  return <SegmentDiv>Hello</SegmentDiv>;
+  return <SegmentDiv>{}</SegmentDiv>;
 };
 
 export default ({ index }) => {
-  return (
-    <Suspense fallback={Loading}>
-      <Segment index={index} />
-    </Suspense>
-  );
+  return <Segment index={index} />;
 };

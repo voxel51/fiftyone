@@ -14,6 +14,6 @@ const Container = styled.div`
 
 export const thumbnail = () => (
   <Container>
-    <Thumbnail />
+    <Thumbnail index={0} />
   </Container>
 );

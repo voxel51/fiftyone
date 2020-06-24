@@ -10,6 +10,7 @@ import {
   isDraggingIndicator,
   currentListTop,
   itemsPerRequest,
+  segmentIsLoaded,
 } from "./atoms";
 
 export const indicatorIndex = selector({
@@ -147,5 +148,47 @@ export const segmentData = selectorFamily({
   key: "segmentData",
   get: (segmentIndex) => async ({ get }) => {
     return await getPage(getSocket(5151, "state"), segmentIndex);
+  },
+});
+
+export const itemKey = selectorFamily({
+  key: "itemKey",
+  get: (itemIndex) => ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    return itemIndex % ipr;
+  },
+});
+
+export const segmentIndexFromItemIndex = selectorFamily({
+  key: "segmentIndexFromItemIndex",
+  get: (itemIndex) => ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    return Math.floor(itemIndex / ipr);
+  },
+});
+
+export const itemIsLoaded = selectorFamily({
+  key: "itemIsLoaded",
+  get: (itemIndex) => ({ get }) => {
+    const si = get(segmentIndexFromItemIndex(itemIndex));
+    return get(segmentIsLoaded(si));
+  },
+});
+
+export const itemData = selectorFamily({
+  key: "itemData",
+  get: (itemIndex) => ({ get }) => {
+    const ik = get(itemKey(itemIndex));
+    const si = get(segmentIndexFromItemIndex(itemIndex));
+    return get(segmentData(si))[ik];
+  },
+});
+
+export const itemLoadingPosition = selectorFamily({
+  key: "itemLoadingPosition",
+  get: (itemIndex) => {
+    const ik = get(itemKey(itemIndex));
+    const [mw, unused] = get(mainSize);
+    // const workingWidth = mw -
   },
 });

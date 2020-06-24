@@ -1,9 +1,10 @@
 import _ from "lodash";
 import React, { useState, useEffect } from "react";
+import { useRecoilValue } from "recoil";
 
 import Player51 from "../../player51/build/cjs/player51.min.js";
 
-export default () => {
+const Player51 = ({ index }) => {
   const [initLoad, setInitLoad] = useState(false);
   const [player, setPlayer] = useState(
     new Player51({
@@ -27,3 +28,5 @@ export default () => {
   });
   return <div id={"player-id"} />;
 };
+
+export default ({ index }) => {};
