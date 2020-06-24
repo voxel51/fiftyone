@@ -142,12 +142,17 @@ Installing FiftyOne
 To install FiftyOne in a virtual environment, ensure that the virtual
 environment is active as described in the previous section, then run:
 
-.. note::
+.. tabs::
 
-    Check your FiftyOne Beta email to find this command!
+  .. group-tab:: Private Beta
 
-    If you haven't registered for the FiftyOne Beta, you can
-    `sign up here! <https://voxel51.com/fiftyone/#beta>`_
+    .. code-block:: text
+
+        FiftyOne is currently in private beta. If you have registered, check
+        your FiftyOne Beta welcome email to find this command.
+
+        If you haven't registered for the FiftyOne Beta, you can sign up at
+        https://voxel51.com/fiftyone/#beta
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
@@ -206,12 +211,17 @@ Upgrading FiftyOne
 Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
 upgrade an existing FiftyOne installation:
 
-.. note::
+.. tabs::
 
-    Check your FiftyOne Beta email to find this command!
+  .. group-tab:: Private Beta
 
-    If you haven't registered for the FiftyOne Beta, you can
-    `sign up here! <https://voxel51.com/fiftyone/#beta>`_
+    .. code-block:: text
+
+        FiftyOne is currently in private beta. If you have registered, check
+        your FiftyOne Beta welcome email to find this command.
+
+        If you haven't registered for the FiftyOne Beta, you can sign up at
+        https://voxel51.com/fiftyone/#beta
 
 Uninstalling FiftyOne
 ---------------------
@@ -242,12 +252,17 @@ these packages must be installed *after* the `fiftyone` package; if you install
 `fiftyone` afterwards, you can fix your MongoDB installation by adding
 `--force-reinstall` to the commands below.
 
-.. note::
+.. tabs::
 
-    Check your FiftyOne Beta email to find this command!
+  .. group-tab:: Private Beta
 
-    If you haven't registered for the FiftyOne Beta, you can
-    `sign up here! <https://voxel51.com/fiftyone/#beta>`_
+    .. code-block:: text
+
+        FiftyOne is currently in private beta. If you have registered, check
+        your FiftyOne Beta welcome email to find this command.
+
+        If you haven't registered for the FiftyOne Beta, you can sign up at
+        https://voxel51.com/fiftyone/#beta
 
 Manual installation
 ~~~~~~~~~~~~~~~~~~~
