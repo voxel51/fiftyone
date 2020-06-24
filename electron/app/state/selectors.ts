@@ -155,8 +155,8 @@ export const segmentItemIndices = selectorFamily({
 
 export const segmentData = selectorFamily({
   key: "segmentData",
-  get: (segmentIndex) => async ({ get }) => {
-    return await getPage(getSocket(5151, "state"), segmentIndex);
+  get: (segmentIndex) => ({ get }) => {
+    return getPage(getSocket(5151, "state"), segmentIndex);
   },
 });
 

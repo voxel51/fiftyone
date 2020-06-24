@@ -9,8 +9,9 @@ import {
   itemBasePosition,
   itemBaseSize,
   itemData,
+  segmentData,
 } from "../../state/selectors";
-
+import { getPage, getSocket } from "../../utils/socket";
 import Player51 from "../../player51/build/cjs/player51.min.js";
 
 const Tile = animated(styled.div`
@@ -19,9 +20,12 @@ const Tile = animated(styled.div`
 `);
 
 const Thumbnail = ({ index }) => {
-  const itemDataValue = useRecoilValue(itemData(index));
-  console.log(itemDataValue);
-  return null;
+  // const itemDataValue = useRecoilValue(itemData(index));
+  // const sd = useRecoilValue(segmentData(0));
+  useEffect(() => {
+    getPage(getSocket(5151, "state"), 0).then((d) => console.log(d));
+  });
+  return <div>hello</div>;
 };
 
 const ThumbnailContainer = ({ index }) => {

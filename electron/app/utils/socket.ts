@@ -18,7 +18,10 @@ export function getSocket(server, name) {
 
 export function getPage(socket, page) {
   return new Promise(function (resolve) {
-    socket.emit("page", page, resolve);
+    socket.emit("page", page, (data) => {
+      console.log(data);
+      resolve(data);
+    });
   });
 }
 
