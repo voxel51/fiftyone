@@ -50,7 +50,7 @@ sphinx-apidoc -f --no-toc -o docs/source/api fiftyone
 
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 cd docs
-sphinx-build -M html source build
+sphinx-build -M html source build $SPHINXOPTS  # unquoted to allow multiple args
 
 echo "**** Documentation complete ****"
 printf "To view the docs, open:\n\ndocs/build/html/index.html\n\n"
