@@ -40,7 +40,7 @@ automatically identify possible label mistakes in your datasets.
 
 During the training loop for a model, the best results will be seen when
 training on unique data. For example, finding and removing similar samples in
-your dataset cam avoid accidental concept imbalance that can bias the learning
+your dataset can avoid accidental concept imbalance that can bias the learning
 of your model. FiftyOne provides a `uniqueness` tool that can automatically
 identify duplicate or near-duplicate images in your datasets.
 
