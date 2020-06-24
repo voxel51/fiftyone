@@ -21,8 +21,8 @@ much more!
    :width: 100%
    :align: center
 
-Capabilities
-____________
+Core Capabilities
+_________________
 
 FiftyOne provides advanced capabilities that will turbocharge your machine
 learning workflows.
@@ -73,8 +73,8 @@ learning processes.
 
     Tutorial coming soon!
 
-Concepts
-________
+Core Concepts
+_____________
 
 .. rubric:: :doc:`The FiftyOne Core Library<user_guide/basics>`
 
@@ -100,14 +100,14 @@ adding custom tags, model predictions and more.
         print(sample)
 
 .. note::
-    FiftyOne is designed to be lightweight and flexible, so it is easy to load
+
+    FiftyOne is designed to be lightweight and flexible, making it easy to load
     your datasets. FiftyOne supports loading datasets in a variety of common
     formats out-of-the-box, and it also provides the extensibility to load
     datasets in custom formats.
 
-    Check out the
-    :doc:`loading datasets guide<user_guide/dataset_creation/index>` to see how
-    to load your data into FiftyOne today.
+    Check out :doc:`loading datasets<user_guide/dataset_creation/index>` to see
+    how to load your data into FiftyOne!
 
 .. rubric:: :doc:`The FiftyOne App<user_guide/app>`
 
@@ -121,7 +121,6 @@ dataset into any aspect you need; and more.
    :width: 75%
    :align: center
    :target: user_guide/app.html
-
 
 .. rubric:: :doc:`The FiftyOne Brain<user_guide/brain>`
 
@@ -137,8 +136,8 @@ performance of your models.
    fob.compute_uniqueness(dataset)
    rank_view = dataset.view().sort_by("uniqueness")
 
-What Next?
-__________
+What's Next?
+____________
 
 Where should you go from here? You could...
 
@@ -150,11 +149,13 @@ Where should you go from here? You could...
 * Consult the :doc:`user guide<user_guide/index>` for detailed instructions on
   how to accomplish various tasks with FiftyOne.
 
-Support
-_______
+Need Support?
+_____________
 
 If you run into any issue with FiftyOne that cannot be resolved wih this
-documentation, feel free to reach out to us at support@voxel51.com.
+documentation, feel free to
+`connect with us on Slack <https://voxel51.slack.com/app_redirect?channel=C0154574MKJ>`_
+or reach out to us at support@voxel51.com.
 
 .. toctree::
    :maxdepth: 1
