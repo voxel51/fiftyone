@@ -13,200 +13,314 @@ the CLI.
 Python library
 --------------
 
-The Dataset Zoo is accessible via the ``fiftyone.zoo`` package.
-
 Listing zoo datasets
 ~~~~~~~~~~~~~~~~~~~~
 
-You can list the available zoo datasets via the
-``fiftyone.zoo.list_zoo_datasets()`` method:
+.. tabs::
 
-.. code:: py
+  .. group-tab:: python
 
-    import fiftyone.zoo as foz
+    The Dataset Zoo is accessible via the ``fiftyone.zoo`` package.
 
-    available_datasets = foz.list_zoo_datasets()
+    You can list the available zoo datasets via the
+    ``fiftyone.zoo.list_zoo_datasets()`` method:
 
-    print(available_datasets)
+    .. code:: py
 
-::
+        import fiftyone.zoo as foz
 
-	['coco-2014',
-	 'coco-2017',
-	 'imagenet-2012',
-	 'voc-2007',
-	 'cifar100',
-	 'kitti',
-	 'mnist',
-	 'voc-2012',
-	 'cifar10',
-	 'fashion-mnist',
-	 'caltech101']
+        available_datasets = foz.list_zoo_datasets()
 
-To view the zoo datasets that you have downloaded, you can use the
-``fiftyone.zoo.list_downloaded_zoo_datasets()`` method:
+        print(available_datasets)
 
-.. code:: py
+    ::
 
-    from pprintpp import pprint
-    import fiftyone.zoo as foz
+        ['coco-2014',
+         'coco-2017',
+         'imagenet-2012',
+         'voc-2007',
+         'cifar100',
+         'kitti',
+         'mnist',
+         'voc-2012',
+         'cifar10',
+         'fashion-mnist',
+         'caltech101']
 
-    downloaded_datasets = foz.list_downloaded_zoo_datasets()
-    pprint(downloaded_datasets)
+    To view the zoo datasets that you have downloaded, you can use the
+    ``fiftyone.zoo.list_downloaded_zoo_datasets()`` method:
 
-::
+    .. code:: py
 
-    {
-        'cifar10': (
-            '~/fiftyone/cifar10',
-            <fiftyone.zoo.ZooDatasetInfo object at 0x141a63048>,
-        ),
-        'kitti': (
-            '~/fiftyone/kitti',
-            <fiftyone.zoo.ZooDatasetInfo object at 0x141a62940>,
-        ),
-        ...
-    }
+        from pprintpp import pprint
+        import fiftyone.zoo as foz
+
+        downloaded_datasets = foz.list_downloaded_zoo_datasets()
+        pprint(downloaded_datasets)
+
+    ::
+
+        {
+            'cifar10': (
+                '~/fiftyone/cifar10',
+                <fiftyone.zoo.ZooDatasetInfo object at 0x141a63048>,
+            ),
+            'kitti': (
+                '~/fiftyone/kitti',
+                <fiftyone.zoo.ZooDatasetInfo object at 0x141a62940>,
+            ),
+            ...
+        }
 
 Getting information about zoo datasets
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Each zoo dataset is represented by a ``fiftyone.zoo.ZooDataset``
-subclass, which contains information about the dataset, its available
-splits, and more.
+.. tabs::
 
-For example, let's print some information about the CIFAR-10 dataset:
+  .. group-tab:: python
 
-.. code:: py
+    Each zoo dataset is represented by a ``fiftyone.zoo.ZooDataset``
+    subclass, which contains information about the dataset, its available
+    splits, and more.
 
-    import fiftyone.zoo as foz
+    For example, let's print some information about the CIFAR-10 dataset:
 
-    zoo_dataset = foz.get_zoo_dataset("cifar10")
+    .. code:: py
 
-    print("***** Dataset description *****")
-    print(zoo_dataset.__doc__)
+        import fiftyone.zoo as foz
 
-    print("***** Supported splits *****")
-    print("%s\n" % ", ".join(zoo_dataset.supported_splits))
+        zoo_dataset = foz.get_zoo_dataset("cifar10")
 
-::
+        print("***** Dataset description *****")
+        print(zoo_dataset.__doc__)
 
-    ***** Dataset description *****
-    The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
-        classes, with 6000 images per class. There are 50000 training images and
-        10000 test images.
+        print("***** Supported splits *****")
+        print("%s\n" % ", ".join(zoo_dataset.supported_splits))
 
-        Dataset size:
-            132.40 MiB
+    ::
 
-        Source:
-            https://www.cs.toronto.edu/~kriz/cifar.html
+        ***** Dataset description *****
+        The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
+            classes, with 6000 images per class. There are 50000 training images and
+            10000 test images.
 
-    ***** Supported splits *****
-    test, train
+            Dataset size:
+                132.40 MiB
 
-When a zoo dataset is downloaded, a ``fiftyone.zoo.ZooDatasetInfo``
-instance is created in its root directory that contains additional
-information about the dataset, including which splits have been
-downloaded (if applicable).
+            Source:
+                https://www.cs.toronto.edu/~kriz/cifar.html
 
-You can load the ``fiftyone.zoo.ZooDatasetInfo`` instance for a
-downloaded dataset via the ``fiftyone.zoo.load_zoo_dataset_info()``
-method.
+        ***** Supported splits *****
+        test, train
 
-For example, let's print some information about the CIFAR-10 dataset
-(assuming it is downloaded):
+    When a zoo dataset is downloaded, a ``fiftyone.zoo.ZooDatasetInfo``
+    instance is created in its root directory that contains additional
+    information about the dataset, including which splits have been
+    downloaded (if applicable).
 
-.. code:: py
+    You can load the ``fiftyone.zoo.ZooDatasetInfo`` instance for a
+    downloaded dataset via the ``fiftyone.zoo.load_zoo_dataset_info()``
+    method.
 
-    import fiftyone.zoo as foz
+    For example, let's print some information about the CIFAR-10 dataset
+    (assuming it is downloaded):
 
-    dataset_dir = foz.find_zoo_dataset("cifar10")
-    info = foz.load_zoo_dataset_info("cifar10")
+    .. code:: py
 
-    print("***** Dataset location *****")
-    print(dataset_dir)
+        import fiftyone.zoo as foz
 
-    print("\n***** Dataset info *****")
-    print(info)
+        dataset_dir = foz.find_zoo_dataset("cifar10")
+        info = foz.load_zoo_dataset_info("cifar10")
 
-::
+        print("***** Dataset location *****")
+        print(dataset_dir)
 
-    ***** Dataset location *****
-    /Users/Brian/fiftyone/cifar10
+        print("\n***** Dataset info *****")
+        print(info)
 
-    ***** Dataset info *****
-    {
-        "name": "cifar10",
-        "zoo_dataset": "fiftyone.zoo.torch.CIFAR10Dataset",
-        "dataset_type": "fiftyone.types.dataset_types.ImageClassificationDataset",
-        "num_samples": 10000,
-        "downloaded_splits": {
-            "test": {
-                "split": "test",
-                "num_samples": 10000
-            }
-        },
-        "classes": [
-            "airplane",
-            "automobile",
-            "bird",
-            "cat",
-            "deer",
-            "dog",
-            "frog",
-            "horse",
-            "ship",
-            "truck"
-        ]
-    }
+    ::
+
+        ***** Dataset location *****
+        /Users/Brian/fiftyone/cifar10
+
+        ***** Dataset info *****
+        {
+            "name": "cifar10",
+            "zoo_dataset": "fiftyone.zoo.torch.CIFAR10Dataset",
+            "dataset_type": "fiftyone.types.dataset_types.ImageClassificationDataset",
+            "num_samples": 10000,
+            "downloaded_splits": {
+                "test": {
+                    "split": "test",
+                    "num_samples": 10000
+                }
+            },
+            "classes": [
+                "airplane",
+                "automobile",
+                "bird",
+                "cat",
+                "deer",
+                "dog",
+                "frog",
+                "horse",
+                "ship",
+                "truck"
+            ]
+        }
 
 Downloading zoo datasets
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can download zoo datasets (or individual split(s) of them) from the
-web via the ``fiftyone.zoo.download_zoo_dataset()`` method.
+.. tabs::
 
-For example, let's download the ``train`` split of CIFAR-10:
+  .. group-tab:: python
 
-.. code:: py
+    You can download zoo datasets (or individual split(s) of them) from the
+    web via the ``fiftyone.zoo.download_zoo_dataset()`` method.
 
-    import fiftyone.zoo as foz
+    For example, let's download the ``train`` split of CIFAR-10:
 
-    dataset = foz.download_zoo_dataset("cifar10", split="train")
+    .. code:: py
 
-::
+        import fiftyone.zoo as foz
 
-    Downloading split 'train' to '/Users/Brian/fiftyone/cifar10/train'
-    Downloading https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz to /Users/Brian/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz
-    170500096it [00:04, 34734776.49it/s]
-    Extracting /Users/Brian/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz to /Users/Brian/fiftyone/cifar10/tmp-download
-    Writing samples to '/Users/Brian/fiftyone/cifar10/train' in 'fiftyone.types.dataset_types.ImageClassificationDataset' format...
-     100% |█████████████████████████████████████████████| 50000/50000 [24.3s elapsed, 0s remaining, 1.7K samples/s]
-    Writing labels to '/Users/Brian/fiftyone/cifar10/train/labels.json'
-    Dataset created
-    Dataset info written to '/Users/Brian/fiftyone/cifar10/info.json'
+        dataset = foz.download_zoo_dataset("cifar10", split="train")
+
+    ::
+
+        Downloading split 'train' to '/Users/Brian/fiftyone/cifar10/train'
+        Downloading https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz to /Users/Brian/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz
+        170500096it [00:04, 34734776.49it/s]
+        Extracting /Users/Brian/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz to /Users/Brian/fiftyone/cifar10/tmp-download
+        Writing samples to '/Users/Brian/fiftyone/cifar10/train' in 'fiftyone.types.dataset_types.ImageClassificationDataset' format...
+         100% |█████████████████████████████████████████████| 50000/50000 [24.3s elapsed, 0s remaining, 1.7K samples/s]
+        Writing labels to '/Users/Brian/fiftyone/cifar10/train/labels.json'
+        Dataset created
+        Dataset info written to '/Users/Brian/fiftyone/cifar10/info.json'
+
+  .. group-tab:: CLI
+
+    You can download zoo datasets (or individual splits of them) from the
+    web via the ``fiftyone zoo download`` command:
+
+    ::
+
+        $ fiftyone zoo download -h
+
+        usage: fiftyone zoo download [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR]
+                                     NAME
+
+        Tools for downloading zoo datasets.
+
+            Examples::
+
+                # Download the entire zoo dataset
+                fiftyone zoo download <name>
+
+                # Download the specified split(s) of the zoo dataset
+                fiftyone zoo download <name> --splits <split1> ...
+
+                # Download to the zoo dataset to a custom directory
+                fiftyone zoo download <name> --dataset-dir <dataset-dir>
+
+        positional arguments:
+          NAME                  the name of the dataset
+
+        optional arguments:
+          -h, --help            show this help message and exit
+          -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
+                                the dataset splits to download
+          -d DATASET_DIR, --dataset-dir DATASET_DIR
+                                a custom directory to which to download the dataset
+
+    For example, you can download the test split of the CIFAR-10 dataset as
+    follows:
+
+    ::
+
+        $ fiftyone zoo download cifar10 --splits test
+
+        Downloading split 'test' to '~/fiftyone/cifar10/test'
+        Downloading https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz to ~/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz
+        170500096it [00:04, 34514685.48it/s]
+        Extracting ~/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz to ~/fiftyone/cifar10/tmp-download
+        Writing samples to '~/fiftyone/cifar10/test' in 'fiftyone.types.dataset_types.ImageClassificationDataset' format...
+         100% |██████████████████████████████████████████████| 10000/10000 [5.4s elapsed, 0s remaining, 1.9K samples/s]
+        Writing labels to '~/fiftyone/cifar10/test/labels.json'
+        Dataset created
+        Dataset info written to '~/fiftyone/cifar10/info.json'
 
 Loading zoo datasets into FiftyOne
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can load a zoo dataset (or individual split(s) of them) via the
-``fiftyone.zoo.load_zoo_dataset()`` method. By default, the dataset will
-be automatically downloaded from the web the first time you access it if
-it is not already downloaded:
+.. tabs::
 
-.. code:: py
+  .. group-tab:: python
 
-    import fiftyone.zoo as foz
+    You can load a zoo dataset (or individual split(s) of them) via the
+    ``fiftyone.zoo.load_zoo_dataset()`` method. By default, the dataset will
+    be automatically downloaded from the web the first time you access it if
+    it is not already downloaded:
 
-    # The dataset will be downloaded from the web the first time you access it
-    dataset = foz.load_zoo_dataset("cifar10", split="test")
+    .. code:: py
 
-    # View summary info about the dataset
-    print(dataset)
+        import fiftyone.zoo as foz
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # The dataset will be downloaded from the web the first time you access it
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
+
+  .. group-tab:: CLI
+
+    After a zoo dataset has been downloaded from the web, you can load it as
+    a FiftyOne dataset via the ``fiftyone zoo load`` command:
+
+    ::
+
+        $ fiftyone zoo load -h
+
+        usage: fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
+
+        Tools for loading zoo datasets as persistent FiftyOne datasets.
+
+            Examples::
+
+                # Load the zoo dataset with the given name
+                fiftyone zoo load <name>
+
+                # Load the specified split(s) of the zoo dataset
+                fiftyone zoo load <name> --splits <split1> ...
+
+                # Load the zoo dataset from a custom directory
+                fiftyone zoo load <name> --dataset-dir <dataset-dir>
+
+        positional arguments:
+          NAME                  the name of the dataset
+
+        optional arguments:
+          -h, --help            show this help message and exit
+          -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
+                                the dataset splits to load
+          -d DATASET_DIR, --dataset-dir DATASET_DIR
+                                a custom directory in which the dataset is downloaded
+
+    For example, you can load the test split of the CIFAR-10 dataset as
+    follows:
+
+    ::
+
+        $ fiftyone zoo load cifar10 --splits test
+
+        Split 'test' already downloaded
+        Loading 'cifar10' split 'test'
+         100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
+        Dataset 'cifar10-test' created
 
 CLI
 ---
@@ -389,106 +503,6 @@ For example, you can view information about the CIFAR-10 dataset:
             "truck"
         ]
     }
-
-Downloading zoo datasets
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can download zoo datasets (or individual splits of them) from the
-web via the ``fiftyone zoo download`` command:
-
-::
-
-    $ fiftyone zoo download -h
-
-    usage: fiftyone zoo download [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR]
-                                 NAME
-
-    Tools for downloading zoo datasets.
-
-        Examples::
-
-            # Download the entire zoo dataset
-            fiftyone zoo download <name>
-
-            # Download the specified split(s) of the zoo dataset
-            fiftyone zoo download <name> --splits <split1> ...
-
-            # Download to the zoo dataset to a custom directory
-            fiftyone zoo download <name> --dataset-dir <dataset-dir>
-
-    positional arguments:
-      NAME                  the name of the dataset
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
-                            the dataset splits to download
-      -d DATASET_DIR, --dataset-dir DATASET_DIR
-                            a custom directory to which to download the dataset
-
-For example, you can download the test split of the CIFAR-10 dataset as
-follows:
-
-::
-
-    $ fiftyone zoo download cifar10 --splits test
-
-    Downloading split 'test' to '~/fiftyone/cifar10/test'
-    Downloading https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz to ~/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz
-    170500096it [00:04, 34514685.48it/s]
-    Extracting ~/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz to ~/fiftyone/cifar10/tmp-download
-    Writing samples to '~/fiftyone/cifar10/test' in 'fiftyone.types.dataset_types.ImageClassificationDataset' format...
-     100% |██████████████████████████████████████████████| 10000/10000 [5.4s elapsed, 0s remaining, 1.9K samples/s]
-    Writing labels to '~/fiftyone/cifar10/test/labels.json'
-    Dataset created
-    Dataset info written to '~/fiftyone/cifar10/info.json'
-
-Loading zoo datasets into FiftyOne
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-After a zoo dataset has been downloaded from the web, you can load it as
-a FiftyOne dataset via the ``fiftyone zoo load`` command:
-
-::
-
-    $ fiftyone zoo load -h
-
-    usage: fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
-
-    Tools for loading zoo datasets as persistent FiftyOne datasets.
-
-        Examples::
-
-            # Load the zoo dataset with the given name
-            fiftyone zoo load <name>
-
-            # Load the specified split(s) of the zoo dataset
-            fiftyone zoo load <name> --splits <split1> ...
-
-            # Load the zoo dataset from a custom directory
-            fiftyone zoo load <name> --dataset-dir <dataset-dir>
-
-    positional arguments:
-      NAME                  the name of the dataset
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
-                            the dataset splits to load
-      -d DATASET_DIR, --dataset-dir DATASET_DIR
-                            a custom directory in which the dataset is downloaded
-
-For example, you can load the test split of the CIFAR-10 dataset as
-follows:
-
-::
-
-    $ fiftyone zoo load cifar10 --splits test
-
-    Split 'test' already downloaded
-    Loading 'cifar10' split 'test'
-     100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
-    Dataset 'cifar10-test' created
 
 Controlling where zoo datasets are downloaded
 ---------------------------------------------

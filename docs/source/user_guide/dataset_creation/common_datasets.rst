@@ -13,9 +13,9 @@ Basic recipe
 
   .. group-tab:: python
 
-    The interface for importing datasets is conveniently exposed via the
+    The interface for ingesting datasets is conveniently exposed via the
     `Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to
-    ingest datasets from disk in any supported format by simply specifying the
+    get data from disk in any supported format by simply specifying the
     path to their containing directory on disk and the type of the dataset.
 
     .. code-block:: python
