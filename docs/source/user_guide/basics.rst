@@ -72,11 +72,9 @@ other tagging that you would like:
 
     sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
     sample.tags += ["my_favorite_samples"]
+
     print(sample.tags)
-
-.. code-block:: text
-
-    ["train", "my_favorite_samples"]
+    # ["train", "my_favorite_samples"]
 
 DatasetViews
 ____________
