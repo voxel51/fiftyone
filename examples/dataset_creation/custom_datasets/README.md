@@ -1,80 +1,13 @@
-# Dataset Creation Examples
+# Custom Dataset Examples
 
-Examples of creating datasets with FiftyOne.
-
-## Loading zoo datasets
-
-> Factory method: `fiftyone.zoo.load_zoo_dataset()`
-
-The `fiftyone.zoo` package provides a collection of datasets that you can
-download and load into FiftyOne with a single command:
-
-```py
-import fiftyone.zoo as foz
-
-# List available datasets
-print(foz.list_zoo_datasets())
-
-# Load a zoo dataset
-# The dataset will be downloaded from the web the first time you access it
-dataset = foz.load_zoo_dataset("cifar10")
-
-# Print a few samples from the dataset
-print(dataset.view().head())
-```
-
-Behind the scenes, FiftyOne uses the
-[TensorFlow Datasets](https://www.tensorflow.org/datasets) or
-[TorchVision Datasets](https://pytorch.org/docs/stable/torchvision/datasets.html)
-libraries to wrangle the datasets, depending on which ML library you have
-installed. In order to load datasets using TF, you must have the
-[tensorflow-datasets](https://pypi.org/project/tensorflow-datasets) package
-installed on your machine. In order to load datasets using PyTorch, you must
-have the [torch](https://pypi.org/project/torch) and
-[torchvision](https://pypi.org/project/torchvision) packages installed.
-
-> Note that the ML backends may expose different datasets
-
-#### Customizing your ML backend
-
-By default, FiftyOne will use whichever ML backend is available. If both are
-found, it will use the backend specified by the `tf.config.default_ml_backend`
-setting in your FiftyOne config.
-
-You can customize this backend in any of the following ways:
-
--   Directly editing your FiftyOne config at `~/.fiftyone/config.json`
-
-```shell
-# Print your current config
-fiftyone config
-
-# Locate your config
-fiftyone constants FIFTYONE_CONFIG_PATH
-```
-
--   Setting the `FIFTYONE_DEFAULT_ML_BACKEND` environment variable
-
-```shell
-# Example: use the `tensorflow` backend
-export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
-```
-
--   Setting the `default_ml_backend` config setting from your Python code
-
-```py
-# Example: use the `torch` backend
-import fiftyone.core.config as foc
-foc.set_config_settings(default_ml_backend="torch")
-```
+FiftyOne datasets are composed of `fiftyone.core.sample.Sample` instances, and
+FiftyOne provides the ability for you to construct your own dataset manually by
+providing samples or their constituent fields in a variety of common formats.
 
 ## Building datasets from scratch
 
-> Factory method: `fiftyone.Dataset.add_samples()`
-
-FiftyOne datasets are composed of `fiftyone.core.sample.Sample` instances, and
-FiftyOne provides the ability for you to construct your own dataset from
-scratch by creating your own samples, if desired.
+The most flexible way to create a FiftyOne dataset is to manually construct
+your own `fiftyone.core.sample.Sample` instances.
 
 The following example demonstrates the construction of a dataset with ground
 truth labels stored in a `ground_truth` field:
@@ -99,16 +32,18 @@ for image_path, target in samples:
         )
     )
 
+# Create the dataset
 dataset = fo.Dataset("catdog")
 dataset.add_samples(_samples)
 
-# Print a few samples from the dataset
+# View summary info about the dataset
+print(dataset)
+
+# Print the first few samples in the dataset
 print(dataset.view().head())
 ```
 
 ## Image classification datasets
-
-> Factory method: `fiftyone.Dataset.from_image_classification_samples()`
 
 FiftyOne provides native support for working with image classification samples
 whose images are stored on disk and whose corresponding predictions are stored
@@ -138,12 +73,19 @@ classes = ...
 # A list of `(image_path, target)` tuples
 samples = ...
 
-dataset = fo.Dataset.from_image_classification_samples(samples, classes=classes)
+# Create the dataset
+dataset = fo.Dataset.from_image_classification_samples(
+    samples, classes=classes
+)
+
+# View summary info about the dataset
+print(dataset)
+
+# Print the first few samples in the dataset
+print(dataset.view().head())
 ```
 
 ## Image detection datasets
-
-> Factory method: `fiftyone.Dataset.from_image_detection_samples()`
 
 FiftyOne provides native support for working with image detection samples whose
 images are stored on disk and whose corresponding detections are stored
@@ -189,12 +131,17 @@ classes = ...
 # A list of `(image_path, detections)` tuples
 samples = ...
 
+# Create the dataset
 dataset = fo.Dataset.from_image_detection_samples(samples, classes=classes)
+
+# View summary info about the dataset
+print(dataset)
+
+# Print the first few samples in the dataset
+print(dataset.view().head())
 ```
 
 ## Multitask image prediction datasets
-
-> Factory method: `fiftyone.Dataset.from_image_labels_samples()`
 
 FiftyOne provides native support for working with multitask image predictions
 samples whose images are stored on disk and whose corresponding labels are
@@ -224,12 +171,17 @@ import fiftyone as fo
 # A list of `(image_path, image_labels)` tuples
 samples = ...
 
+# Create the dataset
 dataset = fo.Dataset.from_image_labels_samples(samples)
+
+# View summary info about the dataset
+print(dataset)
+
+# Print the first few samples in the dataset
+print(dataset.view().head())
 ```
 
 ## Custom labeled image datasets
-
-> Factory method: `fiftyone.Dataset.from_labeled_image_samples()`
 
 FiftyOne provides support for working with custom labeled image datasets whose
 label formats differ from the native classification, detection, and multitask
@@ -276,14 +228,19 @@ samples = ...
 # The sample parser to use to parse the samples
 sample_parser = MyLabeledImageSampleParser()
 
+# Create the dataset
 dataset = fo.Dataset.from_labeled_image_samples(
     samples, sample_parser=sample_parser
 )
+
+# View summary info about the dataset
+print(dataset)
+
+# Print the first few samples in the dataset
+print(dataset.view().head())
 ```
 
 ## Labeled image datasets stored in-memory
-
-> Factory method: `fiftyone.Dataset.ingest_labeled_image_samples()`
 
 FiftyOne provides support for ingesting labeled image datasets that are stored
 as in-memory collections of images and labels.
@@ -319,181 +276,17 @@ samples = ...
 # The sample parser to use to parse the samples
 sample_parser = fodu.ImageClassificationSampleParser(classes=classes)
 
+# Create the dataset
 dataset = fo.Dataset("test-dataset")
 dataset.ingest_labeled_image_samples(
     samples,
     dataset_dir="/tmp/dataset",
     sample_parser=sample_parser,
 )
-```
 
-## Image classification datasets stored on disk
+# View summary info about the dataset
+print(dataset)
 
-> Factory method: `fiftyone.Dataset.from_image_classification_dataset()`
-
-FiftyOne provides native support for loading image classification datasets that
-are stored on disk in the following format:
-
-```
-<dataset_dir>/
-    data/
-        <uuid1>.<ext>
-        <uuid2>.<ext>
-        ...
-    labels.json
-```
-
-where `labels.json` is a JSON file in the following format:
-
-```
-{
-    "classes": [
-        <labelA>,
-        <labelB>,
-        ...
-    ],
-    "labels": {
-        <uuid1>: <target1>,
-        <uuid2>: <target2>,
-        ...
-    }
-}
-```
-
-If the `classes` field is provided, the `target` values are class IDs that are
-mapped to class label strings via `classes[target]`. If no `classes` field is
-provided, then the `target` values directly store the label strings.
-
-This dataset format is encapsulated by the
-`fiftyone.types.ImageClassificationDataset` type in FiftyOne.
-
-You can load an image classification dataset from disk via the following
-command:
-
-```py
-import fiftyone as fo
-
-dataset = fo.Dataset.from_image_classification_dataset(dataset_dir)
-
-# Print a few samples from the dataset
-print(dataset.view().head())
-```
-
-## Image detection datasets stored on disk
-
-> Factory method: `fiftyone.Dataset.from_image_detection_dataset()`
-
-FiftyOne provides native support for loading image detection datasets that are
-stored on disk in the following format:
-
-```
-<dataset_dir>/
-    data/
-        <uuid1>.<ext>
-        <uuid2>.<ext>
-        ...
-    labels.json
-```
-
-where `labels.json` is a JSON file in the following format:
-
-```
-{
-    "classes": [
-        <labelA>,
-        <labelB>,
-        ...
-    ],
-    "labels": {
-        <uuid1>: [
-            {
-                "label": <target>,
-                "bounding_box": [
-                    <top-left-x>, <top-left-y>, <width>, <height>
-                ],
-                "confidence": <optional-confidence>,
-            },
-            ...
-        ],
-        <uuid2>: [
-            ...
-        ],
-        ...
-    }
-}
-```
-
-and where the bounding box coordinates are expressed as relative values in
-`[0, 1] x [0, 1]`.
-
-If the `classes` field is provided, the `target` values are class IDs that are
-mapped to class label strings via `classes[target]`. If no `classes` field is
-provided, then the `target` values directly store the label strings.
-
-This dataset format is encapsulated by the
-`fiftyone.types.ImageDetectionDataset` type in FiftyOne.
-
-You can load an image detection dataset from disk via the following command:
-
-```py
-import fiftyone as fo
-
-dataset = fo.Dataset.from_image_detection_dataset(dataset_dir)
-
-# Print a few samples from the dataset
-print(dataset.view().head())
-```
-
-## Multitask image prediction datasets stored on disk
-
-> Factory method: `fiftyone.Dataset.from_image_labels_dataset()`
-
-FiftyOne provides native support for loading multitask image prediction
-datasets that are stored on disk in the following format:
-
-```
-<dataset_dir>/
-    data/
-        <uuid1>.<ext>
-        <uuid2>.<ext>
-        ...
-    labels/
-        <uuid1>.json
-        <uuid2>.json
-        ...
-    manifest.json
-```
-
-where `manifest.json` is a JSON file in the following format:
-
-```
-{
-    "type": "eta.core.datasets.LabeledImageDataset",
-    "description": "",
-    "index": [
-        {
-            "data": "data/<uuid1>.<ext>",
-            "labels": "labels/<uuid1>.json"
-        },
-        ...
-    ]
-}
-```
-
-and where each labels JSON file is stored in `eta.core.image.ImageLabels`
-format. See https://voxel51.com/docs/api/#types-imagelabels for more details.
-
-This dataset format is encapsulated by the `fiftyone.types.ImageLabelsDataset`
-type in FiftyOne.
-
-You can load a multitask image labels dataset from disk via the following
-command:
-
-```py
-import fiftyone as fo
-
-dataset = fo.Dataset.from_image_labels_dataset(dataset_dir)
-
-# Print a few samples from the dataset
+# Print the first few samples in the dataset
 print(dataset.view().head())
 ```

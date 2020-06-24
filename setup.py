@@ -6,8 +6,6 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
@@ -34,8 +32,7 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages(exclude=["fiftyone.experimental"])
-    + ["fiftyone.examples"],
+    packages=find_packages() + ["fiftyone.examples"],
     package_dir={"fiftyone.examples": "examples"},
     include_package_data=True,
     exclude_package_data={
@@ -49,6 +46,7 @@ setup(
         "Flask",
         "flask-socketio",
         "future",
+        "Jinja2",
         "mongoengine",
         "numpy",
         "packaging",
@@ -63,6 +61,7 @@ setup(
         "retrying",
         "setuptools",
         "tabulate",
+        "xmltodict",
         # internal packages
         "voxel51-eta>=0.1.1",
     ],
