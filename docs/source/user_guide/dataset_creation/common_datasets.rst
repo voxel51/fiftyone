@@ -131,7 +131,7 @@ files with non-image MIME types are omitted.
 
   .. group-tab:: python
 
-    To load a directory of images as a FiftyOne dataset, you can execute:
+    To create a FiftyOne dataset from a directory of images, you can execute:
 
     .. code-block:: python
 
@@ -151,7 +151,7 @@ files with non-image MIME types are omitted.
 
   .. group-tab:: CLI
 
-    To load a directory of images as a FiftyOne dataset, you can execute:
+    To create a FiftyOne dataset from a directory of images, you can execute:
 
     .. code:: shell
 
@@ -228,8 +228,8 @@ provided, then the `target` values directly store the label strings.
 
   .. group-tab:: python
 
-    To load an image classification dataset stored in the above format as a
-    FiftyOne dataset, you can execute:
+    To create a FiftyOne dataset from an image classification dataset stored in
+    the above format, you can execute:
 
     .. code-block:: python
 
@@ -251,8 +251,8 @@ provided, then the `target` values directly store the label strings.
 
   .. group-tab:: CLI
 
-    To load an image classification dataset stored in the above format as a
-    FiftyOne dataset, you can execute:
+    To create a FiftyOne dataset from an image classification dataset stored in
+    the above format, you can execute:
 
     .. code-block:: shell
 
@@ -310,8 +310,8 @@ Datasets of this type are read in the following format:
 
   .. group-tab:: python
 
-    To load an image classification directory tree stored in the above
-    format as a FiftyOne dataset, you can execute:
+    To create a FiftyOne dataset from an image classification directory tree
+    stored in the above format, you can execute:
 
     .. code-block:: python
 
@@ -333,8 +333,8 @@ Datasets of this type are read in the following format:
 
   .. group-tab:: CLI
 
-    To load an image classification directory tree stored in the above
-    format as a FiftyOne dataset, you can execute:
+    To create a FiftyOne dataset from an image classification directory tree
+    stored in the above format, you can execute:
 
     .. code-block:: shell
 
@@ -407,8 +407,8 @@ following format:
 
   .. group-tab:: python
 
-    To load an image classification dataset stored as a directory of TFRecords in
-    the above format, you can execute:
+    To create a FiftyOne dataset from an image classification dataset stored as
+    a directory of TFRecords in the above format, you can execute:
 
     .. code-block:: python
 
@@ -432,14 +432,14 @@ following format:
         # Print the first few samples in the dataset
         print(dataset.view().head())
 
-    When the above command is executed, the images in the TFRecords will be written
-    to the provided `images_dir`, which is required because FiftyOne datasets must
-    make their images available as invididual files on disk.
+    When the above command is executed, the images in the TFRecords will be
+    written to the provided `images_dir`, which is required because FiftyOne
+    datasets must make their images available as invididual files on disk.
 
   .. group-tab:: CLI
 
-    To load an image classification dataset stored as a directory of TFRecords in
-    the above format, you can execute:
+    To create a FiftyOne dataset from an image classification dataset stored as
+    a directory of TFRecords in the above format, you can execute:
 
     .. code-block:: shell
 
@@ -460,9 +460,9 @@ following format:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view an image classification dataset stored as a directory of TFRecords in
-    the FiftyOne Dashboard without creating a persistent FiftyOne dataset, you can
-    execute:
+    To view an image classification dataset stored as a directory of TFRecords
+    in the FiftyOne Dashboard without creating a persistent FiftyOne dataset,
+    you can execute:
 
     .. code-block:: shell
 
@@ -533,7 +533,8 @@ provided, then the `target` values directly store the label strings.
 
   .. group-tab:: python
 
-    To load an image detection dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from an image detection dataset stored in the
+    above format, you can execute:
 
     .. code-block:: python
 
@@ -555,7 +556,8 @@ provided, then the `target` values directly store the label strings.
 
   .. group-tab:: CLI
 
-    To load an image detection dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from an image detection dataset stored in the
+    above format, you can execute:
 
     .. code-block:: shell
 
@@ -660,7 +662,8 @@ where ``labels.json`` is a JSON file in the following format:
 
   .. group-tab:: python
 
-    To load a COCO detection dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a COCO detection dataset stored in the
+    above format, you can execute:
 
     .. code-block:: python
 
@@ -682,7 +685,8 @@ where ``labels.json`` is a JSON file in the following format:
 
   .. group-tab:: CLI
 
-    To load a COCO detection dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a COCO detection dataset stored in the
+    above format, you can execute:
 
     .. code-block:: shell
 
@@ -786,7 +790,8 @@ where the labels XML files are in the following format:
 
   .. group-tab:: python
 
-    To load a VOC detection dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a VOC detection dataset stored in the
+    above format, you can execute:
 
     .. code-block:: python
 
@@ -808,7 +813,8 @@ where the labels XML files are in the following format:
 
   .. group-tab:: CLI
 
-    To load a VOC detection dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a VOC detection dataset stored in the
+    above format, you can execute:
 
     .. code-block:: shell
 
@@ -906,7 +912,8 @@ may be omitted.
 
   .. group-tab:: python
 
-    To load a KITTI detection dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a KITTI detection dataset stored in the
+    above format, you can execute:
 
     .. code-block:: python
 
@@ -928,7 +935,8 @@ may be omitted.
 
   .. group-tab:: CLI
 
-    To load a KITTI detection dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a KITTI detection dataset stored in the
+    above format, you can execute:
 
     .. code-block:: shell
 
@@ -947,8 +955,9 @@ may be omitted.
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view a KITTI detection dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    To view a KITTI detection dataset stored in the above format in the
+    FiftyOne Dashboard without creating a persistent FiftyOne dataset, you can
+    execute:
 
     .. code-block:: shell
 
@@ -1032,7 +1041,8 @@ where `labels.xml` is an XML file in the following format:
 
   .. group-tab:: python
 
-    To load a CVAT image dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a CVAT image dataset stored in the
+    above format, you can execute:
 
     .. code-block:: python
 
@@ -1054,7 +1064,8 @@ where `labels.xml` is an XML file in the following format:
 
   .. group-tab:: CLI
 
-    To load a CVAT image dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a CVAT image dataset stored in the
+    above format, you can execute:
 
     .. code-block:: shell
 
@@ -1133,7 +1144,8 @@ and where each labels JSON file is stored in
 
   .. group-tab:: python
 
-    To load an image labels dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from an image labels dataset stored in the
+    above format, you can execute:
 
     .. code-block:: python
 
@@ -1155,7 +1167,8 @@ and where each labels JSON file is stored in
 
   .. group-tab:: CLI
 
-    To load an image labels dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from an image labels dataset stored in the
+    above format, you can execute:
 
     .. code-block:: shell
 
@@ -1248,7 +1261,8 @@ where `labels.json` is a JSON file in the following format:
 
   .. group-tab:: python
 
-    To load a BDD dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a BDD dataset stored in the above format,
+    you can execute:
 
     .. code-block:: python
 
@@ -1268,7 +1282,8 @@ where `labels.json` is a JSON file in the following format:
 
   .. group-tab:: CLI
 
-    To load a BDD dataset stored in the above format, you can execute:
+    To create a FiftyOne dataset from a BDD dataset stored in the above format,
+    you can execute:
 
     .. code-block:: shell
 
