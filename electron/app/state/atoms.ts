@@ -46,7 +46,7 @@ export const itemsPerRequest = atom({
 });
 
 export const fields = atomFamily({
-  key: "field",
+  key: "fields",
   default: {
     active: true,
     color: "#CCCCCC",
@@ -63,12 +63,12 @@ export const itemPosition = atomFamily({
   default: null,
 });
 
-export const itemLoadingHeight = atom({
-  key: "itemLoadingHeight",
-  default: 120,
-});
-
 export const gridMargin = atom({
   key: "gridMargin",
   default: 4,
+});
+
+export const mainLoaded = atom({
+  key: "mainLoaded",
+  default: false,
 });

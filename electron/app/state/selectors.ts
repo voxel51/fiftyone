@@ -7,12 +7,10 @@ import {
   mainSize,
   mainTop,
   currentListHeight,
-  isDraggingIndicator,
   currentListTop,
   itemsPerRequest,
   segmentIsLoaded,
   gridMargin,
-  itemLoadingHeight,
 } from "./atoms";
 
 export const indicatorIndex = selector({
@@ -127,6 +125,15 @@ export const numSections = selector({
   },
 });
 
+export const mainAspectRatio = selector({
+  key: "mainAspectRatio",
+  get: ({ get }) => {
+    const [mw, mh] = get(mainSize);
+    if (mh <= 0) return 0;
+    return mw / mh;
+  },
+});
+
 export const visibleSections = selectorFamily({
   key: "sectionsToRender",
   get: ({ get }) => {},
@@ -186,32 +193,32 @@ export const itemData = selectorFamily({
   },
 });
 
-export const itemLoadingSize = selector({
-  key: "itemLoadingSize",
+export const itemBaseSize = selector({
+  key: "itemBaseSize",
   get: ({ get }) => {
     const [mw, unused] = get(mainSize);
     const gm = get(gridMargin);
-    const workingWidth = mw - (5 + 6) * gm;
-    const ilh = get(itemLoadingHeight);
+    const workingWidth = mw - 6 * gm;
     return {
       width: workingWidth / 5,
-      height: ilh,
+      height: workingWidth / 5,
     };
   },
 });
 
-export const itemLoadingPosition = selectorFamily({
-  key: "itemLoadingPosition",
+export const itemBasePosition = selectorFamily({
+  key: "itemBasePosition",
   get: (itemIndex) => ({ get }) => {
-    const ils = get(itemLoadingSize);
-    const gm = get(gridMargin);
-    const ilh = get(itemLoadingHeight);
-    const workingWidth = mw - (5 + 6) * gm;
+    const ik = get(itemKey(itemIndex));
     const row = Math.floor(ik / 5);
     const col = ik % 5;
+
+    const ils = get(itemBaseSize);
+    const gm = get(gridMargin);
+
     return {
-      top: row * (ils.height + gm),
-      left: col * (ils.width + gm),
+      top: gm + row * (ils.height + gm),
+      left: gm + col * (ils.width + gm),
     };
   },
 });
