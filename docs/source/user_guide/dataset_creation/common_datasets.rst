@@ -11,11 +11,11 @@ Basic recipe
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
-    The interface for importing datasets is conveniently exposed via the
+    The interface for ingesting datasets is conveniently exposed via the
     `Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to
-    ingest datasets from disk in any supported format by simply specifying the
+    get data from disk in any supported format by simply specifying the
     path to their containing directory on disk and the type of the dataset.
 
     .. code-block:: python
@@ -129,7 +129,7 @@ files with non-image MIME types are omitted.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from a directory of images, you can execute:
 
@@ -226,7 +226,7 @@ provided, then the `target` values directly store the label strings.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from an image classification dataset stored in
     the above format, you can execute:
@@ -308,7 +308,7 @@ Datasets of this type are read in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from an image classification directory tree
     stored in the above format, you can execute:
@@ -405,7 +405,7 @@ following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from an image classification dataset stored as
     a directory of TFRecords in the above format, you can execute:
@@ -531,7 +531,7 @@ provided, then the `target` values directly store the label strings.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from an image detection dataset stored in the
     above format, you can execute:
@@ -660,7 +660,7 @@ where ``labels.json`` is a JSON file in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from a COCO detection dataset stored in the
     above format, you can execute:
@@ -788,7 +788,7 @@ where the labels XML files are in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from a VOC detection dataset stored in the
     above format, you can execute:
@@ -910,7 +910,7 @@ may be omitted.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from a KITTI detection dataset stored in the
     above format, you can execute:
@@ -1039,7 +1039,7 @@ where `labels.xml` is an XML file in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from a CVAT image dataset stored in the
     above format, you can execute:
@@ -1142,7 +1142,7 @@ and where each labels JSON file is stored in
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from an image labels dataset stored in the
     above format, you can execute:
@@ -1259,7 +1259,7 @@ where `labels.json` is a JSON file in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To create a FiftyOne dataset from a BDD dataset stored in the above format,
     you can execute:

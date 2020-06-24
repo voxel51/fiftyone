@@ -62,7 +62,7 @@ To make a dataset persistent, set the attribute to `True`.
     dataset1.persistent = True
     quit()
 
-Start a new session:
+Start a new python session:
 
 .. code-block:: python
 

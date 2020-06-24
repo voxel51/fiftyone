@@ -142,9 +142,12 @@ Installing FiftyOne
 To install FiftyOne in a virtual environment, ensure that the virtual
 environment is active as described in the previous section, then run:
 
-.. code-block:: shell
+.. note::
 
-   pip install --index https://pypi.voxel51.com fiftyone
+    Check your FiftyOne Beta email to find this command!
+
+    If you haven't registered for the FiftyOne Beta, you can
+    `sign up here! <https://voxel51.com/fiftyone/#beta>`_
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
@@ -203,9 +206,12 @@ Upgrading FiftyOne
 Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
 upgrade an existing FiftyOne installation:
 
-.. code-block:: shell
+.. note::
 
-   pip install --index https://pypi.voxel51.com --upgrade fiftyone
+    Check your FiftyOne Beta email to find this command!
+
+    If you haven't registered for the FiftyOne Beta, you can
+    `sign up here! <https://voxel51.com/fiftyone/#beta>`_
 
 Uninstalling FiftyOne
 ---------------------
@@ -236,19 +242,12 @@ these packages must be installed *after* the `fiftyone` package; if you install
 `fiftyone` afterwards, you can fix your MongoDB installation by adding
 `--force-reinstall` to the commands below.
 
-.. tabs::
+.. note::
 
-  .. tab:: Ubuntu 16.04
+    Check your FiftyOne Beta email to find this command!
 
-    .. code-block:: shell
-
-      pip install --index https://pypi.voxel51.com fiftyone-db-ubuntu1604
-
-  .. tab:: Debian 9
-
-    .. code-block:: shell
-
-      pip install --index https://pypi.voxel51.com fiftyone-db-debian9
+    If you haven't registered for the FiftyOne Beta, you can
+    `sign up here! <https://voxel51.com/fiftyone/#beta>`_
 
 Manual installation
 ~~~~~~~~~~~~~~~~~~~
