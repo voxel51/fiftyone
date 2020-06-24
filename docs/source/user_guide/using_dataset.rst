@@ -48,6 +48,9 @@ If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
     # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
+Dataset Persistence
+-------------------
+
 By default, datasets are non-persistent. Non-persistent datasets are wiped
 from FiftyOne on exit of the python process. This means any data in the
 FiftyOne backing database is deleted, however files on disk are untouched.
@@ -70,6 +73,9 @@ Start a new session:
 
 Note that `my_second_dataset` and `my_third_dataset` have been wiped because
 they were not persistent.
+
+Deleting a Dataset
+------------------
 
 Delete a dataset explicitly via `Dataset.delete()`. Once a dataset is deleted,
 any existing reference in memory will be in a volatile state. `Dataset.name`
