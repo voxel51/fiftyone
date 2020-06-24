@@ -1,61 +1,56 @@
-Loading Common Format Datasets
+Creating Common Format Datasets
 ===============================
 
 .. default-role:: code
 
-FiftyOne provides native support for loading labeled datasets from disk in a
+FiftyOne provides native support for ingesting labeled datasets from disk in a
 variety of common formats.
 
 Basic recipe
 ------------
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-The interface for importing datasets is conveniently exposed via the
-`Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to import
-datasets from disk in any supported format by simply specifiying the path to
-their containing directory on disk and the type of the dataset.
+  .. group-tab:: python
 
-The basic syntax is simple:
+    The interface for importing datasets is conveniently exposed via the
+    `Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to
+    ingest datasets from disk in any supported format by simply specifying the
+    path to their containing directory on disk and the type of the dataset.
 
-.. code-block:: python
+    .. code-block:: python
 
-    import fiftyone as fo
+        import fiftyone as fo
 
-    # A name for the FiftyOne dataset
-    name = "my-coco-dataset"
+        # A name for the FiftyOne dataset
+        name = "my-coco-dataset"
 
-    # The directory containing the dataset to import
-    dataset_dir = "/path/to/dataset"
+        # The directory containing the dataset to import
+        dataset_dir = "/path/to/dataset"
 
-    # The type of the dataset being imported
-    # Any subclass of `fiftyone.types.BaseDataset` is supported
-    dataset_type = fo.types.COCODetectionDataset  # for example
+        # The type of the dataset being imported
+        # Any subclass of `fiftyone.types.BaseDataset` is supported
+        dataset_type = fo.types.COCODetectionDataset  # for example
 
-    # Import the dataset!
-    dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+        # Import the dataset!
+        dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
-CLI
-~~~
+  .. group-tab:: CLI
 
-FiftyOne datasets can also be created from datasets on disk via the
-`fiftyone datasets create` CLI command:
+    .. code:: shell
 
-.. code:: shell
+        # Creates a dataset from the given data on disk
+        fiftyone datasets create \
+            --name <name> --dataset-dir <dataset-dir> --type <type>
 
-    # Creates a dataset from the given data on disk
-    fiftyone datasets create \
-        --name <name> --dataset-dir <dataset-dir> --type <type>
+    The arguments are as follows:
 
-where the arguments are as follows:
+    .. code:: text
 
-.. code:: text
-
-      -n NAME, --name NAME  a name for the dataset
-      -d DATASET_DIR, --dataset-dir DATASET_DIR
-                            the directory containing the dataset
-      -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+          -n NAME, --name NAME  a name for the dataset
+          -d DATASET_DIR, --dataset-dir DATASET_DIR
+                                the directory containing the dataset
+          -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
 
 Supported formats
 ~~~~~~~~~~~~~~~~~
@@ -132,60 +127,60 @@ Datasets of this type are read in the following format:
 When reading datasets of this type, subfolders are recursively traversed, and
 files with non-image MIME types are omitted.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To load a directory of images as a FiftyOne dataset, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To load a directory of images as a FiftyOne dataset, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    name = "my-images-dir"
-    dataset_dir = "/path/to/images-dir"
+        import fiftyone as fo
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory, name=name)
+        name = "my-images-dir"
+        dataset_dir = "/path/to/images-dir"
 
-    # View summary info about the dataset
-    print(dataset)
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory, name=name)
 
-    # Print the first few samples in the dataset
-    print(dataset.view().head())
+        # View summary info about the dataset
+        print(dataset)
 
-CLI
-~~~
+        # Print the first few samples in the dataset
+        print(dataset.view().head())
 
-To load a directory of images as a FiftyOne dataset, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To load a directory of images as a FiftyOne dataset, you can execute:
 
-    NAME=my-images-dir
-    DATASET_DIR=/path/to/images-dir
+    .. code:: shell
 
-    # Create the dataset
-    fiftyone datasets create \
-        --name $NAME \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageDirectory
+      NAME=my-images-dir
+      DATASET_DIR=/path/to/images-dir
 
-    # View summary info about the dataset
-    fiftyone datasets info $NAME
+      # Create the dataset
+      fiftyone datasets create \
+          --name $NAME \
+          --dataset-dir $DATASET_DIR \
+          --type fiftyone.types.ImageDirectory
 
-    # Print the first few samples in the dataset
-    fiftyone datasets head $NAME
+      # View summary info about the dataset
+      fiftyone datasets info $NAME
 
-To view a directory of images in the FiftyOne Dashboard without creating
-a persistent FiftyOne dataset, you can execute:
+      # Print the first few samples in the dataset
+      fiftyone datasets head $NAME
 
-.. code-block:: shell
+    To view a directory of images in the FiftyOne Dashboard without creating
+    a persistent FiftyOne dataset, you can execute:
 
-    DATASET_DIR=/path/to/images-dir
+    .. code-block:: shell
 
-    # View the dataset in the dashboard
-    fiftyone dashboard view \
-        --dataset-dir $DATASET_DIR \
-        --type fiftyone.types.ImageDirectory
+        DATASET_DIR=/path/to/images-dir
+
+        # View the dataset in the dashboard
+        fiftyone dashboard view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.ImageDirectory
 
 Image classification datasets
 -----------------------------

@@ -34,10 +34,10 @@ Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
     for sample in view:
         print(sample)
 
-.. rubric:: :doc:`Loading datasets <dataset_creation/index>`
+.. rubric:: :doc:`Creating FiftyOne Datasets <dataset_creation/index>`
 
-Load a dataset into FiftyOne using standard formats, custom formats, or from
-the Dataset Zoo.
+Get your data into a FiftyOne `Dataset` using standard formats, custom formats,
+or load an open-source dataset via the Dataset Zoo.
 
 .. code-block:: python
 
