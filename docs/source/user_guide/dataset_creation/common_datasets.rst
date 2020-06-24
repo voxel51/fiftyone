@@ -53,7 +53,7 @@ loading.
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
 
 Supported formats
-~~~~~~~~~~~~~~~~~
+-----------------
 
 Each supported dataset type is represented by a subclass of
 `fiftyone.types.BaseDataset`, which is used by the Python library and CLI to

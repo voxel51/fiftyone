@@ -71,7 +71,7 @@ arbitrary subsets of your datasets that you have identified by constructing a
     FiftyOne dataset contains multiple label fields.
 
 Supported formats
-~~~~~~~~~~~~~~~~~
+-----------------
 
 Each supported dataset type is represented by a subclass of
 `fiftyone.types.BaseDataset`, which is used by the Python library and CLI to
