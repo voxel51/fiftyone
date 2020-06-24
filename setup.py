@@ -27,18 +27,20 @@ class BdistWheelCustom(bdist_wheel):
 setup(
     name="fiftyone",
     version="0.2.1",
-    description="Project FiftyOne",
+    description=(
+        "FiftyOne: a powerful package for dataset curation, analysis, and "
+        "visualization"
+    ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages() + ["fiftyone.examples"],
-    package_dir={"fiftyone.examples": "examples"},
-    include_package_data=True,
-    exclude_package_data={
-        "fiftyone": ["experimental/*"],
-        "fiftyone.examples": ["archive/*", "data/*"],
+    packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
+    package_dir={
+        "fiftyone.recipes": "docs/source/recipes",
+        "fiftyone.tutorials": "docs/source/tutorials",
     },
+    include_package_data=True,
     install_requires=[
         # third-party packages
         "argcomplete",

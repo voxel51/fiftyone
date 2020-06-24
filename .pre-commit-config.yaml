@@ -19,6 +19,15 @@ repos:
         files: \.py$
         entry: pylint
         args: ["--errors-only"]
+  - repo: local
+    hooks:
+      - id: ipynb-strip
+        name: ipynb-strip
+        language: system
+        files: \.ipynb$
+        exclude: ^docs/ # *do* commit ipynb outputs in `docs/`
+        entry: jupyter nbconvert --clear-output --ClearOutputPreprocessor.enabled=True
+        args: ["--log-level=ERROR"]
   - repo: https://github.com/prettier/prettier
     rev: 2.0.5
     hooks:
