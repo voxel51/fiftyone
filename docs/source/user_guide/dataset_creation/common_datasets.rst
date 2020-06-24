@@ -9,14 +9,14 @@ variety of common formats.
 Basic recipe
 ------------
 
+The interface for creating FiftyOne datasets from your data is conveniently
+exposed via the Python library and the CLI. The basic recipe is that you simply
+specify the path to the dataset on disk and the type of dataset that you're
+loading.
+
 .. tabs::
 
   .. group-tab:: Python
-
-    The interface for ingesting datasets is conveniently exposed via the
-    `Dataset.from_dir` and `Dataset.add_dir` methods, which make it easy to
-    get data from disk in any supported format by simply specifying the
-    path to their containing directory on disk and the type of the dataset.
 
     .. code-block:: python
 
@@ -37,20 +37,20 @@ Basic recipe
 
   .. group-tab:: CLI
 
-    .. code:: shell
+    .. code-block:: shell
 
-        # Creates a dataset from the given data on disk
-        fiftyone datasets create \
-            --name <name> --dataset-dir <dataset-dir> --type <type>
+        # A name for the FiftyOne dataset
+        NAME=my-coco-dataset
 
-    The arguments are as follows:
+        # The directory containing the dataset to import
+        DATASET_DIR=/path/to/dataset
 
-    .. code:: text
+        # The type of the dataset being imported
+        # Any subclass of `fiftyone.types.BaseDataset` is supported
+        TYPE=fiftyone.types.COCODetectionDataset  # for example
 
-          -n NAME, --name NAME  a name for the dataset
-          -d DATASET_DIR, --dataset-dir DATASET_DIR
-                                the directory containing the dataset
-          -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+        # Import the dataset!
+        fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
 
 Supported formats
 ~~~~~~~~~~~~~~~~~
