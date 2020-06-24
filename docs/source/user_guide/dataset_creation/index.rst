@@ -22,31 +22,30 @@ There are three basic ways to get data into FiftyOne:
 
 - :doc:`Common format datasets<common_datasets>`
 
-  - FiftyOne natively supports creating datasets in a variety of common
-    formats, including
-    `COCO <https://cocodataset.org/#home>`_,
-    `VOC <http://host.robots.ox.ac.uk/pascal/VOC>`_,
-    `CVAT <https://github.com/opencv/cvat>`_,
-    `BDD <https://bdd-data.berkeley.edu>`_,
-    `TFRecords <https://github.com/tensorflow/models/tree/master/research/object_detection>`_,
-    and more.
+FiftyOne natively supports creating datasets in a variety of common formats,
+including
+`COCO <https://cocodataset.org/#home>`_,
+`VOC <http://host.robots.ox.ac.uk/pascal/VOC>`_,
+`CVAT <https://github.com/opencv/cvat>`_,
+`BDD <https://bdd-data.berkeley.edu>`_,
+`TFRecords <https://github.com/tensorflow/models/tree/master/research/object_detection>`_,
+and more.
 
 - :doc:`Zoo datasets<zoo_datasets>`
 
-  - FiftyOne provides a Dataset Zoo that contains a variety of popular open
-    source datasets like
-    `CIFAR-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_,
-    `COCO <https://cocodataset.org/#home>`_, and
-    `ImageNet <http://www.image-net.org>`_
-    that can be downloaded and loaded into FiftyOne with a single line of
-    code.
+FiftyOne provides a Dataset Zoo that contains a variety of popular open source
+datasets like
+`CIFAR-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_,
+`COCO <https://cocodataset.org/#home>`_, and
+`ImageNet <http://www.image-net.org>`_
+that can be downloaded and loaded into FiftyOne with a single line of code.
 
 - :doc:`Custom format datasets<custom_datasets>`
 
-  - If your data is stored in a custom format, you can easily get it into
-    FiftyOne by directly adding the samples and their fields to a FiftyOne
-    Dataset in a variety of formats. You can even provide your own sample
-    parser to automate this process.
+If your data is stored in a custom format, you can easily get it into FiftyOne
+by directly adding the samples and their fields to a FiftyOne Dataset in a
+variety of formats. You can even provide your own sample parser to automate
+this process.
 
 **Quickstart**
 
