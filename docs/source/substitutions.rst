@@ -12,17 +12,17 @@
 
 
 
-.. |Views| replace:: ``Views``
-.. _Views: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView 
+.. |DatasetViews| replace:: ``DatasetViews``
+.. _DatasetViews: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView 
 
-.. |View| replace:: ``View``
-.. _View: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView
+.. |DatasetView| replace:: ``DatasetView``
+.. _DatasetView: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView
 
-.. |views| replace:: ``views``
-.. _views: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView 
+.. |datasetviews| replace:: ``datasetviews``
+.. _datasetviews: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView 
 
-.. |view| replace:: ``view``
-.. _view: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView
+.. |datasetview| replace:: ``datasetview``
+.. _datasetview: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView
 
 
 .. |Samples| replace:: ``Samples``
