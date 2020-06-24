@@ -172,6 +172,44 @@ class LabeledImageDatasetExporter(DatasetExporter):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
+class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
+    """Exporter that writes a directory of unlabeled images.
+
+    See :class:`fiftyone.types.ImageDirectory` for format details.
+
+    The raw images are directly copied to their destinations, maintaining their
+    original formats and names, unless a name conflict would occur, in which
+    case an index of the form ``"-%d" % count`` is appended to the base
+    filename.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._data_filename_counts = None
+
+    @property
+    def requires_image_metadata(self):
+        return False
+
+    def setup(self):
+        etau.ensure_dir(self.export_dir)
+        self._data_filename_counts = defaultdict(int)
+
+    def export_sample(self, image_path, metadata=None):
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        self._data_filename_counts[name] += 1
+
+        count = self._data_filename_counts[name]
+        if count > 1:
+            name += "-%d" + count
+
+        out_img_path = os.path.join(self.export_dir, name + ext)
+        etau.copy_file(image_path, out_img_path)
+
+
 def export_images(samples, dataset_dir):
     """Exports the images in the given samples to the given directory.
 

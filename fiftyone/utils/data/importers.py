@@ -182,6 +182,55 @@ class LabeledImageDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement get_next_sample()")
 
 
+class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
+    """Importer for a directory of images.
+
+    See :class:`fiftyone.types.ImageDirectory` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        recursive (True): whether to recursively traverse subdirectories
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.ImageMetadata` instances for each
+            image when importing
+    """
+
+    def __init__(self, dataset_dir, recursive=True, compute_metadata=False):
+        super().__init__(dataset_dir)
+        self.recursive = recursive
+        self.compute_metadata = compute_metadata
+        self._filepaths = []
+        self._idx = None
+
+    def __iter__(self):
+        self._idx = -1
+        return self
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    def setup(self):
+        filepaths = etau.list_files(
+            self.dataset_dir, abs_paths=True, recursive=self.recursive
+        )
+        self._filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
+
+    def get_next_sample(self):
+        try:
+            self._idx += 1
+            image_path = self._filepaths[self._idx]
+        except IndexError:
+            raise StopIteration
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        return image_path, image_metadata
+
+
 def parse_images_dir(dataset_dir, recursive=True):
     """Parses the contents of the given directory of images.
 
