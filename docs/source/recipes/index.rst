@@ -28,7 +28,7 @@ duplicate and near-duplicate images from your dataset.
 
 .. code-block:: python
 
-    # Find Duplicates
+    # Find duplicates
     dup_view = (
         dataset.view()
         # Extract samples with duplicate file hashes
