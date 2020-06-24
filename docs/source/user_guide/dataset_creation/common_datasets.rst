@@ -73,7 +73,7 @@ refer to the corresponding dataset format when reading the dataset from disk.
 | :class:`fiftyone.types.dataset_types.TFImageClassificationDataset`     | A labeled dataset consisting of images and their           |
 |                                                                        | associated classification labels stored as TFRecords.      |
 +------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.ImageDetectionDataset`             | A labeled dataset consisting of images and their           |
+| :class:`fiftyone.types.dataset_types.ImageDetectionDataset`            | A labeled dataset consisting of images and their           |
 |                                                                        | associated object detections stored in a simple JSON       |
 |                                                                        | format.                                                    |
 +------------------------------------------------------------------------+------------------------------------------------------------+

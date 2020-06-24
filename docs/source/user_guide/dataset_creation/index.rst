@@ -1,7 +1,7 @@
 Creating a Dataset
 ==================
 
-.. include:: ../substitutions.rst
+.. include:: ../../substitutions.rst
 .. default-role:: code
 
 FiftyOne supports automatic creation of datasets stored in various common
