@@ -3,8 +3,6 @@ FiftyOne User Guide
 
 .. include:: ../substitutions.rst
 
-.. default-role:: code
-
 Welcome to the FiftyOne User Guide!
 
 Each section in this guide provides an example-centric deep dive into a core
@@ -13,8 +11,8 @@ on your data quickly and easily.
 
 .. rubric:: :doc:`FiftyOne Dataset basics <basics>`
 
-Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
-`Tags` and `DatasetViews`.
+Learn about FiftyOne the |Dataset| class and its relation to |Sample|, |Field|,
+tags and |DatasetView|.
 
 .. code-block:: python
 
@@ -36,7 +34,7 @@ Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
 
 .. rubric:: :doc:`Loading datasets <dataset_creation/index>`
 
-Load a dataset into FiftyOne using standard formats, custom formats, or from
+Load a |Dataset| into FiftyOne using standard formats, custom formats, or from
 the Dataset Zoo.
 
 .. code-block:: python
@@ -82,7 +80,7 @@ real-time.
 
 .. rubric:: :doc:`FiftyOne Brain <brain>`
 
-Use the FiftyOne Brain to automatically get insights into your `Dataset`
+Use the FiftyOne Brain to automatically get insights into your |Dataset|
 
 .. code-block:: python
 

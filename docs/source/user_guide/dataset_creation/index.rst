@@ -1,9 +1,10 @@
 Creating a Dataset
 ==================
 
+.. include:: ../substitutions.rst
 .. default-role:: code
 
-To "create" a FiftyOne `Dataset` is to add the data to the FiftyOne backing
+To "create" a FiftyOne |Dataset| is to add the data to the FiftyOne backing
 database, registering it in FiftyOne.
 
 FiftyOne supports automatic creation of datasets stored in various common
