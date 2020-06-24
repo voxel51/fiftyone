@@ -28,10 +28,7 @@ Check to see what datasets exist at any time via `list_dataset_names()`.
 .. code-block:: python
 
     print(fo.list_dataset_names())
-
-.. code-block:: text
-
-    ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
+    # ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
 
 Load a dataset using `load_dataset()`. Dataset objects are singletons. Cool!
 
@@ -46,18 +43,12 @@ If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
 .. code-block:: python
 
     dataset3_reference = fo.Dataset(name="my_third_dataset")
-
-.. code-block:: text
-
-    ValueError: Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
+    # Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
 
 .. code-block:: python
 
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
-
-.. code-block:: text
-
-    fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
+    # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
 By default, datasets are non-persistent. Non-persistent datasets are wiped
 from FiftyOne on exit of the python process. This means any data in the
@@ -77,10 +68,7 @@ Start a new session:
     import fiftyone as fo
 
     print(fo.list_dataset_names())
-
-.. code-block:: text
-
-    ['my_first_dataset']
+    # ['my_first_dataset']
 
 Delete a dataset explicitly via `Dataset.delete()`. Once a dataset is deleted,
 any existing reference in memory will be in a volatile state. `Dataset.name`
@@ -91,17 +79,18 @@ attribute or method will raise a `DoesNotExistError`.
 
     dataset = fo.load_dataset("my_first_dataset")
     dataset.delete()
+
     print(fo.list_dataset_names())
+    # []
+
     print(dataset.name)
+    # my_first_dataset
+
     print(dataset.deleted)
+    # True
+
     print(dataset.persistent)
-
-.. code-block:: text
-
-    []
-    my_first_dataset
-    True
-    fiftyone.core.dataset.DoesNotExistError: Dataset 'my_first_dataset' is deleted
+    # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_first_dataset' is deleted
 
 Samples
 _______
@@ -129,22 +118,17 @@ are automatically updated:
 .. code-block:: python
 
     print(sample.in_dataset)
+    # True
+
     print(sample.dataset_name)
-
-.. code-block:: text
-
-    True
-    example_dataset
+    # example_dataset
 
 Every `Sample` in a `Dataset` is given a unique ID when it is added:
 
 .. code-block:: python
 
     print(sample.id)
-
-.. code-block:: text
-
-    5ee0ebd72ceafe13e7741c42
+    # 5ee0ebd72ceafe13e7741c42
 
 A batch of multiple `Samples` can be added to a `Dataset` at the same time by
 providing a list of `Samples`:
@@ -152,6 +136,8 @@ providing a list of `Samples`:
 .. code-block:: python
 
     print(len(dataset))
+    # 1
+
     dataset.add_samples(
         [
             fo.Sample(filepath="/path/to/img1.jpg"),
@@ -159,12 +145,9 @@ providing a list of `Samples`:
             fo.Sample(filepath="/path/to/img3.jpg"),
         ]
     )
+
     print(len(dataset))
-
-.. code-block:: text
-
-    1
-    4
+    # 4
 
 Accessing samples in a Dataset
 ------------------------------
@@ -185,11 +168,9 @@ instance:
 .. code-block:: python
 
     same_sample = dataset[sample.id]
+
     print(same_sample is sample)
-
-.. code-block:: text
-
-    True
+    # True
 
 More ways of accessing `Samples` are provided through `DatasetViews` described
 below.
@@ -272,10 +253,7 @@ a `Field` to an inappropriate type raises a `ValidationError`:
 
     sample2.integer_field = "a string"
     sample2.save()
-
-.. code-block:: text
-
-    Error: a string could not be converted to int
+    # ValidationError: a string could not be converted to int
 
 .. note::
 
@@ -319,10 +297,7 @@ images:
     )
 
     print(dataset.get_tags())
-
-.. code-block:: text
-
-    {"test", "low_quality", "train"}
+    # {"test", "low_quality", "train"}
 
 `Tags` can be added to a `Sample` like a standard python `list`:
 
@@ -345,27 +320,18 @@ integer index. In the previous `Sample` section, two ways of accessing
 accessing `Samples` through the use of `DatasetViews`.
 
 The default view of a `Dataset` is a look at the entire `Dataset`. By default,
-it is sorted arbitrarily:
-
-.. code-block:: python
-
-    print(dataset.view())
-
-.. code-block:: text
-
-    fiftyone.core.view.DatasetView
+it is sorted arbitrarily.
 
 Basic ways to explore `DatasetViews` are available:
 
 .. code-block:: python
 
     print(len(dataset.view()))
+    # 2
 
-    print(datsaet.view())
+    print(dataset.view())
 
 .. code-block:: text
-
-    2
 
     Dataset:        interesting_dataset
     Num samples:    2
@@ -387,11 +353,9 @@ sample in a `DatasetView` or `take(x)` to get a new `DatasetView` containing
     first_sample = dataset.view().first()
 
     new_view = dataset.view().take(2)
+
     print(len(new_view))
-
-.. code-block:: text
-
-    2
+    # 2
 
 Ranges of `Samples` can be accessed using `skip()` and `limit()` or through
 array slicing:
@@ -411,11 +375,7 @@ not supported (this is not an efficient operation with FiftyOne datasets):
 .. code-block:: python
 
     view[0]
-
-.. code-block:: text
-
-    KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
-
+    # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
 
 As with `Datasets`, `Samples` in a `DatasetView` can be accessed by ID and
 `DatasetViews` are iterable:
