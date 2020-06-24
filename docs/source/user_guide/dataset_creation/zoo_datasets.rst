@@ -51,6 +51,7 @@ Listing zoo datasets
     ``fiftyone.zoo.list_zoo_datasets()`` method:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -76,6 +77,7 @@ Listing zoo datasets
     ``fiftyone.zoo.list_downloaded_zoo_datasets()`` method:
 
     .. code-block:: python
+        :linenos:
 
         from pprintpp import pprint
         import fiftyone.zoo as foz
@@ -184,6 +186,7 @@ Getting information about zoo datasets
     For example, let's print some information about the CIFAR-10 dataset:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -224,6 +227,7 @@ Getting information about zoo datasets
     (assuming it is downloaded):
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -362,6 +366,7 @@ Downloading zoo datasets
     For example, let's download the ``train`` split of CIFAR-10:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -444,6 +449,7 @@ Loading zoo datasets into FiftyOne
     it is not already downloaded:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -531,6 +537,7 @@ You can customize this directory in any of the following ways:
    code
 
 .. code-block:: python
+    :linenos:
 
     # Customize where zoo datasets are downloaded
     import fiftyone.core.config as foc
@@ -579,6 +586,7 @@ You can customize this backend in any of the following ways:
 -  Setting the `default_ml_backend` config setting from your Python code:
 
 .. code-block:: python
+    :linenos:
 
     # Use the `torch` backend
     import fiftyone.core.config as foc

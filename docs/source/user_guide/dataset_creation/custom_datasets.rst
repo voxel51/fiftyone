@@ -17,7 +17,8 @@ construct your own ``fiftyone.core.sample.Sample`` instances.
 The following example demonstrates the construction of a dataset with
 ground truth labels stored in a ``ground_truth`` field:
 
-.. code:: py
+.. code:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -72,7 +73,8 @@ If your samples do not fit this schema, you can use the
 provide your own ``fiftyone.utils.data.LabeledImageSampleParser`` to
 parse your samples.
 
-.. code:: py
+.. code:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -133,7 +135,8 @@ If your samples do not fit this schema, you can use the
 provide your own ``fiftyone.utils.data.LabeledImageSampleParser`` to
 parse your samples.
 
-.. code:: py
+.. code:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -178,7 +181,8 @@ If your samples do not fit this schema, you can use the
 provide your own ``fiftyone.utils.data.LabeledImageSampleParser`` to
 parse your samples.
 
-.. code:: py
+.. code:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -216,7 +220,8 @@ you can provide a custom
 ``fiftyone.utils.data.LabeledImageSampleParser.parse_label()`` method
 will be used to parse the sample labels in the input iterable.
 
-.. code:: py
+.. code:: python
+    :linenos:
 
     import fiftyone as fo
     from fiftyone.utils.data import LabeledImageSampleParser
@@ -280,7 +285,8 @@ The code below demonstrates using the default
 ``fiftyone.utils.data.ImageClassificationSampleParser`` to ingest an
 image classification dataset stored in-memory:
 
-.. code:: py
+.. code:: python
+    :linenos:
 
     import fiftyone as fo
     import fiftyone.utils.data as fod

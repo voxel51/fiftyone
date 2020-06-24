@@ -57,6 +57,7 @@ The `uniqueness` of a `Dataset` can be computed directly without need the
 predictions of a pre-trained model:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.brain as fob
 
@@ -92,6 +93,7 @@ FiftyOne Brain and the predictions of a pre-trained model, you can identify
 possible labels mistakes in your `Datasets`:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.brain as fob
 
@@ -131,6 +133,7 @@ samples of a `Dataset`. These predictions can then be loaded into FiftyOne into
 the same `Dataset` and the FiftyOne Brain can be used to compute hardness:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.brain as fob
 

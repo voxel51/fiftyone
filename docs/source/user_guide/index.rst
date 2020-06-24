@@ -17,6 +17,7 @@ Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
 `Tags` and `DatasetViews`.
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -40,6 +41,7 @@ Get your data into a FiftyOne `Dataset` using standard formats, custom formats,
 or load an open-source dataset via the Dataset Zoo.
 
 .. code-block:: python
+   :linenos:
 
    dataset = fo.Dataset.from_dir(
        dataset_dir="/path/to/dataset",
@@ -52,6 +54,7 @@ or load an open-source dataset via the Dataset Zoo.
 Use a FiftyOne Dataset to search, sort, and modify your data:
 
 .. code-block:: python
+   :linenos:
 
    view = (
        dataset.view()
@@ -66,8 +69,9 @@ Use a FiftyOne Dataset to search, sort, and modify your data:
 Export your dataset to disk in any number of formats.
 
 .. code-block:: python
+   :linenos:
 
-    dataset.export(export_dir, dataset_type=fo.types.COCODetectionDataset)
+   dataset.export(export_dir, dataset_type=fo.types.COCODetectionDataset)
 
 .. rubric:: :doc:`Visualizing datasets in the App <app>`
 
@@ -85,6 +89,7 @@ real-time.
 Use the FiftyOne Brain to automatically get insights into your `Dataset`
 
 .. code-block:: python
+   :linenos:
 
    import fiftyone.brain as fob
 

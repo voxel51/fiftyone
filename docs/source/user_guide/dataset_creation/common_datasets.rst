@@ -19,6 +19,7 @@ loading.
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -131,6 +132,7 @@ You can create a FiftyOne dataset from a directory of images as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -224,6 +226,7 @@ in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -300,6 +303,7 @@ stored in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -391,6 +395,7 @@ as a directory of TFRecords in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -515,6 +520,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -638,6 +644,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -760,6 +767,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -875,6 +883,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -998,6 +1007,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1095,6 +1105,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1206,6 +1217,7 @@ as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
