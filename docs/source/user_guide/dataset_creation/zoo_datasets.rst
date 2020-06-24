@@ -97,6 +97,79 @@ Listing zoo datasets
             ...
         }
 
+  .. group-tab:: CLI
+
+    You can access information about the available zoo datasets via the
+    ``fiftyone zoo list`` command:
+
+    ::
+
+        $ fiftyone zoo list -h
+
+        usage: fiftyone zoo list [-h] [-b BASE_DIR]
+
+        Tools for listing datasets in the FiftyOne Dataset Zoo.
+
+            Examples::
+
+                # List available datasets
+                fiftyone zoo list
+
+                # List available datasets, using the specified base directory to search
+                # for downloaded datasets
+                fiftyone zoo list --base-dir <base-dir>
+
+        optional arguments:
+          -h, --help            show this help message and exit
+          -b BASE_DIR, --base-dir BASE_DIR
+                                a custom base directory in which to search for downloaded datasets
+
+    For example, to list the available zoo datasets and whether you have
+    downloaded them, you can execute:
+
+    ::
+
+        $ fiftyone zoo list
+
+        name           split       downloaded    dataset_dir                     torch (*)    tensorflow
+        -------------  ----------  ------------  ------------------------------  -----------  ------------
+        caltech101     test                                                      ✓
+        caltech101     train                                                     ✓
+        cifar10        test        ✓             ~/fiftyone/cifar10/test         ✓            ✓
+        cifar10        train       ✓             ~/fiftyone/cifar10/train        ✓            ✓
+        cifar100       test        ✓             ~/fiftyone/cifar100/test        ✓            ✓
+        cifar100       train       ✓             ~/fiftyone/cifar100/train       ✓            ✓
+        coco-2014      test                                                      ✓            ✓
+        coco-2014      train                                                     ✓            ✓
+        coco-2014      validation                                                ✓            ✓
+        coco-2017      test                                                      ✓            ✓
+        coco-2017      train                                                     ✓            ✓
+        coco-2017      validation                                                ✓            ✓
+        fashion-mnist  test                                                      ✓            ✓
+        fashion-mnist  train                                                     ✓            ✓
+        imagenet-2012  train                                                     ✓            ✓
+        imagenet-2012  validation                                                ✓            ✓
+        kitti          test        ✓             ~/fiftyone/kitti/test                        ✓
+        kitti          train       ✓             ~/fiftyone/kitti/train                       ✓
+        kitti          validation  ✓             ~/fiftyone/kitti/validation                  ✓
+        mnist          test        ✓             ~/fiftyone/mnist/test           ✓            ✓
+        mnist          train       ✓             ~/fiftyone/mnist/train          ✓            ✓
+        voc-2007       test                                                                   ✓
+        voc-2007       train       ✓             ~/fiftyone/voc-2007/train       ✓            ✓
+        voc-2007       validation  ✓             ~/fiftyone/voc-2007/validation  ✓            ✓
+        voc-2012       test                                                                   ✓
+        voc-2012       train                                                     ✓            ✓
+        voc-2012       validation                                                ✓            ✓
+
+    Dataset splits that have been downloaded are indicated by a checkmark in
+    the ``downloaded`` column, and their location on disk is indicated by
+    the ``dataset_dir`` column.
+
+    The ``torch`` and ``tensorflow`` columns indicate whether the particular
+    dataset split is available in the respective ML backends. The ``(*)``
+    indicates your default ML backend, which will be used in case a given
+    split is available through multiple sources.
+
 Getting information about zoo datasets
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -178,6 +251,88 @@ Getting information about zoo datasets
                 "test": {
                     "split": "test",
                     "num_samples": 10000
+                }
+            },
+            "classes": [
+                "airplane",
+                "automobile",
+                "bird",
+                "cat",
+                "deer",
+                "dog",
+                "frog",
+                "horse",
+                "ship",
+                "truck"
+            ]
+        }
+
+  .. group-tab:: CLI
+
+        You can view detailed information about a dataset (either downloaded or
+    not) via the ``fiftyone zoo info`` command:
+
+    ::
+
+        $ fiftyone zoo info -h
+        usage: fiftyone zoo info [-h] [-b BASE_DIR] NAME
+
+        Tools for printing info about downloaded zoo datasets.
+
+            Examples::
+
+                # Print information about a downloaded zoo dataset
+                fiftyone zoo info <name>
+
+                # Print information about the zoo dataset downloaded to the specified
+                # base directory
+                fiftyone zoo info <name> --base-dir <base-dir>
+
+        positional arguments:
+          NAME                  the name of the dataset
+
+        optional arguments:
+          -h, --help            show this help message and exit
+          -b BASE_DIR, --base-dir BASE_DIR
+                                a custom base directory in which to search for downloaded datasets
+
+    For example, you can view information about the CIFAR-10 dataset:
+
+    ::
+
+        $ fiftyone zoo info cifar10
+
+        ***** Dataset description *****
+        The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
+            classes, with 6000 images per class. There are 50000 training images and
+            10000 test images.
+
+            Dataset size:
+                132.40 MiB
+
+            Source:
+                https://www.cs.toronto.edu/~kriz/cifar.html
+
+        ***** Supported splits *****
+        test, train
+
+        ***** Dataset location *****
+        ~/fiftyone/cifar10
+
+        ***** Dataset info *****
+        {
+            "name": "cifar10",
+            "zoo_dataset": "fiftyone.zoo.torch.CIFAR10Dataset",
+            "dataset_type": "fiftyone.types.dataset_types.ImageClassificationDataset",
+            "num_samples": 60000,
+            "downloaded_splits": {
+                "test": {
+                    "split": "test",
+                    "num_samples": 10000
+                },
+                "train": {
+                    "split": "train",
+                    "num_samples": 50000
                 }
             },
             "classes": [
@@ -346,163 +501,6 @@ Loading zoo datasets into FiftyOne
         Loading 'cifar10' split 'test'
          100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
-
-Listing zoo datasets
---------------------
-
-You can access information about the available zoo datasets via the
-``fiftyone zoo list`` command:
-
-::
-
-    $ fiftyone zoo list -h
-
-    usage: fiftyone zoo list [-h] [-b BASE_DIR]
-
-    Tools for listing datasets in the FiftyOne Dataset Zoo.
-
-        Examples::
-
-            # List available datasets
-            fiftyone zoo list
-
-            # List available datasets, using the specified base directory to search
-            # for downloaded datasets
-            fiftyone zoo list --base-dir <base-dir>
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for downloaded datasets
-
-For example, to list the available zoo datasets and whether you have
-downloaded them, you can execute:
-
-::
-
-    $ fiftyone zoo list
-
-    name           split       downloaded    dataset_dir                     torch (*)    tensorflow
-    -------------  ----------  ------------  ------------------------------  -----------  ------------
-    caltech101     test                                                      ✓
-    caltech101     train                                                     ✓
-    cifar10        test        ✓             ~/fiftyone/cifar10/test         ✓            ✓
-    cifar10        train       ✓             ~/fiftyone/cifar10/train        ✓            ✓
-    cifar100       test        ✓             ~/fiftyone/cifar100/test        ✓            ✓
-    cifar100       train       ✓             ~/fiftyone/cifar100/train       ✓            ✓
-    coco-2014      test                                                      ✓            ✓
-    coco-2014      train                                                     ✓            ✓
-    coco-2014      validation                                                ✓            ✓
-    coco-2017      test                                                      ✓            ✓
-    coco-2017      train                                                     ✓            ✓
-    coco-2017      validation                                                ✓            ✓
-    fashion-mnist  test                                                      ✓            ✓
-    fashion-mnist  train                                                     ✓            ✓
-    imagenet-2012  train                                                     ✓            ✓
-    imagenet-2012  validation                                                ✓            ✓
-    kitti          test        ✓             ~/fiftyone/kitti/test                        ✓
-    kitti          train       ✓             ~/fiftyone/kitti/train                       ✓
-    kitti          validation  ✓             ~/fiftyone/kitti/validation                  ✓
-    mnist          test        ✓             ~/fiftyone/mnist/test           ✓            ✓
-    mnist          train       ✓             ~/fiftyone/mnist/train          ✓            ✓
-    voc-2007       test                                                                   ✓
-    voc-2007       train       ✓             ~/fiftyone/voc-2007/train       ✓            ✓
-    voc-2007       validation  ✓             ~/fiftyone/voc-2007/validation  ✓            ✓
-    voc-2012       test                                                                   ✓
-    voc-2012       train                                                     ✓            ✓
-    voc-2012       validation                                                ✓            ✓
-
-Dataset splits that have been downloaded are indicated by a checkmark in
-the ``downloaded`` column, and their location on disk is indicated by
-the ``dataset_dir`` column.
-
-The ``torch`` and ``tensorflow`` columns indicate whether the particular
-dataset split is available in the respective ML backends. The ``(*)``
-indicates your default ML backend, which will be used in case a given
-split is available through multiple sources.
-
-Getting information about zoo datasets
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can view detailed information about a dataset (either downloaded or
-not) via the ``fiftyone zoo info`` command:
-
-::
-
-    $ fiftyone zoo info -h
-    usage: fiftyone zoo info [-h] [-b BASE_DIR] NAME
-
-    Tools for printing info about downloaded zoo datasets.
-
-        Examples::
-
-            # Print information about a downloaded zoo dataset
-            fiftyone zoo info <name>
-
-            # Print information about the zoo dataset downloaded to the specified
-            # base directory
-            fiftyone zoo info <name> --base-dir <base-dir>
-
-    positional arguments:
-      NAME                  the name of the dataset
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for downloaded datasets
-
-For example, you can view information about the CIFAR-10 dataset:
-
-::
-
-    $ fiftyone zoo info cifar10
-
-    ***** Dataset description *****
-    The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
-        classes, with 6000 images per class. There are 50000 training images and
-        10000 test images.
-
-        Dataset size:
-            132.40 MiB
-
-        Source:
-            https://www.cs.toronto.edu/~kriz/cifar.html
-
-    ***** Supported splits *****
-    test, train
-
-    ***** Dataset location *****
-    ~/fiftyone/cifar10
-
-    ***** Dataset info *****
-    {
-        "name": "cifar10",
-        "zoo_dataset": "fiftyone.zoo.torch.CIFAR10Dataset",
-        "dataset_type": "fiftyone.types.dataset_types.ImageClassificationDataset",
-        "num_samples": 60000,
-        "downloaded_splits": {
-            "test": {
-                "split": "test",
-                "num_samples": 10000
-            },
-            "train": {
-                "split": "train",
-                "num_samples": 50000
-            }
-        },
-        "classes": [
-            "airplane",
-            "automobile",
-            "bird",
-            "cat",
-            "deer",
-            "dog",
-            "frog",
-            "horse",
-            "ship",
-            "truck"
-        ]
-    }
 
 Controlling where zoo datasets are downloaded
 ---------------------------------------------
