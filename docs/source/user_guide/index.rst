@@ -96,7 +96,7 @@ Use the FiftyOne Brain to automatically get insights into your `Dataset`
     :hidden:
 
     Dataset basics<basics>
-    Loading datasets<dataset_creation/index>
+    Creating datasets<dataset_creation/index>
     Using datasets<using_dataset>
     Exporting datasets<export_dataset>
     Viewing datasets in the App<app>
