@@ -2,11 +2,10 @@ FiftyOne Command-Line Interface (CLI)
 =====================================
 
 Installing FiftyOne automatically installs ``fiftyone``, a command-line
-interface (CLI) for interacting with FiftyOne. This utility provides
-access to many useful features, including creating and inspecting
-datasets, visualizing datasets in the dashboard, exporting datasets and
-converting dataset formats, and downloading datasets from the FiftyOne
-Dataset Zoo.
+interface (CLI) for interacting with FiftyOne. This utility provides access to
+many useful features, including creating and inspecting datasets, visualizing
+datasets in the dashboard, exporting datasets and converting dataset formats,
+and downloading datasets from the FiftyOne Dataset Zoo.
 
 Quickstart
 ----------
