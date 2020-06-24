@@ -89,20 +89,6 @@ Use the FiftyOne Brain to automatically get insights into your `Dataset`
    fob.compute_uniqueness(dataset)
    rank_view = dataset.view().sort_by("uniqueness")
 
-.. rubric:: :doc:`Command Line Interface <cli>`
-
-FiftyOne functionality can be accessed directly from the command line via the
-FiftyOne Command Line Interface (CLI):
-
-.. code:: shell
-
-    # Creates a dataset from the given data on disk
-    fiftyone datasets create \
-        --name my_dataset --dataset-dir /path/to/data
-
-    # Launch the FiftyOne App
-    fiftyone dashboard launch my_dataset
-
 .. toctree::
     :maxdepth: 1
     :hidden:
@@ -113,4 +99,3 @@ FiftyOne Command Line Interface (CLI):
     Exporting datasets<export_dataset>
     Viewing datasets in the App<app>
     FiftyOne Brain<brain>
-    Command-Line Interface<cli>

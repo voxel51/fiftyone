@@ -82,8 +82,8 @@ Local machine
 Option 1
 ^^^^^^^^
 
-On the local machine, the :doc:`FiftyOne CLI <cli>` can be used to forward the
-port `5151` and open the FiftyOne App locally.
+On the local machine, the :doc:`FiftyOne CLI <../cli/index>` can be used to
+forward the port `5151` and open the FiftyOne App locally.
 
 In a local terminal, run the command:
 
