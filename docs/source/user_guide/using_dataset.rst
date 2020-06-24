@@ -225,19 +225,46 @@ ______
 `Fields` are attributes of `Samples` that are shared across all `Samples` in a
 `Dataset`.
 
-By default, a `Dataset` and the `Samples` therein have two `Fields`,
-`filepath`, and `tags`. All `Samples` are required to be initialized with a
-`filepath`.
+By default, a `Dataset` and the `Samples` therein have `Fields`
+`filepath`, `metadata` and `tags`. `filepath` is a required parameter.
 
 Accessing fields of a Sample
 ----------------------------
 
-Available `Fields` can be found at a `Sample` or `Dataset` level:
+The names of available fields can be checked on any individual `Sample`:
 
 .. code-block:: python
 
     sample.field_names
+    # ('filepath', 'tags', 'metadata')
+
+Only the `Dataset` has any notion of a field "schema", which specifies the
+field types:
+
+.. code-block:: python
+
     dataset.get_field_schema()
+    # OrderedDict(
+    #     [
+    #         ('filepath', <fiftyone.core.fields.StringField object at 0x11436e710>),
+    #         ('tags',     <fiftyone.core.fields.ListField object at 0x11b7f2dd8>),
+    #         ('metadata', <fiftyone.core.fields.EmbeddedDocumentField object at 0x11b7f2e80>)
+    #     ]
+    # )
+
+To to simply view the field schema print the dataset:
+
+.. code-block:: python
+
+    print(dataset)
+    # Name:           a_dataset
+    # Persistent:     False
+    # Num samples:    0
+    # Tags:           []
+    # Sample fields:
+    #     filepath: fiftyone.core.fields.StringField
+    #     tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+    #     metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
 The value of a `Field` for a given `Sample` can be accessed either by key or
 attribute access:
