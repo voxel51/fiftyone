@@ -2,16 +2,12 @@ import React from "react";
 import styled from "styled-components";
 
 import Segment from "./Segment";
+import { Container } from "../utils";
 
 export default {
   component: Segment,
   title: "Segment",
 };
-
-const Container = styled.div`
-  width: 100%;
-  height: 100px;
-`;
 
 export const segment = () => (
   <Container>

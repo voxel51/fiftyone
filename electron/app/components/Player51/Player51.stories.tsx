@@ -12,6 +12,5 @@ export default {
 export const thumbnail = () => (
   <Container>
     <Thumbnail index={0} />
-    <Thumbnail index={1} />
   </Container>
 );

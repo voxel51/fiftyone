@@ -11,6 +11,7 @@ import {
   itemsPerRequest,
   segmentIsLoaded,
   gridMargin,
+  portNumber,
 } from "./atoms";
 
 export const indicatorIndex = selector({
@@ -124,7 +125,6 @@ export const numSections = selector({
     return Math.ceil(vc / Math.pow(10, breakpoints.length));
   },
 });
-
 export const mainAspectRatio = selector({
   key: "mainAspectRatio",
   get: ({ get }) => {
@@ -156,7 +156,11 @@ export const segmentItemIndices = selectorFamily({
 export const segmentData = selectorFamily({
   key: "segmentData",
   get: (segmentIndex) => ({ get }) => {
-    return getPage(getSocket(5151, "state"), segmentIndex);
+    const params = get(pageParams);
+    return getPage(getSocket(5151, "state"), {
+      ...params,
+      page: segmentIndex,
+    });
   },
 });
 
@@ -220,5 +224,51 @@ export const itemBasePosition = selectorFamily({
       top: gm + row * (ils.height + gm),
       left: gm + col * (ils.width + gm),
     };
+  },
+});
+
+export const pageParams = selector({
+  key: "pageParams",
+  get: ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    const [mw, unused] = get(mainSize);
+    const gm = get(gridMargin);
+    return {
+      margin: gm,
+      width: mw,
+      length: ipr,
+    };
+  },
+});
+
+export const itemAdjustedPosition = selectorFamily({
+  key: "itemAdjustedPosition",
+  get: (itemIndex) => ({ get }) => {
+    const id = get(itemData(itemIndex));
+    const ibp = get(itemBasePosition(itemIndex));
+    return {
+      top: id.top - ibp.top,
+      left: id.left - ibp.left,
+    };
+  },
+});
+
+export const itemSize = selectorFamily({
+  key: "itemSize",
+  get: (itemIndex) => ({ get }) => {
+    const { width, height } = get(itemData(itemIndex));
+    return {
+      width,
+      height,
+    };
+  },
+});
+
+export const itemSource = selectorFamily({
+  key: "itemSource",
+  get: (itemIndex) => ({ get }) => {
+    const id = get(itemData(itemIndex));
+    const pn = get(portNumber);
+    return `http://127.0.0.1:${pn}/?path=${id.sample.filepath}`;
   },
 });

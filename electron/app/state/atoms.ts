@@ -72,3 +72,8 @@ export const mainLoaded = atom({
   key: "mainLoaded",
   default: false,
 });
+
+export const portNumber = atom({
+  key: "portNumber",
+  default: 5151,
+});

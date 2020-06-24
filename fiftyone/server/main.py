@@ -35,7 +35,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.state as fos
 
-from util import get_image_size
+from util import tile
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
@@ -145,12 +145,11 @@ class StateController(Namespace):
         state.selected = list(selected)
         return state
 
-    def on_page(self, page, page_length=50):
+    def on_page(self, params):
         """Gets the requested page of samples.
 
         Args:
-            page: the page number
-            page_length: the page length
+            params: page parameters
 
         Returns:
             the list of sample dicts for the page
@@ -163,22 +162,12 @@ class StateController(Namespace):
         else:
             return []
 
-        view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [
-            json.loads(json_util.dumps(s.to_mongo_dict())) for s in view
-        ]
-        more = False
-        if len(samples) > page_length:
-            samples = samples[:page_length]
-            more = page + 1
-
-        results = [{"sample": s} for s in samples]
-        for r in results:
-            w, h = get_image_size(r["sample"]["filepath"])
-            r["width"] = w
-            r["height"] = h
-
-        return {"results": results, "more": more}
+        page = params["page"]
+        width = params["width"]
+        margin = params["margin"]
+        length = params["length"]
+        view = view.skip(length * page).limit(length)
+        return tile(view, width, margin)
 
     def on_lengths(self, _):
         state = fos.StateDescription.from_dict(self.state)

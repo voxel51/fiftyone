@@ -2,6 +2,8 @@ import React, { Suspense } from "react";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
 
+import { Item } from "../Player51";
+
 import { itemsPerRequest } from "../../state/atoms";
 import { segmentItemIndices, segmentData } from "../../state/selectors";
 
@@ -40,7 +42,13 @@ const Loading = ({ index }) => {
 const Segment = ({ index }) => {
   const itemIndicesValue = useRecoilValue(segmentItemIndices(index));
 
-  return <SegmentDiv>{}</SegmentDiv>;
+  return (
+    <SegmentDiv>
+      {itemIndicesValue.map((key, index) => (
+        <Item key={key} index={index} />
+      ))}
+    </SegmentDiv>
+  );
 };
 
 export default ({ index }) => {

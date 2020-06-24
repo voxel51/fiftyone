@@ -23,10 +23,13 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import collections
+from itertools import zip_longest
 import json
 import os
 import io
 import struct
+
+from bson import json_util
 
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
 
@@ -44,6 +47,72 @@ PNG = types["PNG"] = "PNG"
 TIFF = types["TIFF"] = "TIFF"
 
 image_fields = ["path", "type", "file_size", "width", "height"]
+
+
+def tile(view, width, margin):
+    """Tiles the samples in a view in rows of varying height, where all
+    samples (images) in a row are fit to preserve aspect ratio. No cropping is
+    done
+
+    Args:
+        view: a :class:`fiftyone.core.view.DatasetView`
+        remainder: a list of samples to prepend to the view results
+
+    Returns:
+        a tuple of the serialized result and the new remainder (result, remainder)
+    """
+    row = []
+    row_height = None
+    row_width = None
+    top = margin
+    samples = []
+
+    for idx, sample in enumerate(view):
+        w, h = get_image_size(sample.filepath)
+
+        if row_width is None:
+            row_width = w
+            row_height = h
+            row.append((sample, w, h))
+            continue
+
+        if row_width / row_height >= 5:
+            top, fit_row = _fit_row(
+                top, row, row_width, row_height, width, margin
+            )
+            samples += fit_row
+            row = [(sample, w, h)]
+            row_width = w
+            row_height = h
+            continue
+
+        row.append((sample, w, h))
+        row_width += (row_height / h) * w
+
+    _, fit_row = _fit_row(top, row, row_width, row_height, width, margin)
+    samples += fit_row
+    return samples
+
+
+def _fit_row(top, row, row_width, row_height, width, margin):
+    result = []
+    row_length = len(row)
+    working_width = width - (margin * (len(row) + 1))
+    height = working_width * row_height / row_width
+    left = margin
+    for sample, sample_width, sample_height in row:
+        fit_width = working_width / row_width * sample_width
+        result.append(
+            {
+                "sample": json.loads(json_util.dumps(sample.to_mongo_dict())),
+                "width": fit_width,
+                "height": height,
+                "top": top,
+                "left": left,
+            }
+        )
+        left += fit_width + margin
+    return top + height + margin, result
 
 
 class Image(collections.namedtuple("Image", image_fields)):

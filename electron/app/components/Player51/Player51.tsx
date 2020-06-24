@@ -1,15 +1,19 @@
 import _ from "lodash";
 import styled from "styled-components";
 import React, { Suspense, useState, useEffect } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { useSpring, animated } from "react-spring";
 
-import { mainLoaded } from "../../state/atoms";
+import { mainLoaded, segmentIsLoaded } from "../../state/atoms";
 import {
   itemBasePosition,
   itemBaseSize,
+  itemSize,
+  itemAdjustedPosition,
   itemData,
-  segmentData,
+  itemIsLoaded,
+  itemSource,
+  segmentIndexFromItemIndex,
 } from "../../state/selectors";
 import { getPage, getSocket } from "../../utils/socket";
 import Player51 from "../../player51/build/cjs/player51.min.js";
@@ -19,19 +23,55 @@ const Tile = animated(styled.div`
   position: absolute;
 `);
 
+const ThumbnailParent = styled.div`
+  width: 100%;
+  height: 100%;
+  position: relative;
+`;
+
+const ThumbnailDiv = animated(styled.div`
+  position: absolute;
+  opacity: 0;
+`);
+
+const Img = animated(styled.img`
+  width: 100%;
+  height: 100%;
+`);
+
 const Thumbnail = ({ index }) => {
-  // const itemDataValue = useRecoilValue(itemData(index));
-  // const sd = useRecoilValue(segmentData(0));
-  useEffect(() => {
-    getPage(getSocket(5151, "state"), 0).then((d) => console.log(d));
+  const itemSizeValue = useRecoilValue(itemSize(index));
+  const itemAdjustedPositionValue = useRecoilValue(itemAdjustedPosition(index));
+  const segmentIndexValue = useRecoilValue(segmentIndexFromItemIndex(index));
+  const setSegmentIsLoaded = useSetRecoilState(
+    segmentIsLoaded(segmentIndexValue)
+  );
+  const itemSourceValue = useRecoilValue(itemSource(index));
+
+  useEffect(() => setSegmentIsLoaded(true), []);
+
+  const props = useSpring({
+    ...itemAdjustedPositionValue,
+    ...itemSizeValue,
+    opacity: 1,
+    from: {
+      opacity: 0,
+      top: 0,
+      left: 0,
+    },
   });
-  return <div>hello</div>;
+  return (
+    <ThumbnailParent>
+      <ThumbnailDiv style={props}>
+        <Img src={itemSourceValue} />
+      </ThumbnailDiv>
+    </ThumbnailParent>
+  );
 };
 
 const ThumbnailContainer = ({ index }) => {
   const itemBasePositionValue = useRecoilValue(itemBasePosition(index));
   const itemBaseSizeValue = useRecoilValue(itemBaseSize);
-  const mainLoadedValue = useRecoilValue(mainLoaded);
 
   const props = useSpring({
     ...itemBasePositionValue,
