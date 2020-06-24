@@ -2,7 +2,6 @@ global-include *
 global-exclude *.py[cod]
 
 recursive-exclude fiftyone *.md
-prune fiftyone/experimental
 
 recursive-exclude docs *
 recursive-include docs *.py

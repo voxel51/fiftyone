@@ -1,0 +1,71 @@
+/* sphinx-rtd-theme overrides */
+
+.wy-nav-side {
+  background-color: white;
+  border-right: 2px solid var(--gray-light3);
+  margin-top: 90px;
+}
+
+.wy-side-nav-search {
+  background-color: white;
+}
+
+.wy-side-nav-search .icon-home {
+  color: var(--color-primary);
+}
+
+#rtd-search-form input[type="text"] {
+  border-width: 0;
+  border-radius: 3px;
+  background-color: var(--gray-light3);
+}
+
+.wy-menu-vertical a {
+  color: #404040;
+}
+
+.wy-menu-vertical a:hover {
+  background-color: #d6d6d6;
+}
+
+.wy-menu-vertical a:active {
+  background-color: var(--color-primary);
+}
+
+/* voxel51-website.css overrides */
+
+.nav__main {
+  font-size: 18px;
+  padding-left: 0;
+  padding-right: 20px;
+  justify-content: unset;
+}
+
+.nav__main__logo {
+  width: 300px;
+  padding-left: 30px;
+}
+
+#nav__main__items {
+  text-align: right;
+  width: 100%;
+  max-width: 800px;
+}
+
+.footer {
+  padding: 20px 0;
+  background-color: inherit;
+  color: gray;
+  font-size: 15px;
+  grid-template-columns: 20% 25% 10px 45%;
+}
+
+.footer a {
+  color: gray;
+  line-height: 30px;
+}
+
+.footer .nav__item--brand {
+  font-size: 18px;
+  line-height: 18px;
+}
