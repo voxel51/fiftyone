@@ -49,7 +49,7 @@ cd "${THIS_DIR}/.."
 sphinx-apidoc -f --no-toc -o docs/source/api fiftyone
 
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
-cd "${THIS_DIR}"
+cd docs
 sphinx-build -M html source build
 
 echo "**** Documentation complete ****"
