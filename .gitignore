@@ -12,13 +12,6 @@ __pycache__
 
 *~
 
-/eta/
-
-build/
-data/
-dist/
-out/
-tmp/
-
 /docs/build/
 /docs/api/
+/eta/
