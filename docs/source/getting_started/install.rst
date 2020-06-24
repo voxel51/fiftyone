@@ -140,7 +140,8 @@ Installing FiftyOne
 -------------------
 
 To install FiftyOne in a virtual environment, ensure that the virtual
-environment is active as described in the previous section, then run:
+environment is active as described in the previous section, and then run the
+command below:
 
 .. tabs::
 
