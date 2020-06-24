@@ -12,7 +12,7 @@ the CLI.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     The Dataset Zoo is accessible via the ``fiftyone.zoo`` package.
 
@@ -45,7 +45,7 @@ Listing zoo datasets
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     You can list the available zoo datasets via the
     ``fiftyone.zoo.list_zoo_datasets()`` method:
@@ -175,7 +175,7 @@ Getting information about zoo datasets
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     Each zoo dataset is represented by a ``fiftyone.zoo.ZooDataset``
     subclass, which contains information about the dataset, its available
@@ -354,7 +354,7 @@ Downloading zoo datasets
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     You can download zoo datasets (or individual split(s) of them) from the
     web via the ``fiftyone.zoo.download_zoo_dataset()`` method.
@@ -436,7 +436,7 @@ Loading zoo datasets into FiftyOne
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     You can load a zoo dataset (or individual split(s) of them) via the
     ``fiftyone.zoo.load_zoo_dataset()`` method. By default, the dataset will

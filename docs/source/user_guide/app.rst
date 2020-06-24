@@ -97,7 +97,7 @@ separately.
         # Local machine
         fiftyone dashboard connect --destination username@remote_machine_ip --port 5151
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     Open two terminal windows on the **local machine**. In order to forward the
     port `5151` from the remote machine to the local machine, run the following

@@ -11,7 +11,7 @@ Basic recipe
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     The interface for exporting datasets is conveniently exposed via the
     `Dataset.export()` and `DatasetView.export()` methods, which makes it easy to
@@ -145,7 +145,7 @@ Datasets of this type are exported in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export the images in a FiftyOne dataset as a directory of images on disk,
     you can execute:
@@ -222,7 +222,7 @@ provided, then the `target` values directly store the label strings.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as an image classification dataset stored on disk
     in the above format, you can execute:
@@ -286,7 +286,7 @@ Datasets of this type are exported in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as an image classification directory tree stored
     on disk in the above format, you can execute:
@@ -365,7 +365,7 @@ following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as a directory of TFRecords in the above format,
     you can execute:
@@ -462,7 +462,7 @@ provided, then the `target` values directly store the label strings.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as an image detection dataset in the above format,
     you can execute:
@@ -572,7 +572,7 @@ where `labels.json` is a JSON file in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as a COCO detection dataset in the above format,
     you can execute:
@@ -685,7 +685,7 @@ example) are left empty.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as a VOC detection dataset in the above format,
     you can execute:
@@ -789,7 +789,7 @@ field(s).
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as a KITTI detection dataset in the above format,
     you can execute:
@@ -899,7 +899,7 @@ where `labels.xml` is an XML file in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as a CVAT image dataset in the above format, you
     can execute:
@@ -984,7 +984,7 @@ and where each labels JSON file is stored in
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as an image labels dataset in the above format,
     you can execute:
@@ -1083,7 +1083,7 @@ where `labels.json` is a JSON file in the following format:
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     To export a FiftyOne dataset as a BDD dataset in the above format, you can
     execute:
