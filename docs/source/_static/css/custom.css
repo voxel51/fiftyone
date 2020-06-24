@@ -69,3 +69,17 @@
   font-size: 18px;
   line-height: 18px;
 }
+
+/* tabs */
+
+.tab.sphinx-tab > :last-child {
+  margin-bottom: 1px;
+}
+
+.tab.sphinx-tab.ui.segment {
+  background-color: rgb(252, 252, 252);
+}
+
+.sphinx-tabs .ui.tabular.menu .active.item {
+  background-color: rgb(252, 252, 252);
+}

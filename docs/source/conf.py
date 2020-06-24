@@ -40,6 +40,7 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "m2r",
     "nbsphinx",
+    "sphinx_tabs.tabs",
 ]
 
 # Types of class members to generate documentation for.
