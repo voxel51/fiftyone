@@ -45,10 +45,11 @@ If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
     dataset3_reference = fo.Dataset(name="my_third_dataset")
     # Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
 
-.. code-block:: python
-
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
     # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
+
+Dataset Persistence
+-------------------
 
 By default, datasets are non-persistent. Non-persistent datasets are wiped
 from FiftyOne on exit of the python process. This means any data in the
@@ -69,6 +70,12 @@ Start a new session:
 
     print(fo.list_dataset_names())
     # ['my_first_dataset']
+
+Note that `my_second_dataset` and `my_third_dataset` have been wiped because
+they were not persistent.
+
+Deleting a Dataset
+------------------
 
 Delete a dataset explicitly via `Dataset.delete()`. Once a dataset is deleted,
 any existing reference in memory will be in a volatile state. `Dataset.name`
@@ -105,7 +112,7 @@ corresponding image on disk. The image is not read at this point:
 Adding Samples to a Dataset
 ---------------------------
 
-`Samples` an easily be added to an existing `Dataset`:
+A `Sample` can easily be added to an existing `Dataset`:
 
 .. code-block:: python
 
@@ -161,7 +168,7 @@ FiftyOne provides multiple ways to access `Samples` in a `Dataset`.
     for sample in dataset:
         print(sample)
 
-A `Sample` can be accessed directly from a `Dataset` by it's ID. The `Samples`
+A `Sample` can be accessed directly from a `Dataset` by its ID. The `Samples`
 that are returned when accessing a `Dataset` will always provide the same
 instance:
 
@@ -187,15 +194,30 @@ time or in a batch:
 
     dataset.remove_samples([sample_id2, sample_id3])
 
-`Samples` can also be removed from a `Dataset` by using the `Sample` instance:
+`Samples` can also be removed from a `Dataset` by using the sample's ID or the
+`Sample` instance:
 
 .. code-block:: python
 
+    dataset.remove_sample(sample_id)
+
+    # or equivalently:
     sample = dataset[sample_id]
     dataset.remove_sample(sample)
 
-If the `Sample` is in memory, it will behaving the same as a `Sample` that has
-never been added to the `Dataset`.
+In the latter case, where the `Sample` is in memory, it will behave the same as
+a `Sample` that has never been added to the `Dataset`:
+
+.. code-block:: python
+
+    print(sample.in_dataset)
+    # False
+
+    print(sample.dataset_name)
+    # None
+
+    print(sample.id)
+    # None
 
 Fields
 ______
@@ -203,19 +225,46 @@ ______
 `Fields` are attributes of `Samples` that are shared across all `Samples` in a
 `Dataset`.
 
-By default, a `Dataset` and the `Samples` therein have two `Fields`,
-`filepath`, and `tags`. All `Samples` are required to be initialized with a
-`filepath`.
+By default, a `Dataset` and the `Samples` therein have `Fields`
+`filepath`, `metadata` and `tags`. `filepath` is a required parameter.
 
 Accessing fields of a Sample
 ----------------------------
 
-Available `Fields` can be found at a `Sample` or `Dataset` level:
+The names of available fields can be checked on any individual `Sample`:
 
 .. code-block:: python
 
     sample.field_names
+    # ('filepath', 'tags', 'metadata')
+
+Only the `Dataset` has any notion of a field "schema", which specifies the
+field types:
+
+.. code-block:: python
+
     dataset.get_field_schema()
+    # OrderedDict(
+    #     [
+    #         ('filepath', <fiftyone.core.fields.StringField object at 0x11436e710>),
+    #         ('tags',     <fiftyone.core.fields.ListField object at 0x11b7f2dd8>),
+    #         ('metadata', <fiftyone.core.fields.EmbeddedDocumentField object at 0x11b7f2e80>)
+    #     ]
+    # )
+
+To to simply view the field schema print the dataset:
+
+.. code-block:: python
+
+    print(dataset)
+    # Name:           a_dataset
+    # Persistent:     False
+    # Num samples:    0
+    # Tags:           []
+    # Sample fields:
+    #     filepath: fiftyone.core.fields.StringField
+    #     tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+    #     metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
 The value of a `Field` for a given `Sample` can be accessed either by key or
 attribute access:
@@ -228,12 +277,28 @@ attribute access:
 Adding fields to a Sample
 -------------------------
 
-`Fields` are added to a `Samples` one at a time:
+New fields can be added to a `Sample` using key assignment:
 
 .. code-block:: python
 
     sample["integer_field"] = 51
     sample.save()
+
+If this `Sample` is in a `Dataset` the field schema will be automatically
+updated:
+
+.. code-block:: python
+
+    print(dataset)
+    # Name:           a_dataset
+    # Persistent:     False
+    # Num samples:    0
+    # Tags:           []
+    # Sample fields:
+    #     filepath:      fiftyone.core.fields.StringField
+    #     tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+    #     metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+    #     integer_field: fiftyone.core.fields.IntField
 
 `Fields` can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
 `dict`, or more complex data structures like `Labels`:
