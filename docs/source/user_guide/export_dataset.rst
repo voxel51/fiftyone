@@ -3,8 +3,8 @@ Exporting FiftyOne Datasets
 
 .. default-role:: code
 
-FiftyOne provides native support for exporting datasets to disk in a
-variety of common formats.
+FiftyOne provides native support for exporting datasets to disk in a variety of
+common formats.
 
 Basic recipe
 ------------
@@ -13,13 +13,13 @@ Python library
 ~~~~~~~~~~~~~~
 
 The interface for exporting datasets is conveniently exposed via the
-``Dataset.export()`` and ``DatasetView.export()`` methods, which makes
-it easy to export entire datasets as well as arbitrary subsets of your
-datasets that you have identified by constructing a view.
+`Dataset.export()` and `DatasetView.export()` methods, which makes it easy to
+export entire datasets as well as arbitrary subsets of your datasets that you
+have identified by constructing a view.
 
 The basic syntax is simple:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -42,23 +42,25 @@ The basic syntax is simple:
         export_dir, label_field=label_field, dataset_type=dataset_type
     )
 
-Note the ``label_field`` argument in the above example, which specifies
-the particular label field that you wish to export. This is necessary
-your FiftyOne dataset contains multiple label fields.
+Note the `label_field` argument in the above example, which specifies the
+particular label field that you wish to export. This is necessary your FiftyOne
+dataset contains multiple label fields.
 
 CLI
 ~~~
 
-FiftyOne datasets can also be exported via the
-``fiftyone datasets export`` CLI command:
+FiftyOne datasets can also be exported via the `fiftyone datasets export` CLI
+command:
 
-.. code:: shell
+.. code-block:: shell
 
     # Exports the dataset to disk in the specified format
     fiftyone datasets export <name> \
         --export-dir <export-dir> --type <type> --label-field <label-field>
 
-where the arguments are as follows::
+where the arguments are as follows:
+
+.. code-block:: text
 
       NAME                  the name of the dataset to export
 
@@ -72,9 +74,8 @@ Supported formats
 ~~~~~~~~~~~~~~~~~
 
 Each supported dataset type is represented by a subclass of
-``fiftyone.types.BaseDataset``, which is used by the Python library and
-CLI to refer to the corresponding dataset format when writing the
-dataset to disk.
+`fiftyone.types.BaseDataset`, which is used by the Python library and CLI to
+refer to the corresponding dataset format when writing the dataset to disk.
 
 +-----------------------------------------------------+------------------------------------------------------------+
 | Dataset Type                                        | Description                                                |
@@ -129,13 +130,15 @@ dataset to disk.
 Image directories
 -----------------
 
-The ``fiftyone.types.ImageDirectory`` type represents a directory of
-images.
+The `fiftyone.types.ImageDirectory` type represents a directory of images.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
     <dataset_dir>/
         <filename1>.<ext>
         <filename2>.<ext>
@@ -143,10 +146,10 @@ Datasets of this type are exported in the following format::
 Python library
 ~~~~~~~~~~~~~~
 
-To export the images in a FiftyOne dataset as a directory of images on
-disk, you can execute:
+To export the images in a FiftyOne dataset as a directory of images on disk,
+you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -161,10 +164,10 @@ disk, you can execute:
 CLI
 ~~~
 
-To export the images in a FiftyOne dataset as a directory of images on
-disk, you can execute:
+To export the images in a FiftyOne dataset as a directory of images on disk,
+you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/to/images-dir
@@ -177,14 +180,16 @@ disk, you can execute:
 Image classification datasets
 -----------------------------
 
-The ``fiftyone.types.ImageClassificationDataset`` type represents a
-labeled dataset consisting of images and their associated classification
-labels stored in a simple JSON format.
+The `fiftyone.types.ImageClassificationDataset` type represents a labeled
+dataset consisting of images and their associated classification labels stored
+in a simple JSON format.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -194,7 +199,9 @@ Datasets of this type are exported in the following format::
         labels.json
 
 
-where ``labels.json`` is a JSON file in the following format::
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: json
 
     {
         "classes": [
@@ -209,18 +216,17 @@ where ``labels.json`` is a JSON file in the following format::
         }
     }
 
-If the ``classes`` field is provided, the ``target`` values are class
-IDs that are mapped to class label strings via ``classes[target]``. If
-no ``classes`` field is provided, then the ``target`` values directly
-store the label strings.
+If the `classes` field is provided, the `target` values are class IDs that are
+mapped to class label strings via `classes[target]`. If no `classes` field is
+provided, then the `target` values directly store the label strings.
 
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as an image classification dataset stored
-on disk in the above format, you can execute:
+To export a FiftyOne dataset as an image classification dataset stored on disk
+in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -240,10 +246,10 @@ on disk in the above format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as an image classification dataset stored
-on disk in the above format, you can execute:
+To export a FiftyOne dataset as an image classification dataset stored on disk
+in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/image-classification-dataset
@@ -258,14 +264,15 @@ on disk in the above format, you can execute:
 Image classification directory tree
 -----------------------------------
 
-The ``fiftyone.types.ImageClassificationDirectoryTree`` type represents
-a directory tree whose subfolders define an image classification
-dataset.
+The `fiftyone.types.ImageClassificationDirectoryTree` type represents a
+directory tree whose subfolders define an image classification dataset.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         <classA>/
@@ -280,10 +287,10 @@ Datasets of this type are exported in the following format::
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as an image classification directory tree
-stored on disk in the above format, you can execute:
+To export a FiftyOne dataset as an image classification directory tree stored
+on disk in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -303,10 +310,10 @@ stored on disk in the above format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as an image classification directory tree
-stored on disk in the above format, you can execute:
+To export a FiftyOne dataset as an image classification directory tree stored
+on disk in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/image-classification-dir-tree
@@ -321,20 +328,24 @@ stored on disk in the above format, you can execute:
 TF image classification dataset
 -------------------------------
 
-The ``fiftyone.types.TFImageClassificationDataset`` type represents a
-labeled dataset consisting of images and their associated classification
-labels stored as
-`TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`__.
+The `fiftyone.types.TFImageClassificationDataset` type represents a labeled
+dataset consisting of images and their associated classification labels stored
+as `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
     <dataset_dir>/
         tf.records-?????-of-?????
 
 where the features of the (possibly sharded) TFRecords are stored in the
-following format::
+following format:
+
+.. code-block:: json
 
     {
         # Image dimensions
@@ -355,10 +366,10 @@ following format::
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as a directory of TFRecords in the above
-format, you can execute:
+To export a FiftyOne dataset as a directory of TFRecords in the above format,
+you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -378,10 +389,10 @@ format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as a directory of TFRecords in the above
-format, you can execute:
+To export a FiftyOne dataset as a directory of TFRecords in the above format,
+you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/tf-image-classification-dataset
@@ -396,14 +407,16 @@ format, you can execute:
 Image detection dataset
 -----------------------
 
-The ``fiftyone.types.ImageDetectionDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-stored in a simple JSON format.
+The `fiftyone.types.ImageDetectionDataset` type represents a labeled dataset
+consisting of images and their associated object detections stored in a simple
+JSON format.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -412,7 +425,9 @@ Datasets of this type are exported in the following format::
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format::
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: text
 
     {
         "classes": [
@@ -438,21 +453,20 @@ where ``labels.json`` is a JSON file in the following format::
         }
     }
 
-and where the bounding box coordinates are expressed as relative values
-in ``[0, 1] x [0, 1]``.
+and where the bounding box coordinates are expressed as relative values in
+`[0, 1] x [0, 1]`.
 
-If the ``classes`` field is provided, the ``target`` values are class
-IDs that are mapped to class label strings via ``classes[target]``. If
-no ``classes`` field is provided, then the ``target`` values directly
-store the label strings.
+If the `classes` field is provided, the `target` values are class IDs that are
+mapped to class label strings via `classes[target]`. If no `classes` field is
+provided, then the `target` values directly store the label strings.
 
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as an image detection dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as an image detection dataset in the above format,
+you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -472,10 +486,10 @@ format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as an image detection dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as an image detection dataset in the above format,
+you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/image-detection-dataset
@@ -490,14 +504,16 @@ format, you can execute:
 COCO detection dataset
 ----------------------
 
-The ``fiftyone.types.COCODetectionDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-saved in `COCO format <http://cocodataset.org/#home>`__.
+The `fiftyone.types.COCODetectionDataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
+`COCO format <http://cocodataset.org/#home>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -506,7 +522,9 @@ Datasets of this type are exported in the following format::
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format::
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: json
 
     {
         "info": {
@@ -555,10 +573,10 @@ where ``labels.json`` is a JSON file in the following format::
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as a COCO detection dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as a COCO detection dataset in the above format,
+you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -578,10 +596,10 @@ format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as a COCO detection dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as a COCO detection dataset in the above format,
+you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/coco-detection-dataset
@@ -596,14 +614,16 @@ format, you can execute:
 VOC detection dataset
 ---------------------
 
-The ``fiftyone.types.VOCDetectionDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`__.
+The `fiftyone.types.VOCDetectionDataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
+`VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -616,7 +636,7 @@ Datasets of this type are exported in the following format::
 
 where the labels XML files are in the following format:
 
-.. code:: xml
+.. code-block:: xml
 
     <annotation>
         <folder>data</folder>
@@ -660,16 +680,16 @@ where the labels XML files are in the following format:
         ...
     </annotation>
 
-Samples with no values for certain attributes (like ``pose`` in the
-above example) are left empty.
+Samples with no values for certain attributes (like `pose` in the above
+example) are left empty.
 
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as a VOC detection dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as a VOC detection dataset in the above format,
+you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -689,10 +709,10 @@ format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as a VOC detection dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as a VOC detection dataset in the above format,
+you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/voc-detection-dataset
@@ -707,15 +727,16 @@ format, you can execute:
 KITTI detection dataset
 -----------------------
 
-The ``fiftyone.types.KITTIDetectionDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-saved in `KITTI
-format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`__.
+The `fiftyone.types.KITTIDetectionDataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
+`KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -726,9 +747,9 @@ Datasets of this type are exported in the following format::
             <uuid1>.txt
             <uuid2>.txt
 
-where the labels TXT files are space-delimited files where each row
-corresponds to an object and the 15 (and optional 16th score) columns
-have the following meanings:
+where the labels TXT files are space-delimited files where each row corresponds
+to an object and the 15 (and optional 16th score) columns have the following
+meanings:
 
 +----------+-------------+-------------------------------------------------------------+---------+
 | Number   | Name        | Description                                                 | Default |
@@ -762,17 +783,17 @@ have the following meanings:
 | 1        | score       | ``(optional)`` A float confidence for the detection         |         |
 +----------+-------------+-------------------------------------------------------------+---------+
 
-The ``default`` column above indicates the default value that will be
-used when writing datasets in this type whose samples do not contain the
-necessary field(s).
+The `default` column above indicates the default value that will be used when
+writing datasets in this type whose samples do not contain the necessary
+field(s).
 
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as a KITTI detection dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as a KITTI detection dataset in the above format,
+you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -792,10 +813,10 @@ format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as a KITTI detection dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as a KITTI detection dataset in the above format,
+you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/kitti-detection-dataset
@@ -810,14 +831,16 @@ format, you can execute:
 CVAT image dataset
 ------------------
 
-The ``fiftyone.types.CVATImageDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-stored in `CVAT image format <https://github.com/opencv/cvat>`__.
+The `fiftyone.types.CVATImageDataset` type represents a labeled dataset
+consisting of images and their associated object detections stored in
+`CVAT image format <https://github.com/opencv/cvat>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -826,9 +849,9 @@ Datasets of this type are exported in the following format::
             ...
         labels.xml
 
-where ``labels.xml`` is an XML file in the following format:
+where `labels.xml` is an XML file in the following format:
 
-.. code:: xml
+.. code-block:: xml
 
     <?xml version="1.0" encoding="utf-8"?>
     <annotations>
@@ -877,10 +900,10 @@ where ``labels.xml`` is an XML file in the following format:
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as a CVAT image dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as a CVAT image dataset in the above format, you
+can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -900,10 +923,10 @@ format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as a CVAT image dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as a CVAT image dataset in the above format, you
+can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/cvat-image-dataset
@@ -918,15 +941,16 @@ format, you can execute:
 Multitask image labels dataset
 ------------------------------
 
-The ``fiftyone.types.ImageLabelsDataset`` type represents a labeled
-dataset consisting of images and their associated multitask predictions
-stored in `eta.core.image.ImageLabels
-format <https://voxel51.com/docs/api/#types-imagelabels>`__.
+The `fiftyone.types.ImageLabelsDataset` type represents a labeled dataset
+consisting of images and their associated multitask predictions stored in
+`eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -939,7 +963,9 @@ Datasets of this type are exported in the following format::
             ...
         manifest.json
 
-where ``manifest.json`` is a JSON file in the following format::
+where `manifest.json` is a JSON file in the following format:
+
+.. code-block:: json
 
     {
         "type": "eta.core.datasets.LabeledImageDataset",
@@ -953,16 +979,16 @@ where ``manifest.json`` is a JSON file in the following format::
         ]
     }
 
-and where each labels JSON file is stored in `eta.core.image.ImageLabels
-format <https://voxel51.com/docs/api/#types-imagelabels>`__.
+and where each labels JSON file is stored in
+`eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as an image labels dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as an image labels dataset in the above format,
+you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -982,10 +1008,10 @@ format, you can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as an image labels dataset in the above
-format, you can execute:
+To export a FiftyOne dataset as an image labels dataset in the above format,
+you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/image-labels-dataset
@@ -1000,14 +1026,16 @@ format, you can execute:
 BDD dataset
 -----------
 
-The ``fiftyone.types.BDDDataset`` type represents a labeled dataset
-consisting of images and their associated multitask predictions saved in
-`Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`__.
+The `fiftyone.types.BDDDataset` type represents a labeled dataset consisting
+of images and their associated multitask predictions saved in
+`Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are exported in the following format::
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -1016,7 +1044,9 @@ Datasets of this type are exported in the following format::
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format::
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: json
 
     [
         {
@@ -1054,10 +1084,10 @@ where ``labels.json`` is a JSON file in the following format::
 Python library
 ~~~~~~~~~~~~~~
 
-To export a FiftyOne dataset as a BDD dataset in the above format, you
-can execute:
+To export a FiftyOne dataset as a BDD dataset in the above format, you can
+execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -1075,10 +1105,10 @@ can execute:
 CLI
 ~~~
 
-To export a FiftyOne dataset as a BDD dataset in the above format, you
-can execute:
+To export a FiftyOne dataset as a BDD dataset in the above format, you can
+execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-dataset
     EXPORT_DIR=/path/for/bdd-dataset

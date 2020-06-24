@@ -19,7 +19,7 @@ their containing directory on disk and the type of the dataset.
 
 The basic syntax is simple:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -50,7 +50,7 @@ FiftyOne datasets can also be created from datasets on disk via the
 
 where the arguments are as follows:
 
-.. code:: shell
+.. code:: text
 
       -n NAME, --name NAME  a name for the dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
@@ -61,9 +61,8 @@ Supported formats
 ~~~~~~~~~~~~~~~~~
 
 Each supported dataset type is represented by a subclass of
-``fiftyone.types.BaseDataset``, which is used by the Python library and
-CLI to refer to the corresponding dataset format when reading the dataset
-from disk.
+`fiftyone.types.BaseDataset`, which is used by the Python library and CLI to
+refer to the corresponding dataset format when reading the dataset from disk.
 
 +-----------------------------------------------------+------------------------------------------------------------+
 | Dataset Type                                        | Description                                                |
@@ -117,27 +116,28 @@ from disk.
 Image directories
 -----------------
 
-The ``fiftyone.types.ImageDirectory`` type represents a directory of
-images.
+The `fiftyone.types.ImageDirectory` type represents a directory of images.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         <filename1>.<ext>
         <filename2>.<ext>
 
-When reading datasets of this type, subfolders are recursively
-traversed, and files with non-image MIME types are omitted.
+When reading datasets of this type, subfolders are recursively traversed, and
+files with non-image MIME types are omitted.
 
 Python library
 ~~~~~~~~~~~~~~
 
 To load a directory of images as a FiftyOne dataset, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -158,7 +158,7 @@ CLI
 
 To load a directory of images as a FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-images-dir
     DATASET_DIR=/path/to/images-dir
@@ -178,7 +178,7 @@ To load a directory of images as a FiftyOne dataset, you can execute:
 To view a directory of images in the FiftyOne Dashboard without creating
 a persistent FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/images-dir
 
@@ -190,14 +190,16 @@ a persistent FiftyOne dataset, you can execute:
 Image classification datasets
 -----------------------------
 
-The ``fiftyone.types.ImageClassificationDataset`` type represents a
-labeled dataset consisting of images and their associated classification
-labels stored in a simple JSON format.
+The `fiftyone.types.ImageClassificationDataset` type represents a labeled
+dataset consisting of images and their associated classification labels stored
+in a simple JSON format.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -206,7 +208,9 @@ Datasets of this type are read in the following format::
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format::
+where ``labels.json`` is a JSON file in the following format:
+
+.. code-block:: json
 
     {
         "classes": [
@@ -221,10 +225,9 @@ where ``labels.json`` is a JSON file in the following format::
         }
     }
 
-If the ``classes`` field is provided, the ``target`` values are class
-IDs that are mapped to class label strings via ``classes[target]``. If
-no ``classes`` field is provided, then the ``target`` values directly
-store the label strings.
+If the `classes` field is provided, the `target` values are class IDs that are
+mapped to class label strings via `classes[target]`. If no `classes` field is
+provided, then the `target` values directly store the label strings.
 
 Python library
 ~~~~~~~~~~~~~~
@@ -232,7 +235,7 @@ Python library
 To load an image classification dataset stored in the above format as a
 FiftyOne dataset, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -256,7 +259,7 @@ CLI
 To load an image classification dataset stored in the above format as a
 FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-image-classification-dataset
     DATASET_DIR=/path/to/image-classification-dataset
@@ -273,10 +276,10 @@ FiftyOne dataset, you can execute:
     # Print the first few samples in the dataset
     fiftyone datasets head $NAME
 
-To view an image classification dataset in the FiftyOne Dashboard
-without creating a persistent FiftyOne dataset, you can execute:
+To view an image classification dataset in the FiftyOne Dashboard without
+creating a persistent FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/image-classification-dataset
 
@@ -288,16 +291,15 @@ without creating a persistent FiftyOne dataset, you can execute:
 Image classification directory tree
 -----------------------------------
 
-The ``fiftyone.types.ImageClassificationDirectoryTree`` type represents
-a directory tree whose subfolders define an image classification
-dataset.
+The `fiftyone.types.ImageClassificationDirectoryTree` type represents a
+directory tree whose subfolders define an image classification dataset.
 
 Disk format
 ~~~~~~~~~~~
 
 Datasets of this type are read in the following format:
 
-.. code:: shell
+.. code-block:: text
 
     <dataset_dir>/
         <classA>/
@@ -315,7 +317,7 @@ Python library
 To load an image classification directory tree stored in the above
 format as a FiftyOne dataset, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -339,7 +341,7 @@ CLI
 To load an image classification directory tree stored in the above
 format as a FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-image-classification-dir-tree
     DATASET_DIR=/path/to/image-classification-dir-tree
@@ -359,7 +361,7 @@ format as a FiftyOne dataset, you can execute:
 To view an image classification directory tree in the FiftyOne Dashboard
 without creating a persistent FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/image-classification-dir-tree
 
@@ -371,21 +373,24 @@ without creating a persistent FiftyOne dataset, you can execute:
 TF image classification dataset
 -------------------------------
 
-The ``fiftyone.types.TFImageClassificationDataset`` type represents a
-labeled dataset consisting of images and their associated classification
-labels stored as
-`TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`__.
+The `fiftyone.types.TFImageClassificationDataset` type represents a labeled
+dataset consisting of images and their associated classification labels stored
+as `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         tf.records-?????-of-?????
 
 where the features of the (possibly sharded) TFRecords are stored in the
-following format::
+following format:
+
+.. code-block:: json
 
     {
         # Image dimensions
@@ -406,10 +411,10 @@ following format::
 Python library
 ~~~~~~~~~~~~~~
 
-To load an image classification dataset stored as a directory of
-TFRecords in the above format, you can execute:
+To load an image classification dataset stored as a directory of TFRecords in
+the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -431,18 +436,17 @@ TFRecords in the above format, you can execute:
     # Print the first few samples in the dataset
     print(dataset.view().head())
 
-When the above command is executed, the images in the TFRecords will be
-written to the provided ``images_dir``, which is required because
-FiftyOne datasets must make their images available as invididual files
-on disk.
+When the above command is executed, the images in the TFRecords will be written
+to the provided `images_dir`, which is required because FiftyOne datasets must
+make their images available as invididual files on disk.
 
 CLI
 ~~~
 
-To load an image classification dataset stored as a directory of
-TFRecords in the above format, you can execute:
+To load an image classification dataset stored as a directory of TFRecords in
+the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-tf-image-classification-dataset
     DATASET_DIR=/path/to/tf-image-classification-dataset
@@ -461,11 +465,11 @@ TFRecords in the above format, you can execute:
     # Print the first few samples in the dataset
     fiftyone datasets head $NAME
 
-To view an image classification dataset stored as a directory of
-TFRecords in the FiftyOne Dashboard without creating a persistent
-FiftyOne dataset, you can execute:
+To view an image classification dataset stored as a directory of TFRecords in
+the FiftyOne Dashboard without creating a persistent FiftyOne dataset, you can
+execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/tf-image-classification-dataset
 
@@ -477,14 +481,16 @@ FiftyOne dataset, you can execute:
 Image detection dataset
 -----------------------
 
-The ``fiftyone.types.ImageDetectionDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-stored in a simple JSON format.
+The ``fiftyone.types.ImageDetectionDataset`` type represents a labeled dataset
+consisting of images and their associated object detections stored in a simple
+JSON format.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -493,7 +499,9 @@ Datasets of this type are read in the following format::
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format::
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: json
 
     {
         "classes": [
@@ -519,21 +527,19 @@ where ``labels.json`` is a JSON file in the following format::
         }
     }
 
-and where the bounding box coordinates are expressed as relative values
-in ``[0, 1] x [0, 1]``.
+and where the bounding box coordinates are expressed as relative values in
+`[0, 1] x [0, 1]`.
 
-If the ``classes`` field is provided, the ``target`` values are class
-IDs that are mapped to class label strings via ``classes[target]``. If
-no ``classes`` field is provided, then the ``target`` values directly
-store the label strings.
+If the `classes` field is provided, the `target` values are class IDs that are
+mapped to class label strings via `classes[target]`. If no `classes` field is
+provided, then the `target` values directly store the label strings.
 
 Python library
 ~~~~~~~~~~~~~~
 
-To load an image detection dataset stored in the above format, you can
-execute:
+To load an image detection dataset stored in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -554,10 +560,9 @@ execute:
 CLI
 ~~~
 
-To load an image detection dataset stored in the above format, you can
-execute:
+To load an image detection dataset stored in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-image-detection-dataset
     DATASET_DIR=/path/to/image-detection-dataset
@@ -578,7 +583,7 @@ To view an image detection dataset stored in the above format in the
 FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
 can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/image-detection-dataset
 
@@ -590,14 +595,16 @@ can execute:
 COCO detection dataset
 ----------------------
 
-The ``fiftyone.types.COCODetectionDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-saved in `COCO format <http://cocodataset.org/#home>`__.
+The `fiftyone.types.COCODetectionDataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
+`COCO format <http://cocodataset.org/#home>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -606,7 +613,9 @@ Datasets of this type are read in the following format::
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format::
+where ``labels.json`` is a JSON file in the following format:
+
+.. code-block:: json
 
     {
         "info": {
@@ -655,10 +664,9 @@ where ``labels.json`` is a JSON file in the following format::
 Python library
 ~~~~~~~~~~~~~~
 
-To load a COCO detection dataset stored in the above format, you can
-execute:
+To load a COCO detection dataset stored in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -679,10 +687,9 @@ execute:
 CLI
 ~~~
 
-To load a COCO detection dataset stored in the above format, you can
-execute:
+To load a COCO detection dataset stored in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-coco-detection-dataset
     DATASET_DIR=/path/to/coco-detection-dataset
@@ -699,11 +706,10 @@ execute:
     # Print the first few samples in the dataset
     fiftyone datasets head $NAME
 
-To view a COCO detection dataset stored in the above format in the
-FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
-can execute:
+To view a COCO detection dataset stored in the above format in the FiftyOne
+Dashboard without creating a persistent FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/coco-detection-dataset
 
@@ -715,14 +721,16 @@ can execute:
 VOC detection dataset
 ---------------------
 
-The ``fiftyone.types.VOCDetectionDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`__.
+The `fiftyone.types.VOCDetectionDataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
+`VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -735,7 +743,7 @@ Datasets of this type are read in the following format::
 
 where the labels XML files are in the following format:
 
-.. code:: xml
+.. code-block:: xml
 
     <annotation>
         <folder>data</folder>
@@ -782,10 +790,9 @@ where the labels XML files are in the following format:
 Python library
 ~~~~~~~~~~~~~~
 
-To load a VOC detection dataset stored in the above format, you can
-execute:
+To load a VOC detection dataset stored in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -806,10 +813,9 @@ execute:
 CLI
 ~~~
 
-To load a VOC detection dataset stored in the above format, you can
-execute:
+To load a VOC detection dataset stored in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-voc-detection-dataset
     DATASET_DIR=/path/to/voc-detection-dataset
@@ -830,7 +836,7 @@ To view a VOC detection dataset stored in the above format in the
 FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
 can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/voc-detection-dataset
 
@@ -842,15 +848,16 @@ can execute:
 KITTI detection dataset
 -----------------------
 
-The ``fiftyone.types.KITTIDetectionDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-saved in `KITTI
-format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`__.
+The `fiftyone.types.KITTIDetectionDataset` type represents a labeled dataset
+consisting of images and their associated object detections saved in
+`KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -861,9 +868,9 @@ Datasets of this type are read in the following format::
             <uuid1>.txt
             <uuid2>.txt
 
-where the labels TXT files are space-delimited files where each row
-corresponds to an object and the 15 (and optional 16th score) columns
-have the following meanings:
+where the labels TXT files are space-delimited files where each row corresponds
+to an object and the 15 (and optional 16th score) columns have the following
+meanings:
 
 +----------+-------------+-------------------------------------------------------------+---------+
 | Number   | Name        | Description                                                 | Default |
@@ -897,16 +904,15 @@ have the following meanings:
 | 1        | score       | ``(optional)`` A float confidence for the detection         |         |
 +----------+-------------+-------------------------------------------------------------+---------+
 
-When reading datasets of this type, all columns after the four ``bbox``
-columns may be omitted.
+When reading datasets of this type, all columns after the four `bbox` columns
+may be omitted.
 
 Python library
 ~~~~~~~~~~~~~~
 
-To load a KITTI detection dataset stored in the above format, you can
-execute:
+To load a KITTI detection dataset stored in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -927,10 +933,9 @@ execute:
 CLI
 ~~~
 
-To load a KITTI detection dataset stored in the above format, you can
-execute:
+To load a KITTI detection dataset stored in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-kitti-detection-dataset
     DATASET_DIR=/path/to/kitti-detection-dataset
@@ -947,11 +952,10 @@ execute:
     # Print the first few samples in the dataset
     fiftyone datasets head $NAME
 
-To view a KITTI detection dataset stored in the above format in the
-FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
-can execute:
+To view a KITTI detection dataset stored in the above format in the FiftyOne
+Dashboard without creating a persistent FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/kitti-detection-dataset
 
@@ -963,14 +967,16 @@ can execute:
 CVAT image dataset
 ------------------
 
-The ``fiftyone.types.CVATImageDataset`` type represents a labeled
-dataset consisting of images and their associated object detections
-stored in `CVAT image format <https://github.com/opencv/cvat>`__.
+The `fiftyone.types.CVATImageDataset` type represents a labeled dataset
+consisting of images and their associated object detections stored in
+`CVAT image format <https://github.com/opencv/cvat>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -979,9 +985,9 @@ Datasets of this type are read in the following format::
             ...
         labels.xml
 
-where ``labels.xml`` is an XML file in the following format:
+where `labels.xml` is an XML file in the following format:
 
-.. code:: xml
+.. code-block:: xml
 
     <?xml version="1.0" encoding="utf-8"?>
     <annotations>
@@ -1030,10 +1036,9 @@ where ``labels.xml`` is an XML file in the following format:
 Python library
 ~~~~~~~~~~~~~~
 
-To load a CVAT image dataset stored in the above format, you can
-execute:
+To load a CVAT image dataset stored in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -1054,10 +1059,9 @@ execute:
 CLI
 ~~~
 
-To load a CVAT image dataset stored in the above format, you can
-execute:
+To load a CVAT image dataset stored in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-cvat-image-dataset
     DATASET_DIR=/path/to/cvat-image-dataset
@@ -1075,10 +1079,9 @@ execute:
     fiftyone datasets head $NAME
 
 To view a CVAT image dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can
-execute:
+Dashboard without creating a persistent FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/cvat-image-dataset
 
@@ -1090,15 +1093,16 @@ execute:
 Multitask image labels dataset
 ------------------------------
 
-The ``fiftyone.types.ImageLabelsDataset`` type represents a labeled
-dataset consisting of images and their associated multitask predictions
-stored in `eta.core.image.ImageLabels
-format <https://voxel51.com/docs/api/#types-imagelabels>`__.
+The `fiftyone.types.ImageLabelsDataset` type represents a labeled dataset
+consisting of images and their associated multitask predictions stored in
+`eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -1111,9 +1115,9 @@ Datasets of this type are read in the following format::
             ...
         manifest.json
 
-where ``manifest.json`` is a JSON file in the following format::
+where `manifest.json` is a JSON file in the following format:
 
-::
+.. code-block:: json
 
     {
         "type": "eta.core.datasets.LabeledImageDataset",
@@ -1127,16 +1131,15 @@ where ``manifest.json`` is a JSON file in the following format::
         ]
     }
 
-and where each labels JSON file is stored in `eta.core.image.ImageLabels
-format <https://voxel51.com/docs/api/#types-imagelabels>`__.
+and where each labels JSON file is stored in
+`eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 Python library
 ~~~~~~~~~~~~~~
 
-To load an image labels dataset stored in the above format, you can
-execute:
+To load an image labels dataset stored in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -1157,10 +1160,9 @@ execute:
 CLI
 ~~~
 
-To load an image labels dataset stored in the above format, you can
-execute:
+To load an image labels dataset stored in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-image-labels-dataset
     DATASET_DIR=/path/to/image-labels-dataset
@@ -1177,11 +1179,10 @@ execute:
     # Print the first few samples in the dataset
     fiftyone datasets head $NAME
 
-To view an image labels dataset stored in the above format in the
-FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
-can execute:
+To view an image labels dataset stored in the above format in the FiftyOne
+Dashboard without creating a persistent FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/image-labels-dataset
 
@@ -1193,14 +1194,16 @@ can execute:
 BDD dataset
 -----------
 
-The ``fiftyone.types.BDDDataset`` type represents a labeled dataset
-consisting of images and their associated multitask predictions saved in
-`Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`__.
+The `fiftyone.types.BDDDataset` type represents a labeled dataset consisting of
+images and their associated multitask predictions saved in
+`Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
 Disk format
 ~~~~~~~~~~~
 
-Datasets of this type are read in the following format::
+Datasets of this type are read in the following format:
+
+.. code-block:: text
 
     <dataset_dir>/
         data/
@@ -1209,7 +1212,9 @@ Datasets of this type are read in the following format::
             ...
         labels.json
 
-where ``labels.json`` is a JSON file in the following format::
+where `labels.json` is a JSON file in the following format:
+
+.. code-block:: json
 
     [
         {
@@ -1249,7 +1254,7 @@ Python library
 
 To load a BDD dataset stored in the above format, you can execute:
 
-.. code:: py
+.. code-block:: python
 
     import fiftyone as fo
 
@@ -1270,7 +1275,7 @@ CLI
 
 To load a BDD dataset stored in the above format, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     NAME=my-bdd-dataset
     DATASET_DIR=/path/to/bdd-dataset
@@ -1287,11 +1292,10 @@ To load a BDD dataset stored in the above format, you can execute:
     # Print the first few samples in the dataset
     fiftyone datasets head $NAME
 
-To view a BDD dataset stored in the above format in the FiftyOne
-Dashboard without creating a persistent FiftyOne dataset, you can
-execute:
+To view a BDD dataset stored in the above format in the FiftyOne Dashboard
+without creating a persistent FiftyOne dataset, you can execute:
 
-.. code:: shell
+.. code-block:: shell
 
     DATASET_DIR=/path/to/bdd-dataset
 
