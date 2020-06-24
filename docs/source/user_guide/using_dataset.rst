@@ -450,22 +450,6 @@ As with `Datasets`, `Samples` in a `DatasetView` can be accessed by ID and
     for sample in view:
         print(sample)
 
-`DatasetViews` can be created by matching lists of `Sample` IDs, either to only
-include given `Samples` or to include all but the given `Samples`:
-
-.. code-block:: python
-
-    sample_ids = [sample1.id, sample2.id]
-    included = dataset.view().select(sample_ids)
-    excluded = dataset.view().exclude(sample_ids)
-
-A `DatasetView` can also be filtered to only include `Samples` for which a
-given `Field` exists and is not `None`:
-
-.. code-block:: python
-
-    metadata_view = dataset.view().exists("metadata")
-
 Sorting
 -------
 
@@ -488,6 +472,24 @@ Querying
     # Get only samples with the tag "train"
     view = dataset.view().match({"tags": "train"})
 
+Convenience functions for common queries are also available.
+
+`DatasetViews` can be created by matching lists of `Sample` IDs, either to only
+include given `Samples` or to include all but the given `Samples`:
+
+.. code-block:: python
+
+    sample_ids = [sample1.id, sample2.id]
+    included = dataset.view().select(sample_ids)
+    excluded = dataset.view().exclude(sample_ids)
+
+A `DatasetView` can also be filtered to only include `Samples` for which a
+given `Field` exists and is not `None`:
+
+.. code-block:: python
+
+    metadata_view = dataset.view().exists("metadata")
+
 Chaining view stages
 --------------------
 
@@ -506,7 +508,8 @@ All of the aformentioned view stages can be chained together:
 Removing a batch of samples from a Dataset
 ------------------------------------------
 
-All `Samples` in a given `DatasetView` can easily be removed from a `Dataset`:
+All `Samples` in a given `DatasetView` can be removed from a `Dataset` with a
+single command:
 
 .. code-block:: python
 
