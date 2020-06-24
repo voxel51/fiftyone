@@ -9,66 +9,66 @@ common formats.
 Basic recipe
 ------------
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-The interface for exporting datasets is conveniently exposed via the
-`Dataset.export()` and `DatasetView.export()` methods, which makes it easy to
-export entire datasets as well as arbitrary subsets of your datasets that you
-have identified by constructing a view.
+  .. group-tab:: python
 
-The basic syntax is simple:
+    The interface for exporting datasets is conveniently exposed via the
+    `Dataset.export()` and `DatasetView.export()` methods, which makes it easy to
+    export entire datasets as well as arbitrary subsets of your datasets that you
+    have identified by constructing a view.
 
-.. code-block:: python
+    The basic syntax is simple:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    # The Dataset or DatasetView containing the samples you wish to export
-    dataset_or_view = fo.Dataset(...)
+        import fiftyone as fo
 
-    # The directory to which to write the exported dataset
-    export_dir = "/path/for/export"
+        # The Dataset or DatasetView containing the samples you wish to export
+        dataset_or_view = fo.Dataset(...)
 
-    # The name of the sample field containing the label that you wish to export
-    # Used when exporting labeled datasets (e.g., classification or detection)
-    label_field = "ground_truth"  # for example
+        # The directory to which to write the exported dataset
+        export_dir = "/path/for/export"
 
-    # The type of dataset to export
-    # Any subclass of `fiftyone.types.BaseDataset` is supported
-    dataset_type = fo.types.COCODetectionDataset  # for example
+        # The name of the sample field containing the label that you wish to export
+        # Used when exporting labeled datasets (e.g., classification or detection)
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset!
-    dataset_or_view.export(
-        export_dir, label_field=label_field, dataset_type=dataset_type
-    )
+        # The type of dataset to export
+        # Any subclass of `fiftyone.types.BaseDataset` is supported
+        dataset_type = fo.types.COCODetectionDataset  # for example
 
-Note the `label_field` argument in the above example, which specifies the
-particular label field that you wish to export. This is necessary your FiftyOne
-dataset contains multiple label fields.
+        # Export the dataset!
+        dataset_or_view.export(
+            export_dir, label_field=label_field, dataset_type=dataset_type
+        )
 
-CLI
-~~~
+    Note the `label_field` argument in the above example, which specifies the
+    particular label field that you wish to export. This is necessary your FiftyOne
+    dataset contains multiple label fields.
 
-FiftyOne datasets can also be exported via the `fiftyone datasets export` CLI
-command:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    FiftyOne datasets can also be exported via the `fiftyone datasets export` CLI
+    command:
 
-    # Exports the dataset to disk in the specified format
-    fiftyone datasets export <name> \
-        --export-dir <export-dir> --type <type> --label-field <label-field>
+    .. code-block:: shell
 
-where the arguments are as follows:
+        # Exports the dataset to disk in the specified format
+        fiftyone datasets export <name> \
+            --export-dir <export-dir> --type <type> --label-field <label-field>
 
-.. code-block:: text
+    where the arguments are as follows:
 
-      NAME                  the name of the dataset to export
+    .. code-block:: text
 
-      -d EXPORT_DIR, --export-dir EXPORT_DIR
-                            the directory in which to export the dataset
-      -f LABEL_FIELD, --label-field LABEL_FIELD
-                            the name of the label field to export
-      -t TYPE, --type TYPE  the format in which to export the dataset (a subclass of `fiftyone.types.BaseDataset`)
+          NAME                  the name of the dataset to export
+
+          -d EXPORT_DIR, --export-dir EXPORT_DIR
+                                the directory in which to export the dataset
+          -f LABEL_FIELD, --label-field LABEL_FIELD
+                                the name of the label field to export
+          -t TYPE, --type TYPE  the format in which to export the dataset (a subclass of `fiftyone.types.BaseDataset`)
 
 Supported formats
 ~~~~~~~~~~~~~~~~~
@@ -143,39 +143,39 @@ Datasets of this type are exported in the following format:
         <filename1>.<ext>
         <filename2>.<ext>
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export the images in a FiftyOne dataset as a directory of images on disk,
-you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export the images in a FiftyOne dataset as a directory of images on disk,
+    you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/images-dir"
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/images-dir"
 
-    # Export the dataset
-    dataset_or_view.export(export_dir, dataset_type=fo.types.ImageDirectory)
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(export_dir, dataset_type=fo.types.ImageDirectory)
 
-To export the images in a FiftyOne dataset as a directory of images on disk,
-you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export the images in a FiftyOne dataset as a directory of images on disk,
+    you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/to/images-dir
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --type fiftyone.types.ImageDirectory
+        NAME=my-dataset
+        EXPORT_DIR=/path/to/images-dir
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type fiftyone.types.ImageDirectory
 
 Image classification datasets
 -----------------------------
@@ -220,46 +220,46 @@ If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as an image classification dataset stored on disk
-in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as an image classification dataset stored on disk
+    in the above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/image-classification-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/image-classification-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.ImageClassificationDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.ImageClassificationDataset,
+        )
 
-To export a FiftyOne dataset as an image classification dataset stored on disk
-in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as an image classification dataset stored on disk
+    in the above format, you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/image-classification-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.ImageClassificationDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/image-classification-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.ImageClassificationDataset
 
 Image classification directory tree
 -----------------------------------
@@ -284,46 +284,46 @@ Datasets of this type are exported in the following format:
             <image2>.<ext>
             ...
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as an image classification directory tree stored
-on disk in the above format, you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as an image classification directory tree stored
+    on disk in the above format, you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/image-classification-dir-tree"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/image-classification-dir-tree"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.ImageClassificationDirectoryTree,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+        )
 
-To export a FiftyOne dataset as an image classification directory tree stored
-on disk in the above format, you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as an image classification directory tree stored
+    on disk in the above format, you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/image-classification-dir-tree
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.ImageClassificationDirectoryTree
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/image-classification-dir-tree
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.ImageClassificationDirectoryTree
 
 TF image classification dataset
 -------------------------------
@@ -363,46 +363,46 @@ following format:
         "label": tf.io.FixedLenFeature([], tf.string),
     }
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as a directory of TFRecords in the above format,
-you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as a directory of TFRecords in the above format,
+    you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/tf-image-classification-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/tf-image-classification-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.TFImageClassificationDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.TFImageClassificationDataset,
+        )
 
-To export a FiftyOne dataset as a directory of TFRecords in the above format,
-you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as a directory of TFRecords in the above format,
+    you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/tf-image-classification-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.TFImageClassificationDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/tf-image-classification-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.TFImageClassificationDataset
 
 Image detection dataset
 -----------------------
@@ -460,46 +460,46 @@ If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as an image detection dataset in the above format,
-you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as an image detection dataset in the above format,
+    you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/image-detection-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/image-detection-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.ImageDetectionDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.ImageDetectionDataset,
+        )
 
-To export a FiftyOne dataset as an image detection dataset in the above format,
-you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as an image detection dataset in the above format,
+    you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/image-detection-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.ImageDetectionDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/image-detection-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.ImageDetectionDataset
 
 COCO detection dataset
 ----------------------
@@ -570,46 +570,46 @@ where `labels.json` is a JSON file in the following format:
         ]
     }
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as a COCO detection dataset in the above format,
-you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as a COCO detection dataset in the above format,
+    you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/image-detection-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/image-detection-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.COCODetectionDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.COCODetectionDataset,
+        )
 
-To export a FiftyOne dataset as a COCO detection dataset in the above format,
-you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as a COCO detection dataset in the above format,
+    you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/coco-detection-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.COCODetectionDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/coco-detection-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.COCODetectionDataset
 
 VOC detection dataset
 ---------------------
@@ -683,46 +683,46 @@ where the labels XML files are in the following format:
 Samples with no values for certain attributes (like `pose` in the above
 example) are left empty.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as a VOC detection dataset in the above format,
-you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as a VOC detection dataset in the above format,
+    you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/voc-detection-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/voc-detection-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.VOCDetectionDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.VOCDetectionDataset,
+        )
 
-To export a FiftyOne dataset as a VOC detection dataset in the above format,
-you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as a VOC detection dataset in the above format,
+    you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/voc-detection-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.VOCDetectionDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/voc-detection-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.VOCDetectionDataset
 
 KITTI detection dataset
 -----------------------
@@ -787,46 +787,46 @@ The `default` column above indicates the default value that will be used when
 writing datasets in this type whose samples do not contain the necessary
 field(s).
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as a KITTI detection dataset in the above format,
-you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as a KITTI detection dataset in the above format,
+    you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/kitti-detection-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/kitti-detection-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.KITTIDetectionDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.KITTIDetectionDataset,
+        )
 
-To export a FiftyOne dataset as a KITTI detection dataset in the above format,
-you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as a KITTI detection dataset in the above format,
+    you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/kitti-detection-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.KITTIDetectionDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/kitti-detection-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.KITTIDetectionDataset
 
 CVAT image dataset
 ------------------
@@ -897,46 +897,46 @@ where `labels.xml` is an XML file in the following format:
         </image>
     </annotations>
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as a CVAT image dataset in the above format, you
-can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as a CVAT image dataset in the above format, you
+    can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/cvat-image-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/cvat-image-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.CVATImageDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.CVATImageDataset,
+        )
 
-To export a FiftyOne dataset as a CVAT image dataset in the above format, you
-can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as a CVAT image dataset in the above format, you
+    can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/cvat-image-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.CVATImageDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/cvat-image-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.CVATImageDataset
 
 Multitask image labels dataset
 ------------------------------
@@ -982,46 +982,46 @@ where `manifest.json` is a JSON file in the following format:
 and where each labels JSON file is stored in
 `eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as an image labels dataset in the above format,
-you can execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as an image labels dataset in the above format,
+    you can execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/image-labels-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/image-labels-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir,
-        label_field=label_field,
-        dataset_type=fo.types.ImageLabelsDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir,
+            label_field=label_field,
+            dataset_type=fo.types.ImageLabelsDataset,
+        )
 
-To export a FiftyOne dataset as an image labels dataset in the above format,
-you can execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as an image labels dataset in the above format,
+    you can execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/image-labels-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.ImageLabelsDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/image-labels-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.ImageLabelsDataset
 
 BDD dataset
 -----------
@@ -1081,41 +1081,41 @@ where `labels.json` is a JSON file in the following format:
         ...
     ]
 
-Python library
-~~~~~~~~~~~~~~
+.. tabs::
 
-To export a FiftyOne dataset as a BDD dataset in the above format, you can
-execute:
+  .. group-tab:: python
 
-.. code-block:: python
+    To export a FiftyOne dataset as a BDD dataset in the above format, you can
+    execute:
 
-    import fiftyone as fo
+    .. code-block:: python
 
-    export_dir = "/path/for/bdd-dataset"
-    label_field = "ground_truth"  # for example
+        import fiftyone as fo
 
-    # The Dataset or DatasetView to export
-    dataset_or_view = fo.Dataset(...)
+        export_dir = "/path/for/bdd-dataset"
+        label_field = "ground_truth"  # for example
 
-    # Export the dataset
-    dataset_or_view.export(
-        export_dir, label_field=label_field, dataset_type=fo.types.BDDDataset,
-    )
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
 
-CLI
-~~~
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir, label_field=label_field, dataset_type=fo.types.BDDDataset,
+        )
 
-To export a FiftyOne dataset as a BDD dataset in the above format, you can
-execute:
+  .. group-tab:: CLI
 
-.. code-block:: shell
+    To export a FiftyOne dataset as a BDD dataset in the above format, you can
+    execute:
 
-    NAME=my-dataset
-    EXPORT_DIR=/path/for/bdd-dataset
-    LABEL_FIELD=ground_truth  # for example
+    .. code-block:: shell
 
-    # Export the dataset
-    fiftyone datasets export $NAME \
-        --export-dir $EXPORT_DIR \
-        --label-field $LABEL_FIELD \
-        --type fiftyone.types.BDDDataset
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/bdd-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.BDDDataset
