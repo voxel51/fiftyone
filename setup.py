@@ -27,7 +27,10 @@ class BdistWheelCustom(bdist_wheel):
 setup(
     name="fiftyone",
     version="0.2.1",
-    description="Project FiftyOne",
+    description=(
+        "FiftyOne: a powerful package for dataset curation, analysis, and "
+        "visualization"
+    ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
