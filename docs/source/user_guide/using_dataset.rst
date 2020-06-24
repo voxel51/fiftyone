@@ -38,11 +38,7 @@ Load a dataset using `load_dataset()`. Dataset objects are singletons. Cool!
 .. code-block:: python
 
     dataset2_reference = fo.load_dataset("my_second_dataset")
-    print(dataset2_reference is dataset2)
-
-.. code-block:: plain
-
-    True
+    dataset2_reference is dataset2  # True
 
 If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
 `load_dataset()` you're going to have a bad time.
@@ -117,11 +113,10 @@ corresponding image on disk. The image is not read at this point:
 
     sample = fo.Sample(filepath="path/to/image.png")
 
-Adding Samples
---------------
+Adding Samples to a Dataset
+---------------------------
 
-`Samples` an easily be added to an existing
-`Dataset`:
+`Samples` an easily be added to an existing `Dataset`:
 
 .. code-block:: python
 
@@ -171,8 +166,8 @@ providing a list of `Samples`:
     1
     4
 
-Accessing Samples in Datasets
------------------------------
+Accessing samples in a Dataset
+------------------------------
 
 FiftyOne provides multiple ways to access `Samples` in a `Dataset`.
 
@@ -199,8 +194,8 @@ instance:
 More ways of accessing `Samples` are provided through `DatasetViews` described
 below.
 
-Removing Samples
-----------------
+Removing samples from a Dataset
+-------------------------------
 
 `Samples` can be removed from a `Dataset` through their ID, either one at a
 time or in a batch:
@@ -231,8 +226,8 @@ By default, a `Dataset` and the `Samples` therein have two `Fields`,
 `filepath`, and `tags`. All `Samples` are required to be initialized with a
 `filepath`.
 
-Accessing Fields
-----------------
+Accessing fields of a Sample
+----------------------------
 
 Available `Fields` can be found at a `Sample` or `Dataset` level:
 
@@ -249,8 +244,8 @@ attribute access:
     sample.filepath
     sample["filepath"]
 
-Adding Fields
--------------
+Adding fields to a Sample
+-------------------------
 
 `Fields` are added to a `Samples` one at a time:
 
@@ -287,8 +282,8 @@ a `Field` to an inappropriate type raises a `ValidationError`:
     If the `Sample` is in a `Dataset`, then `sample.save()` must be used
     whenever the `Sample` is updated.
 
-Removing Fields
----------------
+Removing fields from a Sample
+-----------------------------
 
 `Fields` can be deleted from every `Sample` in a `Dataset`:
 
@@ -460,7 +455,7 @@ The `Samples` in a `DatasetView` can be sorted (forward or in reverse) by any
     view = dataset.view().sort_by("id", reverse=True)
 
 Querying
----------
+--------
 
 `DatasetViews` can be queried using `match()`. The syntax follows
 `MongoDB queries <https://docs.mongodb.com/manual/tutorial/query-documents/>`_:
@@ -470,10 +465,10 @@ Querying
     # Get only samples with the tag "train"
     view = dataset.view().match({"tags": "train"})
 
-Chaining Operations
--------------------
+Chaining view stages
+--------------------
 
-All of the aformentioned operations can be chained together:
+All of the aformentioned view stages can be chained together:
 
 .. code-block:: python
 
@@ -485,11 +480,10 @@ All of the aformentioned operations can be chained together:
         .limit(5)
     )
 
-Modifying Datasets
-------------------
+Removing a batch of samples from a Dataset
+------------------------------------------
 
-A `Dataset` can then be updated to remove all `Samples` in a given
-`DatasetView`:
+All `Samples` in a given `DatasetView` can easily be removed from a `Dataset`:
 
 .. code-block:: python
 
