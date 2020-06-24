@@ -6,3 +6,4 @@ sphinx-rtd-theme==0.4.3
 sphinx-tabs==1.1.13
 Sphinx==2.4.4
 sphinxcontrib-napoleon==0.7
+sphinx-copybutton==0.2.12

@@ -41,6 +41,7 @@ extensions = [
     "m2r",
     "nbsphinx",
     "sphinx_tabs.tabs",
+    "sphinx_copybutton",
 ]
 
 # Types of class members to generate documentation for.
