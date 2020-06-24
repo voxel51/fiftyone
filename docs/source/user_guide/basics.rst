@@ -43,6 +43,7 @@ _______
 to a given image. Any `Sample` must include a file path to an image:
 
 .. code-block:: python
+   :linenos:
 
    import fiftyone as fo
 
@@ -69,10 +70,11 @@ strings and can be used to tag a `Sample` as part of a train/test split or any
 other tagging that you would like:
 
 .. code-block:: python
+   :linenos:
 
-    sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
-    sample.tags += ["my_favorite_samples"]
-    print(sample.tags)
+   sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
+   sample.tags += ["my_favorite_samples"]
+   print(sample.tags)
 
 .. code-block:: text
 

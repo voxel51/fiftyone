@@ -49,6 +49,7 @@ App:
   .. group-tab:: python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 

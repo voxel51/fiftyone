@@ -19,6 +19,7 @@ Basic recipe
     path to their containing directory on disk and the type of the dataset.
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -134,6 +135,7 @@ files with non-image MIME types are omitted.
     To create a FiftyOne dataset from a directory of images, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -232,6 +234,7 @@ provided, then the `target` values directly store the label strings.
     the above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -314,6 +317,7 @@ Datasets of this type are read in the following format:
     stored in the above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -411,6 +415,7 @@ following format:
     a directory of TFRecords in the above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -537,6 +542,7 @@ provided, then the `target` values directly store the label strings.
     above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -666,6 +672,7 @@ where ``labels.json`` is a JSON file in the following format:
     above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -794,6 +801,7 @@ where the labels XML files are in the following format:
     above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -916,6 +924,7 @@ may be omitted.
     above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1045,6 +1054,7 @@ where `labels.xml` is an XML file in the following format:
     above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1148,6 +1158,7 @@ and where each labels JSON file is stored in
     above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1265,6 +1276,7 @@ where `labels.json` is a JSON file in the following format:
     you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 

@@ -50,7 +50,8 @@ Listing zoo datasets
     You can list the available zoo datasets via the
     ``fiftyone.zoo.list_zoo_datasets()`` method:
 
-    .. code:: py
+    .. code:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -75,7 +76,8 @@ Listing zoo datasets
     To view the zoo datasets that you have downloaded, you can use the
     ``fiftyone.zoo.list_downloaded_zoo_datasets()`` method:
 
-    .. code:: py
+    .. code:: python
+        :linenos:
 
         from pprintpp import pprint
         import fiftyone.zoo as foz
@@ -183,7 +185,8 @@ Getting information about zoo datasets
 
     For example, let's print some information about the CIFAR-10 dataset:
 
-    .. code:: py
+    .. code:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -223,7 +226,8 @@ Getting information about zoo datasets
     For example, let's print some information about the CIFAR-10 dataset
     (assuming it is downloaded):
 
-    .. code:: py
+    .. code:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -361,7 +365,8 @@ Downloading zoo datasets
 
     For example, let's download the ``train`` split of CIFAR-10:
 
-    .. code:: py
+    .. code:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -443,7 +448,8 @@ Loading zoo datasets into FiftyOne
     be automatically downloaded from the web the first time you access it if
     it is not already downloaded:
 
-    .. code:: py
+    .. code:: python
+        :linenos:
 
         import fiftyone.zoo as foz
 
@@ -530,7 +536,8 @@ You can customize this directory in any of the following ways:
 -  Setting the ``default_dataset_dir`` config setting from your Python
    code
 
-.. code:: py
+.. code:: python
+    :linenos:
 
     # Customize where zoo datasets are downloaded
     import fiftyone.core.config as foc
@@ -580,7 +587,8 @@ You can customize this backend in any of the following ways:
 -  Setting the ``default_ml_backend`` config setting from your Python
    code
 
-.. code:: py
+.. code:: python
+    :linenos:
 
     # Use the `torch` backend
     import fiftyone.core.config as foc

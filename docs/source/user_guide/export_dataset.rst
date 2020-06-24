@@ -21,6 +21,7 @@ Basic recipe
     The basic syntax is simple:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -151,6 +152,7 @@ Datasets of this type are exported in the following format:
     you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -228,6 +230,7 @@ provided, then the `target` values directly store the label strings.
     in the above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -292,6 +295,7 @@ Datasets of this type are exported in the following format:
     on disk in the above format, you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -371,6 +375,7 @@ following format:
     you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -468,6 +473,7 @@ provided, then the `target` values directly store the label strings.
     you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -578,6 +584,7 @@ where `labels.json` is a JSON file in the following format:
     you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -691,6 +698,7 @@ example) are left empty.
     you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -795,6 +803,7 @@ field(s).
     you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -905,6 +914,7 @@ where `labels.xml` is an XML file in the following format:
     can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -990,6 +1000,7 @@ and where each labels JSON file is stored in
     you can execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1089,6 +1100,7 @@ where `labels.json` is a JSON file in the following format:
     execute:
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 

@@ -83,6 +83,7 @@ explore your datasets. You can efficiently query and manipulate your dataset by
 adding custom tags, model predictions and more.
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -130,6 +131,7 @@ recommend ways to modify your datasets that will lead to measurably better
 performance of your models.
 
 .. code-block:: python
+   :linenos:
 
    import fiftyone.brain as fob
 
