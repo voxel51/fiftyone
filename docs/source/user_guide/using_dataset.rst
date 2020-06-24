@@ -383,10 +383,8 @@ ____________
 
 FiftyOne provides a powerful and flexible class, `DatasetView`, for accessing
 subsets of `Samples`.
-
-The default view of a `Dataset` encompasses the entire `Dataset`, sorted by
-insertion order.
-
+The default view of a `Dataset` encompasses the entire `Dataset`, with
+unpredictable sort order.
 Basic ways to explore `DatasetViews` are available:
 
 .. code-block:: python

@@ -1,18 +1,21 @@
-Loading a Dataset
-=================
+Creating a Dataset
+==================
 
 .. default-role:: code
 
-FiftyOne supports automatic loading of datasets stored in various common
+To "create" a FiftyOne `Dataset` is to add the data to the FiftyOne backing
+database, registering it in FiftyOne.
+
+FiftyOne supports automatic creation of datasets stored in various common
 formats. If your dataset is stored in a custom format, don't worry, FiftyOne
-also provides support for easily loading custom data formats as well.
+also provides support for easily create custom data formats as well.
 
 **Dataset formats**
 
-There are three basic ways to load data into FiftyOne:
+There are three basic ways to get data into FiftyOne:
 
-- :doc:`Common format datasets<common_datasets>`: FiftyOne natively supports loading
-  datasets in a variety of common formats, including
+- :doc:`Common format datasets<common_datasets>`: FiftyOne natively supports
+  creating datasets in a variety of common formats, including
   `COCO <https://cocodataset.org/#home>`_,
   `VOC <http://host.robots.ox.ac.uk/pascal/VOC>`_,
   `CVAT <https://github.com/opencv/cvat>`_,
@@ -25,37 +28,41 @@ There are three basic ways to load data into FiftyOne:
   `CIFAR-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_,
   `COCO <https://cocodataset.org/#home>`_, and
   `ImageNet <http://www.image-net.org>`_
-  that can be downloaded and loaded into FiftyOne via a single line of code.
+  that can be downloaded and loaded into FiftyOne with a single line of code.
 
 - :doc:`Custom format datasets<custom_datasets>`: If your data is stored in a custom
-  format, you can easily load it into FiftyOne by directly adding the samples
+  format, you can easily get it into FiftyOne by directly adding the samples
   and their fields to a FiftyOne Dataset in a variety of formats. You can even
   provide your own sample parser to automate this process.
 
 **Quickstart**
 
-Load a directory of images into FiftyOne and explore them in the FiftyOne App
-by running the following commands in Python:
+Ingest a directory of images into FiftyOne and explore them in the FiftyOne
+App:
 
-.. code-block:: python
+.. tabs::
 
-    import fiftyone as fo
+  .. group-tab:: python
 
-    dataset_dir = "/path/to/images-dir"
+    .. code-block:: python
 
-    # Create the dataset
-    dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory)
+        import fiftyone as fo
 
-    # Visualize the dataset
-    session = fo.launch_dashboard(dataset=dataset)
+        dataset_dir = "/path/to/images-dir"
 
-Or, perform the same action via the CLI:
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory)
 
-.. code:: shell
+        # Visualize the dataset
+        session = fo.launch_dashboard(dataset=dataset)
 
-    # Visualize a directory of images in the FityOne App
-    fiftyone datasets view \
-        --dataset-dir /path/to/images-dir --type fiftyone.types.ImageDirectory
+  .. group-tab:: CLI
+
+    .. code:: shell
+
+        # Visualize a directory of images in the FiftyOne App
+        fiftyone datasets view \
+            --dataset-dir /path/to/images-dir --type fiftyone.types.ImageDirectory
 
 .. toctree::
    :maxdepth: 1
