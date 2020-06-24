@@ -3,12 +3,16 @@ Creating a Dataset
 
 .. default-role:: code
 
-To "create" a FiftyOne `Dataset` is to add the data to the FiftyOne backing
-database, registering it in FiftyOne.
-
 FiftyOne supports automatic creation of datasets stored in various common
 formats. If your dataset is stored in a custom format, don't worry, FiftyOne
 also provides support for easily create custom data formats as well.
+
+.. note::
+
+    To "create" a FiftyOne `Dataset` is to add the data to the FiftyOne backing
+    database, registering it in FiftyOne. This will copy each `Field` of each
+    `Sample` into the database, including the `filepath`, but it will **NOT**
+    copy the media itself.
 
 **Dataset formats**
 

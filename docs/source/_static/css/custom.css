@@ -1,3 +1,8 @@
+body {
+  font-family: "Palanquin", "Lato", "proxima-nova", "Helvetica Neue", Arial,
+    sans-serif;
+}
+
 /* sphinx-rtd-theme overrides */
 
 .wy-nav-side {
@@ -66,8 +71,8 @@
 }
 
 .footer .nav__item--brand {
-  font-size: 18px;
-  line-height: 18px;
+  margin-bottom: 0;
+  line-height: 30px;
 }
 
 /* tabs */

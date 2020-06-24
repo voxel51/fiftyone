@@ -356,6 +356,10 @@
   display: block;
 }
 
+.footer__links p {
+  font-size: unset;
+}
+
 .footer__links--col1 {
   grid-column: 1;
   grid-row: 1;
