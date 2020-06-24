@@ -66,8 +66,8 @@
 }
 
 .footer .nav__item--brand {
-  font-size: 18px;
-  line-height: 18px;
+  margin-bottom: 0;
+  line-height: 30px;
 }
 
 /* tabs */
