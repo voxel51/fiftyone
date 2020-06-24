@@ -328,27 +328,29 @@ a `Field` to an inappropriate type raises a `ValidationError`:
 Removing fields from a Sample
 -----------------------------
 
-`Fields` can be deleted from every `Sample` in a `Dataset`:
-
-.. code-block:: python
-
-    dataset.delete_sample_field("integer_field")
-
-`Fields` can be deleted from a `Sample` using `del`. Unlike the previous
-method, this does not remove the `Field` from the `Dataset`, it just sets the
-value of the `Field` to the default value for the `Sample`:
+A `Field` can be deleted from a `Sample` using `del`:
 
 .. code-block:: python
 
     del sample["integer_field"]
+    print(sample.integer_field)
+    # None
+
+A `Field` can be removed from a `Dataset`, in which case it is deleted for
+every `Sample` in the `Dataset`:
+
+.. code-block:: python
+
+    dataset.delete_sample_field("integer_field")
+    sample.integer_field
+    # AttributeError: Sample has no field 'integer_field'
 
 Tags
 ----
 
-`Tags` are a special `ListField` that every `Sample` has by default. They are
-just a list of strings that are provided for ease of use by the user. For
-example, `Tags` can be used to defined dataset splits or mark low quality
-images:
+`Sample.tags` is a special `ListField` that every `Sample` has by default.
+`tags` is just a list of strings, provided for convenience. For example, tags
+can be used to define dataset splits or mark low quality images:
 
 .. code-block:: python
 
@@ -364,7 +366,7 @@ images:
     print(dataset.get_tags())
     # {"test", "low_quality", "train"}
 
-`Tags` can be added to a `Sample` like a standard python `list`:
+`Sample.tags` can be treated like a standard python `list`:
 
 .. code-block:: python
 
@@ -379,13 +381,11 @@ images:
 DatasetViews
 ____________
 
-Since `Datasets` are unordered collections, `Samples` cannot be accessed by an
-integer index. In the previous `Sample` section, two ways of accessing
-`Samples` were presented. FiftyOne provides a more flexible method of
-accessing `Samples` through the use of `DatasetViews`.
+FiftyOne provides a powerful and flexible class, `DatasetView`, for accessing
+subsets of `Samples`.
 
-The default view of a `Dataset` is a look at the entire `Dataset`. By default,
-it is sorted arbitrarily.
+The default view of a `Dataset` encompasses the entire `Dataset`, sorted by
+insertion order.
 
 Basic ways to explore `DatasetViews` are available:
 
@@ -395,23 +395,20 @@ Basic ways to explore `DatasetViews` are available:
     # 2
 
     print(dataset.view())
-
-.. code-block:: text
-
-    Dataset:        interesting_dataset
-    Num samples:    2
-    Tags:           ['test', 'train']
-    Sample fields:
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+    # Dataset:        interesting_dataset
+    # Num samples:    2
+    # Tags:           ['test', 'train']
+    # Sample fields:
+    #     filepath: fiftyone.core.fields.StringField
+    #     tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+    #     metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
 Accessing Samples in DatasetViews
 ---------------------------------
 
-In order to look at `Samples` in a `DatasetView`, use `first()` to get the frst
-sample in a `DatasetView` or `take(x)` to get a new `DatasetView` containing
-`x` random `Samples`:
+Use `DatasetView.first()` to get the first sample in a `DatasetView` or
+`DatasetView.take(x)` to get a new `DatasetView` containing `x` random
+`Samples`:
 
 .. code-block:: python
 
@@ -422,8 +419,8 @@ sample in a `DatasetView` or `take(x)` to get a new `DatasetView` containing
     print(len(new_view))
     # 2
 
-Ranges of `Samples` can be accessed using `skip()` and `limit()` or through
-array slicing:
+Ranges of `Samples` can be accessed using `skip()` and `limit()` or
+equivalently through array slicing:
 
 .. code-block:: python
 
@@ -432,6 +429,7 @@ array slicing:
 
     view.skip(2).limit(3)
 
+    # equivalently
     view[2:5]
 
 Note that accessing an individual sample by its integer index in the view is
