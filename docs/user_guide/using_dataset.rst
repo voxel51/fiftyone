@@ -82,7 +82,8 @@ instance::
     Out:
         True
 
-**Note: More ways of accessing** `Samples` **are provided through** `Views` **described below.**
+.. note::
+    **More ways of accessing** `Samples` **are provided through** `Views` **described below.**
 
 
 Removing Samples
@@ -155,7 +156,8 @@ a `Field` to an inappropriate type raises a `ValidationError`::
         Error: a string could not be converted to int
 
 
-**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.**
+.. note::
+    **If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.**
 
 Removing Fields
 ---------------
@@ -197,7 +199,8 @@ images::
     sample.tags += ["new_tag"]
     sample.save()
 
-**Note: If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.**
+.. note::
+    **If the** `Sample` **is in a** `Dataset` **, then** `sample.save()` **must be used whenever the** `Sample` **is updated.**
 
 
 Views

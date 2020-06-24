@@ -1,5 +1,5 @@
-Custom Dataset Examples
-=======================
+Custom Format Dataset Examples
+================================
 
 FiftyOne datasets are composed of ``fiftyone.core.sample.Sample``
 instances, and FiftyOne provides the ability for you to construct your

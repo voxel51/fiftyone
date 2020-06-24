@@ -1,5 +1,5 @@
-Common Dataset Examples
-=======================
+Common Format Dataset Examples
+===============================
 
 FiftyOne provides native support for loading labeled datasets from disk in a
 variety of common formats.

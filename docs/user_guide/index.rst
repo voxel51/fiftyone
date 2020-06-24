@@ -1,12 +1,12 @@
 User Guide
 ==========
 
-.. default-role:: code
+.. include:: ../substitutions.rst
 
 .. rubric:: :doc:`FiftyOne Dataset Basics <basics>`:
 
-Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
-`Tags` and `Views`
+Learn about FiftyOne |Datasets|_ and their relation to |Samples|_, |Fields|_,
+``Tags`` and |Views|_
 
 .. code-block:: python
    :linenos:
@@ -25,7 +25,7 @@ Learn about FiftyOne `Datasets` and their relation to `Samples`, `Fields`,
 
 .. rubric:: :doc:`Loading a Dataset <dataset_creation/index>`:
 
-Load a `Dataset` either using an
+Load a |Dataset|_ either using an
 existing supported dataset format or from scratch
 
 .. code-block:: python
@@ -36,7 +36,7 @@ existing supported dataset format or from scratch
 
 .. rubric:: :doc:`Using a Dataset <using_dataset>`:
 
-Use your `Dataset` to search, sort, and modify your
+Use your |Dataset|_ to search, sort, and modify your
 data
 
 .. code-block:: python
@@ -53,7 +53,7 @@ data
 
 .. rubric:: :doc:`Exporting a Dataset <export_dataset>`:
 
-Export your `Dataset` to disk in any number of formats
+Export your |Dataset|_ to disk in any number of formats
 
 .. code-block:: python
     :linenos:
@@ -64,7 +64,7 @@ Export your `Dataset` to disk in any number of formats
 
 .. rubric:: :doc:`Viewing Datasets in the App <app>`:
 
-Visualize your `Dataset` in the FiftyOne App and see your changes in real time.
+Visualize your |Dataset|_ in the FiftyOne App and see your changes in real time.
 
 .. image:: ../images/dog.png
    :alt: App
@@ -72,10 +72,9 @@ Visualize your `Dataset` in the FiftyOne App and see your changes in real time.
    :align: center
    :target: app.html
 
-
 .. rubric:: :doc:`FiftyOne Brain <brain>`:
 
-Use the FiftyOne Brain to automatically get insights into your `Dataset`
+Use the FiftyOne Brain to automatically get insights into your |Dataset|_
 
 .. code-block:: python
    :linenos:

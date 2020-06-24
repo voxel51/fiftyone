@@ -7,6 +7,10 @@ Fiftyone `Datasets` allow you to easily :doc:`load <making_dataset>`, :doc:`view
 datasets along with any related :doc:`classification, detection, segmentation, or custom labels <making_dataset>`.
 
 
+.. note::
+    Checkout out our :doc:`dataset loading guide <dataset_creation/index>` to load
+    your dataset into FiftyOne.
+
 `Datasets` can be visualized in the :doc:`FiftyOne App <app>`.
 
 .. image:: ../images/dog.png
@@ -20,8 +24,8 @@ _____________________
 
 `Datasets` are composed of `Samples` which contain `Fields`, all of which can
 be dynamically created, modified and deleted.
-`Datasets` do not store all images in memory, instead storing image paths and then
-caching data as needed.
+FiftyOne `Datasets` use a lightweight relational database to store data so it is easy on
+your system and scalable to the large datasets of today.
 
 
 `Datasets` should be thought of as unordered collections. `Samples` can be
