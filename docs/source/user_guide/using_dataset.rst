@@ -277,12 +277,28 @@ attribute access:
 Adding fields to a Sample
 -------------------------
 
-`Fields` are added to a `Samples` one at a time:
+New fields can be added to a `Sample` using key assignment:
 
 .. code-block:: python
 
     sample["integer_field"] = 51
     sample.save()
+
+If this `Sample` is in a `Dataset` the field schema will be automatically
+updated:
+
+.. code-block:: python
+
+    print(dataset)
+    # Name:           a_dataset
+    # Persistent:     False
+    # Num samples:    0
+    # Tags:           []
+    # Sample fields:
+    #     filepath:      fiftyone.core.fields.StringField
+    #     tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+    #     metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+    #     integer_field: fiftyone.core.fields.IntField
 
 `Fields` can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
 `dict`, or more complex data structures like `Labels`:
