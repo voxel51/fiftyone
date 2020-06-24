@@ -145,7 +145,7 @@ class StateController(Namespace):
         state.selected = list(selected)
         return state
 
-    def on_page(self, page, page_length=20):
+    def on_page(self, page, page_length=50):
         """Gets the requested page of samples.
 
         Args:
