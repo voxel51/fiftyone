@@ -68,7 +68,7 @@ other tagging that you would like:
     sample.tags += ["my_favorite_samples"]
     print(sample.tags)
 
-.. code-block:: plain
+.. code-block:: text
 
     ["train", "my_favorite_samples"]
 

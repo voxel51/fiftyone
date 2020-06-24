@@ -29,7 +29,7 @@ Check to see what datasets exist at any time via `list_dataset_names()`.
 
     print(fo.list_dataset_names())
 
-.. code-block:: plain
+.. code-block:: text
 
     ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
 
@@ -47,7 +47,7 @@ If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
 
     dataset3_reference = fo.Dataset(name="my_third_dataset")
 
-.. code-block:: plain
+.. code-block:: text
 
     ValueError: Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
 
@@ -55,7 +55,7 @@ If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
 
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
 
-.. code-block:: plain
+.. code-block:: text
 
     fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
@@ -78,7 +78,7 @@ Start a new session:
 
     print(fo.list_dataset_names())
 
-.. code-block:: plain
+.. code-block:: text
 
     ['my_first_dataset']
 
@@ -96,7 +96,7 @@ attribute or method will raise a `DoesNotExistError`.
     print(dataset.deleted)
     print(dataset.persistent)
 
-.. code-block:: plain
+.. code-block:: text
 
     []
     my_first_dataset
@@ -131,7 +131,7 @@ are automatically updated:
     print(sample.in_dataset)
     print(sample.dataset_name)
 
-.. code-block:: plain
+.. code-block:: text
 
     True
     example_dataset
@@ -142,7 +142,7 @@ Every `Sample` in a `Dataset` is given a unique ID when it is added:
 
     print(sample.id)
 
-.. code-block:: plain
+.. code-block:: text
 
     5ee0ebd72ceafe13e7741c42
 
@@ -161,7 +161,7 @@ providing a list of `Samples`:
     )
     print(len(dataset))
 
-.. code-block:: plain
+.. code-block:: text
 
     1
     4
@@ -187,7 +187,7 @@ instance:
     same_sample = dataset[sample.id]
     print(same_sample is sample)
 
-.. code-block:: plain
+.. code-block:: text
 
     True
 
@@ -273,7 +273,7 @@ a `Field` to an inappropriate type raises a `ValidationError`:
     sample2.integer_field = "a string"
     sample2.save()
 
-.. code-block:: plain
+.. code-block:: text
 
     Error: a string could not be converted to int
 
@@ -320,7 +320,7 @@ images:
 
     print(dataset.get_tags())
 
-.. code-block:: plain
+.. code-block:: text
 
     {"test", "low_quality", "train"}
 
@@ -351,7 +351,7 @@ it is sorted arbitrarily:
 
     print(dataset.view())
 
-.. code-block:: plain
+.. code-block:: text
 
     fiftyone.core.view.DatasetView
 
@@ -363,7 +363,7 @@ Basic ways to explore `DatasetViews` are available:
 
     print(datsaet.view())
 
-.. code-block:: plain
+.. code-block:: text
 
     2
 
@@ -389,7 +389,7 @@ sample in a `DatasetView` or `take(x)` to get a new `DatasetView` containing
     new_view = dataset.view().take(2)
     print(len(new_view))
 
-.. code-block:: plain
+.. code-block:: text
 
     2
 
@@ -412,7 +412,7 @@ not supported (this is not an efficient operation with FiftyOne datasets):
 
     view[0]
 
-.. code-block:: plain
+.. code-block:: text
 
     KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
 

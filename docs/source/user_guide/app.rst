@@ -144,7 +144,7 @@ Second, load those samples into python:
     selected = session.selected
     print(selected)
 
-.. code-block:: plain
+.. code-block:: text
 
     ['5ef0eef405059ebb0ddfa6cc',
      '5ef0eef405059ebb0ddfa7c4',
