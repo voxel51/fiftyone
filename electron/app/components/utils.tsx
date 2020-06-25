@@ -2,9 +2,17 @@ import React, { useEffect, useRef, useLayoutEffect } from "react";
 import { action } from "@storybook/addon-actions";
 import _ from "lodash";
 import styled from "styled-components";
-import { useSetRecoilState } from "recoil";
+import { useSetRecoilState, useRecoilState } from "recoil";
 
-import { viewCount, mainTop, mainSize, mainLoaded } from "../state/atoms";
+import {
+  viewCount,
+  mainTop,
+  mainSize,
+  mainPreviousWidth,
+  mainLoaded,
+  isMainWidthResizing,
+  segmentIsLoaded,
+} from "../state/atoms";
 import { useTrackMousePosition, useResizeObserver } from "../state/hooks";
 
 const StyledContainer = styled.div`
@@ -12,11 +20,20 @@ const StyledContainer = styled.div`
   height: 100%;
 `;
 
+let date;
+
 export const Container = ({ children }) => {
   useTrackMousePosition();
-  const setMainSize = useSetRecoilState(mainSize);
+  const setSegmentIsLoaded = useSetRecoilState(segmentIsLoaded(0));
+  const [isMainWidthResizingValue, setIsMainWidthResizing] = useRecoilState(
+    isMainWidthResizing
+  );
+  const [mainSizeValue, setMainSize] = useRecoilState(mainSize);
+  const [mainPreviousWidthValue, setMainPreviousWidth] = useRecoilState(
+    mainPreviousWidth
+  );
   const setMainTop = useSetRecoilState(mainTop);
-  const setMainLoaded = useSetRecoilState(mainLoaded);
+  const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
   const [ref, { contentRect }] = useResizeObserver();
 
   const setViewCount = useSetRecoilState(viewCount);
@@ -27,10 +44,23 @@ export const Container = ({ children }) => {
   useLayoutEffect(() => {
     if (!contentRect) return;
     const { top, width, height } = contentRect;
-    setMainSize([width, height]);
-    setMainTop(top);
-    setMainLoaded(true);
+
+    requestAnimationFrame(() => {
+      setIsMainWidthResizing(width !== mainSizeValue[0]);
+      setMainSize([width, height]);
+      setMainPreviousWidth(mainSizeValue[0]);
+      setMainTop(top);
+      !mainLoadedValue && setMainLoaded(true);
+      const compare = date;
+      setTimeout(() => {
+        if (compare === date) setIsMainWidthResizing(false);
+      }, 1000);
+    });
   }, [contentRect]);
+
+  useEffect(() => {
+    date = Date.now();
+  });
 
   return <StyledContainer ref={ref}>{children}</StyledContainer>;
 };

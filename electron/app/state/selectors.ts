@@ -12,6 +12,7 @@ import {
   segmentIsLoaded,
   gridMargin,
   portNumber,
+  mainPreviousWidth,
 } from "./atoms";
 
 export const indicatorIndex = selector({
@@ -270,5 +271,14 @@ export const itemSource = selectorFamily({
     const id = get(itemData(itemIndex));
     const pn = get(portNumber);
     return `http://127.0.0.1:${pn}/?path=${id.sample.filepath}`;
+  },
+});
+
+export const isMainResizing = selector({
+  key: "isMainResizing",
+  get: ({ get }) => {
+    const [mw, unused] = get(mainSize);
+    const mpw = get(mainPreviousWidth);
+    return mpw === mw;
   },
 });

@@ -15,6 +15,11 @@ export const mainSize = atom({
   default: [0, 0],
 });
 
+export const mainPreviousWidth = atom({
+  key: "mainPreviousWidth",
+  default: 0,
+});
+
 export const mainTop = atom({
   key: "mainTop",
   default: 0,
@@ -76,4 +81,14 @@ export const mainLoaded = atom({
 export const portNumber = atom({
   key: "portNumber",
   default: 5151,
+});
+
+export const isMainWidthResizing = atom({
+  key: "isMainWidthResizing",
+  default: false,
+});
+
+export const resizeWait = atom({
+  key: "resizeWait",
+  default: 0,
 });

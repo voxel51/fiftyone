@@ -4,8 +4,8 @@ import { useRecoilValue } from "recoil";
 
 import { Item } from "../Player51";
 
-import { itemsPerRequest } from "../../state/atoms";
-import { segmentItemIndices, segmentData } from "../../state/selectors";
+import { mainLoaded } from "../../state/atoms";
+import { segmentItemIndices } from "../../state/selectors";
 
 const SegmentDiv = styled.div`
   position: relative;
@@ -13,34 +13,11 @@ const SegmentDiv = styled.div`
   height: 400px;
 `;
 
-const LoadingTile = styled.div`
-  width: 100%;
-  height: 120px;
-  background: #ccc;
-`;
-
-const Spacer = styled.div`
-  width: 100%;
-  height: 120px;
-`;
-
-const Loading = ({ index }) => {
-  const itemsIndicesValue = useRecoilValue(segmentItemIndices(index));
-  return (
-    <LoadingDiv>
-      {itemsIndicesValue.map((k) => (
-        <>
-          <Spacer className="spacer" key={`spacer-${k}`} />
-          <LoadingTile key={k} />
-        </>
-      ))}
-      <Spacer key="end-row" />
-    </LoadingDiv>
-  );
-};
-
 const Segment = ({ index }) => {
   const itemIndicesValue = useRecoilValue(segmentItemIndices(index));
+  const mainLoadedValue = useRecoilValue(mainLoaded);
+
+  if (!mainLoadedValue) return null;
 
   return (
     <SegmentDiv>
