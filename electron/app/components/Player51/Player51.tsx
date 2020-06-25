@@ -19,8 +19,8 @@ import { getPage, getSocket } from "../../utils/socket";
 import Player51 from "../../player51/build/cjs/player51.min.js";
 
 const Tile = animated(styled.div`
-  background: #cccccc;
   position: absolute;
+  z-index: 0;
 `);
 
 const ThumbnailParent = styled.div`
@@ -31,12 +31,12 @@ const ThumbnailParent = styled.div`
 
 const ThumbnailDiv = animated(styled.div`
   position: absolute;
-  opacity: 0;
 `);
 
 const Img = animated(styled.img`
   width: 100%;
   height: 100%;
+  z-index: 10000;
 `);
 
 const Thumbnail = ({ index }) => {
@@ -72,14 +72,12 @@ const Thumbnail = ({ index }) => {
 const ThumbnailContainer = ({ index }) => {
   const itemBasePositionValue = useRecoilValue(itemBasePosition(index));
   const itemBaseSizeValue = useRecoilValue(itemBaseSize);
+  const mainLoadedValue = useRecoilValue(mainLoaded);
+  const itemIsLoadedValue = useRecoilValue(itemIsLoaded(index));
 
   const props = useSpring({
     ...itemBasePositionValue,
     ...itemBaseSizeValue,
-    opacity: 1,
-    from: {
-      opacity: 0,
-    },
   });
 
   return (

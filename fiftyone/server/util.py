@@ -69,6 +69,7 @@ def tile(view, width, margin):
 
     for idx, sample in enumerate(view):
         w, h = get_image_size(sample.filepath)
+        w += idx
 
         if row_width is None:
             row_width = w

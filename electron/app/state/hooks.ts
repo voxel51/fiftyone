@@ -1,3 +1,4 @@
+import _ from "lodash";
 import {
   useEffect,
   useLayoutEffect,
@@ -40,10 +41,13 @@ export const useResizeObserver = () => {
     current && current.disconnect();
   }, []);
 
-  const observe = useCallback(() => {
-    observer.current = new ResizeObserver(([entry]) => setEntry(entry));
-    node && observer.current.observe(node);
-  }, [node]);
+  const observe = useCallback(
+    _.debounce(() => {
+      observer.current = new ResizeObserver(([entry]) => setEntry(entry));
+      node && observer.current.observe(node);
+    }, 500),
+    [node]
+  );
 
   useLayoutEffect(() => {
     observe();
