@@ -64,6 +64,10 @@ m2r_parse_relative_links = True
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# Disable npshinx loading require.js - this breaks the pytorch theme's
+# scrolling handling, and we don't appear to have any notebook content that
+# requires it
+nbsphinx_requirejs_path = ""
 
 # -- Options for HTML output -------------------------------------------------
 
