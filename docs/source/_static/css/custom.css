@@ -3,9 +3,13 @@ body {
     sans-serif;
 }
 
-/* sphinx-rtd-theme overrides */
+/* pytorch theme overrides */
 
-.wy-nav-side {
+#header-holder {
+  overflow: hidden;
+}
+
+/*.wy-nav-side {
   background-color: white;
   border-right: 2px solid var(--gray-light3);
   margin-top: 90px;
@@ -36,7 +40,7 @@ body {
 .wy-menu-vertical a:active {
   background-color: var(--color-primary);
 }
-
+*/
 /* voxel51-website.css overrides */
 
 .nav__main {

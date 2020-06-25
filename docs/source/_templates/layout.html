@@ -4,46 +4,48 @@
 <link href="https://fonts.googleapis.com/css?family=Palanquin:400,600,700,800" rel="stylesheet">
 {% endblock %}
 
-{% block extrabody %}
-<nav id="nav__main" class="nav__main">
-  <div class="nav__main__logo">
-    <a href="{{link_home}}">
-      <img src="https://voxel51.com/images/logo/voxel51-logo-horz-color-600dpi.png" />
-    </a>
-  </div>
+{% block customheader %}
+<div class="container-fluid header-holder tutorials-header" id="header-holder">
+  <nav id="nav__main" class="nav__main">
+    <div class="nav__main__logo">
+      <a href="{{link_home}}">
+        <img src="https://voxel51.com/images/logo/voxel51-logo-horz-color-600dpi.png" />
+      </a>
+    </div>
 
-  <div id="nav__main__mobilebutton--on">
-    <a href="javascript:void(0);" onclick="navMobileButton()">
-      <i class="fa fa-bars"></i>
-    </a>
-  </div>
+    <div id="nav__main__mobilebutton--on">
+      <a href="javascript:void(0);" onclick="navMobileButton()">
+        <i class="fa fa-bars"></i>
+      </a>
+    </div>
 
-  <div id="nav__main__mobilebutton--off">
-    <a href="javascript:void(0);" onclick="navMobileButton()">
-      <i class="fa fa-times"></i>
-    </a>
-  </div>
+    <div id="nav__main__mobilebutton--off">
+      <a href="javascript:void(0);" onclick="navMobileButton()">
+        <i class="fa fa-times"></i>
+      </a>
+    </div>
 
-  <div id="nav__main__items">
-    <div class="nav__item">
-      <a href="{{link_fiftyone}}">Product</a>
+    <div id="nav__main__items">
+      <div class="nav__item">
+        <a href="{{link_fiftyone}}">Product</a>
+      </div>
+      <div class="nav__item">
+        <a href="{{link_docs_fiftyone}}">Docs</a>
+      </div>
+      <div class="nav__item">
+        <a href="{{link_ourstory}}">Company</a>
+      </div>
+      <div class="nav__item">
+        <a href="{{link_press}}">Press</a>
+      </div>
+      <div class="nav__spacer">
+      </div>
+      <div class="nav__item nav__item--brand">
+        <a href="{{link_fiftyone}}#beta">Try FiftyOne</a>
+      </div>
     </div>
-    <div class="nav__item">
-      <a href="{{link_docs_fiftyone}}">Docs</a>
-    </div>
-    <div class="nav__item">
-      <a href="{{link_ourstory}}">Company</a>
-    </div>
-    <div class="nav__item">
-      <a href="{{link_press}}">Press</a>
-    </div>
-    <div class="nav__spacer">
-    </div>
-    <div class="nav__item nav__item--brand">
-      <a href="{{link_fiftyone}}#beta">Try FiftyOne</a>
-    </div>
-  </div>
-</nav>
+  </nav>
+</div>
 {% endblock %}
 
 {% block content %}
