@@ -1,7 +1,8 @@
 FiftyOne
 ========
 
-    *"Data is king in the artificial intelligence world."*
+    "Data is king in the artificial intelligence world."
+    -- *Government Technology Magazine*
 
 If you are looking to boost your model performance, chances are improving
 dataset quality is going to provide the highest return on investment.
@@ -9,7 +10,7 @@ dataset quality is going to provide the highest return on investment.
 to help in creating valuable and diverse datasets. Work efficiently with
 FiftyOne to achieve better models with dependable performance.
 
-    *"Become one with the data."*
+    "Become one with the data." -- *Andrej Karpathy*
 
 FiftyOne does more than improve your dataset; it gets you closer to your data.
 Rapidly gain insight by visualizing samples overlayed with with dynamic and
