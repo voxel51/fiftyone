@@ -9,6 +9,16 @@ body {
   overflow: hidden;
 }
 
+.ui.tabular.menu .item {
+  /* stop breaking tabs */
+  width: unset;
+  margin: unset;
+}
+
+article.pytorch-article pre {
+  margin-bottom: 1rem;
+}
+
 /*.wy-nav-side {
   background-color: white;
   border-right: 2px solid var(--gray-light3);
