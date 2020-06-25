@@ -21,7 +21,6 @@ from future.utils import itervalues
 
 from collections import defaultdict
 from copy import deepcopy
-import json
 import os
 import weakref
 
