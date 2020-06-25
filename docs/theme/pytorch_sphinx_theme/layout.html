@@ -82,7 +82,7 @@
   {% include "fonts.html" %}
 </head>
 
-{% block customheader %}
+{% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
   <div class="container">
     <div class="header-container">
@@ -330,6 +330,7 @@
 
   <!-- Begin Footer -->
 
+{% block custom_footer %}
   <div class="container-fluid docs-tutorials-resources" id="docs-tutorials-resources">
     <div class="container">
       <div class="row">
@@ -428,6 +429,7 @@
       </div>
     </div>
   </footer>
+{% endblock %}
 
   {% include "cookie_banner.html" %}
 
@@ -435,6 +437,7 @@
 
   <!-- Begin Mobile Menu -->
 
+{% block custom_mobile_menu %}
   <div class="mobile-main-menu">
     <div class="container-fluid">
       <div class="container">
@@ -491,6 +494,7 @@
       </div>
     </div>
   </div>
+{% endblock %}
 
   <!-- End Mobile Menu -->
 

@@ -5,7 +5,7 @@
 <link href="https://voxel51.com/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet">
 {% endblock %}
 
-{% block customheader %}
+{% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
   <nav id="nav__main" class="nav__main">
     <div class="nav__main__logo">
@@ -47,6 +47,10 @@
     </div>
   </nav>
 </div>
+{% endblock %}
+
+{% block custom_mobile_menu %}
+{# delete PyTorch's menu because our own is reused on mobile #}
 {% endblock %}
 
 {% block content %}
