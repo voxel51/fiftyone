@@ -20,7 +20,7 @@ const StyledContainer = styled.div`
   height: 100%;
 `;
 
-let date;
+let timeout;
 
 export const Container = ({ children }) => {
   useTrackMousePosition();
@@ -51,16 +51,12 @@ export const Container = ({ children }) => {
       setMainPreviousWidth(mainSizeValue[0]);
       setMainTop(top);
       !mainLoadedValue && setMainLoaded(true);
-      const compare = date;
-      setTimeout(() => {
-        if (compare === date) setIsMainWidthResizing(false);
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        setIsMainWidthResizing(false);
       }, 1000);
     });
   }, [contentRect]);
-
-  useEffect(() => {
-    date = Date.now();
-  });
 
   return <StyledContainer ref={ref}>{children}</StyledContainer>;
 };

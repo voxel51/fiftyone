@@ -242,14 +242,13 @@ export const pageParams = selector({
   },
 });
 
-export const itemAdjustedPosition = selectorFamily({
-  key: "itemAdjustedPosition",
+export const itemPosition = selectorFamily({
+  key: "itemPosition",
   get: (itemIndex) => ({ get }) => {
     const id = get(itemData(itemIndex));
-    const ibp = get(itemBasePosition(itemIndex));
     return {
-      top: id.top - ibp.top,
-      left: id.left - ibp.left,
+      top: id.top,
+      left: id.left,
     };
   },
 });

@@ -154,6 +154,7 @@ class StateController(Namespace):
         Returns:
             the list of sample dicts for the page
         """
+        print("page")
         state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view

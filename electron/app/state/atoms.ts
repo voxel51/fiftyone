@@ -92,3 +92,8 @@ export const resizeWait = atom({
   key: "resizeWait",
   default: 0,
 });
+
+export const current = atomFamily({
+  key: "current",
+  default: null,
+});
