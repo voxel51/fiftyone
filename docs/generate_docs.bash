@@ -42,12 +42,6 @@ if [[ ${CLEAN_BUILD} = true ]]; then
 fi
 
 
-if ! python -c "import pytorch_sphinx_theme; assert 'voxel51' in pytorch_sphinx_theme.__version__" 2>/dev/null; then
-    echo "**** Installing theme ****"
-    pip install -e "${THIS_DIR}/theme"
-fi
-
-
 echo "**** Generating documentation ****"
 
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]

@@ -71,6 +71,7 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 html_theme = "pytorch_sphinx_theme"
+html_theme_path = ["../theme"]
 html_theme_options = {
     "pytorch_project": "docs",
 }
