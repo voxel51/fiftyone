@@ -5,12 +5,14 @@ repos:
       - id: blacken-docs
         additional_dependencies: [black==19.10b0]
         args: ["-l 79"]
+        exclude: ^docs/theme/
   - repo: https://github.com/ambv/black
     rev: 19.10b0
     hooks:
       - id: black
         language_version: python3.6
         args: ["-l 79"]
+        exclude: ^docs/theme/
   - repo: local
     hooks:
       - id: pylint
@@ -19,6 +21,7 @@ repos:
         files: \.py$
         entry: pylint
         args: ["--errors-only"]
+        exclude: ^docs/theme/
   - repo: local
     hooks:
       - id: ipynb-strip
@@ -32,3 +35,4 @@ repos:
     rev: 2.0.5
     hooks:
       - id: prettier
+        exclude: ^docs/theme/
