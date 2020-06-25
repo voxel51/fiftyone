@@ -88,6 +88,7 @@ html_static_path = ["_static"]
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
 html_css_files = ["css/voxel51-website.css", "css/custom.css"]
+html_js_files = ["js/voxel51-website.js"]
 
 html_context = {
     "address_main_line1": "410 N 4th Ave, 3rd Floor",
