@@ -74,3 +74,10 @@ article.pytorch-article pre {
   border-left: 3px solid var(--color-primary);
   padding-left: 3px;
 }
+
+.pytorch-right-menu li.current-section > a.reference.internal.expanded:before,
+.pytorch-right-menu
+  li.current-section
+  > a.reference.internal.not-expanded:before {
+  margin-left: -3px;
+}

@@ -3,7 +3,7 @@ $(function () {
     (a, b) => $(a).offset().top - $(b).offset().top
   );
 
-  $(window).on("scroll", function () {
+  function updateSidebar() {
     let currentSection = undefined;
     for (let i = sections.length - 1; i >= 0; i--) {
       if (
@@ -20,7 +20,12 @@ $(function () {
         .removeClass("current-section")
         .filter(":not(:has(a.title-link))")
         .filter(':has(a[href="#' + currentSection + '"])')
+        .filter(":visible")
+        .filter(":last")
         .addClass("current-section");
     }
-  });
+  }
+
+  $(window).on("scroll", updateSidebar);
+  $(".pytorch-right-menu").on("click", updateSidebar);
 });
