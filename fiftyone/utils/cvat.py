@@ -94,6 +94,127 @@ class CVATImageSampleParser(foud.LabeledImageSampleParser):
         return cvat_image.to_detections()
 
 
+class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
+    """Importer for CVAT image datasets stored on disk.
+
+    See :class:`fiftyone.types.CVATImageDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    def __init__(self, dataset_dir):
+        super().__init__(dataset_dir)
+        self._data_dir = None
+        self._labels_path = None
+        self._images_map = None
+        self._filenames = None
+        self._iter_filenames = None
+
+    def __iter__(self):
+        self._iter_filenames = iter(self._filenames)
+        return self
+
+    def __len__(self):
+        return len(self._filenames)
+
+    def __next__(self):
+        filename = next(self._iter_filenames)
+
+        image_path = os.path.join(self._data_dir, filename)
+        cvat_image = self._images_map[filename]
+        image_metadata = fom.ImageMetadata(
+            width=cvat_image.width, height=cvat_image.height,
+        )
+        detections = cvat_image.to_detections()
+
+        return image_path, image_metadata, detections
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        self._data_dir = os.path.join(self.dataset_dir, "data")
+        self._labels_path = os.path.join(self.dataset_dir, "labels.xml")
+
+        _, cvat_images = load_cvat_image_annotations(self._labels_path)
+
+        # Index by filename
+        self._images_map = {i.name: i for i in cvat_images}
+
+        self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+
+class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
+    """Exporter that writes CVAT image datasets to disk.
+
+    See :class:`fiftyone.types.CVATImageDataset` for format details.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._data_dir = None
+        self._labels_path = None
+        self._cvat_images = None
+        self._data_filename_counts = None
+
+    @property
+    def requires_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._labels_path = os.path.join(self.export_dir, "labels.xml")
+        self._cvat_images = []
+        self._data_filename_counts = defaultdict(int)
+
+        etau.ensure_dir(self._data_dir)
+
+    def export_sample(self, image_path, detections, metadata=None):
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        self._data_filename_counts[name] += 1
+
+        count = self._data_filename_counts[name]
+        if count > 1:
+            name += "-%d" + count
+
+        out_filename = name + ext
+        out_image_path = os.path.join(self._data_dir, out_filename)
+
+        etau.copy_file(image_path, out_image_path)
+
+        if metadata is None:
+            metadata = fom.ImageMetadata.build_for(image_path)
+
+        cvat_image = CVATImage.from_detections(detections, metadata)
+
+        cvat_image.id = len(self._cvat_images)
+        cvat_image.name = out_filename
+
+        self._cvat_images.append(cvat_image)
+
+    def close(self, *args):
+        # Build task labels
+        cvat_task_labels = CVATTaskLabels.from_cvat_images(self._cvat_images)
+
+        # Write annotations
+        logger.info("Writing labels to '%s'", self._labels_path)
+        writer = CVATImageAnnotationWriter()
+        writer.write(cvat_task_labels, self._cvat_images, self._labels_path)
+
+
 class CVATTaskLabels(object):
     """Description of the labels in a CVAT image annotation task.
 
@@ -511,44 +632,6 @@ class CVATImageAnnotationWriter(object):
         etau.write_file(xml_str, xml_path)
 
 
-def parse_cvat_image_dataset(dataset_dir):
-    """Parses the CVAT image dataset stored in the given directory.
-
-    See :class:`fiftyone.types.CVATImageDataset` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-
-    Returns:
-        a list of ``(img_path, image_metadata, detections)`` tuples
-    """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_path = os.path.join(dataset_dir, "labels.xml")
-
-    _, cvat_images = load_cvat_image_annotations(labels_path)
-
-    # Index by filename
-    images_map = {i.name: i for i in cvat_images}
-
-    filenames = etau.list_files(data_dir, abs_paths=False)
-
-    samples = []
-    for filename in filenames:
-        img_path = os.path.join(data_dir, filename)
-
-        cvat_image = images_map[filename]
-
-        metadata = fom.ImageMetadata(
-            width=cvat_image.width, height=cvat_image.height,
-        )
-
-        detections = cvat_image.to_detections()
-
-        samples.append((img_path, metadata, detections))
-
-    return samples
-
-
 def load_cvat_image_annotations(xml_path):
     """Loads the CVAT image annotations from the given XML file.
 
@@ -577,73 +660,6 @@ def load_cvat_image_annotations(xml_path):
     cvat_images = [CVATImage.from_image_dict(id) for id in image_dicts]
 
     return cvat_task_labels, cvat_images
-
-
-def export_cvat_image_dataset(samples, label_field, dataset_dir):
-    """Exports the given samples to disk as a CVAT image dataset.
-
-    See :class:`fiftyone.types.CVATImageDataset` for format details.
-
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
-
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the :class:`fiftyone.core.labels.Detections`
-            field of the samples to export
-        dataset_dir: the directory to which to write the dataset
-    """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_path = os.path.join(dataset_dir, "labels.xml")
-
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.CVATImageDataset),
-    )
-
-    etau.ensure_dir(data_dir)
-
-    # Write images
-    cvat_images = []
-    data_filename_counts = defaultdict(int)
-    with fou.ProgressBar() as pb:
-        for idx, sample in enumerate(pb(samples)):
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            data_filename_counts[name] += 1
-
-            count = data_filename_counts[name]
-            if count > 1:
-                name += "-%d" + count
-
-            out_filename = name + ext
-            out_img_path = os.path.join(data_dir, out_filename)
-
-            etau.copy_file(img_path, out_img_path)
-
-            metadata = sample.metadata
-            if metadata is None:
-                metadata = fom.ImageMetadata.build_for(img_path)
-
-            detections = sample[label_field]
-            cvat_image = CVATImage.from_detections(detections, metadata)
-
-            cvat_image.id = idx
-            cvat_image.name = out_filename
-
-            cvat_images.append(cvat_image)
-
-    # Build task labels
-    cvat_task_labels = CVATTaskLabels.from_cvat_images(cvat_images)
-
-    # Write annotations
-    writer = CVATImageAnnotationWriter()
-    writer.write(cvat_task_labels, cvat_images, labels_path)
-
-    logger.info("Dataset created")
 
 
 def _ensure_list(value):
