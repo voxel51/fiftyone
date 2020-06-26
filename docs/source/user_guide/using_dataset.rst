@@ -1,19 +1,20 @@
 Using FiftyOne Datasets
 =======================
 
+.. include:: ../substitutions.rst
 .. default-role:: code
 
-After a `Dataset` has been loaded or created, FiftyOne provides powerful
-functionality to inspect, search, and modify it from a `Dataset`-wide down to a
-`Sample` level.
+After a |Dataset2|_ has been loaded or created, FiftyOne provides powerful
+functionality to inspect, search, and modify it from a |Dataset|-wide down to a
+|Sample| level.
 
-The following sections provide details of how to use various aspects of
-FiftyOne `Datasets`.
+The following sections provide details of how to use various aspects of a
+FiftyOne |Dataset|.
 
 Datasets
 ________
 
-Instantiating a `Dataset` creates a **new** dataset.
+Instantiating a |Dataset| creates a **new** dataset.
 
 .. code-block:: python
 
@@ -23,14 +24,15 @@ Instantiating a `Dataset` creates a **new** dataset.
     dataset2 = fo.Dataset(name="my_second_dataset")
     dataset3 = fo.Dataset(name="my_third_dataset")
 
-Check to see what datasets exist at any time via `list_dataset_names()`.
+Check to see what datasets exist at any time via :meth:`list_dataset_names()
+<fiftyone.core.dataset.list_dataset_names>`.
 
 .. code-block:: python
 
     print(fo.list_dataset_names())
     # ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
 
-Load a dataset using `load_dataset()`. Dataset objects are singletons. Cool!
+Load a dataset using :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`. Dataset objects are singletons. Cool!
 
 .. code-block:: python
 
@@ -38,7 +40,7 @@ Load a dataset using `load_dataset()`. Dataset objects are singletons. Cool!
     dataset2_reference is dataset2  # True
 
 If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
-`load_dataset()` you're going to have a bad time.
+:meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to have a bad time.
 
 .. code-block:: python
 
@@ -62,7 +64,7 @@ To make a dataset persistent, set the attribute to `True`.
     dataset1.persistent = True
     quit()
 
-Start a new session:
+Start a new python session:
 
 .. code-block:: python
 
@@ -77,9 +79,9 @@ they were not persistent.
 Deleting a Dataset
 ------------------
 
-Delete a dataset explicitly via `Dataset.delete()`. Once a dataset is deleted,
-any existing reference in memory will be in a volatile state. `Dataset.name`
-and `Dataset.deleted` will still be valid attributes, but calling any other
+Delete a dataset explicitly via :meth:`Dataset.delete() <fiftyone.core.dataset.Dataset.delete>`. Once a dataset is deleted,
+any existing reference in memory will be in a volatile state. :class:`Dataset.name <fiftyone.core.dataset.Dataset>`
+and :class:`Dataset.deleted <fiftyone.core.dataset.Dataset>` will still be valid attributes, but calling any other
 attribute or method will raise a `DoesNotExistError`.
 
 .. code-block:: python
@@ -102,7 +104,7 @@ attribute or method will raise a `DoesNotExistError`.
 Samples
 _______
 
-Individual `Samples` are always initialized with a file path to the
+An individual |Sample| is always initialized with a file path to the
 corresponding image on disk. The image is not read at this point:
 
 .. code-block:: python
@@ -112,14 +114,14 @@ corresponding image on disk. The image is not read at this point:
 Adding Samples to a Dataset
 ---------------------------
 
-A `Sample` can easily be added to an existing `Dataset`:
+A |Sample| can easily be added to an existing |Dataset|:
 
 .. code-block:: python
 
     dataset = fo.Dataset(name="example_dataset")
     dataset.add_sample(sample)
 
-When a `Sample` is added to a `Dataset`, the related attributes of the `Sample`
+When a |Sample| is added to a |Dataset|, the related attributes of the |Sample|
 are automatically updated:
 
 .. code-block:: python
@@ -130,15 +132,15 @@ are automatically updated:
     print(sample.dataset_name)
     # example_dataset
 
-Every `Sample` in a `Dataset` is given a unique ID when it is added:
+Every |Sample| in a |Dataset| is given a unique ID when it is added:
 
 .. code-block:: python
 
     print(sample.id)
     # 5ee0ebd72ceafe13e7741c42
 
-A batch of multiple `Samples` can be added to a `Dataset` at the same time by
-providing a list of `Samples`:
+A batch of multiple |Sample| objects can be added to a |Dataset| at the same time by
+providing a list of samples:
 
 .. code-block:: python
 
@@ -159,17 +161,17 @@ providing a list of `Samples`:
 Accessing samples in a Dataset
 ------------------------------
 
-FiftyOne provides multiple ways to access `Samples` in a `Dataset`.
+FiftyOne provides multiple ways to access a |Sample| in a |Dataset|.
 
-`Datasets` are iterable allowing all `Samples` to be accessed one at a time:
+A |Dataset| is iterable allowing every |Sample| to be accessed one at a time:
 
 .. code-block:: python
 
     for sample in dataset:
         print(sample)
 
-A `Sample` can be accessed directly from a `Dataset` by its ID. The `Samples`
-that are returned when accessing a `Dataset` will always provide the same
+A |Sample| can be accessed directly from a |Dataset| by its ID. The |Sample|
+that is returned when accessing a |Dataset| will always provide the same
 instance:
 
 .. code-block:: python
@@ -179,13 +181,13 @@ instance:
     print(same_sample is sample)
     # True
 
-More ways of accessing `Samples` are provided through `DatasetViews` described
+More ways of accessing samples are provided through a |DatasetView| described
 below.
 
 Removing samples from a Dataset
 -------------------------------
 
-`Samples` can be removed from a `Dataset` through their ID, either one at a
+Samples can be removed from a |Dataset| through their ID, either one at a
 time or in a batch:
 
 .. code-block:: python
@@ -194,8 +196,8 @@ time or in a batch:
 
     dataset.remove_samples([sample_id2, sample_id3])
 
-`Samples` can also be removed from a `Dataset` by using the sample's ID or the
-`Sample` instance:
+Samples can also be removed from a |Dataset| by using the sample's ID or the
+|Sample| instance:
 
 .. code-block:: python
 
@@ -205,8 +207,8 @@ time or in a batch:
     sample = dataset[sample_id]
     dataset.remove_sample(sample)
 
-In the latter case, where the `Sample` is in memory, it will behave the same as
-a `Sample` that has never been added to the `Dataset`:
+In the latter case, where the |Sample| is in memory, it will behave the same as
+a |Sample| that has never been added to the |Dataset|:
 
 .. code-block:: python
 
@@ -222,23 +224,23 @@ a `Sample` that has never been added to the `Dataset`:
 Fields
 ______
 
-`Fields` are attributes of `Samples` that are shared across all `Samples` in a
-`Dataset`.
+A |Field| is an attribute of a |Sample| that is shared across all samples in a
+|Dataset|.
 
-By default, a `Dataset` and the `Samples` therein have `Fields`
-`filepath`, `metadata` and `tags`. `filepath` is a required parameter.
+By default, a |Dataset| and the samples therein have fields
+`filepath`, `metadata`, and `tags`. `filepath` is a required parameter.
 
 Accessing fields of a Sample
 ----------------------------
 
-The names of available fields can be checked on any individual `Sample`:
+The names of available fields can be checked on any individual |Sample|:
 
 .. code-block:: python
 
     sample.field_names
     # ('filepath', 'tags', 'metadata')
 
-Only the `Dataset` has any notion of a field "schema", which specifies the
+Only the |Dataset| has any notion of a field "schema", which specifies the
 field types:
 
 .. code-block:: python
@@ -266,7 +268,7 @@ To to simply view the field schema print the dataset:
     #     tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
     #     metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
-The value of a `Field` for a given `Sample` can be accessed either by key or
+The value of a |Field| for a given |Sample| can be accessed either by key or
 attribute access:
 
 .. code-block:: python
@@ -277,14 +279,14 @@ attribute access:
 Adding fields to a Sample
 -------------------------
 
-New fields can be added to a `Sample` using key assignment:
+New fields can be added to a |Sample| using key assignment:
 
 .. code-block:: python
 
     sample["integer_field"] = 51
     sample.save()
 
-If this `Sample` is in a `Dataset` the field schema will be automatically
+If this |Sample| is in a |Dataset| the field schema will be automatically
 updated:
 
 .. code-block:: python
@@ -300,19 +302,19 @@ updated:
     #     metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
     #     integer_field: fiftyone.core.fields.IntField
 
-`Fields` can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
-`dict`, or more complex data structures like `Labels`:
+A |Field| can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
+`dict`, or more complex data structures like |Label|:
 
 .. code-block:: python
 
     sample["ground_truth"] = fo.Classification(label="alligator")
     sample.save()
 
-Whenever a new `Field` is added to one `Sample` in a `Dataset`, that `Field` is
-added to all other `Samples` in the `Dataset` with the value `None`.
+Whenever a new |Field| is added to one |Sample| in a |Dataset|, that |Field| is
+added to every other |Sample| in the |Dataset| with the value `None`.
 
-A `Field` must be the same type across every `Sample` in the `Dataset`. Setting
-a `Field` to an inappropriate type raises a `ValidationError`:
+A |Field| must be the same type across every |Sample| in the |Dataset|. Setting
+a |Field| to an inappropriate type raises a `ValidationError`:
 
 .. code-block:: python
 
@@ -322,13 +324,13 @@ a `Field` to an inappropriate type raises a `ValidationError`:
 
 .. note::
 
-    If the `Sample` is in a `Dataset`, then `sample.save()` must be used
-    whenever the `Sample` is updated.
+    If the |Sample| is in a |Dataset|, then :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
+    whenever the |Sample| is updated.
 
 Removing fields from a Sample
 -----------------------------
 
-A `Field` can be deleted from a `Sample` using `del`:
+A |Field| can be deleted from a |Sample| using `del`:
 
 .. code-block:: python
 
@@ -336,8 +338,8 @@ A `Field` can be deleted from a `Sample` using `del`:
     print(sample.integer_field)
     # None
 
-A `Field` can be removed from a `Dataset`, in which case it is deleted for
-every `Sample` in the `Dataset`:
+A |Field| can be removed from a |Dataset|, in which case it is deleted for
+every |Sample| in the |Dataset|:
 
 .. code-block:: python
 
@@ -348,7 +350,7 @@ every `Sample` in the `Dataset`:
 Tags
 ----
 
-`Sample.tags` is a special `ListField` that every `Sample` has by default.
+`Sample.tags` is a special :class:`ListField <fiftyone.core.fields.ListField>` that every |Sample| has by default.
 `tags` is just a list of strings, provided for convenience. For example, tags
 can be used to define dataset splits or mark low quality images:
 
@@ -375,17 +377,17 @@ can be used to define dataset splits or mark low quality images:
 
 .. note::
 
-    If the `Sample` is in a `Dataset`, then `sample.save()` must be used
-    whenever the `Sample` is updated.
+    If the |Sample| is in a |Dataset|, then `sample.save()` must be used
+    whenever the |Sample| is updated.
 
 DatasetViews
 ____________
 
-FiftyOne provides a powerful and flexible class, `DatasetView`, for accessing
-subsets of `Samples`.
-The default view of a `Dataset` encompasses the entire `Dataset`, with
+FiftyOne provides a powerful and flexible class, |DatasetView|, for accessing
+subsets of samples.
+The default view of a |Dataset| encompasses the entire |Dataset|, with
 unpredictable sort order.
-Basic ways to explore `DatasetViews` are available:
+Basic ways to explore a |DatasetView| are available:
 
 .. code-block:: python
 
@@ -404,9 +406,9 @@ Basic ways to explore `DatasetViews` are available:
 Accessing Samples in DatasetViews
 ---------------------------------
 
-Use `DatasetView.first()` to get the first sample in a `DatasetView` or
-`DatasetView.take(x)` to get a new `DatasetView` containing `x` random
-`Samples`:
+Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first()>` to get the first sample in a |DatasetView| or
+:meth:`DatasetView.take(x) <fiftyone.core.view.DatasetView.take>` to get a new
+|DatasetView| containing `x` random |Sample| objects:
 
 .. code-block:: python
 
@@ -417,7 +419,7 @@ Use `DatasetView.first()` to get the first sample in a `DatasetView` or
     print(len(new_view))
     # 2
 
-Ranges of `Samples` can be accessed using `skip()` and `limit()` or
+Ranges of |Sample| objects can be accessed using :meth:`skip() <fiftyone.core.view.DatasetView.skip>` and :meth:`limit() <fiftyone.core.view.DatasetView.limit>` or
 equivalently through array slicing:
 
 .. code-block:: python
@@ -438,8 +440,8 @@ not supported (this is not an efficient operation with FiftyOne datasets):
     view[0]
     # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
 
-As with `Datasets`, `Samples` in a `DatasetView` can be accessed by ID and
-`DatasetViews` are iterable:
+As with a |Dataset|, a |Sample| in a |DatasetView| can be accessed by ID and
+a |DatasetView| is iterable:
 
 .. code-block:: python
 
@@ -451,8 +453,8 @@ As with `Datasets`, `Samples` in a `DatasetView` can be accessed by ID and
 Sorting
 -------
 
-The `Samples` in a `DatasetView` can be sorted (forward or in reverse) by any
-`Field`:
+The samples in a |DatasetView| can be sorted (forward or in reverse) by any
+|Field|:
 
 .. code-block:: python
 
@@ -462,7 +464,8 @@ The `Samples` in a `DatasetView` can be sorted (forward or in reverse) by any
 Querying
 --------
 
-`DatasetViews` can be queried using `match()`. The syntax follows
+A |DatasetView| can be queried using :meth:`match()
+<fiftyone.core.view.DatasetView.match>`. The syntax follows
 `MongoDB queries <https://docs.mongodb.com/manual/tutorial/query-documents/>`_:
 
 .. code-block:: python
@@ -472,8 +475,8 @@ Querying
 
 Convenience functions for common queries are also available.
 
-`DatasetViews` can be created by matching lists of `Sample` IDs, either to only
-include given `Samples` or to include all but the given `Samples`:
+A |DatasetView| can be created by matching lists of |Sample| IDs, either to only
+include given a |Sample| or to include all but the given |Sample|:
 
 .. code-block:: python
 
@@ -481,8 +484,8 @@ include given `Samples` or to include all but the given `Samples`:
     included = dataset.view().select(sample_ids)
     excluded = dataset.view().exclude(sample_ids)
 
-A `DatasetView` can also be filtered to only include `Samples` for which a
-given `Field` exists and is not `None`:
+A |DatasetView| can also be filtered to only include samples for which a
+given |Field| exists and is not ``None``:
 
 .. code-block:: python
 
@@ -506,7 +509,7 @@ All of the aformentioned view stages can be chained together:
 Removing a batch of samples from a Dataset
 ------------------------------------------
 
-All `Samples` in a given `DatasetView` can be removed from a `Dataset` with a
+Every |Sample| in a given |DatasetView| can be removed from a |Dataset| with a
 single command:
 
 .. code-block:: python

@@ -12,16 +12,16 @@ the CLI.
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
-    The Dataset Zoo is accessible via the ``fiftyone.zoo`` package.
+    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo` package.
 
   .. group-tab:: CLI
 
     The ``fiftyone zoo`` CLI command provides convenient utilities for
     working with datasets in the FiftyOne Dataset Zoo:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo -h
 
@@ -45,12 +45,12 @@ Listing zoo datasets
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     You can list the available zoo datasets via the
-    ``fiftyone.zoo.list_zoo_datasets()`` method:
+    :meth:`fiftyone.zoo.list_zoo_datasets()` method:
 
-    .. code:: py
+    .. code-block:: python
 
         import fiftyone.zoo as foz
 
@@ -58,7 +58,7 @@ Listing zoo datasets
 
         print(available_datasets)
 
-    ::
+    .. code-block:: text
 
         ['coco-2014',
          'coco-2017',
@@ -73,9 +73,9 @@ Listing zoo datasets
          'caltech101']
 
     To view the zoo datasets that you have downloaded, you can use the
-    ``fiftyone.zoo.list_downloaded_zoo_datasets()`` method:
+    :meth:`fiftyone.zoo.list_downloaded_zoo_datasets()` method:
 
-    .. code:: py
+    .. code-block:: python
 
         from pprintpp import pprint
         import fiftyone.zoo as foz
@@ -83,7 +83,7 @@ Listing zoo datasets
         downloaded_datasets = foz.list_downloaded_zoo_datasets()
         pprint(downloaded_datasets)
 
-    ::
+    .. code-block:: json
 
         {
             'cifar10': (
@@ -102,7 +102,7 @@ Listing zoo datasets
     You can access information about the available zoo datasets via the
     ``fiftyone zoo list`` command:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo list -h
 
@@ -127,7 +127,7 @@ Listing zoo datasets
     For example, to list the available zoo datasets and whether you have
     downloaded them, you can execute:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo list
 
@@ -175,15 +175,15 @@ Getting information about zoo datasets
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
-    Each zoo dataset is represented by a ``fiftyone.zoo.ZooDataset``
+    Each zoo dataset is represented by a :class:`fiftyone.zoo.ZooDataset`
     subclass, which contains information about the dataset, its available
     splits, and more.
 
     For example, let's print some information about the CIFAR-10 dataset:
 
-    .. code:: py
+    .. code-block:: python
 
         import fiftyone.zoo as foz
 
@@ -195,7 +195,7 @@ Getting information about zoo datasets
         print("***** Supported splits *****")
         print("%s\n" % ", ".join(zoo_dataset.supported_splits))
 
-    ::
+    .. code-block:: text
 
         ***** Dataset description *****
         The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
@@ -211,19 +211,19 @@ Getting information about zoo datasets
         ***** Supported splits *****
         test, train
 
-    When a zoo dataset is downloaded, a ``fiftyone.zoo.ZooDatasetInfo``
+    When a zoo dataset is downloaded, a :class:`fiftyone.zoo.ZooDatasetInfo`
     instance is created in its root directory that contains additional
     information about the dataset, including which splits have been
     downloaded (if applicable).
 
-    You can load the ``fiftyone.zoo.ZooDatasetInfo`` instance for a
-    downloaded dataset via the ``fiftyone.zoo.load_zoo_dataset_info()``
+    You can load the :class:`fiftyone.zoo.ZooDatasetInfo` instance for a
+    downloaded dataset via the :meth:`fiftyone.zoo.load_zoo_dataset_info()`
     method.
 
     For example, let's print some information about the CIFAR-10 dataset
     (assuming it is downloaded):
 
-    .. code:: py
+    .. code-block:: python
 
         import fiftyone.zoo as foz
 
@@ -236,7 +236,7 @@ Getting information about zoo datasets
         print("\n***** Dataset info *****")
         print(info)
 
-    ::
+    .. code-block:: text
 
         ***** Dataset location *****
         /Users/Brian/fiftyone/cifar10
@@ -269,10 +269,10 @@ Getting information about zoo datasets
 
   .. group-tab:: CLI
 
-        You can view detailed information about a dataset (either downloaded or
+    You can view detailed information about a dataset (either downloaded or
     not) via the ``fiftyone zoo info`` command:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo info -h
         usage: fiftyone zoo info [-h] [-b BASE_DIR] NAME
@@ -298,7 +298,7 @@ Getting information about zoo datasets
 
     For example, you can view information about the CIFAR-10 dataset:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo info cifar10
 
@@ -354,20 +354,20 @@ Downloading zoo datasets
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     You can download zoo datasets (or individual split(s) of them) from the
-    web via the ``fiftyone.zoo.download_zoo_dataset()`` method.
+    web via the :meth:`fiftyone.zoo.download_zoo_dataset()` method.
 
     For example, let's download the ``train`` split of CIFAR-10:
 
-    .. code:: py
+    .. code-block:: python
 
         import fiftyone.zoo as foz
 
         dataset = foz.download_zoo_dataset("cifar10", split="train")
 
-    ::
+    .. code-block:: text
 
         Downloading split 'train' to '/Users/Brian/fiftyone/cifar10/train'
         Downloading https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz to /Users/Brian/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz
@@ -384,7 +384,7 @@ Downloading zoo datasets
     You can download zoo datasets (or individual splits of them) from the
     web via the ``fiftyone zoo download`` command:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo download -h
 
@@ -417,7 +417,7 @@ Downloading zoo datasets
     For example, you can download the test split of the CIFAR-10 dataset as
     follows:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo download cifar10 --splits test
 
@@ -436,14 +436,14 @@ Loading zoo datasets into FiftyOne
 
 .. tabs::
 
-  .. group-tab:: python
+  .. group-tab:: Python
 
     You can load a zoo dataset (or individual split(s) of them) via the
-    ``fiftyone.zoo.load_zoo_dataset()`` method. By default, the dataset will
+    :meth:`fiftyone.zoo.load_zoo_dataset()` method. By default, the dataset will
     be automatically downloaded from the web the first time you access it if
     it is not already downloaded:
 
-    .. code:: py
+    .. code-block:: python
 
         import fiftyone.zoo as foz
 
@@ -461,7 +461,7 @@ Loading zoo datasets into FiftyOne
     After a zoo dataset has been downloaded from the web, you can load it as
     a FiftyOne dataset via the ``fiftyone zoo load`` command:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo load -h
 
@@ -493,7 +493,7 @@ Loading zoo datasets into FiftyOne
     For example, you can load the test split of the CIFAR-10 dataset as
     follows:
 
-    ::
+    .. code-block:: text
 
         $ fiftyone zoo load cifar10 --splits test
 
@@ -512,7 +512,7 @@ You can customize this directory in any of the following ways:
 
 -  Directly editing your FiftyOne config at ``~/.fiftyone/config.json``
 
-.. code:: shell
+.. code-block:: shell
 
     # Print your current config
     fiftyone config
@@ -522,7 +522,7 @@ You can customize this directory in any of the following ways:
 
 -  Setting the ``FIFTYONE_DEFAULT_DATASET_DIR`` environment variable
 
-.. code:: shell
+.. code-block:: shell
 
     # Customize where zoo datasets are downloaded
     export FIFTYONE_DEFAULT_DATASET_DIR=/your/custom/directory
@@ -530,7 +530,7 @@ You can customize this directory in any of the following ways:
 -  Setting the ``default_dataset_dir`` config setting from your Python
    code
 
-.. code:: py
+.. code-block:: python
 
     # Customize where zoo datasets are downloaded
     import fiftyone.core.config as foc
@@ -540,29 +540,28 @@ You can customize this directory in any of the following ways:
 Customizing your ML backend
 ---------------------------
 
-Behind the scenes, FiftyOne uses the `TensorFlow
-Datasets <https://www.tensorflow.org/datasets>`__ or `TorchVision
-Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`__
-libraries to wrangle the datasets, depending on which ML library you
-have installed. In order to load datasets using TF, you must have the
-`tensorflow-datasets <https://pypi.org/project/tensorflow-datasets>`__
-package installed on your machine. In order to load datasets using
-PyTorch, you must have the `torch <https://pypi.org/project/torch>`__
-and `torchvision <https://pypi.org/project/torchvision>`__ packages
-installed.
+Behind the scenes, FiftyOne uses the
+`TensorFlow Datasets <https://www.tensorflow.org/datasets>`_ or
+`TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_
+libraries to wrangle the datasets, depending on which ML library you have
+installed. In order to load datasets using TF, you must have the
+`tensorflow-datasets <https://pypi.org/project/tensorflow-datasets>`_
+package installed on your machine. In order to load datasets using PyTorch, you
+must have the `torch <https://pypi.org/project/torch>`_ and
+`torchvision <https://pypi.org/project/torchvision>`_ packages installed.
 
 Note that the ML backends may expose different datasets.
 
-By default, FiftyOne will use whichever ML backend is necessary to
-download the requested zoo dataset. If a dataset is available through
-both backends, it will use the backend specified by the
-``fo.config.default_ml_backend`` setting in your FiftyOne config.
+By default, FiftyOne will use whichever ML backend is necessary to download the
+requested zoo dataset. If a dataset is available through both backends, it will
+use the backend specified by the `fo.config.default_ml_backend` setting in your
+FiftyOne config.
 
 You can customize this backend in any of the following ways:
 
--  Directly editing your FiftyOne config at ``~/.fiftyone/config.json``
+-  Directly editing your FiftyOne config at `~/.fiftyone/config.json`:
 
-.. code:: shell
+.. code-block:: shell
 
     # Print your current config
     fiftyone config
@@ -570,17 +569,16 @@ You can customize this backend in any of the following ways:
     # Locate your config, and then edit it
     fiftyone constants FIFTYONE_CONFIG_PATH
 
--  Setting the ``FIFTYONE_DEFAULT_ML_BACKEND`` environment variable
+-  Setting the ``FIFTYONE_DEFAULT_ML_BACKEND`` environment variable:
 
-.. code:: shell
+.. code-block:: shell
 
     # Use the `tensorflow` backend
     export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
 
--  Setting the ``default_ml_backend`` config setting from your Python
-   code
+-  Setting the `default_ml_backend` config setting from your Python code:
 
-.. code:: py
+.. code-block:: python
 
     # Use the `torch` backend
     import fiftyone.core.config as foc

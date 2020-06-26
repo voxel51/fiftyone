@@ -1,6 +1,7 @@
 FiftyOne Recipes
 ================
 
+.. include:: ../substitutions.rst
 .. default-role:: code
 
 Welcome to FiftyOne recipes!
@@ -23,7 +24,7 @@ workflows.
 
 .. rubric:: :doc:`Remove duplicate images from a dataset<image_deduplication>`
 
-Turn your data into a `FiftyOne Dataset` and automatically find and remove
+Turn your data into a FiftyOne |Dataset| and automatically find and remove
 duplicate and near-duplicate images from your dataset.
 
 .. code-block:: python
