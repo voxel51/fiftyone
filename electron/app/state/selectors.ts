@@ -165,6 +165,13 @@ export const segmentData = selectorFamily({
   },
 });
 
+export const itemsToRender = selector({
+  key: "itemsToRender",
+  get: ({ get }) => {
+    return [...Array(50).keys()];
+  },
+});
+
 export const itemKey = selectorFamily({
   key: "itemKey",
   get: (itemIndex) => ({ get }) => {
@@ -235,8 +242,6 @@ export const pageParams = selector({
     const [mw, unused] = get(mainSize);
     const gm = get(gridMargin);
     return {
-      margin: gm,
-      width: mw,
       length: ipr,
     };
   },
@@ -279,5 +284,24 @@ export const isMainResizing = selector({
     const [mw, unused] = get(mainSize);
     const mpw = get(mainPreviousWidth);
     return mpw === mw;
+  },
+});
+
+export const segmentsToRender = selector({
+  key: "segmentsToRender",
+  get: ({ get }) => {
+    return [0];
+  },
+});
+
+export const itemsToRenderInSegment = selectorFamily({
+  key: "itemsToRenderInSegment",
+  get: (segmentIndex) => ({ get }) => {
+    return [...Array(50).keys()].map((k) => {
+      return {
+        itemIndex: k,
+        itemKey: k,
+      };
+    });
   },
 });

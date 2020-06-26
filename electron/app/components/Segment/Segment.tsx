@@ -5,7 +5,7 @@ import { useRecoilValue } from "recoil";
 import { Item } from "../Player51";
 
 import { mainLoaded } from "../../state/atoms";
-import { segmentItemIndices } from "../../state/selectors";
+import { itemsToRenderInSegment } from "../../state/selectors";
 
 const SegmentDiv = styled.div`
   position: relative;
@@ -14,14 +14,16 @@ const SegmentDiv = styled.div`
 `;
 
 const Segment = ({ index }) => {
-  const itemIndicesValue = useRecoilValue(segmentItemIndices(index));
+  const itemsToRenderInSegmentValue = useRecoilValue(
+    itemsToRenderInSegment(index)
+  );
   const mainLoadedValue = useRecoilValue(mainLoaded);
 
   if (!mainLoadedValue) return null;
 
   return (
     <SegmentDiv>
-      {itemIndicesValue.map((key, index) => (
+      {itemsToRenderInSegmentValue.map((unused, { key, index }) => (
         <Item key={key} index={index} />
       ))}
     </SegmentDiv>
