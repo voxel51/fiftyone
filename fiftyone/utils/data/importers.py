@@ -26,7 +26,10 @@ import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.sample as fos
+import fiftyone.core.utils as fou
 
 from .parsers import (
     ImageClassificationSampleParser,
@@ -50,13 +53,32 @@ class DatasetImporter(object):
         return self
 
     def __exit__(self, *args):
-        self.close()
+        self.close(*args)
 
     def __iter__(self):
         return self
 
+    def __len__(self):
+        """The total number of samples that will be imported.
+
+        Raises:
+            TypeError: if the total number is not known
+        """
+        raise TypeError(
+            "The number of samples in a '%s' is not known a priori"
+            % etau.get_class_name(self)
+        )
+
     def __next__(self):
-        return self.get_next_sample()
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            subclass-specific information for the sample
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
 
     def setup(self):
         """Performs any necessary setup before importing the first sample in
@@ -67,25 +89,17 @@ class DatasetImporter(object):
         """
         pass
 
-    def close(self):
+    def close(self, *args):
         """Performs any necessary actions after the last sample has been
         imported.
 
         This method is called when the importer's context manager interface is
         exited, :function:`DatasetImporter.__exit__`.
+
+        Args:
+            *args: the arguments to :func:`DatasetImporter.__exit__`
         """
         pass
-
-    def get_next_sample(self):
-        """Returns the next sample in the dataset.
-
-        Returns:
-            subclass-specific information for the sample
-
-        Raises:
-            StopIteration: if no more samples exist
-        """
-        raise NotImplementedError("subclass must implement get_next_sample()")
 
 
 class UnlabeledImageDatasetImporter(DatasetImporter):
@@ -108,14 +122,7 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
         dataset_dir: the dataset directory
     """
 
-    @property
-    def has_image_metadata(self):
-        """Whether this importer produces
-        :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
-        """
-        raise NotImplementedError("subclass must implement has_image_metadata")
-
-    def get_next_sample(self):
+    def __next__(self):
         """Returns information about the next sample in the dataset.
 
         Returns:
@@ -127,9 +134,16 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
                 ``False``
 
         Raises:
-            StopIteration: if no more samples exist
+            StopIteration: if there are no more samples to import
         """
-        raise NotImplementedError("subclass must implement get_next_sample()")
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def has_image_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
+        """
+        raise NotImplementedError("subclass must implement has_image_metadata")
 
 
 class LabeledImageDatasetImporter(DatasetImporter):
@@ -157,14 +171,7 @@ class LabeledImageDatasetImporter(DatasetImporter):
         dataset_dir: the dataset directory
     """
 
-    @property
-    def has_image_metadata(self):
-        """Whether this importer produces
-        :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
-        """
-        raise NotImplementedError("subclass must implement has_image_metadata")
-
-    def get_next_sample(self):
+    def __next__(self):
         """Returns information about the next sample in the dataset.
 
         Returns:
@@ -174,16 +181,30 @@ class LabeledImageDatasetImporter(DatasetImporter):
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :property:`has_image_metadata` is
                 ``False``
-            -   ``label`` is a :class:`fiftyone.core.label.Label` instance
+            -   ``label`` is an instance of :property:`label_cls`
 
         Raises:
-            StopIteration: if no more samples exist
+            StopIteration: if there are no more samples to import
         """
-        raise NotImplementedError("subclass must implement get_next_sample()")
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def has_image_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
+        """
+        raise NotImplementedError("subclass must implement has_image_metadata")
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class returned by this
+        importer.
+        """
+        raise NotImplementedError("subclass must implement label_cls")
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
-    """Importer for a directory of images.
+    """Importer for a directory of images stored on disk.
 
     See :class:`fiftyone.types.ImageDirectory` for format details.
 
@@ -199,12 +220,25 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
         super().__init__(dataset_dir)
         self.recursive = recursive
         self.compute_metadata = compute_metadata
-        self._filepaths = []
-        self._idx = None
+        self._filepaths = None
+        self._iter_filepaths = None
 
     def __iter__(self):
-        self._idx = -1
+        self._iter_filepaths = iter(self._filepaths)
         return self
+
+    def __len__(self):
+        return len(self._filepaths)
+
+    def __next__(self):
+        image_path = next(self._iter_filepaths)
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        return image_path, image_metadata
 
     @property
     def has_image_metadata(self):
@@ -216,19 +250,254 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
         )
         self._filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
 
-    def get_next_sample(self):
-        try:
-            self._idx += 1
-            image_path = self._filepaths[self._idx]
-        except IndexError:
-            raise StopIteration
+
+class ImageClassificationDatasetImporter(LabeledImageDatasetImporter):
+    """Importer for image classification datasets stored on disk.
+
+    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.ImageMetadata` instances for each
+            image when importing
+    """
+
+    def __init__(self, dataset_dir, compute_metadata=False):
+        super().__init__(dataset_dir)
+        self.compute_metadata = compute_metadata
+        self._sample_parser = None
+        self._image_paths_map = None
+        self._labels = None
+        self._iter_labels = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_labels = iter(iteritems(self._labels))
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        uuid, target = next(self._iter_labels)
+        image_path = self._image_paths_map[uuid]
+
+        sample = (image_path, target)
+        label = self._sample_parser.parse_label(sample)
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
         else:
             image_metadata = None
 
-        return image_path, image_metadata
+        return image_path, image_metadata, label
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    def setup(self):
+        self._sample_parser = ImageClassificationSampleParser()
+
+        data_dir = os.path.join(self.dataset_dir, "data")
+        self._image_paths_map = {
+            os.path.splitext(os.path.basename(p))[0]: p
+            for p in etau.list_files(data_dir, abs_paths=True)
+        }
+
+        labels_path = os.path.join(self.dataset_dir, "labels.json")
+        labels = etas.load_json(labels_path)
+        self._sample_parser.classes = labels.get("classes", None)
+        self._labels = labels.get("labels", {})
+        self._num_samples = len(self._labels)
+
+
+class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
+    """Importer for an image classification directory tree stored on disk.
+
+    See :class:`fiftyone.types.ImageClassificationDirectoryTree` for format
+    details.
+
+    Args:
+        dataset_dir: the dataset directory
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.ImageMetadata` instances for each
+            image when importing
+    """
+
+    def __init__(self, dataset_dir, compute_metadata=False):
+        super().__init__(dataset_dir)
+        self.compute_metadata = compute_metadata
+        self._sample_parser = None
+        self._samples = None
+        self._iter_samples = None
+
+    def __iter__(self):
+        self._iter_samples = iter(self._samples)
+        return self
+
+    def __len__(self):
+        return len(self._samples)
+
+    def __next__(self):
+        image_path, label = next(self._iter_samples)
+
+        sample = (image_path, label)
+        label = self._sample_parser.parse_label(sample)
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        return image_path, image_metadata, label
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    def setup(self):
+        self._sample_parser = ImageClassificationSampleParser()
+
+        self._samples = []
+        glob_patt = os.path.join(self.dataset_dir, "*", "*")
+        for path in etau.get_glob_matches(glob_patt):
+            chunks = path.split(os.path.sep)
+            if any(s.startswith(".") for s in chunks[-2:]):
+                continue
+
+            label = chunks[-2]
+            self._samples.append((path, label))
+
+
+class ImageDetectionDatasetImporter(LabeledImageDatasetImporter):
+    """Importer for image detection datasets stored on disk.
+
+    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.ImageMetadata` instances for each
+            image when importing
+    """
+
+    def __init__(self, dataset_dir, compute_metadata=False):
+        super().__init__(dataset_dir)
+        self.compute_metadata = compute_metadata
+        self._sample_parser = None
+        self._image_paths_map = None
+        self._labels = None
+        self._iter_labels = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_labels = iter(iteritems(self._labels))
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        uuid, target = next(self._iter_labels)
+        image_path = self._image_paths_map[uuid]
+
+        sample = (image_path, target)
+        label = self._sample_parser.parse_label(sample)
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        return image_path, image_metadata, label
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        self._sample_parser = ImageDetectionSampleParser()
+
+        data_dir = os.path.join(self.dataset_dir, "data")
+        self._image_paths_map = {
+            os.path.splitext(os.path.basename(p))[0]: p
+            for p in etau.list_files(data_dir, abs_paths=True)
+        }
+
+        labels_path = os.path.join(self.dataset_dir, "labels.json")
+        labels = etas.load_json(labels_path)
+        self._sample_parser.classes = labels.get("classes", None)
+        self._labels = labels.get("labels", {})
+        self._num_samples = len(self._labels)
+
+
+class ImageLabelsDatasetImporter(LabeledImageDatasetImporter):
+    """Importer for image labels datasets stored on disk.
+
+    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.ImageMetadata` instances for each
+            image when importing
+    """
+
+    def __init__(self, dataset_dir, compute_metadata=False):
+        super().__init__(dataset_dir)
+        self.compute_metadata = compute_metadata
+        self._sample_parser = None
+        self._labeled_dataset = None
+        self._iter_labeled_dataset = None
+
+    def __iter__(self):
+        self._iter_labeled_dataset = zip(
+            self._labeled_dataset.iter_data_paths(),
+            self._labeled_dataset.iter_labels(),
+        )
+        return self
+
+    def __len__(self):
+        return len(self._labeled_dataset)
+
+    def __next__(self):
+        image_path, image_labels = next(self._iter_labeled_dataset)
+
+        sample = (image_path, image_labels)
+        label = self._sample_parser.parse_label(sample)
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        return image_path, image_metadata, label
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return fol.ImageLabels
+
+    def setup(self):
+        self._sample_parser = ImageLabelsSampleParser()
+        self._labeled_dataset = etads.load_dataset(self.dataset_dir)
 
 
 def parse_images_dir(dataset_dir, recursive=True):
@@ -248,46 +517,6 @@ def parse_images_dir(dataset_dir, recursive=True):
         dataset_dir, abs_paths=True, recursive=recursive
     )
     return [p for p in filepaths if etai.is_image_mime_type(p)]
-
-
-def parse_image_classification_dataset(dataset_dir, sample_parser=None):
-    """Parses the contents of the image classification dataset backed by the
-    given directory.
-
-    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-        sample_parser (None): a :class:`ImageClassificationSampleParser`
-            instance whose :func:`ImageClassificationSampleParser.parse_label`
-            method will be used to parse the sample labels. If not provided,
-            the default :class:`ImageClassificationSampleParser` instance is
-            used
-
-    Returns:
-        a list of ``(image_path, label)`` pairs, where ``label`` is an instance
-        of :class:`fiftyone.core.labels.Classification`
-    """
-    if sample_parser is None:
-        sample_parser = ImageClassificationSampleParser()
-
-    data_dir = os.path.join(dataset_dir, "data")
-    image_paths_map = {
-        os.path.splitext(os.path.basename(p))[0]: p
-        for p in etau.list_files(data_dir, abs_paths=True)
-    }
-
-    labels_path = os.path.join(dataset_dir, "labels.json")
-    labels = etas.load_json(labels_path)
-    sample_parser.classes = labels.get("classes", None)
-
-    samples = []
-    for uuid, target in iteritems(labels["labels"]):
-        image_path = image_paths_map[uuid]
-        label = sample_parser.parse_label((image_path, target))
-        samples.append((image_path, label))
-
-    return samples
 
 
 def parse_image_classification_dir_tree(dataset_dir):
@@ -327,71 +556,3 @@ def parse_image_classification_dir_tree(dataset_dir):
         samples.append((path, target))
 
     return samples, classes
-
-
-def parse_image_detection_dataset(dataset_dir, sample_parser=None):
-    """Parses the contents of the image detection dataset backed by the given
-    directory.
-
-    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-        sample_parser (None): a :class:`ImageDetectionSampleParser` instance
-            whose :func:`ImageDetectionSampleParser.parse_label` method will be
-            used to parse the sample labels. If not provided, the default
-            :class:`ImageDetectionSampleParser` instance is used
-
-    Returns:
-        a list of ``(image_path, label)`` pairs, where ``label`` is an instance
-        of :class:`fiftyone.core.labels.Detections`
-    """
-    if sample_parser is None:
-        sample_parser = ImageDetectionSampleParser()
-
-    data_dir = os.path.join(dataset_dir, "data")
-    image_paths_map = {
-        os.path.splitext(os.path.basename(p))[0]: p
-        for p in etau.list_files(data_dir, abs_paths=True)
-    }
-
-    labels_path = os.path.join(dataset_dir, "labels.json")
-    labels = etas.load_json(labels_path)
-    sample_parser.classes = labels.get("classes", None)
-
-    samples = []
-    for uuid, target in iteritems(labels["labels"]):
-        image_path = image_paths_map[uuid]
-        label = sample_parser.parse_label((image_path, target))
-        samples.append((image_path, label))
-
-    return samples
-
-
-def parse_image_labels_dataset(dataset_dir, sample_parser=None):
-    """Parses the contents of the image labels dataset backed by the given
-    directory.
-
-    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-        sample_parser (None): a :class:`ImageLabelsSampleParser` instance whose
-            :func:`ImageLabelsSampleParser.parse_label` method will be used to
-            parse the sample labels. If not provided, the default
-            :class:`ImageLabelsSampleParser` instance is used
-
-    Returns:
-        a generator that emits ``(image_path, image_labels)`` pairs, where
-        ``label`` is an instance of :class:`fiftyone.core.labels.ImageLabels`
-    """
-    if sample_parser is None:
-        sample_parser = ImageLabelsSampleParser()
-
-    labeled_dataset = etads.load_dataset(dataset_dir)
-
-    for image_path, image_labels in zip(
-        labeled_dataset.iter_data_paths(), labeled_dataset.iter_labels(),
-    ):
-        label = sample_parser.parse_label((image_path, image_labels))
-        yield image_path, label
