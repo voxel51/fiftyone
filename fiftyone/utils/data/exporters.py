@@ -35,6 +35,52 @@ import fiftyone.types as fot
 logger = logging.getLogger(__name__)
 
 
+def export_samples(samples, exporter, label_field=None):
+    """Exports the given samples to disk as a dataset using the provided
+    exporter.
+
+    Args:
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        exporter: a :class:`DatasetExporter`
+        label_field (None): the name of the label field to export, which is
+            required if ``exporter`` is a :class:`LabeledImageDatasetExporter`
+    """
+    if isinstance(exporter, UnlabeledImageDatasetExporter):
+        _export_unlabeled_image_dataset(samples, exporter)
+    elif isinstance(exporter, LabeledImageDatasetExporter):
+        _export_labeled_image_dataset(samples, exporter, label_field)
+    else:
+        raise ValueError("Unsupported exporter type %s" % type(exporter))
+
+
+def _export_unlabeled_image_dataset(samples, exporter):
+    with fou.ProgressBar() as pb:
+        with exporter:
+            for sample in pb(samples):
+                image_path = sample.filepath
+
+                metadata = sample.metadata
+                if metadata is None and exporter.requires_image_metadata:
+                    metadata = fom.ImageMetadata.build_for(image_path)
+
+                exporter.export_sample(image_path, metadata=metadata)
+
+
+def _export_labeled_image_dataset(samples, exporter, label_field):
+    with fou.ProgressBar() as pb:
+        with exporter:
+            for sample in pb(samples):
+                image_path = sample.filepath
+
+                metadata = sample.metadata
+                if metadata is None and exporter.requires_image_metadata:
+                    metadata = fom.ImageMetadata.build_for(image_path)
+
+                label = sample[label_field]
+
+                exporter.export_sample(image_path, label, metadata=metadata)
+
+
 class DatasetExporter(object):
     """Base interface for exporting :class:`fiftyone.core.dataset.Dataset`
     samples to disk.
