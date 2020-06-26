@@ -94,6 +94,133 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
         return annotation.to_detections()
 
 
+class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
+    """Importer for VOC detection datasets stored on disk.
+
+    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    def __init__(self, dataset_dir):
+        super().__init__(dataset_dir)
+        self._img_uuids_to_paths = None
+        self._anno_paths = None
+        self._iter_anno_paths = None
+
+    def __iter__(self):
+        self._iter_anno_paths = iter(self._anno_paths)
+        return self
+
+    def __len__(self):
+        return len(self._anno_paths)
+
+    def __next__(self):
+        anno_path = next(self._iter_anno_paths)
+
+        annotation = load_voc_detection_annotations(anno_path)
+
+        #
+        # Use image filename from annotation file if possible. Otherwise, use
+        # the filename to locate the corresponding image
+        #
+        if annotation.filename:
+            uuid = os.path.splitext(annotation.filename)[0]
+        elif annotation.path:
+            uuid = os.path.splitext(os.path.basename(annotation.path))[0]
+        else:
+            uuid = None
+
+        if uuid not in self._img_uuids_to_paths:
+            uuid = os.path.splitext(os.path.basename(anno_path))[0]
+
+        image_path = self._img_uuids_to_paths[uuid]
+
+        if annotation.metadata is None:
+            annotation.metadata = fom.ImageMetadata.build_for(image_path)
+
+        image_metadata = annotation.metadata
+
+        detections = annotation.to_detections()
+
+        return image_path, image_metadata, detections
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        data_dir = os.path.join(self.dataset_dir, "data")
+        labels_dir = os.path.join(self.dataset_dir, "labels")
+
+        self._img_uuids_to_paths = {
+            os.path.splitext(f)[0]: os.path.join(data_dir, f)
+            for f in etau.list_files(data_dir, abs_paths=False)
+        }
+
+        self._anno_paths = etau.list_files(labels_dir, abs_paths=True)
+
+
+class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
+    """Exporter that writes VOC detection datasets to disk.
+
+    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._data_dir = None
+        self._labels_dir = None
+        self._data_filename_counts = None
+        self._writer = None
+
+    @property
+    def requires_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._labels_dir = os.path.join(self.export_dir, "labels")
+        self._data_filename_counts = defaultdict(int)
+        self._writer = VOCAnnotationWriter()
+
+        etau.ensure_dir(self._data_dir)
+        etau.ensure_dir(self._labels_dir)
+
+    def export_sample(self, image_path, detections, metadata=None):
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        self._data_filename_counts[name] += 1
+
+        count = self._data_filename_counts[name]
+        if count > 1:
+            name += "-%d" + count
+
+        out_image_path = os.path.join(self._data_dir, name + ext)
+        out_anno_path = os.path.join(self._labels_dir, name + ".xml")
+
+        etau.copy_file(image_path, out_image_path)
+
+        if metadata is None:
+            metadata = fom.ImageMetadata.build_for(image_path)
+
+        annotation = VOCAnnotation.from_labeled_image(
+            out_image_path, metadata, detections
+        )
+        self._writer.write(annotation, out_anno_path)
+
+
 class VOCAnnotation(object):
     """Class representing a VOC annotations file.
 
@@ -462,59 +589,6 @@ class VOCAnnotationWriter(object):
         etau.write_file(xml_str, xml_path)
 
 
-def parse_voc_detection_dataset(dataset_dir):
-    """Parses the VOC detection dataset stored in the given directory.
-
-    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-
-    Returns:
-        a list of ``(img_path, image_metadata, detections)`` tuples
-    """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_dir = os.path.join(dataset_dir, "labels")
-
-    img_uuids_to_paths = {
-        os.path.splitext(f)[0]: os.path.join(data_dir, f)
-        for f in etau.list_files(data_dir, abs_paths=False)
-    }
-
-    anno_paths = etau.list_files(labels_dir, abs_paths=True)
-
-    samples = []
-    for anno_path in anno_paths:
-        annotation = load_voc_detection_annotations(anno_path)
-
-        #
-        # Use image filename from annotation file if possible. Otherwise, use
-        # the filename to locate the corresponding image
-        #
-
-        if annotation.filename:
-            uuid = os.path.splitext(annotation.filename)[0]
-        elif annotation.path:
-            uuid = os.path.splitext(os.path.basename(annotation.path))[0]
-        else:
-            uuid = None
-
-        if uuid not in img_uuids_to_paths:
-            uuid = os.path.splitext(os.path.basename(anno_path))[0]
-
-        img_path = img_uuids_to_paths[uuid]
-
-        if annotation.metadata is None:
-            annotation.metadata = fom.ImageMetadata.build_for(img_path)
-
-        metadata = annotation.metadata
-
-        detections = annotation.to_detections()
-        samples.append((img_path, metadata, detections))
-
-    return samples
-
-
 def load_voc_detection_annotations(xml_path):
     """Loads the VOC detection annotations from the given XML file.
 
@@ -527,64 +601,6 @@ def load_voc_detection_annotations(xml_path):
         a :class:`VOCAnnotation` instance
     """
     return VOCAnnotation.from_xml(xml_path)
-
-
-def export_voc_detection_dataset(samples, label_field, dataset_dir):
-    """Exports the given samples to disk as a VOC detection dataset.
-
-    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
-
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
-
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the :class:`fiftyone.core.labels.Detections`
-            field of the samples to export
-        dataset_dir: the directory to which to write the dataset
-    """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_dir = os.path.join(dataset_dir, "labels")
-
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.VOCDetectionDataset),
-    )
-
-    etau.ensure_dir(data_dir)
-    etau.ensure_dir(labels_dir)
-
-    writer = VOCAnnotationWriter()
-    data_filename_counts = defaultdict(int)
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            data_filename_counts[name] += 1
-
-            count = data_filename_counts[name]
-            if count > 1:
-                name += "-%d" + count
-
-            out_img_path = os.path.join(data_dir, name + ext)
-            out_anno_path = os.path.join(labels_dir, name + ".xml")
-
-            etau.copy_file(img_path, out_img_path)
-
-            metadata = sample.metadata
-            if metadata is None:
-                metadata = fom.ImageMetadata.build_for(img_path)
-
-            detections = sample[label_field]
-            annotation = VOCAnnotation.from_labeled_image(
-                out_img_path, metadata, detections
-            )
-            writer.write(annotation, out_anno_path)
-
-    logger.info("Dataset created")
 
 
 def _ensure_list(value):
