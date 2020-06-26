@@ -14,8 +14,8 @@ import {
   currentListHeight,
   viewCount,
   isMainWidthResizing,
-} from "../../state/atoms";
-import { currentListTopRange } from "../../state/selectors";
+} from "../../../state/atoms";
+import { currentListTopRange } from "../../../state/selectors";
 import { Container } from "../utils";
 import Scrubber from "./Scrubber";
 

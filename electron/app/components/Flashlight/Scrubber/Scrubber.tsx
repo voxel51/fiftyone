@@ -3,10 +3,10 @@ import styled from "styled-components";
 import { useSpring, useSprings, animated } from "react-spring";
 import { useRecoilValue } from "recoil";
 
-import "../../app.global.css";
+import "../../../app.global.css";
 import Indicator from "./Indicator";
-import { mainSize, viewCount } from "../../state/atoms";
-import { currentIndexIndicatorTop, ticks } from "../../state/selectors";
+import { mainSize, viewCount } from "../../../state/atoms";
+import { currentIndexIndicatorTop, ticks } from "../../../state/selectors";
 
 const Scrubber = styled.div`
   width: 100%;
@@ -63,8 +63,8 @@ export default function () {
   return (
     <ScrubberWrapper>
       <Scrubber>
-        {springs.map((props) => (
-          <SectionTick style={props} />
+        {springs.map((props, index) => (
+          <SectionTick key={index} style={props} />
         ))}
         <IndexIndicator />
         <Indicator />

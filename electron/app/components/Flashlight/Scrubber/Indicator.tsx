@@ -4,10 +4,11 @@ import { useSpring, animated } from "react-spring";
 import { useGesture } from "react-use-gesture";
 import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
 
-import "../../app.global.css";
+import "../../../app.global.css";
+import { mainSize, isDraggingIndicator } from "../../../state/atoms";
+import { indicatorIndex, currentIndex } from "../../../state/selectors";
+
 import IndicatorForm from "./IndicatorForm";
-import { mainSize, isDraggingIndicator } from "../../state/atoms";
-import { indicatorIndex, currentIndex } from "../../state/selectors";
 
 const Indicator = styled(animated.div)`
   width: 3rem;

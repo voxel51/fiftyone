@@ -299,9 +299,19 @@ export const itemsToRenderInSegment = selectorFamily({
   get: (segmentIndex) => ({ get }) => {
     return [...Array(50).keys()].map((k) => {
       return {
-        itemIndex: k,
-        itemKey: k,
+        index: k,
+        key: k,
       };
     });
   },
+});
+
+export const currentRow = selector({
+  key: "currentRow",
+  get: ({ get }) => {},
+});
+
+export const listHeight = selector({
+  key: "listHeight",
+  get: ({ get }) => {},
 });

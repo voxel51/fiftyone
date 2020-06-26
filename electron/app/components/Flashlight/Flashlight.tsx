@@ -1,6 +1,8 @@
-import React, { useEffect, useLayoutEffect } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
+import { animated, useSpring } from "react-spring";
+import { useWheel } from "react-use-gesture";
 
 import {
   segmentIsLoaded,
@@ -10,16 +12,63 @@ import {
   mainTop,
   mainLoaded,
   mainSize,
+  currentListTop,
+  currentListHeight,
 } from "../../state/atoms";
 import { useTrackMousePosition, useResizeObserver } from "../../state/hooks";
-import { segmentsToRender } from "../../state/selectors";
+import { segmentsToRender, currentListTopRange } from "../../state/selectors";
 
-import { Segment } from "../Segment";
+import Segment from "./Segment";
+import Scrubber from "./Scrubber";
+
+const Grid = styled.div`
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 3rem;
+`;
 
 const Flashlight = styled.div`
   width: 100%;
   height: 100%;
 `;
+
+const ListContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+`;
+
+const ListDiv = animated(styled.div`
+  position: absolute;
+  width: 100%;
+`);
+
+const Items = styled.div`
+  width: 100%;
+  position: absolute;
+`;
+
+const List = ({ targetRef, children }) => {
+  const setCurrentListHeight = useSetRecoilState(currentListHeight);
+  const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
+  const currentListTopValue = useRecoilValue(currentListTop);
+  const viewCountValue = useRecoilValue(viewCount);
+
+  useEffect(() => {
+    setCurrentListHeight(targetRef.current.offsetHeight);
+  }, [targetRef.current, isMainWidthResizingValue]);
+
+  const props = useSpring({
+    top: -1 * currentListTopValue,
+  });
+
+  return (
+    <ListDiv ref={targetRef} style={props}>
+      {children}
+    </ListDiv>
+  );
+};
 
 let timeout;
 
@@ -61,11 +110,35 @@ export default () => {
     });
   }, [contentRect]);
 
+  const [currentListTopValue, setCurrentListTop] = useRecoilState(
+    currentListTop
+  );
+  const [minTop, maxTop] = useRecoilValue(currentListTopRange);
+
+  const containerRef = useRef();
+  const bind = useWheel((s) => {
+    const {
+      delta: [_, y],
+    } = s;
+    setCurrentListTop(
+      Math.min(Math.max(currentListTopValue + y, minTop), maxTop)
+    );
+  });
+
   return (
     <Flashlight ref={ref}>
-      {segmentsToRenderValue.map((unused, index) => {
-        <Segment index={index} />;
-      })}
+      <Grid>
+        <ListContainer key={0} {...bind()} ref={containerRef}>
+          {ref.current ? (
+            <List targetRef={ref} containerRef={containerRef}>
+              {segmentsToRenderValue.map((index) => (
+                <Segment key={index} index={index} />
+              ))}
+            </List>
+          ) : null}
+        </ListContainer>
+        <Scrubber key={1} targetRef={ref} />
+      </Grid>
     </Flashlight>
   );
 };

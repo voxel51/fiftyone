@@ -9,7 +9,7 @@ import {
   segmentIsLoaded,
   isMainWidthResizing,
   current,
-} from "../../state/atoms";
+} from "../../../state/atoms";
 import {
   itemBasePosition,
   itemBaseSize,
@@ -19,9 +19,8 @@ import {
   itemIsLoaded,
   itemSource,
   segmentIndexFromItemIndex,
-} from "../../state/selectors";
-import { getPage, getSocket } from "../../utils/socket";
-import Player51 from "../../player51/build/cjs/player51.min.js";
+} from "../../../state/selectors";
+// import Player51 from "../../player51/build/cjs/player51.min.js";
 
 const LoadingThumbnailDiv = animated(styled.div`
   position: absolute;

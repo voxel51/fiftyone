@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useLayoutEffect } from "react";
+import React, { useEffect, useLayoutEffect } from "react";
 import { action } from "@storybook/addon-actions";
 import _ from "lodash";
 import styled from "styled-components";
@@ -12,8 +12,8 @@ import {
   mainLoaded,
   isMainWidthResizing,
   segmentIsLoaded,
-} from "../state/atoms";
-import { useTrackMousePosition, useResizeObserver } from "../state/hooks";
+} from "../../state/atoms";
+import { useTrackMousePosition, useResizeObserver } from "../../state/hooks";
 
 const StyledContainer = styled.div`
   width: 100%;

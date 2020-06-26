@@ -4,9 +4,9 @@ import { useMachine } from "@xstate/react";
 import { useRecoilValue, useRecoilState } from "recoil";
 import { useSpring, animated } from "react-spring";
 
-import "../../app.global.css";
-import { viewCount } from "../../state/atoms";
-import { currentIndex, indicatorIndex } from "../../state/selectors";
+import "../../../app.global.css";
+import { viewCount } from "../../../state/atoms";
+import { currentIndex, indicatorIndex } from "../../../state/selectors";
 
 import indicatorFormMachine from "./IndicatorForm.machine.ts";
 
