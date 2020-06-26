@@ -3,12 +3,17 @@ $(function () {
     (a, b) => $(a).offset().top - $(b).offset().top
   );
 
+  const sectionStartThreshold =
+    $("#pytorch-page-level-bar").height() +
+    parseInt($(".section h2").css("marginTop")) +
+    10;
+
   function updateSidebar() {
     let currentSection = undefined;
     for (let i = sections.length - 1; i >= 0; i--) {
       if (
         $(sections[i]).offset().top <
-        $(window).scrollTop() + $(window).height() / 2
+        $(window).scrollTop() + sectionStartThreshold
       ) {
         currentSection = sections[i].id;
         break;
