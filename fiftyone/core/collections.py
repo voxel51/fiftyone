@@ -133,28 +133,29 @@ class SampleCollection(object):
 
     def export(
         self,
-        export_dir,
-        label_field=None,
+        export_dir=None,
         dataset_type=None,
         dataset_exporter=None,
+        label_field=None,
         **kwargs
     ):
         """Exports the samples in the collection to disk.
 
-        Provide either ``dataset_type`` or ``dataset_exporter`` to perform the
-        export.
+        Provide either ``export_dir`` and ``dataset_type`` or
+        ``dataset_exporter`` to perform an export.
 
         Args:
-            export_dir: the directory to which to export
-            label_field (None): the name of the label field to export. If not
-                specified, the first field of compatible type to
-                ``dataset_type`` is exported
+            export_dir (None): the directory to which to export the samples in
+                format ``dataset_type``
             dataset_type (None): the dataset type in which to export. Must be a
                 subclass of :class:`fiftyone.types.BaseDataset`. If not
                 specified, the default type for ``label_field`` is used
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.DatasetExporter` to use to export
                 the samples
+            label_field (None): the name of the label field to export. If not
+                specified, the first field of compatible type for the specified
+                output format is used
             **kwargs: optional keyword arguments to pass to
                 ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
         """
