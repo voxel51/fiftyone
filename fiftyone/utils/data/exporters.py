@@ -26,6 +26,8 @@ import eta.core.datasets as etads
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone.core.labels as fol
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
@@ -49,7 +51,7 @@ class DatasetExporter(object):
         return self
 
     def __exit__(self, *args):
-        self.close()
+        self.close(*args)
 
     def setup(self):
         """Performs any necessary setup before exporting the first sample in
@@ -60,12 +62,15 @@ class DatasetExporter(object):
         """
         pass
 
-    def close(self):
+    def close(self, *args):
         """Performs any necessary actions after the last sample has been
         exported.
 
         This method is called when the importer's context manager interface is
         exited, :function:`DatasetExporter.__exit__`.
+
+        Args:
+            *args: the arguments to :func:`DatasetExporter.__exit__`
         """
         pass
 
@@ -159,12 +164,19 @@ class LabeledImageDatasetExporter(DatasetExporter):
             "subclass must implement requires_image_metadata"
         )
 
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class exported by this
+        exporter.
+        """
+        raise NotImplementedError("subclass must implement label_cls")
+
     def export_sample(self, image_path, label, metadata=None):
         """Exports the given sample to the dataset.
 
         Args:
             image_path: the path to the image
-            label: a :class:`fiftyone.core.labels.Label` instance
+            label: an instance of :property:`label_cls`
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
                 isinstance for the sample. Only required when
                 :property:`requires_image_metadata` is ``True``
@@ -173,7 +185,7 @@ class LabeledImageDatasetExporter(DatasetExporter):
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
-    """Exporter that writes a directory of unlabeled images.
+    """Exporter that writes a directory of images to disk.
 
     See :class:`fiftyone.types.ImageDirectory` for format details.
 
@@ -206,51 +218,12 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
         if count > 1:
             name += "-%d" + count
 
-        out_img_path = os.path.join(self.export_dir, name + ext)
-        etau.copy_file(image_path, out_img_path)
+        out_image_path = os.path.join(self.export_dir, name + ext)
+        etau.copy_file(image_path, out_image_path)
 
 
-def export_images(samples, dataset_dir):
-    """Exports the images in the given samples to the given directory.
-
-    See :class:`fiftyone.types.ImageDirectory` for format details.
-
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
-
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        dataset_dir: the directory to which to write the dataset
-    """
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.ImageDirectory),
-    )
-
-    etau.ensure_dir(dataset_dir)
-
-    data_filename_counts = defaultdict(int)
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            data_filename_counts[name] += 1
-
-            count = data_filename_counts[name]
-            if count > 1:
-                name += "-%d" + count
-
-            out_img_path = os.path.join(dataset_dir, name + ext)
-            etau.copy_file(img_path, out_img_path)
-
-    logger.info("Dataset created")
-
-
-def export_image_classification_dataset(samples, label_field, dataset_dir):
-    """Exports the given samples to disk as an image classification dataset.
+class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image classification dataset to disk.
 
     See :class:`fiftyone.types.ImageClassificationDataset` for format details.
 
@@ -260,54 +233,57 @@ def export_image_classification_dataset(samples, label_field, dataset_dir):
     filename.
 
     Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the
-            :class:`fiftyone.core.labels.Classification` field of the samples
-            to export
-        dataset_dir: the directory to which to write the dataset
+        export_dir: the directory to write the export
     """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_path = os.path.join(dataset_dir, "labels.json")
 
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.ImageClassificationDataset),
-    )
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._data_dir = None
+        self._labels_path = None
+        self._labels_dict = None
+        self._data_filename_counts = None
 
-    etau.ensure_dir(data_dir)
+    @property
+    def requires_image_metadata(self):
+        return False
 
-    labels_dict = {}
-    data_filename_counts = defaultdict(int)
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            data_filename_counts[name] += 1
+    @property
+    def label_cls(self):
+        return fol.Classification
 
-            count = data_filename_counts[name]
-            if count > 1:
-                name += "-%d" + count
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._labels_path = os.path.join(self.export_dir, "labels.json")
+        self._labels_dict = {}
+        self._data_filename_counts = defaultdict(int)
 
-            out_img_path = os.path.join(data_dir, name + ext)
-            etau.copy_file(img_path, out_img_path)
+        etau.ensure_dir(self._data_dir)
 
-            label = sample[label_field]
-            labels_dict[name] = _parse_classification(label)
+    def export_sample(self, image_path, classification, metadata=None):
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        self._data_filename_counts[name] += 1
 
-    logger.info("Writing labels to '%s'", labels_path)
-    labels = {
-        "classes": None,  # @todo get this somehow?
-        "labels": labels_dict,
-    }
-    etas.write_json(labels, labels_path)
+        count = self._data_filename_counts[name]
+        if count > 1:
+            name += "-%d" + count
 
-    logger.info("Dataset created")
+        out_image_path = os.path.join(self._data_dir, name + ext)
+        etau.copy_file(image_path, out_image_path)
+
+        self._labels_dict[name] = _parse_classification(classification)
+
+    def close(self, *args):
+        labels = {
+            "classes": None,  # @todo get this somehow?
+            "labels": self._labels_dict,
+        }
+
+        logger.info("Writing labels to '%s'", self._labels_path)
+        etas.write_json(labels, self._labels_path)
 
 
-def export_image_classification_dir_tree(samples, label_field, dataset_dir):
-    """Exports the given samples to disk as an image classification directory
-    tree.
+class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image classification directory tree to disk.
 
     See :class:`fiftyone.types.ImageClassificationDirectoryTree` for format
     details.
@@ -318,42 +294,41 @@ def export_image_classification_dir_tree(samples, label_field, dataset_dir):
     filename.
 
     Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the
-            :class:`fiftyone.core.labels.Classification` field of the samples
-            to export
-        dataset_dir: the directory to which to write the dataset
+        export_dir: the directory to write the export
     """
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.ImageClassificationDirectoryTree),
-    )
 
-    etau.ensure_dir(dataset_dir)
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._data_filename_counts = None
 
-    data_filename_counts = defaultdict(int)
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            label = sample[label_field].label
+    @property
+    def requires_image_metadata(self):
+        return False
 
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            key = (label, name)
-            data_filename_counts[key] += 1
+    @property
+    def label_cls(self):
+        return fol.Classification
 
-            count = data_filename_counts[key]
-            if count > 1:
-                name += "-%d" + count
+    def setup(self):
+        self._data_filename_counts = defaultdict(int)
+        etau.ensure_dir(self.export_dir)  # in case dataset is empty
 
-            out_img_path = os.path.join(dataset_dir, label, name + ext)
-            etau.copy_file(img_path, out_img_path)
+    def export_sample(self, image_path, classification, metadata=None):
+        _label = _parse_classification(classification)
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        key = (_label, name)
+        self._data_filename_counts[key] += 1
 
-    logger.info("Dataset created")
+        count = self._data_filename_counts[key]
+        if count > 1:
+            name += "-%d" + count
+
+        out_image_path = os.path.join(self.export_dir, _label, name + ext)
+        etau.copy_file(image_path, out_image_path)
 
 
-def export_image_detection_dataset(samples, label_field, dataset_dir):
-    """Exports the given samples to disk as an image detection dataset.
+class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image detection dataset to disk.
 
     See :class:`fiftyone.types.ImageDetectionDataset` for format details.
 
@@ -363,52 +338,57 @@ def export_image_detection_dataset(samples, label_field, dataset_dir):
     filename.
 
     Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the :class:`fiftyone.core.labels.Detections`
-            field of the samples to export
-        dataset_dir: the directory to which to write the dataset
+        export_dir: the directory to write the export
     """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_path = os.path.join(dataset_dir, "labels.json")
 
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.ImageDetectionDataset),
-    )
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._data_dir = None
+        self._labels_path = None
+        self._labels_dict = None
+        self._data_filename_counts = None
 
-    etau.ensure_dir(data_dir)
+    @property
+    def requires_image_metadata(self):
+        return False
 
-    data_filename_counts = defaultdict(int)
-    labels_dict = {}
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            data_filename_counts[name] += 1
+    @property
+    def label_cls(self):
+        return fol.Detections
 
-            count = data_filename_counts[name]
-            if count > 1:
-                name += "-%d" + count
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._labels_path = os.path.join(self.export_dir, "labels.json")
+        self._labels_dict = {}
+        self._data_filename_counts = defaultdict(int)
 
-            out_img_path = os.path.join(data_dir, name + ext)
-            etau.copy_file(img_path, out_img_path)
+        etau.ensure_dir(self._data_dir)
 
-            label = sample[label_field]
-            labels_dict[name] = _parse_detections(label)
+    def export_sample(self, image_path, detections, metadata=None):
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        self._data_filename_counts[name] += 1
 
-    logger.info("Writing labels to '%s'", labels_path)
-    labels = {
-        "classes": None,  # @todo get this somehow?
-        "labels": labels_dict,
-    }
-    etas.write_json(labels, labels_path)
+        count = self._data_filename_counts[name]
+        if count > 1:
+            name += "-%d" + count
 
-    logger.info("Dataset created")
+        out_image_path = os.path.join(self._data_dir, name + ext)
+        etau.copy_file(image_path, out_image_path)
+
+        self._labels_dict[name] = _parse_detections(detections)
+
+    def close(self, *args):
+        labels = {
+            "classes": None,  # @todo get this somehow?
+            "labels": self._labels_dict,
+        }
+
+        logger.info("Writing labels to '%s'", self._labels_path)
+        etas.write_json(labels, self._labels_path)
 
 
-def export_image_labels_dataset(samples, label_field, dataset_dir):
-    """Exports the given samples to disk as a multitask image labels dataset.
+class ImageLabelsDatasetExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image labels dataset to disk.
 
     See :class:`fiftyone.types.ImageLabelsDataset` for format details.
 
@@ -418,49 +398,58 @@ def export_image_labels_dataset(samples, label_field, dataset_dir):
     filename.
 
     Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the :class:`fiftyone.core.labels.ImageLabels`
-            field of the samples to export
-        dataset_dir: the directory to which to write the dataset
+        export_dir: the directory to write the export
     """
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.ImageLabelsDataset),
-    )
 
-    data_filename_counts = defaultdict(int)
-    lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            data_filename_counts[name] += 1
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._labeled_dataset = None
+        self._data_filename_counts = None
 
-            count = data_filename_counts[name]
-            if count > 1:
-                name += "-%d" + count
+    @property
+    def requires_image_metadata(self):
+        return False
 
-            new_img_filename = name + ext
-            new_labels_filename = name + ".json"
+    @property
+    def label_cls(self):
+        return fol.ImageLabels
 
-            image_labels_path = os.path.join(lid.labels_dir, name + ".json")
+    def setup(self):
+        self._labeled_dataset = etads.LabeledImageDataset.create_empty_dataset(
+            self.export_dir
+        )
+        self._data_filename_counts = defaultdict(int)
 
-            label = sample[label_field]
-            image_labels = _parse_image_labels(label)
-            image_labels.write_json(image_labels_path)
+    def export_sample(self, image_path, image_labels, metadata=None):
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        self._data_filename_counts[name] += 1
 
-            lid.add_file(
-                img_path,
-                image_labels_path,
-                new_data_filename=new_img_filename,
-                new_labels_filename=new_labels_filename,
-            )
+        count = self._data_filename_counts[name]
+        if count > 1:
+            name += "-%d" + count
 
-    logger.info("Writing manifest to '%s'", lid.manifest_path)
-    lid.write_manifest()
+        new_image_filename = name + ext
+        new_labels_filename = name + ".json"
 
-    logger.info("Dataset created")
+        image_labels_path = os.path.join(
+            self._labeled_dataset.labels_dir, new_labels_filename
+        )
+
+        _image_labels = _parse_image_labels(image_labels)
+        _image_labels.write_json(image_labels_path)
+
+        self._labeled_dataset.add_file(
+            image_path,
+            image_labels_path,
+            new_data_filename=new_image_filename,
+            new_labels_filename=new_labels_filename,
+        )
+
+    def close(self, *args):
+        logger.info(
+            "Writing manifest to '%s'", self._labeled_dataset.manifest_path
+        )
+        self._labeled_dataset.write_manifest()
 
 
 def _parse_classification(classification, labels_map_rev=None):
