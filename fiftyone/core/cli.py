@@ -283,7 +283,12 @@ class ConvertCommand(Command):
         output_dir = args.output_dir
         output_type = etau.get_class(args.output_type)
 
-        foud.convert_dataset(input_dir, input_type, output_dir, output_type)
+        foud.convert_dataset(
+            input_dir=input_dir,
+            input_type=input_type,
+            output_dir=output_dir,
+            output_type=output_type,
+        )
 
 
 class DatasetsCommand(Command):
