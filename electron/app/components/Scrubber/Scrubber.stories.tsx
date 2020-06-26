@@ -13,6 +13,7 @@ import {
   currentListTop,
   currentListHeight,
   viewCount,
+  isMainWidthResizing,
 } from "../../state/atoms";
 import { currentListTopRange } from "../../state/selectors";
 import { Container } from "../utils";
@@ -54,11 +55,12 @@ const ImageDiv = animated(styled.div`
 
 const Images = ({ targetRef }) => {
   const setCurrentListHeight = useSetRecoilState(currentListHeight);
+  const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
   const currentListTopValue = useRecoilValue(currentListTop);
   const viewCountValue = useRecoilValue(viewCount);
   useEffect(() => {
     setCurrentListHeight(targetRef.current.offsetHeight);
-  }, [targetRef.current]);
+  }, [targetRef.current, isMainWidthResizingValue]);
 
   const props = useSpring({
     top: -1 * currentListTopValue,
@@ -78,6 +80,7 @@ const ScrubberDemo = () => {
     currentListTop
   );
   const [minTop, maxTop] = useRecoilValue(currentListTopRange);
+
   const ref = useRef();
   const containerRef = useRef();
   const bind = useWheel((s) => {

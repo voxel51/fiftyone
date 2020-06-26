@@ -4,7 +4,7 @@ import { useRecoilValue } from "recoil";
 
 const Section = styled.div`
   width: 100%;
-  height: 40px;
+  height: 100%;
 `;
 
 export default ({ index }) => {

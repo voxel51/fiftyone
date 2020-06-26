@@ -79,7 +79,7 @@ const Thumbnail = ({ index }) => {
     ref: showRef,
   });
 
-  useChain(on ? [positionRef, showRef] : [showRef, positionRef], [0.2, 0.8]);
+  useChain(on ? [positionRef, showRef] : [showRef, positionRef], [1, 0.8]);
 
   useEffect(() => setSegmentIsLoaded(true), []);
 
