@@ -65,3 +65,12 @@ article.pytorch-article pre {
 .sphinx-tabs .ui.tabular.menu .active.item {
   background-color: rgb(252, 252, 252);
 }
+
+/* right side section link highlighting */
+
+.pytorch-content-right .pytorch-side-scroll li.current-section {
+  font-weight: bold;
+  margin-left: -6px;
+  border-left: 3px solid var(--color-primary);
+  padding-left: 3px;
+}
