@@ -164,11 +164,10 @@ class StateController(Namespace):
             return []
 
         page = params["page"]
-        width = params["width"]
-        margin = params["margin"]
         length = params["length"]
         view = view.skip(length * page).limit(length)
-        return tile(view, width, margin)
+        mapping, results = tile(view, length)
+        return {"mapping": mapping, "results": results}
 
     def on_lengths(self, _):
         state = fos.StateDescription.from_dict(self.state)

@@ -49,23 +49,24 @@ TIFF = types["TIFF"] = "TIFF"
 image_fields = ["path", "type", "file_size", "width", "height"]
 
 
-def tile(view, width, margin):
+def tile(view, length):
     """Tiles the samples in a view in rows of varying height, where all
     samples (images) in a row are fit to preserve aspect ratio. No cropping is
     done
 
     Args:
         view: a :class:`fiftyone.core.view.DatasetView`
-        remainder: a list of samples to prepend to the view results
 
     Returns:
         a tuple of the serialized result and the new remainder (result, remainder)
     """
+    rows = []
+    row_idx = 0
+    col_idx = 0
     row = []
     row_height = None
     row_width = None
-    top = margin
-    samples = []
+    mapping = [None] * length
 
     for idx, sample in enumerate(view):
         w, h = get_image_size(sample.filepath)
@@ -75,45 +76,42 @@ def tile(view, width, margin):
             row_width = w
             row_height = h
             row.append((sample, w, h))
+            mapping[idx] = (row_idx, col_idx)
+            col_idx += 1
             continue
 
         if row_width / row_height >= 5:
-            top, fit_row = _fit_row(
-                top, row, row_width, row_height, width, margin
-            )
-            samples += fit_row
+            rows.append(_fit_row(row, row_width, row_height))
             row = [(sample, w, h)]
+            mapping[idx] = (row_idx, col_idx)
+            row_idx += 1
+            col_idx = 0
             row_width = w
             row_height = h
             continue
 
         row.append((sample, w, h))
         row_width += (row_height / h) * w
+        mapping[idx] = (row_idx, col_idx)
+        col_idx += 1
 
-    _, fit_row = _fit_row(top, row, row_width, row_height, width, margin)
-    samples += fit_row
-    return samples
+    rows.append(_fit_row(row, row_width, row_height))
+    return mapping, rows
 
 
-def _fit_row(top, row, row_width, row_height, width, margin):
+def _fit_row(row, row_width, row_height):
     result = []
     row_length = len(row)
-    working_width = width - (margin * (len(row) + 1))
-    height = working_width * row_height / row_width
-    left = margin
-    for sample, sample_width, sample_height in row:
-        fit_width = working_width / row_width * sample_width
+    for col_idx, (sample, sample_width, sample_height) in enumerate(row):
+        fit_width = row_height * sample_width / sample_height
         result.append(
             {
                 "sample": json.loads(json_util.dumps(sample.to_mongo_dict())),
-                "width": fit_width,
-                "height": height,
-                "top": top,
-                "left": left,
+                "percentWidth": fit_width / row_width,
+                "aspectRatio": sample_width / sample_height,
             }
         )
-        left += fit_width + margin
-    return top + height + margin, result
+    return result
 
 
 class Image(collections.namedtuple("Image", image_fields)):
