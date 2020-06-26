@@ -18,10 +18,16 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import reprlib
+
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 import eta.core.utils as etau
+
+
+# max number of list elements to print
+reprlib.aRepr.maxlist = 3
 
 
 class ViewStage(object):
@@ -32,6 +38,16 @@ class ViewStage(object):
         **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
             arguments
     """
+
+    def __str__(self):
+        kwarg_str = ", ".join(
+            ["%s=%s" % (k, reprlib.repr(v)) for k, v in self._kwargs().items()]
+        )
+
+        return "%s(%s)" % (self.__class__.__name__, kwarg_str)
+
+    def __repr__(self):
+        return str(self)
 
     def to_mongo(self):
         """Returns the MongoDB version of the

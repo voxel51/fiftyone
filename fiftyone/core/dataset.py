@@ -315,6 +315,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             AttributeError: if the field does not exist
         """
         self._sample_doc_cls.delete_field(field_name)
+        fos.Sample._purge_field(self.name, field_name)
 
     def get_tags(self):
         """Returns the set of tags in the dataset.

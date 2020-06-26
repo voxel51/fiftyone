@@ -21,7 +21,6 @@ from future.utils import itervalues
 
 from collections import defaultdict
 from copy import deepcopy
-import json
 import os
 import weakref
 
@@ -332,6 +331,17 @@ class Sample(object):
         """
         for sample in cls._instances[dataset_name].values():
             sample.reload()
+
+    @classmethod
+    def _purge_field(cls, dataset_name, field_name):
+        """Remove any field values from samples that exist in memory.
+
+        Args:
+            dataset_name: the name of the dataset to reload.
+            field_name: the name of the field to purge.
+        """
+        for sample in cls._instances[dataset_name].values():
+            sample._doc._data.pop(field_name, None)
 
     def _delete(self):
         """Deletes the document from the database."""
