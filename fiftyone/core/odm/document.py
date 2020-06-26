@@ -63,8 +63,6 @@ class SerializableDocument(object):
                 continue
 
             value = getattr(self, f)
-            if value is None:
-                continue
 
             if isinstance(value, ObjectId):
                 d[f] = str(value)

@@ -17,6 +17,7 @@ into the `Dataset`.
 `Sessions` are the python objects that contain the instance of the app:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -30,6 +31,7 @@ into the `Dataset`.
 object directly:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.zoo as foz
 
@@ -45,6 +47,7 @@ sort the `DatasetView` by ground truth labels and then select the first 10
 `Samples` to display.:
 
 .. code-block:: python
+    :linenos:
 
     session.view = dataset.view().sort_by("ground_truth")[:10]
 
@@ -67,6 +70,7 @@ First log into the **remote machine**, load a FiftyOne `Dataset`, and create a
 `5151`:
 
 .. code-block:: python
+    :linenos:
 
     # Remote Machine
     import fiftyone as fo
@@ -114,6 +118,7 @@ separately.
     running the following commands:
 
     .. code-block:: python
+        :linenos:
 
         # Local machine
         import fiftyone.core.session as fos
@@ -141,6 +146,7 @@ First select samples in the App.
 Second, load those samples into python:
 
 .. code-block:: python
+    :linenos:
 
     selected = session.selected
     print(selected)
@@ -149,7 +155,7 @@ Second, load those samples into python:
 
     ['5ef0eef405059ebb0ddfa6cc',
      '5ef0eef405059ebb0ddfa7c4',
-      '5ef0eef405059ebb0ddfa86e']
+     '5ef0eef405059ebb0ddfa86e']
 
 Viewing a Sample
 ----------------

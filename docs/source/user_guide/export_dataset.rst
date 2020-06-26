@@ -19,6 +19,7 @@ arbitrary subsets of your datasets that you have identified by constructing a
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -148,6 +149,7 @@ disk as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -218,6 +220,7 @@ disk in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -276,6 +279,7 @@ stored on disk in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -349,6 +353,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -440,6 +445,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -544,6 +550,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -651,6 +658,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -749,6 +757,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -853,6 +862,7 @@ as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -932,6 +942,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1025,6 +1036,7 @@ follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
