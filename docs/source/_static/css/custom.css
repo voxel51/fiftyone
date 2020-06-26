@@ -15,6 +15,10 @@ article.pytorch-article pre {
   margin-bottom: 1rem;
 }
 
+.pytorch-left-menu li.toctree-l1.current > a:before {
+  top: -1px;
+}
+
 /* voxel51-website.css overrides */
 
 .nav__main {
