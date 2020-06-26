@@ -24,8 +24,10 @@ import logging
 import multiprocessing
 import os
 
+import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
@@ -146,8 +148,8 @@ def from_image_classification_dir_tree(dataset_dir, num_parallel_calls=None):
     samples, classes = foud.parse_image_classification_dir_tree(dataset_dir)
 
     def parse_sample(sample):
-        img_path, label = sample
-        img = _parse_image_tf(img_path)
+        image_path, label = sample
+        img = _parse_image_tf(image_path)
         return img, label
 
     dataset = tf.data.Dataset.from_tensor_slices(samples).map(
@@ -194,34 +196,75 @@ def write_tf_records(examples, tf_records_path, num_shards=None):
         num_shards (None): an optional number of shards to split the records
             into (using a round robin strategy)
     """
-    if num_shards:
-        _write_sharded_tf_records(examples, tf_records_path, num_shards)
-    else:
-        _write_unsharded_tf_records(examples, tf_records_path)
-
-
-def _write_unsharded_tf_records(examples, tf_records_path):
-    with tf.io.TFRecordWriter(tf_records_path) as writer:
+    with TFRecordsWriter(tf_records_path, num_shards=num_shards) as writer:
         for example in examples:
-            writer.write(example.SerializeToString())
+            writer.write(example)
 
 
-def _write_sharded_tf_records(examples, tf_records_path, num_shards):
-    tf_records_patt = tf_records_path + "-%05d-%05d"
-    tf_records_paths = [
-        tf_records_patt % (i, num_shards) for i in range(1, num_shards + 1)
-    ]
+class TFRecordsWriter(object):
+    """Class for writing TFRecords to disk.
 
-    with contextlib.ExitStack() as exit_stack:
-        # pylint: disable=no-member
-        writers = [
-            exit_stack.enter_context(tf.io.TFRecordWriter(path))
+    Example Usage::
+
+        with TFRecordsWriter("/path/for/tf.records", num_shards=5) as writer:
+            for tf_example in tf_examples:
+                writer.write(tf_example)
+
+    Args:
+        tf_records_path: the path to write the ``.tfrecords`` file. If sharding
+            is requested ``-%%05d-%%05d`` is automatically appended to the path
+        num_shards (None): an optional number of shards to split the records
+            into (using a round robin strategy). If omitted, no sharding is
+            used
+    """
+
+    def __init__(self, tf_records_path, num_shards=None):
+        self.tf_records_path = tf_records_path
+        self.num_shards = num_shards
+        self._num_shards = None
+        self._writers = None
+        self._idx = None
+        self._writers_context = None
+
+    def __enter__(self):
+        self._idx = -1
+
+        etau.ensure_basedir(self.tf_records_path)
+
+        if self.num_shards:
+            self._num_shards = self.num_shards
+            tf_records_patt = self.tf_records_path + "-%05d-%05d"
+            tf_records_paths = [
+                tf_records_patt % (i, self.num_shards)
+                for i in range(1, self.num_shards + 1)
+            ]
+        else:
+            self._num_shards = 1
+            tf_records_paths = [self.tf_records_path]
+
+        self._writers_context = contextlib.ExitStack()
+        c = self._writers_context.__enter__()
+
+        self._writers = [
+            c.enter_context(tf.io.TFRecordWriter(path))
             for path in tf_records_paths
         ]
 
-        # Write records using round robin strategy
-        for idx, example in enumerate(examples):
-            writers[idx % num_shards].write(example.SerializeToString())
+        return self
+
+    def __exit__(self, *args):
+        self._writers_context.__exit__(*args)
+
+    def write(self, tf_example):
+        """Writres the ``tf.train.Example`` proto to disk.
+
+        Args:
+            tf_example: a ``tf.train.Example`` proto
+        """
+        self._idx += 1
+        self._writers[self._idx % self._num_shards].write(
+            tf_example.SerializeToString()
+        )
 
 
 class TFRecordSampleParser(foud.LabeledImageSampleParser):
@@ -310,6 +353,232 @@ class TFImageClassificationSampleParser(
         return fol.Classification(label=label)
 
 
+class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
+    """Base class for :class:`fiftyone.utils.data.LabeledImageDatasetImporter`
+    instances that import ``tf.train.Example`` protos containing labeled
+    images.
+
+    Note that the images in the input TFRecords are read in-memory and written
+    to ``images_dir``.
+
+    Args:
+        dataset_dir: the dataset directory
+        images_dir: the directory in which the images will be written
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk
+    """
+
+    def __init__(self, dataset_dir, images_dir, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
+        super().__init__(dataset_dir)
+        self.images_dir = images_dir
+        self.image_format = image_format
+        self._images_patt = None
+        self._sample_parser = None
+        self._tf_dataset = None
+        self._iter_samples = None
+
+    def __iter__(self):
+        self._iter_samples = enumerate(self._tf_dataset, 1)
+        return self
+
+    def __next__(self):
+        idx, tf_example = next(self._iter_samples)
+
+        img, label = self._sample_parser.parse(tf_example)
+
+        if self.has_image_metadata:
+            # @todo parse from tf_example
+            image_metadata = None
+        else:
+            image_metadata = None
+
+        image_path = self._images_patt % idx
+        etai.write(img, image_path)
+
+        return image_path, image_metadata, label
+
+    def setup(self):
+        tf_records_patt = os.path.join(self.dataset_dir, "*")
+        uuid_patt = fo.config.default_sequence_idx
+
+        self._images_patt = os.path.join(
+            self.images_dir, uuid_patt + self.image_format
+        )
+        self._sample_parser = self._make_sample_parser()
+        self._tf_dataset = from_tf_records(tf_records_patt)
+
+    def _make_sample_parser(self):
+        """Returns a :class:`TFRecordSampleParser` instance for parsing
+        TFRecords read by this importer.
+        """
+        raise NotImplementedError(
+            "subclasses must implement _make_sample_parser()"
+        )
+
+
+class TFImageClassificationDatasetImporter(
+    TFRecordsLabeledImageDatasetImporter
+):
+    """Importer for TF image classification datasets stored on disk.
+
+    See :class:`fiftyone.types.TFImageClassificationDataset` for format
+    details.
+
+    Note that the images in the input TFRecords are read in-memory and written
+    to ``images_dir``.
+
+    Args:
+        dataset_dir: the dataset directory
+        images_dir: the directory in which the images will be written
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk
+    """
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    def _make_sample_parser(self):
+        return TFImageClassificationSampleParser()
+
+
+class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
+    """Importer for TF detection datasets stored on disk.
+
+    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
+
+    Note that the images in the input TFRecords are read in-memory and written
+    to ``images_dir``.
+
+    Args:
+        dataset_dir: the dataset directory
+        images_dir: the directory in which the images will be written
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk
+    """
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def _make_sample_parser(self):
+        return TFObjectDetectionSampleParser()
+
+
+class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
+    """Base class for :class:`fiftyone.utils.data.LabeledImageDatasetExporter`
+    instances that export labeled images as TFRecords datasets on disk.
+
+    Args:
+        export_dir: the directory to write the export
+        num_shards (None): an optional number of shards to split the records
+            into (using a round robin strategy)
+    """
+
+    def __init__(self, export_dir, num_shards=None):
+        super().__init__(export_dir)
+        self.num_shards = num_shards
+        self._data_filename_counts = None
+        self._example_generator = None
+        self._tf_records_writer = None
+
+    @property
+    def requires_image_metadata(self):
+        return False
+
+    def setup(self):
+        tf_records_path = os.path.join(self.export_dir, "tf.records")
+
+        self._data_filename_counts = defaultdict(int)
+        self._example_generator = self._make_example_generator()
+        self._tf_records_writer = TFRecordsWriter(
+            tf_records_path, num_shards=self.num_shards
+        )
+        self._tf_records_writer.__enter__()
+
+    def export_sample(self, image_path, label, metadata=None):
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        self._data_filename_counts[name] += 1
+
+        count = self._data_filename_counts[name]
+        if count > 1:
+            name += "-%d" + count
+
+        filename = name + ext
+        tf_example = self._example_generator.make_tf_example(
+            image_path, label, filename=filename
+        )
+        self._tf_records_writer.write(tf_example)
+
+    def close(self, *args):
+        self._tf_records_writer.__exit__(*args)
+
+    def _make_example_generator(self):
+        """Returns a :class:`TFExampleGenerator` instance that will generate
+        ``tf.train.Example`` protos for this exporter.
+        """
+        raise NotImplementedError(
+            "subclasses must implement _make_example_generator()"
+        )
+
+
+class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
+    """Exporter that writes an image classification dataset to disk as
+    TFRecords.
+
+    See :class:`fiftyone.types.TFImageClassificationDataset` for format details.
+
+    Args:
+        export_dir: the directory to write the export
+        num_shards (None): an optional number of shards to split the records
+            into (using a round robin strategy)
+    """
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    def _make_example_generator(self):
+        return TFImageClassificationExampleGenerator()
+
+
+class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
+    """Exporter that writes an object detection dataset to disk as TFRecords
+    in the TF Object Detection API format.
+
+    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
+
+    Args:
+        export_dir: the directory to write the export
+        classes (None): the list of possible class labels. If omitted, the
+            class list is dynamically generated as samples are processed
+        num_shards (None): an optional number of shards to split the records
+            into (using a round robin strategy)
+    """
+
+    def __init__(self, export_dir, classes=None, num_shards=None):
+        super().__init__(export_dir, num_shards=num_shards)
+        self.classes = classes
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def _make_example_generator(self):
+        return TFObjectDetectionExampleGenerator(classes=self.classes)
+
+
 class TFObjectDetectionSampleParser(
     TFRecordSampleParser, foud.ImageDetectionSampleParser
 ):
@@ -373,14 +642,14 @@ class TFObjectDetectionSampleParser(
         return fol.Detections(detections=detections)
 
 
-class TFRecordSampleWriter(object):
+class TFExampleGenerator(object):
     """Base class for sample writers that emit ``tf.train.Example`` protos."""
 
-    def make_tf_example(self, img_path, label, *args, **kwargs):
+    def make_tf_example(self, image_path, label, *args, **kwargs):
         """Makes a ``tf.train.Example`` for the given data.
 
         Args:
-            img_path: the path to the image on disk
+            image_path: the path to the image on disk
             label: a :class:`fiftyone.core.labels.Label`
             *args: subclass-specific positional arguments
             **kwargs: subclass-specific keyword arguments
@@ -393,30 +662,30 @@ class TFRecordSampleWriter(object):
         )
 
 
-class TFImageClassificationSampleWriter(TFRecordSampleWriter):
-    """Class for writing image classification samples as TFRecords.
+class TFImageClassificationExampleGenerator(TFExampleGenerator):
+    """Class for generating ``tf.train.Example`` protos for samples in TF
+    image classification format.
 
-    This implementation emits ``tf.train.Example`` protos whose features follow
-    the format described in
-    :class:`fiftyone.types.TFImageClassificationDataset`.
+    See :class:`fiftyone.types.TFImageClassificationDataset` for format
+    details.
     """
 
-    def make_tf_example(self, img_path, classification, filename=None):
+    def make_tf_example(self, image_path, classification, filename=None):
         """Makes a ``tf.train.Example`` for the given data.
 
         Args:
-            img_path: the path to the image on disk
+            image_path: the path to the image on disk
             classification: a :class:`fiftyone.core.labels.Classification`
             filename (None): an optional filename to store. By default, the
-                basename of ``img_path`` is used
+                basename of ``image_path`` is used
 
         Returns:
             a ``tf.train.Example``
         """
         if filename is None:
-            filename = os.path.basename(img_path)
+            filename = os.path.basename(image_path)
 
-        img_bytes = tf.io.read_file(img_path)
+        img_bytes = tf.io.read_file(image_path)
         img_shape = tf.image.decode_image(img_bytes).shape
         label = classification.label
 
@@ -432,33 +701,44 @@ class TFImageClassificationSampleWriter(TFRecordSampleWriter):
         return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-class TFObjectDetectionSampleWriter(TFRecordSampleWriter):
-    """Class for writing samples in TF Object Detection API format.
+class TFObjectDetectionExampleGenerator(TFExampleGenerator):
+    """Class for generating ``tf.train.Example`` protos for samples in TF
+    Object Detection API format.
 
-    This implementation emits ``tf.train.Example`` protos whose features follow
-    the format described in
-    :class:`fiftyone.types.TFObjectDetectionDataset`.
+    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
+
+    Args:
+        classes (None): the list of possible class labels. If omitted, the
+            class list is dynamically generated as examples are processed
     """
 
-    def make_tf_example(
-        self, img_path, detections, labels_map_rev, filename=None
-    ):
+    def __init__(self, classes=None):
+        if classes:
+            labels_map_rev = _to_labels_map_rev(classes)
+            dynamic_classes = False
+        else:
+            labels_map_rev = {}
+            dynamic_classes = True
+
+        self._labels_map_rev = labels_map_rev
+        self._dynamic_classes = dynamic_classes
+
+    def make_tf_example(self, image_path, detections, filename=None):
         """Makes a ``tf.train.Example`` for the given data.
 
         Args:
-            img_path: the path to the image on disk
+            image_path: the path to the image on disk
             detections: a :class:`fiftyone.core.labels.Detections`
-            labels_map_rev: a dict mapping class label strings to class IDs
             filename (None): an optional filename to store. By default, the
-                basename of ``img_path`` is used
+                basename of ``image_path`` is used
 
         Returns:
             a ``tf.train.Example``
         """
         if filename is None:
-            filename = os.path.basename(img_path)
+            filename = os.path.basename(image_path)
 
-        img_bytes = tf.io.read_file(img_path)
+        img_bytes = tf.io.read_file(image_path)
         img_shape = tf.image.decode_image(img_bytes).shape
         format = os.path.splitext(filename)[1][1:]  # no leading `.`
 
@@ -466,7 +746,14 @@ class TFObjectDetectionSampleWriter(TFRecordSampleWriter):
         for detection in detections.detections:
             xmin, ymin, w, h = detection.bounding_box
             text = detection.label
-            label = labels_map_rev[text]
+            try:
+                label = self._labels_map_rev[text]
+            except KeyError:
+                if not self._dynamic_classes:
+                    raise
+
+                label = len(self._labels_map_rev)
+                self._labels_map_rev[text] = label
 
             xmins.append(xmin)
             xmaxs.append(xmin + w)
@@ -493,172 +780,21 @@ class TFObjectDetectionSampleWriter(TFRecordSampleWriter):
         return tf.train.Example(features=tf.train.Features(feature=feature))
 
 
-def parse_tf_image_classification_dataset(dataset_dir):
-    """Parses the TF image classification dataset stored in the given
-    directory.
+def _get_classes_for_detections(samples, label_field):
+    classes = set()
+    for sample in samples:
+        for detection in sample[label_field].detections:
+            classes.add(detection.label)
 
-    See :class:`fiftyone.types.TFImageClassificationDataset` for format
-    details.
-
-    Args:
-        dataset_dir: the dataset directory
-
-    Returns:
-        a ``tf.data.Dataset`` that emits ``tf.train.Example`` protos that can
-        be parsed by a :class:`TFImageClassificationSampleParser`
-    """
-    tf_records_patt = os.path.join(dataset_dir, "*")
-    return from_tf_records(tf_records_patt)
-
-
-def parse_tf_object_detection_dataset(dataset_dir):
-    """Parses the TF object detection dataset stored in the given directory.
-
-    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-
-    Returns:
-        a ``tf.data.Dataset`` that emits ``tf.train.Example`` protos that can
-        be parsed by a :class:`TFObjectDetectionSampleParser`
-    """
-    tf_records_patt = os.path.join(dataset_dir, "*")
-    return from_tf_records(tf_records_patt)
-
-
-def export_tf_image_classification_dataset(
-    samples, label_field, dataset_dir, num_shards=None
-):
-    """Exports the given samples to disk as a TF image classification dataset.
-
-    See :class:`fiftyone.types.TFImageClassificationDataset` for format
-    details.
-
-    The filenames of the input images are maintained, unless a name conflict
-    would occur, in which case an index of the form ``"-%d" % count`` is
-    appended to the base filename.
-
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the
-            :class:`fiftyone.core.labels.Classification` field of the samples
-            to export
-        dataset_dir: the directory to which to write the dataset
-        num_shards (None): an optional number of shards to split the records
-            into (using a round robin strategy)
-    """
-    tf_records_path = os.path.join(dataset_dir, "tf.records")
-
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.TFImageClassificationDataset),
-    )
-
-    etau.ensure_dir(dataset_dir)
-
-    def _example_generator():
-        data_filename_counts = defaultdict(int)
-        writer = TFImageClassificationSampleWriter()
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                img_path = sample.filepath
-                name, ext = os.path.splitext(os.path.basename(img_path))
-                data_filename_counts[name] += 1
-
-                count = data_filename_counts[name]
-                if count > 1:
-                    name += "-%d" + count
-
-                filename = name + ext
-
-                label = sample[label_field]
-
-                yield writer.make_tf_example(
-                    img_path, label, filename=filename
-                )
-
-    examples = _example_generator()
-    write_tf_records(examples, tf_records_path, num_shards=num_shards)
-
-    logger.info("Dataset created")
-
-
-def export_tf_object_detection_dataset(
-    samples, label_field, dataset_dir, classes=None, num_shards=None
-):
-    """Exports the given samples to disk as a TF object detection dataset.
-
-    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
-
-    The filenames of the input images are maintained, unless a name conflict
-    would occur, in which case an index of the form ``"-%d" % count`` is
-    appended to the base filename.
-
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the :class:`fiftyone.core.labels.Detections`
-            field of the samples to export
-        dataset_dir: the directory to which to write the dataset
-        classes (None): an optional list of class labels. If omitted, this is
-            dynamically computed from the observed labels
-        num_shards (None): an optional number of shards to split the records
-            into (using a round robin strategy)
-    """
-    if classes is None:
-        classes = set()
-        for sample in samples:
-            for detection in sample[label_field].detections:
-                classes.add(detection.label)
-
-        classes = sorted(classes)
-
-    labels_map_rev = _to_labels_map_rev(classes)
-
-    tf_records_path = os.path.join(dataset_dir, "tf.records")
-
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.TFObjectDetectionDataset),
-    )
-
-    etau.ensure_dir(dataset_dir)
-
-    def _example_generator():
-        data_filename_counts = defaultdict(int)
-        writer = TFObjectDetectionSampleWriter()
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                img_path = sample.filepath
-                name, ext = os.path.splitext(os.path.basename(img_path))
-                data_filename_counts[name] += 1
-
-                count = data_filename_counts[name]
-                if count > 1:
-                    name += "-%d" + count
-
-                filename = name + ext
-
-                label = sample[label_field]
-
-                yield writer.make_tf_example(
-                    img_path, label, labels_map_rev, filename=filename
-                )
-
-    examples = _example_generator()
-    write_tf_records(examples, tf_records_path, num_shards=num_shards)
-
-    logger.info("Dataset created")
+    return sorted(classes)
 
 
 def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
 
 
-def _parse_image_tf(img_path):
-    img_bytes = tf.io.read_file(img_path)
+def _parse_image_tf(image_path):
+    img_bytes = tf.io.read_file(image_path)
     return tf.image.decode_image(img_bytes)
 
 
