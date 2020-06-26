@@ -67,6 +67,113 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
         return load_kitti_detection_annotations(target, frame_size)
 
 
+class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
+    """Importer for KITTI detection datasets stored on disk.
+
+    See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    def __init__(self, dataset_dir):
+        super().__init__(dataset_dir)
+        self._anno_uuids_to_paths = None
+        self._image_paths = None
+        self._iter_image_paths = None
+
+    def __iter__(self):
+        self._iter_image_paths = iter(self._image_paths)
+        return self
+
+    def __len__(self):
+        return len(self._image_paths)
+
+    def __next__(self):
+        image_path = next(self._iter_image_paths)
+        uuid = os.path.splitext(os.path.basename(image_path))[0]
+
+        image_metadata = fom.ImageMetadata.build_for(image_path)
+
+        frame_size = (image_metadata.width, image_metadata.height)
+        anno_path = self._anno_uuids_to_paths[uuid]
+
+        detections = load_kitti_detection_annotations(anno_path, frame_size)
+
+        return image_path, image_metadata, detections
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        data_dir = os.path.join(self.dataset_dir, "data")
+        labels_dir = os.path.join(self.dataset_dir, "labels")
+
+        self._image_paths = etau.list_files(data_dir, abs_paths=True)
+
+        self._anno_uuids_to_paths = {
+            os.path.splitext(f)[0]: os.path.join(labels_dir, f)
+            for f in etau.list_files(labels_dir, abs_paths=False)
+        }
+
+
+class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
+    """Exporter that writes KITTI detection datasets to disk.
+
+    See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._data_dir = None
+        self._labels_dir = None
+        self._data_filename_counts = None
+        self._writer = None
+
+    @property
+    def requires_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._labels_dir = os.path.join(self.export_dir, "labels")
+        self._data_filename_counts = defaultdict(int)
+        self._writer = KITTIAnnotationWriter()
+
+        etau.ensure_dir(self._data_dir)
+        etau.ensure_dir(self._labels_dir)
+
+    def export_sample(self, image_path, detections, metadata=None):
+        name, ext = os.path.splitext(os.path.basename(image_path))
+        self._data_filename_counts[name] += 1
+
+        count = self._data_filename_counts[name]
+        if count > 1:
+            name += "-%d" + count
+
+        out_image_path = os.path.join(self._data_dir, name + ext)
+        out_anno_path = os.path.join(self._labels_dir, name + ".txt")
+
+        etau.copy_file(image_path, out_image_path)
+
+        if metadata is None:
+            metadata = fom.ImageMetadata.build_for(image_path)
+
+        self._writer.write(detections, metadata, out_anno_path)
+
+
 class KITTIAnnotationWriter(object):
     """Class for writing annotations in KITTI detection format.
 
@@ -91,42 +198,6 @@ class KITTIAnnotationWriter(object):
         etau.write_file("\n".join(rows), txt_path)
 
 
-def parse_kitti_detection_dataset(dataset_dir):
-    """Parses the KITTI detection dataset stored in the given directory.
-
-    See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-
-    Returns:
-        a list of ``(img_path, image_metadata, detections)`` tuples
-    """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_dir = os.path.join(dataset_dir, "labels")
-
-    img_paths = etau.list_files(data_dir, abs_paths=True)
-
-    anno_uuids_to_paths = {
-        os.path.splitext(f)[0]: os.path.join(labels_dir, f)
-        for f in etau.list_files(labels_dir, abs_paths=False)
-    }
-
-    samples = []
-    for img_path in img_paths:
-        uuid = os.path.splitext(os.path.basename(img_path))[0]
-
-        metadata = fom.ImageMetadata.build_for(img_path)
-
-        frame_size = (metadata.width, metadata.height)
-        anno_path = anno_uuids_to_paths[uuid]
-        detections = load_kitti_detection_annotations(anno_path, frame_size)
-
-        samples.append((img_path, metadata, detections))
-
-    return samples
-
-
 def load_kitti_detection_annotations(txt_path, frame_size):
     """Loads the KITTI detection annotations from the given TXT file.
 
@@ -147,61 +218,6 @@ def load_kitti_detection_annotations(txt_path, frame_size):
             detections.append(detection)
 
     return fol.Detections(detections=detections)
-
-
-def export_kitti_detection_dataset(samples, label_field, dataset_dir):
-    """Exports the given samples to disk as a KITTI detection dataset.
-
-    See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
-
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
-
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the :class:`fiftyone.core.labels.Detections`
-            field of the samples to export
-        dataset_dir: the directory to which to write the dataset
-    """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_dir = os.path.join(dataset_dir, "labels")
-
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.KITTIDetectionDataset),
-    )
-
-    etau.ensure_dir(data_dir)
-    etau.ensure_dir(labels_dir)
-
-    writer = KITTIAnnotationWriter()
-    data_filename_counts = defaultdict(int)
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            data_filename_counts[name] += 1
-
-            count = data_filename_counts[name]
-            if count > 1:
-                name += "-%d" + count
-
-            out_img_path = os.path.join(data_dir, name + ext)
-            out_anno_path = os.path.join(labels_dir, name + ".txt")
-
-            etau.copy_file(img_path, out_img_path)
-
-            metadata = sample.metadata
-            if metadata is None:
-                metadata = fom.ImageMetadata.build_for(img_path)
-
-            detections = sample[label_field]
-            writer.write(detections, metadata, out_anno_path)
-
-    logger.info("Dataset created")
 
 
 def _parse_kitti_detection_row(row, frame_size):
