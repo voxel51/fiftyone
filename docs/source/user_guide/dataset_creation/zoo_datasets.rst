@@ -85,7 +85,7 @@ Listing zoo datasets
         downloaded_datasets = foz.list_downloaded_zoo_datasets()
         pprint(downloaded_datasets)
 
-    .. code-block:: json
+    .. code-block:: python
 
         {
             'cifar10': (

@@ -63,7 +63,7 @@ the remote machine to the FiftyOne App on your local machine and seemlessly
 browse your remote `Dataset`.
 
 Remote machine
-##############
+^^^^^^^^^^^^^^
 
 First log into the **remote machine**, load a FiftyOne `Dataset`, and create a
 `Session` with the argument `remote=True`. This will send the `Session` to port
@@ -81,7 +81,7 @@ First log into the **remote machine**, load a FiftyOne `Dataset`, and create a
 This is the session that will be modified to change what is being displayed.
 
 Local machine
-#############
+^^^^^^^^^^^^^
 
 The easiest way to port forward and load the FiftyOne App is using the CLI.
 Alternatively, the port forwarding and App launching steps can be run

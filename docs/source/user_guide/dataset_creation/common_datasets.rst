@@ -203,14 +203,12 @@ where ``labels.json`` is a JSON file in the following format:
 
     {
         "classes": [
-            <labelA>,
-            <labelB>,
-            ...
+            "<labelA>",
+            "<labelB>",
         ],
         "labels": {
-            <uuid1>: <target1>,
-            <uuid2>: <target2>,
-            ...
+            "<uuid1>": "<target1>",
+            "<uuid2>": "<target2>",
         }
     }
 
@@ -369,20 +367,17 @@ Datasets of this type are read in the following format:
 where the features of the (possibly sharded) TFRecords are stored in the
 following format:
 
-.. code-block:: json
+.. code-block:: python
 
     {
         # Image dimensions
         "height": tf.io.FixedLenFeature([], tf.int64),
         "width": tf.io.FixedLenFeature([], tf.int64),
         "depth": tf.io.FixedLenFeature([], tf.int64),
-
         # Image filename
         "filename": tf.io.FixedLenFeature([], tf.int64),
-
         # Encoded image bytes
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
-
         # Class label string
         "label": tf.io.FixedLenFeature([], tf.string),
     }
@@ -479,13 +474,12 @@ Datasets of this type are read in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "classes": [
             <labelA>,
             <labelB>,
-            ...
         ],
         "labels": {
             <uuid1>: [
@@ -603,24 +597,21 @@ where ``labels.json`` is a JSON file in the following format:
         },
         "licenses": [],
         "categories": [
-            ...
             {
                 "id": 2,
                 "name": "cat",
                 "supercategory": "none"
             },
-            ...
         ],
         "images": [
             {
                 "id": 0,
                 "license": null,
-                "file_name": <filename0>,
+                "file_name": "<filename0>",
                 "height": 480,
                 "width": 640,
                 "date_captured": null
             },
-            ...
         ],
         "annotations": [
             {
@@ -632,7 +623,6 @@ where ``labels.json`` is a JSON file in the following format:
                 "segmentation": [],
                 "iscrowd": 0
             },
-            ...
         ]
     }
 
@@ -1090,7 +1080,6 @@ where `manifest.json` is a JSON file in the following format:
                 "data": "data/<uuid1>.<ext>",
                 "labels": "labels/<uuid1>.json"
             },
-            ...
         ]
     }
 
@@ -1201,12 +1190,9 @@ where `labels.json` is a JSON file in the following format:
                     "manualAttributes": true,
                     "manualShape": true
                 },
-                ...
             ],
-            "name": <filename0>,
-            ...
+            "name": "<filename0>",
         },
-        ...
     ]
 
 You can create a FiftyOne dataset from a BDD dataset stored in the above format

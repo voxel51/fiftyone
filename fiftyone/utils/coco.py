@@ -276,8 +276,7 @@ def load_coco_detection_annotations(json_path):
     Returns:
         classes: a list of classes
         images: a dict mapping image filenames to image dicts
-        annotations: a dict mapping image IDs to list of :class:`COCOObject`
-            instances
+        annotations: a dict mapping image IDs to list of :class:`COCOObject` instances
     """
     d = etas.load_json(json_path)
 
@@ -466,8 +465,7 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
 
     Returns:
         images_dir: the path to the directory containing the extracted images
-        anno_path: the path to the detections JSON file, or ``None`` if
-            ``split == "test"``
+        anno_path: the path to the detections JSON file, or ``None`` if ``split == "test"``
     """
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
