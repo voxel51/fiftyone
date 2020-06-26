@@ -54,6 +54,7 @@ export default function () {
   const ticksValue = useRecoilValue(ticks);
   const viewCountValue = useRecoilValue(viewCount);
   const [unused, mh] = useRecoilValue(mainSize);
+
   const springs = useSprings(
     ticksValue.length,
     ticksValue.map((s) => ({

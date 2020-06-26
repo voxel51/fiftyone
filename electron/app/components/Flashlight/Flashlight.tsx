@@ -29,6 +29,7 @@ const Grid = styled.div`
 `;
 
 const Flashlight = styled.div`
+  display: block;
   width: 100%;
   height: 100%;
 `;
@@ -44,31 +45,31 @@ const ListDiv = animated(styled.div`
   width: 100%;
 `);
 
-const Items = styled.div`
-  width: 100%;
-  position: absolute;
-`;
-
-const List = ({ targetRef, children }) => {
+const List = ({ children }) => {
+  const ref = useRef();
   const setCurrentListHeight = useSetRecoilState(currentListHeight);
   const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
   const currentListTopValue = useRecoilValue(currentListTop);
   const viewCountValue = useRecoilValue(viewCount);
-
   useEffect(() => {
-    setCurrentListHeight(targetRef.current.offsetHeight);
-  }, [targetRef.current, isMainWidthResizingValue]);
-
+    setCurrentListHeight(ref.current.offsetHeight);
+  }, [ref.current]);
   const props = useSpring({
     top: -1 * currentListTopValue,
   });
 
   return (
-    <ListDiv ref={targetRef} style={props}>
+    <ListDiv ref={ref} style={props}>
       {children}
     </ListDiv>
   );
 };
+
+const ListMain = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+`;
 
 let timeout;
 
@@ -76,10 +77,7 @@ export default () => {
   const segmentsToRenderValue = useRecoilValue(segmentsToRender);
 
   useTrackMousePosition();
-  const setSegmentIsLoaded = useSetRecoilState(segmentIsLoaded(0));
-  const [isMainWidthResizingValue, setIsMainWidthResizing] = useRecoilState(
-    isMainWidthResizing
-  );
+  const setIsMainWidthResizing = useSetRecoilState(isMainWidthResizing);
   const [mainSizeValue, setMainSize] = useRecoilState(mainSize);
   const [mainPreviousWidthValue, setMainPreviousWidth] = useRecoilState(
     mainPreviousWidth
@@ -96,11 +94,9 @@ export default () => {
   useLayoutEffect(() => {
     if (!contentRect) return;
     const { top, width, height } = contentRect;
-
     requestAnimationFrame(() => {
       setIsMainWidthResizing(width !== mainSizeValue[0]);
       setMainSize([width, height]);
-      setMainPreviousWidth(mainSizeValue[0]);
       setMainTop(top);
       !mainLoadedValue && setMainLoaded(true);
       if (timeout) clearTimeout(timeout);
@@ -108,7 +104,7 @@ export default () => {
         setIsMainWidthResizing(false);
       }, 1000);
     });
-  }, [contentRect]);
+  }, [ref, contentRect]);
 
   const [currentListTopValue, setCurrentListTop] = useRecoilState(
     currentListTop
@@ -126,18 +122,20 @@ export default () => {
   });
 
   return (
-    <Flashlight ref={ref}>
+    <Flashlight>
       <Grid>
-        <ListContainer key={0} {...bind()} ref={containerRef}>
-          {ref.current ? (
-            <List targetRef={ref} containerRef={containerRef}>
-              {segmentsToRenderValue.map((index) => (
-                <Segment key={index} index={index} />
-              ))}
-            </List>
-          ) : null}
-        </ListContainer>
-        <Scrubber key={1} targetRef={ref} />
+        <ListMain ref={ref}>
+          <ListContainer {...bind()} ref={containerRef}>
+            {mainLoadedValue ? (
+              <List>
+                {segmentsToRenderValue.map((index) => (
+                  <Segment key={index} index={index} />
+                ))}
+              </List>
+            ) : null}
+          </ListContainer>
+        </ListMain>
+        <Scrubber />
       </Grid>
     </Flashlight>
   );

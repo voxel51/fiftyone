@@ -5,7 +5,7 @@ import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
-import Player51 from "./Player51/Player51";
+import Player51 from "./Flashlight/Player51/Player51";
 import Tag from "./Tag";
 
 const Sample = ({

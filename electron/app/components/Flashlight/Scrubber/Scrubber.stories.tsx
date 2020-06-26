@@ -53,21 +53,22 @@ const ImageDiv = animated(styled.div`
   padding: 0 1rem;
 `);
 
-const Images = ({ targetRef }) => {
+const Images = () => {
+  const ref = useRef();
   const setCurrentListHeight = useSetRecoilState(currentListHeight);
   const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
   const currentListTopValue = useRecoilValue(currentListTop);
   const viewCountValue = useRecoilValue(viewCount);
   useEffect(() => {
-    setCurrentListHeight(targetRef.current.offsetHeight);
-  }, [targetRef.current, isMainWidthResizingValue]);
+    setCurrentListHeight(ref.current.offsetHeight);
+  }, [ref.current]);
 
   const props = useSpring({
     top: -1 * currentListTopValue,
   });
 
   return (
-    <ImageDiv ref={targetRef} style={props}>
+    <ImageDiv ref={ref} style={props}>
       {[...Array(viewCountValue).keys()].map((i) => (
         <Image key={i} src={SRC} />
       ))}
@@ -81,7 +82,6 @@ const ScrubberDemo = () => {
   );
   const [minTop, maxTop] = useRecoilValue(currentListTopRange);
 
-  const ref = useRef();
   const containerRef = useRef();
   const bind = useWheel((s) => {
     const {
@@ -96,9 +96,9 @@ const ScrubberDemo = () => {
     <Container>
       <Grid>
         <ImagesContainer {...bind()} ref={containerRef}>
-          <Images targetRef={ref} containerRef={containerRef} />
+          <Images />
         </ImagesContainer>
-        <Scrubber targetRef={ref} />
+        <Scrubber />
       </Grid>
     </Container>
   );

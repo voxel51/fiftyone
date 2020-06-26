@@ -86,8 +86,8 @@ export const currentIndex = selector({
 export const currentListTopRange = selector({
   key: "currentListTopRange",
   get: ({ get }) => {
+    const { height: clh } = get(segmentBaseSize);
     const [unused, mh] = get(mainSize);
-    const clh = get(currentListHeight);
     return [0, clh - mh];
   },
 });
@@ -124,14 +124,6 @@ export const numSections = selector({
       if (vc <= breakpoint) return Math.ceil(vc / Math.pow(10, i + 1));
     }
     return Math.ceil(vc / Math.pow(10, breakpoints.length));
-  },
-});
-export const mainAspectRatio = selector({
-  key: "mainAspectRatio",
-  get: ({ get }) => {
-    const [mw, mh] = get(mainSize);
-    if (mh <= 0) return 0;
-    return mw / mh;
   },
 });
 
@@ -205,15 +197,24 @@ export const itemData = selectorFamily({
   },
 });
 
+export const mainAspectRatio = selector({
+  key: "mainAspectRatio",
+  get: ({ get }) => {
+    const [mw, mh] = get(mainSize);
+    return mh === 0 ? 0 : mw / mh;
+  },
+});
+
 export const itemBaseSize = selector({
   key: "itemBaseSize",
   get: ({ get }) => {
-    const [mw, unused] = get(mainSize);
+    const [mw, mh] = get(mainSize);
+    const sbnc = get(segmentBaseNumCols);
     const gm = get(gridMargin);
-    const workingWidth = mw - 6 * gm;
+    const workingWidth = mw - (sbnc + 1) * gm;
     return {
-      width: workingWidth / 5,
-      height: workingWidth / 5,
+      width: workingWidth / sbnc,
+      height: workingWidth / sbnc,
     };
   },
 });
@@ -222,15 +223,15 @@ export const itemBasePosition = selectorFamily({
   key: "itemBasePosition",
   get: (itemIndex) => ({ get }) => {
     const ik = get(itemKey(itemIndex));
-    const row = Math.floor(ik / 5);
-    const col = ik % 5;
-
-    const ils = get(itemBaseSize);
+    const sbnc = get(segmentBaseNumCols);
+    const row = Math.floor(ik / sbnc);
+    const col = ik % sbnc;
+    const { width: ibw, height: ibh } = get(itemBaseSize);
     const gm = get(gridMargin);
 
     return {
-      top: gm + row * (ils.height + gm),
-      left: gm + col * (ils.width + gm),
+      top: gm + row * (ibw + gm),
+      left: gm + col * (ibh + gm),
     };
   },
 });
@@ -314,4 +315,47 @@ export const currentRow = selector({
 export const listHeight = selector({
   key: "listHeight",
   get: ({ get }) => {},
+});
+
+export const segmentBaseNumCols = selector({
+  key: "segmentBaseNumCols",
+  get: ({ get }) => {
+    const [mw, unused] = get(mainSize);
+    if (mw <= 600) {
+      return 1;
+    } else if (mw < 768) {
+      return 2;
+    } else if (mw < 992) {
+      return 4;
+    } else if (mw < 1200) {
+      return 8;
+    } else {
+      return 12;
+    }
+  },
+});
+
+export const segmentBaseNumRows = selector({
+  key: "segmentBaseNumRows",
+  get: ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    const sbnc = get(segmentBaseNumCols);
+    return Math.ceil(ipr / sbnc);
+  },
+});
+
+export const segmentBaseSize = selector({
+  key: "segmentBaseSize",
+  get: ({ get }) => {
+    const { width: ibw, height: ibh } = get(itemBaseSize);
+    const sbnc = get(segmentBaseNumCols);
+    const sbnr = get(segmentBaseNumRows);
+    const gm = get(gridMargin);
+    const width = sbnc * ibw + (sbnc + 1) * gm;
+    const height = sbnr * ibh + (sbnr + 1) * gm;
+    return {
+      width,
+      height,
+    };
+  },
 });

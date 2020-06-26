@@ -137,8 +137,8 @@ const ThumbnailContainer = ({ index }) => {
     setInitialLoad(false);
   }, []);
 
-  if (isMainWidthResizingValue)
-    return <LoadingThumbnail index={index} unveil={initialLoad} move={true} />;
+  // if (isMainWidthResizingValue)
+  return <LoadingThumbnail index={index} unveil={initialLoad} move={true} />;
 
   return (
     <Suspense

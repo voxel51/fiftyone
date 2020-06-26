@@ -148,8 +148,18 @@
       "node_modules",
       "app/node_modules"
     ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/.yalc/"
+    ],
     "setupFiles": [
       "./internals/scripts/CheckBuildsExist.js"
+    ],
+    "roots": [
+      "<rootDir>/app"
+    ],
+    "modulePaths": [
+      "<rootDir>/dist"
     ]
   },
   "devDependencies": {
@@ -184,6 +194,7 @@
     "@storybook/addons": "^5.3.19",
     "@storybook/preset-typescript": "^3.0.0",
     "@storybook/react": "^5.3.19",
+    "@storybook/theming": "^5.3.19",
     "@testing-library/react": "^10.2.1",
     "@types/enzyme": "^3.10.5",
     "@types/enzyme-adapter-react-16": "^1.0.6",
@@ -243,7 +254,7 @@
     "file-loader": "^5.0.2",
     "husky": "^4.2.0",
     "identity-obj-proxy": "^3.0.0",
-    "jest": "^26.0.1",
+    "jest": "25",
     "less": "2.7.3",
     "less-loader": "^6.1.0",
     "less-plugin-rewrite-import": "^0.1.1",

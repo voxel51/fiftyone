@@ -1,28 +1,32 @@
 import React, { Suspense } from "react";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
+import { animated, useSpring } from "react-spring";
 
 import { Item } from "../Player51";
 
 import { mainLoaded } from "../../../state/atoms";
-import { itemsToRenderInSegment } from "../../../state/selectors";
+import {
+  itemsToRenderInSegment,
+  segmentBaseSize,
+} from "../../../state/selectors";
 
-const SegmentDiv = styled.div`
+const SegmentDiv = animated(styled.div`
   position: relative;
-  width: 400px;
-  height: 400px;
-`;
+`);
 
 const Segment = ({ index }) => {
   const itemsToRenderInSegmentValue = useRecoilValue(
     itemsToRenderInSegment(index)
   );
-  const mainLoadedValue = useRecoilValue(mainLoaded);
+  const segmentBaseSizeValue = useRecoilValue(segmentBaseSize);
 
-  if (!mainLoadedValue) return null;
+  const props = useSpring({
+    ...segmentBaseSizeValue,
+  });
 
   return (
-    <SegmentDiv>
+    <SegmentDiv style={props}>
       {itemsToRenderInSegmentValue.map(({ key, index }) => (
         <Item key={key} index={index} />
       ))}

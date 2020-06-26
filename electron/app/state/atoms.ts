@@ -97,3 +97,8 @@ export const current = atomFamily({
   key: "current",
   default: null,
 });
+
+export const activeRow = atomFamily({
+  key: "activeRow",
+  default: 0,
+});
