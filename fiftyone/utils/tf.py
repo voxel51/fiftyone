@@ -377,7 +377,7 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         self._iter_samples = None
 
     def __iter__(self):
-        self._iter_samples = enumerate(self._tf_dataset, 1)
+        self._iter_samples = enumerate(self._tf_dataset)
         return self
 
     def __next__(self):
