@@ -38,67 +38,6 @@ from .parsers import (
 )
 
 
-def import_samples(dataset, importer, label_field=None, tags=None):
-    """Imports the samples from the given :class:`DatasetImporter` into the
-    given :class:`fiftyone.core.dataset.Dataset`.
-
-    Args:
-        dataset: a :class:`fiftyone.core.dataset.Dataset`
-        importer: a :class:`DatasetImporter`
-        label_field (None): the name of the field to use for the labels of the
-            input samples. This is required if and only if ``importer`` is a
-            :class:`LabeledImageDatasetImporter`
-        tags (None): an optional list of tags to attach to each sample
-
-    Returns:
-        a list of IDs of the samples that were added to the dataset
-    """
-    if isinstance(importer, UnlabeledImageDatasetImporter):
-        return _import_unlabeled_image_dataset(dataset, importer, tags)
-
-    if isinstance(importer, LabeledImageDatasetImporter):
-        return _import_labeled_image_dataset(
-            dataset, importer, label_field, tags
-        )
-
-    raise ValueError("Unsupported importer type %s" % type(importer))
-
-
-def _import_unlabeled_image_dataset(dataset, importer, tags):
-    with fou.ProgressBar() as pb:
-        with importer:
-            _samples = []
-            for image_path, image_metadata in pb(importer):
-                filepath = os.path.abspath(os.path.expanduser(image_path))
-
-                _samples.append(
-                    fos.Sample(
-                        filepath=filepath, metadata=image_metadata, tags=tags,
-                    )
-                )
-
-            return dataset.add_samples(_samples)
-
-
-def _import_labeled_image_dataset(dataset, importer, label_field, tags):
-    with fou.ProgressBar() as pb:
-        with importer:
-            _samples = []
-            for image_path, image_metadata, label in pb(importer):
-                filepath = os.path.abspath(os.path.expanduser(image_path))
-
-                _samples.append(
-                    fos.Sample(
-                        filepath=filepath,
-                        metadata=image_metadata,
-                        tags=tags,
-                        **{label_field: label},
-                    )
-                )
-
-            return dataset.add_samples(_samples)
-
-
 class DatasetImporter(object):
     """Base interface for importing datasets stored on disk into FiftyOne.
 
