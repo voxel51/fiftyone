@@ -167,6 +167,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ValueError: if ``create == False`` and the dataset does not exist
     """
 
+    # Batch size used when commiting samples to the database
+    _BATCH_SIZE = 128
+
     def __init__(self, name=None, persistent=False, _create=True):
         if name is None:
             name = get_default_dataset_name()
@@ -388,7 +391,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return str(d["_id"])
 
-    def add_samples(self, samples, expand_schema=True, _batch_size=128):
+    def add_samples(self, samples, expand_schema=True, num_samples=None):
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -402,6 +405,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            num_samples (None): the number of samples in ``samples``. If not
+                provided, this is computed via ``len(samples)``, if possible.
+                This value is completely optional and is only used for
+                optimization and progress tracking
 
         Returns:
             a list of IDs of the samples in the dataset
@@ -411,15 +418,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             has a type that is inconsistent with the dataset schema, or if
             ``expand_schema == False`` and a new field is encountered
         """
+        if num_samples is None:
+            try:
+                num_samples = len(samples)
+            except:
+                pass
+
         sample_ids = []
-        with fou.ProgressBar(samples) as pb:
-            for batch in fou.iter_batches(samples, _batch_size):
-                sample_ids.extend(self._add_samples(batch, expand_schema))
+        with fou.ProgressBar(total=num_samples) as pb:
+            for batch in fou.iter_batches(samples, self._BATCH_SIZE):
+                sample_ids.extend(
+                    self._add_samples_batch(batch, expand_schema)
+                )
                 pb.update(count=len(batch))
 
         return sample_ids
 
-    def _add_samples(self, samples, expand_schema):
+    def _add_samples_batch(self, samples, expand_schema):
         if expand_schema:
             self._expand_schema(samples)
 
@@ -523,6 +538,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset_type,
         label_field="ground_truth",
         tags=None,
+        expand_schema=True,
         **kwargs
     ):
         """Adds the contents of the given directory to the dataset.
@@ -534,8 +550,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
-            **kwargs: optional keyword arguments to pass to
-                ``dataset_type.get_dataset_importer_cls(dataset_dir, **kwargs)``
+            expand_schema (True): whether to dynamically add new sample fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
+            **kwargs: optional keyword arguments to pass to the constructor of
+                the :class:`fiftyone.utils.data.DatasetImporter` for the
+                specified ``dataset_type`` via the syntax
+                ``DatasetImporter(dataset_dir, **kwargs)``
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -547,11 +568,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
 
         return self.import_dataset(
-            dataset_importer, label_field=label_field, tags=tags
+            dataset_importer,
+            label_field=label_field,
+            tags=tags,
+            expand_schema=expand_schema,
         )
 
     def import_dataset(
-        self, dataset_importer, label_field="ground_truth", tags=None
+        self,
+        dataset_importer,
+        label_field="ground_truth",
+        tags=None,
+        expand_schema=True,
     ):
         """Imports the samples from the given
         :class:`fiftyone.utils.data.DatasetImporter` to the dataset.
@@ -561,13 +589,53 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
+            expand_schema (True): whether to dynamically add new sample fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
 
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        return foud.import_samples(
-            self, dataset_importer, label_field=label_field, tags=tags
-        )
+        if isinstance(dataset_importer, foud.UnlabeledImageDatasetImporter):
+
+            def parse_sample(sample):
+                image_path, image_metadata = sample
+                filepath = os.path.abspath(os.path.expanduser(image_path))
+
+                return fos.Sample(
+                    filepath=filepath, metadata=image_metadata, tags=tags,
+                )
+
+        elif isinstance(dataset_importer, foud.LabeledImageDatasetImporter):
+
+            def parse_sample(sample):
+                image_path, image_metadata, label = sample
+                filepath = os.path.abspath(os.path.expanduser(image_path))
+
+                return fos.Sample(
+                    filepath=filepath,
+                    metadata=image_metadata,
+                    tags=tags,
+                    **{label_field: label},
+                )
+
+        else:
+            raise ValueError(
+                "Unsupported DatasetImporter type %s" % type(dataset_importer)
+            )
+
+        with dataset_importer:
+            try:
+                num_samples = len(dataset_importer)
+            except:
+                num_samples = None
+
+            samples = map(parse_sample, iter(dataset_importer))
+            sample_ids = self.add_samples(
+                samples, expand_schema=expand_schema, num_samples=num_samples
+            )
+
+        return sample_ids
 
     def add_image_classification_samples(
         self, samples, label_field="ground_truth", tags=None, classes=None,
@@ -972,8 +1040,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
-            **kwargs: optional keyword arguments to pass to
-                ``dataset_type.get_dataset_importer_cls(dataset_dir, **kwargs)``
+            **kwargs: optional keyword arguments to pass to the constructor of
+                the :class:`fiftyone.utils.data.DatasetImporter` for the
+                specified ``dataset_type`` via the syntax
+                ``DatasetImporter(dataset_dir, **kwargs)``
 
         Returns:
             a :class:`Dataset`
@@ -1008,7 +1078,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dataset = cls(name)
         dataset.import_dataset(
-            dataset_importer, name=name, label_field=label_field, tags=tags,
+            dataset_importer, label_field=label_field, tags=tags
         )
         return dataset
 
