@@ -23,7 +23,6 @@ from builtins import *
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
-import logging
 import os
 
 import jinja2
@@ -40,9 +39,6 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
-
-
-logger = logging.getLogger(__name__)
 
 
 class CVATImageSampleParser(foud.LabeledImageSampleParser):
@@ -210,7 +206,6 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         cvat_task_labels = CVATTaskLabels.from_cvat_images(self._cvat_images)
 
         # Write annotations
-        logger.info("Writing labels to '%s'", self._labels_path)
         writer = CVATImageAnnotationWriter()
         writer.write(cvat_task_labels, self._cvat_images, self._labels_path)
 

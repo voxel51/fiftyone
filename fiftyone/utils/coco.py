@@ -275,7 +275,6 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             "annotations": self._annotations,
         }
 
-        logger.info("Writing labels to '%s'", self._labels_path)
         etas.write_json(labels, self._labels_path)
 
 

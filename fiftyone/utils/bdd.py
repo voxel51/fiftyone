@@ -21,7 +21,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
-import logging
 import os
 
 import numpy as np
@@ -38,9 +37,6 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.data as foud
-
-
-logger = logging.getLogger(__name__)
 
 
 class BDDSampleParser(foud.ImageLabelsSampleParser):
@@ -250,7 +246,6 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
         self._annotations.append(annotation)
 
     def close(self, *args):
-        logger.info("Writing labels to '%s'", self._labels_path)
         etas.write_json(self._annotations, self._labels_path)
 
 

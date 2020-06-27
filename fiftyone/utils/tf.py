@@ -20,7 +20,6 @@ from builtins import *
 
 from collections import defaultdict
 import contextlib
-import logging
 import multiprocessing
 import os
 
@@ -35,9 +34,6 @@ import fiftyone.utils.data as foud
 
 fou.ensure_tf()
 import tensorflow as tf
-
-
-logger = logging.getLogger(__name__)
 
 
 def from_images_dir(images_dir, recursive=True, num_parallel_calls=None):

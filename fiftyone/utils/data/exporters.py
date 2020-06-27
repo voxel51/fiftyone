@@ -19,7 +19,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
-import logging
 import os
 
 import eta.core.datasets as etads
@@ -32,15 +31,14 @@ import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
 
-logger = logging.getLogger(__name__)
-
-
 def export_samples(samples, exporter, label_field=None):
     """Exports the given samples to disk as a dataset using the provided
     exporter.
 
     Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances.
+            For example, this may be a :class:`fiftyone.core.dataset.Dataset`
+            or a :class:`fifyone.core.view.DatasetView`
         exporter: a :class:`DatasetExporter`
         label_field (None): the name of the label field to export, which is
             required if ``exporter`` is a :class:`LabeledImageDatasetExporter`
@@ -323,8 +321,6 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
             "classes": None,  # @todo get this somehow?
             "labels": self._labels_dict,
         }
-
-        logger.info("Writing labels to '%s'", self._labels_path)
         etas.write_json(labels, self._labels_path)
 
 
@@ -428,8 +424,6 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
             "classes": None,  # @todo get this somehow?
             "labels": self._labels_dict,
         }
-
-        logger.info("Writing labels to '%s'", self._labels_path)
         etas.write_json(labels, self._labels_path)
 
 
@@ -492,9 +486,6 @@ class ImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         )
 
     def close(self, *args):
-        logger.info(
-            "Writing manifest to '%s'", self._labeled_dataset.manifest_path
-        )
         self._labeled_dataset.write_manifest()
 
 
