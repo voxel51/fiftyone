@@ -6,7 +6,7 @@ import { Container } from "../utils";
 
 export default {
   component: Thumbnail,
-  title: "Player51/Thumbnail",
+  title: "Flashlight/Player51/Thumbnail",
 };
 
 export const thumbnail = () => (

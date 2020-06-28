@@ -6,14 +6,23 @@ import {
   viewCount,
   mainSize,
   mainTop,
-  currentListHeight,
   currentListTop,
   itemsPerRequest,
   segmentIsLoaded,
   gridMargin,
   portNumber,
-  mainPreviousWidth,
 } from "./atoms";
+
+export const currentListHeight = selector({
+  key: "currentListHeight",
+  get: ({ get }) => {
+    const { height: ibh } = get(itemBaseSize);
+    const gm = get(gridMargin);
+    const vc = get(viewCount);
+    const sbnc = get(segmentBaseNumCols);
+    return Math.ceil(vc / sbnc) * (ibh + gm) + gm;
+  },
+});
 
 export const indicatorIndex = selector({
   key: "indicatorIndex",
@@ -50,6 +59,10 @@ export const currentIndexIndicatorTop = selector({
   },
 });
 
+export const listHeight = selector({
+  key: "listHeight",
+});
+
 export const currentIndexPercentage = selector({
   key: "currentIndexPercentage",
   get: ({ get }) => {
@@ -62,11 +75,17 @@ export const currentIndexPercentage = selector({
     return clt / range;
   },
   set: ({ get, set }, newValue) => {
-    const clh = get(currentListHeight);
+    const { height: clh } = get(segmentBaseSize(0));
     const [unused, mh] = get(mainSize);
-    const max = clh - mh;
-    const min = 0;
     set(currentListTop, newValue * (clh - mh));
+  },
+});
+
+export const currentSegment = selector({
+  key: "currentSegment",
+  get: ({ get }) => {
+    const ci = get(currentIndex);
+    return get(segmentIndexFromItemIndex(ci));
   },
 });
 
@@ -86,22 +105,9 @@ export const currentIndex = selector({
 export const currentListTopRange = selector({
   key: "currentListTopRange",
   get: ({ get }) => {
-    const { height: clh } = get(segmentBaseSize);
+    const clh = get(currentListHeight);
     const [unused, mh] = get(mainSize);
     return [0, clh - mh];
-  },
-});
-
-export const numTicks = selector({
-  key: "numTicks",
-  get: ({ get }) => get(viewCount) / 5,
-});
-
-export const ticks = selector({
-  key: "ticks",
-  get: ({ get }) => {
-    const ns = get(numTicks);
-    return [...Array(ns).keys()].map((i) => 5 * i);
   },
 });
 
@@ -114,27 +120,30 @@ export const viewPortWindow = selector({
   },
 });
 
-export const numSections = selector({
-  key: "numSections",
+export const ticks = selector({
+  key: "ticks",
   get: ({ get }) => {
+    let numTicks = null;
+    let tickSize = null;
     const vc = get(viewCount);
     const breakpoints = [...Array(5).keys()].map((i) => Math.pow(10, i + 3));
-    for (const i = 0; i < breakpoints.length; i++) {
+    for (let i = breakpoints.length - 1; i > 0; i--) {
       const breakpoint = breakpoints[i];
-      if (vc <= breakpoint) return Math.ceil(vc / Math.pow(10, i + 1));
+      numTicks = Math.ceil(vc / Math.pow(10, i + 1));
+      tickSize = Math.pow(10, i + 1);
+      if (vc > breakpoint) break;
     }
-    return Math.ceil(vc / Math.pow(10, breakpoints.length));
+    return [...Array(numTicks).keys()].map((i) => i * tickSize);
   },
 });
 
-export const visibleSections = selectorFamily({
-  key: "sectionsToRender",
-  get: ({ get }) => {},
-});
-
-export const sectionSegmentIndices = selectorFamily({
-  key: "sectionSegmentIndices",
-  get: (sectionIndex) => ({ get }) => {},
+export const numSegments = selector({
+  key: "numSegments",
+  get: ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    const vc = get(viewCount);
+    return Math.ceil(vc / ipr);
+  },
 });
 
 export const segmentItemIndices = selectorFamily({
@@ -223,15 +232,18 @@ export const itemBasePosition = selectorFamily({
   key: "itemBasePosition",
   get: (itemIndex) => ({ get }) => {
     const ik = get(itemKey(itemIndex));
+    const ipr = get(itemsPerRequest);
     const sbnc = get(segmentBaseNumCols);
-    const row = Math.floor(ik / sbnc);
-    const col = ik % sbnc;
+    const si = get(segmentIndexFromItemIndex(itemIndex));
+    const lc = si > 0 ? sbnc - ((ipr * si) % sbnc) : 0;
+    const row = Math.floor(itemIndex / sbnc) - Math.ceil((si * ipr) / sbnc);
+    const col = itemIndex % sbnc;
     const { width: ibw, height: ibh } = get(itemBaseSize);
     const gm = get(gridMargin);
 
     return {
-      top: gm + row * (ibw + gm),
-      left: gm + col * (ibh + gm),
+      top: gm + row * (ibh + gm),
+      left: gm + col * (ibw + gm),
     };
   },
 });
@@ -239,11 +251,9 @@ export const itemBasePosition = selectorFamily({
 export const pageParams = selector({
   key: "pageParams",
   get: ({ get }) => {
-    const ipr = get(itemsPerRequest);
-    const [mw, unused] = get(mainSize);
-    const gm = get(gridMargin);
     return {
-      length: ipr,
+      length: get(itemsPerRequest),
+      threshold: get(tilingThreshold),
     };
   },
 });
@@ -279,42 +289,52 @@ export const itemSource = selectorFamily({
   },
 });
 
-export const isMainResizing = selector({
-  key: "isMainResizing",
-  get: ({ get }) => {
-    const [mw, unused] = get(mainSize);
-    const mpw = get(mainPreviousWidth);
-    return mpw === mw;
+export const segmentHeight = selectorFamily({
+  key: "segmentHeight",
+  get: (segmentIndex) => ({ get }) => {
+    return get(segmentBaseSize(segmentIndex)).height;
   },
 });
 
 export const segmentsToRender = selector({
   key: "segmentsToRender",
   get: ({ get }) => {
-    return [0];
+    const ci = get(currentIndex);
+    const cd = 0;
+    const [mw, mh] = get(mainSize);
+    let h = 0;
+    let csi = get(segmentIndexFromItemIndex(ci));
+    const ns = get(numSegments);
+    const str = [];
+    while (h < mh + 600 && csi < ns) {
+      h += get(segmentHeight(csi));
+      str.push(csi);
+      csi += 1;
+    }
+    return str;
   },
 });
 
 export const itemsToRenderInSegment = selectorFamily({
   key: "itemsToRenderInSegment",
   get: (segmentIndex) => ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    const start = ipr * segmentIndex;
+
     return [...Array(50).keys()].map((k) => {
       return {
-        index: k,
+        index: k + start,
         key: k,
       };
     });
   },
 });
 
-export const currentRow = selector({
-  key: "currentRow",
-  get: ({ get }) => {},
-});
-
-export const listHeight = selector({
-  key: "listHeight",
-  get: ({ get }) => {},
+export const tilingThreshold = selector({
+  key: "tilingThreshold",
+  get: ({ get }) => {
+    return get(segmentBaseNumCols);
+  },
 });
 
 export const segmentBaseNumCols = selector({
@@ -322,15 +342,15 @@ export const segmentBaseNumCols = selector({
   get: ({ get }) => {
     const [mw, unused] = get(mainSize);
     if (mw <= 600) {
-      return 1;
-    } else if (mw < 768) {
       return 2;
+    } else if (mw < 768) {
+      return 3;
     } else if (mw < 992) {
       return 4;
     } else if (mw < 1200) {
-      return 8;
+      return 6;
     } else {
-      return 12;
+      return 10;
     }
   },
 });
@@ -344,15 +364,18 @@ export const segmentBaseNumRows = selector({
   },
 });
 
-export const segmentBaseSize = selector({
+export const segmentBaseSize = selectorFamily({
   key: "segmentBaseSize",
-  get: ({ get }) => {
+  get: (segmentIndex) => ({ get }) => {
     const { width: ibw, height: ibh } = get(itemBaseSize);
+    const ipr = get(itemsPerRequest);
     const sbnc = get(segmentBaseNumCols);
-    const sbnr = get(segmentBaseNumRows);
+    const lc = (ipr * segmentIndex) % sbnc;
+    let ni = ipr - (lc !== sbnc ? lc : 0);
+    const nr = Math.ceil(ni / sbnc);
     const gm = get(gridMargin);
     const width = sbnc * ibw + (sbnc + 1) * gm;
-    const height = sbnr * ibh + (sbnr + 1) * gm;
+    const height = nr * ibh + nr * gm;
     return {
       width,
       height,

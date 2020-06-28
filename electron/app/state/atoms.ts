@@ -15,11 +15,6 @@ export const mainSize = atom({
   default: [0, 0],
 });
 
-export const mainPreviousWidth = atom({
-  key: "mainPreviousWidth",
-  default: 0,
-});
-
 export const mainTop = atom({
   key: "mainTop",
   default: 0,
@@ -32,11 +27,6 @@ export const viewCount = atom({
 
 export const currentListTop = atom({
   key: "currentListTop",
-  default: 0,
-});
-
-export const currentListHeight = atom({
-  key: "currentListHeight",
   default: 0,
 });
 
@@ -96,9 +86,4 @@ export const resizeWait = atom({
 export const current = atomFamily({
   key: "current",
   default: null,
-});
-
-export const activeRow = atomFamily({
-  key: "activeRow",
-  default: 0,
 });

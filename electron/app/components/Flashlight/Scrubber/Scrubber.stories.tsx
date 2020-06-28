@@ -21,7 +21,7 @@ import Scrubber from "./Scrubber";
 
 export default {
   component: Scrubber,
-  title: "Scrubber",
+  title: "Flashlight/Scrubber",
 };
 
 const SRC =

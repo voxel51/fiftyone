@@ -5,7 +5,7 @@ import IndicatorForm from "./IndicatorForm";
 
 export default {
   component: IndicatorForm,
-  title: "IndicatorForm",
+  title: "Flashlight/Scrubber/IndicatorForm",
 };
 
 export const indicatorForm = () => <IndicatorForm />;

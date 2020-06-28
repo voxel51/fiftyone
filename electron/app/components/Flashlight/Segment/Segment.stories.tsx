@@ -6,7 +6,7 @@ import { Container } from "../utils";
 
 export default {
   component: Segment,
-  title: "Segment",
+  title: "Flashlight/Segment",
 };
 
 export const segment = () => (

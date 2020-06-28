@@ -165,8 +165,9 @@ class StateController(Namespace):
 
         page = params["page"]
         length = params["length"]
+        threshold = params["threshold"]
         view = view.skip(length * page).limit(length)
-        mapping, results = tile(view, length)
+        mapping, results = tile(view, length, threshold)
         return {"mapping": mapping, "results": results}
 
     def on_lengths(self, _):

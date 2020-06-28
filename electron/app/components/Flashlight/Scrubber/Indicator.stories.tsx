@@ -5,7 +5,7 @@ import Indicator from "./Indicator";
 
 export default {
   component: Indicator,
-  title: "Indicator",
+  title: "Flashlight/Scrubber/Indicator",
 };
 
 export const indicator = () => (

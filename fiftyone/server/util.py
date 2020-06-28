@@ -49,7 +49,7 @@ TIFF = types["TIFF"] = "TIFF"
 image_fields = ["path", "type", "file_size", "width", "height"]
 
 
-def tile(view, length):
+def tile(view, length, threshold):
     """Tiles the samples in a view in rows of varying height, where all
     samples (images) in a row are fit to preserve aspect ratio. No cropping is
     done
@@ -80,7 +80,7 @@ def tile(view, length):
             col_idx += 1
             continue
 
-        if row_width / row_height >= 5:
+        if row_width / row_height >= threshold:
             rows.append(_fit_row(row, row_width, row_height))
             row = [(sample, w, h)]
             mapping[idx] = (row_idx, col_idx)

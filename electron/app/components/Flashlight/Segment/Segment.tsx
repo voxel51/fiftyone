@@ -19,7 +19,7 @@ const Segment = ({ index }) => {
   const itemsToRenderInSegmentValue = useRecoilValue(
     itemsToRenderInSegment(index)
   );
-  const segmentBaseSizeValue = useRecoilValue(segmentBaseSize);
+  const segmentBaseSizeValue = useRecoilValue(segmentBaseSize(index));
 
   const props = useSpring({
     ...segmentBaseSizeValue,

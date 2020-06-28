@@ -19,6 +19,7 @@ import {
   itemIsLoaded,
   itemSource,
   segmentIndexFromItemIndex,
+  currentIndex,
 } from "../../../state/selectors";
 // import Player51 from "../../player51/build/cjs/player51.min.js";
 
@@ -95,6 +96,7 @@ const Thumbnail = ({ index }) => {
 const LoadingThumbnail = ({ index, unveil, move }) => {
   const itemIsLoadedValue = useRecoilValue(itemIsLoaded(index));
   const cv = useRecoilValue(current(index));
+  const ci = useRecoilValue(currentIndex);
   const itemBasePositionValue = useRecoilValue(itemBasePosition(index));
   const [initialLoad, setInitialLoad] = useState(true);
 
@@ -116,6 +118,7 @@ const LoadingThumbnail = ({ index, unveil, move }) => {
   const props = useSpring({
     opacity: 1,
     ...base,
+    background: ci === index ? "#000" : "#ccc",
     from: {
       opacity: cv || !unveil ? 1 : 0,
       ...from,

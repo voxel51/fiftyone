@@ -8,15 +8,17 @@ import {
   segmentIsLoaded,
   viewCount,
   isMainWidthResizing,
-  mainPreviousWidth,
   mainTop,
   mainLoaded,
   mainSize,
   currentListTop,
-  currentListHeight,
 } from "../../state/atoms";
 import { useTrackMousePosition, useResizeObserver } from "../../state/hooks";
-import { segmentsToRender, currentListTopRange } from "../../state/selectors";
+import {
+  segmentsToRender,
+  currentListTopRange,
+  currentListHeight,
+} from "../../state/selectors";
 
 import Segment from "./Segment";
 import Scrubber from "./Scrubber";
@@ -51,9 +53,7 @@ const List = ({ children }) => {
   const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
   const currentListTopValue = useRecoilValue(currentListTop);
   const viewCountValue = useRecoilValue(viewCount);
-  useEffect(() => {
-    setCurrentListHeight(ref.current.offsetHeight);
-  }, [ref.current]);
+
   const props = useSpring({
     top: -1 * currentListTopValue,
   });
@@ -79,16 +79,17 @@ export default () => {
   useTrackMousePosition();
   const setIsMainWidthResizing = useSetRecoilState(isMainWidthResizing);
   const [mainSizeValue, setMainSize] = useRecoilState(mainSize);
-  const [mainPreviousWidthValue, setMainPreviousWidth] = useRecoilState(
-    mainPreviousWidth
-  );
   const setMainTop = useSetRecoilState(mainTop);
   const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
   const [ref, { contentRect }] = useResizeObserver();
+  const [currentListTopValue, setCurrentListTop] = useRecoilState(
+    currentListTop
+  );
+  const [minTop, maxTop] = useRecoilValue(currentListTopRange);
 
   const setViewCount = useSetRecoilState(viewCount);
   useEffect(() => {
-    setViewCount(50);
+    setViewCount(200);
   }, []);
 
   useLayoutEffect(() => {
@@ -106,16 +107,11 @@ export default () => {
     });
   }, [ref, contentRect]);
 
-  const [currentListTopValue, setCurrentListTop] = useRecoilState(
-    currentListTop
-  );
-  const [minTop, maxTop] = useRecoilValue(currentListTopRange);
-
-  const containerRef = useRef();
   const bind = useWheel((s) => {
     const {
       delta: [_, y],
     } = s;
+
     setCurrentListTop(
       Math.min(Math.max(currentListTopValue + y, minTop), maxTop)
     );
@@ -125,7 +121,7 @@ export default () => {
     <Flashlight>
       <Grid>
         <ListMain ref={ref}>
-          <ListContainer {...bind()} ref={containerRef}>
+          <ListContainer {...bind()}>
             {mainLoadedValue ? (
               <List>
                 {segmentsToRenderValue.map((index) => (
