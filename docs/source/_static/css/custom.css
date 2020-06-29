@@ -43,6 +43,13 @@ article.pytorch-article pre {
   max-width: 900px;
 }
 
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .nav__main__logo {
+    margin: 0;
+    padding-left: 30px;
+  }
+}
+
 @media screen and (max-width: 1099px) {
   .nav__main {
     height: unset;
