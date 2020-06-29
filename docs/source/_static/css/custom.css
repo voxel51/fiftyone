@@ -19,6 +19,11 @@ article.pytorch-article pre {
   top: -1px;
 }
 
+.rst-footer-buttons {
+  /* the "next" button is floated and doesn't take up any height by itself */
+  min-height: 2em;
+}
+
 /* tweaks copied from sphinx-rtd-theme */
 
 .rst-content .section > img,
