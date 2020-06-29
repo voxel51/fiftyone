@@ -43,6 +43,12 @@ article.pytorch-article pre {
   max-width: 900px;
 }
 
+@media screen and (max-width: 1099px) {
+  .nav__main {
+    height: unset;
+  }
+}
+
 .footer-wrapper {
   background: var(--bg-dark-secondary);
 }
