@@ -28,8 +28,6 @@ import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.core.sample as fos
-import fiftyone.core.utils as fou
 
 from .parsers import (
     ImageClassificationSampleParser,
@@ -283,8 +281,8 @@ class ImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         uuid, target = next(self._iter_labels)
         image_path = self._image_paths_map[uuid]
 
-        sample = (image_path, target)
-        label = self._sample_parser.parse_label(sample)
+        self._sample_parser.with_sample((image_path, target))
+        label = self._sample_parser.get_label()
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -345,10 +343,11 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         return len(self._samples)
 
     def __next__(self):
-        image_path, label = next(self._iter_samples)
+        sample = next(self._iter_samples)
 
-        sample = (image_path, label)
-        label = self._sample_parser.parse_label(sample)
+        self._sample_parser.with_sample(sample)
+        image_path = self._sample_parser.get_image_path()
+        label = self._sample_parser.get_label()
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -411,8 +410,8 @@ class ImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         uuid, target = next(self._iter_labels)
         image_path = self._image_paths_map[uuid]
 
-        sample = (image_path, target)
-        label = self._sample_parser.parse_label(sample)
+        self._sample_parser.with_sample((image_path, target))
+        label = self._sample_parser.get_label()
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -475,10 +474,11 @@ class ImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         return len(self._labeled_dataset)
 
     def __next__(self):
-        image_path, image_labels = next(self._iter_labeled_dataset)
+        sample = next(self._iter_labeled_dataset)
 
-        sample = (image_path, image_labels)
-        label = self._sample_parser.parse_label(sample)
+        self._sample_parser.with_sample(sample)
+        image_path = self._sample_parser.get_image_path()
+        label = self._sample_parser.get_label()
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
