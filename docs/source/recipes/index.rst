@@ -38,7 +38,7 @@ duplicate and near-duplicate images from your dataset.
         .sort_by("file_hash")
     )
 
-    # Visualize in dashboard
+    # Visualize in App 
     fo.launch_dashboard(view=dup_view)
 
 .. rubric:: :doc:`Add model predictions to a datasets<model_inference>`
