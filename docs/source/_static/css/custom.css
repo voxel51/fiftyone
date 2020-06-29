@@ -61,6 +61,18 @@ article.pytorch-article pre {
   line-height: 30px;
 }
 
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .footer {
+    font-size: 12px;
+    padding-top: 30px;
+  }
+
+  .footer__icons {
+    padding-top: 10px;
+    font-size: 15px;
+  }
+}
+
 /* tabs */
 
 .tab.sphinx-tab > :last-child {
