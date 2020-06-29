@@ -10,4 +10,5 @@ from .base import *
 from .converters import *
 from .exporters import *
 from .importers import *
+from .ingestors import *
 from .parsers import *
