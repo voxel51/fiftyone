@@ -119,7 +119,7 @@ const LoadingThumbnail = ({ index, unveil, move }) => {
   const props = useSpring({
     opacity: 1,
     ...base,
-    background: ci === index ? "#000" : "#ccc",
+    // background: ci === index ? "#000" : "#ccc",
     from: {
       opacity: cv || !unveil ? 1 : 0,
       ...from,
@@ -130,9 +130,7 @@ const LoadingThumbnail = ({ index, unveil, move }) => {
     setInitialLoad(false);
   }, []);
 
-  return (
-    <LoadingThumbnailDiv style={{ ...props }}>{index}</LoadingThumbnailDiv>
-  );
+  return <LoadingThumbnailDiv style={{ ...props }} />;
 };
 
 const ThumbnailContainer = ({ index }) => {
@@ -143,8 +141,8 @@ const ThumbnailContainer = ({ index }) => {
     setInitialLoad(false);
   }, []);
 
-  // if (isMainWidthResizingValue)
-  return <LoadingThumbnail index={index} unveil={false} move={false} />;
+  if (isMainWidthResizingValue)
+    return <LoadingThumbnail index={index} unveil={initialLoad} move={false} />;
 
   return (
     <Suspense

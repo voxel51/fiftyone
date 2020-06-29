@@ -27,8 +27,7 @@ import Scrubber from "./Scrubber";
 const Grid = styled.div`
   width: 100%;
   height: 100%;
-  display: grid;
-  grid-template-columns: 1fr 3rem;
+  display: flex;
 `;
 
 const Flashlight = styled.div`
@@ -40,7 +39,6 @@ const Flashlight = styled.div`
 const ListContainer = styled.div`
   position: relative;
   width: 100%;
-  height: 100%;
 `;
 
 const ListDiv = animated(styled.div`
@@ -79,8 +77,16 @@ const List = ({ children }) => {
 
 const ListMain = styled.div`
   position: relative;
-  width: 100%;
+  flex: 1;
   height: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  will-change: transform;
+
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
 `;
 
 export default () => {
@@ -89,17 +95,19 @@ export default () => {
   useTrackMousePosition();
   const setIsMainWidthResizing = useSetRecoilState(isMainWidthResizing);
   const [mainSizeValue, setMainSize] = useRecoilState(mainSize);
+  const currentListHeightValue = useRecoilValue(currentListHeight);
   const setMainTop = useSetRecoilState(mainTop);
   const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
   const [ref, { contentRect }] = useResizeObserver();
   const [currentListTopValue, setCurrentListTop] = useRecoilState(
     currentListTop
   );
+  const [liveTopValue, setLiveTop] = useRecoilState(liveTop);
   const [minTop, maxTop] = useRecoilValue(currentListTopRange);
 
   const setViewCount = useSetRecoilState(viewCount);
   useEffect(() => {
-    setViewCount(200);
+    setViewCount(50);
   }, []);
 
   useLayoutEffect(() => {
@@ -120,26 +128,19 @@ export default () => {
     };
   }, [ref, contentRect]);
 
-  const bind = useWheel((s) => {
-    const {
-      delta: [_, y],
-    } = s;
-
-    setCurrentListTop(Math.min(Math.max(currentListTopValue + y, 0), maxTop));
-  });
-
   return (
     <Flashlight>
       <Grid>
-        <ListMain ref={ref}>
-          <ListContainer {...bind()}>
-            {mainLoadedValue ? (
-              <List>
-                {segmentsToRenderValue.map((index) => (
+        <ListMain
+          ref={ref}
+          onScroll={(e) => setLiveTop(-1 * e.target.scrollTop)}
+        >
+          <ListContainer style={{ height: currentListHeightValue }}>
+            {mainLoadedValue
+              ? segmentsToRenderValue.map((index) => (
                   <Segment key={index} index={index} />
-                ))}
-              </List>
-            ) : null}
+                ))
+              : null}
           </ListContainer>
         </ListMain>
         <Scrubber />

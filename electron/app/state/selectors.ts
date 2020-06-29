@@ -185,19 +185,43 @@ export const segmentItemIndices = selectorFamily({
 
 export const segmentData = selectorFamily({
   key: "segmentData",
-  get: (segmentIndex) => ({ get }) => {
+  get: (segmentIndex) => async ({ get }) => {
     const params = get(pageParams);
-    return getPage(getSocket(5151, "state"), {
+    const { mapping, results } = await getPage(getSocket(5151, "state"), {
       ...params,
       page: segmentIndex,
     });
-  },
-});
-
-export const itemsToRender = selector({
-  key: "itemsToRender",
-  get: ({ get }) => {
-    return [...Array(50).keys()];
+    const [mw, mh] = get(mainSize);
+    const data = [];
+    let row;
+    let ww;
+    let top = 0;
+    let left;
+    let width;
+    let height;
+    const gm = get(gridMargin);
+    for (let i = 0; i < results.length; i++) {
+      top += gm;
+      left = 0;
+      row = results[i];
+      ww = mw - (row.length + 1) * gm;
+      for (let j = 0; j < row.length; j++) {
+        const { percentWidth, aspectRatio, sample } = row[j];
+        left += gm;
+        width = ww * percentWidth;
+        height = width / aspectRatio;
+        data.push({
+          top,
+          left,
+          width,
+          height,
+          sample,
+        });
+        left += width;
+      }
+      top += height;
+    }
+    return data;
   },
 });
 

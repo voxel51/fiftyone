@@ -13,14 +13,7 @@ const Scrubber = styled.div`
   height: 100%;
   position: relative;
   cursor: pointer;
-`;
-
-const ScrubberWrapper = styled.div`
-  position: absolute;
   width: 3rem;
-  height: 100%;
-  top: 0;
-  right: 0;
 `;
 
 const IndexIndicatorDiv = animated(styled.div`
@@ -62,14 +55,12 @@ export default function () {
     }))
   );
   return (
-    <ScrubberWrapper>
-      <Scrubber>
-        {springs.map((props, index) => (
-          <SectionTick key={index} style={props} />
-        ))}
-        <IndexIndicator />
-        <Indicator />
-      </Scrubber>
-    </ScrubberWrapper>
+    <Scrubber>
+      {springs.map((props, index) => (
+        <SectionTick key={index} style={props} />
+      ))}
+      <IndexIndicator />
+      <Indicator />
+    </Scrubber>
   );
 }
