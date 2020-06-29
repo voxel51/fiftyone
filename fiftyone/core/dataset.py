@@ -407,8 +407,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
             num_samples (None): the number of samples in ``samples``. If not
                 provided, this is computed via ``len(samples)``, if possible.
-                This value is completely optional and is only used for
-                optimization and progress tracking
+                This value is optional and is used only for optimization and
+                progress tracking
 
         Returns:
             a list of IDs of the samples in the dataset
