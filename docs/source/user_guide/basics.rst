@@ -34,7 +34,22 @@ The FiftyOne |Dataset|_ class allows you to easily
 :doc:`visualize <app>` your data along with any related labels
 (classification, detection, segmentation, etc).
 It provides a way to easily load images, annotations, and model predictions
-into 
+into a format that can be visualized in the FiftyOne App. 
+
+
+If you have your own collection of data, loading it as a |Dataset|_ will allow
+you to easily search and sort your samples. 
+You can use FiftyOne to identify unique samples as well as possible mistakes in
+|Sample|_ labels.
+
+If you are training a model, the output predictions and logits can be loaded
+into your |Dataset|_. 
+The FiftyOne App makes it easy to visually debug what
+your model has learned, even for complex label types like detection and
+segmentation masks.  
+With this knowledge, you can update your |Dataset|_ to include more
+representative samples and samples that your model found difficult into your
+training set.
 
 
 .. note::
