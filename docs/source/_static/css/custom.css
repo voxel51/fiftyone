@@ -19,6 +19,17 @@ article.pytorch-article pre {
   top: -1px;
 }
 
+/* tweaks copied from sphinx-rtd-theme */
+
+.rst-content .section > img,
+.rst-content .section > a > img {
+  margin-bottom: 24px;
+}
+
+.rst-content .align-center {
+  margin: auto;
+}
+
 /* voxel51-website.css overrides */
 
 .nav__main {
