@@ -338,7 +338,7 @@ stored in the above format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view an image classification directory tree in the FiftyOne Dashboard
+    To view an image classification directory tree in the FiftyOne App
     without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell

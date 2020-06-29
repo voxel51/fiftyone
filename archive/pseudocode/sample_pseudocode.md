@@ -98,7 +98,7 @@ for sample in view.iter_samples():
     ...
 
 # browse the images
-session = fo.launch_dashboard(view=view)
+session = fo.launch_app(view=view)
 ```
 
 ## Names up for debate:

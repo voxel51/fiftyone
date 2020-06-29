@@ -24,11 +24,11 @@ BACKING_DIR = None
 
 
 ###############################################################################
-# Action 0: Launch your dashboard to see what datasets you've played with
+# Action 0: Launch the app to see what datasets you've played with
 ###############################################################################
 
 #
-# Launches a web dashboard that shows you a dataset listing page
+# Launches a web app that shows you a dataset listing page
 #
 # Open localhost:8000 in your browser to use it
 #
@@ -59,7 +59,7 @@ print("Backing directory: %s" % dataset.backing_dir)
 print("Number of samples: %d" % dataset.num_samples)
 
 #
-# Launches a web dashboard that drops you on the Explore Tab of your dataset
+# Launches a web app that drops you on the Explore Tab of your dataset
 #
 # You can use the Explore Tab to view macro-level statistics about the dataset
 # such as number of samples, data size, etc. You can also view individual
@@ -92,7 +92,7 @@ dataset = voxf.load_dataset(name=DATASET_NAME)
 index_id = dataset.index_samples_by_diversity()
 #
 # Crunch crunch crunch... indexing takes some time. Maybe it spawns a
-# background task whose progress you can monitor via the web dashboard? maybe
+# background task whose progress you can monitor via the web app? maybe
 # it executes synchronously?
 #
 
