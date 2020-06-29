@@ -129,9 +129,6 @@ class VectorAttribute(Attribute):
 class Classification(ImageLabel):
     """A classification label.
 
-    See :class:`fiftyone.utils.data.ImageClassificationSampleParser` for a
-    convenient way to build labels of this type for your existing datasets.
-
     Args:
         label (None): the label string
         confidence (None): a confidence in ``[0, 1]`` for the label
@@ -216,9 +213,6 @@ class Detections(ImageLabel):
     """A set of object detections for an image sample in a
     :class:`fiftyone.core.dataset.Dataset`.
 
-    See :class:`fiftyone.utils.data.ImageDetectionSampleParser` for a
-    convenient way to build labels of this type for your existing datasets.
-
     Args:
         detections (None): a list of :class:`Detection` instances
     """
@@ -266,9 +260,6 @@ class Detections(ImageLabel):
 class ImageLabels(ImageLabel):
     """A collection of multitask labels for an image sample in a
     :class:`fiftyone.core.dataset.Dataset`.
-
-    See :class:`fiftyone.utils.data.ImageLabelsSampleParser` for a
-    convenient way to build labels of this type for your existing datasets.
 
     Args:
         labels: an ``eta.core.image.ImageLabels`` instance or a serialized
