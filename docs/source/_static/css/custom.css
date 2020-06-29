@@ -47,6 +47,7 @@ article.pytorch-article pre {
 }
 
 .footer {
+  max-width: 880px; /* match body content (850px) + left margin (30px) */
   font-size: 15px;
   padding-top: 70px;
   padding-bottom: 10px;
