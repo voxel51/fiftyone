@@ -32,8 +32,6 @@ import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.core.utils as fou
-import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
@@ -59,7 +57,8 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
             label_field=None,
             bounding_box_field=None,
             confidence_field=None,
-            normalized=False,
+            classes=None,
+            normalized=False,  # image required to convert to relative coords
         )
 
     def _parse_label(self, target, img=None):
