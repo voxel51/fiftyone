@@ -782,11 +782,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(self.name)
 
-        image_paths = foud.ingest_images(
-            samples, sample_parser, dataset_dir, image_format=image_format,
+        dataset_ingestor = foud.UnlabeledImageDatasetIngestor(
+            dataset_dir,
+            samples,
+            sample_parser,
+            offset=len(self),
+            image_format=image_format,
         )
-        sample_parser = foud.ImageSampleParser()
-        return self.add_images(image_paths, sample_parser, tags=tags)
+
+        return self.add_importer(dataset_ingestor, tags=tags)
 
     def ingest_labeled_images(
         self,
@@ -825,13 +829,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(self.name)
 
-        _samples = foud.ingest_labeled_images(
-            samples, sample_parser, dataset_dir, image_format=image_format,
-        )
-        sample_parser = foud.LabeledImageTupleSampleParser()
-        return self.add_labeled_images(
-            _samples,
+        dataset_ingestor = foud.LabeledImageDatasetIngestor(
+            dataset_dir,
+            samples,
             sample_parser,
+            offset=len(self),
+            image_format=image_format,
+        )
+
+        return self.add_importer(
+            dataset_ingestor,
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
