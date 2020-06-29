@@ -23,8 +23,6 @@ from builtins import *
 from collections import defaultdict
 import os
 
-import numpy as np
-
 import eta.core.data as etad
 import eta.core.geometry as etag
 import eta.core.image as etai
@@ -34,12 +32,10 @@ import eta.core.serial as etas
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.core.utils as fou
-import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
-class BDDSampleParser(foud.ImageLabelsSampleParser):
+class BDDSampleParser(foud.LabeledImageTupleSampleParser):
     """Parser for samples in BDD format.
 
     This implementation supports samples that are
@@ -85,20 +81,12 @@ class BDDSampleParser(foud.ImageLabelsSampleParser):
     See :class:`fiftyone.types.BDDDataset` for more format details.
     """
 
-    def parse_image(self, sample):
-        """Parses the image from the given sample.
+    @property
+    def label_cls(self):
+        return fol.ImageLabels
 
-        Args:
-            sample: the sample
-
-        Returns:
-            a numpy image
-        """
-        image_or_path = sample[0]
-        return self._parse_image(image_or_path)
-
-    def parse_label(self, sample):
-        """Parses the labels from the given sample.
+    def get_label(self):
+        """Returns the label for the current sample.
 
         Args:
             sample: the sample
@@ -106,33 +94,12 @@ class BDDSampleParser(foud.ImageLabelsSampleParser):
         Returns:
             a :class:`fiftyone.core.labels.ImageLabels` instance
         """
-        labels = sample[1]
+        labels = self.current_sample[1]
 
         # We must have the image to convert to relative coordinates
-        img = self._parse_image(sample[0])
+        img = self._current_image
 
         return self._parse_label(labels, img)
-
-    def parse(self, sample):
-        """Parses the given sample.
-
-        Args:
-            sample: the sample
-
-        Returns:
-            img: a numpy image
-            label: a :class:`fiftyone.core.labels.ImageLabels` instance
-        """
-        img, labels = sample
-        img = self._parse_image(img)
-        label = self._parse_label(labels, img)
-        return img, label
-
-    def _parse_image(self, image_or_path):
-        if etau.is_str(image_or_path):
-            return etai.read(image_or_path)
-
-        return np.asarray(image_or_path)
 
     def _parse_label(self, labels, img):
         if etau.is_str(labels):
