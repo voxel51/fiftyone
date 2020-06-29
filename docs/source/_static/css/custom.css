@@ -3,38 +3,20 @@ body {
     sans-serif;
 }
 
-/* sphinx-rtd-theme overrides */
+/* pytorch theme overrides */
 
-.wy-nav-side {
-  background-color: white;
-  border-right: 2px solid var(--gray-light3);
-  margin-top: 90px;
+.ui.tabular.menu .item {
+  /* stop breaking tabs */
+  width: unset;
+  margin: unset;
 }
 
-.wy-side-nav-search {
-  background-color: white;
+article.pytorch-article pre {
+  margin-bottom: 1rem;
 }
 
-.wy-side-nav-search .icon-home {
-  color: var(--color-primary);
-}
-
-#rtd-search-form input[type="text"] {
-  border-width: 0;
-  border-radius: 3px;
-  background-color: var(--gray-light3);
-}
-
-.wy-menu-vertical a {
-  color: #404040;
-}
-
-.wy-menu-vertical a:hover {
-  background-color: #d6d6d6;
-}
-
-.wy-menu-vertical a:active {
-  background-color: var(--color-primary);
+.pytorch-left-menu li.toctree-l1.current > a:before {
+  top: -1px;
 }
 
 /* voxel51-website.css overrides */
@@ -44,6 +26,9 @@ body {
   padding-left: 0;
   padding-right: 20px;
   justify-content: unset;
+  /* avoid horizontal scrollbar */
+  min-width: unset;
+  width: 100%;
 }
 
 .nav__main__logo {
@@ -58,15 +43,11 @@ body {
 }
 
 .footer {
-  padding: 20px 0;
-  background-color: inherit;
-  color: gray;
   font-size: 15px;
-  grid-template-columns: 20% 25% 10px 45%;
+  padding: 70px 120px 10px;
 }
 
 .footer a {
-  color: gray;
   line-height: 30px;
 }
 
@@ -87,4 +68,20 @@ body {
 
 .sphinx-tabs .ui.tabular.menu .active.item {
   background-color: rgb(252, 252, 252);
+}
+
+/* right side section link highlighting */
+
+.pytorch-content-right .pytorch-side-scroll li.current-section {
+  font-weight: bold;
+  margin-left: -6px;
+  border-left: 3px solid var(--color-primary);
+  padding-left: 3px;
+}
+
+.pytorch-right-menu li.current-section > a.reference.internal.expanded:before,
+.pytorch-right-menu
+  li.current-section
+  > a.reference.internal.not-expanded:before {
+  margin-left: -3px;
 }
