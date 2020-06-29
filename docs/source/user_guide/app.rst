@@ -1,20 +1,24 @@
 Viewing Datasets in the FiftyOne App
 ====================================
 
+.. include:: ../substitutions.rst
 .. default-role:: code
 
 The FiftyOne App is a light weight user interface that allows you to browse and
-interact directly with your loaded `Datasets`.
+interact directly with your loaded |Dataset2|_.
 
 Sessions
 ________
 
 The workflow when working with FiftyOne is to open interactive python
-(`ipython`) and load a `Dataset`. The FiftyOne App is the graphical user
-interface that allows you to view the `Dataset` as well as any `DatasetViews`
-into the `Dataset`.
+(`ipython`) and load a |Dataset|. The FiftyOne App is the graphical user
+interface that allows you to view the |Dataset| as well as any |DatasetView|
+into the |Dataset|.
 
-`Sessions` are the python objects that contain the instance of the app:
+Create a session
+----------------
+
+Sessions are the python objects that contain the instance of the app:
 
 .. code-block:: python
 
@@ -26,7 +30,10 @@ into the `Dataset`.
    :alt: App Startup Page
    :align: center
 
-`Sessions` can be updated to show new `Datasets` by updating the `session`
+Update a session dataset
+------------------------
+
+Sessions can be updated to show a new |Dataset| by updating the session
 object directly:
 
 .. code-block:: python
@@ -40,9 +47,12 @@ object directly:
    :alt: Cifar10
    :align: center
 
-`Sessions` can also directly display a `DatasetView`. For example, you can
-sort the `DatasetView` by ground truth labels and then select the first 10
-`Samples` to display.:
+Update a session view
+---------------------
+
+Sessions can also directly display a |DatasetView|. For example, you can
+sort the |DatasetView| by ground truth labels and then select the first 10
+|Sample| objects to display.:
 
 .. code-block:: python
 
@@ -53,17 +63,17 @@ sort the `DatasetView` by ground truth labels and then select the first 10
    :align: center
 
 Remote sessions
----------------
+_______________
 
-If your data is stored on a remote machine, you can forward a `Session` from
+If your data is stored on a remote machine, you can forward a session from
 the remote machine to the FiftyOne App on your local machine and seemlessly
-browse your remote `Dataset`.
+browse your remote |Dataset|.
 
 Remote machine
-##############
+--------------
 
-First log into the **remote machine**, load a FiftyOne `Dataset`, and create a
-`Session` with the argument `remote=True`. This will send the `Session` to port
+First log into the **remote machine**, load a FiftyOne |Dataset|, and create a
+session with the argument `remote=True`. This will send the session to port
 `5151`:
 
 .. code-block:: python
@@ -77,7 +87,7 @@ First log into the **remote machine**, load a FiftyOne `Dataset`, and create a
 This is the session that will be modified to change what is being displayed.
 
 Local machine
-#############
+-------------
 
 The easiest way to port forward and load the FiftyOne App is using the CLI.
 Alternatively, the port forwarding and App launching steps can be run
@@ -125,10 +135,51 @@ ______________________
 
 The App has various functionality built into the user interface itself.
 
+Toggle attribute bubbles
+------------------------
+
+Any labels, tags, and scalar fields can be viewed in the App directly on the
+sample images by toggling the corresponding buttons on the left hand side of
+the App.
+
+.. image:: ../images/cifar10_button_toggle.gif
+    :alt: Cifar10 Toggle
+    :align: center
+
+
+Viewing a sample
+----------------
+
+A sample can be double clicked to view a large version of it in a sidebar. This
+sidebar also contains the fields of the sample.
+
+.. image:: ../images/cifar10_sidebar.gif
+    :alt: Cifar10 Sidebar
+    :align: center
+
+
+Tabs
+----
+
+The four tabs, Samples, Labels, Tags, and Scalars let you visualize different
+aspects and statistics about your dataset.
+Samples is the default tab that lets you visualize and select your image samples.
+The Labels tab shows a distribution of labels of the currently loaded |Dataset|
+or |DatasetView|.
+Any tags that were added and their corresponding counts will show up under the
+Tags tab.
+Scalar fields, for example if you computed `uniqueness` on your dataset, will
+be displayed under the Scalars tab.
+
+.. image:: ../images/cifar10_tabs.gif
+   :alt: Cifar10 Scalars
+   :align: center
+
+
 Accessing selected samples
 --------------------------
 
-As previously explained, a `Session` lets you modify what is seen in the App by
+As previously explained, a session lets you modify what is seen in the App by
 modifying the python object in the terminal. Additionally, you can also use the App to
 select samples and bring those into your python terminal.
 
@@ -149,59 +200,7 @@ Second, load those samples into python:
 
     ['5ef0eef405059ebb0ddfa6cc',
      '5ef0eef405059ebb0ddfa7c4',
-      '5ef0eef405059ebb0ddfa86e']
+     '5ef0eef405059ebb0ddfa86e',
+     '5ef0eef405059ebb0ddfa93c']
 
-Viewing a Sample
-----------------
 
-A sample can be double clicked to view a large version of it in a sidebar. This
-sidebar also contains the fields of the sample.
-
-.. image:: ../images/cifar10_sidebar.png
-    :alt: Cifar10 Sidebar
-    :align: center
-
-Tabs
-----
-
-The four tabs, Samples, Labels, Tags, and Scalars let you visualize different
-aspects and statistics about your dataset.
-
-Samples
-^^^^^^^
-
-This is the default tab that lets you visualize and select your image samples.
-
-.. image:: ../images/cifar10.png
-   :alt: Cifar10
-   :align: center
-
-Labels
-^^^^^^
-
-The Labels tab shows a distribution of labels of the currently loaded `Dataset`
-or `DatasetView`.
-
-.. image:: ../images/cifar10_labels.png
-   :alt: Cifar10 Labels
-   :align: center
-
-Tags
-^^^^
-
-Any tags that were added and their corresponding counts will show up under the
-Tags tab.
-
-.. image:: ../images/cifar10_tags.png
-   :alt: Cifar10 Tags
-   :align: center
-
-Scalars
-^^^^^^^
-
-Scalar fields, for example if you computed `uniqueness` on your dataset, will
-be displayed under the Scalars tab.
-
-.. image:: ../images/cifar10_scalars.png
-   :alt: Cifar10 Scalars
-   :align: center
