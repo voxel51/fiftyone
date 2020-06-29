@@ -21,7 +21,7 @@ into the `Dataset`.
 
     import fiftyone as fo
 
-    session = fo.launch_dashboard()
+    session = fo.launch_app()
 
 .. image:: ../images/empty_dashboard.png
    :alt: App Startup Page
@@ -76,7 +76,7 @@ First log into the **remote machine**, load a FiftyOne `Dataset`, and create a
     import fiftyone as fo
 
     dataset = fo.Dataset(name="my_dataset")
-    session = fo.launch_dashboard(dataset=dataset, remote=True)
+    session = fo.launch_app(dataset=dataset, remote=True)
 
 This is the session that will be modified to change what is being displayed.
 
@@ -99,7 +99,7 @@ separately.
     .. code-block:: shell
 
         # Local machine
-        fiftyone dashboard connect --destination username@remote_machine_ip --port 5151
+        fiftyone app connect --destination username@remote_machine_ip --port 5151
 
   .. group-tab:: Python
 
@@ -123,7 +123,7 @@ separately.
         # Local machine
         import fiftyone.core.session as fos
 
-        fos.launch_dashboard()
+        fos.launch_app()
 
 Using the FiftyOne App
 ______________________

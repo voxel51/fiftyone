@@ -170,7 +170,7 @@ your virtual environment:
    >>> fo.__file__
    '.../env/lib/python3.X/site-packages/fiftyone/__init__.py'
    >>>
-   >>> session = fo.launch_dashboard()
+   >>> session = fo.launch_app()
    >>> exit()
 
 **Linux users:** if you encounter an error related to MongoDB failing to start,

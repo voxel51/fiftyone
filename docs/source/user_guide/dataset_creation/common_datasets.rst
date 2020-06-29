@@ -167,15 +167,15 @@ You can create a FiftyOne dataset from a directory of images as follows:
       # Print the first few samples in the dataset
       fiftyone datasets head $NAME
 
-    To view a directory of images in the FiftyOne Dashboard without creating
+    To view a directory of images in the FiftyOne App without creating
     a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/images-dir
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageDirectory
 
@@ -261,15 +261,15 @@ in the above format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view an image classification dataset in the FiftyOne Dashboard without
+    To view an image classification dataset in the FiftyOne App without
     creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/image-classification-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageClassificationDataset
 
@@ -345,8 +345,8 @@ stored in the above format as follows:
 
         DATASET_DIR=/path/to/image-classification-dir-tree
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageClassificationDirectoryTree
 
@@ -442,15 +442,15 @@ as a directory of TFRecords in the above format as follows:
     datasets must make their images available as invididual files on disk.
 
     To view an image classification dataset stored as a directory of TFRecords
-    in the FiftyOne Dashboard without creating a persistent FiftyOne dataset,
+    in the FiftyOne App without creating a persistent FiftyOne dataset,
     you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/tf-image-classification-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFImageClassificationDataset
 
@@ -552,15 +552,15 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view an image detection dataset stored in the above format in the
-    FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
+    FiftyOne App without creating a persistent FiftyOne dataset, you
     can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/image-detection-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageDetectionDataset
 
@@ -672,14 +672,14 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view a COCO detection dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    App without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/coco-detection-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
 
@@ -795,14 +795,14 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view a VOC detection dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    App without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/voc-detection-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VOCDetectionDataset
 
@@ -911,15 +911,15 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view a KITTI detection dataset stored in the above format in the
-    FiftyOne Dashboard without creating a persistent FiftyOne dataset, you can
+    FiftyOne App without creating a persistent FiftyOne dataset, you can
     execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/kitti-detection-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
 
@@ -1035,14 +1035,14 @@ format as follows:
         fiftyone datasets head $NAME
 
     To view a CVAT image dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    App without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/cvat-image-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATImageDataset
 
@@ -1132,14 +1132,14 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view an image labels dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    App without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/image-labels-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageLabelsDataset
 
@@ -1238,14 +1238,14 @@ as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view a BDD dataset stored in the above format in the FiftyOne Dashboard
+    To view a BDD dataset stored in the above format in the FiftyOne App
     without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/bdd-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset
