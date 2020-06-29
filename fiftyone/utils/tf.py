@@ -28,8 +28,8 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
+import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 fou.ensure_tf()
@@ -271,44 +271,28 @@ class TFRecordSampleParser(foud.LabeledImageSampleParser):
     # Subclasses must implement this
     _FEATURES = {}
 
-    def parse_image(self, sample):
-        """Parses the image from the given sample.
+    def __init__(self):
+        super().__init__()
+        self._current_features_cache = None
 
-        Args:
-            sample: the sample
+    def get_image(self):
+        return self._parse_image(self._current_features)
 
-        Returns:
-            a numpy image
-        """
-        features = self._parse_features(sample)
-        return self._parse_image(features)
+    def get_label(self):
+        return self._parse_label(self._current_features)
 
-    def parse_label(self, sample):
-        """Parses the detection target from the given sample.
+    def clear_sample(self):
+        super().clear_sample()
+        self._current_features_cache = None
 
-        Args:
-            sample: the sample
+    @property
+    def _current_features(self):
+        if self._current_features_cache is None:
+            self._current_features_cache = self._parse_features(
+                self.current_sample
+            )
 
-        Returns:
-            a :class:`fiftyone.core.labels.Labels` instance
-        """
-        features = self._parse_features(sample)
-        return self._parse_label(features)
-
-    def parse(self, sample):
-        """Parses the given sample.
-
-        Args:
-            sample: the sample
-
-        Returns:
-            img: a numpy image
-            label: a :class:`fiftyone.core.labels.Labels` instance
-        """
-        features = self._parse_features(sample)
-        img = self._parse_image(features)
-        label = self._parse_label(features)
-        return img, label
+        return self._current_features_cache
 
     def _parse_features(self, sample):
         return tf.io.parse_single_example(sample, self._FEATURES)
@@ -339,14 +323,123 @@ class TFImageClassificationSampleParser(
         "label": tf.io.FixedLenFeature([], tf.string),
     }
 
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    @property
+    def has_image_path(self):
+        return False
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    def get_image_metadata(self):
+        return self._parse_image_metadata(self._current_features)
+
     def _parse_image(self, features):
         img_bytes = features["image_bytes"]
         img = tf.image.decode_image(img_bytes)
         return img.numpy()
 
+    def _parse_image_metadata(self, features):
+        return fom.ImageMetadata(
+            size_bytes=len(features["image_bytes"].numpy()),
+            width=features["width"].numpy(),
+            height=features["height"].numpy(),
+            num_channels=features["depth"].numpy(),
+        )
+
     def _parse_label(self, features):
         label = features["label"].numpy().decode()
         return fol.Classification(label=label)
+
+
+class TFObjectDetectionSampleParser(
+    TFRecordSampleParser, foud.ImageDetectionSampleParser
+):
+    """Parser for samples in TF Object Detection API format.
+
+    This implementation supports samples that are ``tf.train.Example`` protos
+    whose features follow the format described in
+    :class:`fiftyone.types.TFObjectDetectionDataset`.
+    """
+
+    _FEATURES = {
+        "image/height": tf.io.FixedLenFeature([], tf.int64),
+        "image/width": tf.io.FixedLenFeature([], tf.int64),
+        "image/filename": tf.io.FixedLenFeature([], tf.string),
+        "image/source_id": tf.io.FixedLenFeature([], tf.string),
+        "image/encoded": tf.io.FixedLenFeature([], tf.string),
+        "image/format": tf.io.FixedLenFeature([], tf.string),
+        "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
+            [], tf.float32, allow_missing=True
+        ),
+        "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature(
+            [], tf.float32, allow_missing=True
+        ),
+        "image/object/bbox/ymin": tf.io.FixedLenSequenceFeature(
+            [], tf.float32, allow_missing=True
+        ),
+        "image/object/bbox/ymax": tf.io.FixedLenSequenceFeature(
+            [], tf.float32, allow_missing=True
+        ),
+        "image/object/class/text": tf.io.FixedLenSequenceFeature(
+            [], tf.string, allow_missing=True
+        ),
+        "image/object/class/label": tf.io.FixedLenSequenceFeature(
+            [], tf.int64, allow_missing=True
+        ),
+    }
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    @property
+    def has_image_path(self):
+        return False
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    def get_image_metadata(self):
+        return self._parse_image_metadata(self._current_features)
+
+    def _parse_image(self, features):
+        img_bytes = features["image/encoded"]
+        img = tf.image.decode_image(img_bytes)
+        return img.numpy()
+
+    def _parse_image_metadata(self, features):
+        return fom.ImageMetadata(
+            size_bytes=len(features["image/encoded"].numpy()),
+            mime_type="image/" + features["image/format"].numpy().decode(),
+            width=features["image/width"].numpy(),
+            height=features["image/height"].numpy(),
+        )
+
+    def _parse_label(self, features):
+        xmins = features["image/object/bbox/xmin"].numpy()
+        xmaxs = features["image/object/bbox/xmax"].numpy()
+        ymins = features["image/object/bbox/ymin"].numpy()
+        ymaxs = features["image/object/bbox/ymax"].numpy()
+        texts = features["image/object/class/text"].numpy()
+        detections = []
+        for xmin, xmax, ymin, ymax, text in zip(
+            xmins, xmaxs, ymins, ymaxs, texts
+        ):
+            label = text.decode()
+            detections.append(
+                fol.Detection(
+                    label=label,
+                    bounding_box=[xmin, ymin, xmax - xmin, ymax - ymin],
+                )
+            )
+
+        return fol.Detections(detections=detections)
 
 
 class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -383,11 +476,11 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
     def __next__(self):
         idx, tf_example = next(self._iter_samples)
 
-        img, label = self._sample_parser.parse(tf_example)
-
+        self._sample_parser.with_sample(tf_example)
+        img = self._sample_parser.get_image()
+        label = self._sample_parser.get_label()
         if self.has_image_metadata:
-            # @todo parse from tf_example
-            image_metadata = None
+            image_metadata = self._sample_parser.get_image_metadata()
         else:
             image_metadata = None
 
@@ -395,6 +488,10 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         etai.write(img, image_path)
 
         return image_path, image_metadata, label
+
+    @property
+    def has_image_metadata(self):
+        return self._sample_parser.has_image_metadata
 
     def setup(self):
         tf_records_patt = os.path.join(self.dataset_dir, "*")
@@ -434,10 +531,6 @@ class TFImageClassificationDatasetImporter(
     """
 
     @property
-    def has_image_metadata(self):
-        return True
-
-    @property
     def label_cls(self):
         return fol.Classification
 
@@ -459,10 +552,6 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
     """
-
-    @property
-    def has_image_metadata(self):
-        return True
 
     @property
     def label_cls(self):
@@ -573,69 +662,6 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
 
     def _make_example_generator(self):
         return TFObjectDetectionExampleGenerator(classes=self.classes)
-
-
-class TFObjectDetectionSampleParser(
-    TFRecordSampleParser, foud.ImageDetectionSampleParser
-):
-    """Parser for samples in TF Object Detection API format.
-
-    This implementation supports samples that are ``tf.train.Example`` protos
-    whose features follow the format described in
-    :class:`fiftyone.types.TFObjectDetectionDataset`.
-    """
-
-    _FEATURES = {
-        "image/height": tf.io.FixedLenFeature([], tf.int64),
-        "image/width": tf.io.FixedLenFeature([], tf.int64),
-        "image/filename": tf.io.FixedLenFeature([], tf.string),
-        "image/source_id": tf.io.FixedLenFeature([], tf.string),
-        "image/encoded": tf.io.FixedLenFeature([], tf.string),
-        "image/format": tf.io.FixedLenFeature([], tf.string),
-        "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True
-        ),
-        "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True
-        ),
-        "image/object/bbox/ymin": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True
-        ),
-        "image/object/bbox/ymax": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True
-        ),
-        "image/object/class/text": tf.io.FixedLenSequenceFeature(
-            [], tf.string, allow_missing=True
-        ),
-        "image/object/class/label": tf.io.FixedLenSequenceFeature(
-            [], tf.int64, allow_missing=True
-        ),
-    }
-
-    def _parse_image(self, features):
-        img_bytes = features["image/encoded"]
-        img = tf.image.decode_image(img_bytes)
-        return img.numpy()
-
-    def _parse_label(self, features):
-        xmins = features["image/object/bbox/xmin"].numpy()
-        xmaxs = features["image/object/bbox/xmax"].numpy()
-        ymins = features["image/object/bbox/ymin"].numpy()
-        ymaxs = features["image/object/bbox/ymax"].numpy()
-        texts = features["image/object/class/text"].numpy()
-        detections = []
-        for xmin, xmax, ymin, ymax, text in zip(
-            xmins, xmaxs, ymins, ymaxs, texts
-        ):
-            label = text.decode()
-            detections.append(
-                fol.Detection(
-                    label=label,
-                    bounding_box=[xmin, ymin, xmax - xmin, ymax - ymin],
-                )
-            )
-
-        return fol.Detections(detections=detections)
 
 
 class TFExampleGenerator(object):
