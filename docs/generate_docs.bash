@@ -37,6 +37,10 @@ set -e
 export FIFTYONE_HEADLESS=1
 THIS_DIR=$(dirname "$0")
 
+ABS_BRAIN_PATH=$( \
+    python -c "import os,sys; print(os.path.realpath(sys.argv[1]))" \
+    $BRAIN_PATH/fiftyone/brain)
+
 
 if [[ ${CLEAN_BUILD} = true ]]; then
     echo "**** Deleting existing build directories ****"
@@ -51,9 +55,6 @@ echo "**** Generating documentation ****"
 cd "${THIS_DIR}/.."
 
 # create symlink to fiftyone-brain
-ABS_BRAIN_PATH=$( \
-    python -c "import os,sys; print(os.path.realpath(sys.argv[1]))" \
-    $BRAIN_PATH/fiftyone/brain)
 ln -sf $ABS_BRAIN_PATH fiftyone/brain
 # auto-generate API source
 sphinx-apidoc -fl --no-toc -o docs/source/api fiftyone
