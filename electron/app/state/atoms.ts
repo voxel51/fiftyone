@@ -30,6 +30,21 @@ export const currentListTop = atom({
   default: 0,
 });
 
+export const liveTop = atom({
+  key: "liveTop",
+  default: 0,
+});
+
+export const prevIndex = atom({
+  key: "prevIndex",
+  default: 0,
+});
+
+export const prevDisp = atom({
+  key: "prevDisp",
+  default: 0,
+});
+
 export const isDraggingIndicator = atom({
   key: "isDraggingIndicator",
   default: false,

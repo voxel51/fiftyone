@@ -12,6 +12,7 @@ import {
   mainLoaded,
   mainSize,
   currentListTop,
+  liveTop,
 } from "../../state/atoms";
 import { useTrackMousePosition, useResizeObserver } from "../../state/hooks";
 import {
@@ -53,6 +54,17 @@ const List = ({ children }) => {
   const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
   const currentListTopValue = useRecoilValue(currentListTop);
   const viewCountValue = useRecoilValue(viewCount);
+  const [liveTopValue, setLiveTop] = useRecoilState(liveTop);
+
+  let hotTop = ref.current;
+  if (hotTop && hotTop.offsetTop !== undefined) hotTop = hotTop.offsetTop;
+
+  useLayoutEffect(() => {
+    const dod = () => hotTop !== undefined && setLiveTop(hotTop);
+    let t = requestAnimationFrame(dod);
+
+    return () => cancelAnimationFrame(t);
+  }, [hotTop]);
 
   const props = useSpring({
     top: -1 * currentListTopValue,
@@ -70,8 +82,6 @@ const ListMain = styled.div`
   width: 100%;
   height: 100%;
 `;
-
-let timeout;
 
 export default () => {
   const segmentsToRenderValue = useRecoilValue(segmentsToRender);
@@ -94,17 +104,20 @@ export default () => {
 
   useLayoutEffect(() => {
     if (!contentRect) return;
+    let timeout = setTimeout(() => {
+      setIsMainWidthResizing(false);
+    }, 1000);
     const { top, width, height } = contentRect;
-    requestAnimationFrame(() => {
+    let raf = requestAnimationFrame(() => {
       setIsMainWidthResizing(width !== mainSizeValue[0]);
       setMainSize([width, height]);
       setMainTop(top);
       !mainLoadedValue && setMainLoaded(true);
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        setIsMainWidthResizing(false);
-      }, 1000);
     });
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timeout);
+    };
   }, [ref, contentRect]);
 
   const bind = useWheel((s) => {
@@ -112,9 +125,7 @@ export default () => {
       delta: [_, y],
     } = s;
 
-    setCurrentListTop(
-      Math.min(Math.max(currentListTopValue + y, minTop), maxTop)
-    );
+    setCurrentListTop(Math.min(Math.max(currentListTopValue + y, 0), maxTop));
   });
 
   return (

@@ -27,6 +27,7 @@ const LoadingThumbnailDiv = animated(styled.div`
   position: absolute;
   z-index: 0;
   background: #ccc;
+  contain: strict;
 `);
 
 const ThumbnailDiv = animated(styled.div`
@@ -129,7 +130,9 @@ const LoadingThumbnail = ({ index, unveil, move }) => {
     setInitialLoad(false);
   }, []);
 
-  return <LoadingThumbnailDiv style={{ ...props }} />;
+  return (
+    <LoadingThumbnailDiv style={{ ...props }}>{index}</LoadingThumbnailDiv>
+  );
 };
 
 const ThumbnailContainer = ({ index }) => {
@@ -141,7 +144,7 @@ const ThumbnailContainer = ({ index }) => {
   }, []);
 
   // if (isMainWidthResizingValue)
-  return <LoadingThumbnail index={index} unveil={initialLoad} move={true} />;
+  return <LoadingThumbnail index={index} unveil={false} move={false} />;
 
   return (
     <Suspense

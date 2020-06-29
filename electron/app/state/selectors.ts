@@ -11,6 +11,10 @@ import {
   segmentIsLoaded,
   gridMargin,
   portNumber,
+  liveTop,
+  prevIndex,
+  prevDisp,
+  current,
 } from "./atoms";
 
 export const currentListHeight = selector({
@@ -59,10 +63,6 @@ export const currentIndexIndicatorTop = selector({
   },
 });
 
-export const listHeight = selector({
-  key: "listHeight",
-});
-
 export const currentIndexPercentage = selector({
   key: "currentIndexPercentage",
   get: ({ get }) => {
@@ -75,9 +75,13 @@ export const currentIndexPercentage = selector({
     return clt / range;
   },
   set: ({ get, set }, newValue) => {
-    const { height: clh } = get(segmentBaseSize(0));
+    const clh = get(currentListHeight);
     const [unused, mh] = get(mainSize);
-    set(currentListTop, newValue * (clh - mh));
+    const rh = get(rowHeight);
+    const nr = get(numRows);
+
+    set(currentListTop, Math.min(newValue * nr * rh, clh - mh));
+    set(liveTop, -1 * Math.min(newValue * nr * rh, clh - mh));
   },
 });
 
@@ -89,16 +93,40 @@ export const currentSegment = selector({
   },
 });
 
+export const numRows = selector({
+  key: "numRows",
+  get: ({ get }) => {
+    const vc = get(viewCount);
+    const sbnc = get(segmentBaseNumCols);
+    return Math.ceil(vc / sbnc);
+  },
+});
+
+export const rowHeight = selector({
+  key: "rowHeight",
+  get: ({ get }) => {
+    const { height } = get(itemBaseSize);
+    return get(gridMargin) + height;
+  },
+});
+
 export const currentIndex = selector({
   key: "currentIndex",
   get: ({ get }) => {
-    const cip = get(currentIndexPercentage);
-    const vc = get(viewCount);
-    return Math.round(cip * Math.max(0, vc - 1));
+    const lt = get(liveTop);
+    const rh = get(rowHeight);
+    const cr = Math.floor((-1 * lt) / rh);
+    return cr * get(segmentBaseNumCols);
   },
   set: ({ get, set }, newValue) => {
-    const vc = get(viewCount);
-    set(currentIndexPercentage, newValue / (vc - 1));
+    const ir = get(itemRowInSegment(newValue));
+    const si = get(segmentIndexFromItemIndex(newValue));
+    const ipr = get(itemsPerRequest);
+    const sbnc = get(segmentBaseNumCols);
+    const r = Math.ceil((ipr * si) / sbnc);
+    const rh = get(rowHeight);
+    const clh = get(currentListHeight);
+    set(currentIndexPercentage, (rh * (ir + r)) / clh);
   },
 });
 
@@ -228,6 +256,16 @@ export const itemBaseSize = selector({
   },
 });
 
+const itemRowInSegment = selectorFamily({
+  key: "itemRowInSegment",
+  get: (itemIndex) => ({ get }) => {
+    const si = get(segmentIndexFromItemIndex(itemIndex));
+    const sbnc = get(segmentBaseNumCols);
+    const ipr = get(itemsPerRequest);
+    return Math.floor(itemIndex / sbnc) - Math.ceil((si * ipr) / sbnc);
+  },
+});
+
 export const itemBasePosition = selectorFamily({
   key: "itemBasePosition",
   get: (itemIndex) => ({ get }) => {
@@ -236,7 +274,7 @@ export const itemBasePosition = selectorFamily({
     const sbnc = get(segmentBaseNumCols);
     const si = get(segmentIndexFromItemIndex(itemIndex));
     const lc = si > 0 ? sbnc - ((ipr * si) % sbnc) : 0;
-    const row = Math.floor(itemIndex / sbnc) - Math.ceil((si * ipr) / sbnc);
+    const row = get(itemRowInSegment(itemIndex));
     const col = itemIndex % sbnc;
     const { width: ibw, height: ibh } = get(itemBaseSize);
     const gm = get(gridMargin);
@@ -300,14 +338,24 @@ export const segmentsToRender = selector({
   key: "segmentsToRender",
   get: ({ get }) => {
     const ci = get(currentIndex);
+    const ipr = get(itemsPerRequest);
+    const sbnc = get(segmentBaseNumCols);
+    const lt = get(liveTop);
     const cd = 0;
     const [mw, mh] = get(mainSize);
     let h = 0;
     let csi = get(segmentIndexFromItemIndex(ci));
+    const st = get(segmentTop(csi));
     const ns = get(numSegments);
     const str = [];
-    while (h < mh + 600 && csi < ns) {
-      h += get(segmentHeight(csi));
+    let sl = mh * 1.3;
+    let lc = false;
+    let plc = false;
+    while ((sl > 0 || lc) && csi < ns) {
+      if (plc) break;
+      plc = lc;
+      lc = (csi > 0 ? sbnc - ((ipr * csi) % sbnc) : 0) > 0;
+      sl -= get(segmentHeight(csi)) + (lt + st);
       str.push(csi);
       csi += 1;
     }
@@ -319,12 +367,31 @@ export const itemsToRenderInSegment = selectorFamily({
   key: "itemsToRenderInSegment",
   get: (segmentIndex) => ({ get }) => {
     const ipr = get(itemsPerRequest);
-    const start = ipr * segmentIndex;
+    const st = get(segmentTop(segmentIndex));
+    const lt = get(liveTop);
+    const [unused, mh] = get(mainSize);
+    const ad = st + lt;
 
-    return [...Array(50).keys()].map((k) => {
+    const rh = get(rowHeight);
+    let d;
+    let r = ipr;
+    let s = 0;
+    let e = ipr;
+    for (let i = 0; i < ipr; i++) {
+      d = ad + get(itemRowInSegment(ipr * segmentIndex + i)) * rh;
+      if (d < -1.5 * mh) {
+        s = i;
+      } else if (d > 1.5 * mh) {
+        e = i;
+        break;
+      }
+    }
+
+    let start = ipr * segmentIndex;
+    return [...Array(e - s).keys()].map((k) => {
       return {
-        index: k + start,
-        key: k,
+        index: k + start + s,
+        key: s + k,
       };
     });
   },
@@ -338,7 +405,7 @@ export const tilingThreshold = selector({
 });
 
 export const segmentBaseNumCols = selector({
-  key: "segmentBaseNumCols",
+  key: "segmentB1.3aseNumCols",
   get: ({ get }) => {
     const [mw, unused] = get(mainSize);
     if (mw <= 600) {
@@ -348,9 +415,9 @@ export const segmentBaseNumCols = selector({
     } else if (mw < 992) {
       return 4;
     } else if (mw < 1200) {
-      return 6;
+      return 5;
     } else {
-      return 10;
+      return 7;
     }
   },
 });
@@ -361,6 +428,17 @@ export const segmentBaseNumRows = selector({
     const ipr = get(itemsPerRequest);
     const sbnc = get(segmentBaseNumCols);
     return Math.ceil(ipr / sbnc);
+  },
+});
+
+export const segmentTop = selectorFamily({
+  key: "segmentTop",
+  get: (segmentIndex) => ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    const beforeNumItems = ipr * segmentIndex;
+    const sbnc = get(segmentBaseNumCols);
+    const beforeNumRows = Math.ceil(beforeNumItems / sbnc);
+    return get(rowHeight) * beforeNumRows;
   },
 });
 
