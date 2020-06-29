@@ -642,7 +642,6 @@ window.sideMenus = {
       var howManyPixelsOfTheFooterAreInTheWindow = windowHeight - topOfFooterRelativeToWindow;
       var leftMenuDifference = howManyPixelsOfTheFooterAreInTheWindow;
       document.getElementById("pytorch-left-menu").style.height = (windowHeight - leftMenuDifference) + "px";
-      document.getElementById("pytorch-side-scroll-right").style.height = (windowHeight - leftMenuDifference) + "px";
     }
   },
 
@@ -689,7 +688,12 @@ window.sideMenus = {
     var rightMenuSideScroll = document.getElementById("pytorch-side-scroll-right");
     var sideScrollFromWindowTop = rightMenuSideScroll.getBoundingClientRect().top;
 
-    rightMenuSideScroll.style.height = utilities.windowHeight() - sideScrollFromWindowTop + "px";
+    var windowHeight = utilities.windowHeight();
+    var topOfFooterRelativeToWindow = document.getElementById("docs-tutorials-resources").getBoundingClientRect().top;
+    var howManyPixelsOfTheFooterAreInTheWindow = Math.max(0, windowHeight - topOfFooterRelativeToWindow);
+    console.log({howManyPixelsOfTheFooterAreInTheWindow})
+
+    rightMenuSideScroll.style.height = windowHeight - sideScrollFromWindowTop - howManyPixelsOfTheFooterAreInTheWindow + "px";
   }
 };
 
