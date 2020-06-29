@@ -104,6 +104,10 @@ window.sideMenus = {
         sideMenus.handleRightMenu();
       }
     });
+
+    $(function() {
+      $(window).trigger('scroll');
+    })
   },
 
   leftMenuIsFixed: function() {
