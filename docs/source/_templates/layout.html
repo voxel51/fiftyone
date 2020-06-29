@@ -53,6 +53,10 @@
 {# delete PyTorch's menu because our own is reused on mobile #}
 {% endblock %}
 
+{% block menu %}
+{{ toctree(maxdepth=2, collapse=True, includehidden=True, titles_only=True) }}
+{% endblock %}
+
 {% block custom_footer %}
 <footer class="body_part footer" id="docs-tutorials-resources">
 
