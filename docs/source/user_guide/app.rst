@@ -27,7 +27,7 @@ Sessions are the python objects that contain the instance of the app:
 
     session = fo.launch_app()
 
-.. image:: ../images/empty_dashboard.png
+.. image:: ../images/empty_app.png
    :alt: App Startup Page
    :align: center
 

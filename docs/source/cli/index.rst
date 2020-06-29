@@ -57,7 +57,7 @@ The FiftyOne command-line interface.
 
 .. code-block:: text
 
-    fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,dashboard,zoo} ...
+    fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,app,zoo} ...
 
 **Arguments**
 
@@ -69,12 +69,12 @@ The FiftyOne command-line interface.
       --all-help            show help recurisvely and exit
 
     available commands:
-      {config,constants,convert,datasets,dashboard,zoo}
+      {config,constants,convert,datasets,app,zoo}
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
-        dashboard           Tools for working with the FiftyOne App.
+        app                 Tools for working with the FiftyOne App.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
 
 FiftyOne config
@@ -474,7 +474,7 @@ Tools for working with the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard [-h] [--all-help] {launch,view,connect} ...
+    fiftyone app [-h] [--all-help] {launch,view,connect} ...
 
 **Arguments**
 
@@ -482,7 +482,7 @@ Tools for working with the FiftyOne App.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {launch,view,connect}
@@ -497,7 +497,7 @@ Launch the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard launch [-h] [-p PORT] [-r] NAME
+    fiftyone app launch [-h] [-p PORT] [-r] NAME
 
 **Arguments**
 
@@ -516,12 +516,12 @@ Launch the FiftyOne App.
 .. code-block:: shell
 
     # Launch the App with the given dataset
-    fiftyone dashboard launch <name>
+    fiftyone app launch <name>
 
 .. code-block:: shell
 
     # Launch a remote App session
-    fiftyone dashboard launch <name> --remote
+    fiftyone app launch <name> --remote
 
 View datasets in App
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -531,9 +531,9 @@ database.
 
 .. code-block:: text
 
-    fiftyone dashboard view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
-                            [-z NAME] [-s SPLITS [SPLITS ...]]
-                            [-j JSON_PATH] [-p PORT] [-r]
+    fiftyone app view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
+                      [-z NAME] [-s SPLITS [SPLITS ...]]
+                      [-j JSON_PATH] [-p PORT] [-r]
 
 **Arguments**
 
@@ -559,22 +559,22 @@ database.
 .. code-block:: shell
 
     # View a dataset stored on disk in the App
-    fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+    fiftyone app view --dataset-dir <dataset-dir> --type <type>
 
 .. code-block:: shell
 
     # View a zoo dataset in the App
-    fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
+    fiftyone app view --zoo-dataset <name> --splits <split1> ...
 
 .. code-block:: shell
 
     # View a dataset stored in JSON format on disk in the App
-    fiftyone dashboard view --json-path <json-path>
+    fiftyone app view --json-path <json-path>
 
 .. code-block:: shell
 
     # View the dataset in a remote App session
-    fiftyone dashboard view ... --remote
+    fiftyone app view ... --remote
 
 Connect to remote App
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -583,7 +583,7 @@ Connect to a remote FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard connect [-h] [-d DESTINATION] [-p PORT]
+    fiftyone app connect [-h] [-d DESTINATION] [-p PORT]
 
 **Arguments**
 
@@ -600,12 +600,12 @@ Connect to a remote FiftyOne App.
 .. code-block:: shell
 
     # Connect to a remote App with port forwarding already configured
-    fiftyone dashboard connect
+    fiftyone app connect
 
 .. code-block:: shell
 
     # Connect to a remote App session
-    fiftyone dashboard connect --destination <destination> --port <port>
+    fiftyone app connect --destination <destination> --port <port>
 
 FiftyOne Dataset Zoo
 --------------------

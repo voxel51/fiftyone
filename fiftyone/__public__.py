@@ -54,7 +54,7 @@ from .core.metadata import (
 )
 from .core.sample import Sample
 from .core.session import (
-    close_dashboard,
+    close_app,
     launch_app,
     Session,
 )
