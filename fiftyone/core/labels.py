@@ -24,10 +24,7 @@ import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
 
-from fiftyone.core.odm.document import (
-    ODMEmbeddedDocument,
-    ODMDynamicEmbeddedDocument,
-)
+from fiftyone.core.odm.document import ODMEmbeddedDocument
 import fiftyone.core.fields as fof
 
 
