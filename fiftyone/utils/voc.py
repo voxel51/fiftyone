@@ -32,7 +32,6 @@ import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
@@ -82,7 +81,11 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
 
     def __init__(self):
         super().__init__(
-            label_field=None, bounding_box_field=None, confidence_field=None
+            label_field=None,
+            bounding_box_field=None,
+            confidence_field=None,
+            classes=None,
+            normalized=True,  # True b/c image is not required to parse label
         )
 
     def _parse_label(self, target, img=None):
