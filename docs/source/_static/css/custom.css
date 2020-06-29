@@ -70,6 +70,16 @@ article.pytorch-article pre {
   background-color: rgb(252, 252, 252);
 }
 
+/* left side section links */
+
+.pytorch-left-menu li.toctree-l1 ul {
+  margin-left: 1rem;
+}
+
+.pytorch-left-menu li.toctree-l2.current > a {
+  color: #ee4c2c;
+}
+
 /* right side section link highlighting */
 
 .pytorch-content-right .pytorch-side-scroll li.current-section {

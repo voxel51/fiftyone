@@ -200,7 +200,7 @@
               toctree is empty. Skip building this for now.
             #}
             {% if 'singlehtml' not in builder %}
-              {% set global_toc = toctree(maxdepth=1,
+              {% set global_toc = toctree(maxdepth=2,
                                           collapse=theme_collapse_navigation|tobool,
                                           includehidden=theme_includehidden|tobool,
                                           titles_only=theme_titles_only|tobool) %}
