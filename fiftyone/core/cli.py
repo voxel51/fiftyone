@@ -664,7 +664,7 @@ class DashboardLaunchCommand(Command):
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
-        session = fos.launch_dashboard(
+        session = fos.launch_app(
             dataset=dataset, port=args.port, remote=args.remote
         )
 
@@ -786,7 +786,7 @@ class DashboardViewCommand(Command):
                 "provided"
             )
 
-        session = fos.launch_dashboard(
+        session = fos.launch_app(
             dataset=dataset, port=args.port, remote=args.remote
         )
 
@@ -870,7 +870,7 @@ class DashboardConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_dashboard()
+        session = fos.launch_app()
 
         _watch_session(session)
 

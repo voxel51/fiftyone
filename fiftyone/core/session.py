@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 session = None
 
 
-def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
+def launch_app(dataset=None, view=None, port=5151, remote=False):
     """Launches the FiftyOne Dashboard.
 
     Only one dashboard instance can be opened at a time. If this method is

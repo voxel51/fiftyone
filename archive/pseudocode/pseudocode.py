@@ -32,7 +32,7 @@ BACKING_DIR = None
 #
 # Open localhost:8000 in your browser to use it
 #
-voxf.launch_dashboard()
+voxf.launch_app()
 
 
 ###############################################################################
@@ -67,7 +67,7 @@ print("Number of samples: %d" % dataset.num_samples)
 #
 # Open localhost:8000 in your browser to use it
 #
-voxf.launch_dashboard(dataset=dataset)
+voxf.launch_app(dataset=dataset)
 
 
 ###############################################################################
@@ -101,7 +101,7 @@ index_id = dataset.index_samples_by_diversity()
 # you can visualize the diversity information that was added to the
 # dataset
 #
-voxf.launch_dashboard(dataset=dataset)
+voxf.launch_app(dataset=dataset)
 
 #
 # Select a maximally diverse set of samples of size `num_samples` using the
@@ -163,7 +163,7 @@ for sample in dataset.all_samples():
 # The Explore Tab will now contain the ground truth labels and you can use the
 # interface to search by label, visualize rendered annotations, etc
 #
-voxf.launch_dashboard(dataset=dataset)
+voxf.launch_app(dataset=dataset)
 
 
 ###############################################################################
@@ -205,7 +205,7 @@ for sample in dataset.all_samples():
 #
 # This data may also be accessed programmatically via the client library
 #
-voxf.launch_dashboard(dataset=dataset)
+voxf.launch_app(dataset=dataset)
 
 
 ###############################################################################

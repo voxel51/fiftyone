@@ -55,7 +55,7 @@ from .core.metadata import (
 from .core.sample import Sample
 from .core.session import (
     close_dashboard,
-    launch_dashboard,
+    launch_app,
     Session,
 )
 from .core.view import DatasetView
