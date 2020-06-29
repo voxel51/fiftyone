@@ -13,7 +13,8 @@ usage() {
 Options:
 -h      Display this help message.
 -c      Perform a clean build (deletes existing build directory).
--b      Path to fiftyone-brain repository (defaults to ../fiftyone-brain)
+-b      Path to fiftyone-brain repository relative to the fiftyone repository.
+        (defaults to ../fiftyone-brain)
 "
 }
 
@@ -37,10 +38,6 @@ set -e
 export FIFTYONE_HEADLESS=1
 THIS_DIR=$(dirname "$0")
 
-ABS_BRAIN_PATH=$( \
-    python -c "import os,sys; print(os.path.realpath(sys.argv[1]))" \
-    $BRAIN_PATH/fiftyone/brain)
-
 
 if [[ ${CLEAN_BUILD} = true ]]; then
     echo "**** Deleting existing build directories ****"
@@ -53,6 +50,10 @@ echo "**** Generating documentation ****"
 
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 cd "${THIS_DIR}/.."
+
+ABS_BRAIN_PATH=$( \
+    python -c "import os,sys; print(os.path.realpath(sys.argv[1]))" \
+    $BRAIN_PATH/fiftyone/brain)
 
 # create symlink to fiftyone-brain
 ln -sf $ABS_BRAIN_PATH fiftyone/brain
