@@ -8,11 +8,12 @@
 
 # Show usage information
 usage() {
-    echo "Usage:  bash $0 [-h] [-c]
+    echo "Usage:  bash $0 [-h] [-c] -b <FIFTYONE_BRAIN_PATH>
 
 Options:
 -h      Display this help message.
 -c      Perform a clean build (deletes existing build directory).
+-b      Path to fiftyone-brain repository (defaults to ../fiftyone-brain)
 "
 }
 
@@ -20,10 +21,12 @@ Options:
 # Parse flags
 SHOW_HELP=false
 CLEAN_BUILD=false
-while getopts "hc" FLAG; do
+BRAIN_PATH="../fiftyone-brain"
+while getopts "hcb:" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         c) CLEAN_BUILD=true ;;
+        b) BRAIN_PATH="${OPTARG}" ;;
         *) usage ;;
     esac
 done
@@ -46,7 +49,16 @@ echo "**** Generating documentation ****"
 
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 cd "${THIS_DIR}/.."
-sphinx-apidoc -f --no-toc -o docs/source/api fiftyone
+
+# create symlink to fiftyone-brain
+ABS_BRAIN_PATH=$( \
+    python -c "import os,sys; print(os.path.realpath(sys.argv[1]))" \
+    $BRAIN_PATH/fiftyone/brain)
+ln -sf $ABS_BRAIN_PATH fiftyone/brain
+# auto-generate API source
+sphinx-apidoc -fl --no-toc -o docs/source/api fiftyone
+# remove symlink
+rm fiftyone/brain
 
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 cd docs
