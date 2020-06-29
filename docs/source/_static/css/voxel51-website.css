@@ -270,26 +270,6 @@
   }
 } /* end of media query for mobile responsive nav */
 
-/* BodyPart
- * This is a div in the body section
- */
-.body_part {
-  min-width: 100%;
-  padding: var(--padding-y) var(--padding-x); /* -x padding has to be here to have the background extend to viewport edges; */
-}
-
-@media screen and (min-width: 1240px) {
-  .body_part {
-    padding: var(--padding-y) calc((100vw - 1040px) / 2);
-  }
-}
-
-@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
-  .body_part {
-    padding: 6rem 3rem;
-  }
-}
-
 /* FOOTER */
 /* Footer uses grid to keep everything aligned. */
 .footer {

@@ -42,9 +42,14 @@ article.pytorch-article pre {
   max-width: 800px;
 }
 
+.footer-wrapper {
+  background: var(--bg-dark-secondary);
+}
+
 .footer {
   font-size: 15px;
-  padding: 70px 120px 10px;
+  padding-top: 70px;
+  padding-bottom: 10px;
 }
 
 .footer a {

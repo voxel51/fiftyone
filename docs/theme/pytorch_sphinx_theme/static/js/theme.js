@@ -695,7 +695,6 @@ window.sideMenus = {
     var windowHeight = utilities.windowHeight();
     var topOfFooterRelativeToWindow = document.getElementById("docs-tutorials-resources").getBoundingClientRect().top;
     var howManyPixelsOfTheFooterAreInTheWindow = Math.max(0, windowHeight - topOfFooterRelativeToWindow);
-    console.log({howManyPixelsOfTheFooterAreInTheWindow})
 
     rightMenuSideScroll.style.height = windowHeight - sideScrollFromWindowTop - howManyPixelsOfTheFooterAreInTheWindow + "px";
   }
