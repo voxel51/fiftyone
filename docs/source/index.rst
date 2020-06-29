@@ -1,7 +1,8 @@
 FiftyOne
 ========
 
-    *"Data is king in the artificial intelligence world."*
+    "Data is king in the artificial intelligence world."
+    -- *Government Technology Magazine*
 
 If you are looking to boost your model performance, chances are improving
 dataset quality is going to provide the highest return on investment.
@@ -9,7 +10,7 @@ dataset quality is going to provide the highest return on investment.
 to help in creating valuable and diverse datasets. Work efficiently with
 FiftyOne to achieve better models with dependable performance.
 
-    *"Become one with the data."*
+    "Become one with the data." -- *Andrej Karpathy*
 
 FiftyOne does more than improve your dataset; it gets you closer to your data.
 Rapidly gain insight by visualizing samples overlayed with with dynamic and
@@ -83,6 +84,7 @@ explore your datasets. You can efficiently query and manipulate your dataset by
 adding custom tags, model predictions and more.
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -125,11 +127,12 @@ dataset into any aspect you need; and more.
 .. rubric:: :doc:`The FiftyOne Brain<user_guide/brain>`
 
 The FiftyOne Brain is a library of powerful machine learning-powered
-:ref:`capabilities<Capabilities>` that provide insights into your datasets and
+:ref:`capabilities <Capabilities>` that provide insights into your datasets and
 recommend ways to modify your datasets that will lead to measurably better
 performance of your models.
 
 .. code-block:: python
+   :linenos:
 
    import fiftyone.brain as fob
 

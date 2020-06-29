@@ -24,15 +24,15 @@ BACKING_DIR = None
 
 
 ###############################################################################
-# Action 0: Launch your dashboard to see what datasets you've played with
+# Action 0: Launch the app to see what datasets you've played with
 ###############################################################################
 
 #
-# Launches a web dashboard that shows you a dataset listing page
+# Launches a web app that shows you a dataset listing page
 #
 # Open localhost:8000 in your browser to use it
 #
-voxf.launch_dashboard()
+voxf.launch_app()
 
 
 ###############################################################################
@@ -59,7 +59,7 @@ print("Backing directory: %s" % dataset.backing_dir)
 print("Number of samples: %d" % dataset.num_samples)
 
 #
-# Launches a web dashboard that drops you on the Explore Tab of your dataset
+# Launches a web app that drops you on the Explore Tab of your dataset
 #
 # You can use the Explore Tab to view macro-level statistics about the dataset
 # such as number of samples, data size, etc. You can also view individual
@@ -67,7 +67,7 @@ print("Number of samples: %d" % dataset.num_samples)
 #
 # Open localhost:8000 in your browser to use it
 #
-voxf.launch_dashboard(dataset=dataset)
+voxf.launch_app(dataset=dataset)
 
 
 ###############################################################################
@@ -92,7 +92,7 @@ dataset = voxf.load_dataset(name=DATASET_NAME)
 index_id = dataset.index_samples_by_diversity()
 #
 # Crunch crunch crunch... indexing takes some time. Maybe it spawns a
-# background task whose progress you can monitor via the web dashboard? maybe
+# background task whose progress you can monitor via the web app? maybe
 # it executes synchronously?
 #
 
@@ -101,7 +101,7 @@ index_id = dataset.index_samples_by_diversity()
 # you can visualize the diversity information that was added to the
 # dataset
 #
-voxf.launch_dashboard(dataset=dataset)
+voxf.launch_app(dataset=dataset)
 
 #
 # Select a maximally diverse set of samples of size `num_samples` using the
@@ -163,7 +163,7 @@ for sample in dataset.all_samples():
 # The Explore Tab will now contain the ground truth labels and you can use the
 # interface to search by label, visualize rendered annotations, etc
 #
-voxf.launch_dashboard(dataset=dataset)
+voxf.launch_app(dataset=dataset)
 
 
 ###############################################################################
@@ -205,7 +205,7 @@ for sample in dataset.all_samples():
 #
 # This data may also be accessed programmatically via the client library
 #
-voxf.launch_dashboard(dataset=dataset)
+voxf.launch_app(dataset=dataset)
 
 
 ###############################################################################

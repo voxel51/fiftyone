@@ -24,7 +24,6 @@ from collections import defaultdict
 import io
 import json
 import os
-import sys
 import subprocess
 import sys
 import time
@@ -87,7 +86,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
-        _register_command(subparsers, "dashboard", DashboardCommand)
+        _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
     @staticmethod
@@ -614,31 +613,31 @@ class DatasetsDeleteCommand(Command):
         print("Dataset '%s' deleted" % args.name)
 
 
-class DashboardCommand(Command):
-    """Tools for working with the FiftyOne Dashboard."""
+class AppCommand(Command):
+    """Tools for working with the FiftyOne App."""
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "launch", DashboardLaunchCommand)
-        _register_command(subparsers, "view", DashboardViewCommand)
-        _register_command(subparsers, "connect", DashboardConnectCommand)
+        _register_command(subparsers, "launch", AppLaunchCommand)
+        _register_command(subparsers, "view", AppViewCommand)
+        _register_command(subparsers, "connect", AppConnectCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
 
 
-class DashboardLaunchCommand(Command):
-    """Launch the FiftyOne Dashboard.
+class AppLaunchCommand(Command):
+    """Launch the FiftyOne App.
 
     Examples::
 
-        # Launch the dashboard with the given dataset
-        fiftyone dashboard launch <name>
+        # Launch the app with the given dataset
+        fiftyone app launch <name>
 
-        # Launch a remote dashboard session
-        fiftyone dashboard launch <name> --remote
+        # Launch a remote app session
+        fiftyone app launch <name> --remote
     """
 
     @staticmethod
@@ -658,13 +657,13 @@ class DashboardLaunchCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote dashboard session",
+            help="whether to launch a remote app session",
         )
 
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
-        session = fos.launch_dashboard(
+        session = fos.launch_app(
             dataset=dataset, port=args.port, remote=args.remote
         )
 
@@ -678,29 +677,29 @@ def _watch_session(session, remote=False):
             while True:
                 time.sleep(60)
         else:
-            print("\nTo exit, close the dashboard or press ctrl + c\n")
+            print("\nTo exit, close the app or press ctrl + c\n")
             session.wait()
     except KeyboardInterrupt:
         pass
 
 
-class DashboardViewCommand(Command):
-    """View datasets in the FiftyOne Dashboard without persisting them to the
+class AppViewCommand(Command):
+    """View datasets in the FiftyOne App without persisting them to the
     database.
 
     Examples::
 
-        # View a dataset stored on disk in the dashboard
-        fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+        # View a dataset stored on disk in the app
+        fiftyone app view --dataset-dir <dataset-dir> --type <type>
 
-        # View a zoo dataset in the dashboard
-        fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
+        # View a zoo dataset in the app
+        fiftyone app view --zoo-dataset <name> --splits <split1> ...
 
-        # View a dataset stored in JSON format on disk in the dashboard
-        fiftyone dashboard view --json-path <json-path>
+        # View a dataset stored in JSON format on disk in the app
+        fiftyone app view --json-path <json-path>
 
-        # View the dataset in a remote dashboard session
-        fiftyone dashboard view ... --remote
+        # View the dataset in a remote app session
+        fiftyone app view ... --remote
     """
 
     @staticmethod
@@ -754,7 +753,7 @@ class DashboardViewCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote dashboard session",
+            help="whether to launch a remote app session",
         )
 
     @staticmethod
@@ -786,23 +785,23 @@ class DashboardViewCommand(Command):
                 "provided"
             )
 
-        session = fos.launch_dashboard(
+        session = fos.launch_app(
             dataset=dataset, port=args.port, remote=args.remote
         )
 
         _watch_session(session, remote=args.remote)
 
 
-class DashboardConnectCommand(Command):
-    """Connect to a remote FiftyOne Dashboard.
+class AppConnectCommand(Command):
+    """Connect to a remote FiftyOne App.
 
     Examples::
 
-        # Connect to a remote dashboard with port forwarding already configured
-        fiftyone dashboard connect
+        # Connect to a remote app with port forwarding already configured
+        fiftyone app connect
 
-        # Connect to a remote dashboard session
-        fiftyone dashboard connect --destination <destination> --port <port>
+        # Connect to a remote app session
+        fiftyone app connect --destination <destination> --port <port>
     """
 
     @staticmethod
@@ -870,7 +869,7 @@ class DashboardConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_dashboard()
+        session = fos.launch_app()
 
         _watch_session(session)
 

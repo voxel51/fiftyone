@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 session = None
 
 
-def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
+def launch_app(dataset=None, view=None, port=5151, remote=False):
     """Launches the FiftyOne Dashboard.
 
     Only one dashboard instance can be opened at a time. If this method is
@@ -110,14 +110,14 @@ class Session(foc.HasClient):
         instance.
 
     -   Use :func:`close_dashboard` to programmatically close the dashboard and
-        teriminate the session.
+        terminate the session.
 
     Note that only one session instance can exist at any time.
 
     Args:
-        dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
+        dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
-        view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
         port (5151): the port to use to connect the FiftyOne app.
         remote (False): whether this is a remote session. Remote sessions do
@@ -147,7 +147,7 @@ class Session(foc.HasClient):
 
         if not self._remote:
             self._app_service = fos.AppService()
-            logger.info("Dashboard launched")
+            logger.info("App launched")
         else:
             logger.info(
                 _REMOTE_INSTRUCTIONS.strip()

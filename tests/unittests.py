@@ -1062,6 +1062,26 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertIsNone(sample_copy.id)
         self.assertIsNone(sample_copy.dataset_name)
 
+    @drop_datasets
+    def test_in_memory_sample_fields(self):
+        """Ensure that any in memory samples have the field values purged when
+        a field is deleted.
+        """
+        dataset_name = self.test_in_memory_sample_fields.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        s1 = fo.Sample("s1.png")
+        s2 = fo.Sample("s2.png")
+
+        dataset.add_samples([s1, s2])
+
+        s1["new_field"] = 51
+        dataset.delete_sample_field("new_field")
+        s2["new_field"] = "fiftyone"
+
+        self.assertIsNone(s1.new_field)
+        self.assertEqual(s2.new_field, "fiftyone")
+
 
 class LabelsTest(unittest.TestCase):
     @drop_datasets

@@ -21,10 +21,11 @@ Create a session
 Sessions are the python objects that contain the instance of the app:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
-    session = fo.launch_dashboard()
+    session = fo.launch_app()
 
 .. image:: ../images/empty_dashboard.png
    :alt: App Startup Page
@@ -37,6 +38,7 @@ Sessions can be updated to show a new |Dataset| by updating the session
 object directly:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.zoo as foz
 
@@ -55,6 +57,7 @@ sort the |DatasetView| by ground truth labels and then select the first 10
 |Sample| objects to display.:
 
 .. code-block:: python
+    :linenos:
 
     session.view = dataset.view().sort_by("ground_truth")[:10]
 
@@ -77,12 +80,13 @@ session with the argument `remote=True`. This will send the session to port
 `5151`:
 
 .. code-block:: python
+    :linenos:
 
     # Remote Machine
     import fiftyone as fo
 
     dataset = fo.Dataset(name="my_dataset")
-    session = fo.launch_dashboard(dataset=dataset, remote=True)
+    session = fo.launch_app(dataset=dataset, remote=True)
 
 This is the session that will be modified to change what is being displayed.
 
@@ -105,7 +109,7 @@ separately.
     .. code-block:: shell
 
         # Local machine
-        fiftyone dashboard connect --destination username@remote_machine_ip --port 5151
+        fiftyone app connect --destination username@remote_machine_ip --port 5151
 
   .. group-tab:: Python
 
@@ -124,11 +128,12 @@ separately.
     running the following commands:
 
     .. code-block:: python
+        :linenos:
 
         # Local machine
         import fiftyone.core.session as fos
 
-        fos.launch_dashboard()
+        fos.launch_app()
 
 Using the FiftyOne App
 ______________________
@@ -146,6 +151,27 @@ the App.
     :alt: Cifar10 Toggle
     :align: center
 
+Accessing selected samples
+--------------------------
+
+First select samples in the App.
+
+.. image:: ../images/cifar10_selected.gif
+   :alt: Cifar10 Selected
+   :align: center
+
+Second, load those samples into python:
+
+.. code-block:: python
+    :linenos:
+
+    print(session.selected)
+
+.. code-block:: text
+
+    ['5ef0eef405059ebb0ddfa6cc',
+     '5ef0eef405059ebb0ddfa7c4',
+     '5ef0eef405059ebb0ddfa86e']
 
 Viewing a sample
 ----------------

@@ -20,6 +20,7 @@ arbitrary subsets of your datasets that you have identified by constructing a
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -72,7 +73,7 @@ arbitrary subsets of your datasets that you have identified by constructing a
     FiftyOne dataset contains multiple label fields.
 
 Supported formats
-~~~~~~~~~~~~~~~~~
+-----------------
 
 Each supported dataset type is represented by a subclass of
 :class:`fiftyone.types.dataset_types.BaseDataset`, which is used by the Python library and CLI to
@@ -149,6 +150,7 @@ disk as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -196,14 +198,12 @@ where `labels.json` is a JSON file in the following format:
 
     {
         "classes": [
-            <labelA>,
-            <labelB>,
-            ...
+            "<labelA>",
+            "<labelB>",
         ],
         "labels": {
-            <uuid1>: <target1>,
-            <uuid2>: <target2>,
-            ...
+            "<uuid1>": "<target1>",
+            "<uuid2>": "<target2>",
         }
     }
 
@@ -219,6 +219,7 @@ disk in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -277,6 +278,7 @@ stored on disk in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -324,20 +326,17 @@ Datasets of this type are exported in the following format:
 where the features of the (possibly sharded) TFRecords are stored in the
 following format:
 
-.. code-block:: json
+.. code-block:: python
 
     {
         # Image dimensions
         "height": tf.io.FixedLenFeature([], tf.int64),
         "width": tf.io.FixedLenFeature([], tf.int64),
         "depth": tf.io.FixedLenFeature([], tf.int64),
-
         # Image filename
         "filename": tf.io.FixedLenFeature([], tf.int64),
-
         # Encoded image bytes
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
-
         # Class label string
         "label": tf.io.FixedLenFeature([], tf.string),
     }
@@ -350,6 +349,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -406,7 +406,6 @@ where `labels.json` is a JSON file in the following format:
         "classes": [
             <labelA>,
             <labelB>,
-            ...
         ],
         "labels": {
             <uuid1>: [
@@ -441,6 +440,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -504,24 +504,21 @@ where `labels.json` is a JSON file in the following format:
         },
         "licenses": [],
         "categories": [
-            ...
             {
                 "id": 2,
                 "name": "cat",
                 "supercategory": "none"
             },
-            ...
         ],
         "images": [
             {
                 "id": 0,
                 "license": null,
-                "file_name": <filename0>,
+                "file_name": "<filename0>",
                 "height": 480,
                 "width": 640,
                 "date_captured": null
             },
-            ...
         ],
         "annotations": [
             {
@@ -533,7 +530,6 @@ where `labels.json` is a JSON file in the following format:
                 "segmentation": [],
                 "iscrowd": 0
             },
-            ...
         ]
     }
 
@@ -545,6 +541,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -652,6 +649,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -750,6 +748,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -854,6 +853,7 @@ as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -918,7 +918,10 @@ where `manifest.json` is a JSON file in the following format:
                 "data": "data/<uuid1>.<ext>",
                 "labels": "labels/<uuid1>.json"
             },
-            ...
+            {
+                "data": "data/<uuid2>.<ext>",
+                "labels": "labels/<uuid2>.json"
+            },
         ]
     }
 
@@ -933,6 +936,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1010,12 +1014,9 @@ where `labels.json` is a JSON file in the following format:
                     "manualAttributes": true,
                     "manualShape": true
                 },
-                ...
             ],
-            "name": <filename0>,
-            ...
+            "name": "<filename0>",
         },
-        ...
     ]
 
 You can export a FiftyOne dataset as a BDD dataset in the above format as
@@ -1026,6 +1027,7 @@ follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 

@@ -59,6 +59,7 @@ App:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -66,14 +67,14 @@ App:
 
         # Visualize a directory of images in the FiftyOne App
         dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory)
-        session = fo.launch_dashboard(dataset=dataset)
+        session = fo.launch_app(dataset=dataset)
 
   .. group-tab:: CLI
 
     .. code:: shell
 
         # Visualize a directory of images in the FiftyOne App
-        fiftyone dashboard view \
+        fiftyone app view \
             --dataset-dir /path/to/images-dir --type fiftyone.types.ImageDirectory
 
 .. toctree::

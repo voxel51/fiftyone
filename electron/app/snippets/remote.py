@@ -4,7 +4,7 @@ import fiftyone as fo
 dataset = ...
 
 # Launch the dashboard that you'll connect to from your local machine
-session = fo.launch_dashboard(remote=True)
+session = fo.launch_app(remote=True)
 
 # Load a dataset
 session.dataset = dataset

@@ -17,6 +17,7 @@ ________
 Instantiating a |Dataset| creates a **new** dataset.
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -28,6 +29,7 @@ Check to see what datasets exist at any time via :meth:`list_dataset_names()
 <fiftyone.core.dataset.list_dataset_names>`.
 
 .. code-block:: python
+    :linenos:
 
     print(fo.list_dataset_names())
     # ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
@@ -35,6 +37,7 @@ Check to see what datasets exist at any time via :meth:`list_dataset_names()
 Load a dataset using :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`. Dataset objects are singletons. Cool!
 
 .. code-block:: python
+    :linenos:
 
     dataset2_reference = fo.load_dataset("my_second_dataset")
     dataset2_reference is dataset2  # True
@@ -43,6 +46,7 @@ If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
 :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to have a bad time.
 
 .. code-block:: python
+    :linenos:
 
     dataset3_reference = fo.Dataset(name="my_third_dataset")
     # Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
@@ -60,6 +64,7 @@ FiftyOne backing database is deleted, however files on disk are untouched.
 To make a dataset persistent, set the attribute to `True`.
 
 .. code-block:: python
+    :linenos:
 
     dataset1.persistent = True
     quit()
@@ -67,6 +72,7 @@ To make a dataset persistent, set the attribute to `True`.
 Start a new python session:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone as fo
 
@@ -85,6 +91,7 @@ and :class:`Dataset.deleted <fiftyone.core.dataset.Dataset>` will still be valid
 attribute or method will raise a `DoesNotExistError`.
 
 .. code-block:: python
+    :linenos:
 
     dataset = fo.load_dataset("my_first_dataset")
     dataset.delete()
@@ -108,6 +115,7 @@ An individual |Sample| is always initialized with a file path to the
 corresponding image on disk. The image is not read at this point:
 
 .. code-block:: python
+    :linenos:
 
     sample = fo.Sample(filepath="path/to/image.png")
 
@@ -117,6 +125,7 @@ Adding Samples to a Dataset
 A |Sample| can easily be added to an existing |Dataset|:
 
 .. code-block:: python
+    :linenos:
 
     dataset = fo.Dataset(name="example_dataset")
     dataset.add_sample(sample)
@@ -125,6 +134,7 @@ When a |Sample| is added to a |Dataset|, the related attributes of the |Sample|
 are automatically updated:
 
 .. code-block:: python
+    :linenos:
 
     print(sample.in_dataset)
     # True
@@ -135,6 +145,7 @@ are automatically updated:
 Every |Sample| in a |Dataset| is given a unique ID when it is added:
 
 .. code-block:: python
+    :linenos:
 
     print(sample.id)
     # 5ee0ebd72ceafe13e7741c42
@@ -143,6 +154,7 @@ A batch of multiple |Sample| objects can be added to a |Dataset| at the same tim
 providing a list of samples:
 
 .. code-block:: python
+    :linenos:
 
     print(len(dataset))
     # 1
@@ -166,6 +178,7 @@ FiftyOne provides multiple ways to access a |Sample| in a |Dataset|.
 A |Dataset| is iterable allowing every |Sample| to be accessed one at a time:
 
 .. code-block:: python
+    :linenos:
 
     for sample in dataset:
         print(sample)
@@ -175,6 +188,7 @@ that is returned when accessing a |Dataset| will always provide the same
 instance:
 
 .. code-block:: python
+    :linenos:
 
     same_sample = dataset[sample.id]
 
@@ -191,6 +205,7 @@ Samples can be removed from a |Dataset| through their ID, either one at a
 time or in a batch:
 
 .. code-block:: python
+    :linenos:
 
     del dataset[sample_id]
 
@@ -200,6 +215,7 @@ Samples can also be removed from a |Dataset| by using the sample's ID or the
 |Sample| instance:
 
 .. code-block:: python
+    :linenos:
 
     dataset.remove_sample(sample_id)
 
@@ -211,6 +227,7 @@ In the latter case, where the |Sample| is in memory, it will behave the same as
 a |Sample| that has never been added to the |Dataset|:
 
 .. code-block:: python
+    :linenos:
 
     print(sample.in_dataset)
     # False
@@ -236,6 +253,7 @@ Accessing fields of a Sample
 The names of available fields can be checked on any individual |Sample|:
 
 .. code-block:: python
+    :linenos:
 
     sample.field_names
     # ('filepath', 'tags', 'metadata')
@@ -244,6 +262,7 @@ Only the |Dataset| has any notion of a field "schema", which specifies the
 field types:
 
 .. code-block:: python
+    :linenos:
 
     dataset.get_field_schema()
     # OrderedDict(
@@ -257,6 +276,7 @@ field types:
 To to simply view the field schema print the dataset:
 
 .. code-block:: python
+    :linenos:
 
     print(dataset)
     # Name:           a_dataset
@@ -272,6 +292,7 @@ The value of a |Field| for a given |Sample| can be accessed either by key or
 attribute access:
 
 .. code-block:: python
+    :linenos:
 
     sample.filepath
     sample["filepath"]
@@ -282,6 +303,7 @@ Adding fields to a Sample
 New fields can be added to a |Sample| using key assignment:
 
 .. code-block:: python
+    :linenos:
 
     sample["integer_field"] = 51
     sample.save()
@@ -290,6 +312,7 @@ If this |Sample| is in a |Dataset| the field schema will be automatically
 updated:
 
 .. code-block:: python
+    :linenos:
 
     print(dataset)
     # Name:           a_dataset
@@ -306,6 +329,7 @@ A |Field| can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
 `dict`, or more complex data structures like |Label|:
 
 .. code-block:: python
+    :linenos:
 
     sample["ground_truth"] = fo.Classification(label="alligator")
     sample.save()
@@ -317,6 +341,7 @@ A |Field| must be the same type across every |Sample| in the |Dataset|. Setting
 a |Field| to an inappropriate type raises a `ValidationError`:
 
 .. code-block:: python
+    :linenos:
 
     sample2.integer_field = "a string"
     sample2.save()
@@ -333,6 +358,7 @@ Removing fields from a Sample
 A |Field| can be deleted from a |Sample| using `del`:
 
 .. code-block:: python
+    :linenos:
 
     del sample["integer_field"]
     print(sample.integer_field)
@@ -342,6 +368,7 @@ A |Field| can be removed from a |Dataset|, in which case it is deleted for
 every |Sample| in the |Dataset|:
 
 .. code-block:: python
+    :linenos:
 
     dataset.delete_sample_field("integer_field")
     sample.integer_field
@@ -355,6 +382,7 @@ Tags
 can be used to define dataset splits or mark low quality images:
 
 .. code-block:: python
+    :linenos:
 
     dataset = fo.Dataset("tagged_dataset")
 
@@ -371,6 +399,7 @@ can be used to define dataset splits or mark low quality images:
 `Sample.tags` can be treated like a standard python `list`:
 
 .. code-block:: python
+    :linenos:
 
     sample.tags += ["new_tag"]
     sample.save()
@@ -390,6 +419,7 @@ unpredictable sort order.
 Basic ways to explore a |DatasetView| are available:
 
 .. code-block:: python
+    :linenos:
 
     print(len(dataset.view()))
     # 2
@@ -411,6 +441,7 @@ Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first()>` to get 
 |DatasetView| containing `x` random |Sample| objects:
 
 .. code-block:: python
+    :linenos:
 
     first_sample = dataset.view().first()
 
@@ -423,6 +454,7 @@ Ranges of |Sample| objects can be accessed using :meth:`skip() <fiftyone.core.vi
 equivalently through array slicing:
 
 .. code-block:: python
+    :linenos:
 
     # Skip the first 2 samples and take the next 3
     view = dataset.view()
@@ -436,6 +468,7 @@ Note that accessing an individual sample by its integer index in the view is
 not supported (this is not an efficient operation with FiftyOne datasets):
 
 .. code-block:: python
+    :linenos:
 
     view[0]
     # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
@@ -444,6 +477,7 @@ As with a |Dataset|, a |Sample| in a |DatasetView| can be accessed by ID and
 a |DatasetView| is iterable:
 
 .. code-block:: python
+    :linenos:
 
     sample = view[sample.id]
 
@@ -457,6 +491,7 @@ The samples in a |DatasetView| can be sorted (forward or in reverse) by any
 |Field|:
 
 .. code-block:: python
+    :linenos:
 
     view = dataset.view().sort_by("filepath")
     view = dataset.view().sort_by("id", reverse=True)
@@ -469,6 +504,7 @@ A |DatasetView| can be queried using :meth:`match()
 `MongoDB queries <https://docs.mongodb.com/manual/tutorial/query-documents/>`_:
 
 .. code-block:: python
+    :linenos:
 
     # Get only samples with the tag "train"
     view = dataset.view().match({"tags": "train"})
@@ -479,6 +515,7 @@ A |DatasetView| can be created by matching lists of |Sample| IDs, either to only
 include given a |Sample| or to include all but the given |Sample|:
 
 .. code-block:: python
+    :linenos:
 
     sample_ids = [sample1.id, sample2.id]
     included = dataset.view().select(sample_ids)
@@ -488,6 +525,7 @@ A |DatasetView| can also be filtered to only include samples for which a
 given |Field| exists and is not ``None``:
 
 .. code-block:: python
+    :linenos:
 
     metadata_view = dataset.view().exists("metadata")
 
@@ -497,6 +535,7 @@ Chaining view stages
 All of the aformentioned view stages can be chained together:
 
 .. code-block:: python
+    :linenos:
 
     complex_view = (
         dataset.view()
@@ -513,5 +552,6 @@ Every |Sample| in a given |DatasetView| can be removed from a |Dataset| with a
 single command:
 
 .. code-block:: python
+    :linenos:
 
     dataset.remove_samples(view)

@@ -5,7 +5,7 @@ dataset = ...
 
 # Launch your dashboard locally
 # (if you're reading this from your dashboard, you've already done this!)
-session = fo.launch_dashboard()
+session = fo.launch_app()
 
 # Load a dataset
 session.dataset = dataset

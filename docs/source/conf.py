@@ -41,10 +41,11 @@ extensions = [
     "m2r",
     "nbsphinx",
     "sphinx_tabs.tabs",
+    "sphinx_copybutton",
 ]
 
 # Types of class members to generate documentation for.
-autodoc_default_flags = ["members", "inherited-members"]
+autodoc_default_options = {"members": True, "inherited-members": True}
 autodoc_inherit_docstrings = True
 autodoc_member_order = "bysource"
 autoclass_content = "class"
@@ -64,13 +65,21 @@ m2r_parse_relative_links = True
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# Disable npshinx loading require.js - this breaks the pytorch theme's
+# scrolling handling, and we don't appear to have any notebook content that
+# requires it
+nbsphinx_requirejs_path = ""
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_theme = "pytorch_sphinx_theme"
+html_theme_path = ["../theme"]
+html_theme_options = {
+    "pytorch_project": "docs",
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -80,7 +89,7 @@ html_static_path = ["_static"]
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
 html_css_files = ["css/voxel51-website.css", "css/custom.css"]
-html_js_files = ["js/custom.js"]
+html_js_files = ["js/voxel51-website.js", "js/custom.js"]
 
 html_context = {
     "address_main_line1": "410 N 4th Ave, 3rd Floor",

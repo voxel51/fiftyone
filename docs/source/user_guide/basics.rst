@@ -78,6 +78,7 @@ A |Sample|_ is the elements of a |Dataset|_ that store all the information relat
 to a given image. Any |Sample|_ must include a file path to an image:
 
 .. code-block:: python
+   :linenos:
 
    import fiftyone as fo
 
@@ -104,12 +105,12 @@ strings and can be used to tag a |Sample|_ as part of a train/test split or any
 other tagging that you would like:
 
 .. code-block:: python
+   :linenos:
 
-    sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
-    sample.tags += ["my_favorite_samples"]
-
-    print(sample.tags)
-    # ["train", "my_favorite_samples"]
+   sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
+   sample.tags += ["my_favorite_samples"]
+   print(sample.tags)
+   # ["train", "my_favorite_samples"]
 
 DatasetViews
 ____________

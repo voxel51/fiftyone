@@ -19,6 +19,7 @@ loading.
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -53,7 +54,7 @@ loading.
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
 
 Supported formats
-~~~~~~~~~~~~~~~~~
+-----------------
 
 Each supported dataset type is represented by a subclass of
 :class:`fiftyone.types.dataset_types.BaseDataset`, which is used by the Python library and CLI to
@@ -131,6 +132,7 @@ You can create a FiftyOne dataset from a directory of images as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -172,8 +174,8 @@ You can create a FiftyOne dataset from a directory of images as follows:
 
         DATASET_DIR=/path/to/images-dir
 
-        # View the dataset in the App 
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageDirectory
 
@@ -201,14 +203,12 @@ where ``labels.json`` is a JSON file in the following format:
 
     {
         "classes": [
-            <labelA>,
-            <labelB>,
-            ...
+            "<labelA>",
+            "<labelB>",
         ],
         "labels": {
-            <uuid1>: <target1>,
-            <uuid2>: <target2>,
-            ...
+            "<uuid1>": "<target1>",
+            "<uuid2>": "<target2>",
         }
     }
 
@@ -224,6 +224,7 @@ in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -267,8 +268,8 @@ in the above format as follows:
 
         DATASET_DIR=/path/to/image-classification-dataset
 
-        # View the dataset in the App 
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageClassificationDataset
 
@@ -300,6 +301,7 @@ stored in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -343,8 +345,8 @@ stored in the above format as follows:
 
         DATASET_DIR=/path/to/image-classification-dir-tree
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageClassificationDirectoryTree
 
@@ -365,20 +367,17 @@ Datasets of this type are read in the following format:
 where the features of the (possibly sharded) TFRecords are stored in the
 following format:
 
-.. code-block:: json
+.. code-block:: python
 
     {
         # Image dimensions
         "height": tf.io.FixedLenFeature([], tf.int64),
         "width": tf.io.FixedLenFeature([], tf.int64),
         "depth": tf.io.FixedLenFeature([], tf.int64),
-
         # Image filename
         "filename": tf.io.FixedLenFeature([], tf.int64),
-
         # Encoded image bytes
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
-
         # Class label string
         "label": tf.io.FixedLenFeature([], tf.string),
     }
@@ -391,6 +390,7 @@ as a directory of TFRecords in the above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -449,8 +449,8 @@ as a directory of TFRecords in the above format as follows:
 
         DATASET_DIR=/path/to/tf-image-classification-dataset
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFImageClassificationDataset
 
@@ -474,13 +474,12 @@ Datasets of this type are read in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "classes": [
             <labelA>,
             <labelB>,
-            ...
         ],
         "labels": {
             <uuid1>: [
@@ -515,6 +514,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -559,8 +559,8 @@ above format as follows:
 
         DATASET_DIR=/path/to/image-detection-dataset
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageDetectionDataset
 
@@ -597,24 +597,21 @@ where ``labels.json`` is a JSON file in the following format:
         },
         "licenses": [],
         "categories": [
-            ...
             {
                 "id": 2,
                 "name": "cat",
                 "supercategory": "none"
             },
-            ...
         ],
         "images": [
             {
                 "id": 0,
                 "license": null,
-                "file_name": <filename0>,
+                "file_name": "<filename0>",
                 "height": 480,
                 "width": 640,
                 "date_captured": null
             },
-            ...
         ],
         "annotations": [
             {
@@ -626,7 +623,6 @@ where ``labels.json`` is a JSON file in the following format:
                 "segmentation": [],
                 "iscrowd": 0
             },
-            ...
         ]
     }
 
@@ -638,6 +634,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -681,8 +678,8 @@ above format as follows:
 
         DATASET_DIR=/path/to/coco-detection-dataset
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
 
@@ -760,6 +757,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -803,8 +801,8 @@ above format as follows:
 
         DATASET_DIR=/path/to/voc-detection-dataset
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VOCDetectionDataset
 
@@ -875,6 +873,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -919,8 +918,8 @@ above format as follows:
 
         DATASET_DIR=/path/to/kitti-detection-dataset
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
 
@@ -998,6 +997,7 @@ format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1041,8 +1041,8 @@ format as follows:
 
         DATASET_DIR=/path/to/cvat-image-dataset
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATImageDataset
 
@@ -1080,7 +1080,6 @@ where `manifest.json` is a JSON file in the following format:
                 "data": "data/<uuid1>.<ext>",
                 "labels": "labels/<uuid1>.json"
             },
-            ...
         ]
     }
 
@@ -1095,6 +1094,7 @@ above format as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1138,8 +1138,8 @@ above format as follows:
 
         DATASET_DIR=/path/to/image-labels-dataset
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageLabelsDataset
 
@@ -1190,12 +1190,9 @@ where `labels.json` is a JSON file in the following format:
                     "manualAttributes": true,
                     "manualShape": true
                 },
-                ...
             ],
-            "name": <filename0>,
-            ...
+            "name": "<filename0>",
         },
-        ...
     ]
 
 You can create a FiftyOne dataset from a BDD dataset stored in the above format
@@ -1206,6 +1203,7 @@ as follows:
   .. group-tab:: Python
 
     .. code-block:: python
+        :linenos:
 
         import fiftyone as fo
 
@@ -1247,7 +1245,7 @@ as follows:
 
         DATASET_DIR=/path/to/bdd-dataset
 
-        # View the dataset in the App
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset

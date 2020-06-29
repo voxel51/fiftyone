@@ -140,7 +140,8 @@ Installing FiftyOne
 -------------------
 
 To install FiftyOne in a virtual environment, ensure that the virtual
-environment is active as described in the previous section, then run:
+environment is active as described in the previous section, and then run the
+command below:
 
 .. tabs::
 
@@ -169,7 +170,7 @@ your virtual environment:
    >>> fo.__file__
    '.../env/lib/python3.X/site-packages/fiftyone/__init__.py'
    >>>
-   >>> session = fo.launch_dashboard()
+   >>> session = fo.launch_app()
    >>> exit()
 
 **Linux users:** if you encounter an error related to MongoDB failing to start,
