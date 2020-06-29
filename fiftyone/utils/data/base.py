@@ -30,36 +30,63 @@ import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
-from .parsers import (
-    UnlabeledImageSampleParser,
-    LabeledImageSampleParser,
-    ImageClassificationSampleParser,
-    ImageDetectionSampleParser,
-    ImageLabelsSampleParser,
-)
-
 
 logger = logging.getLogger(__name__)
 
 
-def parse_labeled_images(
-    samples,
-    dataset_dir,
-    sample_parser=None,
-    num_samples=None,
-    image_format=None,
+def ingest_images(
+    samples, sample_parser, dataset_dir, num_samples=None, image_format=None,
 ):
-    """Parses the given labeled image samples, writing the images to disk in
+    """Ingests the given images, writing them to disk in the specified
+    directory and returning their paths.
+
+    Args:
+        samples: an iterable of samples
+        sample_parser: an :class:`UnlabeledImageSampleParser`
+            instance to use to parse the samples
+        dataset_dir: the directory to which to write the images
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            this is computed (if possible) via ``len(samples)``
+        image_format (``fiftyone.config.default_image_ext``): the image format
+            to use to write the images to disk
+
+    Returns:
+        the list of image paths that were written
+    """
+    num_samples, image_format, uuid_patt = _parse_args(
+        samples, num_samples, image_format
+    )
+
+    images_patt = os.path.join(dataset_dir, uuid_patt + image_format)
+
+    logger.info("Writing images to '%s'...", dataset_dir)
+
+    image_paths = []
+    with fou.ProgressBar(total=num_samples) as pb:
+        for idx, sample in enumerate(pb(samples), 1):
+            sample_parser.with_sample(sample)
+            img = sample_parser.get_image()
+            image_path = images_patt % idx
+            etai.write(img, image_path)
+            image_paths.append(image_path)
+
+    logger.info("Images written")
+
+    return image_paths
+
+
+def ingest_labeled_images(
+    samples, sample_parser, dataset_dir, num_samples=None, image_format=None,
+):
+    """Ingests the given labeled image samples, writing the images to disk in
     the specified directory and returning their paths and associated
     :class:`fiftyone.core.labels.Label` instances in-memory.
 
     Args:
         samples: an iterable of samples
+        sample_parser: a :class:`LabeledImageSampleParser` instance to use to
+            parse the samples
         dataset_dir: the directory to which to write the images
-        sample_parser (None): a :class:`LabeledImageSampleParser`
-            instance whose :func:`LabeledImageSampleParser.parse` method
-            will be used to parse the samples. If not provided, the default
-            :class:`LabeledImageSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
@@ -68,9 +95,6 @@ def parse_labeled_images(
     Returns:
         the list of ``(image_path, label)`` tuples that were parsed
     """
-    if sample_parser is None:
-        sample_parser = LabeledImageSampleParser()
-
     num_samples, image_format, uuid_patt = _parse_args(
         samples, num_samples, image_format
     )
@@ -85,7 +109,9 @@ def parse_labeled_images(
     _samples = []
     with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
-            img, label = sample_parser.parse(sample)
+            sample_parser.with_sample(sample)
+            img = sample_parser.get_image()
+            label = sample_parser.get_label()
             image_path = images_patt % idx
             etai.write(img, image_path)
             _samples.append((image_path, label))
@@ -95,60 +121,8 @@ def parse_labeled_images(
     return _samples
 
 
-def to_images_dir(
-    samples,
-    dataset_dir,
-    sample_parser=None,
-    num_samples=None,
-    image_format=None,
-):
-    """Writes the given images to disk in the given directory.
-
-    Args:
-        samples: an iterable of samples
-        dataset_dir: the directory to which to write the images
-        sample_parser (None): a :class:`UnlabeledImageSampleParser`
-            instance whose :func:`UnlabeledImageSampleParser.parse` method
-            will be used to parse the samples. If not provided, the default
-            :class:`UnlabeledImageSampleParser` instance is used
-        num_samples (None): the number of samples in ``samples``. If omitted,
-            this is computed (if possible) via ``len(samples)``
-        image_format (``fiftyone.config.default_image_ext``): the image format
-            to use to write the images to disk
-
-    Returns:
-        the list of image paths that were written
-    """
-    if sample_parser is None:
-        sample_parser = UnlabeledImageSampleParser()
-
-    num_samples, image_format, uuid_patt = _parse_args(
-        samples, num_samples, image_format
-    )
-
-    images_patt = os.path.join(dataset_dir, uuid_patt + image_format)
-
-    logger.info("Writing images to '%s'...", dataset_dir)
-
-    image_paths = []
-    with fou.ProgressBar(total=num_samples) as pb:
-        for idx, sample in enumerate(pb(samples), 1):
-            img = sample_parser.parse(sample)
-            image_path = images_patt % idx
-            etai.write(img, image_path)
-            image_paths.append(image_path)
-
-    logger.info("Images written")
-
-    return image_paths
-
-
-def to_image_classification_dataset(
-    samples,
-    dataset_dir,
-    sample_parser=None,
-    num_samples=None,
-    image_format=None,
+def write_image_classification_dataset(
+    samples, sample_parser, dataset_dir, num_samples=None, image_format=None,
 ):
     """Writes the given samples to disk as an image classification dataset.
 
@@ -156,19 +130,15 @@ def to_image_classification_dataset(
 
     Args:
         samples: an iterable of samples
+        sample_parser: a :class:`LabeledImageSampleParser` instance that emits
+            :class:`fiftyone.core.labels.Classification` labels to use to parse
+            the samples
         dataset_dir: the directory to which to write the dataset
-        sample_parser (None): a :class:`ImageClassificationSampleParser`
-            instance whose :func:`ImageClassificationSampleParser.parse` method
-            will be used to parse the samples. If not provided, the default
-            :class:`ImageClassificationSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
     """
-    if sample_parser is None:
-        sample_parser = ImageClassificationSampleParser()
-
     num_samples, image_format, uuid_patt = _parse_args(
         samples, num_samples, image_format
     )
@@ -188,7 +158,9 @@ def to_image_classification_dataset(
     labels_dict = {}
     with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
-            img, label = sample_parser.parse(sample)
+            sample_parser.with_sample(sample)
+            img = sample_parser.get_image()
+            label = sample_parser.get_label()
             etai.write(img, images_patt % idx)
             labels_dict[uuid_patt % idx] = _parse_classification(
                 label, labels_map_rev=labels_map_rev
@@ -204,12 +176,8 @@ def to_image_classification_dataset(
     logger.info("Dataset created")
 
 
-def to_image_detection_dataset(
-    samples,
-    dataset_dir,
-    sample_parser=None,
-    num_samples=None,
-    image_format=None,
+def write_image_detection_dataset(
+    samples, sample_parser, dataset_dir, num_samples=None, image_format=None,
 ):
     """Writes the given samples to disk as an image detection dataset.
 
@@ -217,19 +185,15 @@ def to_image_detection_dataset(
 
     Args:
         samples: an iterable of samples
+        sample_parser: a :class:`LabeledImageSampleParser` instance that emits
+            :class:`fiftyone.core.labels.Detections` labels to use to parse
+            the samples
         dataset_dir: the directory to which to write the dataset
-        sample_parser (None): a :class:`ImageDetectionSampleParser` instance
-            whose :func:`ImageDetectionSampleParser.parse` method will be
-            used to parse the samples. If not provided, the default
-            :class:`ImageDetectionSampleParser` instance is used
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
     """
-    if sample_parser is None:
-        sample_parser = ImageDetectionSampleParser()
-
     num_samples, image_format, uuid_patt = _parse_args(
         samples, num_samples, image_format
     )
@@ -249,7 +213,9 @@ def to_image_detection_dataset(
     labels_dict = {}
     with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
-            img, label = sample_parser.parse(sample)
+            sample_parser.with_sample(sample)
+            img = sample_parser.get_image()
+            label = sample_parser.get_label()
             etai.write(img, images_patt % idx)
             labels_dict[uuid_patt % idx] = _parse_detections(
                 label, labels_map_rev=labels_map_rev
@@ -265,12 +231,8 @@ def to_image_detection_dataset(
     logger.info("Dataset created")
 
 
-def to_image_labels_dataset(
-    samples,
-    dataset_dir,
-    sample_parser=None,
-    num_samples=None,
-    image_format=None,
+def write_image_labels_dataset(
+    samples, sample_parser, dataset_dir, num_samples=None, image_format=None,
 ):
     """Writes the given samples to disk as a multitask image labels dataset.
 
@@ -278,20 +240,15 @@ def to_image_labels_dataset(
 
     Args:
         samples: an iterable of samples
-        dataset_dir: the directory to which to write the
-            ``eta.core.datasets.LabeledImageDataset``
-        sample_parser (None): a :class:`ImageLabelsSampleParser` instance whose
-            :func:`ImageLabelsSampleParser.parse` method will be used to parse
-            the samples. If not provided, the default
-            :class:`ImageLabelsSampleParser` instance is used
+        sample_parser: a :class:`LabeledImageSampleParser` instance that emits
+            :class:`fiftyone.core.labels.ImageLabels` labels to use to parse
+            the samples
+        dataset_dir: the directory to which to write the dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         image_format (``fiftyone.config.default_image_ext``): the image format
             to use to write the images to disk
     """
-    if sample_parser is None:
-        sample_parser = ImageLabelsSampleParser()
-
     num_samples, image_format, uuid_patt = _parse_args(
         samples, num_samples, image_format
     )
@@ -308,7 +265,9 @@ def to_image_labels_dataset(
     lid = etads.LabeledImageDataset.create_empty_dataset(dataset_dir)
     with fou.ProgressBar(total=num_samples) as pb:
         for idx, sample in enumerate(pb(samples), 1):
-            img, label = sample_parser.parse(sample)
+            sample_parser.with_sample(sample)
+            img = sample_parser.get_image()
+            label = sample_parser.get_label()
             image_labels = _parse_image_labels(label)
             lid.add_data(
                 img, image_labels, images_patt % idx, labels_patt % idx
