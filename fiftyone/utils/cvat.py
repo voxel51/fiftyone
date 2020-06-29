@@ -37,11 +37,10 @@ import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
-class CVATImageSampleParser(foud.LabeledImageSampleParser):
+class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
     """Parser for samples in CVAT image format.
 
     This implementation supports samples that are
@@ -76,8 +75,24 @@ class CVATImageSampleParser(foud.LabeledImageSampleParser):
     See :class:`fiftyone.types.CVATImageDataset` for more format details.
     """
 
-    def parse_label(self, sample):
-        """Parses the labels from the given sample.
+    def __init__(self):
+        super().__init__()
+        self._cvat_image_cache = None
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    def get_image_metadata(self):
+        cvat_image = self._cvat_image
+        return cvat_image.get_image_metadata()
+
+    def get_label(self):
+        """Returns the label for the current sample.
 
         Args:
             sample: the sample
@@ -85,9 +100,23 @@ class CVATImageSampleParser(foud.LabeledImageSampleParser):
         Returns:
             a :class:`fiftyone.core.labels.Detections` instance
         """
-        d = sample[1]
-        cvat_image = CVATImage.from_image_dict(d)
+        cvat_image = self._cvat_image
         return cvat_image.to_detections()
+
+    def clear_sample(self):
+        super().clear_sample()
+        self._cvat_image_cache = None
+
+    @property
+    def _cvat_image(self):
+        if self._cvat_image_cache is None:
+            self._cvat_image_cache = self._parse_cvat_image()
+
+        return self._cvat_image_cache
+
+    def _parse_cvat_image(self):
+        d = self.current_sample[1]
+        return CVATImage.from_image_dict(d)
 
 
 class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -119,9 +148,7 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
 
         image_path = os.path.join(self._data_dir, filename)
         cvat_image = self._images_map[filename]
-        image_metadata = fom.ImageMetadata(
-            width=cvat_image.width, height=cvat_image.height,
-        )
+        image_metadata = cvat_image.get_image_metadata()
         detections = cvat_image.to_detections()
 
         return image_path, image_metadata, detections
@@ -395,6 +422,15 @@ class CVATImage(object):
         frame_size = (self.width, self.height)
         detections = [box.to_detection(frame_size) for box in self.boxes]
         return fol.Detections(detections=detections)
+
+    def get_image_metadata(self):
+        """Returns a :class:`fiftyone.core.metadata.ImageMetadata` instance for
+        the annotations.
+
+        Returns:
+            a :class:`fiftyone.core.metadata.ImageMetadata`
+        """
+        return fom.ImageMetadata(width=self.width, height=self.height)
 
 
 class CVATBox(object):
