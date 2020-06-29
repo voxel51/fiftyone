@@ -23,10 +23,8 @@ import contextlib
 import multiprocessing
 import os
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
-import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -447,47 +445,32 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
     instances that import ``tf.train.Example`` protos containing labeled
     images.
 
-    Note that the images in the input TFRecords are read in-memory and written
-    to ``images_dir``.
+    This class assumes that the input TFRecords only contain the images
+    themselves and not their paths on disk, and, therefore, the images are read
+    in-memory and written to a provided ``images_dir`` during import.
 
     Args:
         dataset_dir: the dataset directory
         images_dir: the directory in which the images will be written
-        image_format (``fiftyone.config.default_image_ext``): the image format
-            to use to write the images to disk
+        image_format (None): the image format to use to write the images to
+            disk. By default, ``fiftyone.config.default_image_ext`` is used
     """
 
     def __init__(self, dataset_dir, images_dir, image_format=None):
-        if image_format is None:
-            image_format = fo.config.default_image_ext
-
         super().__init__(dataset_dir)
         self.images_dir = images_dir
         self.image_format = image_format
-        self._images_patt = None
-        self._sample_parser = None
-        self._tf_dataset = None
-        self._iter_samples = None
+
+        self._sample_parser = self._make_sample_parser()
+        self._dataset_ingestor = None
+        self._iter_dataset_ingestor = None
 
     def __iter__(self):
-        self._iter_samples = enumerate(self._tf_dataset)
+        self._iter_dataset_ingestor = iter(self._dataset_ingestor)
         return self
 
     def __next__(self):
-        idx, tf_example = next(self._iter_samples)
-
-        self._sample_parser.with_sample(tf_example)
-        img = self._sample_parser.get_image()
-        label = self._sample_parser.get_label()
-        if self.has_image_metadata:
-            image_metadata = self._sample_parser.get_image_metadata()
-        else:
-            image_metadata = None
-
-        image_path = self._images_patt % idx
-        etai.write(img, image_path)
-
-        return image_path, image_metadata, label
+        return next(self._iter_dataset_ingestor)
 
     @property
     def has_image_metadata(self):
@@ -495,13 +478,14 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def setup(self):
         tf_records_patt = os.path.join(self.dataset_dir, "*")
-        uuid_patt = fo.config.default_sequence_idx
+        tf_dataset = from_tf_records(tf_records_patt)
 
-        self._images_patt = os.path.join(
-            self.images_dir, uuid_patt + self.image_format
+        self._dataset_ingestor = foud.LabeledImageDatasetIngestor(
+            self.images_dir,
+            tf_dataset,
+            self._sample_parser,
+            image_format=self.image_format,
         )
-        self._sample_parser = self._make_sample_parser()
-        self._tf_dataset = from_tf_records(tf_records_patt)
 
     def _make_sample_parser(self):
         """Returns a :class:`TFRecordSampleParser` instance for parsing
@@ -520,14 +504,15 @@ class TFImageClassificationDatasetImporter(
     See :class:`fiftyone.types.TFImageClassificationDataset` for format
     details.
 
-    Note that the images in the input TFRecords are read in-memory and written
-    to ``images_dir``.
+    This class assumes that the input TFRecords only contain the images
+    themselves and not their paths on disk, and, therefore, the images are read
+    in-memory and written to a provided ``images_dir`` during import.
 
     Args:
         dataset_dir: the dataset directory
         images_dir: the directory in which the images will be written
-        image_format (``fiftyone.config.default_image_ext``): the image format
-            to use to write the images to disk
+        image_format (None): the image format to use to write the images to
+            disk. By default, ``fiftyone.config.default_image_ext`` is used
     """
 
     @property
@@ -543,14 +528,15 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
 
     See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
 
-    Note that the images in the input TFRecords are read in-memory and written
-    to ``images_dir``.
+    This class assumes that the input TFRecords only contain the images
+    themselves and not their paths on disk, and, therefore, the images are read
+    in-memory and written to a provided ``images_dir`` during import.
 
     Args:
         dataset_dir: the dataset directory
         images_dir: the directory in which the images will be written
-        image_format (``fiftyone.config.default_image_ext``): the image format
-            to use to write the images to disk
+        image_format (None): the image format to use to write the images to
+            disk. By default, ``fiftyone.config.default_image_ext`` is used
     """
 
     @property
