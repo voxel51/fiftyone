@@ -627,17 +627,13 @@ class _TFDSImageClassificationSampleParser(
         self.image_field = image_field
         self.label_field = label_field
 
-    def parse_image(self, sample):
-        img = sample[self.image_field]
-        return super(_TFDSImageClassificationSampleParser, self).parse_image(
-            (img, None)
-        )
+    def _get_image(self):
+        img = self.current_sample[self.image_field]
+        return self._parse_image(img)
 
-    def parse_label(self, sample):
-        target = sample[self.label_field]
-        return super(_TFDSImageClassificationSampleParser, self).parse_label(
-            (None, target)
-        )
+    def get_label(self):
+        target = self.current_sample[self.label_field]
+        return self._parse_label(target)
 
 
 class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
@@ -646,28 +642,21 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
         self.image_field = image_field
         self.objects_field = objects_field
 
-    def parse_image(self, sample):
-        img = sample[self.image_field]
+    def _get_image(self):
+        img = self.current_sample[self.image_field]
         return self._parse_image(img)
 
-    def parse_label(self, sample):
-        target = sample[self.objects_field]
+    def get_label(self):
+        target = self.current_sample[self.objects_field]
 
         if not self.normalized:
             # Absolute bounding box coordinates were provided, so we must have
             # the image to convert to relative coordinates
-            img = self._parse_image(sample[self.image_field])
+            img = self._current_image
         else:
             img = None
 
         return self._parse_label(target, img=img)
-
-    def parse(self, sample):
-        img = sample[self.image_field]
-        img = self._parse_image(img)
-        target = sample[self.objects_field]
-        label = self._parse_label(target, img=img)
-        return img, label
 
     def _parse_label(self, target, img=None):
         # Convert from dict-of-lists to list-of-dicts
@@ -705,13 +694,13 @@ def _download_and_prepare(
     sample_parser.classes = classes
 
     if isinstance(sample_parser, foud.ImageClassificationSampleParser):
-        write_dataset_fcn = foud.to_image_classification_dataset
+        write_dataset_fcn = foud.write_image_classification_dataset
         dataset_type = fot.ImageClassificationDataset()
     elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
-        write_dataset_fcn = foud.to_image_detection_dataset
+        write_dataset_fcn = foud.write_image_detection_dataset
         dataset_type = fot.ImageDetectionDataset()
     elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
-        write_dataset_fcn = foud.to_image_labels_dataset
+        write_dataset_fcn = foud.write_image_labels_dataset
         dataset_type = fot.ImageLabelsDataset()
     else:
         raise ValueError("Unsupported sample parser: %s" % sample_parser)
@@ -724,10 +713,7 @@ def _download_and_prepare(
 
     # Write the formatted dataset to `dataset_dir`
     write_dataset_fcn(
-        samples,
-        dataset_dir,
-        sample_parser=sample_parser,
-        num_samples=num_samples,
+        samples, sample_parser, dataset_dir, num_samples=num_samples,
     )
 
     return dataset_type, num_samples, classes
