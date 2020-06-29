@@ -33,13 +33,14 @@ article.pytorch-article pre {
 
 .nav__main__logo {
   width: 300px;
-  padding-left: 30px;
+  margin-left: 30px;
+  margin-right: 20px;
 }
 
 #nav__main__items {
   text-align: right;
   width: 100%;
-  max-width: 800px;
+  max-width: 900px;
 }
 
 .footer-wrapper {
