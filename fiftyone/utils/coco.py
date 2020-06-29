@@ -31,8 +31,6 @@ import eta.core.web as etaw
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.core.utils as fou
-import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
@@ -73,6 +71,7 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
         super().__init__(
             label_field="category_id",
             bounding_box_field="bbox",
+            classes=None,
             normalized=False,
         )
 
