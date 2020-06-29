@@ -49,8 +49,8 @@ def write_image_classification_dataset(
         dataset_dir: the directory to which to write the dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
-        image_format (``fiftyone.config.default_image_ext``): the image format
-            to use to write the images to disk
+        image_format (None): the image format to use to write the images to
+                disk. By default, ``fiftyone.config.default_image_ext`` is used
     """
     num_samples, image_format, uuid_patt = _parse_args(
         samples, num_samples, image_format
@@ -104,8 +104,8 @@ def write_image_detection_dataset(
         dataset_dir: the directory to which to write the dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
-        image_format (``fiftyone.config.default_image_ext``): the image format
-            to use to write the images to disk
+        image_format (None): the image format to use to write the images to
+                disk. By default, ``fiftyone.config.default_image_ext`` is used
     """
     num_samples, image_format, uuid_patt = _parse_args(
         samples, num_samples, image_format
@@ -159,8 +159,8 @@ def write_image_labels_dataset(
         dataset_dir: the directory to which to write the dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
-        image_format (``fiftyone.config.default_image_ext``): the image format
-            to use to write the images to disk
+        image_format (None): the image format to use to write the images to
+                disk. By default, ``fiftyone.config.default_image_ext`` is used
     """
     num_samples, image_format, uuid_patt = _parse_args(
         samples, num_samples, image_format

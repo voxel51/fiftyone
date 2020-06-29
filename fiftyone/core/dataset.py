@@ -773,8 +773,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags (None): an optional list of tags to attach to each sample
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
-            image_format (``fiftyone.config.default_image_ext``): the image
-                format to use to write the images to disk
+            image_format (None): the image format to use to write the images to
+                disk. By default, ``fiftyone.config.default_image_ext`` is used
 
         Returns:
             a list of IDs of the samples in the dataset
@@ -820,8 +820,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if the sample's schema is not a subset of the dataset schema
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
-            image_format (``fiftyone.config.default_image_ext``): the image
-                format to use to write the images to disk
+            image_format (None): the image format to use to write the images to
+                disk. By default, ``fiftyone.config.default_image_ext`` is used
 
         Returns:
             a list of IDs of the samples in the dataset
