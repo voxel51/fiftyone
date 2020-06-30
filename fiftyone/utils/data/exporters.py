@@ -243,26 +243,20 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
 
     def __init__(self, export_dir):
         super().__init__(export_dir)
-        self._data_filename_counts = None
+        self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
         return False
 
-    def setup(self):
-        etau.ensure_dir(self.export_dir)
-        self._data_filename_counts = defaultdict(int)
-
     def export_sample(self, image_path, metadata=None):
-        name, ext = os.path.splitext(os.path.basename(image_path))
-        self._data_filename_counts[name] += 1
-
-        count = self._data_filename_counts[name]
-        if count > 1:
-            name += "-%d" + count
-
-        out_image_path = os.path.join(self.export_dir, name + ext)
+        out_image_path = self._filename_maker.get_output_path(image_path)
         etau.copy_file(image_path, out_image_path)
+
+    def setup(self):
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self.export_dir
+        )
 
 
 class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
@@ -285,9 +279,9 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
-        self._data_filename_counts = None
         self._classes = classes
         self._labels_map_rev = _to_labels_map_rev(classes) if classes else None
+        self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
@@ -301,21 +295,15 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._labels_dict = {}
-        self._data_filename_counts = defaultdict(int)
-
-        etau.ensure_dir(self._data_dir)
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir, ignore_exts=True
+        )
 
     def export_sample(self, image_path, classification, metadata=None):
-        name, ext = os.path.splitext(os.path.basename(image_path))
-        self._data_filename_counts[name] += 1
-
-        count = self._data_filename_counts[name]
-        if count > 1:
-            name += "-%d" + count
-
-        out_image_path = os.path.join(self._data_dir, name + ext)
+        out_image_path = self._filename_maker.get_output_path(image_path)
         etau.copy_file(image_path, out_image_path)
 
+        name = os.path.splitext(os.path.basename(out_image_path))[0]
         self._labels_dict[name] = _parse_classification(
             classification, labels_map_rev=self._labels_map_rev
         )
@@ -345,7 +333,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
 
     def __init__(self, export_dir):
         super().__init__(export_dir)
-        self._data_filename_counts = None
+        self._filename_counts = None
 
     @property
     def requires_image_metadata(self):
@@ -356,20 +344,22 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         return fol.Classification
 
     def setup(self):
-        self._data_filename_counts = defaultdict(int)
+        self._filename_counts = defaultdict(int)
         etau.ensure_dir(self.export_dir)  # in case dataset is empty
 
     def export_sample(self, image_path, classification, metadata=None):
         _label = _parse_classification(classification)
-        name, ext = os.path.splitext(os.path.basename(image_path))
-        key = (_label, name)
-        self._data_filename_counts[key] += 1
 
-        count = self._data_filename_counts[key]
+        filename = os.path.basename(image_path)
+        name, ext = os.path.splitext(filename)
+
+        key = (_label, filename)
+        self._filename_counts[key] += 1
+        count = self._filename_counts[key]
         if count > 1:
-            name += "-%d" + count
+            filename = name + ("-%d" % count) + ext
 
-        out_image_path = os.path.join(self.export_dir, _label, name + ext)
+        out_image_path = os.path.join(self.export_dir, _label, filename)
         etau.copy_file(image_path, out_image_path)
 
 
@@ -393,9 +383,9 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
-        self._data_filename_counts = None
         self._classes = classes
         self._labels_map_rev = _to_labels_map_rev(classes) if classes else None
+        self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
@@ -409,21 +399,15 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._labels_dict = {}
-        self._data_filename_counts = defaultdict(int)
-
-        etau.ensure_dir(self._data_dir)
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir, ignore_exts=True
+        )
 
     def export_sample(self, image_path, detections, metadata=None):
-        name, ext = os.path.splitext(os.path.basename(image_path))
-        self._data_filename_counts[name] += 1
-
-        count = self._data_filename_counts[name]
-        if count > 1:
-            name += "-%d" + count
-
-        out_image_path = os.path.join(self._data_dir, name + ext)
+        out_image_path = self._filename_maker.get_output_path(image_path)
         etau.copy_file(image_path, out_image_path)
 
+        name = os.path.splitext(os.path.basename(out_image_path))[0]
         self._labels_dict[name] = _parse_detections(
             detections, labels_map_rev=self._labels_map_rev
         )
@@ -453,7 +437,7 @@ class ImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     def __init__(self, export_dir):
         super().__init__(export_dir)
         self._labeled_dataset = None
-        self._data_filename_counts = None
+        self._name_counts = None
 
     @property
     def requires_image_metadata(self):
@@ -467,15 +451,15 @@ class ImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         self._labeled_dataset = etads.LabeledImageDataset.create_empty_dataset(
             self.export_dir
         )
-        self._data_filename_counts = defaultdict(int)
+        self._name_counts = defaultdict(int)
 
     def export_sample(self, image_path, image_labels, metadata=None):
         name, ext = os.path.splitext(os.path.basename(image_path))
-        self._data_filename_counts[name] += 1
+        self._name_counts[name] += 1
 
-        count = self._data_filename_counts[name]
+        count = self._name_counts[name]
         if count > 1:
-            name += "-%d" + count
+            name += "-%d" % count
 
         new_image_filename = name + ext
         new_labels_filename = name + ".json"

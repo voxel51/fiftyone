@@ -31,6 +31,7 @@ import eta.core.web as etaw
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -177,7 +178,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._images = None
         self._annotations = None
         self._classes = None
-        self._data_filename_counts = None
+        self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
@@ -200,31 +201,22 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._images = []
         self._annotations = []
         self._classes = set()
-        self._data_filename_counts = defaultdict(int)
-
-        etau.ensure_dir(self._data_dir)
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir
+        )
 
     def export_sample(self, image_path, detections, metadata=None):
-        name, ext = os.path.splitext(os.path.basename(image_path))
-        self._data_filename_counts[name] += 1
-
-        count = self._data_filename_counts[name]
-        if count > 1:
-            name += "-%d" + count
-
-        filename = name + ext
-        out_image_path = os.path.join(self._data_dir, filename)
-
+        out_image_path = self._filename_maker.get_output_path(image_path)
         etau.copy_file(image_path, out_image_path)
 
         if metadata is None:
-            metadata = fom.ImageMetadata.build_for(image_path)
+            metadata = fom.ImageMetadata.build_for(out_image_path)
 
         self._image_id += 1
         self._images.append(
             {
                 "id": self._image_id,
-                "file_name": filename,
+                "file_name": os.path.basename(out_image_path),
                 "height": metadata.height,
                 "width": metadata.width,
                 "license": None,

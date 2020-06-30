@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
 import contextlib
 import multiprocessing
 import os
@@ -560,7 +559,7 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
     def __init__(self, export_dir, num_shards=None):
         super().__init__(export_dir)
         self.num_shards = num_shards
-        self._data_filename_counts = None
+        self._filename_maker = None
         self._example_generator = None
         self._tf_records_writer = None
 
@@ -570,8 +569,7 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
 
     def setup(self):
         tf_records_path = os.path.join(self.export_dir, "tf.records")
-
-        self._data_filename_counts = defaultdict(int)
+        self._filename_maker = fou.UniqueFilenameMaker()
         self._example_generator = self._make_example_generator()
         self._tf_records_writer = TFRecordsWriter(
             tf_records_path, num_shards=self.num_shards
@@ -579,14 +577,7 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         self._tf_records_writer.__enter__()
 
     def export_sample(self, image_path, label, metadata=None):
-        name, ext = os.path.splitext(os.path.basename(image_path))
-        self._data_filename_counts[name] += 1
-
-        count = self._data_filename_counts[name]
-        if count > 1:
-            name += "-%d" + count
-
-        filename = name + ext
+        filename = self._filename_maker.get_output_path(image_path)
         tf_example = self._example_generator.make_tf_example(
             image_path, label, filename=filename
         )

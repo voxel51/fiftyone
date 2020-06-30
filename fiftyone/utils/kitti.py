@@ -21,7 +21,6 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 import csv
-from collections import defaultdict
 import logging
 import os
 
@@ -32,6 +31,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -134,7 +134,7 @@ class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         super().__init__(export_dir)
         self._data_dir = None
         self._labels_dir = None
-        self._data_filename_counts = None
+        self._filename_maker = None
         self._writer = None
 
     @property
@@ -148,27 +148,23 @@ class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_dir = os.path.join(self.export_dir, "labels")
-        self._data_filename_counts = defaultdict(int)
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir, ignore_exts=True
+        )
         self._writer = KITTIAnnotationWriter()
 
         etau.ensure_dir(self._data_dir)
         etau.ensure_dir(self._labels_dir)
 
     def export_sample(self, image_path, detections, metadata=None):
-        name, ext = os.path.splitext(os.path.basename(image_path))
-        self._data_filename_counts[name] += 1
-
-        count = self._data_filename_counts[name]
-        if count > 1:
-            name += "-%d" + count
-
-        out_image_path = os.path.join(self._data_dir, name + ext)
-        out_anno_path = os.path.join(self._labels_dir, name + ".txt")
-
+        out_image_path = self._filename_maker.get_output_path(image_path)
         etau.copy_file(image_path, out_image_path)
 
+        name = os.path.splitext(os.path.basename(out_image_path))[0]
+        out_anno_path = os.path.join(self._labels_dir, name + ".txt")
+
         if metadata is None:
-            metadata = fom.ImageMetadata.build_for(image_path)
+            metadata = fom.ImageMetadata.build_for(out_image_path)
 
         self._writer.write(detections, metadata, out_anno_path)
 
