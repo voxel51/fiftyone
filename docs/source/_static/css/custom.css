@@ -19,6 +19,20 @@ article.pytorch-article pre {
   top: -1px;
 }
 
+a:link,
+a:visited,
+p a:link,
+p a:visited,
+.pytorch-left-menu li.toctree-l1.current > a,
+.pytorch-left-menu li.toctree-l1.current > a:before,
+ul.pytorch-breadcrumbs a {
+  color: var(--color-primary);
+}
+
+article.pytorch-article .note .admonition-title {
+  background-color: var(--color-secondary);
+}
+
 .rst-footer-buttons {
   /* the "next" button is floated and doesn't take up any height by itself */
   min-height: 2em;
@@ -59,6 +73,10 @@ article.pytorch-article pre {
   max-width: 900px;
 }
 
+.nav__main a {
+  color: inherit;
+}
+
 @media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
   .nav__main__logo {
     margin: 0;
@@ -85,6 +103,7 @@ article.pytorch-article pre {
 
 .footer a {
   line-height: 30px;
+  color: inherit;
 }
 
 .footer .nav__item--brand {
@@ -125,7 +144,7 @@ article.pytorch-article pre {
 }
 
 .pytorch-left-menu li.toctree-l2.current > a {
-  color: #ee4c2c;
+  color: var(--color-primary);
 }
 
 /* right side section link highlighting */
