@@ -74,7 +74,8 @@ nbsphinx_prolog = """
 
 .. note::
 
-    :download:`Download Notebook </{{ env.doc2path(env.docname, base=None) }}>`
+    Download notebook:
+    :download:`{{ env.doc2path(env.docname, base=None) }} </{{ env.doc2path(env.docname, base=None) }}>`
 
 """
 
