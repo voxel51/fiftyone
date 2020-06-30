@@ -7,12 +7,13 @@ Core utilities.
 """
 import atexit
 from base64 import b64encode, b64decode
+from collections import defaultdict
 import importlib
 import io
 import itertools
 import logging
+import os
 import signal
-import sys
 import types
 import zlib
 
@@ -284,6 +285,56 @@ class ProgressBar(etau.ProgressBar):
         super(ProgressBar, self).__init__(
             *args, iters_str="samples", quiet=quiet, **kwargs
         )
+
+
+class UniqueFilenameMaker(object):
+    """A class that generates unique output paths in a directory.
+
+    The filenames of the input files are maintained, unless a name conflict
+    in ``output_dir`` would occur, in which case an index of the form
+    ``"-%d" % count`` is appended to the base filename.
+
+    If no ``output_dir`` is provided, then unique filenames are generated.
+
+    Args:
+        output_dir (None): the directory in which to generate output paths
+        ignore_exts (False): whether to omit file extensions when checking for
+            duplicate filenames
+    """
+
+    def __init__(self, output_dir=None, ignore_exts=False):
+        self.output_dir = output_dir
+        self.ignore_exts = ignore_exts
+        self._filename_counts = defaultdict(int)
+
+        if output_dir:
+            etau.ensure_dir(output_dir)
+            for filename in etau.list_files(output_dir):
+                self._filename_counts[filename] += 1
+
+    def get_output_path(self, input_path):
+        """Returns the output path for the given input path.
+
+        Args:
+            input_path: the input path
+
+        Returns:
+            the output path
+        """
+        filename = os.path.basename(input_path)
+        name, ext = os.path.splitext(filename)
+
+        key = name if self.ignore_exts else filename
+        self._filename_counts[key] += 1
+
+        count = self._filename_counts[key]
+        if count > 1:
+            filename = name + ("-%d" % count) + ext
+
+        if self.output_dir:
+            return os.path.join(self.output_dir, filename)
+
+        return filename
 
 
 def compute_filehash(filepath):
