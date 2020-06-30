@@ -19,6 +19,10 @@ article.pytorch-article pre {
   top: -1px;
 }
 
+article.pytorch-article .reference.download.internal {
+  display: unset;
+}
+
 /* voxel51-website.css overrides */
 
 .nav__main {
