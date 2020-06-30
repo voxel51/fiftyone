@@ -56,35 +56,3 @@ export const useResizeObserver = () => {
 
   return [setNode, entry];
 };
-
-export const useScroll = () => {
-  const [bodyOffset, setBodyOffset] = useState<DOMRect | ClientRect>(
-    document.body.getBoundingClientRect()
-  );
-  const [scrollY, setScrollY] = useState<number>(bodyOffset.top);
-  const [scrollX, setScrollX] = useState<number>(bodyOffset.left);
-  const [scrollDirection, setScrollDirection] = useState<"up" | "down">();
-
-  const lastScrollTopRef = useRef(0);
-  const lastScrollTop = lastScrollTopRef.current;
-  const listener = () => {
-    setBodyOffset(document.body.getBoundingClientRect());
-    setScrollY(-bodyOffset.top);
-    setScrollX(bodyOffset.left);
-    setScrollDirection(lastScrollTop > -bodyOffset.top ? "down" : "up");
-    lastScrollTopRef.current = -bodyOffset.top;
-  };
-
-  const delay = 200;
-
-  useEffect(() => {
-    window.addEventListener("scroll", debounce(listener, delay));
-    return () => window.removeEventListener("scroll", listener);
-  });
-
-  return {
-    scrollY,
-    scrollX,
-    scrollDirection,
-  };
-};

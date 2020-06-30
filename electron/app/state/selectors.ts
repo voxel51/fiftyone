@@ -5,6 +5,7 @@ import {
   mousePosition,
   viewCount,
   mainSize,
+  previousMainSize,
   mainTop,
   currentListTop,
   itemsPerRequest,
@@ -12,9 +13,7 @@ import {
   gridMargin,
   portNumber,
   liveTop,
-  prevIndex,
-  prevDisp,
-  current,
+  previousLayout,
 } from "./atoms";
 
 export const currentListHeight = selector({
@@ -113,21 +112,30 @@ export const rowHeight = selector({
 export const currentIndex = selector({
   key: "currentIndex",
   get: ({ get }) => {
-    const lt = get(liveTop);
-    const rh = get(rowHeight);
-    const cr = Math.floor((-1 * lt) / rh);
-    return cr * get(segmentBaseNumCols);
+    const prevLayout = get(previousLayout);
+    const top = get(liveTop);
+    const [viewPortWidth, viewPortHeight] = get(mainSize);
+    const margin = get(gridMargin);
+    if (prevLayout[prevLayout.length - 1][0] < top) {
+      return get(indexFromTop(top, viewPortWidth));
+    }
+    if (prevLayout[0][0] > top) {
+      return get(indexFromTop(top, viewPortWidth));
+    }
+    let start, stop;
+    for (let i = 0; i < prevLayout.length; i++) {
+      start = prevLayout[i][0].top;
+      stop = prevLayout[i][0].top + (prevLayout[i][0].height + margin);
+      if (start <= top && stop >= top) {
+        return prevLayout[i][0].index;
+      }
+    }
   },
-  set: ({ get, set }, newValue) => {
-    const ir = get(itemRowInSegment(newValue));
-    const si = get(segmentIndexFromItemIndex(newValue));
-    const ipr = get(itemsPerRequest);
-    const sbnc = get(segmentBaseNumCols);
-    const r = Math.ceil((ipr * si) / sbnc);
-    const rh = get(rowHeight);
-    const clh = get(currentListHeight);
-    set(currentIndexPercentage, (rh * (ir + r)) / clh);
-  },
+});
+
+export const currentDisplacement = selector({
+  key: "currentDisplacement",
+  get: ({ get }) => {},
 });
 
 export const currentListTopRange = selector({
@@ -154,12 +162,12 @@ export const ticks = selector({
     let numTicks = null;
     let tickSize = null;
     const vc = get(viewCount);
-    const breakpoints = [...Array(5).keys()].map((i) => Math.pow(10, i + 3));
-    for (let i = breakpoints.length - 1; i > 0; i--) {
+    const breakpoints = [...Array(6).keys()].map((i) => Math.pow(10, i + 2));
+    for (let i = 0; i < breakpoints.length; i++) {
       const breakpoint = breakpoints[i];
       numTicks = Math.ceil(vc / Math.pow(10, i + 1));
       tickSize = Math.pow(10, i + 1);
-      if (vc > breakpoint) break;
+      if (vc < breakpoint) break;
     }
     return [...Array(numTicks).keys()].map((i) => i * tickSize);
   },
@@ -429,7 +437,7 @@ export const tilingThreshold = selector({
 });
 
 export const segmentBaseNumCols = selector({
-  key: "segmentB1.3aseNumCols",
+  key: "segmentBaseNumCols",
   get: ({ get }) => {
     const [mw, unused] = get(mainSize);
     if (mw <= 600) {
@@ -482,5 +490,118 @@ export const segmentBaseSize = selectorFamily({
       width,
       height,
     };
+  },
+});
+
+export const baseItemSize = selectorFamily({
+  key: "baseItemSize",
+  get: (viewPortWidth) => ({ get }) => {
+    const cols = get(baseNumCols(viewPortWidth));
+    const gm = get(gridMargin);
+    const size = (viewPortWidth - (cols + 1) * gm) / cols;
+    return {
+      width: size,
+      height: size,
+    };
+  },
+});
+
+export const listHeight = selectorFamily({
+  key: "listHeight",
+  get: (viewPortWidth) => ({ get }) => {
+    const count = get(viewCount);
+    const cols = get(baseNumCols(viewPortWidth));
+    const margin = get(gridMargin);
+    const { height } = get(baseItemSize(viewPortWidth));
+    return Math.ceil(count / cols) * height * margin + margin;
+  },
+});
+
+export const indexFromTop = selectorFamily({
+  key: "indexFromTop",
+  get: (top, viewPortWidth) => ({ get }) => {
+    const cols = baseNumCols(viewPortWidth);
+    const { height } = baseItemSize(viewPortWidth);
+    const margin = get(gridMargin);
+    return Math.floor(top / (height + margin)) * cols;
+  },
+});
+
+export const displacementFromTop = selectorFamily({
+  key: "displacementFromTop",
+  get: (top, viewPortWidth) => ({ get }) => {
+    const { height } = baseItemSize(viewPortWidth);
+    const margin = get(gridMargin);
+    return (top % (height + margin)) / (height + margin);
+  },
+});
+
+export const baseNumCols = selectorFamily({
+  key: "baseNumCols",
+  get: (viewPortWidth) => ({ get }) => {
+    if (viewPortWidth <= 600) {
+      return 2;
+    } else if (viewPortWidth < 768) {
+      return 3;
+    } else if (viewPortWidth < 992) {
+      return 4;
+    } else if (viewPortWidth < 1200) {
+      return 5;
+    } else {
+      return 7;
+    }
+  },
+});
+
+export const baseLayout = selectorFamily({
+  key: "baseLayout",
+  get: (top, viewPortWidth, viewPortHeight) => ({ get }) => {
+    let start = get(indexFromTop(top, viewPortWidth));
+    const count = get(viewCount);
+    const cols = get(baseNumCols(viewPortWidth));
+    start = start - (start % cols);
+    const displacement = get(displacementFromTop(top, viewPortWidth));
+    const size = get(baseItemSize(viewPortWidth));
+    const margin = get(gridMargin);
+    let height = -1 * displacement * (margin + size.height);
+    const layout = [];
+    let index = start;
+    while (height < viewPortHeight * 1.5 && index < count) {
+      layout.push(
+        [...Array(cols).keys()].map((i) => ({
+          index: index + i,
+          ...size,
+          left: i * (size.width + margin),
+          top: Math.floor(index / cols) * (size.height + margin),
+        }))
+      );
+      index += cols;
+      height += margin + size.height;
+    }
+    height = displacement * (margin + size.height);
+    index = start + cols;
+    while (height < viewPortHeight * 0.5) {
+      layout.prepend(
+        [...Array(cols).keys()].map((i) => ({
+          index: index + i,
+          ...size,
+          left: i * (size.width + margin),
+          top: Math.floor(index / cols) * (size.height + margin),
+        }))
+      );
+      index -= cols;
+      height += margin + size.height;
+    }
+
+    return layout;
+  },
+});
+
+export const itemsToRender = selector({
+  key: "itemsToRender",
+  get: ({ get }) => {
+    const start = get(currentIndex);
+    const displacement = get(currentDisplacement);
+    const [viewPortWidth, viewPortHeight] = get(mainSize);
   },
 });

@@ -39,7 +39,7 @@ export default function () {
   };
 
   const onDrag = () => {
-    setCurrentIndex(indicatorIndexValue);
+    // setCurrentIndex(indicatorIndexValue);
   };
 
   const bindMove = useGesture(

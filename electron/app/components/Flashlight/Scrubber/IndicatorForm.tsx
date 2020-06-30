@@ -51,7 +51,7 @@ export default function () {
   const onKeyDown = (e) => {
     if (e.keyCode === 13) {
       if (state.context.currentInput !== "") {
-        setCurrentIndex(parseInt(state.context.currentInput));
+        // setCurrentIndex(parseInt(state.context.currentInput));
       }
     }
   };

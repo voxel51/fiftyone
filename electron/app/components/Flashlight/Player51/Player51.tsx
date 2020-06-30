@@ -28,11 +28,13 @@ const LoadingThumbnailDiv = animated(styled.div`
   z-index: 0;
   background: #ccc;
   contain: strict;
+  will-change: transform;
 `);
 
 const ThumbnailDiv = animated(styled.div`
   position: absolute;
   background: #ccc;
+  will-change: transform;
 `);
 
 const Img = animated(styled.img`

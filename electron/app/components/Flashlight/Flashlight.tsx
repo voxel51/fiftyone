@@ -24,7 +24,7 @@ import {
 import Segment from "./Segment";
 import Scrubber from "./Scrubber";
 
-const Grid = styled.div`
+const Container = styled.div`
   width: 100%;
   height: 100%;
   display: flex;
@@ -40,40 +40,6 @@ const ListContainer = styled.div`
   position: relative;
   width: 100%;
 `;
-
-const ListDiv = animated(styled.div`
-  position: absolute;
-  width: 100%;
-`);
-
-const List = ({ children }) => {
-  const ref = useRef();
-  const setCurrentListHeight = useSetRecoilState(currentListHeight);
-  const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
-  const currentListTopValue = useRecoilValue(currentListTop);
-  const viewCountValue = useRecoilValue(viewCount);
-  const [liveTopValue, setLiveTop] = useRecoilState(liveTop);
-
-  let hotTop = ref.current;
-  if (hotTop && hotTop.offsetTop !== undefined) hotTop = hotTop.offsetTop;
-
-  useLayoutEffect(() => {
-    const dod = () => hotTop !== undefined && setLiveTop(hotTop);
-    let t = requestAnimationFrame(dod);
-
-    return () => cancelAnimationFrame(t);
-  }, [hotTop]);
-
-  const props = useSpring({
-    top: -1 * currentListTopValue,
-  });
-
-  return (
-    <ListDiv ref={ref} style={props}>
-      {children}
-    </ListDiv>
-  );
-};
 
 const ListMain = styled.div`
   position: relative;
@@ -91,21 +57,16 @@ const ListMain = styled.div`
 
 export default () => {
   const segmentsToRenderValue = useRecoilValue(segmentsToRender);
-
-  useTrackMousePosition();
   const setIsMainWidthResizing = useSetRecoilState(isMainWidthResizing);
   const [mainSizeValue, setMainSize] = useRecoilState(mainSize);
   const currentListHeightValue = useRecoilValue(currentListHeight);
   const setMainTop = useSetRecoilState(mainTop);
   const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
-  const [ref, { contentRect }] = useResizeObserver();
-  const [currentListTopValue, setCurrentListTop] = useRecoilState(
-    currentListTop
-  );
-  const [liveTopValue, setLiveTop] = useRecoilState(liveTop);
-  const [minTop, maxTop] = useRecoilValue(currentListTopRange);
-
+  const setLiveTop = useSetRecoilState(liveTop);
   const setViewCount = useSetRecoilState(viewCount);
+
+  const [ref, { contentRect }] = useResizeObserver();
+  useTrackMousePosition();
   useEffect(() => {
     setViewCount(50);
   }, []);
@@ -130,11 +91,8 @@ export default () => {
 
   return (
     <Flashlight>
-      <Grid>
-        <ListMain
-          ref={ref}
-          onScroll={(e) => setLiveTop(-1 * e.target.scrollTop)}
-        >
+      <Container>
+        <ListMain ref={ref} onScroll={(e) => setLiveTop(e.target.scrollTop)}>
           <ListContainer style={{ height: currentListHeightValue }}>
             {mainLoadedValue
               ? segmentsToRenderValue.map((index) => (
@@ -144,7 +102,7 @@ export default () => {
           </ListContainer>
         </ListMain>
         <Scrubber />
-      </Grid>
+      </Container>
     </Flashlight>
   );
 };
