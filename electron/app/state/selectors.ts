@@ -668,15 +668,14 @@ export const currentLayout = selector({
       currentTop -= (height + margin) * displacement;
       layoutHeight += (height + margin) * displacement;
       rowData = [];
-      currentLeft = 0;
+      currentLeft = viewPortWidth - margin;
       for (let i = 0; i < row.data.length; i++) {
         item = row.data[i];
-        currentLeft += margin;
         width = (item.aspectRatio / row.aspectRatio) * workingWidth;
+        currentLeft -= margin + width;
         rowData.push({ width, height, top: currentTop, left: currentLeft });
-        currentLeft += width;
       }
-      currentTop += margin + height;
+      currentTop -= margin + height;
       layoutHeight += margin + height;
       index += rowData.length;
       data.unshift(rowData);
