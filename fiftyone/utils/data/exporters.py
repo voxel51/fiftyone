@@ -28,7 +28,6 @@ import eta.core.utils as etau
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 
 
 def export_samples(samples, exporter, label_field=None):
@@ -278,14 +277,17 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
+        classes (None): the list of possible class labels
     """
 
-    def __init__(self, export_dir):
+    def __init__(self, export_dir, classes=None):
         super().__init__(export_dir)
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
         self._data_filename_counts = None
+        self._classes = classes
+        self._labels_map_rev = _to_labels_map_rev(classes) if classes else None
 
     @property
     def requires_image_metadata(self):
@@ -314,11 +316,13 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         out_image_path = os.path.join(self._data_dir, name + ext)
         etau.copy_file(image_path, out_image_path)
 
-        self._labels_dict[name] = _parse_classification(classification)
+        self._labels_dict[name] = _parse_classification(
+            classification, labels_map_rev=self._labels_map_rev
+        )
 
     def close(self, *args):
         labels = {
-            "classes": None,  # @todo get this somehow?
+            "classes": self._classes,
             "labels": self._labels_dict,
         }
         etas.write_json(labels, self._labels_path)
@@ -381,14 +385,17 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
+        classes (None): the list of possible class labels
     """
 
-    def __init__(self, export_dir):
+    def __init__(self, export_dir, classes=None):
         super().__init__(export_dir)
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
         self._data_filename_counts = None
+        self._classes = classes
+        self._labels_map_rev = _to_labels_map_rev(classes) if classes else None
 
     @property
     def requires_image_metadata(self):
@@ -417,11 +424,13 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         out_image_path = os.path.join(self._data_dir, name + ext)
         etau.copy_file(image_path, out_image_path)
 
-        self._labels_dict[name] = _parse_detections(detections)
+        self._labels_dict[name] = _parse_detections(
+            detections, labels_map_rev=self._labels_map_rev
+        )
 
     def close(self, *args):
         labels = {
-            "classes": None,  # @todo get this somehow?
+            "classes": self._classes,
             "labels": self._labels_dict,
         }
         etas.write_json(labels, self._labels_path)
@@ -518,3 +527,7 @@ def _parse_detections(detections, labels_map_rev=None):
 
 def _parse_image_labels(label):
     return label.labels
+
+
+def _to_labels_map_rev(classes):
+    return {c: i for i, c in enumerate(classes)}
