@@ -113,6 +113,7 @@ export const currentIndex = selector({
   key: "currentIndex",
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
+    if (!!!prevLayout) return 0;
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
@@ -137,6 +138,7 @@ export const currentDisplacement = selector({
   key: "currentDisplacement",
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
+    if (!!!prevLayout) return 0;
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
@@ -276,46 +278,6 @@ export const itemBaseSize = selector({
   },
 });
 
-const itemRowInSegment = selectorFamily({
-  key: "itemRowInSegment",
-  get: (itemIndex) => ({ get }) => {
-    const si = get(segmentIndexFromItemIndex(itemIndex));
-    const sbnc = get(segmentBaseNumCols);
-    const ipr = get(itemsPerRequest);
-    return Math.floor(itemIndex / sbnc) - Math.ceil((si * ipr) / sbnc);
-  },
-});
-
-export const itemBasePosition = selectorFamily({
-  key: "itemBasePosition",
-  get: (itemIndex) => ({ get }) => {
-    const ik = get(itemKey(itemIndex));
-    const ipr = get(itemsPerRequest);
-    const sbnc = get(segmentBaseNumCols);
-    const si = get(segmentIndexFromItemIndex(itemIndex));
-    const lc = si > 0 ? sbnc - ((ipr * si) % sbnc) : 0;
-    const row = get(itemRowInSegment(itemIndex));
-    const col = itemIndex % sbnc;
-    const { width: ibw, height: ibh } = get(itemBaseSize);
-    const gm = get(gridMargin);
-
-    return {
-      top: gm + row * (ibh + gm),
-      left: gm + col * (ibw + gm),
-    };
-  },
-});
-
-export const pageParams = selector({
-  key: "pageParams",
-  get: ({ get }) => {
-    return {
-      length: get(itemsPerRequest),
-      threshold: get(tilingThreshold),
-    };
-  },
-});
-
 export const itemPosition = selectorFamily({
   key: "itemPosition",
   get: (itemIndex) => ({ get }) => {
@@ -354,105 +316,12 @@ export const segmentHeight = selectorFamily({
   },
 });
 
-export const segmentsToRender = selector({
-  key: "segmentsToRender",
-  get: ({ get }) => {
-    const ci = get(currentIndex);
-    const ipr = get(itemsPerRequest);
-    const sbnc = get(segmentBaseNumCols);
-    const lt = get(liveTop);
-    const cd = 0;
-    const [mw, mh] = get(mainSize);
-    let h = 0;
-    let csi = get(segmentIndexFromItemIndex(ci));
-    const st = get(segmentTop(csi));
-    const ns = get(numSegments);
-    const str = [];
-    let sl = mh * 1.3;
-    let lc = false;
-    let plc = false;
-    while ((sl > 0 || lc) && csi < ns) {
-      if (plc) break;
-      plc = lc;
-      lc = (csi > 0 ? sbnc - ((ipr * csi) % sbnc) : 0) > 0;
-      sl -= get(segmentHeight(csi)) + (lt + st);
-      str.push(csi);
-      csi += 1;
-    }
-    return str;
-  },
-});
-
-export const itemsToRenderInSegment = selectorFamily({
-  key: "itemsToRenderInSegment",
-  get: (segmentIndex) => ({ get }) => {
-    const ipr = get(itemsPerRequest);
-    const st = get(segmentTop(segmentIndex));
-    const lt = get(liveTop);
-    const [unused, mh] = get(mainSize);
-    const ad = st + lt;
-
-    const rh = get(rowHeight);
-    let d;
-    let r = ipr;
-    let s = 0;
-    let e = ipr;
-    for (let i = 0; i < ipr; i++) {
-      d = ad + get(itemRowInSegment(ipr * segmentIndex + i)) * rh;
-      if (d < -1.5 * mh) {
-        s = i;
-      } else if (d > 1.5 * mh) {
-        e = i;
-        break;
-      }
-    }
-
-    let start = ipr * segmentIndex;
-    return [...Array(e - s).keys()].map((k) => {
-      return {
-        index: k + start + s,
-        key: s + k,
-      };
-    });
-  },
-});
-
 export const segmentBaseNumRows = selector({
   key: "segmentBaseNumRows",
   get: ({ get }) => {
     const ipr = get(itemsPerRequest);
     const sbnc = get(segmentBaseNumCols);
     return Math.ceil(ipr / sbnc);
-  },
-});
-
-export const segmentTop = selectorFamily({
-  key: "segmentTop",
-  get: (segmentIndex) => ({ get }) => {
-    const ipr = get(itemsPerRequest);
-    const beforeNumItems = ipr * segmentIndex;
-    const sbnc = get(segmentBaseNumCols);
-    const beforeNumRows = Math.ceil(beforeNumItems / sbnc);
-    return get(rowHeight) * beforeNumRows;
-  },
-});
-
-export const segmentBaseSize = selectorFamily({
-  key: "segmentBaseSize",
-  get: (segmentIndex) => ({ get }) => {
-    const { width: ibw, height: ibh } = get(itemBaseSize);
-    const ipr = get(itemsPerRequest);
-    const sbnc = get(segmentBaseNumCols);
-    const lc = (ipr * segmentIndex) % sbnc;
-    let ni = ipr - (lc !== sbnc ? lc : 0);
-    const nr = Math.ceil(ni / sbnc);
-    const gm = get(gridMargin);
-    const width = sbnc * ibw + (sbnc + 1) * gm;
-    const height = nr * ibh + nr * gm;
-    return {
-      width,
-      height,
-    };
   },
 });
 
@@ -489,25 +358,6 @@ export const listHeight = selectorFamily({
   },
 });
 
-export const indexFromTop = selectorFamily({
-  key: "indexFromTop",
-  get: (top, viewPortWidth) => ({ get }) => {
-    const cols = baseNumCols(viewPortWidth);
-    const { height } = baseItemSize(viewPortWidth);
-    const margin = get(gridMargin);
-    return Math.floor(top / (height + margin)) * cols;
-  },
-});
-
-export const displacementFromTop = selectorFamily({
-  key: "displacementFromTop",
-  get: (top, viewPortWidth) => ({ get }) => {
-    const { height } = baseItemSize(viewPortWidth);
-    const margin = get(gridMargin);
-    return (top % (height + margin)) / (height + margin);
-  },
-});
-
 export const baseNumCols = selectorFamily({
   key: "baseNumCols",
   get: (viewPortWidth) => ({ get }) => {
@@ -529,60 +379,6 @@ export const tilingThreshold = selector({
   key: "tilingThreshold",
   get: (viewPortWidth) => ({ get }) => {
     return get(baseNumCols(viewPortWidth));
-  },
-});
-
-export const baseSegmentData = selectorFamily({
-  key: "baseSegmentData",
-  get: (segmentIndex) => ({ get }) => {
-    const size = get(baseItemSize);
-    const length = get(itemsPerRequest);
-    const data = [];
-    for (let i = 0; i < length; i++) {}
-  },
-});
-
-export const baseLayout = selectorFamily({
-  key: "baseLayout",
-  get: (top, viewPortWidth, viewPortHeight) => ({ get }) => {
-    let start = get(indexFromTop(top, viewPortWidth));
-    const count = get(viewCount);
-    const cols = get(baseNumCols(viewPortWidth));
-    start = start - (start % cols);
-    const displacement = get(displacementFromTop(top, viewPortWidth));
-    const size = get(baseItemSize(viewPortWidth));
-    const margin = get(gridMargin);
-    let height = -1 * displacement * (margin + size.height);
-    const layout = [];
-    let index = start;
-    while (height < viewPortHeight * 1.5 && index < count) {
-      layout.push(
-        [...Array(cols).keys()].map((i) => ({
-          index: index + i,
-          ...size,
-          left: i * (size.width + margin),
-          top: Math.floor(index / cols) * (size.height + margin),
-        }))
-      );
-      index += cols;
-      height += margin + size.height;
-    }
-    height = displacement * (margin + size.height);
-    index = start + cols;
-    while (height < viewPortHeight * 0.5) {
-      layout.unshift(
-        [...Array(cols).keys()].map((i) => ({
-          index: index + i,
-          ...size,
-          left: i * (size.width + margin),
-          top: Math.floor(index / cols) * (size.height + margin),
-        }))
-      );
-      index -= cols;
-      height += margin + size.height;
-    }
-
-    return layout;
   },
 });
 
@@ -668,7 +464,7 @@ export const currentLayout = selector({
       currentTop -= (height + margin) * displacement;
       layoutHeight += (height + margin) * displacement;
       rowData = [];
-      currentLeft = viewPortWidth - margin;
+      currentLeft = viewPortWidth;
       for (let i = 0; i < row.data.length; i++) {
         item = row.data[i];
         width = (item.aspectRatio / row.aspectRatio) * workingWidth;
@@ -708,5 +504,31 @@ export const itemsToRender = selector({
       }
     }
     return result;
+  },
+});
+
+export const segmentsToRender = selector({
+  key: "segmentsToRender",
+  get: ({ get }) => {
+    const { range } = get(currentLayout);
+    const start = get(segmentIndexFromItemIndex(range[0]));
+    const end = get(segmentIndexFromItemIndex(range[1]));
+    return [...Array(end - start).keys()].map((i) => i + start);
+  },
+});
+
+export const itemsToRenderInSegment = selectorFamily({
+  key: "itemsToRenderInSegment",
+  get: (segmentIndex) => ({ get }) => {},
+});
+
+export const segmentTop = selectorFamily({
+  key: "segmentTop",
+  get: (segmentIndex) => ({ get }) => {
+    const ipr = get(itemsPerRequest);
+    const beforeNumItems = ipr * segmentIndex;
+    const sbnc = get(segmentBaseNumCols);
+    const beforeNumRows = Math.ceil(beforeNumItems / sbnc);
+    return get(rowHeight) * beforeNumRows;
   },
 });

@@ -10,6 +10,11 @@ export const mousePosition = atom({
   default: [0, 0],
 });
 
+export const previousMainSize = atom({
+  key: "previousMainSize",
+  default: [0, 0],
+});
+
 export const mainSize = atom({
   key: "mainSize",
   default: [0, 0],
@@ -100,5 +105,10 @@ export const resizeWait = atom({
 
 export const current = atomFamily({
   key: "current",
+  default: null,
+});
+
+export const previousLayout = atom({
+  key: "previousLayout",
   default: null,
 });
