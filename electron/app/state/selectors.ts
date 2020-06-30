@@ -474,7 +474,6 @@ export const baseItemData = selectorFamily({
   get: (viewPortWidth) => ({ get }) => {
     return {
       aspectRatio: 1,
-      percentWidth: get(baseNumCols(viewPortWidth)),
     };
   },
 });
@@ -571,7 +570,7 @@ export const baseLayout = selectorFamily({
     height = displacement * (margin + size.height);
     index = start + cols;
     while (height < viewPortHeight * 0.5) {
-      layout.prepend(
+      layout.unshift(
         [...Array(cols).keys()].map((i) => ({
           index: index + i,
           ...size,
@@ -589,32 +588,124 @@ export const baseLayout = selectorFamily({
 
 export const itemRow = selectorFamily({
   key: "itemRow",
-  get: (startIndex, viewPortWidth) => ({ get }) => {
+  get: (startIndex, viewPortWidth, reverse) => ({ get }) => {
     const count = get(viewCount);
     const threshold = get(tilingThreshold(viewPortWidth));
     let index = startIndex;
     let aspectRatio = 0;
-    let data;
+    let data = [];
+    let item;
     while (index < count && aspectRatio < threshold) {
-      data = get(itemIsLoaded(index))
+      item = get(itemIsLoaded(index))
         ? get(itemData(index))
         : get(baseSegmentData);
+      aspectRatio += item.aspectRatio;
+      item.index = index;
+      data.push(item);
+      index = reverse ? index - 1 : index + 1;
     }
+    return {
+      data,
+      aspectRatio,
+    };
   },
 });
 
-export const layout = selector({
-  key: "itemsToRender",
+export const currentLayout = selector({
+  key: "currentLayout",
   get: ({ get }) => {
     const start = get(currentIndex);
+    const top = get(liveTop);
     const displacement = get(currentDisplacement);
     const [viewPortWidth, viewPortHeight] = get(mainSize);
     const count = get(viewCount);
+    const margin = get(gridMargin);
     let index = start;
-    let height = 0;
+    let height;
+    let width;
     let row;
-    do {
-      row = get(itemRow(index));
-    } while (height < viewPortHeight * 1.5 && index < count);
+    let workingWidth;
+    let currentLeft;
+    let currentTop = top;
+    let data = [];
+    let rowData = [];
+    let item;
+    let layoutHeight = 0;
+    let pixelDisplacement;
+    let resultStart;
+    let resultEnd;
+    while (layoutHeight < viewPortHeight * 1.5 && index < count) {
+      row = get(itemRow(index, viewPortWidth, false));
+      workingWidth = viewPortWidth - (row.data.length + 1) * margin;
+      height = workingWidth / item.aspectRatio;
+      if (index === start) {
+        currentTop -= (height + margin) * displacement;
+        layoutHeight -= (height + margin) * displacement;
+        pixelDisplacement = (height + margin) * displacement;
+      }
+      rowData = [];
+      currentLeft = 0;
+      for (let i = 0; i < row.data.length; i++) {
+        item = row.data[i];
+        currentLeft += margin;
+        width = (item.aspectRatio / row.aspectRatio) * workingWidth;
+        rowData.push({ width, height, top: currentTop, left: currentLeft });
+        currentLeft += width;
+      }
+      currentTop += margin + height;
+      index += rowData.length;
+      data.push(rowData);
+    }
+
+    resultEnd = index;
+    index = start - 1;
+    currentTop = top - pixelDisplacement;
+    while (layoutHeight < viewPortHeight * 2 && index >= 0) {
+      row = get(itemRow(index, viewPortWidth, true));
+      workingWidth = viewPortWidth - (row.data.length + 1) * margin;
+      height = workingWidth / item.aspectRatio;
+      currentTop -= (height + margin) * displacement;
+      layoutHeight += (height + margin) * displacement;
+      rowData = [];
+      currentLeft = 0;
+      for (let i = 0; i < row.data.length; i++) {
+        item = row.data[i];
+        currentLeft += margin;
+        width = (item.aspectRatio / row.aspectRatio) * workingWidth;
+        rowData.push({ width, height, top: currentTop, left: currentLeft });
+        currentLeft += width;
+      }
+      currentTop += margin + height;
+      index += rowData.length;
+      data.unshift(rowData);
+    }
+    resultStart = index;
+    return {
+      data,
+      range: [resultStart, resultEnd],
+    };
+  },
+});
+
+export const currentItems = selector({
+  key: "currentItems",
+  get: ({ get }) => {
+    const { range } = get(currentLayout);
+    return [...Array(range.length).keys()].map((i) => i + range[0]);
+  },
+});
+
+export const itemsToRender = selector({
+  key: "itemsToRender",
+  get: ({ get }) => {
+    const { data } = get(currentItems);
+    const result = {};
+    for (let i = 0; i < data.length; i++) {
+      const { data: row } = data[i];
+      for (let j = 0; j < row.length; j++) {
+        result[row[j].index] = row;
+      }
+    }
+    return result;
   },
 });
