@@ -705,7 +705,7 @@ export const itemsToRender = selector({
     for (let i = 0; i < data.length; i++) {
       const { data: row } = data[i];
       for (let j = 0; j < row.length; j++) {
-        result[row[j].index] = row;
+        result[row[j].index] = row[j];
       }
     }
     return result;
