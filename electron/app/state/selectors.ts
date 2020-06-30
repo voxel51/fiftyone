@@ -114,20 +114,20 @@ export const currentIndex = selector({
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
     const top = get(liveTop);
-    const [viewPortWidth, viewPortHeight] = get(mainSize);
+    const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
-    if (prevLayout[prevLayout.length - 1][0] < top) {
-      return get(indexFromTop(top, viewPortWidth));
-    }
-    if (prevLayout[0][0] > top) {
+    let outOfBounds = prevLayout[prevLayout.length - 1][0] < top;
+    outOfBounds = outOfBounds && prevLayout[0][0] > top;
+    if (outOfBounds) {
       return get(indexFromTop(top, viewPortWidth));
     }
     let start, stop;
     for (let i = 0; i < prevLayout.length; i++) {
-      start = prevLayout[i][0].top;
-      stop = prevLayout[i][0].top + (prevLayout[i][0].height + margin);
+      const { top: itemTop, height, index } = prevLayout[i][0];
+      start = itemTop;
+      stop = itemTop + (height + margin);
       if (start <= top && stop >= top) {
-        return prevLayout[i][0].index;
+        return index;
       }
     }
   },
@@ -135,7 +135,26 @@ export const currentIndex = selector({
 
 export const currentDisplacement = selector({
   key: "currentDisplacement",
-  get: ({ get }) => {},
+  get: ({ get }) => {
+    const prevLayout = get(previousLayout);
+    const top = get(liveTop);
+    const [viewPortWidth, unused] = get(mainSize);
+    const margin = get(gridMargin);
+    let outOfBounds = prevLayout[prevLayout.length - 1][0] < top;
+    outOfBounds = outOfBounds && prevLayout[0][0] > top;
+    if (outOfBounds) {
+      return get(displacementFromTop(top, viewPortWidth));
+    }
+    let start, stop;
+    for (let i = 0; i < prevLayout.length; i++) {
+      const { top: itemTop, height } = prevLayout[i][0];
+      start = itemTop;
+      stop = itemTop + (height + margin);
+      if (start <= top && stop >= top) {
+        return (top - itemTop) / (height + margin);
+      }
+    }
+  },
 });
 
 export const currentListTopRange = selector({
@@ -195,41 +214,10 @@ export const segmentData = selectorFamily({
   key: "segmentData",
   get: (segmentIndex) => async ({ get }) => {
     const params = get(pageParams);
-    const { mapping, results } = await getPage(getSocket(5151, "state"), {
+    return await getPage(getSocket(5151, "state"), {
       ...params,
       page: segmentIndex,
     });
-    const [mw, mh] = get(mainSize);
-    const data = [];
-    let row;
-    let ww;
-    let top = 0;
-    let left;
-    let width;
-    let height;
-    const gm = get(gridMargin);
-    for (let i = 0; i < results.length; i++) {
-      top += gm;
-      left = 0;
-      row = results[i];
-      ww = mw - (row.length + 1) * gm;
-      for (let j = 0; j < row.length; j++) {
-        const { percentWidth, aspectRatio, sample } = row[j];
-        left += gm;
-        width = ww * percentWidth;
-        height = width / aspectRatio;
-        data.push({
-          top,
-          left,
-          width,
-          height,
-          sample,
-        });
-        left += width;
-      }
-      top += height;
-    }
-    return data;
   },
 });
 
@@ -429,31 +417,6 @@ export const itemsToRenderInSegment = selectorFamily({
   },
 });
 
-export const tilingThreshold = selector({
-  key: "tilingThreshold",
-  get: ({ get }) => {
-    return get(segmentBaseNumCols);
-  },
-});
-
-export const segmentBaseNumCols = selector({
-  key: "segmentBaseNumCols",
-  get: ({ get }) => {
-    const [mw, unused] = get(mainSize);
-    if (mw <= 600) {
-      return 2;
-    } else if (mw < 768) {
-      return 3;
-    } else if (mw < 992) {
-      return 4;
-    } else if (mw < 1200) {
-      return 5;
-    } else {
-      return 7;
-    }
-  },
-});
-
 export const segmentBaseNumRows = selector({
   key: "segmentBaseNumRows",
   get: ({ get }) => {
@@ -506,6 +469,16 @@ export const baseItemSize = selectorFamily({
   },
 });
 
+export const baseItemData = selectorFamily({
+  key: "baseItemData",
+  get: (viewPortWidth) => ({ get }) => {
+    return {
+      aspectRatio: 1,
+      percentWidth: get(baseNumCols(viewPortWidth)),
+    };
+  },
+});
+
 export const listHeight = selectorFamily({
   key: "listHeight",
   get: (viewPortWidth) => ({ get }) => {
@@ -553,6 +526,23 @@ export const baseNumCols = selectorFamily({
   },
 });
 
+export const tilingThreshold = selector({
+  key: "tilingThreshold",
+  get: (viewPortWidth) => ({ get }) => {
+    return get(baseNumCols(viewPortWidth));
+  },
+});
+
+export const baseSegmentData = selectorFamily({
+  key: "baseSegmentData",
+  get: (segmentIndex) => ({ get }) => {
+    const size = get(baseItemSize);
+    const length = get(itemsPerRequest);
+    const data = [];
+    for (let i = 0; i < length; i++) {}
+  },
+});
+
 export const baseLayout = selectorFamily({
   key: "baseLayout",
   get: (top, viewPortWidth, viewPortHeight) => ({ get }) => {
@@ -597,11 +587,34 @@ export const baseLayout = selectorFamily({
   },
 });
 
-export const itemsToRender = selector({
+export const itemRow = selectorFamily({
+  key: "itemRow",
+  get: (startIndex, viewPortWidth) => ({ get }) => {
+    const count = get(viewCount);
+    const threshold = get(tilingThreshold(viewPortWidth));
+    let index = startIndex;
+    let aspectRatio = 0;
+    let data;
+    while (index < count && aspectRatio < threshold) {
+      data = get(itemIsLoaded(index))
+        ? get(itemData(index))
+        : get(baseSegmentData);
+    }
+  },
+});
+
+export const layout = selector({
   key: "itemsToRender",
   get: ({ get }) => {
     const start = get(currentIndex);
     const displacement = get(currentDisplacement);
     const [viewPortWidth, viewPortHeight] = get(mainSize);
+    const count = get(viewCount);
+    let index = start;
+    let height = 0;
+    let row;
+    do {
+      row = get(itemRow(index));
+    } while (height < viewPortHeight * 1.5 && index < count);
   },
 });

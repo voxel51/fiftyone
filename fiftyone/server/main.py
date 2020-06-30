@@ -35,7 +35,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.state as fos
 
-from util import tile
+from util import get_image_size
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
@@ -167,8 +167,19 @@ class StateController(Namespace):
         length = params["length"]
         threshold = params["threshold"]
         view = view.skip(length * page).limit(length)
-        mapping, results = tile(view, length, threshold)
-        return {"mapping": mapping, "results": results}
+        result = []
+        for idx, sample in enumerate(view):
+            width, height = get_image_size(sample.filepath)
+            result.append(
+                {
+                    "sample": json.loads(
+                        json_util.dumps(sample.to_mongo_dict())
+                    ),
+                    "aspectRatio": width / height,
+                    "index": page * length + idx,
+                }
+            )
+        return result
 
     def on_lengths(self, _):
         state = fos.StateDescription.from_dict(self.state)
