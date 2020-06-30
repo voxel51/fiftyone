@@ -70,6 +70,14 @@ exclude_patterns = []
 # requires it
 nbsphinx_requirejs_path = ""
 
+nbsphinx_prolog = """
+
+.. note::
+
+    :download:`Download Notebook </{{ env.doc2path(env.docname, base=None) }}>`
+
+"""
+
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
