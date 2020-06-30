@@ -653,6 +653,7 @@ export const currentLayout = selector({
         currentLeft += width;
       }
       currentTop += margin + height;
+      layoutHeight += margin + height;
       index += rowData.length;
       data.push(rowData);
     }
@@ -676,6 +677,7 @@ export const currentLayout = selector({
         currentLeft += width;
       }
       currentTop += margin + height;
+      layoutHeight += margin + height;
       index += rowData.length;
       data.unshift(rowData);
     }
