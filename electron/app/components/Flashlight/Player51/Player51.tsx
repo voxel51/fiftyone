@@ -20,6 +20,7 @@ import {
   itemSource,
   segmentIndexFromItemIndex,
   currentIndex,
+  itemLayout,
 } from "../../../state/selectors";
 // import Player51 from "../../player51/build/cjs/player51.min.js";
 
@@ -44,10 +45,8 @@ const Img = animated(styled.img`
 `);
 
 const Thumbnail = ({ index }) => {
-  const setCurrent = useSetRecoilState(current(index));
   const idd = useRecoilValue(itemData(index));
   const itemSizeValue = useRecoilValue(itemSize(index));
-  const mainLoadedValue = useRecoilValue(mainLoaded);
   const itemBasePositionValue = useRecoilValue(itemBasePosition(index));
   const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
   const itemBaseSizeValue = useRecoilValue(itemBaseSize);
@@ -96,60 +95,22 @@ const Thumbnail = ({ index }) => {
   );
 };
 
-const LoadingThumbnail = ({ index, unveil, move }) => {
-  const itemIsLoadedValue = useRecoilValue(itemIsLoaded(index));
-  const cv = useRecoilValue(current(index));
+const LoadingThumbnail = ({ index }) => {
   const ci = useRecoilValue(currentIndex);
-  const itemBasePositionValue = useRecoilValue(itemBasePosition(index));
-  const [initialLoad, setInitialLoad] = useState(true);
-
-  const itemBaseSizeValue = useRecoilValue(itemBaseSize);
-
-  const base = {
-    ...itemBasePositionValue,
-    ...itemBaseSizeValue,
-  };
-
-  const from =
-    cv && !move && !initialLoad
-      ? { width: cv.width, height: cv.height, top: cv.top, left: cv.left }
-      : {
-          ...itemBasePositionValue,
-          ...itemBaseSizeValue,
-        };
+  const itemLayoutValue = useRecoilValue(itemLayout(index));
 
   const props = useSpring({
     opacity: 1,
-    ...base,
-    // background: ci === index ? "#000" : "#ccc",
-    from: {
-      opacity: cv || !unveil ? 1 : 0,
-      ...from,
-    },
+    ...itemLayoutValue,
+    background: ci === index ? "#000" : "#ccc",
   });
-
-  useEffect(() => {
-    setInitialLoad(false);
-  }, []);
 
   return <LoadingThumbnailDiv style={{ ...props }} />;
 };
 
 const ThumbnailContainer = ({ index }) => {
-  const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
-  const [initialLoad, setInitialLoad] = useState(true);
-
-  useEffect(() => {
-    setInitialLoad(false);
-  }, []);
-
-  if (isMainWidthResizingValue)
-    return <LoadingThumbnail index={index} unveil={initialLoad} move={false} />;
-
   return (
-    <Suspense
-      fallback={<LoadingThumbnail index={index} unveil={false} move={false} />}
-    >
+    <Suspense fallback={<LoadingThumbnail index={index} />}>
       <Thumbnail index={index} />
     </Suspense>
   );

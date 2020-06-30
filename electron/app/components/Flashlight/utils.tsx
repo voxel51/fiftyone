@@ -29,9 +29,6 @@ export const Container = ({ children }) => {
     isMainWidthResizing
   );
   const [mainSizeValue, setMainSize] = useRecoilState(mainSize);
-  const [mainPreviousWidthValue, setMainPreviousWidth] = useRecoilState(
-    mainPreviousWidth
-  );
   const setMainTop = useSetRecoilState(mainTop);
   const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
   const [ref, { contentRect }] = useResizeObserver();

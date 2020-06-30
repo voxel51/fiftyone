@@ -394,7 +394,7 @@ export const itemRow = selectorFamily({
     while (index < count && aspectRatio < threshold) {
       item = get(itemIsLoaded(index))
         ? get(itemData(index))
-        : get(baseSegmentData);
+        : get(baseItemData);
       aspectRatio += item.aspectRatio;
       item.index = index;
       data.push(item);
@@ -495,7 +495,7 @@ export const currentItems = selector({
 export const itemsToRender = selector({
   key: "itemsToRender",
   get: ({ get }) => {
-    const { data } = get(currentItems);
+    const { data } = get(currentLayout);
     const result = {};
     for (let i = 0; i < data.length; i++) {
       const { data: row } = data[i];
@@ -519,16 +519,27 @@ export const segmentsToRender = selector({
 
 export const itemsToRenderInSegment = selectorFamily({
   key: "itemsToRenderInSegment",
-  get: (segmentIndex) => ({ get }) => {},
+  get: (segmentIndex) => ({ get }) => {
+    let index = get(itemsPerRequest) * segmentIndex;
+    const data = get(itemsToRender);
+    const result = [];
+    while (data[index]) {
+      result.push(index);
+    }
+    return result;
+  },
+});
+
+export const itemLayout = selectorFamily({
+  key: "itemLayout",
+  get: (index) => ({ get }) => {
+    return get(itemsToRender)[index];
+  },
 });
 
 export const segmentTop = selectorFamily({
   key: "segmentTop",
   get: (segmentIndex) => ({ get }) => {
-    const ipr = get(itemsPerRequest);
-    const beforeNumItems = ipr * segmentIndex;
-    const sbnc = get(segmentBaseNumCols);
-    const beforeNumRows = Math.ceil(beforeNumItems / sbnc);
-    return get(rowHeight) * beforeNumRows;
+    return 0;
   },
 });

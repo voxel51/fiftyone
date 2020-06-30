@@ -103,11 +103,6 @@ export const resizeWait = atom({
   default: 0,
 });
 
-export const current = atomFamily({
-  key: "current",
-  default: null,
-});
-
 export const previousLayout = atom({
   key: "previousLayout",
   default: null,
