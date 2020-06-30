@@ -8,21 +8,26 @@ $(function () {
     parseInt($(".section h2").css("marginTop")) +
     10;
 
-  function updateSidebar() {
+  function updateSidebar(e) {
     let currentSection = undefined;
-    for (let i = sections.length - 1; i >= 0; i--) {
-      if (
-        $(sections[i]).offset().top <
-        $(window).scrollTop() + sectionStartThreshold
-      ) {
-        currentSection = sections[i].id;
-        break;
+    if (e.target && e.target.href && e.target.href.indexOf("#") >= 0) {
+      currentSection = e.target.href.split("#").pop();
+    } else {
+      for (let i = sections.length - 1; i >= 0; i--) {
+        if (
+          $(sections[i]).offset().top <
+          $(window).scrollTop() + sectionStartThreshold
+        ) {
+          currentSection = sections[i].id;
+          break;
+        }
       }
     }
 
+    let sectionLinks = $(".pytorch-content-right .pytorch-side-scroll li");
+    sectionLinks.removeClass("current-section");
     if (currentSection) {
-      $(".pytorch-content-right .pytorch-side-scroll li")
-        .removeClass("current-section")
+      sectionLinks
         .filter(":not(:has(a.title-link))")
         .filter(':has(a[href="#' + currentSection + '"])')
         .filter(":visible")
