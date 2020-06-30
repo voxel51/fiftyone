@@ -38,6 +38,30 @@ article.pytorch-article .note .admonition-title {
   min-height: 2em;
 }
 
+/* fixes for code line numbers */
+
+article.pytorch-article table.highlighttable {
+  table-layout: auto;
+}
+
+td.code pre {
+  white-space: pre;
+}
+
+table.highlighttable td.linenos {
+  padding-right: 0;
+}
+
+table.highlighttable td.code {
+  padding-left: 0;
+}
+
+table.highlighttable td.linenos pre {
+  background-color: inherit;
+  outline: 3px solid #f3f4f7;
+  outline-offset: -3px;
+}
+
 /* tweaks copied from sphinx-rtd-theme */
 
 .rst-content .section > img,
