@@ -40,26 +40,32 @@ article.pytorch-article .note .admonition-title {
 
 /* fixes for code line numbers */
 
-article.pytorch-article table.highlighttable {
-  table-layout: auto;
+article.pytorch-article div[class*="highlight-"] {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
-td.code pre {
-  white-space: pre;
+article.pytorch-article table.highlighttable {
+  table-layout: auto;
+  margin-bottom: 0;
 }
 
 table.highlighttable td.linenos {
   padding-right: 0;
 }
 
-table.highlighttable td.code {
-  padding-left: 0;
-}
-
 table.highlighttable td.linenos pre {
   background-color: inherit;
   outline: 3px solid #f3f4f7;
   outline-offset: -3px;
+}
+
+table.highlighttable td.code {
+  padding-left: 0;
+}
+
+table.highlighttable td.code pre {
+  white-space: pre;
 }
 
 /* tweaks copied from sphinx-rtd-theme */
