@@ -2,18 +2,16 @@ FiftyOne Dataset Basics
 =======================
 
 .. |Dataset| replace:: ``Dataset``
-.. _Dataset: ../user_guide/using_dataset.html#datasets 
+.. _Dataset: ../user_guide/using_datasets.html#datasets
 
 .. |DatasetView| replace:: ``DatasetView``
-.. _DatasetView: ../user_guide/using_dataset.html#datasetviews 
+.. _DatasetView: ../user_guide/using_datasets.html#datasetviews
 
 .. |Sample| replace:: ``Sample``
-.. _Sample: ../user_guide/using_dataset.html#samples
+.. _Sample: ../user_guide/using_datasets.html#samples
 
 .. |Field| replace:: ``Field``
-.. _Field: ../user_guide/using_dataset.html#fields
-
-
+.. _Field: ../user_guide/using_datasets.html#fields
 
 A FiftyOne |Dataset| is the understood format that can be visualized in the
 :doc:`FiftyOne App <app>`.
@@ -26,31 +24,30 @@ A FiftyOne |Dataset| is the understood format that can be visualized in the
 Datasets
 ________
 
-What is a fiftyone.Dataset and what can it do for me?
-------------------------------------------------------
+What is a FiftyOne Dataset?
+---------------------------
 
 The FiftyOne |Dataset|_ class allows you to easily
-:doc:`load <dataset_creation/index>`, :doc:`modify <using_dataset>` and
+:doc:`load <dataset_creation/index>`, :doc:`modify <using_datasets>` and
 :doc:`visualize <app>` your data along with any related labels
 (classification, detection, segmentation, etc).
 It provides a way to easily load images, annotations, and model predictions
-into a format that can be visualized in the FiftyOne App. 
+into a format that can be visualized in the FiftyOne App.
 
 
 If you have your own collection of data, loading it as a |Dataset|_ will allow
-you to easily search and sort your samples. 
+you to easily search and sort your samples.
 You can use FiftyOne to identify unique samples as well as possible mistakes in
 |Sample|_ labels.
 
 If you are training a model, the output predictions and logits can be loaded
-into your |Dataset|_. 
+into your |Dataset|_.
 The FiftyOne App makes it easy to visually debug what
 your model has learned, even for complex label types like detection and
-segmentation masks.  
+segmentation masks.
 With this knowledge, you can update your |Dataset|_ to include more
 representative samples and samples that your model found difficult into your
 training set.
-
 
 .. note::
     Checkout out our :doc:`dataset loading guide <dataset_creation/index>` to load
@@ -59,7 +56,7 @@ training set.
 Dataset Details
 ---------------
 
-A |Dataset|_ is composed of multiple |Sample|_ objects which contain 
+A |Dataset|_ is composed of multiple |Sample|_ objects which contain
 |Field|_ attributes, all of which can
 be dynamically created, modified and deleted.
 FiftyOne uses a lightweight non-relational database to store a |Dataset|_, so

@@ -47,7 +47,7 @@ or load an open-source dataset via the Dataset Zoo.
        name="my-coco-format-dataset",
    )
 
-:doc:`Using datasets <using_dataset>`
+:doc:`Using datasets <using_datasets>`
 
 Use a FiftyOne Dataset to search, sort, and modify your data:
 
@@ -62,7 +62,7 @@ Use a FiftyOne Dataset to search, sort, and modify your data:
        .limit(5)
    )
 
-:doc:`Exporting datasets <export_dataset>`
+:doc:`Exporting datasets <export_datasets>`
 
 Export your dataset to disk in any number of formats.
 
@@ -100,7 +100,7 @@ Use the FiftyOne Brain to automatically get insights into your |Dataset|
 
     Dataset basics<basics>
     Creating datasets<dataset_creation/index>
-    Using datasets<using_dataset>
-    Exporting datasets<export_dataset>
+    Using datasets<using_datasets>
+    Exporting datasets<export_datasets>
     Viewing datasets in the App<app>
     FiftyOne Brain<brain>
