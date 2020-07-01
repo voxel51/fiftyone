@@ -694,16 +694,20 @@ def _download_and_prepare(
     sample_parser.classes = classes
 
     if isinstance(sample_parser, foud.ImageClassificationSampleParser):
-        write_dataset_fcn = foud.write_image_classification_dataset
         dataset_type = fot.ImageClassificationDataset()
+        dataset_exporter = foud.ImageClassificationDatasetExporter(
+            dataset_dir, classes=classes
+        )
     elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
-        write_dataset_fcn = foud.write_image_detection_dataset
         dataset_type = fot.ImageDetectionDataset()
+        dataset_exporter = foud.ImageDetectionDatasetExporter(
+            dataset_dir, classes=classes
+        )
     elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
-        write_dataset_fcn = foud.write_image_labels_dataset
         dataset_type = fot.ImageLabelsDataset()
+        dataset_exporter = foud.ImageLabelsDatasetExporter(dataset_dir)
     else:
-        raise ValueError("Unsupported sample parser: %s" % sample_parser)
+        raise ValueError("Unsupported SampleParser %s" % type(sample_parser))
 
     try:
         samples = dataset.as_numpy_iterator()
@@ -712,8 +716,11 @@ def _download_and_prepare(
         samples = tfds.as_numpy(dataset)
 
     # Write the formatted dataset to `dataset_dir`
-    write_dataset_fcn(
-        samples, sample_parser, dataset_dir, num_samples=num_samples,
+    foud.write_dataset(
+        samples,
+        sample_parser,
+        dataset_exporter=dataset_exporter,
+        num_samples=num_samples,
     )
 
     return dataset_type, num_samples, classes
