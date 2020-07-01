@@ -154,14 +154,18 @@ def shutdown():
     """
     # "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
     # subprocesses of the child process first
-    for subchild in child.children(recursive=True):
-        try:
-            subchild.terminate()
-        except psutil.NoSuchProcess:
-            # we may have already caused it to exit by killing its parent
-            pass
+    try:
+        for subchild in child.children(recursive=True):
+            try:
+                subchild.terminate()
+            except psutil.NoSuchProcess:
+                # we may have already caused it to exit by killing its parent
+                pass
+        child.terminate()
+    except psutil.NoSuchProcess:
+        # child already exited
+        pass
 
-    child.terminate()
     child.wait()
     if exit_mode == ExitMode.CHILD and child.returncode > 0:
         sys.stdout.buffer.write(child_stdout.to_bytes())

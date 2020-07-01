@@ -10,6 +10,7 @@ on:
     tags:
       - v*
   pull_request:
+    types: [synchronize, ready_for_review]
     branches:
       - develop
       - rel-*
@@ -18,6 +19,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-18.04
+    if: github.event.pull_request.draft == false
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
@@ -39,6 +41,7 @@ jobs:
 
   test:
     runs-on: ubuntu-18.04
+    if: github.event.pull_request.draft == false
     needs: build
     strategy:
       fail-fast: false
