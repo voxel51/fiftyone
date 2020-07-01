@@ -47,10 +47,9 @@ export const indicatorIndex = selector({
   key: "indicatorIndex",
   get: ({ get }) => {
     const [unused, mpt] = get(mousePosition);
-    const mt = get(mainTop);
     const ms = get(mainSize);
     const vc = get(viewCount);
-    const numerator = Math.max(mpt, 0) - mt;
+    const numerator = Math.max(mpt, 0);
     const denominator = ms[1] - 16;
     return Math.min(
       Math.max(vc - 1, 0),
@@ -88,9 +87,9 @@ export const currentSegment = selector({
 
 export const indexFromTop = selectorFamily({
   key: "indexFromTop",
-  get: (top, viewPortWidth) => ({ get }) => {
-    const cols = baseNumCols(viewPortWidth);
-    const { height } = baseItemSize(viewPortWidth);
+  get: ({ top, viewPortWidth }) => ({ get }) => {
+    const cols = get(baseNumCols(viewPortWidth));
+    const { height } = get(baseItemSize(viewPortWidth));
     const margin = get(gridMargin);
     return Math.floor(top / (height + margin)) * cols;
   },
@@ -98,8 +97,8 @@ export const indexFromTop = selectorFamily({
 
 export const displacementFromTop = selectorFamily({
   key: "displacementFromTop",
-  get: (top, viewPortWidth) => ({ get }) => {
-    const { height } = baseItemSize(viewPortWidth);
+  get: ({ top, viewPortWidth }) => ({ get }) => {
+    const { height } = get(baseItemSize(viewPortWidth));
     const margin = get(gridMargin);
     return (top % (height + margin)) / (height + margin);
   },
@@ -114,16 +113,16 @@ export const currentIndex = selector({
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
-    let outOfBounds = data[data.length - 1][0] < top;
-    outOfBounds = outOfBounds && data[0][0] > top;
+    let outOfBounds = data[data.length - 1][0].top - margin < top;
+    outOfBounds = outOfBounds || data[0][0].top - margin > top;
     if (outOfBounds) {
-      return get(indexFromTop(top, viewPortWidth));
+      return get(indexFromTop({ top, viewPortWidth }));
     }
     let start, stop;
     for (let i = 0; i < data.length; i++) {
       const { top: itemTop, height, index } = data[i][0];
       start = itemTop - margin;
-      stop = start + height;
+      stop = itemTop + height;
       if (start <= top && stop >= top) {
         return index;
       }
@@ -140,16 +139,16 @@ export const currentDisplacement = selector({
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
-    let outOfBounds = data[data.length - 1][0] < top;
-    outOfBounds = outOfBounds && data[0][0] > top;
+    let outOfBounds = data[data.length - 1][0].top - margin < top;
+    outOfBounds = outOfBounds || data[0][0].top - margin > top;
     if (outOfBounds) {
-      return get(displacementFromTop(top, viewPortWidth));
+      return get(displacementFromTop({ top, viewPortWidth }));
     }
     let start, stop;
     for (let i = 0; i < data.length; i++) {
       const { top: itemTop, height } = data[i][0];
       start = itemTop - margin;
-      stop = start + height;
+      stop = itemTop + height;
       if (start <= top && stop >= top) {
         return (top - start) / (height + margin);
       }
@@ -163,7 +162,7 @@ export const currentIndexPercentage = selector({
     const index = get(currentIndex);
     const displacement = get(currentDisplacement);
     const count = get(viewCount);
-    return (index + displacement) / count;
+    return count ? (index + displacement) / count : 0;
   },
 });
 
@@ -477,11 +476,10 @@ export const currentLayout = selector({
       height = workingWidth / row.aspectRatio;
       currentTop -= height;
       rowData = [];
-      currentLeft = viewPortWidth;
+      currentLeft = margin;
       for (let i = 0; i < row.data.length; i++) {
         item = row.data[i];
         width = (item.aspectRatio / row.aspectRatio) * workingWidth;
-        currentLeft -= margin + width;
         rowData.push({
           width,
           height,
@@ -489,12 +487,13 @@ export const currentLayout = selector({
           left: currentLeft,
           index: item.index,
         });
+        currentLeft += margin + width;
       }
       currentTop -= margin;
       layoutHeight += margin + height;
       index -= rowData.length;
       data.unshift(rowData);
-      resultStart = Math.max(index, 0);
+      resultStart = Math.max(index + 1, 0);
     }
 
     return {
@@ -508,7 +507,6 @@ export const currentItems = selector({
   key: "currentItems",
   get: ({ get }) => {
     const { data, range } = get(currentLayout);
-    console.log(data, range);
     return [...Array(range[1] - range[0]).keys()].map((i) => i + range[0]);
   },
 });

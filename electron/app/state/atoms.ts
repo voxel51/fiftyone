@@ -20,11 +20,6 @@ export const mainSize = atom({
   default: [0, 0],
 });
 
-export const mainTop = atom({
-  key: "mainTop",
-  default: 0,
-});
-
 export const viewCount = atom({
   key: "viewCount",
   default: 0,

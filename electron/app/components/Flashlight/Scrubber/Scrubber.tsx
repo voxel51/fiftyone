@@ -36,6 +36,7 @@ const IndexIndicator = () => {
   const currentIndexIndicatorTopValue = useRecoilValue(
     currentIndexIndicatorTop
   );
+
   const props = useSpring({
     top: currentIndexIndicatorTopValue,
   });
@@ -54,6 +55,7 @@ export default function () {
       top: Math.max(32, (s / (viewCountValue - 1)) * (mh - 35) + 32),
     }))
   );
+
   return (
     <Scrubber>
       {springs.map((props, index) => (

@@ -57,9 +57,7 @@ export default () => {
   const segmentsToRenderValue = useRecoilValue(segmentsToRender);
   const setIsMainWidthResizing = useSetRecoilState(isMainWidthResizing);
   const [mainSizeValue, setMainSize] = useRecoilState(mainSize);
-  const setPreviousMainSize = useSetRecoilState(previousMainSize);
   const currentListHeightValue = useRecoilValue(currentListHeight);
-  const setMainTop = useSetRecoilState(mainTop);
   const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
   const setLiveTop = useSetRecoilState(liveTop);
   const setViewCount = useSetRecoilState(viewCount);
@@ -69,7 +67,7 @@ export default () => {
   const [ref, { contentRect }] = useResizeObserver();
   useTrackMousePosition();
   useEffect(() => {
-    setViewCount(50);
+    setViewCount(100);
   }, []);
 
   useLayoutEffect(() => {
@@ -79,9 +77,9 @@ export default () => {
     }, 1000);
     const { top, width, height } = contentRect;
     let raf = requestAnimationFrame(() => {
-      setIsMainWidthResizing(width !== mainSizeValue[0]);
-      setMainSize([width, height]);
-      setMainTop(top);
+      // setIsMainWidthResizing(width !== mainSizeValue[0]);
+      const s = width !== mainSizeValue[0] || height !== mainSizeValue[1];
+      if (s) setMainSize([width, height]);
       !mainLoadedValue && setMainLoaded(true);
     });
     return () => {

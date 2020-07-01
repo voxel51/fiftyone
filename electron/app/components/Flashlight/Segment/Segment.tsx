@@ -13,6 +13,7 @@ import {
 const SegmentDiv = styled.div`
   position: absolute;
   contain: layout;
+  transform: translateZ(0);
   width: 100%;
 `;
 

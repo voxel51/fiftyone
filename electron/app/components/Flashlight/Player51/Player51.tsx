@@ -43,43 +43,31 @@ const Img = animated(styled.img`
 `);
 
 const Thumbnail = ({ index }) => {
-  const idd = useRecoilValue(itemData(index));
-  const itemSizeValue = useRecoilValue(itemSize(index));
-  const itemBasePositionValue = useRecoilValue(itemBasePosition(index));
-  const isMainWidthResizingValue = useRecoilValue(isMainWidthResizing);
-  const itemBaseSizeValue = useRecoilValue(itemBaseSize);
-  const itemPositionValue = useRecoilValue(itemPosition(index));
   const segmentIndexValue = useRecoilValue(segmentIndexFromItemIndex(index));
   const setSegmentIsLoaded = useSetRecoilState(
     segmentIsLoaded(segmentIndexValue)
   );
-  const on = !isMainWidthResizingValue;
+  const itemLayoutValue = useRecoilValue(itemLayout(index));
   const itemSourceValue = useRecoilValue(itemSource(index));
 
   const positionRef = useRef();
   const position = useSpring({
-    ...itemPositionValue,
-    ...itemSizeValue,
+    ...itemLayoutValue,
     from: {
-      ...itemBasePositionValue,
-      ...itemBaseSizeValue,
+      ...itemLayoutValue,
     },
     ref: positionRef,
   });
 
-  useEffect(() => {
-    setCurrent(idd);
-  }, [idd]);
-
   const showRef = useRef();
-  const show = useTransition(on, null, {
+  const show = useTransition(true, null, {
     from: { opacity: 0 },
     enter: { opacity: 1 },
     leave: { opacity: 0 },
     ref: showRef,
   });
 
-  useChain(on ? [positionRef, showRef] : [showRef, positionRef], [1, 0.8]);
+  useChain(true ? [positionRef, showRef] : [showRef, positionRef], [1, 0.8]);
 
   useEffect(() => setSegmentIsLoaded(true), []);
 
@@ -87,7 +75,14 @@ const Thumbnail = ({ index }) => {
     <ThumbnailDiv style={position}>
       {show.map(
         ({ item, key, props }) =>
-          item && <Img key={key} src={itemSourceValue} style={props} />
+          item && (
+            <Img
+              className={`ind-${index}`}
+              key={key}
+              src={itemSourceValue}
+              style={props}
+            />
+          )
       )}
     </ThumbnailDiv>
   );
@@ -103,9 +98,7 @@ const LoadingThumbnail = ({ index }) => {
     background: ci === index ? "#000" : "#ccc",
   });
 
-  return (
-    <LoadingThumbnailDiv style={{ ...props }}>{index}</LoadingThumbnailDiv>
-  );
+  return <LoadingThumbnailDiv style={{ ...props }} />;
 };
 
 const ThumbnailContainer = ({ index }) => {
