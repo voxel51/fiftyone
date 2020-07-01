@@ -9,7 +9,7 @@ Each section in this guide provides an example-centric deep dive into a core
 feature of FiftyOne, with the goal of getting you up-and-running with FiftyOne
 on your data quickly and easily.
 
-.. rubric:: :doc:`FiftyOne Dataset basics <basics>`
+:doc:`FiftyOne Dataset basics <basics>`
 
 Learn about FiftyOne the |Dataset| class and its relation to |Sample|, |Field|,
 tags and |DatasetView|.
@@ -33,7 +33,7 @@ tags and |DatasetView|.
     for sample in view:
         print(sample)
 
-.. rubric:: :doc:`Creating FiftyOne Datasets <dataset_creation/index>`
+:doc:`Creating FiftyOne Datasets <dataset_creation/index>`
 
 Get your data into a FiftyOne |Dataset| using standard formats, custom formats,
 or load an open-source dataset via the Dataset Zoo.
@@ -47,7 +47,7 @@ or load an open-source dataset via the Dataset Zoo.
        name="my-coco-format-dataset",
    )
 
-.. rubric:: :doc:`Using datasets <using_dataset>`
+:doc:`Using datasets <using_dataset>`
 
 Use a FiftyOne Dataset to search, sort, and modify your data:
 
@@ -62,7 +62,7 @@ Use a FiftyOne Dataset to search, sort, and modify your data:
        .limit(5)
    )
 
-.. rubric:: :doc:`Exporting datasets <export_dataset>`
+:doc:`Exporting datasets <export_dataset>`
 
 Export your dataset to disk in any number of formats.
 
@@ -71,7 +71,7 @@ Export your dataset to disk in any number of formats.
 
    dataset.export(export_dir, dataset_type=fo.types.COCODetectionDataset)
 
-.. rubric:: :doc:`Visualizing datasets in the App <app>`
+:doc:`Visualizing datasets in the App <app>`
 
 Visualize your dataset in the FiftyOne App and visualize your changes to it in
 real-time.
@@ -82,7 +82,7 @@ real-time.
    :align: center
    :target: app.html
 
-.. rubric:: :doc:`FiftyOne Brain <brain>`
+:doc:`FiftyOne Brain <brain>`
 
 Use the FiftyOne Brain to automatically get insights into your |Dataset|
 
