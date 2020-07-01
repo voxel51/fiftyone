@@ -25,6 +25,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.metadata as fom
 
 
 class SampleParser(object):
@@ -559,6 +560,94 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
             labels = etai.ImageLabels.from_dict(labels)
 
         return fol.ImageLabels(labels=labels)
+
+
+class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
+    """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
+    images.
+
+    Args:
+        compute_metadata (False): whether to compute
+            :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
+            if :func:`get_image_metadata` is called and no metadata is
+            available
+    """
+
+    def __init__(self, compute_metadata=False):
+        super().__init__()
+        self.compute_metadata = compute_metadata
+
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    def get_image(self):
+        return etai.read(self.current_sample.filepath)
+
+    def get_image_path(self):
+        return self.current_sample.filepath
+
+    def get_image_metadata(self):
+        metadata = self.current_sample.metadata
+        if metadata is None and self.compute_metadata:
+            metadata = fom.ImageMetadata.build_for(
+                self.current_sample.filepath
+            )
+
+        return metadata
+
+
+class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
+    """Parser for :class:`fiftyone.core.sample.Sample` instances that contain
+    labeled images.
+
+    Args:
+        label_field: the name of the :class:`fiftyone.core.labels.Label` field
+            of the samples to parse
+        compute_metadata (False): whether to compute
+            :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
+            if :func:`get_image_metadata` is called and no metadata is
+            available
+    """
+
+    def __init__(self, label_field, compute_metadata=False):
+        super().__init__()
+        self.label_field = label_field
+        self.compute_metadata = compute_metadata
+
+    @property
+    def has_image_path(self):
+        return True
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Label
+
+    def get_image(self):
+        return etai.read(self.current_sample.filepath)
+
+    def get_image_path(self):
+        return self.current_sample.filepath
+
+    def get_image_metadata(self):
+        metadata = self.current_sample.metadata
+        if metadata is None and self.compute_metadata:
+            metadata = fom.ImageMetadata.build_for(
+                self.current_sample.filepath
+            )
+
+        return metadata
+
+    def get_label(self):
+        return self.current_sample[self.label_field]
 
 
 def _to_rel_bounding_box(tlx, tly, w, h, img):
