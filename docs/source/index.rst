@@ -1,16 +1,16 @@
 FiftyOne
 ========
 
-    "Data is king in the artificial intelligence world."
-    -- *Government Technology Magazine*
+    *"Rapidly experiment with your datasets"*
 
-If you are looking to boost your model performance, chances are improving
-dataset quality is going to provide the highest return on investment.
-**FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
-to help in creating valuable and diverse datasets. Work efficiently with
-FiftyOne to achieve better models with dependable performance.
+If you are looking to boost the performance of your machine learning models,
+chances are improving the quality of your dataset will provide the highest
+return on your investment. **Enter FiftyOne.** FiftyOne is a Python-based tool
+for the visual data scientist that enables you to create valuable and diverse
+datasets. Work efficiently with FiftyOne to achieve better models with
+dependable performance.
 
-    "Become one with the data." -- *Andrej Karpathy*
+    *"Become one with your data"*
 
 FiftyOne does more than improve your dataset; it gets you closer to your data.
 Rapidly gain insight by visualizing samples overlayed with with dynamic and
