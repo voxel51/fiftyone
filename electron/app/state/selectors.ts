@@ -110,7 +110,7 @@ export const currentIndex = selector({
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
     if (!!!prevLayout) return 0;
-    const { data, range } = prevLayout;
+    const { data } = prevLayout;
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
@@ -136,7 +136,7 @@ export const currentDisplacement = selector({
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
     if (!!!prevLayout) return 0;
-    const { data, range } = prevLayout;
+    const { data } = prevLayout;
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
@@ -151,7 +151,7 @@ export const currentDisplacement = selector({
       start = itemTop - margin;
       stop = start + height;
       if (start <= top && stop >= top) {
-        return (top - itemTop) / (height + margin);
+        return (top - start) / (height + margin);
       }
     }
   },
@@ -389,22 +389,23 @@ export const tilingThreshold = selectorFamily({
 
 export const itemRow = selectorFamily({
   key: "itemRow",
-  get: (startIndex, viewPortWidth, reverse) => ({ get }) => {
+  get: ({ startIndex, viewPortWidth, reverse }) => ({ get }) => {
     const count = get(viewCount);
     const threshold = get(tilingThreshold(viewPortWidth));
     let index = startIndex;
     let aspectRatio = 0;
     let data = [];
     let item;
-    while (index < count && aspectRatio < threshold) {
+    while (index >= 0 && index < count && aspectRatio < threshold) {
       item = get(itemIsLoaded(index))
         ? get(itemData(index))
         : get(baseItemData);
       aspectRatio += item.aspectRatio;
       item = { ...item, index };
-      data.push(item);
+      reverse ? data.unshift(item) : data.push(item);
       index = reverse ? index - 1 : index + 1;
     }
+
     return {
       data,
       aspectRatio,
@@ -437,7 +438,7 @@ export const currentLayout = selector({
     let resultEnd = index;
 
     while (layoutHeight < viewPortHeight * 1.5 && index < count) {
-      row = get(itemRow(index, viewPortWidth, false));
+      row = get(itemRow({ startIndex: index, viewPortWidth, reverse: false }));
       workingWidth = viewPortWidth - (row.data.length + 1) * margin;
       height = workingWidth / row.aspectRatio;
       if (index === start) {
@@ -465,13 +466,13 @@ export const currentLayout = selector({
       layoutHeight += margin + height;
       index += rowData.length;
       data.push(rowData);
-      resultEnd = index;
+      resultEnd = Math.min(index, count);
     }
 
     index = start - 1;
     currentTop = top - pixelDisplacement;
     while (layoutHeight < viewPortHeight * 2 && index >= 0) {
-      row = get(itemRow(index, viewPortWidth, true));
+      row = get(itemRow({ startIndex: index, viewPortWidth, reverse: true }));
       workingWidth = viewPortWidth - (row.data.length + 1) * margin;
       height = workingWidth / row.aspectRatio;
       currentTop -= height;
@@ -491,9 +492,9 @@ export const currentLayout = selector({
       }
       currentTop -= margin;
       layoutHeight += margin + height;
-      index += rowData.length;
+      index -= rowData.length;
       data.unshift(rowData);
-      resultStart = index;
+      resultStart = Math.max(index, 0);
     }
 
     return {
@@ -506,7 +507,8 @@ export const currentLayout = selector({
 export const currentItems = selector({
   key: "currentItems",
   get: ({ get }) => {
-    const { range } = get(currentLayout);
+    const { data, range } = get(currentLayout);
+    console.log(data, range);
     return [...Array(range[1] - range[0]).keys()].map((i) => i + range[0]);
   },
 });
@@ -514,7 +516,7 @@ export const currentItems = selector({
 export const itemsToRender = selector({
   key: "itemsToRender",
   get: ({ get }) => {
-    const { data } = get(currentLayout);
+    const { data, range } = get(currentLayout);
     const result = {};
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
