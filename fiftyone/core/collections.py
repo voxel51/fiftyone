@@ -147,14 +147,15 @@ class SampleCollection(object):
         Args:
             export_dir (None): the directory to which to export the samples in
                 format ``dataset_type``
-            dataset_type (None): the dataset type in which to export. Must be a
-                subclass of :class:`fiftyone.types.BaseDataset`. If not
-                specified, the default type for ``label_field`` is used
+            dataset_type (None): the dataset type to write. Must be a subclass
+                of :class:`fiftyone.types.BaseDataset`. If not specified, the
+                default type for ``label_field`` is used
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.DatasetExporter` to use to export
                 the samples
-            label_field (None): the name of the label field to export. If not
-                specified, the first field of compatible type for the specified
+            label_field (None): the name of the label field to export, if
+                applicable. If not specified and the requested output type is
+                a labeled dataset, the first field of compatible type for the
                 output format is used
             **kwargs: optional keyword arguments to pass to
                 ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
@@ -181,7 +182,9 @@ class SampleCollection(object):
             )
 
         # Export the dataset
-        foud.export_samples(self, dataset_exporter, label_field=label_field)
+        foud.export_samples(
+            self, dataset_exporter=dataset_exporter, label_field=label_field
+        )
 
     def to_dict(self):
         """Returns a JSON dictionary representation of the collection.
