@@ -301,9 +301,7 @@ class TFRecordSampleParser(foud.LabeledImageSampleParser):
         raise NotImplementedError("subclasses must implement _parse_label()")
 
 
-class TFImageClassificationSampleParser(
-    TFRecordSampleParser, foud.ImageClassificationSampleParser
-):
+class TFImageClassificationSampleParser(TFRecordSampleParser):
     """Parser for samples in TF image classification format.
 
     This implementation supports samples that are ``tf.train.Example`` protos
@@ -353,9 +351,7 @@ class TFImageClassificationSampleParser(
         return fol.Classification(label=label)
 
 
-class TFObjectDetectionSampleParser(
-    TFRecordSampleParser, foud.ImageDetectionSampleParser
-):
+class TFObjectDetectionSampleParser(TFRecordSampleParser):
     """Parser for samples in TF Object Detection API format.
 
     This implementation supports samples that are ``tf.train.Example`` protos

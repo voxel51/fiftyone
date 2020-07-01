@@ -287,8 +287,8 @@ class LabeledImageSampleParser(SampleParser):
 
 
 class LabeledImageTupleSampleParser(LabeledImageSampleParser):
-    """Sample parser that parses samples that are ``(image_or_path, label)``
-    tuples, where:
+    """Generic sample parser that parses samples that are
+    ``(image_or_path, label)`` tuples, where:
 
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
@@ -362,8 +362,8 @@ class LabeledImageTupleSampleParser(LabeledImageSampleParser):
 
 
 class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
-    """Parser for image classification samples whose labels are represented as
-    :class:`fiftyone.core.labels.Classification` instances.
+    """Generic parser for image classification samples whose labels are
+    represented as :class:`fiftyone.core.labels.Classification` instances.
 
     This implementation supports samples that are ``(image_or_path, target)``
     tuples, where:
@@ -410,8 +410,8 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
 
 
 class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
-    """Parser for image detection samples whose labels are represented as
-    :class:`fiftyone.core.labels.Detections` instances.
+    """Generic parser for image detection samples whose labels are represented
+    as :class:`fiftyone.core.labels.Detections` instances.
 
     This implementation supports samples that are
     ``(image_or_path, detections_or_path)`` tuples, where:
@@ -424,22 +424,22 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
 
             [
                 {
-                    "label": <target>,
-                    "bounding_box": [
+                    "<label_field>": <label-or-target>,
+                    "<bounding_box_field>": [
                         <top-left-x>, <top-left-y>, <width>, <height>
                     ],
-                    "confidence": <optional-confidence>,
+                    "<confidence_field>": <optional-confidence>,
                 },
                 ...
             ]
 
           or the path to such a file on disk.
 
-          In the above, ``target`` is either a class ID (if ``classes`` is
-          provided) or a label string, and the bounding box coordinates can
-          either be relative coordinates in ``[0, 1]``
+          In the above, ``label-or-target`` is either a class ID
+          (if ``classes`` is provided) or a label string, and the bounding box
+          coordinates can either be relative coordinates in ``[0, 1]``
           (if ``normalized == True``) or absolute pixels coordinates
-          (if ``normalized == False``). The ``confidence`` field is optional
+          (if ``normalized == False``). The confidence field is optional
           for each sample.
 
           The input field names can be configured as necessary when
@@ -450,8 +450,8 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
             target dicts
         bounding_box_field ("bounding_box"): the name of the bounding box field
             in the target dicts
-        confidence_field ("confidence"): the name of the optional confidence
-            field in the target dicts
+        confidence_field (None): the name of the optional confidence field in
+            the target dicts
         classes (None): an optional list of class label strings. If provided,
             it is assumed that the ``target`` values are class IDs that should
             be mapped to label strings via ``classes[target]``
@@ -464,7 +464,7 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         self,
         label_field="label",
         bounding_box_field="bounding_box",
-        confidence_field="confidence",
+        confidence_field=None,
         classes=None,
         normalized=True,
     ):
@@ -514,11 +514,18 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
 
         tlx, tly, w, h = obj[self.bounding_box_field]
         if not self.normalized:
-            tlx, tly, w, h = _to_rel_bounding_box(tlx, tly, w, h, img)
+            height, width = img.shape[:2]
+            tlx /= width
+            tly /= height
+            w /= width
+            h /= height
 
         bounding_box = [tlx, tly, w, h]
 
-        confidence = obj.get(self.confidence_field, None)
+        if self.confidence_field:
+            confidence = obj.get(self.confidence_field, None)
+        else:
+            confidence = None
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, confidence=confidence,
@@ -526,7 +533,7 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
 
 
 class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
-    """Parser for multitask image prediction samples whose labels are
+    """Generic parser for multitask image prediction samples whose labels are
     represented in :class:`fiftyone.core.labels.ImageLabels` format.
 
     This implementation provided by this class supports samples that are
@@ -560,6 +567,53 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
             labels = etai.ImageLabels.from_dict(labels)
 
         return fol.ImageLabels(labels=labels)
+
+
+class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
+    """Parser for samples in FiftyOne image classification datasets.
+
+    See :class:`fiftyone.types.FiftyOneImageClassificationDataset` for format
+    details.
+
+    Args:
+        classes (None): an optional list of class label strings. If provided,
+            it is assumed that ``target`` is a class ID that should be mapped
+            to a label string via ``classes[target]``
+    """
+
+    def __init__(self, classes=None):
+        super().__init__(classes=classes)
+
+
+class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
+    """Parser for samples in FiftyOne image detection datasets.
+
+    See :class:`fiftyone.types.FiftyOneImageDetectionDataset` for format
+    details.
+
+    Args:
+        classes (None): an optional list of class label strings. If provided,
+            it is assumed that the ``target`` values are class IDs that should
+            be mapped to label strings via ``classes[target]``
+    """
+
+    def __init__(self, classes=None):
+        super().__init__(
+            label_field="label",
+            bounding_box_field="bounding_box",
+            confidence_field="confidence",
+            classes=classes,
+            normalized=True,
+        )
+
+
+class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
+    """Parser for samples in FiftyOne image labels datasets.
+
+    See :class:`fiftyone.types.FiftyOneImageLabelsDataset` for format details.
+    """
+
+    pass
 
 
 class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
@@ -648,13 +702,3 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
 
     def get_label(self):
         return self.current_sample[self.label_field]
-
-
-def _to_rel_bounding_box(tlx, tly, w, h, img):
-    height, width = img.shape[:2]
-    return (
-        tlx / width,
-        tly / height,
-        w / width,
-        h / height,
-    )

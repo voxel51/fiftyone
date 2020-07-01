@@ -48,13 +48,13 @@ def convert_dataset(
 
     Args:
         input_dir (None): the input dataset directory
-        input_type (None): the type of the input dataset in ``input_dir``, a
-            subclass of :class:`fiftyone.types.BaseDataset`
+        input_type (None): the :class:`fiftyone.types.Dataset` type of the
+            dataset in ``input_dir``
         dataset_importer (None): a :class:`fiftyone.utils.data.DatasetImporter`
             to use to import the input dataset
         output_dir (None): the directory to which to write the output dataset
-        output_type (None): the type of output dataset to write to
-            ``output_dir``, a subclass of :class:`fiftyone.types.BaseDataset`
+        output_type (None): the :class:`fiftyone.types.Dataset` type to write
+            to ``output_dir``
         dataset_exporter (None): a :class:`fiftyone.utils.data.DatasetExporter`
             to use to export the dataset
     """

@@ -256,10 +256,7 @@ class ConvertCommand(Command):
         parser.add_argument(
             "--input-type",
             metavar="INPUT_TYPE",
-            help=(
-                "the type of the input dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the input dataset",
         )
         parser.add_argument(
             "--output-dir",
@@ -269,10 +266,7 @@ class ConvertCommand(Command):
         parser.add_argument(
             "--output-type",
             metavar="OUTPUT_TYPE",
-            help=(
-                "the desired output dataset type (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type to output",
         )
 
     @staticmethod
@@ -390,10 +384,7 @@ class DatasetsCreateCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the type of the dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the dataset",
         )
 
     @staticmethod
@@ -568,10 +559,7 @@ class DatasetsExportCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the format in which to export the dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type in which to export",
         )
 
     @staticmethod
@@ -723,10 +711,7 @@ class DashboardViewCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the dataset type (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the dataset",
         )
         parser.add_argument(
             "-z",

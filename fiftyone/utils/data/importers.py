@@ -30,9 +30,10 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 
 from .parsers import (
+    FiftyOneImageClassificationSampleParser,
+    FiftyOneImageDetectionSampleParser,
+    FiftyOneImageLabelsSampleParser,
     ImageClassificationSampleParser,
-    ImageDetectionSampleParser,
-    ImageLabelsSampleParser,
 )
 
 
@@ -249,10 +250,12 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
         self._filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
 
 
-class ImageClassificationDatasetImporter(LabeledImageDatasetImporter):
-    """Importer for image classification datasets stored on disk.
+class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
+    """Importer for image classification datasets stored on disk in FiftyOne's
+    default format.
 
-    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
+    See :class:`fiftyone.types.FiftyOneImageClassificationDataset` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -300,7 +303,7 @@ class ImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         return fol.Classification
 
     def setup(self):
-        self._sample_parser = ImageClassificationSampleParser()
+        self._sample_parser = FiftyOneImageClassificationSampleParser()
 
         data_dir = os.path.join(self.dataset_dir, "data")
         self._image_paths_map = {
@@ -378,10 +381,12 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
             self._samples.append((path, label))
 
 
-class ImageDetectionDatasetImporter(LabeledImageDatasetImporter):
-    """Importer for image detection datasets stored on disk.
+class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
+    """Importer for image detection datasets stored on disk in FiftyOne's
+    default format.
 
-    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+    See :class:`fiftyone.types.FiftyOneImageDetectionDataset` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -429,7 +434,7 @@ class ImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         return fol.Detections
 
     def setup(self):
-        self._sample_parser = ImageDetectionSampleParser()
+        self._sample_parser = FiftyOneImageDetectionSampleParser()
 
         data_dir = os.path.join(self.dataset_dir, "data")
         self._image_paths_map = {
@@ -444,10 +449,11 @@ class ImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         self._num_samples = len(self._labels)
 
 
-class ImageLabelsDatasetImporter(LabeledImageDatasetImporter):
-    """Importer for image labels datasets stored on disk.
+class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
+    """Importer for image labels datasets stored on disk in FiftyOne's default
+    format.
 
-    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+    See :class:`fiftyone.types.FiftyOneImageLabelsDataset` for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -496,5 +502,5 @@ class ImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         return fol.ImageLabels
 
     def setup(self):
-        self._sample_parser = ImageLabelsSampleParser()
+        self._sample_parser = FiftyOneImageLabelsSampleParser()
         self._labeled_dataset = etads.load_dataset(self.dataset_dir)

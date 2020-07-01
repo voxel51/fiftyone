@@ -59,8 +59,7 @@ def write_dataset(
             parse the samples
         dataset_dir (None): the directory to which to write the dataset in
             format ``dataset_type``
-        dataset_type (None): the dataset type to write. Must be a subclass of
-            :class:`fiftyone.types.BaseDataset`
+        dataset_type (None): the :class:`fiftyone.types.Dataset` type to write
         dataset_exporter (None): a
             :class:`fiftyone.utils.data.DatasetExporter` to use to write the
             dataset
@@ -74,8 +73,7 @@ def write_dataset(
             dataset_type = dataset_type()
 
         if not isinstance(
-            dataset_type,
-            (fot.BaseUnlabeledImageDataset, fot.BaseLabeledImageDataset),
+            dataset_type, (fot.UnlabeledImageDataset, fot.LabeledImageDataset),
         ):
             raise ValueError(
                 "Unsupported `dataset_type` %s" % type(dataset_type)
@@ -156,8 +154,7 @@ def export_samples(
             or a :class:`fifyone.core.view.DatasetView`
         export_dir (None): the directory to which to export the samples in
             format ``dataset_type``
-        dataset_type (None): the dataset type to write. Must be a subclass of
-            :class:`fiftyone.types.BaseDataset`
+        dataset_type (None): the :class:`fiftyone.types.Dataset` type to write
         dataset_exporter (None): a
             :class:`fiftyone.utils.data.DatasetExporter` to use to write the
             dataset
@@ -174,8 +171,7 @@ def export_samples(
             dataset_type = dataset_type()
 
         if not isinstance(
-            dataset_type,
-            (fot.BaseUnlabeledImageDataset, fot.BaseLabeledImageDataset),
+            dataset_type, (fot.UnlabeledImageDataset, fot.LabeledImageDataset),
         ):
             raise ValueError(
                 "Unsupported `dataset_type` %s" % type(dataset_type)
@@ -434,10 +430,12 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
         )
 
 
-class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
-    """Exporter that writes an image classification dataset to disk.
+class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image classification dataset to disk in
+    FiftyOne's default format.
 
-    See :class:`fiftyone.types.ImageClassificationDataset` for format details.
+    See :class:`fiftyone.types.FiftyOneImageClassificationDataset` for format
+    details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -575,10 +573,12 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
             etai.write(img, out_image_path)
 
 
-class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
-    """Exporter that writes an image detection dataset to disk.
+class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image detection dataset to disk in FiftyOne's
+    default format.
 
-    See :class:`fiftyone.types.ImageDetectionDataset` for format details.
+    See :class:`fiftyone.types.FiftyOneImageDetectionDataset` for format
+    details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -641,10 +641,11 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         etas.write_json(labels, self._labels_path)
 
 
-class ImageLabelsDatasetExporter(LabeledImageDatasetExporter):
-    """Exporter that writes an image labels dataset to disk.
+class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image labels dataset to disk in FiftyOne's
+    default format.
 
-    See :class:`fiftyone.types.ImageLabelsDataset` for format details.
+    See :class:`fiftyone.types.FiftyOneImageLabelsDataset` for format details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict

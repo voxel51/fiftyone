@@ -147,9 +147,9 @@ class SampleCollection(object):
         Args:
             export_dir (None): the directory to which to export the samples in
                 format ``dataset_type``
-            dataset_type (None): the dataset type to write. Must be a subclass
-                of :class:`fiftyone.types.BaseDataset`. If not specified, the
-                default type for ``label_field`` is used
+            dataset_type (None): the :class:`fiftyone.types.Dataset` type to
+                write. If not specified, the default type for ``label_field``
+                is used
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.DatasetExporter` to use to export
                 the samples
@@ -231,13 +231,13 @@ def _get_default_dataset_type(sample_collection, label_field):
     label = sample[label_field]
 
     if isinstance(label, fol.Classification):
-        return fot.ImageClassificationDataset()
+        return fot.FiftyOneImageClassificationDataset()
 
     if isinstance(label, fol.Detections):
-        return fot.ImageDetectionDataset()
+        return fot.FiftyOneImageDetectionDataset()
 
     if isinstance(label, fol.ImageLabels):
-        return fot.ImageLabelsDataset()
+        return fot.FiftyOneImageLabelsDataset()
 
     raise ValueError("Unsupported label type %s" % type(label))
 
