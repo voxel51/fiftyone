@@ -11,6 +11,12 @@ body {
   margin: unset;
 }
 
+.pytorch-left-menu a:link,
+.pytorch-left-menu a:visited,
+ul.pytorch-breadcrumbs li {
+  font-size: inherit; /* larger */
+}
+
 article.pytorch-article pre {
   margin-bottom: 1rem;
 }
