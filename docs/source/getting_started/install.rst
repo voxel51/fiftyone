@@ -139,8 +139,6 @@ dealing with virtual environments frequently:
 Installing FiftyOne
 -------------------
 
-.. _token_note:
-
 .. note::
 
   FiftyOne is currently in private beta. If you have registered, your FiftyOne
@@ -213,7 +211,7 @@ Upgrading FiftyOne
 ------------------
 
 Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
-upgrade an existing FiftyOne installation (see `token_note`):
+upgrade an existing FiftyOne installation:
 
 .. code-block:: shell
 
