@@ -10,12 +10,13 @@ import {
   mainSize,
   previousMainSize,
   liveTop,
+  previousLayout,
 } from "../../state/atoms";
 import { useTrackMousePosition, useResizeObserver } from "../../state/hooks";
 import {
   segmentsToRender,
-  currentListTopRange,
   currentListHeight,
+  currentLayout,
 } from "../../state/selectors";
 
 import Segment from "./Segment";
@@ -62,6 +63,8 @@ export default () => {
   const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
   const setLiveTop = useSetRecoilState(liveTop);
   const setViewCount = useSetRecoilState(viewCount);
+  const currentLayoutValue = useRecoilValue(currentLayout);
+  const setPreviousLayout = useSetRecoilState(previousLayout);
 
   const [ref, { contentRect }] = useResizeObserver();
   useTrackMousePosition();
@@ -94,7 +97,7 @@ export default () => {
           ref={ref}
           onScroll={(e) => {
             setLiveTop(e.target.scrollTop);
-            setPreviousMainSize(mainSize);
+            setPreviousLayout(currentLayoutValue);
           }}
         >
           <ListContainer style={{ height: currentListHeightValue }}>

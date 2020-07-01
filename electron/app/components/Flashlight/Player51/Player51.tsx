@@ -103,7 +103,9 @@ const LoadingThumbnail = ({ index }) => {
     background: ci === index ? "#000" : "#ccc",
   });
 
-  return <LoadingThumbnailDiv style={{ ...props }} />;
+  return (
+    <LoadingThumbnailDiv style={{ ...props }}>{index}</LoadingThumbnailDiv>
+  );
 };
 
 const ThumbnailContainer = ({ index }) => {

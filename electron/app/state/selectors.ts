@@ -110,19 +110,20 @@ export const currentIndex = selector({
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
     if (!!!prevLayout) return 0;
+    const { data, range } = prevLayout;
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
-    let outOfBounds = prevLayout[prevLayout.length - 1][0] < top;
-    outOfBounds = outOfBounds && prevLayout[0][0] > top;
+    let outOfBounds = data[data.length - 1][0] < top;
+    outOfBounds = outOfBounds && data[0][0] > top;
     if (outOfBounds) {
       return get(indexFromTop(top, viewPortWidth));
     }
     let start, stop;
-    for (let i = 0; i < prevLayout.length; i++) {
-      const { top: itemTop, height, index } = prevLayout[i][0];
-      start = itemTop;
-      stop = itemTop + (height + margin);
+    for (let i = 0; i < data.length; i++) {
+      const { top: itemTop, height, index } = data[i][0];
+      start = itemTop - margin;
+      stop = start + height;
       if (start <= top && stop >= top) {
         return index;
       }
@@ -135,19 +136,20 @@ export const currentDisplacement = selector({
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
     if (!!!prevLayout) return 0;
+    const { data, range } = prevLayout;
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
     const margin = get(gridMargin);
-    let outOfBounds = prevLayout[prevLayout.length - 1][0] < top;
-    outOfBounds = outOfBounds && prevLayout[0][0] > top;
+    let outOfBounds = data[data.length - 1][0] < top;
+    outOfBounds = outOfBounds && data[0][0] > top;
     if (outOfBounds) {
       return get(displacementFromTop(top, viewPortWidth));
     }
     let start, stop;
-    for (let i = 0; i < prevLayout.length; i++) {
-      const { top: itemTop, height } = prevLayout[i][0];
-      start = itemTop;
-      stop = itemTop + (height + margin);
+    for (let i = 0; i < data.length; i++) {
+      const { top: itemTop, height } = data[i][0];
+      start = itemTop - margin;
+      stop = start + height;
       if (start <= top && stop >= top) {
         return (top - itemTop) / (height + margin);
       }
@@ -433,6 +435,7 @@ export const currentLayout = selector({
     let pixelDisplacement;
     let resultStart = index;
     let resultEnd = index;
+
     while (layoutHeight < viewPortHeight * 1.5 && index < count) {
       row = get(itemRow(index, viewPortWidth, false));
       workingWidth = viewPortWidth - (row.data.length + 1) * margin;
