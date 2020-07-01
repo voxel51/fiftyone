@@ -45,7 +45,6 @@ export const Container = ({ children }) => {
     requestAnimationFrame(() => {
       setIsMainWidthResizing(width !== mainSizeValue[0]);
       setMainSize([width, height]);
-      setMainPreviousWidth(mainSizeValue[0]);
       setMainTop(top);
       !mainLoadedValue && setMainLoaded(true);
       if (timeout) clearTimeout(timeout);

@@ -11,8 +11,6 @@ import {
   current,
 } from "../../../state/atoms";
 import {
-  itemBasePosition,
-  itemBaseSize,
   itemSize,
   itemPosition,
   itemData,

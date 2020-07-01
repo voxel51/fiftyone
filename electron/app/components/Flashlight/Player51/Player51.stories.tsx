@@ -1,6 +1,7 @@
 import React from "react";
-import styled from "styled-components";
+import { useRecoilValue } from "recoil";
 
+import { itemLayout, itemsToRender } from "../../../state/selectors";
 import Thumbnail from "./Player51";
 import { Container } from "../utils";
 
@@ -9,8 +10,14 @@ export default {
   title: "Flashlight/Player51/Thumbnail",
 };
 
-export const thumbnail = () => (
+const TestThumbnail = () => {
+  if (!useRecoilValue(itemsToRender)[0]) return null;
+
+  return <Thumbnail index={0} />;
+};
+
+export const container = () => (
   <Container>
-    <Thumbnail index={0} />
+    <TestThumbnail />
   </Container>
 );
