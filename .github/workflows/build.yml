@@ -10,7 +10,7 @@ on:
     tags:
       - v*
   pull_request:
-    types: [synchronize, ready_for_review]
+    types: [opened, synchronize, ready_for_review]
     branches:
       - develop
       - rel-*
