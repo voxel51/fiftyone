@@ -1,6 +1,6 @@
 import React, { useState, useLayoutEffect, useRef, useEffect } from "react";
 import styled from "styled-components";
-import { useSpring, useSprings, animated } from "react-spring";
+import { useSpring, useSprings, animated, interpolate } from "react-spring";
 import { useRecoilValue } from "recoil";
 
 import "../../../app.global.css";
@@ -37,11 +37,15 @@ const IndexIndicator = () => {
     currentIndexIndicatorTop
   );
 
-  const props = useSpring({
-    top: currentIndexIndicatorTopValue,
+  const { y } = useSpring({
+    y: currentIndexIndicatorTopValue,
   });
 
-  return <IndexIndicatorDiv style={props} />;
+  return (
+    <IndexIndicatorDiv
+      style={{ transform: interpolate([y], (y) => `translate3d(0,${y}px,0)`) }}
+    />
+  );
 };
 
 export default function () {
@@ -52,14 +56,19 @@ export default function () {
   const springs = useSprings(
     ticksValue.length,
     ticksValue.map((s) => ({
-      top: Math.max(32, (s / (viewCountValue - 1)) * (mh - 35) + 32),
+      y: Math.max(32, (s / (viewCountValue - 1)) * (mh - 35) + 32),
     }))
   );
 
   return (
     <Scrubber>
-      {springs.map((props, index) => (
-        <SectionTick key={index} style={props} />
+      {springs.map(({ y }, index) => (
+        <SectionTick
+          key={index}
+          style={{
+            transform: interpolate([y], (y) => `translate3d(0,${y}px,0)`),
+          }}
+        />
       ))}
       <IndexIndicator />
       <Indicator />

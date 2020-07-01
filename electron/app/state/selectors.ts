@@ -195,7 +195,7 @@ export const ticks = selector({
       const breakpoint = breakpoints[i];
       numTicks = Math.ceil(vc / Math.pow(10, i + 1));
       tickSize = Math.pow(10, i + 1);
-      if (vc < breakpoint) break;
+      if (vc <= breakpoint) break;
     }
     return [...Array(numTicks).keys()].map((i) => i * tickSize);
   },

@@ -75,14 +75,7 @@ const Thumbnail = ({ index }) => {
     <ThumbnailDiv style={position}>
       {show.map(
         ({ item, key, props }) =>
-          item && (
-            <Img
-              className={`ind-${index}`}
-              key={key}
-              src={itemSourceValue}
-              style={props}
-            />
-          )
+          item && <Img key={key} src={itemSourceValue} style={props} />
       )}
     </ThumbnailDiv>
   );
