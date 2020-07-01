@@ -19,6 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
+import inspect
 import os
 
 import eta.core.datasets as etad
@@ -32,52 +33,223 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
 
-def export_samples(samples, exporter, label_field=None):
-    """Exports the given samples to disk as a dataset using the provided
-    exporter.
+def write_dataset(
+    samples,
+    sample_parser,
+    dataset_dir=None,
+    dataset_type=None,
+    dataset_exporter=None,
+    num_samples=None,
+    **kwargs
+):
+    """Writes the samples to disk as a dataset in the specified format.
+
+    Provide either ``dataset_dir`` and ``dataset_type`` or ``dataset_exporter``
+    to perform the write.
+
+    Args:
+        samples: an iterable of samples
+        sample_parser: a :class:`fiftyone.utils.data.SampleParser` to use to
+            parse the samples
+        dataset_dir (None): the directory to which to write the dataset in
+            format ``dataset_type``
+        dataset_type (None): the dataset type to write. Must be a subclass of
+            :class:`fiftyone.types.BaseDataset`
+        dataset_exporter (None): a
+            :class:`fiftyone.utils.data.DatasetExporter` to use to write the
+            dataset
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            this is computed (if possible) via ``len(samples)``
+        **kwargs: optional keyword arguments to pass to
+            ``dataset_type.get_dataset_exporter_cls(dataset_dir, **kwargs)``
+    """
+    if dataset_type is not None and inspect.isclass(dataset_type):
+        dataset_type = dataset_type()
+
+    if dataset_exporter is None:
+        dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
+        dataset_exporter = dataset_exporter_cls(dataset_dir, **kwargs)
+
+    if num_samples is None:
+        try:
+            num_samples = len(samples)
+        except:
+            pass
+
+    if isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
+        _write_unlabeled_image_dataset(
+            samples, num_samples, sample_parser, dataset_exporter
+        )
+    elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
+        _write_labeled_image_dataset(
+            samples, num_samples, sample_parser, dataset_exporter
+        )
+    else:
+        raise ValueError(
+            "Unsupported DatasetExporter type %s" % type(dataset_exporter)
+        )
+
+
+def _write_unlabeled_image_dataset(
+    samples, num_samples, sample_parser, dataset_exporter
+):
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
+            for sample in pb(samples):
+                sample_parser.with_sample(sample)
+
+                if sample_parser.has_image_path:
+                    try:
+                        image_or_path = sample_parser.get_image_path()
+                    except:
+                        image_or_path = sample_parser.get_image()
+                else:
+                    image_or_path = sample_parser.get_image()
+
+                if dataset_exporter.requires_image_metadata:
+                    if sample_parser.has_image_metadata:
+                        metadata = sample_parser.get_image_metadata()
+                    else:
+                        metadata = None
+
+                    if metadata is None:
+                        metadata = fom.ImageMetadata.build_for(image_or_path)
+                else:
+                    metadata = None
+
+                dataset_exporter.export_sample(
+                    image_or_path, metadata=metadata
+                )
+
+
+def _write_labeled_image_dataset(
+    samples, num_samples, sample_parser, dataset_exporter
+):
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
+            for sample in pb(samples):
+                sample_parser.with_sample(sample)
+
+                if sample_parser.has_image_path:
+                    try:
+                        image_or_path = sample_parser.get_image_path()
+                    except:
+                        image_or_path = sample_parser.get_image()
+                else:
+                    image_or_path = sample_parser.get_image()
+
+                label = sample_parser.get_label()
+
+                if dataset_exporter.requires_image_metadata:
+                    if sample_parser.has_image_metadata:
+                        metadata = sample_parser.get_image_metadata()
+                    else:
+                        metadata = None
+
+                    if metadata is None:
+                        metadata = fom.ImageMetadata.build_for(image_or_path)
+                else:
+                    metadata = None
+
+                dataset_exporter.export_sample(
+                    image_or_path, label, metadata=metadata
+                )
+
+
+def export_samples(
+    samples,
+    export_dir=None,
+    dataset_type=None,
+    dataset_exporter=None,
+    label_field=None,
+    num_samples=None,
+    **kwargs
+):
+    """Exports the given samples to disk as a dataset in the specified format.
+
+    Provide either ``export_dir`` and ``dataset_type`` or ``dataset_exporter``
+    to perform the export.
 
     Args:
         samples: an iterable of :class:`fiftyone.core.sample.Sample` instances.
             For example, this may be a :class:`fiftyone.core.dataset.Dataset`
             or a :class:`fifyone.core.view.DatasetView`
-        exporter: a :class:`DatasetExporter`
+        export_dir (None): the directory to which to export the samples in
+            format ``dataset_type``
+        dataset_type (None): the dataset type to write. Must be a subclass of
+            :class:`fiftyone.types.BaseDataset`
+        dataset_exporter (None): a
+            :class:`fiftyone.utils.data.DatasetExporter` to use to write the
+            dataset
         label_field (None): the name of the label field to export, which is
-            required if ``exporter`` is a :class:`LabeledImageDatasetExporter`
+            required if ``dataset_exporter`` is a
+            :class:`LabeledImageDatasetExporter`
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            this is computed (if possible) via ``len(samples)``
+        **kwargs: optional keyword arguments to pass to
+            ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
     """
-    if isinstance(exporter, UnlabeledImageDatasetExporter):
-        _export_unlabeled_image_dataset(samples, exporter)
-    elif isinstance(exporter, LabeledImageDatasetExporter):
-        _export_labeled_image_dataset(samples, exporter, label_field)
+    if dataset_type is not None and inspect.isclass(dataset_type):
+        dataset_type = dataset_type()
+
+    if dataset_exporter is None:
+        dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
+        dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
+
+    if num_samples is None:
+        try:
+            num_samples = len(samples)
+        except:
+            pass
+
+    if isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
+        _export_unlabeled_image_dataset(samples, num_samples, dataset_exporter)
+    elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
+        _export_labeled_image_dataset(
+            samples, num_samples, dataset_exporter, label_field
+        )
     else:
-        raise ValueError("Unsupported exporter type %s" % type(exporter))
+        raise ValueError(
+            "Unsupported DatasetExporter type %s" % type(dataset_exporter)
+        )
 
 
-def _export_unlabeled_image_dataset(samples, exporter):
-    with fou.ProgressBar() as pb:
-        with exporter:
+def _export_unlabeled_image_dataset(samples, num_samples, dataset_exporter):
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
             for sample in pb(samples):
                 image_path = sample.filepath
 
                 metadata = sample.metadata
-                if metadata is None and exporter.requires_image_metadata:
+                if (
+                    metadata is None
+                    and dataset_exporter.requires_image_metadata
+                ):
                     metadata = fom.ImageMetadata.build_for(image_path)
 
-                exporter.export_sample(image_path, metadata=metadata)
+                dataset_exporter.export_sample(image_path, metadata=metadata)
 
 
-def _export_labeled_image_dataset(samples, exporter, label_field):
-    with fou.ProgressBar() as pb:
-        with exporter:
+def _export_labeled_image_dataset(
+    samples, num_samples, dataset_exporter, label_field
+):
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
             for sample in pb(samples):
                 image_path = sample.filepath
 
                 metadata = sample.metadata
-                if metadata is None and exporter.requires_image_metadata:
+                if (
+                    metadata is None
+                    and dataset_exporter.requires_image_metadata
+                ):
                     metadata = fom.ImageMetadata.build_for(image_path)
 
                 label = sample[label_field]
 
-                exporter.export_sample(image_path, label, metadata=metadata)
+                dataset_exporter.export_sample(
+                    image_path, label, metadata=metadata
+                )
 
 
 class DatasetExporter(object):
