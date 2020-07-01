@@ -20,7 +20,7 @@ Options:
 # Parse flags
 SHOW_HELP=false
 CLEAN_BUILD=false
-while getopts "hc" FLAG; do
+while getopts "hcb:" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
         c) CLEAN_BUILD=true ;;
@@ -31,8 +31,13 @@ done
 
 
 set -e
+
 export FIFTYONE_HEADLESS=1
+
 THIS_DIR=$(dirname "$0")
+FIFTYONE_BRAIN_DIR=$( \
+    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))" \
+)
 
 
 if [[ ${CLEAN_BUILD} = true ]]; then
@@ -44,13 +49,23 @@ fi
 
 echo "**** Generating documentation ****"
 
-# sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 cd "${THIS_DIR}/.."
-sphinx-apidoc -f --no-toc -o docs/source/api fiftyone
 
-# sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
+# Symlink to fiftyone-brain
+ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
+
+# Generate API docs
+# sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
+sphinx-apidoc -fl --no-toc -o docs/source/api fiftyone
+
+# Remove symlink
+rm fiftyone/brain
+
 cd docs
-sphinx-build -M html source build $SPHINXOPTS  # unquoted to allow multiple args
+
+# Build docs
+# sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
+sphinx-build -M html source build $SPHINXOPTS
 
 echo "**** Documentation complete ****"
 printf "To view the docs, open:\n\ndocs/build/html/index.html\n\n"

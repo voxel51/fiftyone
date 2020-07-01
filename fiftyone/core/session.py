@@ -1,5 +1,5 @@
 """
-Session class for interacting with the FiftyOne Dashboard.
+Session class for interacting with the FiftyOne App.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -31,16 +31,16 @@ logger = logging.getLogger(__name__)
 session = None
 
 
-def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
-    """Launches the FiftyOne Dashboard.
+def launch_app(dataset=None, view=None, port=5151, remote=False):
+    """Launches the FiftyOne App.
 
-    Only one dashboard instance can be opened at a time. If this method is
-    called when another dashboard exists, the existing dashboard is closed.
+    Only one app instance can be opened at a time. If this method is
+    called when another app exists, the existing app is closed.
 
     Args:
-        dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
+        dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
-        view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
         port (5151): the port number of the server
         remote (False): whether this is a remote session
@@ -50,7 +50,7 @@ def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
     """
     global session  # pylint: disable=global-statement
     #
-    # Note, we always `close_dashboard()` here rather than just calling
+    # Note, we always `close_app()` here rather than just calling
     # `session.open()` if a session already exists, because the app may have
     # been closed in some way other than `session.close()` --- e.g., the user
     # closing the GUI --- in which case the underlying Electron process may
@@ -59,16 +59,16 @@ def launch_dashboard(dataset=None, view=None, port=5151, remote=False):
     #
     # @todo this can probably be improved
     #
-    close_dashboard()
+    close_app()
 
     session = Session(dataset=dataset, view=view, port=port, remote=remote)
 
     return session
 
 
-def close_dashboard():
-    """Closes the FiftyOne Dashboard, if necessary.
-    If no dashboard is currently open, this method has no effect.
+def close_app():
+    """Closes the FiftyOne App, if necessary.
+    If no app is currently open, this method has no effect.
     """
     global session  # pylint: disable=global-statement
 
@@ -87,14 +87,14 @@ def _update_state(func):
 
 
 class Session(foc.HasClient):
-    """Session that maintains a 1-1 shared state with the FiftyOne Dashboard.
+    """Session that maintains a 1-1 shared state with the FiftyOne App.
 
     **Basic Usage**
 
-    -   Use :func:`launch_dashboard` to launch the dashboard and retrieve its
+    -   Use :func:`launch_app` to launch the app and retrieve its
         corresponding :class:`Session` instance.
 
-    -   To open a dataset in the dashboard, simply set the
+    -   To open a dataset in the app, simply set the
         :attr:`Session.dataset` property of the session to your
         :class:`fiftyone.core.dataset.Dataset`.
 
@@ -103,21 +103,21 @@ class Session(foc.HasClient):
         :class:`fiftyone.core.view.DatasetView`.
 
     -   Use :attr:`Session.selected` to retrieve the IDs of the currently
-        selected samples in the dashboard.
+        selected samples in the app.
 
     -   Use :func:`Session.close` and :func:`Session.open` to temporarily close
-        and reopen the dashboard without creating a new :class:`Session`
+        and reopen the app without creating a new :class:`Session`
         instance.
 
-    -   Use :func:`close_dashboard` to programmatically close the dashboard and
-        teriminate the session.
+    -   Use :func:`close_app` to programmatically close the app and
+        terminate the session.
 
     Note that only one session instance can exist at any time.
 
     Args:
-        dataset (None): an optionl :class:`fiftyone.core.dataset.Dataset` to
+        dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
-        view (None): an optionl :class:`fiftyone.core.view.DatasetView` to
+        view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
         port (5151): the port to use to connect the FiftyOne app.
         remote (False): whether this is a remote session. Remote sessions do
@@ -147,7 +147,7 @@ class Session(foc.HasClient):
 
         if not self._remote:
             self._app_service = fos.AppService()
-            logger.info("Dashboard launched")
+            logger.info("App launched")
         else:
             logger.info(
                 _REMOTE_INSTRUCTIONS.strip()
@@ -210,7 +210,7 @@ class Session(foc.HasClient):
     def open(self):
         """Opens the session.
 
-        This opens the FiftyOne Dashboard, if necessary.
+        This opens the FiftyOne App, if necessary.
         """
         if self._remote:
             raise ValueError("Remote sessions cannot launch the FiftyOne app")
@@ -220,7 +220,7 @@ class Session(foc.HasClient):
     def close(self):
         """Closes the session.
 
-        This terminates the FiftyOne Dashboard, if necessary.
+        This terminates the FiftyOne App, if necessary.
         """
         if self._remote:
             return
@@ -248,16 +248,16 @@ class Session(foc.HasClient):
 
 
 _REMOTE_INSTRUCTIONS = """
-You have launched a remote dashboard on port %d. To connect to this dashboard
+You have launched a remote app on port %d. To connect to this app
 from another machine, issue the following command:
 
-fiftyone dashboard connect --destination [<username>@]<hostname> --port %d
+fiftyone app connect --destination [<username>@]<hostname> --port %d
 
 where `[<username>@]<hostname>` refers to your current machine. Alternatively,
 you can manually configure port forwarding on another machine as follows:
 
 ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
 
-and then connect to the dashboard on that machine using either
-`fiftyone dashboard connect` or from Python via `fiftyone.launch_dashboard()`.
+and then connect to the app on that machine using either
+`fiftyone app connect` or from Python via `fiftyone.launch_app()`.
 """
