@@ -783,11 +783,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.UnlabeledImageDatasetIngestor(
-            dataset_dir,
-            samples,
-            sample_parser,
-            offset=len(self),
-            image_format=image_format,
+            dataset_dir, samples, sample_parser, image_format=image_format,
         )
 
         return self.add_importer(dataset_ingestor, tags=tags)
@@ -830,11 +826,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir,
-            samples,
-            sample_parser,
-            offset=len(self),
-            image_format=image_format,
+            dataset_dir, samples, sample_parser, image_format=image_format,
         )
 
         return self.add_importer(
