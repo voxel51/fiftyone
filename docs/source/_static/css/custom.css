@@ -11,6 +11,12 @@ body {
   margin: unset;
 }
 
+.pytorch-left-menu a:link,
+.pytorch-left-menu a:visited,
+ul.pytorch-breadcrumbs li {
+  font-size: inherit; /* larger */
+}
+
 article.pytorch-article pre {
   margin-bottom: 1rem;
 }
@@ -62,6 +68,7 @@ table.highlighttable td.linenos pre {
 
 table.highlighttable td.code {
   padding-left: 0;
+  width: 100%;
 }
 
 table.highlighttable td.code pre {
