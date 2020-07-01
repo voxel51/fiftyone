@@ -13,8 +13,12 @@ body {
 
 .pytorch-left-menu a:link,
 .pytorch-left-menu a:visited,
+.pytorch-right-menu a:link,
+.pytorch-right-menu a:visited,
+.pytorch-right-menu a:hover,
+.pytorch-shortcuts-wrapper,
 ul.pytorch-breadcrumbs li {
-  font-size: inherit; /* larger */
+  font-size: 15px;
 }
 
 article.pytorch-article pre {
