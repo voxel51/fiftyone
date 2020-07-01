@@ -139,21 +139,24 @@ dealing with virtual environments frequently:
 Installing FiftyOne
 -------------------
 
+.. _token_note:
+
+.. note::
+
+  FiftyOne is currently in private beta. If you have registered, your FiftyOne
+  Beta welcome email contains a token that you will need to run commands in
+  this document. Replace all instances of ``YOUR_TOKEN`` below with your token.
+
+  If you haven't registered for the FiftyOne Beta, you can sign up at
+  https://voxel51.com/fiftyone/#beta
+
 To install FiftyOne in a virtual environment, ensure that the virtual
 environment is active as described in the previous section, and then run the
 command below:
 
-.. tabs::
+.. code-block:: shell
 
-  .. group-tab:: Private Beta
-
-    .. code-block:: text
-
-        FiftyOne is currently in private beta. If you have registered, check
-        your FiftyOne Beta welcome email to find this command.
-
-        If you haven't registered for the FiftyOne Beta, you can sign up at
-        https://voxel51.com/fiftyone/#beta
+   pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
@@ -210,19 +213,11 @@ Upgrading FiftyOne
 ------------------
 
 Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
-upgrade an existing FiftyOne installation:
+upgrade an existing FiftyOne installation (see `token_note`):
 
-.. tabs::
+.. code-block:: shell
 
-  .. group-tab:: Private Beta
-
-    .. code-block:: text
-
-        FiftyOne is currently in private beta. If you have registered, check
-        your FiftyOne Beta welcome email to find this command.
-
-        If you haven't registered for the FiftyOne Beta, you can sign up at
-        https://voxel51.com/fiftyone/#beta
+   pip install --index https://YOUR_TOKEN@pypi.voxel51.com --upgrade fiftyone
 
 Uninstalling FiftyOne
 ---------------------
@@ -255,15 +250,17 @@ these packages must be installed *after* the `fiftyone` package; if you install
 
 .. tabs::
 
-  .. group-tab:: Private Beta
+  .. tab:: Ubuntu 16.04
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        FiftyOne is currently in private beta. If you have registered, check
-        your FiftyOne Beta welcome email to find this command.
+      pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone-db-ubuntu1604
 
-        If you haven't registered for the FiftyOne Beta, you can sign up at
-        https://voxel51.com/fiftyone/#beta
+  .. tab:: Debian 9
+
+    .. code-block:: shell
+
+      pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone-db-debian9
 
 Manual installation
 ~~~~~~~~~~~~~~~~~~~
