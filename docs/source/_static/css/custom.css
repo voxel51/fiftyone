@@ -79,6 +79,10 @@ table.highlighttable td.code pre {
   margin: auto;
 }
 
+article.pytorch-article .reference.download.internal {
+  display: unset;
+}
+
 /* voxel51-website.css overrides */
 
 .nav__main {

@@ -246,7 +246,7 @@ class AppService(Service):
                 args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
             elif os.path.isfile("FiftyOne.exe"):
                 # Windows
-                args = ["FiftyOne.exe"]
+                args = ["./FiftyOne.exe"]
             elif os.path.isfile("package.json"):
                 # dev build
                 args = ["yarn", "dev"]
