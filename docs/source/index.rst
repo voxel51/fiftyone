@@ -163,6 +163,7 @@ or reach out to us at support@voxel51.com.
    :maxdepth: 1
    :hidden:
 
+   Overview<self>
    Installation<getting_started/install>
    Tutorials<tutorials/index>
    Recipes<recipes/index>
