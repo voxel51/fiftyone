@@ -36,7 +36,7 @@ export FIFTYONE_HEADLESS=1
 
 THIS_DIR=$(dirname "$0")
 FIFTYONE_BRAIN_DIR=$( \
-    python -c "import fiftyone.brain as fob; print('/'.join(fob.__file__.split('/')[:-3]))" \
+    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))" \
 )
 
 
