@@ -1,7 +1,7 @@
 FiftyOne
 ========
 
-    *"Rapidly experiment with your datasets"*
+*"Rapidly experiment with your datasets"*
 
 If you are looking to boost the performance of your machine learning models,
 chances are improving the quality of your dataset will provide the highest
@@ -10,7 +10,7 @@ for the visual data scientist that enables you to create valuable and diverse
 datasets. Work efficiently with FiftyOne to achieve better models with
 dependable performance.
 
-    *"Become one with your data"*
+*"Become one with your data"*
 
 FiftyOne does more than improve your dataset; it gets you closer to your data.
 Rapidly gain insight by visualizing samples overlayed with with dynamic and
@@ -144,13 +144,13 @@ ____________
 
 Where should you go from here? You could...
 
-* :doc:`Install FiftyOne<getting_started/install>`.
+* :doc:`Install FiftyOne<getting_started/install>`
 * Try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
-  capabilities of FiftyOne.
+  capabilities of FiftyOne
 * Explore :doc:`recipes<recipes/index>` for integrating FiftyOne into
-  your current ML workflows.
+  your current ML workflows
 * Consult the :doc:`user guide<user_guide/index>` for detailed instructions on
-  how to accomplish various tasks with FiftyOne.
+  how to accomplish various tasks with FiftyOne
 
 Need Support?
 _____________
