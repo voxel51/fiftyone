@@ -179,7 +179,7 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
-        self.image_format = None
+        self.image_format = image_format
         self._data_dir = None
         self._labels_path = None
         self._annotations = None

@@ -485,6 +485,10 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
             self._sample_parser,
             image_format=self.image_format,
         )
+        self._dataset_ingestor.setup()
+
+    def close(self, *args):
+        self._dataset_ingestor.close(*args)
 
     def _make_sample_parser(self):
         """Returns a :class:`TFRecordSampleParser` instance for parsing
