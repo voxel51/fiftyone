@@ -29,6 +29,7 @@ import eta.core.utils as etau
 import eta.core.serial as etas
 import eta.core.web as etaw
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -165,11 +166,18 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         export_dir: the directory to write the export
         classes (None): an optional list of class labels. If omitted, this is
             dynamically computed from the observed labels
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir, classes=None):
+    def __init__(self, export_dir, classes=None, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
         super().__init__(export_dir)
         self.classes = classes
+        self.image_format = image_format
         self._labels_map_rev = None
         self._data_dir = None
         self._labels_path = None
@@ -202,12 +210,13 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._annotations = []
         self._classes = set()
         self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir
+            output_dir=self._data_dir, default_ext=self.image_format
         )
 
-    def export_sample(self, image_path, detections, metadata=None):
-        out_image_path = self._filename_maker.get_output_path(image_path)
-        etau.copy_file(image_path, out_image_path)
+    def export_sample(self, image_or_path, detections, metadata=None):
+        out_image_path = self._export_image_or_path(
+            image_or_path, self._filename_maker
+        )
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)

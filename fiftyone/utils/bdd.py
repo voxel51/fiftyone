@@ -29,6 +29,7 @@ import eta.core.objects as etao
 import eta.core.utils as etau
 import eta.core.serial as etas
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -168,10 +169,17 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir):
+    def __init__(self, export_dir, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
         super().__init__(export_dir)
+        self.image_format = None
         self._data_dir = None
         self._labels_path = None
         self._annotations = None
@@ -190,12 +198,13 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
         self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._annotations = []
         self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir
+            output_dir=self._data_dir, default_ext=self.image_format
         )
 
-    def export_sample(self, image_path, image_labels, metadata=None):
-        out_image_path = self._filename_maker.get_output_path(image_path)
-        etau.copy_file(image_path, out_image_path)
+    def export_sample(self, image_or_path, image_labels, metadata=None):
+        out_image_path = self._export_image_or_path(
+            image_or_path, self._filename_maker
+        )
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)

@@ -576,10 +576,14 @@ class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
         )
         self._tf_records_writer.__enter__()
 
-    def export_sample(self, image_path, label, metadata=None):
-        filename = self._filename_maker.get_output_path(image_path)
+    def export_sample(self, image_or_path, label, metadata=None):
+        if self._is_image_path(image_or_path):
+            filename = self._filename_maker.get_output_path(image_or_path)
+        else:
+            filename = self._filename_maker.get_output_path()
+
         tf_example = self._example_generator.make_tf_example(
-            image_path, label, filename=filename
+            image_or_path, label, filename=filename
         )
         self._tf_records_writer.write(tf_example)
 
@@ -644,11 +648,11 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
 class TFExampleGenerator(object):
     """Base class for sample writers that emit ``tf.train.Example`` protos."""
 
-    def make_tf_example(self, image_path, label, *args, **kwargs):
+    def make_tf_example(self, image_or_path, label, *args, **kwargs):
         """Makes a ``tf.train.Example`` for the given data.
 
         Args:
-            image_path: the path to the image on disk
+            image_or_path: an image or the path to the image on disk
             label: a :class:`fiftyone.core.labels.Label`
             *args: subclass-specific positional arguments
             **kwargs: subclass-specific keyword arguments
@@ -660,6 +664,39 @@ class TFExampleGenerator(object):
             "subclasses must implement make_tf_example()"
         )
 
+    @staticmethod
+    def _parse_image_or_path(image_or_path, filename=None):
+        if etau.is_str(image_or_path):
+            image_path = image_or_path
+
+            if filename is None:
+                filename = os.path.basename(image_path)
+
+            img_bytes = tf.io.read_file(image_path)
+            img = tf.image.decode_image(img_bytes)
+        else:
+            img = image_or_path
+
+            if filename is None:
+                raise ValueError(
+                    "`filename` must be provided when `image_or_path` is an "
+                    "image"
+                )
+
+            if filename.endswith((".jpg", ".jpeg")):
+                img_bytes = tf.image.encode_jpeg(img)
+            elif filename.endswith(".png"):
+                img_bytes = tf.image.encode_png(img)
+            else:
+                raise ValueError(
+                    "Unsupported image format '%s'"
+                    % os.path.splitext(filename)[1]
+                )
+
+        img_shape = img.shape
+
+        return img_bytes, img_shape, filename
+
 
 class TFImageClassificationExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
@@ -669,23 +706,24 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
     details.
     """
 
-    def make_tf_example(self, image_path, classification, filename=None):
+    def make_tf_example(self, image_or_path, classification, filename=None):
         """Makes a ``tf.train.Example`` for the given data.
 
         Args:
-            image_path: the path to the image on disk
+            image_or_path: an image or the path to the image on disk
             classification: a :class:`fiftyone.core.labels.Classification`
-            filename (None): an optional filename to store. By default, the
-                basename of ``image_path`` is used
+            filename (None): a filename for the image. Required when
+                ``image_or_path`` is an image, in which case the extension of
+                this filename determines the encoding used. If
+                ``image_or_path`` is the path to an image, this is optional; by
+                default, the basename of ``image_path`` is used
 
         Returns:
             a ``tf.train.Example``
         """
-        if filename is None:
-            filename = os.path.basename(image_path)
-
-        img_bytes = tf.io.read_file(image_path)
-        img_shape = tf.image.decode_image(img_bytes).shape
+        img_bytes, img_shape, filename = self._parse_image_or_path(
+            image_or_path, filename=filename
+        )
         label = classification.label
 
         feature = {
@@ -722,23 +760,24 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
         self._labels_map_rev = labels_map_rev
         self._dynamic_classes = dynamic_classes
 
-    def make_tf_example(self, image_path, detections, filename=None):
+    def make_tf_example(self, image_or_path, detections, filename=None):
         """Makes a ``tf.train.Example`` for the given data.
 
         Args:
-            image_path: the path to the image on disk
+            image_or_path: an image or the path to the image on disk
             detections: a :class:`fiftyone.core.labels.Detections`
-            filename (None): an optional filename to store. By default, the
-                basename of ``image_path`` is used
+            filename (None): a filename for the image. Required when
+                ``image_or_path`` is an image, in which case the extension of
+                this filename determines the encoding used. If
+                ``image_or_path`` is the path to an image, this is optional; by
+                default, the basename of ``image_path`` is used
 
         Returns:
             a ``tf.train.Example``
         """
-        if filename is None:
-            filename = os.path.basename(image_path)
-
-        img_bytes = tf.io.read_file(image_path)
-        img_shape = tf.image.decode_image(img_bytes).shape
+        img_bytes, img_shape, filename = self._parse_image_or_path(
+            image_or_path, filename=filename
+        )
         format = os.path.splitext(filename)[1][1:]  # no leading `.`
 
         xmins, xmaxs, ymins, ymaxs, texts, labels = [], [], [], [], [], []
