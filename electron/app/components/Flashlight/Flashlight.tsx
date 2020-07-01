@@ -1,17 +1,14 @@
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
-import { animated, useSpring } from "react-spring";
-import { useWheel } from "react-use-gesture";
 
 import {
-  segmentIsLoaded,
   viewCount,
   isMainWidthResizing,
   mainTop,
   mainLoaded,
   mainSize,
-  currentListTop,
+  previousMainSize,
   liveTop,
 } from "../../state/atoms";
 import { useTrackMousePosition, useResizeObserver } from "../../state/hooks";
@@ -59,6 +56,7 @@ export default () => {
   const segmentsToRenderValue = useRecoilValue(segmentsToRender);
   const setIsMainWidthResizing = useSetRecoilState(isMainWidthResizing);
   const [mainSizeValue, setMainSize] = useRecoilState(mainSize);
+  const setPreviousMainSize = useSetRecoilState(previousMainSize);
   const currentListHeightValue = useRecoilValue(currentListHeight);
   const setMainTop = useSetRecoilState(mainTop);
   const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
@@ -92,7 +90,13 @@ export default () => {
   return (
     <Flashlight>
       <Container>
-        <ListMain ref={ref} onScroll={(e) => setLiveTop(e.target.scrollTop)}>
+        <ListMain
+          ref={ref}
+          onScroll={(e) => {
+            setLiveTop(e.target.scrollTop);
+            setPreviousMainSize(mainSize);
+          }}
+        >
           <ListContainer style={{ height: currentListHeightValue }}>
             {mainLoadedValue
               ? segmentsToRenderValue.map((index) => (

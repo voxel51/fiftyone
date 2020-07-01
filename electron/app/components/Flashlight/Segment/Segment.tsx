@@ -13,17 +13,16 @@ import {
 const SegmentDiv = styled.div`
   position: absolute;
   contain: layout;
+  width: 100%;
 `;
 
 const Segment = ({ index }) => {
   const itemsToRenderInSegmentValue = useRecoilValue(
     itemsToRenderInSegment(index)
   );
-  const segmentTopValue = useRecoilValue(segmentTop(index));
-  const segmentBaseSizeValue = useRecoilValue(segmentBaseSize(index));
 
   return (
-    <SegmentDiv style={{ ...segmentBaseSizeValue, top: segmentTopValue }}>
+    <SegmentDiv style={{ top: 0 }}>
       {itemsToRenderInSegmentValue.map(({ key, index }) => (
         <Item key={key} index={index} />
       ))}

@@ -431,8 +431,8 @@ export const currentLayout = selector({
     let item;
     let layoutHeight = 0;
     let pixelDisplacement;
-    let resultStart;
-    let resultEnd;
+    let resultStart = index;
+    let resultEnd = index;
     while (layoutHeight < viewPortHeight * 1.5 && index < count) {
       row = get(itemRow(index, viewPortWidth, false));
       workingWidth = viewPortWidth - (row.data.length + 1) * margin;
@@ -462,9 +462,9 @@ export const currentLayout = selector({
       layoutHeight += margin + height;
       index += rowData.length;
       data.push(rowData);
+      resultEnd = index;
     }
 
-    resultEnd = index;
     index = start - 1;
     currentTop = top - pixelDisplacement;
     while (layoutHeight < viewPortHeight * 2 && index >= 0) {
@@ -490,8 +490,9 @@ export const currentLayout = selector({
       layoutHeight += margin + height;
       index += rowData.length;
       data.unshift(rowData);
+      resultStart = index;
     }
-    resultStart = index;
+
     return {
       data,
       range: [resultStart, resultEnd],
@@ -503,7 +504,7 @@ export const currentItems = selector({
   key: "currentItems",
   get: ({ get }) => {
     const { range } = get(currentLayout);
-    return [...Array(range.length).keys()].map((i) => i + range[0]);
+    return [...Array(range[1] - range[0]).keys()].map((i) => i + range[0]);
   },
 });
 
@@ -527,7 +528,7 @@ export const segmentsToRender = selector({
   get: ({ get }) => {
     const { range } = get(currentLayout);
     const start = get(segmentIndexFromItemIndex(range[0]));
-    const end = get(segmentIndexFromItemIndex(range[1]));
+    const end = get(segmentIndexFromItemIndex(range[1])) + 1;
     return [...Array(end - start).keys()].map((i) => i + start);
   },
 });
@@ -542,12 +543,14 @@ export const itemsToRenderInSegment = selectorFamily({
     const result = [];
     let i = items[0] < start ? start - items[0] : 0;
 
-    while (items[i] && items[i] < end) {
+    while (i < items.length && items[i] < end) {
       result.push({
         index: items[i],
         key: items[i] - start,
       });
+      i += 1;
     }
+    return result;
   },
 });
 
