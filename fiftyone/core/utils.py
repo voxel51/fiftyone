@@ -290,37 +290,61 @@ class ProgressBar(etau.ProgressBar):
 class UniqueFilenameMaker(object):
     """A class that generates unique output paths in a directory.
 
-    The filenames of the input files are maintained, unless a name conflict
-    in ``output_dir`` would occur, in which case an index of the form
-    ``"-%d" % count`` is appended to the base filename.
+    This class provides a :meth:`get_output_path` method that generates unique
+    filenames in the specified output directory.
 
-    If no ``output_dir`` is provided, then unique filenames are generated.
+    If an input filename is provided, the filename is maintained, unless a
+    name conflict in ``output_dir`` would occur, in which case an index of the
+    form ``"-%d" % count`` is appended to the base filename.
+
+    If no input filename is provided, an output filename of the form
+    ``<output_dir>/<count><default_ext>`` is generated, where ``count`` is the
+    number of files in ``output_dir``.
+
+    If no ``output_dir`` is provided, then unique filenames with no base
+    directory are generated.
 
     Args:
-        output_dir (None): the directory in which to generate output paths
+        output_dir (""): the directory in which to generate output paths
+        default_ext (""): the file extension to use when generating default
+            output paths
         ignore_exts (False): whether to omit file extensions when checking for
             duplicate filenames
     """
 
-    def __init__(self, output_dir=None, ignore_exts=False):
+    def __init__(self, output_dir="", default_ext="", ignore_exts=False):
         self.output_dir = output_dir
+        self.default_ext = default_ext
         self.ignore_exts = ignore_exts
+
         self._filename_counts = defaultdict(int)
+        self._default_filename_patt = (
+            fo.config.default_sequence_idx + default_ext
+        )
+        self._idx = 0
 
         if output_dir:
             etau.ensure_dir(output_dir)
-            for filename in etau.list_files(output_dir):
+            filenames = etau.list_files(output_dir)
+            self._idx = len(filenames)
+            for filename in filenames:
                 self._filename_counts[filename] += 1
 
-    def get_output_path(self, input_path):
-        """Returns the output path for the given input path.
+    def get_output_path(self, input_path=None):
+        """Returns a unique output path.
 
         Args:
-            input_path: the input path
+            input_path (None): an input path from which to derive the output
+                path
 
         Returns:
             the output path
         """
+        self._idx += 1
+
+        if not input_path:
+            input_path = self._default_filename_patt % self._idx
+
         filename = os.path.basename(input_path)
         name, ext = os.path.splitext(filename)
 
@@ -331,10 +355,7 @@ class UniqueFilenameMaker(object):
         if count > 1:
             filename = name + ("-%d" % count) + ext
 
-        if self.output_dir:
-            return os.path.join(self.output_dir, filename)
-
-        return filename
+        return os.path.join(self.output_dir, filename)
 
 
 def compute_filehash(filepath):
