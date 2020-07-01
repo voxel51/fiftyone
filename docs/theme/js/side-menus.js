@@ -104,6 +104,10 @@ window.sideMenus = {
         sideMenus.handleRightMenu();
       }
     });
+
+    $(function() {
+      $(window).trigger('scroll');
+    })
   },
 
   leftMenuIsFixed: function() {
@@ -202,6 +206,10 @@ window.sideMenus = {
     var rightMenuSideScroll = document.getElementById("pytorch-side-scroll-right");
     var sideScrollFromWindowTop = rightMenuSideScroll.getBoundingClientRect().top;
 
-    rightMenuSideScroll.style.height = utilities.windowHeight() - sideScrollFromWindowTop + "px";
+    var windowHeight = utilities.windowHeight();
+    var topOfFooterRelativeToWindow = document.getElementById("docs-tutorials-resources").getBoundingClientRect().top;
+    var howManyPixelsOfTheFooterAreInTheWindow = Math.max(0, windowHeight - topOfFooterRelativeToWindow);
+
+    rightMenuSideScroll.style.height = windowHeight - sideScrollFromWindowTop - howManyPixelsOfTheFooterAreInTheWindow + "px";
   }
 };
