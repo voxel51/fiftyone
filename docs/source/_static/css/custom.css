@@ -68,6 +68,7 @@ table.highlighttable td.linenos pre {
 
 table.highlighttable td.code {
   padding-left: 0;
+  width: 100%;
 }
 
 table.highlighttable td.code pre {
