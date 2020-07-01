@@ -77,7 +77,7 @@ is active, `python` without any suffix will refer to the Python version you
 used to create the virtual environment, so you can use this for the remainder
 of this guide. For example:
 
-.. code-block:: shell
+.. code-block:: text
 
    $ python --version
    Python 3.8.3
@@ -89,7 +89,7 @@ the path to the current folder is replaced with `...`):
 
   .. group-tab:: Linux/macOS
 
-    .. code-block:: shell
+    .. code-block:: text
 
       $ which python
       .../env/bin/python
@@ -159,7 +159,7 @@ This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
 your virtual environment:
 
-.. code-block:: shell
+.. code-block:: text
 
    $ python
    Python 3.6.9 (default, Apr 18 2020, 01:56:04)
@@ -283,7 +283,7 @@ need the `mongodb-org-server` package in this case.
 To verify the version of your MongoDB installation, run `mongod --version`,
 which should produce output that looks like this:
 
-.. code-block:: shell
+.. code-block:: text
 
    db version v4.2.6
    git version: 20364840b8f1af16917e4c23c1b5f5efd8b352f8
