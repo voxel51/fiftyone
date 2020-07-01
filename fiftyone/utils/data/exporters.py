@@ -301,7 +301,48 @@ class DatasetExporter(object):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class UnlabeledImageDatasetExporter(DatasetExporter):
+class ExportsImages(object):
+    """Mixin for :class:`DatasetExporter` classes that export images."""
+
+    @staticmethod
+    def _is_image_path(image_or_path):
+        """Determines whether the input is the path to an image on disk
+
+        Args:
+            image_or_path: an image or the path to the image on disk
+
+        Returns:
+            True/False
+        """
+        return etau.is_str(image_or_path)
+
+    @staticmethod
+    def _export_image_or_path(image_or_path, filename_maker):
+        """Exports the image, using the given
+        :class:`fiftyone.core.utils.UniqueFilenameMaker` to generate the output
+        path for the image.
+
+        Args:
+            image_or_path: an image or the path to the image on disk
+            filename_maker: a :class:`fiftyone.core.utils.UniqueFilenameMaker`
+                to use to generate the output path for the image
+
+        Returns:
+            the path to the exported image
+        """
+        if ExportsImages._is_image_path(image_or_path):
+            image_path = image_or_path
+            out_image_path = filename_maker.get_output_path(image_path)
+            etau.copy_file(image_path, out_image_path)
+        else:
+            img = image_or_path
+            out_image_path = filename_maker.get_output_path()
+            etai.write(img, out_image_path)
+
+        return out_image_path
+
+
+class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of unlabeled image samples.
 
     Example Usage::
@@ -345,20 +386,8 @@ class UnlabeledImageDatasetExporter(DatasetExporter):
         """
         raise NotImplementedError("subclass must implement export_sample()")
 
-    @staticmethod
-    def is_image_path(image_or_path):
-        """Determines whether the input is the path to an image on disk
 
-        Args:
-            image_or_path: an image or the path to the image on disk
-
-        Returns:
-            True/False
-        """
-        return etau.is_str(image_or_path)
-
-
-class LabeledImageDatasetExporter(DatasetExporter):
+class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of labeled image samples.
 
     Example Usage::
@@ -412,18 +441,6 @@ class LabeledImageDatasetExporter(DatasetExporter):
         """
         raise NotImplementedError("subclass must implement export_sample()")
 
-    @staticmethod
-    def is_image_path(image_or_path):
-        """Determines whether the input is the path to an image on disk
-
-        Args:
-            image_or_path: an image or the path to the image on disk
-
-        Returns:
-            True/False
-        """
-        return etau.is_str(image_or_path)
-
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
     """Exporter that writes a directory of images to disk.
@@ -455,14 +472,7 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
         return False
 
     def export_sample(self, image_or_path, metadata=None):
-        if self.is_image_path(image_or_path):
-            image_path = image_or_path
-            out_image_path = self._filename_maker.get_output_path(image_path)
-            etau.copy_file(image_path, out_image_path)
-        else:
-            img = image_or_path
-            out_image_path = self._filename_maker.get_output_path()
-            etai.write(img, out_image_path)
+        self._export_image_or_path(image_or_path, self._filename_maker)
 
     def setup(self):
         self._filename_maker = fou.UniqueFilenameMaker(
@@ -493,8 +503,8 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
-        self.image_format = image_format
         self.classes = classes
+        self.image_format = image_format
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
@@ -520,15 +530,9 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         )
 
     def export_sample(self, image_or_path, classification, metadata=None):
-        if self.is_image_path(image_or_path):
-            image_path = image_or_path
-            out_image_path = self._filename_maker.get_output_path(image_path)
-            etau.copy_file(image_path, out_image_path)
-        else:
-            img = image_or_path
-            out_image_path = self._filename_maker.get_output_path()
-            etai.write(img, out_image_path)
-
+        out_image_path = self._export_image_or_path(
+            image_or_path, self._filename_maker
+        )
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         self._labels_dict[name] = _parse_classification(
             classification, labels_map_rev=self._labels_map_rev
@@ -586,7 +590,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         etau.ensure_dir(self.export_dir)
 
     def export_sample(self, image_or_path, classification, metadata=None):
-        is_image_path = self.is_image_path(image_or_path)
+        is_image_path = self._is_image_path(image_or_path)
 
         _label = _parse_classification(classification)
 
@@ -667,15 +671,9 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         )
 
     def export_sample(self, image_or_path, detections, metadata=None):
-        if self.is_image_path(image_or_path):
-            image_path = image_or_path
-            out_image_path = self._filename_maker.get_output_path(image_path)
-            etau.copy_file(image_path, out_image_path)
-        else:
-            img = image_or_path
-            out_image_path = self._filename_maker.get_output_path()
-            etai.write(img, out_image_path)
-
+        out_image_path = self._export_image_or_path(
+            image_or_path, self._filename_maker
+        )
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         self._labels_dict[name] = _parse_detections(
             detections, labels_map_rev=self._labels_map_rev
@@ -738,7 +736,7 @@ class ImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         )
 
     def export_sample(self, image_or_path, image_labels, metadata=None):
-        is_image_path = self.is_image_path(image_or_path)
+        is_image_path = self._is_image_path(image_or_path)
 
         if is_image_path:
             image_path = image_or_path
