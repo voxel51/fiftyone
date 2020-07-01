@@ -21,10 +21,12 @@ from builtins import *
 from collections import defaultdict
 import os
 
-import eta.core.datasets as etads
+import eta.core.datasets as etad
+import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -160,16 +162,28 @@ class UnlabeledImageDatasetExporter(DatasetExporter):
             "subclass must implement requires_image_metadata"
         )
 
-    def export_sample(self, image_path, metadata=None):
+    def export_sample(self, image_or_path, metadata=None):
         """Exports the given sample to the dataset.
 
         Args:
-            image_path: the path to the image
+            image_or_path: an image or the path to the image on disk
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
                 isinstance for the sample. Only required when
                 :property:`requires_image_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
+
+    @staticmethod
+    def is_image_path(image_or_path):
+        """Determines whether the input is the path to an image on disk
+
+        Args:
+            image_or_path: an image or the path to the image on disk
+
+        Returns:
+            True/False
+        """
+        return etau.is_str(image_or_path)
 
 
 class LabeledImageDatasetExporter(DatasetExporter):
@@ -214,11 +228,11 @@ class LabeledImageDatasetExporter(DatasetExporter):
         """
         raise NotImplementedError("subclass must implement label_cls")
 
-    def export_sample(self, image_path, label, metadata=None):
+    def export_sample(self, image_or_path, label, metadata=None):
         """Exports the given sample to the dataset.
 
         Args:
-            image_path: the path to the image
+            image_or_path: an image or the path to the image on disk
             label: an instance of :property:`label_cls`
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
                 isinstance for the sample. Only required when
@@ -226,36 +240,61 @@ class LabeledImageDatasetExporter(DatasetExporter):
         """
         raise NotImplementedError("subclass must implement export_sample()")
 
+    @staticmethod
+    def is_image_path(image_or_path):
+        """Determines whether the input is the path to an image on disk
+
+        Args:
+            image_or_path: an image or the path to the image on disk
+
+        Returns:
+            True/False
+        """
+        return etau.is_str(image_or_path)
+
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
     """Exporter that writes a directory of images to disk.
 
     See :class:`fiftyone.types.ImageDirectory` for format details.
 
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
+    If the path to an image is provided, the image is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir):
+    def __init__(self, export_dir, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
         super().__init__(export_dir)
+        self.image_format = image_format
         self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
         return False
 
-    def export_sample(self, image_path, metadata=None):
-        out_image_path = self._filename_maker.get_output_path(image_path)
-        etau.copy_file(image_path, out_image_path)
+    def export_sample(self, image_or_path, metadata=None):
+        if self.is_image_path(image_or_path):
+            image_path = image_or_path
+            out_image_path = self._filename_maker.get_output_path(image_path)
+            etau.copy_file(image_path, out_image_path)
+        else:
+            img = image_or_path
+            out_image_path = self._filename_maker.get_output_path()
+            etai.write(img, out_image_path)
 
     def setup(self):
         self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self.export_dir
+            output_dir=self.export_dir, default_ext=self.image_format
         )
 
 
@@ -264,22 +303,29 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
 
     See :class:`fiftyone.types.ImageClassificationDataset` for format details.
 
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
+    If the path to an image is provided, the image is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
         classes (None): the list of possible class labels
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir, classes=None):
+    def __init__(self, export_dir, classes=None, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
         super().__init__(export_dir)
+        self.image_format = image_format
+        self.classes = classes
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
-        self._classes = classes
         self._labels_map_rev = _to_labels_map_rev(classes) if classes else None
         self._filename_maker = None
 
@@ -296,12 +342,20 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._labels_dict = {}
         self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir, ignore_exts=True
+            output_dir=self._data_dir,
+            default_ext=self.image_format,
+            ignore_exts=True,
         )
 
-    def export_sample(self, image_path, classification, metadata=None):
-        out_image_path = self._filename_maker.get_output_path(image_path)
-        etau.copy_file(image_path, out_image_path)
+    def export_sample(self, image_or_path, classification, metadata=None):
+        if self.is_image_path(image_or_path):
+            image_path = image_or_path
+            out_image_path = self._filename_maker.get_output_path(image_path)
+            etau.copy_file(image_path, out_image_path)
+        else:
+            img = image_or_path
+            out_image_path = self._filename_maker.get_output_path()
+            etai.write(img, out_image_path)
 
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         self._labels_dict[name] = _parse_classification(
@@ -310,7 +364,7 @@ class ImageClassificationDatasetExporter(LabeledImageDatasetExporter):
 
     def close(self, *args):
         labels = {
-            "classes": self._classes,
+            "classes": self.classes,
             "labels": self._labels_dict,
         }
         etas.write_json(labels, self._labels_path)
@@ -322,18 +376,29 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
     See :class:`fiftyone.types.ImageClassificationDirectoryTree` for format
     details.
 
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
+    If the path to an image is provided, the image is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir):
+    def __init__(self, export_dir, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
         super().__init__(export_dir)
+        self.image_format = image_format
+        self._class_counts = None
         self._filename_counts = None
+        self._default_filename_patt = (
+            fo.config.default_sequence_idx + image_format
+        )
 
     @property
     def requires_image_metadata(self):
@@ -344,11 +409,24 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         return fol.Classification
 
     def setup(self):
+        self._class_counts = defaultdict(int)
         self._filename_counts = defaultdict(int)
-        etau.ensure_dir(self.export_dir)  # in case dataset is empty
+        etau.ensure_dir(self.export_dir)
 
-    def export_sample(self, image_path, classification, metadata=None):
+    def export_sample(self, image_or_path, classification, metadata=None):
+        is_image_path = self.is_image_path(image_or_path)
+
         _label = _parse_classification(classification)
+
+        self._class_counts[_label] += 1
+
+        if is_image_path:
+            image_path = image_or_path
+        else:
+            img = image_or_path
+            image_path = self._default_filename_patt % (
+                self._class_counts[_label]
+            )
 
         filename = os.path.basename(image_path)
         name, ext = os.path.splitext(filename)
@@ -360,7 +438,11 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
             filename = name + ("-%d" % count) + ext
 
         out_image_path = os.path.join(self.export_dir, _label, filename)
-        etau.copy_file(image_path, out_image_path)
+
+        if is_image_path:
+            etau.copy_file(image_path, out_image_path)
+        else:
+            etai.write(img, out_image_path)
 
 
 class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
@@ -368,22 +450,29 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
 
     See :class:`fiftyone.types.ImageDetectionDataset` for format details.
 
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
+    If the path to an image is provided, the image is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
         classes (None): the list of possible class labels
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir, classes=None):
+    def __init__(self, export_dir, classes=None, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
         super().__init__(export_dir)
+        self.classes = classes
+        self.image_format = image_format
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
-        self._classes = classes
         self._labels_map_rev = _to_labels_map_rev(classes) if classes else None
         self._filename_maker = None
 
@@ -400,12 +489,20 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._labels_dict = {}
         self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir, ignore_exts=True
+            output_dir=self._data_dir,
+            default_ext=self.image_format,
+            ignore_exts=True,
         )
 
-    def export_sample(self, image_path, detections, metadata=None):
-        out_image_path = self._filename_maker.get_output_path(image_path)
-        etau.copy_file(image_path, out_image_path)
+    def export_sample(self, image_or_path, detections, metadata=None):
+        if self.is_image_path(image_or_path):
+            image_path = image_or_path
+            out_image_path = self._filename_maker.get_output_path(image_path)
+            etau.copy_file(image_path, out_image_path)
+        else:
+            img = image_or_path
+            out_image_path = self._filename_maker.get_output_path()
+            etai.write(img, out_image_path)
 
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         self._labels_dict[name] = _parse_detections(
@@ -414,7 +511,7 @@ class ImageDetectionDatasetExporter(LabeledImageDatasetExporter):
 
     def close(self, *args):
         labels = {
-            "classes": self._classes,
+            "classes": self.classes,
             "labels": self._labels_dict,
         }
         etas.write_json(labels, self._labels_path)
@@ -425,19 +522,28 @@ class ImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
     See :class:`fiftyone.types.ImageLabelsDataset` for format details.
 
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
+    If the path to an image is provided, the image is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
 
     Args:
         export_dir: the directory to write the export
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
     """
 
-    def __init__(self, export_dir):
+    def __init__(self, export_dir, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
         super().__init__(export_dir)
+        self.image_format = image_format
         self._labeled_dataset = None
-        self._name_counts = None
+        self._data_dir = None
+        self._labels_dir = None
+        self._filename_maker = None
 
     @property
     def requires_image_metadata(self):
@@ -448,35 +554,49 @@ class ImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         return fol.ImageLabels
 
     def setup(self):
-        self._labeled_dataset = etads.LabeledImageDataset.create_empty_dataset(
+        self._labeled_dataset = etad.LabeledImageDataset.create_empty_dataset(
             self.export_dir
         )
-        self._name_counts = defaultdict(int)
+        self._data_dir = self._labeled_dataset.data_dir
+        self._labels_dir = self._labeled_dataset.labels_dir
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir,
+            default_ext=self.image_format,
+            ignore_exts=True,
+        )
 
-    def export_sample(self, image_path, image_labels, metadata=None):
-        name, ext = os.path.splitext(os.path.basename(image_path))
-        self._name_counts[name] += 1
+    def export_sample(self, image_or_path, image_labels, metadata=None):
+        is_image_path = self.is_image_path(image_or_path)
 
-        count = self._name_counts[name]
-        if count > 1:
-            name += "-%d" % count
+        if is_image_path:
+            image_path = image_or_path
+            out_image_path = self._filename_maker.get_output_path(image_path)
+        else:
+            img = image_or_path
+            out_image_path = self._filename_maker.get_output_path()
 
+        name, ext = os.path.splitext(os.path.basename(out_image_path))
         new_image_filename = name + ext
         new_labels_filename = name + ".json"
 
-        image_labels_path = os.path.join(
-            self._labeled_dataset.labels_dir, new_labels_filename
-        )
-
         _image_labels = _parse_image_labels(image_labels)
-        _image_labels.write_json(image_labels_path)
 
-        self._labeled_dataset.add_file(
-            image_path,
-            image_labels_path,
-            new_data_filename=new_image_filename,
-            new_labels_filename=new_labels_filename,
-        )
+        if etau.is_str(image_or_path):
+            image_labels_path = os.path.join(
+                self._labels_dir, new_labels_filename
+            )
+            _image_labels.write_json(image_labels_path)
+
+            self._labeled_dataset.add_file(
+                image_path,
+                image_labels_path,
+                new_data_filename=new_image_filename,
+                new_labels_filename=new_labels_filename,
+            )
+        else:
+            self._labeled_dataset.add_data(
+                img, _image_labels, new_image_filename, new_labels_filename,
+            )
 
     def close(self, *args):
         self._labeled_dataset.write_manifest()
