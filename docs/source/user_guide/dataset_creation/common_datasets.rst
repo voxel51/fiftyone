@@ -790,8 +790,7 @@ to an object and the 15 (and optional 16th score) columns have the following
 meanings:
 
 +----------+-------------+-------------------------------------------------------------+---------+
-| Number   | Name        | Description                                                 | Default |
-| of       |             |                                                             |         |
+| \# of    | Name        | Description                                                 | Default |
 | columns  |             |                                                             |         |
 +==========+=============+=============================================================+=========+
 | 1        | type        | The object label                                            |         |

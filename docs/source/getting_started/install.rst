@@ -30,7 +30,7 @@ First, identify a suitable Python executable. On many systems, this will be
 Python version, pass `--version` to Python. Here is example output from running
 these commands:
 
-.. code-block:: shell
+.. code-block:: text
 
    $ python --version
    Python 2.7.17

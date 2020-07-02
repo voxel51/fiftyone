@@ -13,7 +13,8 @@ FiftyOne Dataset Basics
 .. |Field| replace:: ``Field``
 .. _Field: ../user_guide/using_datasets.html#fields
 
-A FiftyOne |Dataset| is the understood format that can be visualized in the
+FiftyOne Datasets are the core data structure in FiftyOne, allowing you to
+represent your data and manipulate it through the Python library and the
 :doc:`FiftyOne App <app>`.
 
 .. image:: ../images/dog.png

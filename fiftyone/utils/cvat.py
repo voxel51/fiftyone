@@ -676,8 +676,10 @@ def load_cvat_image_annotations(xml_path):
         xml_path: the path to the annotations XML file
 
     Returns:
-        cvat_task_labels: a :class:`CVATTaskLabels` instance
-        cvat_images: a list of :class:`CVATImage` instances
+        a tuple of
+
+        -   cvat_task_labels: a :class:`CVATTaskLabels` instance
+        -   cvat_images: a list of :class:`CVATImage` instances
     """
     d = fou.load_xml_as_json_dict(xml_path)
 

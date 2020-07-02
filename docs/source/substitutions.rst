@@ -1,7 +1,7 @@
 .. |Dataset| replace:: :class:`Dataset <fiftyone.core.dataset.Dataset>`
 
 .. |Dataset2| replace:: ``Dataset``
-.. _Dataset2: ../user_guide/basics.html#what-is-a-fiftyone-dataset-and-what-can-it-do-for-me 
+.. _Dataset2: ../user_guide/basics.html#what-is-a-fiftyone-dataset
 
 .. |DatasetView| replace:: :class:`DatasetView <fiftyone.core.view.DatasetView>`
 
