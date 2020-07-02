@@ -1,5 +1,5 @@
 """
-Package containing binaries needed for the FiftyOne dashboard.
+Package containing binaries needed for the FiftyOne app.
 """
 
 import os

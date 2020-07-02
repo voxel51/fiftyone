@@ -203,7 +203,7 @@ class ServerService(Service):
             # There is likely not a fiftyone server running (remote or local),
             # so start a local server. If there actually is a fiftyone server
             # running that didn't respond to /fiftyone, the local server will
-            # fail to start but the dashboard will still connect successfully.
+            # fail to start but the app will still connect successfully.
             super().start()
 
         if server_version is not None:
@@ -246,13 +246,12 @@ class AppService(Service):
                 args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
             elif os.path.isfile("FiftyOne.exe"):
                 # Windows
-                args = ["FiftyOne.exe"]
+                args = ["./FiftyOne.exe"]
             elif os.path.isfile("package.json"):
                 # dev build
                 args = ["yarn", "dev"]
             else:
                 raise RuntimeError(
-                    "Could not find FiftyOne dashboard in %r"
-                    % foc.FIFTYONE_APP_DIR
+                    "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR
                 )
         return args

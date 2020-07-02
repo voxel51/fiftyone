@@ -6,7 +6,7 @@ FiftyOne Command-Line Interface (CLI)
 Installing FiftyOne automatically installs `fiftyone`, a command-line interface
 (CLI) for interacting with FiftyOne. This utility provides access to many
 useful features, including creating and inspecting datasets, visualizing
-datasets in the dashboard, exporting datasets and converting dataset formats,
+datasets in the App, exporting datasets and converting dataset formats,
 and downloading datasets from the FiftyOne Dataset Zoo.
 
 Quickstart
@@ -57,7 +57,7 @@ The FiftyOne command-line interface.
 
 .. code-block:: text
 
-    fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,dashboard,zoo} ...
+    fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,app,zoo} ...
 
 **Arguments**
 
@@ -69,12 +69,12 @@ The FiftyOne command-line interface.
       --all-help            show help recurisvely and exit
 
     available commands:
-      {config,constants,convert,datasets,dashboard,zoo}
+      {config,constants,convert,datasets,app,zoo}
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
-        dashboard           Tools for working with the FiftyOne Dashboard.
+        app                 Tools for working with the FiftyOne App.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
 
 FiftyOne config
@@ -467,14 +467,14 @@ Delete FiftyOne datasets.
     # Delete the dataset with the given name
     fiftyone datasets delete <name>
 
-FiftyOne Dashboard
+FiftyOne App
 ------------------
 
-Tools for working with the FiftyOne Dashboard.
+Tools for working with the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard [-h] [--all-help] {launch,view,connect} ...
+    fiftyone app [-h] [--all-help] {launch,view,connect} ...
 
 **Arguments**
 
@@ -482,22 +482,22 @@ Tools for working with the FiftyOne Dashboard.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {launch,view,connect}
-        launch              Launch the FiftyOne Dashboard.
-        view                View datasets in the FiftyOne Dashboard without persisting them to the
-        connect             Connect to a remote FiftyOne Dashboard.
+        launch              Launch the FiftyOne App.
+        view                View datasets in the FiftyOne App without persisting them to the
+        connect             Connect to a remote FiftyOne App.
 
-Launch the dashboard
+Launch the App
 ~~~~~~~~~~~~~~~~~~~~
 
-Launch the FiftyOne Dashboard.
+Launch the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard launch [-h] [-p PORT] [-r] NAME
+    fiftyone app launch [-h] [-p PORT] [-r] NAME
 
 **Arguments**
 
@@ -509,31 +509,31 @@ Launch the FiftyOne Dashboard.
     optional arguments:
       -h, --help            show this help message and exit
       -p PORT, --port PORT  the port number to use
-      -r, --remote          whether to launch a remote dashboard session
+      -r, --remote          whether to launch a remote App session
 
 **Examples**
 
 .. code-block:: shell
 
-    # Launch the dashboard with the given dataset
-    fiftyone dashboard launch <name>
+    # Launch the App with the given dataset
+    fiftyone app launch <name>
 
 .. code-block:: shell
 
-    # Launch a remote dashboard session
-    fiftyone dashboard launch <name> --remote
+    # Launch a remote App session
+    fiftyone app launch <name> --remote
 
-View datasets in dashboard
+View datasets in App
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-View datasets in the FiftyOne Dashboard without persisting them to the
+View datasets in the FiftyOne App without persisting them to the
 database.
 
 .. code-block:: text
 
-    fiftyone dashboard view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
-                            [-z NAME] [-s SPLITS [SPLITS ...]]
-                            [-j JSON_PATH] [-p PORT] [-r]
+    fiftyone app view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
+                      [-z NAME] [-s SPLITS [SPLITS ...]]
+                      [-j JSON_PATH] [-p PORT] [-r]
 
 **Arguments**
 
@@ -552,38 +552,38 @@ database.
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to view
       -p PORT, --port PORT  the port number to use
-      -r, --remote          whether to launch a remote dashboard session
+      -r, --remote          whether to launch a remote App session
 
 **Examples**
 
 .. code-block:: shell
 
-    # View a dataset stored on disk in the dashboard
-    fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+    # View a dataset stored on disk in the App
+    fiftyone app view --dataset-dir <dataset-dir> --type <type>
 
 .. code-block:: shell
 
-    # View a zoo dataset in the dashboard
-    fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
+    # View a zoo dataset in the App
+    fiftyone app view --zoo-dataset <name> --splits <split1> ...
 
 .. code-block:: shell
 
-    # View a dataset stored in JSON format on disk in the dashboard
-    fiftyone dashboard view --json-path <json-path>
+    # View a dataset stored in JSON format on disk in the App
+    fiftyone app view --json-path <json-path>
 
 .. code-block:: shell
 
-    # View the dataset in a remote dashboard session
-    fiftyone dashboard view ... --remote
+    # View the dataset in a remote App session
+    fiftyone app view ... --remote
 
-Connect to remote dashboard
+Connect to remote App
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Connect to a remote FiftyOne Dashboard.
+Connect to a remote FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard connect [-h] [-d DESTINATION] [-p PORT]
+    fiftyone app connect [-h] [-d DESTINATION] [-p PORT]
 
 **Arguments**
 
@@ -599,13 +599,13 @@ Connect to a remote FiftyOne Dashboard.
 
 .. code-block:: shell
 
-    # Connect to a remote dashboard with port forwarding already configured
-    fiftyone dashboard connect
+    # Connect to a remote App with port forwarding already configured
+    fiftyone app connect
 
 .. code-block:: shell
 
-    # Connect to a remote dashboard session
-    fiftyone dashboard connect --destination <destination> --port <port>
+    # Connect to a remote App session
+    fiftyone app connect --destination <destination> --port <port>
 
 FiftyOne Dataset Zoo
 --------------------

@@ -1,6 +1,7 @@
 Creating a Dataset
 ==================
 
+.. include:: ../../substitutions.rst
 .. default-role:: code
 
 FiftyOne supports automatic creation of datasets stored in various common
@@ -9,7 +10,8 @@ also provides support for easily create custom data formats as well.
 
 .. note::
 
-    When you create a FiftyOne `Dataset`, its samples and all of their fields
+
+    When you create a FiftyOne |Dataset2|_, its samples and all of their fields
     (metadata, labels, custom fields, etc.) are written to FiftyOne's backing
     database.
 
@@ -65,14 +67,14 @@ App:
 
         # Visualize a directory of images in the FiftyOne App
         dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory)
-        session = fo.launch_dashboard(dataset=dataset)
+        session = fo.launch_app(dataset=dataset)
 
   .. group-tab:: CLI
 
     .. code:: shell
 
         # Visualize a directory of images in the FiftyOne App
-        fiftyone dashboard view \
+        fiftyone app view \
             --dataset-dir /path/to/images-dir --type fiftyone.types.ImageDirectory
 
 .. toctree::

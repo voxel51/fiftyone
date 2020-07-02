@@ -3,7 +3,10 @@ body {
     sans-serif;
 }
 
-/* pytorch theme overrides */
+article.pytorch-article pre,
+span.pre {
+  background: var(--bg-light-secondary);
+}
 
 .ui.tabular.menu .item {
   /* stop breaking tabs */
@@ -11,12 +14,112 @@ body {
   margin: unset;
 }
 
+.pytorch-left-menu a:link,
+.pytorch-left-menu a:visited,
+.pytorch-right-menu a:link,
+.pytorch-right-menu a:visited,
+.pytorch-right-menu a:hover,
+.pytorch-shortcuts-wrapper,
+ul.pytorch-breadcrumbs li {
+  font-size: 15px;
+}
+
 article.pytorch-article pre {
   margin-bottom: 1rem;
+  font-size: 13px;
+}
+
+article.pytorch-article .note .admonition-title {
+  background-color: var(--color-secondary);
 }
 
 .pytorch-left-menu li.toctree-l1.current > a:before {
-  top: -1px;
+  top: -1rem;
+}
+
+.pytorch-left-menu,
+article.pytorch-article .note {
+  background-color: var(--bg-light-secondary);
+}
+
+div.nbinput.container div.input_area {
+  background: var(--bg-light-secondary);
+}
+
+div.nbinput.container div.input_area div[class*="highlight"] {
+  background: var(--bg-light-secondary);
+}
+
+div.nboutput.nblast.docutils.container {
+  padding-bottom: 1rem;
+}
+
+a:link,
+a:visited,
+p a:link,
+p a:visited,
+.pytorch-left-menu li.toctree-l1.current > a,
+.pytorch-left-menu li.toctree-l1.current > a:before,
+ul.pytorch-breadcrumbs a {
+  color: var(--color-primary);
+}
+
+.rst-footer-buttons {
+  /* the "next" button is floated and doesn't take up any height by itself */
+  min-height: 2em;
+}
+
+/* nbsphinx style customization */
+
+.nbinput .prompt,
+.nboutput .prompt {
+  display: none;
+}
+
+/* fixes for code line numbers */
+
+article.pytorch-article div[class*="highlight-"] {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+article.pytorch-article table.highlighttable {
+  table-layout: auto;
+  margin-bottom: 0;
+}
+
+table.highlighttable td.linenos {
+  padding-right: 0;
+}
+
+table.highlighttable td.linenos pre {
+  background-color: inherit;
+  outline: 3px solid #f3f4f7;
+  outline-offset: -3px;
+}
+
+table.highlighttable td.code {
+  padding-left: 0;
+  width: 100%;
+}
+
+table.highlighttable td.code pre {
+  white-space: pre;
+}
+
+/* tweaks copied from sphinx-rtd-theme */
+
+.rst-content .section > img,
+.rst-content .section > a > img {
+  margin-bottom: 24px;
+}
+
+.rst-content .align-center {
+  margin: auto;
+}
+
+article.pytorch-article .reference.download.internal {
+  display: unset;
 }
 
 /* voxel51-website.css overrides */
@@ -33,27 +136,64 @@ article.pytorch-article pre {
 
 .nav__main__logo {
   width: 300px;
-  padding-left: 30px;
+  margin-left: 30px;
+  margin-right: 20px;
 }
 
 #nav__main__items {
   text-align: right;
   width: 100%;
-  max-width: 800px;
+  max-width: 900px;
+}
+
+.nav__main a {
+  color: inherit;
+}
+
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .nav__main__logo {
+    margin: 0;
+    padding-left: 30px;
+  }
+}
+
+@media screen and (max-width: 1099px) {
+  .nav__main {
+    height: unset;
+  }
+}
+
+.footer-wrapper {
+  background: var(--bg-dark-secondary);
 }
 
 .footer {
+  max-width: 880px; /* match body content (850px) + left margin (30px) */
   font-size: 15px;
-  padding: 70px 120px 10px;
+  padding-top: 70px;
+  padding-bottom: 10px;
 }
 
 .footer a {
   line-height: 30px;
+  color: inherit;
 }
 
 .footer .nav__item--brand {
   margin-bottom: 0;
   line-height: 30px;
+}
+
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .footer {
+    font-size: 12px;
+    padding-top: 30px;
+  }
+
+  .footer__icons {
+    padding-top: 10px;
+    font-size: 15px;
+  }
 }
 
 /* tabs */
@@ -68,6 +208,16 @@ article.pytorch-article pre {
 
 .sphinx-tabs .ui.tabular.menu .active.item {
   background-color: rgb(252, 252, 252);
+}
+
+/* left side section links */
+
+.pytorch-left-menu li.toctree-l1 ul {
+  margin-left: 1rem;
+}
+
+.pytorch-left-menu li.toctree-l2.current > a {
+  color: var(--color-primary);
 }
 
 /* right side section link highlighting */

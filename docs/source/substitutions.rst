@@ -1,51 +1,15 @@
-.. |Datasets| replace:: ``Datasets``
-.. _Datasets: ../api/fiftyone.core.html#fiftyone.core.dataset.Dataset 
+.. |Dataset| replace:: :class:`Dataset <fiftyone.core.dataset.Dataset>`
 
-.. |Dataset| replace:: ``Dataset``
-.. _Dataset: ../api/fiftyone.core.html#fiftyone.core.dataset.Dataset 
+.. |Dataset2| replace:: ``Dataset``
+.. _Dataset2: ../user_guide/basics.html#what-is-a-fiftyone-dataset-and-what-can-it-do-for-me 
 
-.. |datasets| replace:: ``datasets``
-.. _datasets: ../api/fiftyone.core.html#fiftyone.core.dataset.Dataset 
+.. |DatasetView| replace:: :class:`DatasetView <fiftyone.core.view.DatasetView>`
 
-.. |dataset| replace:: ``dataset``
-.. _dataset: ../api/fiftyone.core.html#fiftyone.core.dataset.Dataset 
+.. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
 
+.. |Field| replace:: :class:`Field <fiftyone.core.fields.Field>`
 
+.. |Label| replace:: :class:`Label <fiftyone.core.labels.Label>`
 
-.. |DatasetViews| replace:: ``DatasetViews``
-.. _DatasetViews: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView 
-
-.. |DatasetView| replace:: ``DatasetView``
-.. _DatasetView: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView
-
-.. |datasetviews| replace:: ``datasetviews``
-.. _datasetviews: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView 
-
-.. |datasetview| replace:: ``datasetview``
-.. _datasetview: ../api/fiftyone.core.html#fiftyone.core.dataset.DatasetView
-
-
-.. |Samples| replace:: ``Samples``
-.. _Samples: ../api/fiftyone.core.html#fiftyone.core.sample.Sample
-
-.. |Sample| replace:: ``Sample``
-.. _Sample: ../api/fiftyone.core.html#fiftyone.core.sample.Sample
-
-.. |samples| replace:: ``samples``
-.. _samples: ../api/fiftyone.core.html#fiftyone.core.sample.Sample
-
-.. |sample| replace:: ``sample``
-.. _sample: ../api/fiftyone.core.html#fiftyone.core.sample.Sample
-
-
-.. |Fields| replace:: ``Fields``
-.. _Fields: ../api/fiftyone.core.html#fiftyone.core.fields.Field
-
-.. |Field| replace:: ``Field``
-.. _Field: ../api/fiftyone.core.html#fiftyone.core.fields.Field
-
-.. |fields| replace:: ``fields``
-.. _fields: ../api/fiftyone.core.html#fiftyone.core.fields.Field
-
-.. |field| replace:: ``field``
-.. _field: ../api/fiftyone.core.html#fiftyone.core.fields.Field
+.. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
+.. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`

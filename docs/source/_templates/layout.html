@@ -53,9 +53,13 @@
 {# delete PyTorch's menu because our own is reused on mobile #}
 {% endblock %}
 
-{% block custom_footer %}
-<footer class="body_part footer" id="docs-tutorials-resources">
+{% block menu %}
+{{ toctree(maxdepth=2, collapse=True, includehidden=True, titles_only=True) }}
+{% endblock %}
 
+{% block custom_footer %}
+<footer class="footer-wrapper" id="docs-tutorials-resources">
+<div class="footer pytorch-container">
   <div class="footer__logo">
     <a href="{{link_home}}"><img src="https://voxel51.com/images/logo/voxel51-logo-horz-color-600dpi.png" /></a>
   </div>
@@ -130,7 +134,7 @@
       </li>
     </ul>
   </div>
-
+</div>
 </footer>
 
 <!-- Global site tag (gtag.js) - Google Analytics -->

@@ -1,6 +1,7 @@
 FiftyOne Brain
 ==============
 
+.. include:: ../substitutions.rst
 .. default-role:: code
 
 The FiftyOne Brain provides powerful machine learning techniques that are
@@ -13,7 +14,7 @@ workflow:
 * **Uniqueness**: During the training loop for a model, the best results will
   be seen when training on unique data. The FiftyOne Brain provides a
   `uniqueness` measure for images that compare the content of every image in a
-  `Dataset` with all other images.  Uniqueness operates on raw images and does
+  |Dataset2|_ with all other images.  Uniqueness operates on raw images and does
   not require any prior annotation on the data.  It is hence very useful in the
   early stages of the machine learning workflow when you are likely asking
   "What data should I select to annotate?"
@@ -47,13 +48,13 @@ Image Uniqueness
 ________________
 
 The FiftyOne Brain allows for the computation of the `uniqueness` of an image,
-in comparison with other images in a `Dataset`; it does so without requiring
+in comparison with other images in a |Dataset|; it does so without requiring
 any model from you.  One good use of uniqueness is in the early stages of the
 machine learning workflow when you are deciding what subset of data with which
 to bootstrap your models.  Unique samples are vital in creating training
 batches that help your model learn as efficiently and effectively as possible.
 
-The `uniqueness` of a `Dataset` can be computed directly without need the
+The `uniqueness` of a |Dataset| can be computed directly without need the
 predictions of a pre-trained model:
 
 .. code-block:: python
@@ -68,15 +69,15 @@ predictions of a pre-trained model:
 image formats, ranging from a simple directory of images to complicated dataset
 structures like `MS-COCO <https://cocodataset.org/#home>`_.
 
-**Output**: A scalar-valued field per `sample` that ranks the uniqueness of
+**Output**: A scalar-valued field per |Sample| that ranks the uniqueness of
 that sample (higher value means more unique).  The default name of this field
 is `uniqueness`, but you can customize its name by using the `uniqueness_field`
 named argument.  The uniqueness value is normalized so it is comparable across
 datasets and data-subsets.
 
 **What to expect**: Uniqueness uses a tuned algorithm that measures the
-distribution of the `samples` in the `dataset`.  Using this distribution, it
-ranks `samples` based on their relative *similarity* to other `samples`.  Those
+distribution of each |Sample| in the |Dataset|.  Using this distribution, it
+ranks each |Sample| based on its relative *similarity* to other samples.  Those
 that are close to other samples are not unique whereas those that are far from
 most other samples are more unique.
 
@@ -90,7 +91,7 @@ ______________
 
 Correct annotations are crucial in developing high performing models. Using the
 FiftyOne Brain and the predictions of a pre-trained model, you can identify
-possible labels mistakes in your `Datasets`:
+possible labels mistakes in your |Dataset|:
 
 .. code-block:: python
     :linenos:
@@ -105,7 +106,7 @@ possible labels mistakes in your `Datasets`:
 annotations (`label_field` in the example block) and model predictions
 (`pred_field` above).
 
-**Output**: A scalar-valued field per `sample` that ranks the chance of a
+**Output**: A scalar-valued field per |Sample| that ranks the chance of a
 mistaken annotation.  The default name of this field is `mistakenness`, but you
 can customize its name by using the `mistakenness_field` named argument.
 
@@ -129,8 +130,8 @@ These hard samples are also useful as seeds when considering what other new
 samples of add to a training dataset.
 
 In order to compute hardness, model predictions must be generated on the
-samples of a `Dataset`. These predictions can then be loaded into FiftyOne into
-the same `Dataset` and the FiftyOne Brain can be used to compute hardness:
+samples of a |Dataset|. These predictions can then be loaded into FiftyOne into
+the same |Dataset| and the FiftyOne Brain can be used to compute hardness:
 
 .. code-block:: python
     :linenos:
@@ -143,7 +144,7 @@ the same `Dataset` and the FiftyOne Brain can be used to compute hardness:
 have been computed and are stored in the `label_field`.  Annotations and labels
 are not required for hardness.
 
-**Output**: A scalar-valued field per `sample` that ranks the hardness of the
+**Output**: A scalar-valued field per |Sample| that ranks the hardness of the
 sample.  The default name of this field is `mistakenness`, but you can
 customize its name by using the `mistakenness_field` named argument.
 

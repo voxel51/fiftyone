@@ -3,8 +3,8 @@ import fiftyone as fo
 # Load your FiftyOne dataset
 dataset = ...
 
-# Launch the dashboard that you'll connect to from your local machine
-session = fo.launch_dashboard(remote=True)
+# Launch the app that you'll connect to from your local machine
+session = fo.launch_app(remote=True)
 
 # Load a dataset
 session.dataset = dataset

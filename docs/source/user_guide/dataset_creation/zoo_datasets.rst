@@ -14,7 +14,7 @@ the CLI.
 
   .. group-tab:: Python
 
-    The Dataset Zoo is accessible via the ``fiftyone.zoo`` package.
+    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo` package.
 
   .. group-tab:: CLI
 
@@ -48,7 +48,7 @@ Listing zoo datasets
   .. group-tab:: Python
 
     You can list the available zoo datasets via the
-    ``fiftyone.zoo.list_zoo_datasets()`` method:
+    :meth:`fiftyone.zoo.list_zoo_datasets()` method:
 
     .. code-block:: python
         :linenos:
@@ -74,7 +74,7 @@ Listing zoo datasets
          'caltech101']
 
     To view the zoo datasets that you have downloaded, you can use the
-    ``fiftyone.zoo.list_downloaded_zoo_datasets()`` method:
+    :meth:`fiftyone.zoo.list_downloaded_zoo_datasets()` method:
 
     .. code-block:: python
         :linenos:
@@ -85,7 +85,7 @@ Listing zoo datasets
         downloaded_datasets = foz.list_downloaded_zoo_datasets()
         pprint(downloaded_datasets)
 
-    .. code-block:: json
+    .. code-block:: python
 
         {
             'cifar10': (
@@ -179,7 +179,7 @@ Getting information about zoo datasets
 
   .. group-tab:: Python
 
-    Each zoo dataset is represented by a ``fiftyone.zoo.ZooDataset``
+    Each zoo dataset is represented by a :class:`fiftyone.zoo.ZooDataset`
     subclass, which contains information about the dataset, its available
     splits, and more.
 
@@ -214,13 +214,13 @@ Getting information about zoo datasets
         ***** Supported splits *****
         test, train
 
-    When a zoo dataset is downloaded, a ``fiftyone.zoo.ZooDatasetInfo``
+    When a zoo dataset is downloaded, a :class:`fiftyone.zoo.ZooDatasetInfo`
     instance is created in its root directory that contains additional
     information about the dataset, including which splits have been
     downloaded (if applicable).
 
-    You can load the ``fiftyone.zoo.ZooDatasetInfo`` instance for a
-    downloaded dataset via the ``fiftyone.zoo.load_zoo_dataset_info()``
+    You can load the :class:`fiftyone.zoo.ZooDatasetInfo` instance for a
+    downloaded dataset via the :meth:`fiftyone.zoo.load_zoo_dataset_info()`
     method.
 
     For example, let's print some information about the CIFAR-10 dataset
@@ -361,7 +361,7 @@ Downloading zoo datasets
   .. group-tab:: Python
 
     You can download zoo datasets (or individual split(s) of them) from the
-    web via the ``fiftyone.zoo.download_zoo_dataset()`` method.
+    web via the :meth:`fiftyone.zoo.download_zoo_dataset()` method.
 
     For example, let's download the ``train`` split of CIFAR-10:
 
@@ -444,7 +444,7 @@ Loading zoo datasets into FiftyOne
   .. group-tab:: Python
 
     You can load a zoo dataset (or individual split(s) of them) via the
-    ``fiftyone.zoo.load_zoo_dataset()`` method. By default, the dataset will
+    :meth:`fiftyone.zoo.load_zoo_dataset()` method. By default, the dataset will
     be automatically downloaded from the web the first time you access it if
     it is not already downloaded:
 
