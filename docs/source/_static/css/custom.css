@@ -3,7 +3,10 @@ body {
     sans-serif;
 }
 
-/* pytorch theme overrides */
+article.pytorch-article pre,
+span.pre {
+  background: var(--bg-light-secondary);
+}
 
 .ui.tabular.menu .item {
   /* stop breaking tabs */
@@ -23,10 +26,32 @@ ul.pytorch-breadcrumbs li {
 
 article.pytorch-article pre {
   margin-bottom: 1rem;
+  font-size: 13px;
+}
+
+article.pytorch-article .note .admonition-title {
+  background-color: var(--color-secondary);
 }
 
 .pytorch-left-menu li.toctree-l1.current > a:before {
-  top: -1px;
+  top: -1rem;
+}
+
+.pytorch-left-menu,
+article.pytorch-article .note {
+  background-color: var(--bg-light-secondary);
+}
+
+div.nbinput.container div.input_area {
+  background: var(--bg-light-secondary);
+}
+
+div.nbinput.container div.input_area div[class*="highlight"] {
+  background: var(--bg-light-secondary);
+}
+
+div.nboutput.nblast.docutils.container {
+  padding-bottom: 1rem;
 }
 
 a:link,
@@ -39,13 +64,16 @@ ul.pytorch-breadcrumbs a {
   color: var(--color-primary);
 }
 
-article.pytorch-article .note .admonition-title {
-  background-color: var(--color-secondary);
-}
-
 .rst-footer-buttons {
   /* the "next" button is floated and doesn't take up any height by itself */
   min-height: 2em;
+}
+
+/* nbsphinx style customization */
+
+.nbinput .prompt,
+.nboutput .prompt {
+  display: none;
 }
 
 /* fixes for code line numbers */
