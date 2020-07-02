@@ -55,14 +55,15 @@ def write_dataset(
 
     Args:
         samples: an iterable of samples
-        sample_parser: a :class:`fiftyone.utils.data.SampleParser` to use to
-            parse the samples
+        sample_parser: a :class:`fiftyone.utils.data.parsers.SampleParser` to
+            use to parse the samples
         dataset_dir (None): the directory to which to write the dataset in
             format ``dataset_type``
-        dataset_type (None): the :class:`fiftyone.types.Dataset` type to write
+        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
+            type to write
         dataset_exporter (None): a
-            :class:`fiftyone.utils.data.DatasetExporter` to use to write the
-            dataset
+            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
+            write the dataset
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         **kwargs: optional keyword arguments to pass to
@@ -154,10 +155,11 @@ def export_samples(
             or a :class:`fifyone.core.view.DatasetView`
         export_dir (None): the directory to which to export the samples in
             format ``dataset_type``
-        dataset_type (None): the :class:`fiftyone.types.Dataset` type to write
+        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
+            type to write
         dataset_exporter (None): a
-            :class:`fiftyone.utils.data.DatasetExporter` to use to write the
-            dataset
+            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
+            write the dataset
         label_field (None): the name of the label field to export, which is
             required if ``dataset_exporter`` is a
             :class:`LabeledImageDatasetExporter`
@@ -395,7 +397,8 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
     """Exporter that writes a directory of images to disk.
 
-    See :class:`fiftyone.types.ImageDirectory` for format details.
+    See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
+    details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -434,8 +437,8 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes an image classification dataset to disk in
     FiftyOne's default format.
 
-    See :class:`fiftyone.types.FiftyOneImageClassificationDataset` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
+    for format details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -501,8 +504,8 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
 class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
     """Exporter that writes an image classification directory tree to disk.
 
-    See :class:`fiftyone.types.ImageClassificationDirectoryTree` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.ImageClassificationDirectoryTree`
+    for format details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -577,8 +580,8 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes an image detection dataset to disk in FiftyOne's
     default format.
 
-    See :class:`fiftyone.types.FiftyOneImageDetectionDataset` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageDetectionDataset` for
+    format details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict
@@ -645,7 +648,8 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes an image labels dataset to disk in FiftyOne's
     default format.
 
-    See :class:`fiftyone.types.FiftyOneImageLabelsDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
+    format details.
 
     If the path to an image is provided, the image is directly copied to its
     destination, maintaining the original filename, unless a name conflict

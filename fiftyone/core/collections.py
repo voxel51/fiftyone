@@ -147,12 +147,12 @@ class SampleCollection(object):
         Args:
             export_dir (None): the directory to which to export the samples in
                 format ``dataset_type``
-            dataset_type (None): the :class:`fiftyone.types.Dataset` type to
-                write. If not specified, the default type for ``label_field``
-                is used
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type to write. If
+                not specified, the default type for ``label_field`` is used
             dataset_exporter (None): a
-                :class:`fiftyone.utils.data.DatasetExporter` to use to export
-                the samples
+                :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
+                to export the samples
             label_field (None): the name of the label field to export, if
                 applicable. If not specified and the requested output type is
                 a labeled dataset, the first field of compatible type for the

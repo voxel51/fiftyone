@@ -1,7 +1,6 @@
 """
-Utilities for working with datasets in Berkeley DeepDrive (BDD) format.
-
-The BDD dataset: https://bdd-data.berkeley.edu.
+Utilities for working with datasets in
+`Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -37,7 +36,8 @@ import fiftyone.utils.data as foud
 
 
 class BDDSampleParser(foud.LabeledImageTupleSampleParser):
-    """Parser for samples in BDD format.
+    """Parser for samples in
+    `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
     This implementation supports samples that are
     ``(image_or_path, anno_or_path)`` tuples, where:
@@ -79,7 +79,8 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
 
           or the path to such a JSON file on disk.
 
-    See :class:`fiftyone.types.BDDDataset` for more format details.
+    See :class:`fiftyone.types.dataset_types.BDDDataset` for more format
+    details.
     """
 
     @property
@@ -113,7 +114,7 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
 class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
     """Importer for BDD datasets stored on disk.
 
-    See :class:`fiftyone.types.BDDDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -165,7 +166,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes BDD datasets to disk.
 
-    See :class:`fiftyone.types.BDDDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.BDDDataset` for format details.
 
     Args:
         export_dir: the directory to write the export
@@ -220,7 +221,8 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
 def load_bdd_annotations(json_path):
     """Loads the BDD annotations from the given JSON file.
 
-    See :class:`fiftyone.types.BDDDataset` for more format details.
+    See :class:`fiftyone.types.dataset_types.BDDDataset` for more format
+    details.
 
     Args:
         json_path: the path to the annotations JSON file

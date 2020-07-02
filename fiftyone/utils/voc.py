@@ -1,7 +1,6 @@
 """
-Utilities for working with datasets in PASCAL VOC format.
-
-The VOC dataset: http://host.robots.ox.ac.uk/pascal/VOC.
+Utilities for working with datasets in
+`VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -39,7 +38,8 @@ logger = logging.getLogger(__name__)
 
 
 class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
-    """Parser for samples in PASCAL VOC Detection format.
+    """Parser for samples in
+    `VOC detection format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
     This implementation supports samples that are
     ``(image_or_path, annotations_or_path)`` tuples, where:
@@ -76,7 +76,8 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
 
           or the path to a VOC annotations XML file on disk.
 
-    See :class:`fiftyone.types.VOCDetectionDataset` for more format details.
+    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for more
+    format details.
     """
 
     def __init__(self):
@@ -100,7 +101,8 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
 class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     """Importer for VOC detection datasets stored on disk.
 
-    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -172,7 +174,8 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes VOC detection datasets to disk.
 
-    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
+    details.
 
     Args:
         export_dir: the directory to write the export
@@ -559,7 +562,8 @@ class VOCBoundingBox(object):
 class VOCAnnotationWriter(object):
     """Class for writing annotations in VOC format.
 
-    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
+    details.
     """
 
     def __init__(self):
@@ -601,7 +605,8 @@ class VOCAnnotationWriter(object):
 def load_voc_detection_annotations(xml_path):
     """Loads the VOC detection annotations from the given XML file.
 
-    See :class:`fiftyone.types.VOCDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for format
+    details.
 
     Args:
         xml_path: the path to the annotations XML file

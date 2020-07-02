@@ -1,7 +1,6 @@
 """
-Utilities for working with datasets in COCO format.
-
-The COCO dataset: http://cocodataset.org/#home.
+Utilities for working with datasets in
+`COCO format <http://cocodataset.org/#home>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -40,7 +39,8 @@ logger = logging.getLogger(__name__)
 
 
 class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
-    """Parser for samples in COCO detection format.
+    """Parser for samples in
+    `COCO detection format <http://cocodataset.org/#home>`_.
 
     This implementation supports samples that are
     ``(image_or_path, annotations)`` tuples, where:
@@ -66,7 +66,8 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
           where it is assumed that all detections correspond to the image in
           the sample.
 
-    See :class:`fiftyone.types.COCODetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
+    details.
     """
 
     def __init__(self):
@@ -91,7 +92,8 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
 class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     """Importer for COCO detection datasets stored on disk.
 
-    See :class:`fiftyone.types.COCODetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -160,7 +162,8 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes COCO detection datasets to disk.
 
-    See :class:`fiftyone.types.COCODetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
+    details.
 
     Args:
         export_dir: the directory to write the export
@@ -414,7 +417,8 @@ class COCOObject(etas.Serializable):
 def load_coco_detection_annotations(json_path):
     """Loads the COCO annotations from the given JSON file.
 
-    See :class:`fiftyone.types.COCODetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
+    details.
 
     Args:
         json_path: the path to the annotations JSON file
@@ -422,7 +426,8 @@ def load_coco_detection_annotations(json_path):
     Returns:
         classes: a list of classes
         images: a dict mapping image filenames to image dicts
-        annotations: a dict mapping image IDs to list of :class:`COCOObject` instances
+        annotations: a dict mapping image IDs to list of :class:`COCOObject`
+            instances
     """
     d = etas.load_json(json_path)
 

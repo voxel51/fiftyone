@@ -572,8 +572,8 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
 class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
     """Parser for samples in FiftyOne image classification datasets.
 
-    See :class:`fiftyone.types.FiftyOneImageClassificationDataset` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
+    for format details.
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -588,8 +588,8 @@ class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
 class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
     """Parser for samples in FiftyOne image detection datasets.
 
-    See :class:`fiftyone.types.FiftyOneImageDetectionDataset` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageDetectionDataset` for
+    format details.
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -610,7 +610,8 @@ class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
 class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
     """Parser for samples in FiftyOne image labels datasets.
 
-    See :class:`fiftyone.types.FiftyOneImageLabelsDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
+    format details.
     """
 
     pass

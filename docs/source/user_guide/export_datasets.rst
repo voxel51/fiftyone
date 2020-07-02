@@ -4,16 +4,16 @@ Exporting FiftyOne Datasets
 .. include:: ../substitutions.rst
 .. default-role:: code
 
-FiftyOne provides native support for exporting a |Dataset2|_ to disk in a variety of
-common formats.
+FiftyOne provides native support for exporting a |Dataset2|_ to disk in a
+variety of common formats.
 
 Basic recipe
 ------------
 
-The interface for exporting a FiftyOne |Dataset| is conveniently exposed via the
-Python library and the CLI. You can easily export entire datasets as well as
-arbitrary subsets of your datasets that you have identified by constructing a
-|DatasetView| into any format of your choice via the basic recipe below.
+The interface for exporting a FiftyOne |Dataset| is conveniently exposed via
+the Python library and the CLI. You can easily export entire datasets as well
+as arbitrary subsets of your datasets that you have identified by constructing
+a |DatasetView| into any format of your choice via the basic recipe below.
 
 .. tabs::
 
@@ -35,7 +35,7 @@ arbitrary subsets of your datasets that you have identified by constructing a
         label_field = "ground_truth"  # for example
 
         # The type of dataset to export
-        # Any subclass of `fiftyone.types.BaseDataset` is supported
+        # Any subclass of `fiftyone.types.Dataset` is supported
         dataset_type = fo.types.COCODetectionDataset  # for example
 
         # Export the dataset!
@@ -62,7 +62,7 @@ arbitrary subsets of your datasets that you have identified by constructing a
         LABEL_FIELD=ground_truth  # for example
 
         # The type of dataset to export
-        # Any subclass of `fiftyone.types.BaseDataset` is supported
+        # Any subclass of `fiftyone.types.Dataset` is supported
         TYPE=fiftyone.types.COCODetectionDataset  # for example
 
         # Export the dataset!
@@ -128,10 +128,10 @@ disk as follows:
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.ImageDirectory
 
-Image classification datasets
------------------------------
+FiftyOneImageClassificationDataset
+----------------------------------
 
-The :class:`fiftyone.types.ImageClassificationDataset <fiftyone.types.dataset_types.ImageClassificationDataset>`
+The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
 type represents a labeled dataset consisting of images and their associated
 classification labels stored in a simple JSON format.
 
@@ -187,7 +187,7 @@ disk in the above format as follows:
         dataset_or_view.export(
             export_dir,
             label_field=label_field,
-            dataset_type=fo.types.ImageClassificationDataset,
+            dataset_type=fo.types.FiftyOneImageClassificationDataset,
         )
 
   .. group-tab:: CLI
@@ -202,10 +202,10 @@ disk in the above format as follows:
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
-            --type fiftyone.types.ImageClassificationDataset
+            --type fiftyone.types.FiftyOneImageClassificationDataset
 
-Image classification directory tree
------------------------------------
+ImageClassificationDirectoryTree
+--------------------------------
 
 The :class:`fiftyone.types.ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`
 type represents a directory tree whose subfolders define an image
@@ -264,8 +264,8 @@ stored on disk in the above format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.ImageClassificationDirectoryTree
 
-TF image classification dataset
--------------------------------
+TFImageClassificationDataset
+----------------------------
 
 The :class:`fiftyone.types.TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -336,10 +336,10 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.TFImageClassificationDataset
 
-Image detection dataset
------------------------
+FiftyOneImageDetectionDataset
+-----------------------------
 
-The :class:`fiftyone.types.ImageDetectionDataset <fiftyone.types.dataset_types.ImageDetectionDataset>`
+The :class:`fiftyone.types.FiftyOneImageDetectionDataset <fiftyone.types.dataset_types.FiftyOneImageDetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
 object detections stored in a simple JSON format.
 
@@ -410,7 +410,7 @@ format as follows:
         dataset_or_view.export(
             export_dir,
             label_field=label_field,
-            dataset_type=fo.types.ImageDetectionDataset,
+            dataset_type=fo.types.FiftyOneImageDetectionDataset,
         )
 
   .. group-tab:: CLI
@@ -425,10 +425,10 @@ format as follows:
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
-            --type fiftyone.types.ImageDetectionDataset
+            --type fiftyone.types.FiftyOneImageDetectionDataset
 
-COCO detection dataset
-----------------------
+COCODetectionDataset
+--------------------
 
 The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -528,8 +528,8 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.COCODetectionDataset
 
-VOC detection dataset
----------------------
+VOCDetectionDataset
+-------------------
 
 The :class:`fiftyone.types.VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -637,8 +637,8 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.VOCDetectionDataset
 
-KITTI detection dataset
------------------------
+KITTIDetectionDataset
+---------------------
 
 The :class:`fiftyone.types.KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -737,8 +737,8 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.KITTIDetectionDataset
 
-CVAT image dataset
-------------------
+CVATImageDataset
+----------------
 
 The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
 type represents a labeled dataset consisting of images and their associated
@@ -843,10 +843,10 @@ as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.CVATImageDataset
 
-Multitask image labels dataset
-------------------------------
+FiftyOneImageLabelsDataset
+--------------------------
 
-The :class:`fiftyone.types.ImageLabelsDataset <fiftyone.types.dataset_types.ImageLabelsDataset>`
+The :class:`fiftyone.types.FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>`
 type represents a labeled dataset consisting of images and their associated
 multitask predictions stored in
 `eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
@@ -910,7 +910,7 @@ format as follows:
         dataset_or_view.export(
             export_dir,
             label_field=label_field,
-            dataset_type=fo.types.ImageLabelsDataset,
+            dataset_type=fo.types.FiftyOneImageLabelsDataset,
         )
 
   .. group-tab:: CLI
@@ -925,10 +925,10 @@ format as follows:
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
-            --type fiftyone.types.ImageLabelsDataset
+            --type fiftyone.types.FiftyOneImageLabelsDataset
 
-BDD dataset
------------
+BDDDataset
+----------
 
 The :class:`fiftyone.types.BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
 type represents a labeled dataset consisting of images and their associated

@@ -31,8 +31,9 @@ from .importers import (
 
 
 class ImageIngestor(object):
-    """Mixin for :class:`fiftyone.utils.DatasetImporter` instances that ingest
-    images into the provided ``dataset_dir`` during import.
+    """Mixin for :class:`fiftyone.utils.data.importers.DatasetImporter`
+    instances that ingest images into the provided ``dataset_dir`` during
+    import.
 
     Args:
         dataset_dir: the directory where input images will be ingested into
@@ -87,18 +88,18 @@ class UnlabeledImageDatasetIngestor(
     ``dataset_dir`` during import.
 
     The source images are parsed from the provided ``samples`` using the
-    provided :class:`fiftyone.utils.data.UnlabeledImageSampleParser`.
+    provided :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`.
 
     If an image path is available via
-    :func:`fiftyone.utils.data.UnlabeledImageSampleParser.get_image_path`, then
-    the image is directly copied from its source location into ``dataset_dir``.
-    In this case, the original filename is maintained, unless a name conflict
-    would occur, in which case an index of the form ``"-%d" % count`` is
-    appended to the base filename.
+    :func:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser.get_image_path`,
+    then the image is directly copied from its source location into
+    ``dataset_dir``. In this case, the original filename is maintained, unless
+    a name conflict would occur, in which case an index of the form
+    ``"-%d" % count`` is appended to the base filename.
 
     If no image path is available, the image is read in-memory via
-    :func:`fiftyone.utils.data.UnlabeledImageSampleParser.get_image` and
-    written to ``dataset_dir`` in the following format::
+    :func:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser.get_image`
+    and written to ``dataset_dir`` in the following format::
 
         <dataset_dir>/<image_count><image_format>
 
@@ -108,8 +109,8 @@ class UnlabeledImageDatasetIngestor(
         dataset_dir: the directory where input images will be ingested into
         samples: an iterable of samples
         sample_parser: an
-            :class:`fiftyone.utils.data.UnlabeledImageSampleParser` to use to
-            parse the samples
+            :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser` to
+            use to parse the samples
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -156,17 +157,17 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
     ``dataset_dir`` during import.
 
     The source images and labels are parsed from the provided ``samples`` using
-    the provided :class:`fiftyone.utils.data.LabeledImageSampleParser`.
+    the provided :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`.
 
     If an image path is available via
-    :func:`fiftyone.utils.data.LabeledImageSampleParser.get_image_path`, then
-    the image is directly copied from its source location into ``dataset_dir``.
-    In this case, the original filename is maintained, unless a name conflict
-    would occur, in which case an index of the form ``"-%d" % count`` is
-    appended to the base filename.
+    :func:`fiftyone.utils.data.parsers.LabeledImageSampleParser.get_image_path`,
+    then the image is directly copied from its source location into
+    ``dataset_dir``. In this case, the original filename is maintained, unless
+    a name conflict would occur, in which case an index of the form
+    ``"-%d" % count`` is appended to the base filename.
 
     If no image path is available, the image is read in-memory via
-    :func:`fiftyone.utils.data.LabeledImageSampleParser.get_image` and
+    :func:`fiftyone.utils.data.parsers.LabeledImageSampleParser.get_image` and
     written to ``dataset_dir`` in the following format::
 
         <dataset_dir>/<image_count><image_format>
@@ -177,8 +178,8 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         dataset_dir: the directory where input images will be ingested into
         samples: an iterable of samples
         sample_parser: an
-            :class:`fiftyone.utils.data.LabeledImageSampleParser` to use to
-            parse the samples
+            :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser` to
+            use to parse the samples
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used

@@ -27,8 +27,9 @@ import eta.core.utils as etau
 def parse_images_dir(dataset_dir, recursive=True):
     """Parses the contents of the given directory of images.
 
-    See :class:`fiftyone.types.ImageDirectory` for format details. In
-    particular, note that files with non-image MIME types are omitted.
+    See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
+    details. In particular, note that files with non-image MIME types are
+    omitted.
 
     Args:
         dataset_dir: the dataset directory

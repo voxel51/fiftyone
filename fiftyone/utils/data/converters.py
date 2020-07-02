@@ -48,15 +48,17 @@ def convert_dataset(
 
     Args:
         input_dir (None): the input dataset directory
-        input_type (None): the :class:`fiftyone.types.Dataset` type of the
-            dataset in ``input_dir``
-        dataset_importer (None): a :class:`fiftyone.utils.data.DatasetImporter`
-            to use to import the input dataset
+        input_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
+            type of the dataset in ``input_dir``
+        dataset_importer (None): a
+            :class:`fiftyone.utils.data.importers.DatasetImporter` to use to
+            import the input dataset
         output_dir (None): the directory to which to write the output dataset
-        output_type (None): the :class:`fiftyone.types.Dataset` type to write
-            to ``output_dir``
-        dataset_exporter (None): a :class:`fiftyone.utils.data.DatasetExporter`
-            to use to export the dataset
+        output_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
+            type to write to ``output_dir``
+        dataset_exporter (None): a
+            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
+            export the dataset
     """
     if input_type is None and dataset_importer is None:
         raise ValueError(

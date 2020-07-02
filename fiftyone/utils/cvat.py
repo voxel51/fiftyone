@@ -1,7 +1,6 @@
 """
-Utilities for working with datasets in CVAT format.
-
-The CVAT project: https://github.com/opencv/cvat.
+Utilities for working with datasets in
+`CVAT format <https://github.com/opencv/cvat>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -41,7 +40,8 @@ import fiftyone.utils.data as foud
 
 
 class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
-    """Parser for samples in CVAT image format.
+    """Parser for samples in
+    `CVAT image format <https://github.com/opencv/cvat>`_.
 
     This implementation supports samples that are
     ``(image_or_path, image_tag_dict)`` tuples, where:
@@ -72,7 +72,8 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
                 ...
             }
 
-    See :class:`fiftyone.types.CVATImageDataset` for more format details.
+    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for more format
+    details.
     """
 
     def __init__(self):
@@ -122,7 +123,8 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
 class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
     """Importer for CVAT image datasets stored on disk.
 
-    See :class:`fiftyone.types.CVATImageDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -176,7 +178,8 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
 class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes CVAT image datasets to disk.
 
-    See :class:`fiftyone.types.CVATImageDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
+    details.
 
     Args:
         export_dir: the directory to write the export
@@ -628,7 +631,8 @@ class CVATAttribute(object):
 class CVATImageAnnotationWriter(object):
     """Class for writing annotations in CVAT image format.
 
-    See :class:`fiftyone.types.CVATImageDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
+    details.
     """
 
     def __init__(self):
@@ -665,7 +669,8 @@ class CVATImageAnnotationWriter(object):
 def load_cvat_image_annotations(xml_path):
     """Loads the CVAT image annotations from the given XML file.
 
-    See :class:`fiftyone.types.CVATImageDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.CVATImageDataset` for format
+    details.
 
     Args:
         xml_path: the path to the annotations XML file

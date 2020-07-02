@@ -164,11 +164,11 @@ Convert datasets on disk between supported formats.
       --input-dir INPUT_DIR
                             the directory containing the dataset
       --input-type INPUT_TYPE
-                            the type of the input dataset (a subclass of `fiftyone.types.BaseDataset`)
+                            the fiftyone.types.Dataset type of the input dataset
       --output-dir OUTPUT_DIR
                             the directory to which to write the output dataset
       --output-type OUTPUT_TYPE
-                            the desired output dataset type (a subclass of `fiftyone.types.BaseDataset`)
+                            the fiftyone.types.Dataset type to output
 
 **Examples**
 
@@ -288,7 +288,7 @@ Tools for creating FiftyOne datasets.
                             the directory containing the dataset
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to load
-      -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
 
 **Examples**
 
@@ -420,7 +420,7 @@ Export FiftyOne datasets to disk in supported formats.
                             the path to export the dataset in JSON format
       -f LABEL_FIELD, --label-field LABEL_FIELD
                             the name of the label field to export
-      -t TYPE, --type TYPE  the format in which to export the dataset (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type in which to export
 
 **Examples**
 
@@ -520,8 +520,7 @@ Launch the FiftyOne App.
 View datasets in App
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-View datasets in the FiftyOne App without persisting them to the
-database.
+View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: text
 
@@ -538,7 +537,7 @@ database.
       -n NAME, --name NAME  a name for the dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             the directory containing the dataset to view
-      -t TYPE, --type TYPE  the dataset type (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
       -z NAME, --zoo-dataset NAME
                             the name of a zoo dataset to view
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]

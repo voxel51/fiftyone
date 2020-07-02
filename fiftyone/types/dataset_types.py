@@ -25,11 +25,11 @@ class Dataset(object):
     """Base type for datasets."""
 
     def get_dataset_importer_cls(self):
-        """Returns the :class:`fiftyone.utils.data.DatasetImporter` class for
-        importing datasets of this type from disk.
+        """Returns the :class:`fiftyone.utils.data.importers.DatasetImporter`
+        class for importing datasets of this type from disk.
 
         Returns:
-            a :class:`fiftyone.utils.data.DatasetImporter` class
+            a :class:`fiftyone.utils.data.importers.DatasetImporter` class
         """
         raise TypeError(
             "Dataset type '%s' does not provide a default DatasetImporter"
@@ -37,11 +37,11 @@ class Dataset(object):
         )
 
     def get_dataset_exporter_cls(self):
-        """Returns the :class:`fiftyone.utils.data.DatasetExporter` class for
-        exporting datasets of this type to disk.
+        """Returns the :class:`fiftyone.utils.data.exporters.DatasetExporter`
+        class for exporting datasets of this type to disk.
 
         Returns:
-            a :class:`fiftyone.utils.data.DatasetExporter` class
+            a :class:`fiftyone.utils.data.exporters.DatasetExporter` class
         """
         raise TypeError(
             "Dataset type '%s' does not provide a default DatasetExporter"
@@ -63,11 +63,12 @@ class UnlabeledImageDataset(UnlabeledDataset):
 
     def get_dataset_importer_cls(self):
         """Returns the
-        :class:`fiftyone.utils.data.UnlabeledImageDatasetImporter` class for
-        importing datasets of this type from disk.
+        :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
+        class for importing datasets of this type from disk.
 
         Returns:
-            a :class:`fiftyone.utils.data.UnlabeledImageDatasetImporter` class
+            a :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
+            class
         """
         raise NotImplementedError(
             "subclass must implement get_dataset_importer_cls()"
@@ -75,11 +76,12 @@ class UnlabeledImageDataset(UnlabeledDataset):
 
     def get_dataset_exporter_cls(self):
         """Returns the
-        :class:`fiftyone.utils.data.UnlabeledImageDatasetExporter` class for
-        exporting datasets of this type to disk.
+        :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
+        class for exporting datasets of this type to disk.
 
         Returns:
-            a :class:`fiftyone.utils.data.UnlabeledImageDatasetExporter` class
+            a :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
+            class
         """
         raise NotImplementedError(
             "subclass must implement get_dataset_exporter_cls()"
@@ -101,11 +103,12 @@ class LabeledImageDataset(LabeledDataset):
 
     def get_dataset_importer_cls(self):
         """Returns the
-        :class:`fiftyone.utils.data.LabeledImageDatasetImporter` class for
-        importing datasets of this type from disk.
+        :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+        class for importing datasets of this type from disk.
 
         Returns:
-            a :class:`fiftyone.utils.data.LabeledImageDatasetImporter` class
+            a :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+            class
         """
         raise NotImplementedError(
             "subclass must implement get_dataset_importer_cls()"
@@ -113,11 +116,12 @@ class LabeledImageDataset(LabeledDataset):
 
     def get_dataset_exporter_cls(self):
         """Returns the
-        :class:`fiftyone.utils.data.LabeledImageDatasetExporter` class for
-        exporting datasets of this type to disk.
+        :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+        class for exporting datasets of this type to disk.
 
         Returns:
-            a :class:`fiftyone.utils.data.LabeledImageDatasetExporter` class
+            a :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+            class
         """
         raise NotImplementedError(
             "subclass must implement get_dataset_exporter_cls()"
@@ -247,7 +251,8 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
 
 class TFImageClassificationDataset(ImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
-    classification labels stored as TFRecords.
+    classification labels stored as
+    `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -346,7 +351,7 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
 
 class COCODetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in COCO format (http://cocodataset.org/#home).
+    detections saved in `COCO format <http://cocodataset.org/#home>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -417,7 +422,7 @@ class COCODetectionDataset(ImageDetectionDataset):
 
 class VOCDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in VOC format (http://host.robots.ox.ac.uk/pascal/VOC).
+    detections saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -491,8 +496,8 @@ class VOCDetectionDataset(ImageDetectionDataset):
 
 class KITTIDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in KITTI format
-    (http://www.cvlibs.net/datasets/kitti/eval_object.php).
+    detections saved in
+    `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -568,8 +573,8 @@ class KITTIDetectionDataset(ImageDetectionDataset):
 
 class TFObjectDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections stored as TFRecords in TF Object Detection API format
-    (https://github.com/tensorflow/models/blob/master/research/object_detection).
+    detections stored as TFRecords in
+    `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -621,7 +626,7 @@ class TFObjectDetectionDataset(ImageDetectionDataset):
 
 class CVATImageDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections stored in CVAT image format (https://github.com/opencv/cvat).
+    detections stored in `CVAT image format <https://github.com/opencv/cvat>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -692,7 +697,8 @@ class CVATImageDataset(ImageDetectionDataset):
 
 class FiftyOneImageLabelsDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
-    predictions stored in ``eta.core.image.ImageLabels`` format.
+    predictions stored in
+    `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -739,8 +745,8 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
 
 class BDDDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
-    predictions saved in Berkeley DeepDrive (BDD) format
-    (https://bdd-data.berkeley.edu).
+    predictions saved in
+    `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
     Datasets of this type are read/written in the following format::
 

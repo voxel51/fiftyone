@@ -205,7 +205,8 @@ class LabeledImageDatasetImporter(DatasetImporter):
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
     """Importer for a directory of images stored on disk.
 
-    See :class:`fiftyone.types.ImageDirectory` for format details.
+    See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -254,8 +255,8 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
     """Importer for image classification datasets stored on disk in FiftyOne's
     default format.
 
-    See :class:`fiftyone.types.FiftyOneImageClassificationDataset` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageClassificationDataset`
+    for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -321,8 +322,8 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
 class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     """Importer for an image classification directory tree stored on disk.
 
-    See :class:`fiftyone.types.ImageClassificationDirectoryTree` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.ImageClassificationDirectoryTree`
+    for format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -385,8 +386,8 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
     """Importer for image detection datasets stored on disk in FiftyOne's
     default format.
 
-    See :class:`fiftyone.types.FiftyOneImageDetectionDataset` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageDetectionDataset` for
+    format details.
 
     Args:
         dataset_dir: the dataset directory
@@ -453,7 +454,8 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     """Importer for image labels datasets stored on disk in FiftyOne's default
     format.
 
-    See :class:`fiftyone.types.FiftyOneImageLabelsDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
+    format details.
 
     Args:
         dataset_dir: the dataset directory

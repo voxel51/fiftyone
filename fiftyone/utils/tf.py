@@ -302,11 +302,12 @@ class TFRecordSampleParser(foud.LabeledImageSampleParser):
 
 
 class TFImageClassificationSampleParser(TFRecordSampleParser):
-    """Parser for samples in TF image classification format.
+    """Parser for image classification samples stored as
+    `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
     This implementation supports samples that are ``tf.train.Example`` protos
     whose features follow the format described in
-    :class:`fiftyone.types.TFImageClassificationDataset`.
+    :class:`fiftyone.types.dataset_types.TFImageClassificationDataset`.
     """
 
     _FEATURES = {
@@ -352,11 +353,12 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
 
 
 class TFObjectDetectionSampleParser(TFRecordSampleParser):
-    """Parser for samples in TF Object Detection API format.
+    """Parser for samples in
+    `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_.
 
     This implementation supports samples that are ``tf.train.Example`` protos
     whose features follow the format described in
-    :class:`fiftyone.types.TFObjectDetectionDataset`.
+    :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset`.
     """
 
     _FEATURES = {
@@ -436,7 +438,8 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
 
 
 class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
-    """Base class for :class:`fiftyone.utils.data.LabeledImageDatasetImporter`
+    """Base class for
+    :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
     instances that import ``tf.train.Example`` protos containing labeled
     images.
 
@@ -500,8 +503,8 @@ class TFImageClassificationDatasetImporter(
 ):
     """Importer for TF image classification datasets stored on disk.
 
-    See :class:`fiftyone.types.TFImageClassificationDataset` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
+    format details.
 
     This class assumes that the input TFRecords only contain the images
     themselves and not their paths on disk, and, therefore, the images are read
@@ -525,7 +528,8 @@ class TFImageClassificationDatasetImporter(
 class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
     """Importer for TF detection datasets stored on disk.
 
-    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
+    format details.
 
     This class assumes that the input TFRecords only contain the images
     themselves and not their paths on disk, and, therefore, the images are read
@@ -547,7 +551,8 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
 
 
 class TFRecordsDatasetExporter(foud.LabeledImageDatasetExporter):
-    """Base class for :class:`fiftyone.utils.data.LabeledImageDatasetExporter`
+    """Base class for
+    :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
     instances that export labeled images as TFRecords datasets on disk.
 
     Args:
@@ -603,7 +608,8 @@ class TFImageClassificationDatasetExporter(TFRecordsDatasetExporter):
     """Exporter that writes an image classification dataset to disk as
     TFRecords.
 
-    See :class:`fiftyone.types.TFImageClassificationDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
+    format details.
 
     Args:
         export_dir: the directory to write the export
@@ -623,7 +629,8 @@ class TFObjectDetectionDatasetExporter(TFRecordsDatasetExporter):
     """Exporter that writes an object detection dataset to disk as TFRecords
     in the TF Object Detection API format.
 
-    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
+    format details.
 
     Args:
         export_dir: the directory to write the export
@@ -702,8 +709,8 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
     image classification format.
 
-    See :class:`fiftyone.types.TFImageClassificationDataset` for format
-    details.
+    See :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` for
+    format details.
     """
 
     def make_tf_example(self, image_or_path, classification, filename=None):
@@ -742,7 +749,8 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
     """Class for generating ``tf.train.Example`` protos for samples in TF
     Object Detection API format.
 
-    See :class:`fiftyone.types.TFObjectDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset` for
+    format details.
 
     Args:
         classes (None): the list of possible class labels. If omitted, the

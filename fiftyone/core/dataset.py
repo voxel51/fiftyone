@@ -545,8 +545,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             dataset_dir: the dataset directory
-            dataset_type (None): the :class:`fiftyone.types.Dataset` type of
-                the dataset in ``dataset_dir``
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type of the
+                dataset in ``dataset_dir``
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
@@ -554,8 +555,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
             **kwargs: optional keyword arguments to pass to the constructor of
-                the :class:`fiftyone.utils.data.DatasetImporter` for the
-                specified ``dataset_type`` via the syntax
+                the :class:`fiftyone.utils.data.importers.DatasetImporter` for
+                the specified ``dataset_type`` via the syntax
                 ``DatasetImporter(dataset_dir, **kwargs)``
 
         Returns:
@@ -582,10 +583,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         expand_schema=True,
     ):
         """Adds the samples from the given
-        :class:`fiftyone.utils.data.DatasetImporter` to the dataset.
+        :class:`fiftyone.utils.data.importers.DatasetImporter` to the dataset.
 
         Args:
-            dataset_importer: a :class:`fiftyone.utils.data.DatasetImporter`
+            dataset_importer: a
+                :class:`fiftyone.utils.data.importers.DatasetImporter`
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
@@ -643,7 +645,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             samples: an iterable of samples
             sample_parser: a
-                :class:`fiftyone.utils.data.UnlabeledImageSampleParser`
+                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
             tags (None): an optional list of tags to attach to each sample
 
@@ -683,8 +685,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             samples: an iterable of samples
             sample_parser: a
-                :class:`fiftyone.utils.data.LabeledImageSampleParser` instance
-                to use to parse the samples
+                :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
+                instance to use to parse the samples
             label_field ("ground_truth"): the name of the field to use for the
                 labels
             tags (None): an optional list of tags to attach to each sample
@@ -720,8 +722,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_images_dir(self, images_dir, tags=None, recursive=True):
         """Adds the given directory of images to the dataset.
 
-        See :class:`fiftyone.types.ImageDirectory` for format details. In
-        particular, note that files with non-image MIME types are omitted.
+        See :class:`fiftyone.types.dataset_types.ImageDirectory` for format
+        details. In particular, note that files with non-image MIME types are
+        omitted.
 
         This operation does not read the images.
 
@@ -768,7 +771,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             samples: an iterable of samples
             sample_parser: a
-                :class:`fiftyone.utils.data.UnlabeledImageSampleParser`
+                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
             tags (None): an optional list of tags to attach to each sample
             dataset_dir (None): the directory in which the images will be
@@ -806,8 +809,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             samples: an iterable of samples
             sample_parser: a
-                :class:`fiftyone.utils.data.LabeledImageSampleParser` instance
-                to use to parse the samples
+                :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
+                instance to use to parse the samples
             label_field ("ground_truth"): the name of the field to use for the
                 labels
             tags (None): an optional list of tags to attach to each sample
@@ -850,16 +853,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             dataset_dir: the dataset directory
-            dataset_type: the :class:`fiftyone.types.Dataset` type of the
-                dataset in ``dataset_dir``
+            dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
+                type of the dataset in ``dataset_dir``
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name of the field to use for the
                 labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
             **kwargs: optional keyword arguments to pass to the constructor of
-                the :class:`fiftyone.utils.data.DatasetImporter` for the
-                specified ``dataset_type`` via the syntax
+                the :class:`fiftyone.utils.data.importers.DatasetImporter` for
+                the specified ``dataset_type`` via the syntax
                 ``DatasetImporter(dataset_dir, **kwargs)``
 
         Returns:
@@ -880,10 +883,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         cls, dataset_importer, name=None, label_field="ground_truth", tags=None
     ):
         """Creates a :class:`Dataset` by importing the samples in the given
-        :class:`fiftyone.utils.data.DatasetImporter`.
+        :class:`fiftyone.utils.data.importers.DatasetImporter`.
 
         Args:
-            dataset_importer: a :class:`fiftyone.utils.data.DatasetImporter`
+            dataset_importer: a
+                :class:`fiftyone.utils.data.importers.DatasetImporter`
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name of the field to use for the
@@ -908,7 +912,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             samples: an iterable of samples
             sample_parser: a
-                :class:`fiftyone.utils.data.UnlabeledImageSampleParser`
+                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
@@ -938,8 +942,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             samples: an iterable of samples
             sample_parser: a
-                :class:`fiftyone.utils.data.LabeledImageSampleParser` instance
-                to use to parse the samples
+                :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
+                instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             label_field ("ground_truth"): the name of the field to use for the

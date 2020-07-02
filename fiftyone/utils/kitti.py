@@ -1,7 +1,6 @@
 """
-Utilities for working with datasets in KITTI format.
-
-The KITTI dataset: http://www.cvlibs.net/datasets/kitti/index.php.
+Utilities for working with datasets in
+`KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -40,7 +39,8 @@ logger = logging.getLogger(__name__)
 
 
 class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
-    """Parser for samples in KITTI detection format.
+    """Parser for samples in
+    `KITTI detection format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
     This implementation supports samples that are
     ``(image_or_path, anno_txt_path)`` tuples, where:
@@ -50,7 +50,8 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
 
         - ``anno_txt_path`` is the path to a KITTI labels TXT file on disk
 
-    See :class:`fiftyone.types.KITTIDetectionDataset` for more format details.
+    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for more
+    format details.
     """
 
     def __init__(self):
@@ -70,7 +71,8 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
 class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     """Importer for KITTI detection datasets stored on disk.
 
-    See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
+    details.
 
     Args:
         dataset_dir: the dataset directory
@@ -125,7 +127,8 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes KITTI detection datasets to disk.
 
-    See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
+    details.
 
     Args:
         export_dir: the directory to write the export
@@ -183,7 +186,8 @@ class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
 class KITTIAnnotationWriter(object):
     """Class for writing annotations in KITTI detection format.
 
-    See :class:`fiftyone.types.KITTIDetectionDataset` for more format details.
+    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for more
+    format details.
     """
 
     def write(self, detections, metadata, txt_path):
@@ -207,7 +211,8 @@ class KITTIAnnotationWriter(object):
 def load_kitti_detection_annotations(txt_path, frame_size):
     """Loads the KITTI detection annotations from the given TXT file.
 
-    See :class:`fiftyone.types.KITTIDetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for format
+    details.
 
     Args:
         txt_path: the path to the annotations TXT file
