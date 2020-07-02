@@ -141,9 +141,9 @@ Installing FiftyOne
 
 .. note::
 
-  FiftyOne is currently in private beta. If you have registered, your FiftyOne
-  Beta welcome email contains a token that you will need to run commands in
-  this document. Replace all instances of ``YOUR_TOKEN`` below with your token.
+  **FiftyOne is currently in private beta!** If you have registered, your
+  welcome email contains a token that you will need to run some of the commands
+  below. Replace all instances of ``YOUR_TOKEN`` below with your token.
 
   If you haven't registered for the FiftyOne Beta, you can sign up at
   https://voxel51.com/fiftyone/#beta
