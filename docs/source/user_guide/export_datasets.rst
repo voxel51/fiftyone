@@ -76,63 +76,57 @@ Supported formats
 -----------------
 
 Each supported dataset type is represented by a subclass of
-:class:`fiftyone.types.dataset_types.BaseDataset`, which is used by the Python library and CLI to
-refer to the corresponding dataset format when writing the dataset to disk.
+:class:`fiftyone.types.BaseDataset <fiftyone.types.dataset_types.BaseDataset>`,
+which is used by the Python library and CLI to refer to the corresponding
+dataset format when writing the dataset to disk.
 
-
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| Dataset Type                                                           | Description                                                |
-+========================================================================+============================================================+
-| :class:`fiftyone.types.dataset_types.ImageDirectory`                   | A directory of images.                                     |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.ImageClassificationDataset`       | A labeled dataset consisting of images and their           |
-|                                                                        | associated classification labels in a simple JSON format.  |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.ImageClassificationDirectoryTree` | A directory tree whose subfolders define an image          |
-|                                                                        | classification dataset.                                    |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.TFImageClassificationDataset`     | A labeled dataset consisting of images and their           |
-|                                                                        | associated classification labels stored as TFRecords.      |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.ImageDetectionDataset`            | A labeled dataset consisting of images and their           |
-|                                                                        | associated object detections stored in a simple JSON       |
-|                                                                        | format.                                                    |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.COCODetectionDataset`             | A labeled dataset consisting of images and their           |
-|                                                                        | associated object detections saved in COCO format          |
-|                                                                        | (http://cocodataset.org/#home).                            |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.VOCDetectionDataset`              | A labeled dataset consisting of images and their           |
-|                                                                        | associated object detections saved in VOC format           |
-|                                                                        | (http://host.robots.ox.ac.uk/pascal/VOC).                  |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.KITTIDetectionDataset`            | A labeled dataset consisting of images and their           |
-|                                                                        | associated object detections saved in KITTI format         |
-|                                                                        | (http://www.cvlibs.net/datasets/kitti/eval\_object.php).   |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.TFObjectDetectionDataset`         | A labeled dataset consisting of images and their           |
-|                                                                        | associated object detections stored as TFRecords in TF     |
-|                                                                        | Object Detection API format                                |
-|                                                                        | (https://github.com/tensorflow/models/blob/master/research |
-|                                                                        | /object\_detection).                                       |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.CVATImageDataset`                 | A labeled dataset consisting of images and their           |
-|                                                                        | associated object detections stored in CVAT image format   |
-|                                                                        | (https://github.com/opencv/cvat).                          |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.ImageLabelsDataset`               | A labeled dataset consisting of images and their           |
-|                                                                        | associated multitask predictions stored in                 |
-|                                                                        | :class:`eta.core.image.ImageLabels` format.                |
-+------------------------------------------------------------------------+------------------------------------------------------------+
-| :class:`fiftyone.types.dataset_types.BDDDataset`                       | A labeled dataset consisting of images and their           |
-|                                                                        | associated multitask predictions saved in Berkeley         |
-|                                                                        | DeepDrive (BDD) format (https://bdd-data.berkeley.edu).    |
-+------------------------------------------------------------------------+------------------------------------------------------------+
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| Dataset Type                                                     | Description                                                                        |
++==================================================================+====================================================================================+
+| :class:`ImageDirectory \                                         | A directory of images.                                                             |
+| <fiftyone.types.dataset_types.ImageDirectory>`                   |                                                                                    |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`ImageClassificationDataset \                             | A labeled dataset consisting of images and their associated classification labels  |
+| <fiftyone.types.dataset_types.ImageClassificationDataset>`       | in a simple JSON format.                                                           |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`ImageClassificationDirectoryTree \                       | A directory tree whose subfolders define an image classification dataset.          |
+| <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>` |                                                                                    |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`TFImageClassificationDataset \                           | A labeled dataset consisting of images and their associated classification labels  |
+| <fiftyone.types.dataset_types.TFImageClassificationDataset>`     | stored as TFRecords.                                                               |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`ImageDetectionDataset \                                  | A labeled dataset consisting of images and their associated object detections      |
+| <fiftyone.types.dataset_types.ImageDetectionDataset>`            | stored in a simple JSON format.                                                    |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`COCODetectionDataset \                                   | A labeled dataset consisting of images and their associated object detections      |
+| <fiftyone.types.dataset_types.COCODetectionDataset>`             | saved in `COCO format <http://cocodataset.org/#home>`_.                            |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`VOCDetectionDataset \                                    | A labeled dataset consisting of images and their associated object detections      |
+| <fiftyone.types.dataset_types.VOCDetectionDataset>`              | saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                   |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`KITTIDetectionDataset \                                  | A labeled dataset consisting of images and their associated object detections      |
+| <fiftyone.types.dataset_types.KITTIDetectionDataset>`            | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`TFObjectDetectionDataset \                               | A labeled dataset consisting of images and their associated object detections      |
+| <fiftyone.types.dataset_types.TFObjectDetectionDataset>`         | stored as TFRecords in `TF Object Detection API format \                           |
+|                                                                  | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`CVATImageDataset \                                       | A labeled dataset consisting of images and their associated object detections      |
+| <fiftyone.types.dataset_types.CVATImageDataset>`                 | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`ImageLabelsDataset \                                     | A labeled dataset consisting of images and their associated multitask predictions  |
+| <fiftyone.types.dataset_types.ImageLabelsDataset>`               | stored in `eta.core.image.ImageLabels format \                                     |
+|                                                                  | <https://voxel51.com/docs/api/#types-imagelabels>`_.                               |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
+| :class:`BDDDataset \                                             | A labeled dataset consisting of images and their associated multitask predictions  |
+| <fiftyone.types.dataset_types.BDDDataset>`                       | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
++------------------------------------------------------------------+------------------------------------------------------------------------------------+
 
 Image directories
 -----------------
 
-The :class:`fiftyone.types.dataset_types.ImageDirectory` type represents a directory of images.
+The :class:`fiftyone.types.ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`
+type represents a directory of images.
 
 Datasets of this type are exported in the following format:
 
@@ -177,9 +171,9 @@ disk as follows:
 Image classification datasets
 -----------------------------
 
-The :class:`fiftyone.types.dataset_types.ImageClassificationDataset` type represents a labeled
-dataset consisting of images and their associated classification labels stored
-in a simple JSON format.
+The :class:`fiftyone.types.ImageClassificationDataset <fiftyone.types.dataset_types.ImageClassificationDataset>`
+type represents a labeled dataset consisting of images and their associated
+classification labels stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -253,8 +247,9 @@ disk in the above format as follows:
 Image classification directory tree
 -----------------------------------
 
-The :class:`fiftyone.types.dataset_types.ImageClassificationDirectoryTree` type represents a
-directory tree whose subfolders define an image classification dataset.
+The :class:`fiftyone.types.ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`
+type represents a directory tree whose subfolders define an image
+classification dataset.
 
 Datasets of this type are exported in the following format:
 
@@ -312,9 +307,10 @@ stored on disk in the above format as follows:
 TF image classification dataset
 -------------------------------
 
-The :class:`fiftyone.types.dataset_types.TFImageClassificationDataset` type represents a labeled
-dataset consisting of images and their associated classification labels stored
-as `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
+The :class:`fiftyone.types.TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
+type represents a labeled dataset consisting of images and their associated
+classification labels stored as
+`TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
 Datasets of this type are exported in the following format:
 
@@ -383,9 +379,9 @@ format as follows:
 Image detection dataset
 -----------------------
 
-The :class:`fiftyone.types.dataset_types.ImageDetectionDataset` type represents a labeled dataset
-consisting of images and their associated object detections stored in a simple
-JSON format.
+The :class:`fiftyone.types.ImageDetectionDataset <fiftyone.types.dataset_types.ImageDetectionDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections stored in a simple JSON format.
 
 Datasets of this type are exported in the following format:
 
@@ -474,9 +470,9 @@ format as follows:
 COCO detection dataset
 ----------------------
 
-The :class:`fiftyone.types.dataset_types.COCODetectionDataset` type represents a labeled dataset
-consisting of images and their associated object detections saved in
-`COCO format <http://cocodataset.org/#home>`_.
+The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in `COCO format <http://cocodataset.org/#home>`_.
 
 Datasets of this type are exported in the following format:
 
@@ -575,8 +571,9 @@ format as follows:
 VOC detection dataset
 ---------------------
 
-The :class:`fiftyone.types.dataset_types.VOCDetectionDataset` type represents a labeled dataset
-consisting of images and their associated object detections saved in
+The :class:`fiftyone.types.VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
 `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
 Datasets of this type are exported in the following format:
@@ -683,8 +680,9 @@ format as follows:
 KITTI detection dataset
 -----------------------
 
-The :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` type represents a labeled dataset
-consisting of images and their associated object detections saved in
+The :class:`fiftyone.types.KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
 `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
 Datasets of this type are exported in the following format:
@@ -782,8 +780,9 @@ format as follows:
 CVAT image dataset
 ------------------
 
-The :class:`fiftyone.types.dataset_types.CVATImageDataset` type represents a labeled dataset
-consisting of images and their associated object detections stored in
+The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections stored in
 `CVAT image format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are exported in the following format:
@@ -887,8 +886,9 @@ as follows:
 Multitask image labels dataset
 ------------------------------
 
-The :class:`fiftyone.types.dataset_types.ImageLabelsDataset` type represents a labeled dataset
-consisting of images and their associated multitask predictions stored in
+The :class:`fiftyone.types.ImageLabelsDataset <fiftyone.types.dataset_types.ImageLabelsDataset>`
+type represents a labeled dataset consisting of images and their associated
+multitask predictions stored in
 `eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 Datasets of this type are exported in the following format:
@@ -970,8 +970,9 @@ format as follows:
 BDD dataset
 -----------
 
-The :class:`fiftyone.types.dataset_types.BDDDataset` type represents a labeled dataset consisting
-of images and their associated multitask predictions saved in
+The :class:`fiftyone.types.BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
+type represents a labeled dataset consisting of images and their associated
+multitask predictions saved in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
 Datasets of this type are exported in the following format:
