@@ -84,19 +84,18 @@ Tools for working with your FiftyOne config.
 
 .. code-block:: text
 
-    fiftyone config [-h] [-l] [-s] [FIELD]
+    fiftyone config [-h] [-l] [FIELD]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      FIELD         a config field
+      FIELD         a config field to print
 
     optional arguments:
       -h, --help    show this help message and exit
       -l, --locate  print the location of your config on disk
-      -s, --save    save your current config to disk
 
 **Examples**
 
@@ -114,11 +113,6 @@ Tools for working with your FiftyOne config.
 
     # Print the location of your config
     fiftyone config --locate
-
-.. code:: shell
-
-    # Save your current config to disk
-    fiftyone config --save
 
 Print constants
 ---------------

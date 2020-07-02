@@ -107,27 +107,18 @@ class ConfigCommand(Command):
 
         # Print the location of your config
         fiftyone config --locate
-
-        # Save your current config to disk
-        fiftyone config --save
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "field", nargs="?", metavar="FIELD", help="a config field"
+            "field", nargs="?", metavar="FIELD", help="a config field to print"
         )
         parser.add_argument(
             "-l",
             "--locate",
             action="store_true",
             help="print the location of your config on disk",
-        )
-        parser.add_argument(
-            "-s",
-            "--save",
-            action="store_true",
-            help="save your current config to disk",
         )
 
     @staticmethod
@@ -140,20 +131,7 @@ class ConfigCommand(Command):
                     "No config file found at '%s'.\n"
                     % foc.FIFTYONE_CONFIG_PATH
                 )
-                print(
-                    "To save your current config (which may differ from the "
-                    "default config if you\n"
-                    "have any `FIFTYONE_XXX` environment variables set), run:"
-                    "\n\n"
-                    "fiftyone config --save"
-                    "\n"
-                )
 
-            return
-
-        if args.save:
-            fo.config.write_json(foc.FIFTYONE_CONFIG_PATH, pretty_print=True)
-            print("Config written to '%s'" % foc.FIFTYONE_CONFIG_PATH)
             return
 
         if args.field:
