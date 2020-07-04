@@ -5,10 +5,9 @@ import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
 import {
   viewCount,
   isMainWidthResizing,
-  mainTop,
   mainLoaded,
   mainSize,
-  previousMainSize,
+  destinationTop,
   liveTop,
   previousLayout,
 } from "../../state/atoms";
@@ -63,11 +62,16 @@ export default () => {
   const setViewCount = useSetRecoilState(viewCount);
   const currentLayoutValue = useRecoilValue(currentLayout);
   const setPreviousLayout = useSetRecoilState(previousLayout);
+  const [destinationTopValue, setDestinationTop] = useRecoilState(
+    destinationTop
+  );
+
+  const scrollRef = useRef(null);
 
   const [ref, { contentRect }] = useResizeObserver();
   useTrackMousePosition();
   useEffect(() => {
-    setViewCount(100);
+    setViewCount(50);
   }, []);
 
   useLayoutEffect(() => {
@@ -77,9 +81,8 @@ export default () => {
     }, 1000);
     const { top, width, height } = contentRect;
     let raf = requestAnimationFrame(() => {
-      // setIsMainWidthResizing(width !== mainSizeValue[0]);
-      const s = width !== mainSizeValue[0] || height !== mainSizeValue[1];
-      if (s) setMainSize([width, height]);
+      const s = width - 48 !== mainSizeValue[0] || height !== mainSizeValue[1];
+      if (s) setMainSize([width - 48, height]);
       !mainLoadedValue && setMainLoaded(true);
     });
     return () => {
@@ -88,11 +91,23 @@ export default () => {
     };
   }, [ref, contentRect]);
 
+  useEffect(() => {
+    console.log(destinationTopValue, scrollRef.current);
+    if (destinationTopValue && scrollRef.current) {
+      setDestinationTop(null);
+      setPreviousLayout(null);
+      scrollRef.current.scrollTo({
+        top: destinationTopValue,
+        behavior: "auto",
+      });
+    }
+  }, [destinationTopValue]);
+
   return (
     <Flashlight>
-      <Container>
+      <Container ref={ref}>
         <ListMain
-          ref={ref}
+          ref={scrollRef}
           onScroll={(e) => {
             setLiveTop(e.target.scrollTop);
             setPreviousLayout(currentLayoutValue);

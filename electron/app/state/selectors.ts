@@ -5,8 +5,6 @@ import {
   mousePosition,
   viewCount,
   mainSize,
-  previousMainSize,
-  mainTop,
   currentListTop,
   itemsPerRequest,
   segmentIsLoaded,
@@ -14,6 +12,8 @@ import {
   portNumber,
   liveTop,
   previousLayout,
+  itemRowCache,
+  destinationTop,
 } from "./atoms";
 import { keyBy } from "lodash";
 
@@ -85,6 +85,20 @@ export const currentSegment = selector({
   },
 });
 
+export const topFromIndex = selectorFamily({
+  key: "topFromIndex",
+  get: (proposed) => ({ get }) => {
+    const cache = get(itemRowCache(proposed));
+    const index = cache ? cache[0] : proposed;
+    const [viewPortWidth, unused] = get(mainSize);
+    const cols = get(baseNumCols(viewPortWidth));
+    const { height } = get(baseItemSize(viewPortWidth));
+    const margin = get(gridMargin);
+    console.log(index, height, margin);
+    return Math.max(0, Math.floor(index / cols) - 1) * (height + margin);
+  },
+});
+
 export const indexFromTop = selectorFamily({
   key: "indexFromTop",
   get: ({ top, viewPortWidth }) => ({ get }) => {
@@ -116,7 +130,10 @@ export const currentIndex = selector({
     let outOfBounds = data[data.length - 1][0].top - margin < top;
     outOfBounds = outOfBounds || data[0][0].top - margin > top;
     if (outOfBounds) {
-      return get(indexFromTop({ top, viewPortWidth }));
+      const proposed = get(indexFromTop({ top, viewPortWidth }));
+      const cache = get(itemRowCache(proposed));
+      if (cache) return cache[0];
+      return proposed;
     }
     let start, stop;
     for (let i = 0; i < data.length; i++) {
@@ -124,9 +141,14 @@ export const currentIndex = selector({
       start = itemTop - margin;
       stop = itemTop + height;
       if (start <= top && stop >= top) {
-        return index;
+        return Math.max(index, 0);
       }
     }
+  },
+  set: ({ set, get }, index) => {
+    const top = get(topFromIndex(index));
+    const height = get(currentListHeight) - get(mainSize)[1];
+    set(destinationTop, Math.min(top, height));
   },
 });
 
@@ -307,25 +329,15 @@ export const itemSize = selectorFamily({
 export const itemSource = selectorFamily({
   key: "itemSource",
   get: (itemIndex) => ({ get }) => {
-    const id = get(itemData(itemIndex));
-    const pn = get(portNumber);
-    return `http://127.0.0.1:${pn}/?path=${id.sample.filepath}`;
-  },
-});
-
-export const segmentHeight = selectorFamily({
-  key: "segmentHeight",
-  get: (segmentIndex) => ({ get }) => {
-    return get(segmentBaseSize(segmentIndex)).height;
-  },
-});
-
-export const segmentBaseNumRows = selector({
-  key: "segmentBaseNumRows",
-  get: ({ get }) => {
-    const ipr = get(itemsPerRequest);
-    const sbnc = get(segmentBaseNumCols);
-    return Math.ceil(ipr / sbnc);
+    const segmentIndex = get(segmentIndexFromItemIndex(itemIndex));
+    const loaded = get(segmentIsLoaded(segmentIndex));
+    if (loaded) {
+      const data = get(itemData(itemIndex));
+      const port = get(portNumber);
+      return `http://127.0.0.1:${port}/?path=${data.sample.filepath}`;
+    } else {
+      return null;
+    }
   },
 });
 
@@ -388,7 +400,7 @@ export const tilingThreshold = selectorFamily({
 
 export const itemRow = selectorFamily({
   key: "itemRow",
-  get: ({ startIndex, viewPortWidth, reverse }) => ({ get }) => {
+  get: ({ startIndex, viewPortWidth }) => ({ get }) => {
     const count = get(viewCount);
     const threshold = get(tilingThreshold(viewPortWidth));
     let index = startIndex;
@@ -400,9 +412,45 @@ export const itemRow = selectorFamily({
         ? get(itemData(index))
         : get(baseItemData);
       aspectRatio += item.aspectRatio;
-      item = { ...item, index };
-      reverse ? data.unshift(item) : data.push(item);
-      index = reverse ? index - 1 : index + 1;
+      data.push({ ...item, index });
+      index += 1;
+    }
+
+    return {
+      data,
+      aspectRatio,
+    };
+  },
+});
+
+export const itemRowReverse = selectorFamily({
+  key: "itemRow",
+  get: ({ startIndex, viewPortWidth }) => ({ get }) => {
+    const count = get(viewCount);
+    const threshold = get(tilingThreshold(viewPortWidth));
+    const getItem = (idx) =>
+      get(itemIsLoaded(idx)) ? get(itemData(idx)) : get(baseItemData);
+    let index = startIndex;
+    let aspectRatio = 0;
+    let data = [];
+    let item;
+    const reducer = (acc, val) => (acc += val.aspectRatio);
+    while (index >= 0 && index < count) {
+      item = getItem(index);
+      aspectRatio += item.aspectRatio;
+      data.unshift({ ...item, index });
+      index -= 1;
+      if (aspectRatio >= threshold && index > 0) {
+        const prev = get(itemData(index));
+        const check = [prev, ...data.slice(0, data.length - 1)];
+        const checkAspectRatio = check.reduce(reducer, 0);
+        if (checkAspectRatio < threshold) {
+          data.unshift(prev);
+          index -= 1;
+          aspectRatio += prev.aspectRatio;
+        }
+        break;
+      }
     }
 
     return {
@@ -415,7 +463,7 @@ export const itemRow = selectorFamily({
 export const currentLayout = selector({
   key: "currentLayout",
   get: ({ get }) => {
-    const start = get(currentIndex);
+    let start = get(currentIndex);
     const top = get(liveTop);
     const displacement = get(currentDisplacement);
     const [viewPortWidth, viewPortHeight] = get(mainSize);
@@ -435,9 +483,11 @@ export const currentLayout = selector({
     let pixelDisplacement;
     let resultStart = index;
     let resultEnd = index;
+    let rowItems;
+    const mapping = {};
 
     while (layoutHeight < viewPortHeight * 1.5 && index < count) {
-      row = get(itemRow({ startIndex: index, viewPortWidth, reverse: false }));
+      row = get(itemRow({ startIndex: index, viewPortWidth }));
       workingWidth = viewPortWidth - (row.data.length + 1) * margin;
       height = workingWidth / row.aspectRatio;
       if (index === start) {
@@ -464,6 +514,10 @@ export const currentLayout = selector({
       currentTop += height;
       layoutHeight += margin + height;
       index += rowData.length;
+      rowItems = row.data.map((i) => i.index);
+      for (let i = 0; i < row.data.length; i++) {
+        mapping[row.data[i].index] = rowItems;
+      }
       data.push(rowData);
       resultEnd = Math.min(index, count);
     }
@@ -471,7 +525,7 @@ export const currentLayout = selector({
     index = start - 1;
     currentTop = top - pixelDisplacement;
     while (layoutHeight < viewPortHeight * 2 && index >= 0) {
-      row = get(itemRow({ startIndex: index, viewPortWidth, reverse: true }));
+      row = get(itemRowReverse({ startIndex: index, viewPortWidth }));
       workingWidth = viewPortWidth - (row.data.length + 1) * margin;
       height = workingWidth / row.aspectRatio;
       currentTop -= height;
@@ -492,12 +546,17 @@ export const currentLayout = selector({
       currentTop -= margin;
       layoutHeight += margin + height;
       index -= rowData.length;
+      rowItems = row.data.map((i) => i.index);
+      for (let i = 0; i < row.data.length; i++) {
+        mapping[row.data[i].index] = rowItems;
+      }
       data.unshift(rowData);
       resultStart = Math.max(index + 1, 0);
     }
 
     return {
       data,
+      mapping,
       range: [resultStart, resultEnd],
     };
   },
@@ -514,7 +573,7 @@ export const currentItems = selector({
 export const itemsToRender = selector({
   key: "itemsToRender",
   get: ({ get }) => {
-    const { data, range } = get(currentLayout);
+    const { data } = get(currentLayout);
     const result = {};
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
@@ -545,7 +604,6 @@ export const itemsToRenderInSegment = selectorFamily({
     let end = start + batchSize;
     const result = [];
     let i = items[0] < start ? start - items[0] : 0;
-
     while (i < items.length && items[i] < end) {
       result.push({
         index: items[i],
@@ -554,6 +612,14 @@ export const itemsToRenderInSegment = selectorFamily({
       i += 1;
     }
     return result;
+  },
+});
+
+export const itemRowIndices = selectorFamily({
+  key: "itemRowIndices",
+  get: (index) => ({ get }) => {
+    const { mapping } = get(currentLayout);
+    return mapping[index];
   },
 });
 

@@ -175,7 +175,7 @@ class StateController(Namespace):
                     "sample": json.loads(
                         json_util.dumps(sample.to_mongo_dict())
                     ),
-                    "aspectRatio": width / height,
+                    "aspectRatio": (width + idx) / height,
                     "index": page * length + idx,
                 }
             )

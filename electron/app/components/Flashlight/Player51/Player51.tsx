@@ -1,24 +1,13 @@
-import _ from "lodash";
 import styled from "styled-components";
-import React, { Suspense, useState, useEffect, useRef } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import React, { useRef, useLayoutEffect, useEffect } from "react";
+import { useRecoilValue, useRecoilState } from "recoil";
 import { useSpring, animated, useChain, useTransition } from "react-spring";
 
+import { itemRowCache } from "../../../state/atoms";
 import {
-  mainLoaded,
-  segmentIsLoaded,
-  isMainWidthResizing,
-  current,
-} from "../../../state/atoms";
-import {
-  itemSize,
-  itemPosition,
-  itemData,
-  itemIsLoaded,
   itemSource,
-  segmentIndexFromItemIndex,
-  currentIndex,
   itemLayout,
+  itemRowIndices,
 } from "../../../state/selectors";
 // import Player51 from "../../player51/build/cjs/player51.min.js";
 
@@ -43,12 +32,16 @@ const Img = animated(styled.img`
 `);
 
 const Thumbnail = ({ index }) => {
-  const segmentIndexValue = useRecoilValue(segmentIndexFromItemIndex(index));
-  const setSegmentIsLoaded = useSetRecoilState(
-    segmentIsLoaded(segmentIndexValue)
-  );
   const itemLayoutValue = useRecoilValue(itemLayout(index));
   const itemSourceValue = useRecoilValue(itemSource(index));
+  const itemRowIndicesValue = useRecoilValue(itemRowIndices(index));
+  const [itemRowCacheValue, setItemRowCache] = useRecoilState(
+    itemRowCache(index)
+  );
+
+  useEffect(() => {
+    setItemRowCache(itemRowIndicesValue);
+  }, [itemSourceValue]);
 
   const positionRef = useRef();
   const position = useSpring({
@@ -69,8 +62,6 @@ const Thumbnail = ({ index }) => {
 
   useChain(true ? [positionRef, showRef] : [showRef, positionRef], [1, 0.8]);
 
-  useEffect(() => setSegmentIsLoaded(true), []);
-
   return (
     <ThumbnailDiv style={position}>
       {show.map(
@@ -81,27 +72,4 @@ const Thumbnail = ({ index }) => {
   );
 };
 
-const LoadingThumbnail = ({ index }) => {
-  const ci = useRecoilValue(currentIndex);
-  const itemLayoutValue = useRecoilValue(itemLayout(index));
-
-  const props = useSpring({
-    opacity: 1,
-    ...itemLayoutValue,
-    background: ci === index ? "#000" : "#ccc",
-  });
-
-  return <LoadingThumbnailDiv style={{ ...props }} />;
-};
-
-const ThumbnailContainer = ({ index }) => {
-  return (
-    <Suspense fallback={<LoadingThumbnail index={index} />}>
-      <Thumbnail index={index} />
-    </Suspense>
-  );
-};
-
-export default ({ index }) => {
-  return <ThumbnailContainer index={index} />;
-};
+export default ({ index }) => <Thumbnail index={index} />;

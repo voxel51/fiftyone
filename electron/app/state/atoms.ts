@@ -102,3 +102,13 @@ export const previousLayout = atom({
   key: "previousLayout",
   default: null,
 });
+
+export const itemRowCache = atomFamily({
+  key: "itemRowCache",
+  default: null,
+});
+
+export const destinationTop = atom({
+  key: "destinationIndex",
+  default: null,
+});

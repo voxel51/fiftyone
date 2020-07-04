@@ -1,14 +1,11 @@
 import React, { Suspense } from "react";
 import styled from "styled-components";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilState } from "recoil";
 
 import { Item } from "../Player51";
 
-import {
-  itemsToRenderInSegment,
-  segmentBaseSize,
-  segmentTop,
-} from "../../../state/selectors";
+import { segmentIsLoaded } from "../../../state/atoms";
+import { itemsToRenderInSegment, segmentData } from "../../../state/selectors";
 
 const SegmentDiv = styled.div`
   position: absolute;
@@ -31,6 +28,25 @@ const Segment = ({ index }) => {
   );
 };
 
+const Loader = ({ index }) => {
+  useRecoilValue(segmentData(index));
+  const [segmentIsLoadedValue, setSegmentIsLoaded] = useRecoilState(
+    segmentIsLoaded(index)
+  );
+
+  if (!segmentIsLoadedValue) {
+    setSegmentIsLoaded(true);
+  }
+  return null;
+};
+
 export default ({ index }) => {
-  return <Segment index={index} />;
+  return (
+    <>
+      <Segment index={index} />
+      <Suspense fallback={<></>}>
+        <Loader index={index} />
+      </Suspense>
+    </>
+  );
 };

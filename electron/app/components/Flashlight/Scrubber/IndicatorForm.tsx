@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import styled from "styled-components";
 import { useMachine } from "@xstate/react";
-import { useRecoilValue, useRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { useSpring, animated } from "react-spring";
 
 import "../../../app.global.css";
@@ -30,7 +30,7 @@ export default function () {
   const ref = useRef();
   const indicatorIndexValue = useRecoilValue(indicatorIndex);
   const viewCountValue = useRecoilValue(viewCount);
-  const [currentIndexValue, setCurrentIndex] = useRecoilState(currentIndex);
+  const setCurrentIndex = useSetRecoilState(currentIndex);
   const focused = state.value === "focused" || state.value === "typing";
   const props = useSpring({
     width: focused ? "2.5rem" : "3rem",
@@ -51,7 +51,7 @@ export default function () {
   const onKeyDown = (e) => {
     if (e.keyCode === 13) {
       if (state.context.currentInput !== "") {
-        // setCurrentIndex(parseInt(state.context.currentInput));
+        setCurrentIndex(parseInt(state.context.currentInput));
       }
     }
   };
