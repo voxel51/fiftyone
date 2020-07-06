@@ -1,7 +1,13 @@
 import styled from "styled-components";
 import React, { useRef, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { useSpring, animated, useChain, useTransition } from "react-spring";
+import {
+  animated,
+  interpolate,
+  useSpring,
+  useChain,
+  useTransition,
+} from "react-spring";
 
 import { itemRowCache } from "../../../state/atoms";
 import {
@@ -11,67 +17,59 @@ import {
 } from "../../../state/selectors";
 // import Player51 from "../../player51/build/cjs/player51.min.js";
 
-const LoadingThumbnailDiv = animated(styled.div`
-  position: absolute;
-  z-index: 0;
-  background: #ccc;
-  contain: strict;
-  will-change: transform;
-`);
-
 const ThumbnailDiv = animated(styled.div`
   position: absolute;
   background: #ccc;
   will-change: transform;
+  transition: none 0s ease 0s;
+  top: 0;
+  left: 0;
 `);
 
-const Img = animated(styled.img`
+const Img = animated(styled.div`
   width: 100%;
   height: 100%;
-  z-index: 1000;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  transition: transform 0.135s cubic-bezier(0, 0, 0.2, 1), opacity linear 0.15s;
 `);
 
 const Thumbnail = ({ index }) => {
-  const itemAdjustedLayoutValue = useRecoilValue(itemAdjustedLayout(index));
+  const { width, height, top, left } = useRecoilValue(
+    itemAdjustedLayout(index)
+  );
   const itemSourceValue = useRecoilValue(itemSource(index));
   const itemRowIndicesValue = useRecoilValue(itemRowIndices(index));
   const setItemRowCache = useSetRecoilState(itemRowCache(index));
 
   useEffect(() => {
-    setItemRowCache(itemRowIndicesValue);
+    if (itemSourceValue) setItemRowCache(itemRowIndicesValue);
   }, [itemSourceValue]);
 
-  const positionRef = useRef();
   const position = useSpring({
-    ...itemAdjustedLayoutValue,
-    from: {
-      ...itemAdjustedLayoutValue,
-    },
-    ref: positionRef,
+    width,
+    height,
+    transform: `translate3d(${left}px,${top}px,0)`,
     config: {
       duration: 0,
     },
   });
 
-  const showRef = useRef();
-  const show = useTransition(true, null, {
-    from: { opacity: 0 },
-    enter: { opacity: 1 },
-    leave: { opacity: 0 },
-    ref: showRef,
+  const props = useSpring({
+    opacity: 1,
+    backgroundImage: itemSourceValue ? `url(${itemSourceValue}` : "none",
     config: {
       duration: 100,
     },
   });
 
-  useChain(true ? [positionRef, showRef] : [showRef, positionRef], [1, 0.8]);
-
   return (
     <ThumbnailDiv style={position}>
-      {show.map(
-        ({ item, key, props }) =>
-          item && <Img key={key} src={itemSourceValue} style={props} />
-      )}
+      <Img style={props} />
     </ThumbnailDiv>
   );
 };

@@ -16,6 +16,7 @@ const SegmentDiv = animated(styled.div`
   position: absolute;
   contain: layout;
   transform: will-change;
+  transition: none 0s ease 0s;
   width: 100%;
 `);
 

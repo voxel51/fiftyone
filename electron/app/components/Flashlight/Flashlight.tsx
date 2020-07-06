@@ -45,6 +45,7 @@ const ListMain = styled.div`
   overflow-x: hidden;
   overflow-y: scroll;
   will-change: transform;
+  contain: layout;
 
   ::-webkit-scrollbar {
     width: 0px;
@@ -71,7 +72,7 @@ export default () => {
   const [ref, { contentRect }] = useResizeObserver();
   useTrackMousePosition();
   useEffect(() => {
-    setViewCount(50);
+    setViewCount(100);
   }, []);
 
   useLayoutEffect(() => {

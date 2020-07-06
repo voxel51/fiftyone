@@ -396,7 +396,7 @@ export const tilingThreshold = selectorFamily({
 
 export const itemRow = selectorFamily({
   key: "itemRow",
-  get: ({ startIndex, viewPortWidth }) => ({ get }) => {
+  get: ({ startIndex, endIndex, viewPortWidth }) => ({ get }) => {
     const count = get(viewCount);
     const threshold = get(tilingThreshold(viewPortWidth));
     let index = startIndex;
@@ -404,6 +404,7 @@ export const itemRow = selectorFamily({
     let data = [];
     let item;
     while (index >= 0 && index < count && aspectRatio < threshold) {
+      if (endIndex !== null && index > endIndex) break;
       item = get(itemIsLoaded(index))
         ? get(itemData(index))
         : get(baseItemData);
@@ -421,7 +422,7 @@ export const itemRow = selectorFamily({
 
 export const itemRowReverse = selectorFamily({
   key: "itemRow",
-  get: ({ startIndex, viewPortWidth }) => ({ get }) => {
+  get: ({ startIndex, endIndex, viewPortWidth }) => ({ get }) => {
     const count = get(viewCount);
     const threshold = get(tilingThreshold(viewPortWidth));
     const getItem = (idx) =>
@@ -436,7 +437,7 @@ export const itemRowReverse = selectorFamily({
       aspectRatio += item.aspectRatio;
       data.unshift({ ...item, index });
       index -= 1;
-      if (aspectRatio >= threshold && index > 0) {
+      if (aspectRatio >= threshold && index > 0 && !endIndex) {
         const prev = get(itemData(index));
         const check = [prev, ...data.slice(0, data.length - 1)];
         const checkAspectRatio = check.reduce(reducer, 0);
@@ -447,6 +448,7 @@ export const itemRowReverse = selectorFamily({
         }
         break;
       }
+      if (endIndex !== null && index < endIndex) break;
     }
 
     return {
@@ -480,11 +482,23 @@ export const currentLayout = selector({
     let resultStart = index;
     let resultEnd = index;
     let rowItems;
+    let cache;
+    let startIndex;
+    let endIndex;
     const mapping = {};
 
     let layoutHeightForward = 0;
     while (layoutHeightForward < viewPortHeight * 1.5 && index < count) {
-      row = get(itemRow({ startIndex: index, viewPortWidth }));
+      cache = get(itemRowCache(index));
+      if (cache) {
+        startIndex = cache[0];
+        endIndex = cache[cache.length - 1];
+        index = startIndex;
+      } else {
+        startIndex = index;
+        endIndex = null;
+      }
+      row = get(itemRow({ startIndex, endIndex, viewPortWidth }));
       workingWidth = viewPortWidth - (row.data.length + 1) * margin;
       height = workingWidth / row.aspectRatio;
       if (index === start) {
@@ -523,7 +537,16 @@ export const currentLayout = selector({
     currentTop = top - pixelDisplacement;
     let layoutHeightBackward = 0;
     while (layoutHeightBackward < viewPortHeight * 0.5 && index >= 0) {
-      row = get(itemRowReverse({ startIndex: index, viewPortWidth }));
+      cache = get(itemRowCache(index));
+      if (cache) {
+        startIndex = cache[cache.length - 1];
+        endIndex = cache[0];
+        index = startIndex;
+      } else {
+        startIndex = index;
+        endIndex = null;
+      }
+      row = get(itemRowReverse({ startIndex, endIndex, viewPortWidth }));
       workingWidth = viewPortWidth - (row.data.length + 1) * margin;
       height = workingWidth / row.aspectRatio;
       currentTop -= height;
