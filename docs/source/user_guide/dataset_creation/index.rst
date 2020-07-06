@@ -11,7 +11,7 @@ also provides support for easily create custom data formats as well.
 .. note::
 
 
-    When you create a FiftyOne |Dataset2|_, its samples and all of their fields
+    When you create a FiftyOne |Dataset3|_, its samples and all of their fields
     (metadata, labels, custom fields, etc.) are written to FiftyOne's backing
     database.
 
