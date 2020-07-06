@@ -6,7 +6,7 @@ import warnings
 import time
 
 # TODO: decrease these once the DB service is started on-demand?
-IMPORT_WARN_THRESHOLD = 1.5
+IMPORT_WARN_THRESHOLD = 1.75
 IMPORT_ERROR_THRESHOLD = 5
 
 

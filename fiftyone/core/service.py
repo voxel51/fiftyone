@@ -39,6 +39,26 @@ import fiftyone.constants as foc
 logger = logging.getLogger(__name__)
 
 
+class ServiceException(Exception):
+    """Base class for service-related exceptions."""
+
+    pass
+
+
+class ServiceListenTimeout(ServiceException):
+    """Exception raised when a network-bound service fails to bind to a port."""
+
+    def __init__(self, name, port=None):
+        self.name = name
+        self.port = port
+
+    def __str__(self):
+        message = "%s failed to bind to port" % self.name
+        if self.port is not None:
+            message += " " + str(self.port)
+        return message
+
+
 class Service(object):
     """Interface for FiftyOne services.
 
@@ -120,17 +140,13 @@ class Service(object):
             if specified)
 
         Raises:
-            RuntimeError: if the timeout was exceeded
+            ServiceListenTimeout: if the timeout was exceeded
         """
-
-        error_message = "%s failed to bind to port" % etau.get_class_name(self)
-        if port is not None:
-            error_message += " %i" % port
 
         @retry(
             wait_fixed=250,
             stop_max_delay=timeout * 1000,
-            retry_on_exception=lambda e: str(e) == error_message,
+            retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
         )
         def find_port():
             child_pids = set(
@@ -146,7 +162,7 @@ class Service(object):
                     local_port = conn.laddr[1]
                     if port is None or port == local_port:
                         return local_port
-            raise RuntimeError(error_message)
+            raise ServiceListenTimeout(etau.get_class_name(self), port)
 
         return find_port()
 
