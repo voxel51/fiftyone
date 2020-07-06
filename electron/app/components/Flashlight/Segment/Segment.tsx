@@ -20,27 +20,41 @@ const SegmentDiv = animated(styled.div`
   width: 100%;
 `);
 
-const Segment = ({ index }) => {
+const Segment = React.memo(
+  ({ items, top }) => {
+    return (
+      <SegmentDiv style={{ transform: `translate3d(0,${top}px,0)` }}>
+        {items.map(({ key, index }) => (
+          <Item key={key} index={index} />
+        ))}
+      </SegmentDiv>
+    );
+  },
+  (prev, next) => {
+    if (prev.items.length !== next.items.length) return false;
+
+    if (prev.items.length === 0) return true;
+
+    const length = prev.items.length;
+
+    if (
+      prev.items[0].index === next.items[0].index &&
+      prev.items[length - 1].index === next.items[length - 1].index
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+);
+
+const SegmentManager = ({ index }) => {
   const itemsToRenderInSegmentValue = useRecoilValue(
     itemsToRenderInSegment(index)
   );
   const top = useRecoilValue(segmentTop(index));
-  const { y } = useSpring({
-    y: top,
-    config: {
-      duration: 0,
-    },
-  });
 
-  return (
-    <SegmentDiv
-      style={{ transform: interpolate([y], (y) => `translate3d(0,${y}px,0)`) }}
-    >
-      {itemsToRenderInSegmentValue.map(({ key, index }) => (
-        <Item key={key} index={index} />
-      ))}
-    </SegmentDiv>
-  );
+  return <Segment items={itemsToRenderInSegmentValue} top={top} />;
 };
 
 const Loader = ({ index }) => {
@@ -58,7 +72,7 @@ const Loader = ({ index }) => {
 export default ({ index }) => {
   return (
     <>
-      <Segment index={index} />
+      <SegmentManager index={index} />
       <Suspense fallback={<></>}>
         <Loader index={index} />
       </Suspense>

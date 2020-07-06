@@ -14,6 +14,7 @@ import {
   previousLayout,
   itemRowCache,
   destinationTop,
+  previousSegmentsToRender,
 } from "./atoms";
 
 export const itemBaseSize = selector({
@@ -120,7 +121,7 @@ export const currentIndex = selector({
   key: "currentIndex",
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
-    if (!!!prevLayout) return 0;
+    if (!!!prevLayout || prevLayout.data.length === 0) return 0;
     const { data } = prevLayout;
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);
@@ -154,7 +155,7 @@ export const currentDisplacement = selector({
   key: "currentDisplacement",
   get: ({ get }) => {
     const prevLayout = get(previousLayout);
-    if (!!!prevLayout) return 0;
+    if (!!!prevLayout || prevLayout.data.length === 0) return 0;
     const { data } = prevLayout;
     const top = get(liveTop);
     const [viewPortWidth, unused] = get(mainSize);

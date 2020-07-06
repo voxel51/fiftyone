@@ -7,9 +7,16 @@ import {
   useRef,
 } from "react";
 import ResizeObserver from "resize-observer-polyfill";
-import { useSetRecoilState } from "recoil";
+import { useSetRecoilState, useRecoilValue } from "recoil";
 
-import { mousePosition } from "./atoms";
+import {
+  mousePosition,
+  destinationTop,
+  previousLayout,
+  liveTop,
+  previousSegmentsToRender,
+} from "./atoms";
+import { currentLayout, segmentsToRender } from "./selectors";
 
 export const useTrackMousePosition = () => {
   let timeout;
@@ -29,6 +36,35 @@ export const useTrackMousePosition = () => {
 
     return () => window.removeEventListener("mousemove", updateMousePosition);
   }, []);
+};
+
+export const useScrollListener = (ref) => {
+  const setDestinationTop = useSetRecoilState(destinationTop);
+  const setPreviousLayout = useSetRecoilState(previousLayout);
+  const setLiveTop = useSetRecoilState(liveTop);
+  const currentLayoutValue = useRecoilValue(currentLayout);
+  const segmentsToRenderValue = useRecoilValue(segmentsToRender);
+  const setPreviousSegmentsToRender = useSetRecoilState(
+    previousSegmentsToRender
+  );
+  let timeout;
+  const updateTop = (event) => {
+    if (timeout) {
+      window.cancelAnimationFrame(timeout);
+    }
+    timeout = window.requestAnimationFrame(() => {
+      setLiveTop(event.target.scrollTop);
+      setPreviousLayout(currentLayoutValue);
+      setPreviousSegmentsToRender(segmentsToRenderValue);
+    });
+  };
+
+  useLayoutEffect(() => {
+    const target = ref.current;
+    ref.current && ref.current.addEventListener("scroll", updateTop);
+
+    return () => target && target.removeEventListener("scroll", updateTop);
+  }, [ref.current, currentLayoutValue]);
 };
 
 export const useResizeObserver = () => {

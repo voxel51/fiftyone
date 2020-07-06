@@ -112,3 +112,8 @@ export const destinationTop = atom({
   key: "destinationIndex",
   default: null,
 });
+
+export const previousSegmentsToRender = atom({
+  key: "previousSegmentsToRender",
+  default: [],
+});

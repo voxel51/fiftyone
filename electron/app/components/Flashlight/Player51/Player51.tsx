@@ -20,10 +20,11 @@ import {
 const ThumbnailDiv = animated(styled.div`
   position: absolute;
   background: #ccc;
-  will-change: transform;
   transition: none 0s ease 0s;
   top: 0;
   left: 0;
+  display: block;
+  contain: strict;
 `);
 
 const Img = animated(styled.div`
@@ -38,7 +39,19 @@ const Img = animated(styled.div`
   transition: transform 0.135s cubic-bezier(0, 0, 0.2, 1), opacity linear 0.15s;
 `);
 
-const Thumbnail = ({ index }) => {
+const Thumbnail = React.memo(({ index, width, height, top, left }) => {
+  const position = useSpring({
+    width,
+    height,
+    transform: `translate3d(${left}px,${top}px,0)`,
+    config: {
+      duration: 0,
+    },
+  });
+  return <ThumbnailDiv style={position}>{index}</ThumbnailDiv>;
+});
+
+const ThumbnailManager = ({ index }) => {
   const { width, height, top, left } = useRecoilValue(
     itemAdjustedLayout(index)
   );
@@ -50,28 +63,15 @@ const Thumbnail = ({ index }) => {
     if (itemSourceValue) setItemRowCache(itemRowIndicesValue);
   }, [itemSourceValue]);
 
-  const position = useSpring({
-    width,
-    height,
-    transform: `translate3d(${left}px,${top}px,0)`,
+  /*const props = useSpring({
+    opacity: 1,
+    //backgroundImage: itemSourceValue ? `url(${itemSourceValue}` : "none",
     config: {
       duration: 0,
     },
-  });
+  });*/
 
-  const props = useSpring({
-    opacity: 1,
-    backgroundImage: itemSourceValue ? `url(${itemSourceValue}` : "none",
-    config: {
-      duration: 100,
-    },
-  });
-
-  return (
-    <ThumbnailDiv style={position}>
-      <Img style={props} />
-    </ThumbnailDiv>
-  );
+  return <Thumbnail {...{ width, height, top, left, index }} />;
 };
 
-export default ({ index }) => <Thumbnail index={index} />;
+export default ({ index }) => <ThumbnailManager index={index} />;
