@@ -92,7 +92,6 @@ export default () => {
   }, [ref, contentRect]);
 
   useEffect(() => {
-    console.log(destinationTopValue, scrollRef.current);
     if (destinationTopValue && scrollRef.current) {
       setDestinationTop(null);
       setPreviousLayout(null);

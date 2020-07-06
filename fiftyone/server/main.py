@@ -165,7 +165,6 @@ class StateController(Namespace):
 
         page = params["page"]
         length = params["length"]
-        threshold = params["threshold"]
         view = view.skip(length * page).limit(length)
         result = []
         for idx, sample in enumerate(view):

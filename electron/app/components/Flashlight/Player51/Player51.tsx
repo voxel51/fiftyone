@@ -1,12 +1,12 @@
 import styled from "styled-components";
-import React, { useRef, useLayoutEffect, useEffect } from "react";
-import { useRecoilValue, useRecoilState } from "recoil";
+import React, { useRef, useEffect } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { useSpring, animated, useChain, useTransition } from "react-spring";
 
 import { itemRowCache } from "../../../state/atoms";
 import {
   itemSource,
-  itemLayout,
+  itemAdjustedLayout,
   itemRowIndices,
 } from "../../../state/selectors";
 // import Player51 from "../../player51/build/cjs/player51.min.js";
@@ -32,12 +32,10 @@ const Img = animated(styled.img`
 `);
 
 const Thumbnail = ({ index }) => {
-  const itemLayoutValue = useRecoilValue(itemLayout(index));
+  const itemAdjustedLayoutValue = useRecoilValue(itemAdjustedLayout(index));
   const itemSourceValue = useRecoilValue(itemSource(index));
   const itemRowIndicesValue = useRecoilValue(itemRowIndices(index));
-  const [itemRowCacheValue, setItemRowCache] = useRecoilState(
-    itemRowCache(index)
-  );
+  const setItemRowCache = useSetRecoilState(itemRowCache(index));
 
   useEffect(() => {
     setItemRowCache(itemRowIndicesValue);
@@ -45,11 +43,14 @@ const Thumbnail = ({ index }) => {
 
   const positionRef = useRef();
   const position = useSpring({
-    ...itemLayoutValue,
+    ...itemAdjustedLayoutValue,
     from: {
-      ...itemLayoutValue,
+      ...itemAdjustedLayoutValue,
     },
     ref: positionRef,
+    config: {
+      duration: 0,
+    },
   });
 
   const showRef = useRef();
@@ -58,6 +59,9 @@ const Thumbnail = ({ index }) => {
     enter: { opacity: 1 },
     leave: { opacity: 0 },
     ref: showRef,
+    config: {
+      duration: 100,
+    },
   });
 
   useChain(true ? [positionRef, showRef] : [showRef, positionRef], [1, 0.8]);
