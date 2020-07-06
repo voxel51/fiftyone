@@ -160,6 +160,7 @@ class ImageDirectory(UnlabeledImageDataset):
         <dataset_dir>/
             <filename1>.<ext>
             <filename2>.<ext>
+            ...
 
     When reading datasets of this type, subfolders are recursively traversed,
     and files with non-image MIME types are omitted.
@@ -236,6 +237,7 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
                 <image1>.<ext>
                 <image2>.<ext>
                 ...
+            ...
     """
 
     def get_dataset_importer_cls(self):
@@ -434,6 +436,7 @@ class VOCDetectionDataset(ImageDetectionDataset):
             labels/
                 <uuid1>.xml
                 <uuid2>.xml
+                ...
 
     where the labels XML files are in the following format::
 
@@ -509,6 +512,7 @@ class KITTIDetectionDataset(ImageDetectionDataset):
             labels/
                 <uuid1>.txt
                 <uuid2>.txt
+                ...
 
     where the labels TXT files are space-delimited files where each row
     corresponds to an object and the 15 (and optional 16th score) columns have
@@ -722,6 +726,10 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
                 {
                     "data": "data/<uuid1>.<ext>",
                     "labels": "labels/<uuid1>.json"
+                },
+                {
+                    "data": "data/<uuid2>.<ext>",
+                    "labels": "labels/<uuid2>.json"
                 },
                 ...
             ]

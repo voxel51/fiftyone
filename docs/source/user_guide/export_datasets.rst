@@ -95,6 +95,7 @@ Datasets of this type are exported in the following format:
     <dataset_dir>/
         <filename1>.<ext>
         <filename2>.<ext>
+        ...
 
 You can export the images in a FiftyOne dataset as a directory of images on
 disk as follows:
@@ -154,10 +155,12 @@ where `labels.json` is a JSON file in the following format:
         "classes": [
             "<labelA>",
             "<labelB>",
+            ...
         ],
         "labels": {
             "<uuid1>": "<target1>",
             "<uuid2>": "<target2>",
+            ...
         }
     }
 
@@ -224,6 +227,7 @@ Datasets of this type are exported in the following format:
             <image1>.<ext>
             <image2>.<ext>
             ...
+        ...
 
 You can export a FiftyOne dataset as an image classification directory tree
 stored on disk in the above format as follows:
@@ -362,6 +366,7 @@ where `labels.json` is a JSON file in the following format:
         "classes": [
             <labelA>,
             <labelB>,
+            ...
         ],
         "labels": {
             <uuid1>: [
@@ -460,11 +465,13 @@ where `labels.json` is a JSON file in the following format:
         },
         "licenses": [],
         "categories": [
+            ...
             {
                 "id": 2,
                 "name": "cat",
                 "supercategory": "none"
             },
+            ...
         ],
         "images": [
             {
@@ -475,6 +482,7 @@ where `labels.json` is a JSON file in the following format:
                 "width": 640,
                 "date_captured": null
             },
+            ...
         ],
         "annotations": [
             {
@@ -486,6 +494,7 @@ where `labels.json` is a JSON file in the following format:
                 "segmentation": [],
                 "iscrowd": 0
             },
+            ...
         ]
     }
 
@@ -548,6 +557,7 @@ Datasets of this type are exported in the following format:
         labels/
             <uuid1>.xml
             <uuid2>.xml
+            ...
 
 where the labels XML files are in the following format:
 
@@ -657,6 +667,7 @@ Datasets of this type are exported in the following format:
         labels/
             <uuid1>.txt
             <uuid2>.txt
+            ...
 
 where the labels TXT files are space-delimited files where each row corresponds
 to an object and the 15 (and optional 16th score) columns have the following
@@ -881,6 +892,7 @@ where `manifest.json` is a JSON file in the following format:
                 "data": "data/<uuid2>.<ext>",
                 "labels": "labels/<uuid2>.json"
             },
+            ...
         ]
     }
 
@@ -974,9 +986,11 @@ where `labels.json` is a JSON file in the following format:
                     "manualAttributes": true,
                     "manualShape": true
                 },
+                ...
             ],
             "name": "<filename0>",
         },
+        ...
     ]
 
 You can export a FiftyOne dataset as a BDD dataset in the above format as
