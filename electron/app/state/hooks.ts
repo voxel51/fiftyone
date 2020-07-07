@@ -7,16 +7,15 @@ import {
   useRef,
 } from "react";
 import ResizeObserver from "resize-observer-polyfill";
-import { useSetRecoilState, useRecoilValue } from "recoil";
+import { useSetRecoilState, useRecoilState, useRecoilValue } from "recoil";
 
 import {
   mousePosition,
   destinationTop,
   previousLayout,
   liveTop,
-  previousSegmentsToRender,
+  baseLayout,
 } from "./atoms";
-import { currentLayout, segmentsToRender } from "./selectors";
 
 export const useTrackMousePosition = () => {
   let timeout;
@@ -38,10 +37,10 @@ export const useTrackMousePosition = () => {
   }, []);
 };
 
-export const useScrollListener = (ref) => {
-  const setPreviousLayout = useSetRecoilState(previousLayout);
-  const setLiveTop = useSetRecoilState(liveTop);
-  const currentLayoutValue = useRecoilValue(currentLayout);
+export const useScrollListener = (ref, setFirst, setSecond) => {
+  const [liveTopValue, setLiveTop] = useRecoilState(liveTop);
+  const firstBaseLayoutValue = useRecoilValue(baseLayout(0));
+  const secondBaseLayoutValue = useRecoilValue(baseLayout(1));
 
   useLayoutEffect(() => {
     let timeout;
@@ -51,14 +50,24 @@ export const useScrollListener = (ref) => {
       }
       timeout = window.requestAnimationFrame(() => {
         setLiveTop(event.target.scrollTop);
-        setPreviousLayout(currentLayoutValue);
       });
     };
     const target = ref.current;
     ref.current && ref.current.addEventListener("scroll", updateTop);
 
     return () => target && target.removeEventListener("scroll", updateTop);
-  }, [ref.current, currentLayoutValue]);
+  }, [ref.current, liveTopValue]);
+
+  useLayoutEffect(() => {
+    setFirst({
+      y: firstBaseLayoutValue.y,
+      height: firstBaseLayoutValue.height,
+    });
+    setSecond({
+      y: secondBaseLayoutValue.y,
+      height: secondBaseLayoutValue.height,
+    });
+  }, [liveTopValue]);
 };
 
 export const useResizeObserver = () => {

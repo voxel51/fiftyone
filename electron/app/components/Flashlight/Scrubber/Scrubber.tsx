@@ -56,7 +56,10 @@ export default function () {
   const springs = useSprings(
     ticksValue.length,
     ticksValue.map((s) => ({
-      y: Math.max(32, (s / (viewCountValue - 1)) * (mh - 35) + 32),
+      y:
+        viewCountValue > 1
+          ? Math.max(32, (s / (viewCountValue - 1)) * (mh - 35) + 32)
+          : 0,
     }))
   );
 

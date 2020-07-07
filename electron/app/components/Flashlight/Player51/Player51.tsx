@@ -39,7 +39,9 @@ const Img = animated(styled.div`
   transition: transform 0.135s cubic-bezier(0, 0, 0.2, 1), opacity linear 0.15s;
 `);
 
-const Thumbnail = React.memo(({ index, width, height, top, left }) => {
+const Thumbnail = React.memo(({ index }) => {
+  return null;
+
   const position = useSpring({
     width,
     height,
@@ -51,27 +53,4 @@ const Thumbnail = React.memo(({ index, width, height, top, left }) => {
   return <ThumbnailDiv style={position}>{index}</ThumbnailDiv>;
 });
 
-const ThumbnailManager = ({ index }) => {
-  const { width, height, top, left } = useRecoilValue(
-    itemAdjustedLayout(index)
-  );
-  const itemSourceValue = useRecoilValue(itemSource(index));
-  const itemRowIndicesValue = useRecoilValue(itemRowIndices(index));
-  const setItemRowCache = useSetRecoilState(itemRowCache(index));
-
-  useEffect(() => {
-    if (itemSourceValue) setItemRowCache(itemRowIndicesValue);
-  }, [itemSourceValue]);
-
-  /*const props = useSpring({
-    opacity: 1,
-    //backgroundImage: itemSourceValue ? `url(${itemSourceValue}` : "none",
-    config: {
-      duration: 0,
-    },
-  });*/
-
-  return <Thumbnail {...{ width, height, top, left, index }} />;
-};
-
-export default ({ index }) => <ThumbnailManager index={index} />;
+export default ({ index }) => <Thumbnail index={index} />;

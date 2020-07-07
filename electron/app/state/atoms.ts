@@ -52,7 +52,7 @@ export const isDraggingIndicator = atom({
 
 export const itemsPerRequest = atom({
   key: "itemsPerRequest",
-  default: 50,
+  default: 100,
 });
 
 export const fields = atomFamily({
@@ -131,6 +131,16 @@ export const baseLayout = atomFamily({
     segmentIndex: null,
   },
   dangerouslyAllowMutability: true,
+});
+
+export const baseItemLayout = atomFamily({
+  key: "baseItemLayout",
+  default: {
+    y: 0,
+    x: 0,
+    width: 0,
+    height: 0,
+  },
 });
 
 export const rootIndex = atom({

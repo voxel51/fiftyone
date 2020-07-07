@@ -11,7 +11,6 @@ import {
   gridMargin,
   portNumber,
   liveTop,
-  previousLayout,
   itemRowCache,
   destinationTop,
   rootIndex,
@@ -364,11 +363,7 @@ export const baseItemSize = selectorFamily({
 
 export const baseItemData = selector({
   key: "baseItemData",
-  get: ({ get }) => {
-    return {
-      aspectRatio: 1,
-    };
-  },
+  get: () => ({ aspectRatio: 1 }),
 });
 
 export const listHeight = selectorFamily({
@@ -488,115 +483,13 @@ export const isSegmentStart = selectorFamily({
   },
 });
 
-export const currentLayout = selector({
-  key: "currentLayout",
-  get: ({ get }) => {},
-});
-
-export const currentItems = selector({
-  key: "currentItems",
-  get: ({ get }) => {
-    const { data, range } = get(currentLayout);
-    return [...Array(range[1] - range[0]).keys()].map((i) => i + range[0]);
-  },
-});
-
-export const itemsToRender = selector({
-  key: "itemsToRender",
-  get: ({ get }) => {
-    const { data } = get(currentLayout);
-    const result = {};
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      for (let j = 0; j < row.length; j++) {
-        result[row[j].index] = row[j];
-      }
-    }
-    return result;
-  },
-});
-
 export const segmentsToRender = selector({
   key: "segmentsToRender",
   get: ({ get }) => {
-    return [0, 1];
-  },
-});
-
-export const segmentHeight = selectorFamily({
-  key: "segmentHeight",
-  get: (segmentIndex) => ({ get }) => {
-    const segmentItems = get(itemsToRenderInSegment(segmentIndex));
-    if (segmentItems.length === 0) return 0;
-    const items = get(itemsToRender);
-    const margin = get(gridMargin);
-    let segmentHeight = 0;
-    for (let i = 0; i < segmentItems.length; i++) {
-      const { top, height } = items[segmentItems[i].index];
-      segmentHeight += height + margin;
-    }
-    return segmentHeight;
-  },
-});
-
-export const segmentTop = selectorFamily({
-  key: "segmentTop",
-  get: (segmentIndex) => ({ get }) => {
-    const items = get(itemsToRenderInSegment(segmentIndex));
-    if (items.length === 0) return 0;
-    const { index } = items[0];
-    const { top } = get(itemLayout(index));
-    return top;
-  },
-});
-
-export const itemsToRenderInSegment = selectorFamily({
-  key: "itemsToRenderInSegment",
-  get: (segmentIndex) => ({ get }) => {
-    const items = get(currentItems);
-    const batchSize = get(itemsPerRequest);
-    let start = batchSize * segmentIndex;
-    let end = start + batchSize;
-    const result = [];
-    let i = items[0] < start ? start - items[0] : 0;
-    while (i < items.length && items[i] < end) {
-      result.push({
-        index: items[i],
-        key: items[i] - start,
-      });
-      i += 1;
-    }
-    return result;
-  },
-});
-
-export const itemRowIndices = selectorFamily({
-  key: "itemRowIndices",
-  get: (index) => ({ get }) => {
-    const { mapping } = get(currentLayout);
-    return mapping[index];
-  },
-});
-
-export const itemLayout = selectorFamily({
-  key: "itemLayout",
-  get: (index) => ({ get }) => {
-    const { width, height, top, left } = get(itemsToRender)[index];
-    return { width, height, top, left };
-  },
-});
-
-export const itemAdjustedLayout = selectorFamily({
-  key: "itemAdjustedLayout",
-  get: (index) => ({ get }) => {
-    const segmentIndex = get(segmentIndexFromItemIndex(index));
-    const parentTop = get(segmentTop(segmentIndex));
-    const { top, left, height, width } = get(itemsToRender)[index];
-    return {
-      top: top - parentTop,
-      left,
-      height,
-      width,
-    };
+    get(currentIndex);
+    const tt = get(baseLayout(0));
+    tt.height = Math.random();
+    tt.y = 100;
+    return [...[0, 1]];
   },
 });

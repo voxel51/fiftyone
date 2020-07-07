@@ -72,7 +72,7 @@ const SegmentDiv = animated(styled.div`
   width: 100%;
 `);
 
-const Loader = ({ index, base }) => {
+const Loader = ({ index }) => {
   useRecoilValue(segmentData(index));
   const [segmentIsLoadedValue, setSegmentIsLoaded] = useRecoilState(
     segmentIsLoaded(index)
@@ -84,7 +84,7 @@ const Loader = ({ index, base }) => {
   return null;
 };
 
-const Manager = React.memo(({ index, base }) => {
+const Manager = React.memo(({ index }) => {
   return (
     <Suspense fallback={<></>}>
       <Loader index={index} />
@@ -92,8 +92,8 @@ const Manager = React.memo(({ index, base }) => {
   );
 });
 
-const ScrollListener = ({ scrollRef }) => {
-  useScrollListener(scrollRef);
+const ScrollListener = ({ scrollRef, setFirst, setSecond }) => {
+  useScrollListener(scrollRef, setFirst, setSecond);
   return null;
 };
 
@@ -127,7 +127,7 @@ export default () => {
   const [ref, { contentRect }] = useResizeObserver();
   useTrackMousePosition();
   useEffect(() => {
-    setViewCount(150);
+    setViewCount(200);
   }, []);
 
   useLayoutEffect(() => {
@@ -159,14 +159,9 @@ export default () => {
     config: { duration: 0 },
   }));
 
-  const bind = useWheel((s) => {
-    setFirst(firstBaseLayoutValue);
-    setSecond(secondBaseLayoutValue);
-  });
-
   return (
     <>
-      <Flashlight {...bind()}>
+      <Flashlight>
         <Container ref={ref}>
           <ListMain ref={scrollRef}>
             <ListContainer style={{ height: currentListHeightValue }}>
@@ -175,18 +170,18 @@ export default () => {
                   ...Array(
                     Math.min(viewCountValue, itemsPerRequestValue)
                   ).keys(),
-                ].map((i) => {
-                  <Item index={i} />;
-                })}
+                ].map((i) => (
+                  <Item key={i} index={i} />
+                ))}
               </Segment>
               <Segment layout={second}>
                 {[
                   ...Array(
                     Math.max(viewCountValue - itemsPerRequestValue, 0)
                   ).keys(),
-                ].map((i) => {
-                  <Item index={i + itemsPerRequestValue} />;
-                })}
+                ].map((i) => (
+                  <Item key={i} index={i + itemsPerRequestValue} />
+                ))}
               </Segment>
             </ListContainer>
           </ListMain>
@@ -194,7 +189,11 @@ export default () => {
         </Container>
       </Flashlight>
       <Subscriber />
-      <ScrollListener scrollRef={scrollRef} />
+      <ScrollListener
+        scrollRef={scrollRef}
+        setFirst={setFirst}
+        setSecond={setSecond}
+      />
     </>
   );
 };
