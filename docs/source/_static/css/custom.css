@@ -34,7 +34,7 @@ article.pytorch-article .note .admonition-title {
 }
 
 .pytorch-left-menu li.toctree-l1.current > a:before {
-  top: -1rem;
+  display: none;
 }
 
 .pytorch-left-menu,
