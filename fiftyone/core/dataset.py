@@ -162,9 +162,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         name: a name for the dataset
         persistent (False): whether the dataset will persist in the database
             once the session terminates.
-
-    Raises:
-        ValueError: if ``create == False`` and the dataset does not exist
     """
 
     def __init__(self, name, persistent=False, _create=True):
