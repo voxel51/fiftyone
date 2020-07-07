@@ -588,6 +588,7 @@ export const currentItems = selector({
   key: "currentItems",
   get: ({ get }) => {
     const { data, range } = get(currentLayout);
+    console.log(range, data);
     return [...Array(range[1] - range[0]).keys()].map((i) => i + range[0]);
   },
 });

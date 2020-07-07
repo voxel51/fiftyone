@@ -117,3 +117,27 @@ export const previousSegmentsToRender = atom({
   key: "previousSegmentsToRender",
   default: [],
 });
+
+export const firstBaseLayout = atom({
+  key: "firstBaseLayout",
+  default: {
+    y: 0,
+    height: 0,
+  },
+  dangerouslyAllowMutability: true,
+});
+
+export const secondBaseLayout = atom({
+  key: "secondBaseLayout",
+  default: {
+    y: 0,
+    height: 0,
+  },
+  dangerouslyAllowMutability: true,
+});
+
+export const rootIndex = atom({
+  key: "rootIndex",
+  default: 0,
+  dangerouslyAllowMutability: true,
+});

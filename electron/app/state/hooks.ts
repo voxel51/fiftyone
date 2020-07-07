@@ -39,27 +39,21 @@ export const useTrackMousePosition = () => {
 };
 
 export const useScrollListener = (ref) => {
-  const setDestinationTop = useSetRecoilState(destinationTop);
   const setPreviousLayout = useSetRecoilState(previousLayout);
   const setLiveTop = useSetRecoilState(liveTop);
   const currentLayoutValue = useRecoilValue(currentLayout);
-  const segmentsToRenderValue = useRecoilValue(segmentsToRender);
-  const setPreviousSegmentsToRender = useSetRecoilState(
-    previousSegmentsToRender
-  );
-  let timeout;
-  const updateTop = (event) => {
-    if (timeout) {
-      window.cancelAnimationFrame(timeout);
-    }
-    timeout = window.requestAnimationFrame(() => {
-      setLiveTop(event.target.scrollTop);
-      setPreviousLayout(currentLayoutValue);
-      setPreviousSegmentsToRender(segmentsToRenderValue);
-    });
-  };
 
   useLayoutEffect(() => {
+    let timeout;
+    const updateTop = (event) => {
+      if (timeout) {
+        window.cancelAnimationFrame(timeout);
+      }
+      timeout = window.requestAnimationFrame(() => {
+        setLiveTop(event.target.scrollTop);
+        setPreviousLayout(currentLayoutValue);
+      });
+    };
     const target = ref.current;
     ref.current && ref.current.addEventListener("scroll", updateTop);
 
