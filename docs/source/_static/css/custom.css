@@ -76,6 +76,10 @@ ul.pytorch-breadcrumbs a {
   display: none;
 }
 
+.nboutput .copybtn {
+  display: none;
+}
+
 /* fixes for code line numbers */
 
 article.pytorch-article div[class*="highlight-"] {
