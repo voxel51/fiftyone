@@ -159,8 +159,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     raw media is stored on disk and the dataset provides paths to the data.
 
     Args:
-        name (None): the name of the dataset. By default,
-            :func:`get_default_dataset_name` is used
+        name: a name for the dataset
         persistent (False): whether the dataset will persist in the database
             once the session terminates.
 
@@ -168,10 +167,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ValueError: if ``create == False`` and the dataset does not exist
     """
 
-    def __init__(self, name=None, persistent=False, _create=True):
-        if name is None:
-            name = get_default_dataset_name()
-
+    def __init__(self, name, persistent=False, _create=True):
         self._name = name
         self._deleted = False
 
