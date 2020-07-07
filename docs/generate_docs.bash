@@ -36,7 +36,8 @@ export FIFTYONE_HEADLESS=1
 
 THIS_DIR=$(dirname "$0")
 FIFTYONE_BRAIN_DIR=$( \
-    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))" \
+    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))" || \
+    (echo "fiftyone-brain not installed" >&2; exit 1)
 )
 
 
