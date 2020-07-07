@@ -165,7 +165,7 @@ class Detection(ODMEmbeddedDocument):
         bounding_box (None): a list of relative bounding box coordinates in
             ``[0, 1]`` in the following format::
 
-            [<top-left-x>, <top-right-y>, <width>, <height>]
+            [<top-left-x>, <top-left-y>, <width>, <height>]
 
         confidence (None): a confidence in ``[0, 1]`` for the label
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
