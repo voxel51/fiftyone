@@ -35,7 +35,6 @@ The FiftyOne |Dataset|_ class allows you to easily
 It provides a way to easily load images, annotations, and model predictions
 into a format that can be visualized in the FiftyOne App.
 
-
 If you have your own collection of data, loading it as a |Dataset|_ will allow
 you to easily search and sort your samples.
 You can use FiftyOne to identify unique samples as well as possible mistakes in
@@ -51,8 +50,8 @@ representative samples and samples that your model found difficult into your
 training set.
 
 .. note::
-    Checkout out our :doc:`dataset loading guide <dataset_creation/index>` to load
-    your dataset into FiftyOne.
+    Checkout out our :doc:`dataset loading guide <dataset_creation/index>` to
+    load your dataset into FiftyOne.
 
 Dataset Details
 ---------------
@@ -65,15 +64,15 @@ usage is easy on your computer's memory and scalable.
 
 A |Dataset|_ should be thought of as an unordered collection. Samples can be
 added to it and they can be accessed by key. However, slicing and sorting
-of a |Dataset|_ is done through the use of a |DatasetView|_. A |DatasetView|_ allows
-for an ordered look into the |Dataset|_ or a subset of the |Dataset|_ along user
-specified axes.
+of a |Dataset|_ is done through the use of a |DatasetView|_. A |DatasetView|_
+allows for an ordered look into the |Dataset|_ or a subset of the |Dataset|_
+along user specified axes.
 
 Samples
 _______
 
-A |Sample|_ is the elements of a |Dataset|_ that store all the information related
-to a given image. Any |Sample|_ must include a file path to an image:
+A |Sample|_ is the elements of a |Dataset|_ that store all the information
+related to a given image. Any |Sample|_ must include a file path to an image:
 
 .. code-block:: python
    :linenos:
@@ -98,9 +97,9 @@ When unset, the default |Field|_ value will be ``None``.
 Tags
 ____
 
-``Sample.tags`` is a default |Field|_ of any |Sample|_. Tags are simply a list of
-strings and can be used to tag a |Sample|_ as part of a train/test split or any
-other tagging that you would like:
+``Sample.tags`` is a default |Field|_ of any |Sample|_. Tags are simply a list
+of strings and can be used to tag a |Sample|_ as part of a train/test split or
+any other tagging that you would like:
 
 .. code-block:: python
    :linenos:
