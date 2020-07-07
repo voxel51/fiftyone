@@ -9,8 +9,7 @@ import {
   isMainWidthResizing,
   mainLoaded,
   mainSize,
-  firstBaseLayout,
-  secondBaseLayout,
+  baseLayout,
   segmentIsLoaded,
   itemsPerRequest,
 } from "../../state/atoms";
@@ -23,10 +22,12 @@ import {
   currentListHeight,
   segmentsToRender,
   segmentData,
+  segmentTop,
+  segmentHeight,
 } from "../../state/selectors";
 
 import Scrubber from "./Scrubber";
-import Item from "./Player51";
+import { Item } from "./Player51";
 
 const Container = styled.div`
   width: 100%;
@@ -71,7 +72,7 @@ const SegmentDiv = animated(styled.div`
   width: 100%;
 `);
 
-const Loader = ({ index }) => {
+const Loader = ({ index, base }) => {
   useRecoilValue(segmentData(index));
   const [segmentIsLoadedValue, setSegmentIsLoaded] = useRecoilState(
     segmentIsLoaded(index)
@@ -83,54 +84,31 @@ const Loader = ({ index }) => {
   return null;
 };
 
-const SegmentsManager = () => {
-  const segmentsToRenderValue = useRecoilValue(segmentsToRender);
-
+const Manager = React.memo(({ index, base }) => {
   return (
-    <>
-      {segmentsToRenderValue.map((index) => (
-        <Suspense fallback={<></>}>
-          <Loader index={index} />
-        </Suspense>
-      ))}
-    </>
+    <Suspense fallback={<></>}>
+      <Loader index={index} />
+    </Suspense>
   );
-};
+});
 
 const ScrollListener = ({ scrollRef }) => {
   useScrollListener(scrollRef);
-  return <SegmentsManager />;
+  return null;
 };
 
-const Segment = ({ layout, children }) => {
-  return <SegmentDiv style={layout}>{children}</SegmentDiv>;
+const Segment = ({ layout: { y, height }, children }) => {
+  return <SegmentDiv style={{ y, height }}>{children}</SegmentDiv>;
 };
 
-const FirstBase = ({ layout }) => {
-  const numItems = useRecoilValue(itemsPerRequest);
-  const count = useRecoilValue(viewCount);
-
-  const items = [...Array(Math.min(count, numItems)).keys()];
+const Subscriber = () => {
+  const segmentsToRenderValue = useRecoilValue(segmentsToRender);
   return (
-    <Segment layout={layout}>
-      {items.map((i) => (
-        <Item index={i} />
+    <>
+      {segmentsToRenderValue.map((i) => (
+        <Manager index={i} />
       ))}
-    </Segment>
-  );
-};
-
-const SecondBase = ({ layout }) => {
-  const numItems = useRecoilValue(itemsPerRequest);
-  const count = useRecoilValue(viewCount);
-
-  const items = [...Array(Math.max(0, count - numItems)).keys()];
-  return (
-    <Segment layout={layout}>
-      {items.map((i) => (
-        <Item index={i + numItems} />
-      ))}
-    </Segment>
+    </>
   );
 };
 
@@ -140,15 +118,16 @@ export default () => {
   const currentListHeightValue = useRecoilValue(currentListHeight);
   const [mainLoadedValue, setMainLoaded] = useRecoilState(mainLoaded);
 
-  const setViewCount = useSetRecoilState(viewCount);
+  const [viewCountValue, setViewCount] = useRecoilState(viewCount);
+  const itemsPerRequestValue = useRecoilValue(itemsPerRequest);
   const scrollRef = useRef();
-  const firstBaseLayoutValue = useRecoilValue(firstBaseLayout);
-  const secondBaseLayoutValue = useRecoilValue(secondBaseLayout);
+  const firstBaseLayoutValue = useRecoilValue(baseLayout(0));
+  const secondBaseLayoutValue = useRecoilValue(baseLayout(1));
 
   const [ref, { contentRect }] = useResizeObserver();
   useTrackMousePosition();
   useEffect(() => {
-    setViewCount(50);
+    setViewCount(150);
   }, []);
 
   useLayoutEffect(() => {
@@ -170,11 +149,13 @@ export default () => {
   }, [ref, contentRect]);
 
   const [first, setFirst] = useSpring(() => ({
-    ...firstBaseLayoutValue,
+    y: firstBaseLayoutValue.y,
+    height: firstBaseLayoutValue.height,
     config: { duration: 0 },
   }));
   const [second, setSecond] = useSpring(() => ({
-    ...secondBaseLayoutValue,
+    y: secondBaseLayoutValue.y,
+    height: secondBaseLayoutValue.height,
     config: { duration: 0 },
   }));
 
@@ -189,13 +170,30 @@ export default () => {
         <Container ref={ref}>
           <ListMain ref={scrollRef}>
             <ListContainer style={{ height: currentListHeightValue }}>
-              <FirstBase layout={first} />
-              <SecondBase layout={second} />
+              <Segment layout={first}>
+                {[
+                  ...Array(
+                    Math.min(viewCountValue, itemsPerRequestValue)
+                  ).keys(),
+                ].map((i) => {
+                  <Item index={i} />;
+                })}
+              </Segment>
+              <Segment layout={second}>
+                {[
+                  ...Array(
+                    Math.max(viewCountValue - itemsPerRequestValue, 0)
+                  ).keys(),
+                ].map((i) => {
+                  <Item index={i + itemsPerRequestValue} />;
+                })}
+              </Segment>
             </ListContainer>
           </ListMain>
           <Scrubber />
         </Container>
       </Flashlight>
+      <Subscriber />
       <ScrollListener scrollRef={scrollRef} />
     </>
   );

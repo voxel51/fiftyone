@@ -108,6 +108,11 @@ export const itemRowCache = atomFamily({
   default: null,
 });
 
+export const segmentLayoutCache = atomFamily({
+  key: "segmentLayoutCache",
+  default: null,
+});
+
 export const destinationTop = atom({
   key: "destinationIndex",
   default: null,
@@ -118,20 +123,12 @@ export const previousSegmentsToRender = atom({
   default: [],
 });
 
-export const firstBaseLayout = atom({
-  key: "firstBaseLayout",
+export const baseLayout = atomFamily({
+  key: "baseLayout",
   default: {
     y: 0,
     height: 0,
-  },
-  dangerouslyAllowMutability: true,
-});
-
-export const secondBaseLayout = atom({
-  key: "secondBaseLayout",
-  default: {
-    y: 0,
-    height: 0,
+    segmentIndex: null,
   },
   dangerouslyAllowMutability: true,
 });
