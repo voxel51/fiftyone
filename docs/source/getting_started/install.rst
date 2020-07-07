@@ -30,7 +30,7 @@ First, identify a suitable Python executable. On many systems, this will be
 Python version, pass `--version` to Python. Here is example output from running
 these commands:
 
-.. code-block:: shell
+.. code-block:: text
 
    $ python --version
    Python 2.7.17
@@ -77,7 +77,7 @@ is active, `python` without any suffix will refer to the Python version you
 used to create the virtual environment, so you can use this for the remainder
 of this guide. For example:
 
-.. code-block:: shell
+.. code-block:: text
 
    $ python --version
    Python 3.8.3
@@ -89,7 +89,7 @@ the path to the current folder is replaced with `...`):
 
   .. group-tab:: Linux/macOS
 
-    .. code-block:: shell
+    .. code-block:: text
 
       $ which python
       .../env/bin/python
@@ -139,27 +139,28 @@ dealing with virtual environments frequently:
 Installing FiftyOne
 -------------------
 
+.. note::
+
+  **FiftyOne is currently in private beta!** If you have registered, your
+  welcome email contains a token that you will need to run some of the commands
+  below. Replace all instances of ``YOUR_TOKEN`` below with your token.
+
+  If you haven't registered for the FiftyOne Beta, you can sign up at
+  https://voxel51.com/fiftyone/#beta
+
 To install FiftyOne in a virtual environment, ensure that the virtual
 environment is active as described in the previous section, and then run the
 command below:
 
-.. tabs::
+.. code-block:: shell
 
-  .. group-tab:: Private Beta
-
-    .. code-block:: text
-
-        FiftyOne is currently in private beta. If you have registered, check
-        your FiftyOne Beta welcome email to find this command.
-
-        If you haven't registered for the FiftyOne Beta, you can sign up at
-        https://voxel51.com/fiftyone/#beta
+   pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
 your virtual environment:
 
-.. code-block:: shell
+.. code-block:: text
 
    $ python
    Python 3.6.9 (default, Apr 18 2020, 01:56:04)
@@ -170,7 +171,7 @@ your virtual environment:
    >>> fo.__file__
    '.../env/lib/python3.X/site-packages/fiftyone/__init__.py'
    >>>
-   >>> session = fo.launch_dashboard()
+   >>> session = fo.launch_app()
    >>> exit()
 
 **Linux users:** if you encounter an error related to MongoDB failing to start,
@@ -212,17 +213,9 @@ Upgrading FiftyOne
 Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
 upgrade an existing FiftyOne installation:
 
-.. tabs::
+.. code-block:: shell
 
-  .. group-tab:: Private Beta
-
-    .. code-block:: text
-
-        FiftyOne is currently in private beta. If you have registered, check
-        your FiftyOne Beta welcome email to find this command.
-
-        If you haven't registered for the FiftyOne Beta, you can sign up at
-        https://voxel51.com/fiftyone/#beta
+   pip install --index https://YOUR_TOKEN@pypi.voxel51.com --upgrade fiftyone
 
 Uninstalling FiftyOne
 ---------------------
@@ -255,15 +248,17 @@ these packages must be installed *after* the `fiftyone` package; if you install
 
 .. tabs::
 
-  .. group-tab:: Private Beta
+  .. tab:: Ubuntu 16.04
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        FiftyOne is currently in private beta. If you have registered, check
-        your FiftyOne Beta welcome email to find this command.
+      pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone-db-ubuntu1604
 
-        If you haven't registered for the FiftyOne Beta, you can sign up at
-        https://voxel51.com/fiftyone/#beta
+  .. tab:: Debian 9
+
+    .. code-block:: shell
+
+      pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone-db-debian9
 
 Manual installation
 ~~~~~~~~~~~~~~~~~~~
@@ -283,7 +278,7 @@ need the `mongodb-org-server` package in this case.
 To verify the version of your MongoDB installation, run `mongod --version`,
 which should produce output that looks like this:
 
-.. code-block:: shell
+.. code-block:: text
 
    db version v4.2.6
    git version: 20364840b8f1af16917e4c23c1b5f5efd8b352f8

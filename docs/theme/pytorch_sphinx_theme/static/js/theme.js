@@ -1,4 +1,4 @@
-require=(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+(function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 window.utilities = {
   scrollTop: function() {
     var supportPageOffset = window.pageXOffset !== undefined;
@@ -590,6 +590,10 @@ window.sideMenus = {
         sideMenus.handleRightMenu();
       }
     });
+
+    $(function() {
+      $(window).trigger('scroll');
+    })
   },
 
   leftMenuIsFixed: function() {
@@ -688,11 +692,15 @@ window.sideMenus = {
     var rightMenuSideScroll = document.getElementById("pytorch-side-scroll-right");
     var sideScrollFromWindowTop = rightMenuSideScroll.getBoundingClientRect().top;
 
-    rightMenuSideScroll.style.height = utilities.windowHeight() - sideScrollFromWindowTop + "px";
+    var windowHeight = utilities.windowHeight();
+    var topOfFooterRelativeToWindow = document.getElementById("docs-tutorials-resources").getBoundingClientRect().top;
+    var howManyPixelsOfTheFooterAreInTheWindow = Math.max(0, windowHeight - topOfFooterRelativeToWindow);
+
+    rightMenuSideScroll.style.height = windowHeight - sideScrollFromWindowTop - howManyPixelsOfTheFooterAreInTheWindow + "px";
   }
 };
 
-},{}],"pytorch-sphinx-theme":[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var jQuery = (typeof(window) != 'undefined') ? window.jQuery : require('jquery');
 
 // Sphinx theme nav state
@@ -1039,4 +1047,13 @@ $("#tutorial-cards p").each(function(index, item) {
     }
 });
 
-},{"jquery":"jquery"}]},{},[1,2,3,4,5,6,7,8,9,10,"pytorch-sphinx-theme"]);
+// Jump back to top on pagination click
+
+$(document).on("click", ".page", function() {
+    $('html, body').animate(
+      {scrollTop: $("#dropdown-filter-tags").position().top},
+      'slow'
+    );
+});
+
+},{"jquery":"jquery"}]},{},[1,2,3,4,5,6,7,8,9,10,11]);

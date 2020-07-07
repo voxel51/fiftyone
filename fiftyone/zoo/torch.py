@@ -483,22 +483,26 @@ def _download_and_prepare(
     sample_parser.classes = classes
 
     if isinstance(sample_parser, foud.ImageClassificationSampleParser):
-        write_dataset_fcn = foud.to_image_classification_dataset
-        dataset_type = fot.ImageClassificationDataset()
+        dataset_type = fot.FiftyOneImageClassificationDataset()
+        dataset_exporter = foud.FiftyOneImageClassificationDatasetExporter(
+            dataset_dir, classes=classes
+        )
     elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
-        write_dataset_fcn = foud.to_image_detection_dataset
-        dataset_type = fot.ImageDetectionDataset()
+        dataset_type = fot.FiftyOneImageDetectionDataset()
+        dataset_exporter = foud.FiftyOneImageDetectionDatasetExporter(
+            dataset_dir, classes=classes
+        )
     elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
-        write_dataset_fcn = foud.to_image_labels_dataset
-        dataset_type = fot.ImageLabelsDataset()
+        dataset_type = fot.FiftyOneImageLabelsDataset()
+        dataset_exporter = foud.FiftyOneImageLabelsDatasetExporter(dataset_dir)
     else:
-        raise ValueError("Unsupported sample parser: %s" % sample_parser)
+        raise ValueError("Unsupported SampleParser %s" % type(sample_parser))
 
     # Write the formatted dataset to `dataset_dir`
-    write_dataset_fcn(
+    foud.write_dataset(
         dataset,
-        dataset_dir,
-        sample_parser=sample_parser,
+        sample_parser,
+        dataset_exporter=dataset_exporter,
         num_samples=num_samples,
     )
 

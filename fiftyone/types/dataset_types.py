@@ -18,14 +18,38 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import eta.core.utils as etau
 
-class BaseDataset(object):
+
+class Dataset(object):
     """Base type for datasets."""
 
-    pass
+    def get_dataset_importer_cls(self):
+        """Returns the :class:`fiftyone.utils.data.importers.DatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.DatasetImporter` class
+        """
+        raise TypeError(
+            "Dataset type '%s' does not provide a default DatasetImporter"
+            % etau.get_class_name(self)
+        )
+
+    def get_dataset_exporter_cls(self):
+        """Returns the :class:`fiftyone.utils.data.exporters.DatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.DatasetExporter` class
+        """
+        raise TypeError(
+            "Dataset type '%s' does not provide a default DatasetExporter"
+            % etau.get_class_name(self)
+        )
 
 
-class BaseUnlabeledDataset(BaseDataset):
+class UnlabeledDataset(Dataset):
     """Base type for datasets that represent an unlabeled collection of data
     samples.
     """
@@ -33,14 +57,38 @@ class BaseUnlabeledDataset(BaseDataset):
     pass
 
 
-class BaseUnlabeledImageDataset(BaseUnlabeledDataset):
+class UnlabeledImageDataset(UnlabeledDataset):
     """Base type for datasets that represent an unlabeled collection of images.
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_importer_cls()"
+        )
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_exporter_cls()"
+        )
 
 
-class BaseLabeledDataset(BaseDataset):
+class LabeledDataset(Dataset):
     """Base type for datasets that represent a collection of data samples and
     their associated labels.
     """
@@ -48,15 +96,39 @@ class BaseLabeledDataset(BaseDataset):
     pass
 
 
-class BaseLabeledImageDataset(BaseLabeledDataset):
+class LabeledImageDataset(LabeledDataset):
     """Base type for datasets that represent a collection of images and their
     associated labels.
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_importer_cls()"
+        )
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_exporter_cls()"
+        )
 
 
-class BaseImageClassificationDataset(BaseLabeledImageDataset):
+class ImageClassificationDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
     of associated classification labels.
     """
@@ -64,7 +136,7 @@ class BaseImageClassificationDataset(BaseLabeledImageDataset):
     pass
 
 
-class BaseImageDetectionDataset(BaseLabeledImageDataset):
+class ImageDetectionDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
     of associated object detections.
     """
@@ -72,7 +144,7 @@ class BaseImageDetectionDataset(BaseLabeledImageDataset):
     pass
 
 
-class BaseImageLabelsDataset(BaseLabeledImageDataset):
+class ImageLabelsDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
     of associated multitask predictions.
     """
@@ -80,7 +152,7 @@ class BaseImageLabelsDataset(BaseLabeledImageDataset):
     pass
 
 
-class ImageDirectory(BaseUnlabeledImageDataset):
+class ImageDirectory(UnlabeledImageDataset):
     """A directory of images.
 
     Datasets of this type are read/written in the following format::
@@ -93,10 +165,18 @@ class ImageDirectory(BaseUnlabeledImageDataset):
     and files with non-image MIME types are omitted.
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.ImageDirectoryImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.ImageDirectoryExporter
 
 
-class ImageClassificationDataset(BaseImageClassificationDataset):
+class FiftyOneImageClassificationDataset(ImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
     classification labels stored in a simple JSON format.
 
@@ -130,10 +210,18 @@ class ImageClassificationDataset(BaseImageClassificationDataset):
     the label strings.
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneImageClassificationDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneImageClassificationDatasetExporter
 
 
-class ImageClassificationDirectoryTree(BaseImageClassificationDataset):
+class ImageClassificationDirectoryTree(ImageClassificationDataset):
     """A directory tree whose subfolders define an image classification
     dataset.
 
@@ -150,12 +238,21 @@ class ImageClassificationDirectoryTree(BaseImageClassificationDataset):
                 ...
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.ImageClassificationDirectoryTreeImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.ImageClassificationDirectoryTreeExporter
 
 
-class TFImageClassificationDataset(BaseImageClassificationDataset):
+class TFImageClassificationDataset(ImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
-    classification labels stored as TFRecords.
+    classification labels stored as
+    `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -182,10 +279,18 @@ class TFImageClassificationDataset(BaseImageClassificationDataset):
         }
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.tf as fout
+
+        return fout.TFImageClassificationDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.tf as fout
+
+        return fout.TFImageClassificationDatasetExporter
 
 
-class ImageDetectionDataset(BaseImageDetectionDataset):
+class FiftyOneImageDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections stored in a simple JSON format.
 
@@ -233,12 +338,20 @@ class ImageDetectionDataset(BaseImageDetectionDataset):
     the label strings.
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneImageDetectionDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneImageDetectionDatasetExporter
 
 
-class COCODetectionDataset(BaseImageDetectionDataset):
+class COCODetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in COCO format (http://cocodataset.org/#home).
+    detections saved in `COCO format <http://cocodataset.org/#home>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -296,12 +409,20 @@ class COCODetectionDataset(BaseImageDetectionDataset):
         }
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.coco as fouc
+
+        return fouc.COCODetectionDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.coco as fouc
+
+        return fouc.COCODetectionDatasetExporter
 
 
-class VOCDetectionDataset(BaseImageDetectionDataset):
+class VOCDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in VOC format (http://host.robots.ox.ac.uk/pascal/VOC).
+    detections saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -362,13 +483,21 @@ class VOCDetectionDataset(BaseImageDetectionDataset):
     attributes (like ``pose`` in the above example) are left empty.
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.voc as fouv
+
+        return fouv.VOCDetectionDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.voc as fouv
+
+        return fouv.VOCDetectionDatasetExporter
 
 
-class KITTIDetectionDataset(BaseImageDetectionDataset):
+class KITTIDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in KITTI format
-    (http://www.cvlibs.net/datasets/kitti/eval_object.php).
+    detections saved in
+    `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -431,13 +560,21 @@ class KITTIDetectionDataset(BaseImageDetectionDataset):
     columns may be omitted.
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.kitti as fouk
+
+        return fouk.KITTIDetectionDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.kitti as fouk
+
+        return fouk.KITTIDetectionDatasetExporter
 
 
-class TFObjectDetectionDataset(BaseImageDetectionDataset):
+class TFObjectDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections stored as TFRecords in TF Object Detection API format
-    (https://github.com/tensorflow/models/blob/master/research/object_detection).
+    detections stored as TFRecords in
+    `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -476,12 +613,20 @@ class TFObjectDetectionDataset(BaseImageDetectionDataset):
         }
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.tf as fout
+
+        return fout.TFObjectDetectionDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.tf as fout
+
+        return fout.TFObjectDetectionDatasetExporter
 
 
-class CVATImageDataset(BaseImageDetectionDataset):
+class CVATImageDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections stored in CVAT image format (https://github.com/opencv/cvat).
+    detections stored in `CVAT image format <https://github.com/opencv/cvat>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -539,12 +684,21 @@ class CVATImageDataset(BaseImageDetectionDataset):
         </annotations>
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.cvat as fouc
+
+        return fouc.CVATImageDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.cvat as fouc
+
+        return fouc.CVATImageDatasetExporter
 
 
-class ImageLabelsDataset(BaseImageLabelsDataset):
+class FiftyOneImageLabelsDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
-    predictions stored in ``eta.core.image.ImageLabels`` format.
+    predictions stored in
+    `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -578,13 +732,21 @@ class ImageLabelsDataset(BaseImageLabelsDataset):
     details.
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneImageLabelsDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneImageLabelsDatasetExporter
 
 
-class BDDDataset(BaseImageLabelsDataset):
+class BDDDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
-    predictions saved in Berkeley DeepDrive (BDD) format
-    (https://bdd-data.berkeley.edu).
+    predictions saved in
+    `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -631,4 +793,12 @@ class BDDDataset(BaseImageLabelsDataset):
         ]
     """
 
-    pass
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.bdd as foub
+
+        return foub.BDDDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.bdd as foub
+
+        return foub.BDDDatasetExporter

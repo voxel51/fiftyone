@@ -44,9 +44,11 @@ jobs:
         with:
           python-version: 3.8
       - name: Install dependencies
+        env:
+          PIP_INDEX_URL: https://voxel51-ci:${{ secrets.FIFTYONE_GITHUB_TOKEN }}@pypi.voxel51.com
         run: |
           sudo apt-get install pandoc
-          pip install -e . --index https://pypi.voxel51.com
+          pip install -e .
           pip install -r requirements/docs.txt
           pip install tensorflow torch torchvision
       - name: Install fiftyone-db

@@ -24,7 +24,6 @@ from collections import defaultdict
 import io
 import json
 import os
-import sys
 import subprocess
 import sys
 import time
@@ -87,7 +86,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
-        _register_command(subparsers, "dashboard", DashboardCommand)
+        _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
     @staticmethod
@@ -108,27 +107,18 @@ class ConfigCommand(Command):
 
         # Print the location of your config
         fiftyone config --locate
-
-        # Save your current config to disk
-        fiftyone config --save
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "field", nargs="?", metavar="FIELD", help="a config field"
+            "field", nargs="?", metavar="FIELD", help="a config field to print"
         )
         parser.add_argument(
             "-l",
             "--locate",
             action="store_true",
             help="print the location of your config on disk",
-        )
-        parser.add_argument(
-            "-s",
-            "--save",
-            action="store_true",
-            help="save your current config to disk",
         )
 
     @staticmethod
@@ -141,20 +131,7 @@ class ConfigCommand(Command):
                     "No config file found at '%s'.\n"
                     % foc.FIFTYONE_CONFIG_PATH
                 )
-                print(
-                    "To save your current config (which may differ from the "
-                    "default config if you\n"
-                    "have any `FIFTYONE_XXX` environment variables set), run:"
-                    "\n\n"
-                    "fiftyone config --save"
-                    "\n"
-                )
 
-            return
-
-        if args.save:
-            fo.config.write_json(foc.FIFTYONE_CONFIG_PATH, pretty_print=True)
-            print("Config written to '%s'" % foc.FIFTYONE_CONFIG_PATH)
             return
 
         if args.field:
@@ -256,10 +233,7 @@ class ConvertCommand(Command):
         parser.add_argument(
             "--input-type",
             metavar="INPUT_TYPE",
-            help=(
-                "the type of the input dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the input dataset",
         )
         parser.add_argument(
             "--output-dir",
@@ -269,10 +243,7 @@ class ConvertCommand(Command):
         parser.add_argument(
             "--output-type",
             metavar="OUTPUT_TYPE",
-            help=(
-                "the desired output dataset type (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type to output",
         )
 
     @staticmethod
@@ -283,7 +254,12 @@ class ConvertCommand(Command):
         output_dir = args.output_dir
         output_type = etau.get_class(args.output_type)
 
-        foud.convert_dataset(input_dir, input_type, output_dir, output_type)
+        foud.convert_dataset(
+            input_dir=input_dir,
+            input_type=input_type,
+            output_dir=output_dir,
+            output_type=output_type,
+        )
 
 
 class DatasetsCommand(Command):
@@ -385,10 +361,7 @@ class DatasetsCreateCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the type of the dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the dataset",
         )
 
     @staticmethod
@@ -563,10 +536,7 @@ class DatasetsExportCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the format in which to export the dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type in which to export",
         )
 
     @staticmethod
@@ -614,31 +584,31 @@ class DatasetsDeleteCommand(Command):
         print("Dataset '%s' deleted" % args.name)
 
 
-class DashboardCommand(Command):
-    """Tools for working with the FiftyOne Dashboard."""
+class AppCommand(Command):
+    """Tools for working with the FiftyOne App."""
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "launch", DashboardLaunchCommand)
-        _register_command(subparsers, "view", DashboardViewCommand)
-        _register_command(subparsers, "connect", DashboardConnectCommand)
+        _register_command(subparsers, "launch", AppLaunchCommand)
+        _register_command(subparsers, "view", AppViewCommand)
+        _register_command(subparsers, "connect", AppConnectCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
 
 
-class DashboardLaunchCommand(Command):
-    """Launch the FiftyOne Dashboard.
+class AppLaunchCommand(Command):
+    """Launch the FiftyOne App.
 
     Examples::
 
-        # Launch the dashboard with the given dataset
-        fiftyone dashboard launch <name>
+        # Launch the app with the given dataset
+        fiftyone app launch <name>
 
-        # Launch a remote dashboard session
-        fiftyone dashboard launch <name> --remote
+        # Launch a remote app session
+        fiftyone app launch <name> --remote
     """
 
     @staticmethod
@@ -658,13 +628,13 @@ class DashboardLaunchCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote dashboard session",
+            help="whether to launch a remote app session",
         )
 
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
-        session = fos.launch_dashboard(
+        session = fos.launch_app(
             dataset=dataset, port=args.port, remote=args.remote
         )
 
@@ -678,29 +648,29 @@ def _watch_session(session, remote=False):
             while True:
                 time.sleep(60)
         else:
-            print("\nTo exit, close the dashboard or press ctrl + c\n")
+            print("\nTo exit, close the app or press ctrl + c\n")
             session.wait()
     except KeyboardInterrupt:
         pass
 
 
-class DashboardViewCommand(Command):
-    """View datasets in the FiftyOne Dashboard without persisting them to the
+class AppViewCommand(Command):
+    """View datasets in the FiftyOne App without persisting them to the
     database.
 
     Examples::
 
-        # View a dataset stored on disk in the dashboard
-        fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+        # View a dataset stored on disk in the app
+        fiftyone app view --dataset-dir <dataset-dir> --type <type>
 
-        # View a zoo dataset in the dashboard
-        fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
+        # View a zoo dataset in the app
+        fiftyone app view --zoo-dataset <name> --splits <split1> ...
 
-        # View a dataset stored in JSON format on disk in the dashboard
-        fiftyone dashboard view --json-path <json-path>
+        # View a dataset stored in JSON format on disk in the app
+        fiftyone app view --json-path <json-path>
 
-        # View the dataset in a remote dashboard session
-        fiftyone dashboard view ... --remote
+        # View the dataset in a remote app session
+        fiftyone app view ... --remote
     """
 
     @staticmethod
@@ -718,10 +688,7 @@ class DashboardViewCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the dataset type (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the dataset",
         )
         parser.add_argument(
             "-z",
@@ -754,7 +721,7 @@ class DashboardViewCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote dashboard session",
+            help="whether to launch a remote app session",
         )
 
     @staticmethod
@@ -786,23 +753,23 @@ class DashboardViewCommand(Command):
                 "provided"
             )
 
-        session = fos.launch_dashboard(
+        session = fos.launch_app(
             dataset=dataset, port=args.port, remote=args.remote
         )
 
         _watch_session(session, remote=args.remote)
 
 
-class DashboardConnectCommand(Command):
-    """Connect to a remote FiftyOne Dashboard.
+class AppConnectCommand(Command):
+    """Connect to a remote FiftyOne App.
 
     Examples::
 
-        # Connect to a remote dashboard with port forwarding already configured
-        fiftyone dashboard connect
+        # Connect to a remote app with port forwarding already configured
+        fiftyone app connect
 
-        # Connect to a remote dashboard session
-        fiftyone dashboard connect --destination <destination> --port <port>
+        # Connect to a remote app session
+        fiftyone app connect --destination <destination> --port <port>
     """
 
     @staticmethod
@@ -870,7 +837,7 @@ class DashboardConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_dashboard()
+        session = fos.launch_app()
 
         _watch_session(session)
 

@@ -6,7 +6,7 @@ FiftyOne Command-Line Interface (CLI)
 Installing FiftyOne automatically installs `fiftyone`, a command-line interface
 (CLI) for interacting with FiftyOne. This utility provides access to many
 useful features, including creating and inspecting datasets, visualizing
-datasets in the dashboard, exporting datasets and converting dataset formats,
+datasets in the App, exporting datasets and converting dataset formats,
 and downloading datasets from the FiftyOne Dataset Zoo.
 
 Quickstart
@@ -57,7 +57,7 @@ The FiftyOne command-line interface.
 
 .. code-block:: text
 
-    fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,dashboard,zoo} ...
+    fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,app,zoo} ...
 
 **Arguments**
 
@@ -69,12 +69,12 @@ The FiftyOne command-line interface.
       --all-help            show help recurisvely and exit
 
     available commands:
-      {config,constants,convert,datasets,dashboard,zoo}
+      {config,constants,convert,datasets,app,zoo}
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
-        dashboard           Tools for working with the FiftyOne Dashboard.
+        app                 Tools for working with the FiftyOne App.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
 
 FiftyOne config
@@ -84,19 +84,18 @@ Tools for working with your FiftyOne config.
 
 .. code-block:: text
 
-    fiftyone config [-h] [-l] [-s] [FIELD]
+    fiftyone config [-h] [-l] [FIELD]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      FIELD         a config field
+      FIELD         a config field to print
 
     optional arguments:
       -h, --help    show this help message and exit
       -l, --locate  print the location of your config on disk
-      -s, --save    save your current config to disk
 
 **Examples**
 
@@ -114,11 +113,6 @@ Tools for working with your FiftyOne config.
 
     # Print the location of your config
     fiftyone config --locate
-
-.. code:: shell
-
-    # Save your current config to disk
-    fiftyone config --save
 
 Print constants
 ---------------
@@ -170,11 +164,11 @@ Convert datasets on disk between supported formats.
       --input-dir INPUT_DIR
                             the directory containing the dataset
       --input-type INPUT_TYPE
-                            the type of the input dataset (a subclass of `fiftyone.types.BaseDataset`)
+                            the fiftyone.types.Dataset type of the input dataset
       --output-dir OUTPUT_DIR
                             the directory to which to write the output dataset
       --output-type OUTPUT_TYPE
-                            the desired output dataset type (a subclass of `fiftyone.types.BaseDataset`)
+                            the fiftyone.types.Dataset type to output
 
 **Examples**
 
@@ -294,7 +288,7 @@ Tools for creating FiftyOne datasets.
                             the directory containing the dataset
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to load
-      -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
 
 **Examples**
 
@@ -426,7 +420,7 @@ Export FiftyOne datasets to disk in supported formats.
                             the path to export the dataset in JSON format
       -f LABEL_FIELD, --label-field LABEL_FIELD
                             the name of the label field to export
-      -t TYPE, --type TYPE  the format in which to export the dataset (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type in which to export
 
 **Examples**
 
@@ -467,14 +461,14 @@ Delete FiftyOne datasets.
     # Delete the dataset with the given name
     fiftyone datasets delete <name>
 
-FiftyOne Dashboard
+FiftyOne App
 ------------------
 
-Tools for working with the FiftyOne Dashboard.
+Tools for working with the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard [-h] [--all-help] {launch,view,connect} ...
+    fiftyone app [-h] [--all-help] {launch,view,connect} ...
 
 **Arguments**
 
@@ -482,22 +476,22 @@ Tools for working with the FiftyOne Dashboard.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --all-help            show help recurisvely and exit
+      --all-help            show help recursively and exit
 
     available commands:
       {launch,view,connect}
-        launch              Launch the FiftyOne Dashboard.
-        view                View datasets in the FiftyOne Dashboard without persisting them to the
-        connect             Connect to a remote FiftyOne Dashboard.
+        launch              Launch the FiftyOne App.
+        view                View datasets in the FiftyOne App without persisting them to the
+        connect             Connect to a remote FiftyOne App.
 
-Launch the dashboard
+Launch the App
 ~~~~~~~~~~~~~~~~~~~~
 
-Launch the FiftyOne Dashboard.
+Launch the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard launch [-h] [-p PORT] [-r] NAME
+    fiftyone app launch [-h] [-p PORT] [-r] NAME
 
 **Arguments**
 
@@ -509,31 +503,30 @@ Launch the FiftyOne Dashboard.
     optional arguments:
       -h, --help            show this help message and exit
       -p PORT, --port PORT  the port number to use
-      -r, --remote          whether to launch a remote dashboard session
+      -r, --remote          whether to launch a remote App session
 
 **Examples**
 
 .. code-block:: shell
 
-    # Launch the dashboard with the given dataset
-    fiftyone dashboard launch <name>
+    # Launch the App with the given dataset
+    fiftyone app launch <name>
 
 .. code-block:: shell
 
-    # Launch a remote dashboard session
-    fiftyone dashboard launch <name> --remote
+    # Launch a remote App session
+    fiftyone app launch <name> --remote
 
-View datasets in dashboard
+View datasets in App
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-View datasets in the FiftyOne Dashboard without persisting them to the
-database.
+View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: text
 
-    fiftyone dashboard view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
-                            [-z NAME] [-s SPLITS [SPLITS ...]]
-                            [-j JSON_PATH] [-p PORT] [-r]
+    fiftyone app view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
+                      [-z NAME] [-s SPLITS [SPLITS ...]]
+                      [-j JSON_PATH] [-p PORT] [-r]
 
 **Arguments**
 
@@ -544,7 +537,7 @@ database.
       -n NAME, --name NAME  a name for the dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             the directory containing the dataset to view
-      -t TYPE, --type TYPE  the dataset type (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
       -z NAME, --zoo-dataset NAME
                             the name of a zoo dataset to view
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
@@ -552,38 +545,38 @@ database.
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to view
       -p PORT, --port PORT  the port number to use
-      -r, --remote          whether to launch a remote dashboard session
+      -r, --remote          whether to launch a remote App session
 
 **Examples**
 
 .. code-block:: shell
 
-    # View a dataset stored on disk in the dashboard
-    fiftyone dashboard view --dataset-dir <dataset-dir> --type <type>
+    # View a dataset stored on disk in the App
+    fiftyone app view --dataset-dir <dataset-dir> --type <type>
 
 .. code-block:: shell
 
-    # View a zoo dataset in the dashboard
-    fiftyone dashboard view --zoo-dataset <name> --splits <split1> ...
+    # View a zoo dataset in the App
+    fiftyone app view --zoo-dataset <name> --splits <split1> ...
 
 .. code-block:: shell
 
-    # View a dataset stored in JSON format on disk in the dashboard
-    fiftyone dashboard view --json-path <json-path>
+    # View a dataset stored in JSON format on disk in the App
+    fiftyone app view --json-path <json-path>
 
 .. code-block:: shell
 
-    # View the dataset in a remote dashboard session
-    fiftyone dashboard view ... --remote
+    # View the dataset in a remote App session
+    fiftyone app view ... --remote
 
-Connect to remote dashboard
+Connect to remote App
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Connect to a remote FiftyOne Dashboard.
+Connect to a remote FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone dashboard connect [-h] [-d DESTINATION] [-p PORT]
+    fiftyone app connect [-h] [-d DESTINATION] [-p PORT]
 
 **Arguments**
 
@@ -599,13 +592,13 @@ Connect to a remote FiftyOne Dashboard.
 
 .. code-block:: shell
 
-    # Connect to a remote dashboard with port forwarding already configured
-    fiftyone dashboard connect
+    # Connect to a remote App with port forwarding already configured
+    fiftyone app connect
 
 .. code-block:: shell
 
-    # Connect to a remote dashboard session
-    fiftyone dashboard connect --destination <destination> --port <port>
+    # Connect to a remote App session
+    fiftyone app connect --destination <destination> --port <port>
 
 FiftyOne Dataset Zoo
 --------------------

@@ -1,15 +1,16 @@
 FiftyOne
 ========
 
-    *"Data is king in the artificial intelligence world."*
+*"Rapidly experiment with your datasets"*
 
-If you are looking to boost your model performance, chances are improving
-dataset quality is going to provide the highest return on investment.
-**FiftyOne** is a cutting-edge, Python-based tool for the visual data scientist
-to help in creating valuable and diverse datasets. Work efficiently with
-FiftyOne to achieve better models with dependable performance.
+If you are looking to boost the performance of your machine learning models,
+chances are improving the quality of your dataset will provide the highest
+return on your investment. **Enter FiftyOne.** FiftyOne is a Python-based tool
+for the visual data scientist that enables you to create valuable and diverse
+datasets. Work efficiently with FiftyOne to achieve better models with
+dependable performance.
 
-    *"Become one with the data."*
+*"Become one with your data"*
 
 FiftyOne does more than improve your dataset; it gets you closer to your data.
 Rapidly gain insight by visualizing samples overlayed with with dynamic and
@@ -27,7 +28,7 @@ _________________
 FiftyOne provides advanced capabilities that will turbocharge your machine
 learning workflows.
 
-.. rubric:: Finding annotation mistakes
+**Finding annotation mistakes**
 
 Annotations mistakes create an artificial ceiling on the performance of your
 models. However, finding these mistakes by hand is at least as arduous as the
@@ -36,7 +37,7 @@ automatically identify possible label mistakes in your datasets.
 
 :doc:`>> Try it now!<tutorials/label_mistakes>`
 
-.. rubric:: Removing redundant images
+**Removing redundant images**
 
 During the training loop for a model, the best results will be seen when
 training on unique data. For example, finding and removing similar samples in
@@ -46,7 +47,7 @@ identify duplicate or near-duplicate images in your datasets.
 
 :doc:`>> Try it now!<tutorials/uniqueness>`
 
-.. rubric:: Bootstrapping training datasets from raw images
+**Bootstrapping training datasets from raw images**
 
 In the early stages of a machine learning workflow, ML engineers inevitably ask
 themselves: *what data should I select to annotate?* This is a critical
@@ -60,7 +61,7 @@ performance.
 
     Tutorial coming soon!
 
-.. rubric:: Adding optimal samples to your dataset
+**Adding optimal samples to your dataset**
 
 While training, ML models understand attributes of certain samples faster than
 others. The natural question arises: *what new samples should I add to my
@@ -76,7 +77,7 @@ learning processes.
 Core Concepts
 _____________
 
-.. rubric:: :doc:`The FiftyOne Core Library<user_guide/basics>`
+:doc:`The FiftyOne Core Library <user_guide/basics>`
 
 FiftyOne's core library provides a structured yet dynamic representation to
 explore your datasets. You can efficiently query and manipulate your dataset by
@@ -110,7 +111,7 @@ adding custom tags, model predictions and more.
     Check out :doc:`loading datasets<user_guide/dataset_creation/index>` to see
     how to load your data into FiftyOne!
 
-.. rubric:: :doc:`The FiftyOne App<user_guide/app>`
+:doc:`The FiftyOne App <user_guide/app>`
 
 The FiftyOne App is a graphical user interface (GUI) that makes it easy to
 rapidly gain intuition into your datasets. You can visualize labels, bounding
@@ -123,10 +124,10 @@ dataset into any aspect you need; and more.
    :align: center
    :target: user_guide/app.html
 
-.. rubric:: :doc:`The FiftyOne Brain<user_guide/brain>`
+:doc:`The FiftyOne Brain <user_guide/brain>`
 
 The FiftyOne Brain is a library of powerful machine learning-powered
-:ref:`capabilities<Capabilities>` that provide insights into your datasets and
+:ref:`capabilities <Capabilities>` that provide insights into your datasets and
 recommend ways to modify your datasets that will lead to measurably better
 performance of your models.
 
@@ -143,13 +144,13 @@ ____________
 
 Where should you go from here? You could...
 
-* :doc:`Install FiftyOne<getting_started/install>`.
+* :doc:`Install FiftyOne<getting_started/install>`
 * Try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
-  capabilities of FiftyOne.
+  capabilities of FiftyOne
 * Explore :doc:`recipes<recipes/index>` for integrating FiftyOne into
-  your current ML workflows.
+  your current ML workflows
 * Consult the :doc:`user guide<user_guide/index>` for detailed instructions on
-  how to accomplish various tasks with FiftyOne.
+  how to accomplish various tasks with FiftyOne
 
 Need Support?
 _____________
@@ -163,6 +164,7 @@ or reach out to us at support@voxel51.com.
    :maxdepth: 1
    :hidden:
 
+   Overview<self>
    Installation<getting_started/install>
    Tutorials<tutorials/index>
    Recipes<recipes/index>

@@ -3,8 +3,8 @@ Creating Common Format Datasets
 
 .. default-role:: code
 
-FiftyOne provides native support for ingesting labeled datasets from disk in a
-variety of common formats.
+FiftyOne provides native support for ingesting datasets from disk in a variety
+of common formats.
 
 Basic recipe
 ------------
@@ -30,7 +30,7 @@ loading.
         dataset_dir = "/path/to/dataset"
 
         # The type of the dataset being imported
-        # Any subclass of `fiftyone.types.BaseDataset` is supported
+        # Any subclass of `fiftyone.types.Dataset` is supported
         dataset_type = fo.types.COCODetectionDataset  # for example
 
         # Import the dataset!
@@ -47,7 +47,7 @@ loading.
         DATASET_DIR=/path/to/dataset
 
         # The type of the dataset being imported
-        # Any subclass of `fiftyone.types.BaseDataset` is supported
+        # Any subclass of `fiftyone.types.Dataset` is supported
         TYPE=fiftyone.types.COCODetectionDataset  # for example
 
         # Import the dataset!
@@ -57,62 +57,17 @@ Supported formats
 -----------------
 
 Each supported dataset type is represented by a subclass of
-`fiftyone.types.BaseDataset`, which is used by the Python library and CLI to
-refer to the corresponding dataset format when reading the dataset from disk.
+:class:`fiftyone.types.Dataset <fiftyone.types.dataset_types.Dataset>`, which
+is used by the Python library and CLI to refer to the corresponding dataset
+format when reading the dataset from disk.
 
-+-----------------------------------------------------+------------------------------------------------------------+
-| Dataset Type                                        | Description                                                |
-+=====================================================+============================================================+
-| ``fiftyone.types.ImageDirectory``                   | A directory of images.                                     |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.ImageClassificationDataset``       | A labeled dataset consisting of images and their           |
-|                                                     | associated classification labels in a simple JSON format.  |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.ImageClassificationDirectoryTree`` | A directory tree whose subfolders define an image          |
-|                                                     | classification dataset.                                    |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.TFImageClassificationDataset``     | A labeled dataset consisting of images and their           |
-|                                                     | associated classification labels stored as TFRecords.      |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.type.ImageDetectionDataset``             | A labeled dataset consisting of images and their           |
-|                                                     | associated object detections stored in a simple JSON       |
-|                                                     | format.                                                    |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.COCODetectionDataset``             | A labeled dataset consisting of images and their           |
-|                                                     | associated object detections saved in COCO format          |
-|                                                     | (http://cocodataset.org/#home).                            |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.VOCDetectionDataset``              | A labeled dataset consisting of images and their           |
-|                                                     | associated object detections saved in VOC format           |
-|                                                     | (http://host.robots.ox.ac.uk/pascal/VOC).                  |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.KITTIDetectionDataset``            | A labeled dataset consisting of images and their           |
-|                                                     | associated object detections saved in KITTI format         |
-|                                                     | (http://www.cvlibs.net/datasets/kitti/eval\_object.php).   |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.TFObjectDetectionDataset``         | A labeled dataset consisting of images and their           |
-|                                                     | associated object detections stored as TFRecords in TF     |
-|                                                     | Object Detection API format                                |
-|                                                     | (https://github.com/tensorflow/models/blob/master/research |
-|                                                     | /object\_detection).                                       |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.CVATImageDataset``                 | A labeled dataset consisting of images and their           |
-|                                                     | associated object detections stored in CVAT image format   |
-|                                                     | (https://github.com/opencv/cvat).                          |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.ImageLabelsDataset``               | A labeled dataset consisting of images and their           |
-|                                                     | associated multitask predictions stored in                 |
-|                                                     | ``eta.core.image.ImageLabels`` format.                     |
-+-----------------------------------------------------+------------------------------------------------------------+
-| ``fiftyone.types.BDDDataset``                       | A labeled dataset consisting of images and their           |
-|                                                     | associated multitask predictions saved in Berkeley         |
-|                                                     | DeepDrive (BDD) format (https://bdd-data.berkeley.edu).    |
-+-----------------------------------------------------+------------------------------------------------------------+
+.. include:: ../_dataset_types.rst
 
-Image directories
------------------
+ImageDirectory
+--------------
 
-The `fiftyone.types.ImageDirectory` type represents a directory of images.
+The :class:`fiftyone.types.ImageDirectory <fiftyone.types.dataset_types.ImageDirectory>`
+type represents a directory of images.
 
 Datasets of this type are read in the following format:
 
@@ -167,24 +122,24 @@ You can create a FiftyOne dataset from a directory of images as follows:
       # Print the first few samples in the dataset
       fiftyone datasets head $NAME
 
-    To view a directory of images in the FiftyOne Dashboard without creating
+    To view a directory of images in the FiftyOne App without creating
     a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/images-dir
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageDirectory
 
-Image classification datasets
------------------------------
+FiftyOneImageClassificationDataset
+----------------------------------
 
-The `fiftyone.types.ImageClassificationDataset` type represents a labeled
-dataset consisting of images and their associated classification labels stored
-in a simple JSON format.
+The :class:`fiftyone.types.FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`
+type represents a labeled dataset consisting of images and their associated
+classification labels stored in a simple JSON format.
 
 Datasets of this type are read in the following format:
 
@@ -203,14 +158,12 @@ where ``labels.json`` is a JSON file in the following format:
 
     {
         "classes": [
-            <labelA>,
-            <labelB>,
-            ...
+            "<labelA>",
+            "<labelB>",
         ],
         "labels": {
-            <uuid1>: <target1>,
-            <uuid2>: <target2>,
-            ...
+            "<uuid1>": "<target1>",
+            "<uuid2>": "<target2>",
         }
     }
 
@@ -235,7 +188,7 @@ in the above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.ImageClassificationDataset, name=name
+            dataset_dir, fo.types.FiftyOneImageClassificationDataset, name=name
         )
 
         # View summary info about the dataset
@@ -255,7 +208,7 @@ in the above format as follows:
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.ImageClassificationDataset
+            --type fiftyone.types.FiftyOneImageClassificationDataset
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
@@ -263,23 +216,24 @@ in the above format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view an image classification dataset in the FiftyOne Dashboard without
+    To view an image classification dataset in the FiftyOne App without
     creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/image-classification-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.ImageClassificationDataset
+            --type fiftyone.types.FiftyOneImageClassificationDataset
 
-Image classification directory tree
------------------------------------
+ImageClassificationDirectoryTree
+--------------------------------
 
-The `fiftyone.types.ImageClassificationDirectoryTree` type represents a
-directory tree whose subfolders define an image classification dataset.
+The :class:`fiftyone.types.ImageClassificationDirectoryTree <fiftyone.types.dataset_types.ImageClassificationDirectoryTree>`
+type represents a directory tree whose subfolders define an image
+classification dataset.
 
 Datasets of this type are read in the following format:
 
@@ -340,24 +294,25 @@ stored in the above format as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view an image classification directory tree in the FiftyOne Dashboard
+    To view an image classification directory tree in the FiftyOne App
     without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/image-classification-dir-tree
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageClassificationDirectoryTree
 
-TF image classification dataset
--------------------------------
+TFImageClassificationDataset
+----------------------------
 
-The `fiftyone.types.TFImageClassificationDataset` type represents a labeled
-dataset consisting of images and their associated classification labels stored
-as `TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
+The :class:`fiftyone.types.TFImageClassificationDataset <fiftyone.types.dataset_types.TFImageClassificationDataset>`
+type represents a labeled dataset consisting of images and their associated
+classification labels stored as
+`TFRecords <https://www.tensorflow.org/tutorials/load_data/tfrecord>`_.
 
 Datasets of this type are read in the following format:
 
@@ -369,20 +324,17 @@ Datasets of this type are read in the following format:
 where the features of the (possibly sharded) TFRecords are stored in the
 following format:
 
-.. code-block:: json
+.. code-block:: python
 
     {
         # Image dimensions
         "height": tf.io.FixedLenFeature([], tf.int64),
         "width": tf.io.FixedLenFeature([], tf.int64),
         "depth": tf.io.FixedLenFeature([], tf.int64),
-
         # Image filename
         "filename": tf.io.FixedLenFeature([], tf.int64),
-
         # Encoded image bytes
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
-
         # Class label string
         "label": tf.io.FixedLenFeature([], tf.string),
     }
@@ -447,24 +399,24 @@ as a directory of TFRecords in the above format as follows:
     datasets must make their images available as invididual files on disk.
 
     To view an image classification dataset stored as a directory of TFRecords
-    in the FiftyOne Dashboard without creating a persistent FiftyOne dataset,
+    in the FiftyOne App without creating a persistent FiftyOne dataset,
     you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/tf-image-classification-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFImageClassificationDataset
 
-Image detection dataset
------------------------
+FiftyOneImageDetectionDataset
+-----------------------------
 
-The ``fiftyone.types.ImageDetectionDataset`` type represents a labeled dataset
-consisting of images and their associated object detections stored in a simple
-JSON format.
+The :class:`fiftyone.types.FiftyOneImageDetectionDataset <fiftyone.types.dataset_types.FiftyOneImageDetectionDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections stored in a simple JSON format.
 
 Datasets of this type are read in the following format:
 
@@ -479,13 +431,12 @@ Datasets of this type are read in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "classes": [
             <labelA>,
             <labelB>,
-            ...
         ],
         "labels": {
             <uuid1>: [
@@ -529,7 +480,7 @@ above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.ImageDetectionDataset, name=name
+            dataset_dir, fo.types.FiftyOneImageDetectionDataset, name=name
         )
 
         # View summary info about the dataset
@@ -549,7 +500,7 @@ above format as follows:
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.ImageDetectionDataset
+            --type fiftyone.types.FiftyOneImageDetectionDataset
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
@@ -558,24 +509,24 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view an image detection dataset stored in the above format in the
-    FiftyOne Dashboard without creating a persistent FiftyOne dataset, you
+    FiftyOne App without creating a persistent FiftyOne dataset, you
     can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/image-detection-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.ImageDetectionDataset
+            --type fiftyone.types.FiftyOneImageDetectionDataset
 
-COCO detection dataset
-----------------------
+COCODetectionDataset
+--------------------
 
-The `fiftyone.types.COCODetectionDataset` type represents a labeled dataset
-consisting of images and their associated object detections saved in
-`COCO format <http://cocodataset.org/#home>`_.
+The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in `COCO format <http://cocodataset.org/#home>`_.
 
 Datasets of this type are read in the following format:
 
@@ -603,24 +554,21 @@ where ``labels.json`` is a JSON file in the following format:
         },
         "licenses": [],
         "categories": [
-            ...
             {
                 "id": 2,
                 "name": "cat",
                 "supercategory": "none"
             },
-            ...
         ],
         "images": [
             {
                 "id": 0,
                 "license": null,
-                "file_name": <filename0>,
+                "file_name": "<filename0>",
                 "height": 480,
                 "width": 640,
                 "date_captured": null
             },
-            ...
         ],
         "annotations": [
             {
@@ -632,7 +580,6 @@ where ``labels.json`` is a JSON file in the following format:
                 "segmentation": [],
                 "iscrowd": 0
             },
-            ...
         ]
     }
 
@@ -682,22 +629,23 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view a COCO detection dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    App without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/coco-detection-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
 
-VOC detection dataset
----------------------
+VOCDetectionDataset
+-------------------
 
-The `fiftyone.types.VOCDetectionDataset` type represents a labeled dataset
-consisting of images and their associated object detections saved in
+The :class:`fiftyone.types.VOCDetectionDataset <fiftyone.types.dataset_types.VOCDetectionDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
 `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.
 
 Datasets of this type are read in the following format:
@@ -805,22 +753,23 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view a VOC detection dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    App without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/voc-detection-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VOCDetectionDataset
 
-KITTI detection dataset
------------------------
+KITTIDetectionDataset
+---------------------
 
-The `fiftyone.types.KITTIDetectionDataset` type represents a labeled dataset
-consisting of images and their associated object detections saved in
+The :class:`fiftyone.types.KITTIDetectionDataset <fiftyone.types.dataset_types.KITTIDetectionDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
 `KITTI format <http://www.cvlibs.net/datasets/kitti/eval_object.php>`_.
 
 Datasets of this type are read in the following format:
@@ -841,8 +790,7 @@ to an object and the 15 (and optional 16th score) columns have the following
 meanings:
 
 +----------+-------------+-------------------------------------------------------------+---------+
-| Number   | Name        | Description                                                 | Default |
-| of       |             |                                                             |         |
+| \# of    | Name        | Description                                                 | Default |
 | columns  |             |                                                             |         |
 +==========+=============+=============================================================+=========+
 | 1        | type        | The object label                                            |         |
@@ -921,23 +869,24 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view a KITTI detection dataset stored in the above format in the
-    FiftyOne Dashboard without creating a persistent FiftyOne dataset, you can
+    FiftyOne App without creating a persistent FiftyOne dataset, you can
     execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/kitti-detection-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
 
-CVAT image dataset
-------------------
+CVATImageDataset
+----------------
 
-The `fiftyone.types.CVATImageDataset` type represents a labeled dataset
-consisting of images and their associated object detections stored in
+The :class:`fiftyone.types.CVATImageDataset <fiftyone.types.dataset_types.CVATImageDataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections stored in
 `CVAT image format <https://github.com/opencv/cvat>`_.
 
 Datasets of this type are read in the following format:
@@ -1045,22 +994,23 @@ format as follows:
         fiftyone datasets head $NAME
 
     To view a CVAT image dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    App without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/cvat-image-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATImageDataset
 
-Multitask image labels dataset
-------------------------------
+FiftyOneImageLabelsDataset
+--------------------------
 
-The `fiftyone.types.ImageLabelsDataset` type represents a labeled dataset
-consisting of images and their associated multitask predictions stored in
+The :class:`fiftyone.types.FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>`
+type represents a labeled dataset consisting of images and their associated
+multitask predictions stored in
 `eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 Datasets of this type are read in the following format:
@@ -1090,7 +1040,6 @@ where `manifest.json` is a JSON file in the following format:
                 "data": "data/<uuid1>.<ext>",
                 "labels": "labels/<uuid1>.json"
             },
-            ...
         ]
     }
 
@@ -1114,7 +1063,7 @@ above format as follows:
 
         # Create the dataset
         dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.ImageLabelsDataset, name=name
+            dataset_dir, fo.types.FiftyOneImageLabelsDataset, name=name
         )
 
         # View summary info about the dataset
@@ -1134,7 +1083,7 @@ above format as follows:
         fiftyone datasets create \
             --name $NAME \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.ImageLabelsDataset
+            --type fiftyone.types.FiftyOneImageLabelsDataset
 
         # View summary info about the dataset
         fiftyone datasets info $NAME
@@ -1143,22 +1092,23 @@ above format as follows:
         fiftyone datasets head $NAME
 
     To view an image labels dataset stored in the above format in the FiftyOne
-    Dashboard without creating a persistent FiftyOne dataset, you can execute:
+    App without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/image-labels-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
-            --type fiftyone.types.ImageLabelsDataset
+            --type fiftyone.types.FiftyOneImageLabelsDataset
 
-BDD dataset
------------
+BDDDataset
+----------
 
-The `fiftyone.types.BDDDataset` type represents a labeled dataset consisting of
-images and their associated multitask predictions saved in
+The :class:`fiftyone.types.BDDDataset <fiftyone.types.dataset_types.BDDDataset>`
+type represents a labeled dataset consisting of images and their associated
+multitask predictions saved in
 `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.
 
 Datasets of this type are read in the following format:
@@ -1201,12 +1151,9 @@ where `labels.json` is a JSON file in the following format:
                     "manualAttributes": true,
                     "manualShape": true
                 },
-                ...
             ],
-            "name": <filename0>,
-            ...
+            "name": "<filename0>",
         },
-        ...
     ]
 
 You can create a FiftyOne dataset from a BDD dataset stored in the above format
@@ -1252,14 +1199,14 @@ as follows:
         # Print the first few samples in the dataset
         fiftyone datasets head $NAME
 
-    To view a BDD dataset stored in the above format in the FiftyOne Dashboard
+    To view a BDD dataset stored in the above format in the FiftyOne App
     without creating a persistent FiftyOne dataset, you can execute:
 
     .. code-block:: shell
 
         DATASET_DIR=/path/to/bdd-dataset
 
-        # View the dataset in the dashboard
-        fiftyone dashboard view \
+        # View the dataset in the app
+        fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset

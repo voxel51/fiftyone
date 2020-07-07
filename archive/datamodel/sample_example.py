@@ -119,4 +119,4 @@ print(dataset.get_tags())
 
 # @todo(Tyler)
 # browse the images
-# session = fo.launch_dashboard(view=view)
+# session = fo.launch_app(view=view)

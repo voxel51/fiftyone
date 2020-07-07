@@ -1,7 +1,6 @@
 """
-Utilities for working with datasets in COCO format.
-
-The COCO dataset: http://cocodataset.org/#home.
+Utilities for working with datasets in
+`COCO format <http://cocodataset.org/#home>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -29,10 +28,10 @@ import eta.core.utils as etau
 import eta.core.serial as etas
 import eta.core.web as etaw
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
@@ -40,7 +39,8 @@ logger = logging.getLogger(__name__)
 
 
 class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
-    """Parser for samples in COCO detection format.
+    """Parser for samples in
+    `COCO detection format <http://cocodataset.org/#home>`_.
 
     This implementation supports samples that are
     ``(image_or_path, annotations)`` tuples, where:
@@ -66,13 +66,15 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
           where it is assumed that all detections correspond to the image in
           the sample.
 
-    See :class:`fiftyone.types.COCODetectionDataset` for more format details.
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
+    details.
     """
 
     def __init__(self):
         super().__init__(
             label_field="category_id",
             bounding_box_field="bbox",
+            classes=None,
             normalized=False,
         )
 
@@ -85,6 +87,198 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
             )
 
         return detection
+
+
+class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
+    """Importer for COCO detection datasets stored on disk.
+
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
+    details.
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    def __init__(self, dataset_dir):
+        super().__init__(dataset_dir)
+        self._data_dir = None
+        self._classes = None
+        self._images_map = None
+        self._annotations = None
+        self._filenames = None
+        self._iter_filenames = None
+
+    def __iter__(self):
+        self._iter_filenames = iter(self._filenames)
+        return self
+
+    def __len__(self):
+        return len(self._filenames)
+
+    def __next__(self):
+        filename = next(self._iter_filenames)
+
+        image_path = os.path.join(self._data_dir, filename)
+
+        image_dict = self._images_map[filename]
+        image_id = image_dict["id"]
+        width = image_dict["width"]
+        height = image_dict["height"]
+
+        image_metadata = fom.ImageMetadata(width=width, height=height)
+
+        frame_size = (width, height)
+        detections = fol.Detections(
+            detections=[
+                obj.to_detection(frame_size, self._classes)
+                for obj in self._annotations.get(image_id, [])
+            ]
+        )
+
+        return image_path, image_metadata, detections
+
+    @property
+    def has_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        self._data_dir = os.path.join(self.dataset_dir, "data")
+
+        labels_path = os.path.join(self.dataset_dir, "labels.json")
+        classes, images, annotations = load_coco_detection_annotations(
+            labels_path
+        )
+
+        self._classes = classes
+        self._images_map = {i["file_name"]: i for i in images.values()}
+        self._annotations = annotations
+        self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+
+class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
+    """Exporter that writes COCO detection datasets to disk.
+
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
+    details.
+
+    Args:
+        export_dir: the directory to write the export
+        classes (None): an optional list of class labels. If omitted, this is
+            dynamically computed from the observed labels
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+    """
+
+    def __init__(self, export_dir, classes=None, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
+        super().__init__(export_dir)
+        self.classes = classes
+        self.image_format = image_format
+        self._labels_map_rev = None
+        self._data_dir = None
+        self._labels_path = None
+        self._image_id = None
+        self._anno_id = None
+        self._images = None
+        self._annotations = None
+        self._classes = None
+        self._filename_maker = None
+
+    @property
+    def requires_image_metadata(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        if self.classes is not None:
+            self._labels_map_rev = _to_labels_map_rev(self.classes)
+        else:
+            self._labels_map_rev = None
+
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._labels_path = os.path.join(self.export_dir, "labels.json")
+        self._image_id = -1
+        self._anno_id = -1
+        self._images = []
+        self._annotations = []
+        self._classes = set()
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir, default_ext=self.image_format
+        )
+
+    def export_sample(self, image_or_path, detections, metadata=None):
+        out_image_path = self._export_image_or_path(
+            image_or_path, self._filename_maker
+        )
+
+        if metadata is None:
+            metadata = fom.ImageMetadata.build_for(out_image_path)
+
+        self._image_id += 1
+        self._images.append(
+            {
+                "id": self._image_id,
+                "file_name": os.path.basename(out_image_path),
+                "height": metadata.height,
+                "width": metadata.width,
+                "license": None,
+                "coco_url": None,
+            }
+        )
+
+        for detection in detections.detections:
+            self._anno_id += 1
+            self._classes.add(detection.label)
+            obj = COCOObject.from_detection(
+                detection, metadata, labels_map_rev=self._labels_map_rev
+            )
+            obj.id = self._anno_id
+            obj.image_id = self._image_id
+            self._annotations.append(obj)
+
+    def close(self, *args):
+        # Populate observed category IDs, if necessary
+        if self.classes is None:
+            classes = sorted(self._classes)
+            labels_map_rev = _to_labels_map_rev(classes)
+            for anno in self._annotations:
+                anno.category_id = labels_map_rev[anno.category_id]
+        else:
+            classes = self.classes
+
+        info = {
+            "year": "",
+            "version": "",
+            "description": "Exported from FiftyOne",
+            "contributor": "",
+            "url": "https://voxel51.com/fiftyone",
+            "date_created": datetime.now().replace(microsecond=0).isoformat(),
+        }
+
+        categories = [
+            {"id": i, "name": l, "supercategory": "none"}
+            for i, l in enumerate(classes)
+        ]
+
+        labels = {
+            "info": info,
+            "licenses": [],
+            "categories": categories,
+            "images": self._images,
+            "annotations": self._annotations,
+        }
+
+        etas.write_json(labels, self._labels_path)
 
 
 class COCOObject(etas.Serializable):
@@ -220,55 +414,11 @@ class COCOObject(etas.Serializable):
         return cls(**d)
 
 
-def parse_coco_detection_dataset(dataset_dir):
-    """Parses the COCO detection dataset stored in the given directory.
-
-    See :class:`fiftyone.types.COCODetectionDataset` for format details.
-
-    Args:
-        dataset_dir: the dataset directory
-
-    Returns:
-        a list of ``(img_path, image_metadata, detections)`` tuples
-    """
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_path = os.path.join(dataset_dir, "labels.json")
-
-    classes, images, annotations = load_coco_detection_annotations(labels_path)
-
-    # Index by filename
-    images_map = {i["file_name"]: i for i in images.values()}
-
-    filenames = etau.list_files(data_dir, abs_paths=False)
-
-    samples = []
-    for filename in filenames:
-        img_path = os.path.join(data_dir, filename)
-
-        image_dict = images_map[filename]
-        image_id = image_dict["id"]
-        width = image_dict["width"]
-        height = image_dict["height"]
-
-        metadata = fom.ImageMetadata(width=width, height=height)
-
-        frame_size = (width, height)
-        detections = fol.Detections(
-            detections=[
-                obj.to_detection(frame_size, classes)
-                for obj in annotations.get(image_id, [])
-            ]
-        )
-
-        samples.append((img_path, metadata, detections))
-
-    return samples
-
-
 def load_coco_detection_annotations(json_path):
     """Loads the COCO annotations from the given JSON file.
 
-    See :class:`fiftyone.types.COCODetectionDataset` for format details.
+    See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
+    details.
 
     Args:
         json_path: the path to the annotations JSON file
@@ -297,127 +447,6 @@ def load_coco_detection_annotations(json_path):
         annotations[a["image_id"]].append(COCOObject.from_annotation_dict(a))
 
     return classes, images, dict(annotations)
-
-
-def export_coco_detection_dataset(
-    samples, label_field, dataset_dir, classes=None
-):
-    """Exports the given samples to disk as a COCO detection dataset.
-
-    See :class:`fiftyone.types.COCODetectionDataset` for format details.
-
-    The raw images are directly copied to their destinations, maintaining their
-    original formats and names, unless a name conflict would occur, in which
-    case an index of the form ``"-%d" % count`` is appended to the base
-    filename.
-
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances
-        label_field: the name of the :class:`fiftyone.core.labels.Detections`
-            field of the samples to export
-        dataset_dir: the directory to which to write the dataset
-        classes (None): an optional list of class labels. If omitted, this is
-            dynamically computed from the observed labels
-    """
-    if classes is not None:
-        labels_map_rev = _to_labels_map_rev(classes)
-    else:
-        labels_map_rev = None
-
-    data_dir = os.path.join(dataset_dir, "data")
-    labels_path = os.path.join(dataset_dir, "labels.json")
-
-    logger.info(
-        "Writing samples to '%s' in '%s' format...",
-        dataset_dir,
-        etau.get_class_name(fot.COCODetectionDataset),
-    )
-
-    etau.ensure_dir(data_dir)
-
-    image_id = -1
-    anno_id = -1
-
-    images = []
-    annotations = []
-
-    _classes = set()
-    data_filename_counts = defaultdict(int)
-
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            img_path = sample.filepath
-            name, ext = os.path.splitext(os.path.basename(img_path))
-            data_filename_counts[name] += 1
-
-            count = data_filename_counts[name]
-            if count > 1:
-                name += "-%d" + count
-
-            filename = name + ext
-            out_img_path = os.path.join(data_dir, filename)
-
-            etau.copy_file(img_path, out_img_path)
-
-            metadata = sample.metadata
-            if metadata is None:
-                metadata = fom.ImageMetadata.build_for(img_path)
-
-            image_id += 1
-            images.append(
-                {
-                    "id": image_id,
-                    "file_name": filename,
-                    "height": metadata.height,
-                    "width": metadata.width,
-                    "license": None,
-                    "coco_url": None,
-                }
-            )
-
-            detections = sample[label_field]
-            for detection in detections.detections:
-                anno_id += 1
-                _classes.add(detection.label)
-                obj = COCOObject.from_detection(
-                    detection, metadata, labels_map_rev=labels_map_rev
-                )
-                obj.id = anno_id
-                obj.image_id = image_id
-                annotations.append(obj)
-
-    # Populate observed category IDs, if necessary
-    if classes is None:
-        classes = sorted(_classes)
-        labels_map_rev = _to_labels_map_rev(classes)
-        for anno in annotations:
-            anno.category_id = labels_map_rev[anno.category_id]
-
-    info = {
-        "year": "",
-        "version": "",
-        "description": "Exported from FiftyOne",
-        "contributor": "",
-        "url": "https://voxel51.com/fiftyone",
-        "date_created": datetime.now().replace(microsecond=0).isoformat(),
-    }
-
-    categories = [
-        {"id": i, "name": l, "supercategory": "none"}
-        for i, l in enumerate(classes)
-    ]
-
-    logger.info("Writing labels to '%s'", labels_path)
-    labels = {
-        "info": info,
-        "licenses": [],
-        "categories": categories,
-        "images": images,
-        "annotations": annotations,
-    }
-    etas.write_json(labels, labels_path)
-
-    logger.info("Dataset created")
 
 
 def coco_categories_to_classes(categories):
@@ -466,8 +495,7 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
 
     Returns:
         images_dir: the path to the directory containing the extracted images
-        anno_path: the path to the detections JSON file, or ``None`` if
-            ``split == "test"``
+        anno_path: the path to the detections JSON file, or ``None`` if ``split == "test"``
     """
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
