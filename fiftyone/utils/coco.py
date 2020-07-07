@@ -526,7 +526,7 @@ _IMAGE_DOWNLOAD_LINKS = {
     },
     "2017": {
         "train": "http://images.cocodataset.org/zips/train2017.zip",
-        "validation": "http://images.cocodataset.org/zips/validation2017.zip",
+        "validation": "http://images.cocodataset.org/zips/val2017.zip",
         "test": "http://images.cocodataset.org/zips/test2017.zip",
     },
 }
