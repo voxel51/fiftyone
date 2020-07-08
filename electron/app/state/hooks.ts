@@ -12,9 +12,9 @@ import { useSetRecoilState, useRecoilState, useRecoilValue } from "recoil";
 import {
   mousePosition,
   destinationTop,
-  previousLayout,
   liveTop,
-  baseLayout,
+  firstBase,
+  secondBase,
 } from "./atoms";
 
 export const useTrackMousePosition = () => {
@@ -39,8 +39,8 @@ export const useTrackMousePosition = () => {
 
 export const useScrollListener = (ref, setFirst, setSecond) => {
   const [liveTopValue, setLiveTop] = useRecoilState(liveTop);
-  const firstBaseLayoutValue = useRecoilValue(baseLayout(0));
-  const secondBaseLayoutValue = useRecoilValue(baseLayout(1));
+  const firstBaseValue = useRecoilValue(firstBase);
+  const secondBaseValue = useRecoilValue(secondBase);
 
   useLayoutEffect(() => {
     let timeout;
@@ -60,12 +60,12 @@ export const useScrollListener = (ref, setFirst, setSecond) => {
 
   useLayoutEffect(() => {
     setFirst({
-      y: firstBaseLayoutValue.y,
-      height: firstBaseLayoutValue.height,
+      y: firstBaseValue.y,
+      height: firstBaseValue.height,
     });
     setSecond({
-      y: secondBaseLayoutValue.y,
-      height: secondBaseLayoutValue.height,
+      y: secondBaseValue.y,
+      height: secondBaseValue.height,
     });
   }, [liveTopValue]);
 };

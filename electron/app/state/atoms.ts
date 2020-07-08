@@ -123,28 +123,34 @@ export const previousSegmentsToRender = atom({
   default: [],
 });
 
-export const baseLayout = atomFamily({
-  key: "baseLayout",
+export const secondBase = atom({
+  key: "secondBase",
   default: {
+    index: null,
     y: 0,
     height: 0,
-    segmentIndex: null,
+    items: [],
   },
-  dangerouslyAllowMutability: true,
 });
 
-export const baseItemLayout = atomFamily({
-  key: "baseItemLayout",
+export const firstBase = atom({
+  key: "firstBase",
   default: {
+    index: null,
+    startIndex: null,
+    endIndex: null,
     y: 0,
-    x: 0,
-    width: 0,
     height: 0,
+    items: [],
   },
 });
 
 export const rootIndex = atom({
   key: "rootIndex",
   default: 0,
-  dangerouslyAllowMutability: true,
+});
+
+export const scrollDirection = atom({
+  key: "scrollDirection",
+  default: "forward",
 });

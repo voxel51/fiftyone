@@ -9,7 +9,8 @@ import {
   isMainWidthResizing,
   mainLoaded,
   mainSize,
-  baseLayout,
+  firstBase,
+  secondBase,
   segmentIsLoaded,
   itemsPerRequest,
 } from "../../state/atoms";
@@ -22,8 +23,7 @@ import {
   currentListHeight,
   segmentsToRender,
   segmentData,
-  segmentTop,
-  segmentHeight,
+  currentLayout,
 } from "../../state/selectors";
 
 import Scrubber from "./Scrubber";
@@ -103,10 +103,11 @@ const Segment = ({ layout: { y, height }, children }) => {
 
 const Subscriber = () => {
   const segmentsToRenderValue = useRecoilValue(segmentsToRender);
+  useRecoilValue(currentLayout);
   return (
     <>
       {segmentsToRenderValue.map((i) => (
-        <Manager index={i} />
+        <Manager key={i} index={i} />
       ))}
     </>
   );
@@ -121,8 +122,8 @@ export default () => {
   const [viewCountValue, setViewCount] = useRecoilState(viewCount);
   const itemsPerRequestValue = useRecoilValue(itemsPerRequest);
   const scrollRef = useRef();
-  const firstBaseLayoutValue = useRecoilValue(baseLayout(0));
-  const secondBaseLayoutValue = useRecoilValue(baseLayout(1));
+  const firstBaseValue = useRecoilValue(firstBase);
+  const secondBaseValue = useRecoilValue(secondBase);
 
   const [ref, { contentRect }] = useResizeObserver();
   useTrackMousePosition();
@@ -149,13 +150,13 @@ export default () => {
   }, [ref, contentRect]);
 
   const [first, setFirst] = useSpring(() => ({
-    y: firstBaseLayoutValue.y,
-    height: firstBaseLayoutValue.height,
+    y: firstBaseValue.y,
+    height: firstBaseValue.height,
     config: { duration: 0 },
   }));
   const [second, setSecond] = useSpring(() => ({
-    y: secondBaseLayoutValue.y,
-    height: secondBaseLayoutValue.height,
+    y: secondBaseValue.y,
+    height: secondBaseValue.height,
     config: { duration: 0 },
   }));
 
