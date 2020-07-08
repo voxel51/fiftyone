@@ -512,7 +512,8 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         except:
             pass
 
-        tlx, tly, w, h = obj[self.bounding_box_field]
+        tlx, tly, w, h = self._parse_bbox(obj)
+
         if not self.normalized:
             height, width = img.shape[:2]
             tlx /= width
@@ -530,6 +531,10 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         return fol.Detection(
             label=label, bounding_box=bounding_box, confidence=confidence,
         )
+
+    def _parse_bbox(self, obj):
+        """Returns: tlx, tly, w, h"""
+        return obj[self.bounding_box_field]
 
 
 class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
