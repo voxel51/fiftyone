@@ -35,7 +35,7 @@ models. However, finding these mistakes by hand is at least as arduous as the
 original annotation work! FiftyOne provides a `mistakenness` tool that can
 automatically identify possible label mistakes in your datasets.
 
-:doc:`>> Try it now!<tutorials/label_mistakes>`
+:doc:`>> Try it now! <tutorials/label_mistakes>`
 
 **Removing redundant images**
 
@@ -45,7 +45,7 @@ your dataset can avoid accidental concept imbalance that can bias the learning
 of your model. FiftyOne provides a `uniqueness` tool that can automatically
 identify duplicate or near-duplicate images in your datasets.
 
-:doc:`>> Try it now!<tutorials/uniqueness>`
+:doc:`>> Try it now! <tutorials/uniqueness>`
 
 **Bootstrapping training datasets from raw images**
 
@@ -108,7 +108,7 @@ adding custom tags, model predictions and more.
     formats out-of-the-box, and it also provides the extensibility to load
     datasets in custom formats.
 
-    Check out :doc:`loading datasets<user_guide/dataset_creation/index>` to see
+    Check out :doc:`loading datasets <user_guide/dataset_creation/index>` to see
     how to load your data into FiftyOne!
 
 :doc:`The FiftyOne App <user_guide/app>`
@@ -144,12 +144,12 @@ ____________
 
 Where should you go from here? You could...
 
-* :doc:`Install FiftyOne<getting_started/install>`
-* Try one of the :doc:`tutorials<tutorials/index>` that demonstrate the unique
+* :doc:`Install FiftyOne <getting_started/install>`
+* Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
   capabilities of FiftyOne
-* Explore :doc:`recipes<recipes/index>` for integrating FiftyOne into
+* Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
   your current ML workflows
-* Consult the :doc:`user guide<user_guide/index>` for detailed instructions on
+* Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
   how to accomplish various tasks with FiftyOne
 
 Need Support?
@@ -164,11 +164,11 @@ or reach out to us at support@voxel51.com.
    :maxdepth: 1
    :hidden:
 
-   Overview<self>
-   Installation<getting_started/install>
-   Tutorials<tutorials/index>
-   Recipes<recipes/index>
-   User Guide<user_guide/index>
+   Overview <self>
+   Installation <getting_started/install>
+   Tutorials <tutorials/index>
+   Recipes <recipes/index>
+   User Guide <user_guide/index>
    Release Notes <release-notes>
-   CLI Documentation<cli/index>
-   API Documentation<api/fiftyone>
+   CLI Documentation <cli/index>
+   API Documentation <api/fiftyone>
