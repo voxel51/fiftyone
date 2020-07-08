@@ -16,7 +16,7 @@ import {
   firstBase,
   secondBase,
 } from "./atoms";
-import { currentLayout } from "./selectors";
+import { something } from "./selectors";
 
 export const useTrackMousePosition = () => {
   let timeout;
@@ -38,11 +38,8 @@ export const useTrackMousePosition = () => {
   }, []);
 };
 
-export const useScrollListener = (ref, setFirst, setSecond) => {
+export const useScrollListener = (ref) => {
   const [liveTopValue, setLiveTop] = useRecoilState(liveTop);
-  const currentLayoutValue = useRecoilValue(currentLayout);
-  const firstBaseValue = useRecoilValue(firstBase);
-  const secondBaseValue = useRecoilValue(secondBase);
 
   useLayoutEffect(() => {
     let timeout;
@@ -58,7 +55,13 @@ export const useScrollListener = (ref, setFirst, setSecond) => {
     ref.current && ref.current.addEventListener("scroll", updateTop);
 
     return () => target && target.removeEventListener("scroll", updateTop);
-  }, [ref.current, liveTopValue]);
+  }, [ref.current]);
+};
+
+export const useSetter = (setFirst, setSecond) => {
+  const sss = useRecoilValue(something);
+  const firstBaseValue = useRecoilValue(firstBase);
+  const secondBaseValue = useRecoilValue(secondBase);
 
   useLayoutEffect(() => {
     setFirst({
@@ -69,7 +72,7 @@ export const useScrollListener = (ref, setFirst, setSecond) => {
       y: secondBaseValue.y,
       height: secondBaseValue.height,
     });
-  }, [currentLayoutValue]);
+  }, [sss]);
 };
 
 export const useResizeObserver = () => {

@@ -470,6 +470,7 @@ export const itemsToRender = selector({
 export const currentLayout = selector({
   key: "currentLayout",
   get: ({ get }) => {
+    const ss = Date.now();
     const [viewPortWidth, unused] = get(mainSize);
     if (viewPortWidth === 0) return;
     const items = get(itemsToRender);
@@ -564,6 +565,15 @@ export const currentLayout = selector({
         itemsComputed += segmentItems.length;
       }
       index += segmentItems.length;
+      return top;
     }
+  },
+});
+
+export const something = selector({
+  key: "something",
+  get: ({ get }) => {
+    const t = get(currentLayout);
+    return t;
   },
 });

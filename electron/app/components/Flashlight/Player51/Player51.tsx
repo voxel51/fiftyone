@@ -9,7 +9,7 @@ import {
   useTransition,
 } from "react-spring";
 
-import { itemRowCache } from "../../../state/atoms";
+import { itemRowCache, firstBase, secondBase } from "../../../state/atoms";
 import {
   itemSource,
   itemAdjustedLayout,
@@ -39,18 +39,10 @@ const Img = animated(styled.div`
   transition: transform 0.135s cubic-bezier(0, 0, 0.2, 1), opacity linear 0.15s;
 `);
 
-const Thumbnail = React.memo(({ index }) => {
-  return null;
-
-  const position = useSpring({
-    width,
-    height,
-    transform: `translate3d(${left}px,${top}px,0)`,
-    config: {
-      duration: 0,
-    },
-  });
-  return <ThumbnailDiv style={position}>{index}</ThumbnailDiv>;
+const Thumbnail = React.memo(({ index, layout }) => {
+  return <ThumbnailDiv style={layout} />;
 });
 
-export default ({ index }) => <Thumbnail index={index} />;
+export default ({ index, layout }) => (
+  <Thumbnail index={index} layout={layout} />
+);

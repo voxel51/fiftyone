@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useLayoutEffect, useRef } from "react";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring, useSprings } from "react-spring";
 import { useWheel } from "react-use-gesture";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilState, useSetRecoilState } from "recoil";
@@ -18,6 +18,7 @@ import {
   useTrackMousePosition,
   useResizeObserver,
   useScrollListener,
+  useSetter,
 } from "../../state/hooks";
 import {
   currentListHeight,
@@ -92,8 +93,18 @@ const Manager = React.memo(({ index }) => {
   );
 });
 
-const ScrollListener = ({ scrollRef, setFirst, setSecond }) => {
-  useScrollListener(scrollRef, setFirst, setSecond);
+const Setter = ({
+  setFirstSpring,
+  setFirstSprings,
+  setSecondSpring,
+  setSecondSprings,
+}) => {
+  useSetter(setFirstSpring, setSecondSpring);
+  return null;
+};
+
+const ScrollListener = ({ scrollRef }) => {
+  useScrollListener(scrollRef);
   return null;
 };
 
@@ -103,7 +114,6 @@ const Segment = ({ layout: { y, height }, children }) => {
 
 const Subscriber = () => {
   const segmentsToRenderValue = useRecoilValue(segmentsToRender);
-  useRecoilValue(currentLayout);
   return (
     <>
       {segmentsToRenderValue.map((i) => (
@@ -149,16 +159,27 @@ export default () => {
     };
   }, [ref, contentRect]);
 
-  const [first, setFirst] = useSpring(() => ({
+  const [firstSpring, setFirstSpring] = useSpring(() => ({
     y: firstBaseValue.y,
     height: firstBaseValue.height,
     config: { duration: 0 },
   }));
-  const [second, setSecond] = useSpring(() => ({
+
+  const [firstSprings, setFirstSprings] = useSprings(
+    Math.min(viewCountValue, itemsPerRequestValue),
+    (index) => firstBaseValue.items[index]
+  );
+
+  const [secondSpring, setSecondSpring] = useSpring(() => ({
     y: secondBaseValue.y,
     height: secondBaseValue.height,
     config: { duration: 0 },
   }));
+
+  const [secondSprings, setSecondSprings] = useSprings(
+    Math.max(viewCountValue - itemsPerRequestValue, 0),
+    (index) => secondBaseValue.items[index]
+  );
 
   return (
     <>
@@ -166,22 +187,18 @@ export default () => {
         <Container ref={ref}>
           <ListMain ref={scrollRef}>
             <ListContainer style={{ height: currentListHeightValue }}>
-              <Segment layout={first}>
-                {[
-                  ...Array(
-                    Math.min(viewCountValue, itemsPerRequestValue)
-                  ).keys(),
-                ].map((i) => (
-                  <Item key={i} index={i} />
+              <Segment layout={firstSpring}>
+                {firstSprings.map((layout, i) => (
+                  <Item key={i} index={i} layout={layout} />
                 ))}
               </Segment>
-              <Segment layout={second}>
-                {[
-                  ...Array(
-                    Math.max(viewCountValue - itemsPerRequestValue, 0)
-                  ).keys(),
-                ].map((i) => (
-                  <Item key={i} index={i + itemsPerRequestValue} />
+              <Segment layout={secondSpring}>
+                {secondSprings.map((layout, i) => (
+                  <Item
+                    key={i}
+                    index={i + itemsPerRequestValue}
+                    layout={layout}
+                  />
                 ))}
               </Segment>
             </ListContainer>
@@ -190,10 +207,12 @@ export default () => {
         </Container>
       </Flashlight>
       <Subscriber />
-      <ScrollListener
-        scrollRef={scrollRef}
-        setFirst={setFirst}
-        setSecond={setSecond}
+      <ScrollListener scrollRef={scrollRef} />
+      <Setter
+        setFirstSpring={setFirstSpring}
+        setFirstSprings={setFirstSprings}
+        setSecondSpring={setSecondSpring}
+        setSecondSprings={setSecondSprings}
       />
     </>
   );
