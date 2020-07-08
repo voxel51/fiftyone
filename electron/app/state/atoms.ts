@@ -127,10 +127,13 @@ export const secondBase = atom({
   key: "secondBase",
   default: {
     index: null,
+    startIndex: null,
+    endIndex: null,
     y: 0,
     height: 0,
     items: [],
   },
+  dangerouslyAllowMutablility: true,
 });
 
 export const firstBase = atom({
@@ -143,6 +146,7 @@ export const firstBase = atom({
     height: 0,
     items: [],
   },
+  dangerouslyAllowMutablility: true,
 });
 
 export const rootIndex = atom({

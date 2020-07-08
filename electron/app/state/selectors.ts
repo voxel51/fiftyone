@@ -437,44 +437,6 @@ export const itemRow = selectorFamily({
   },
 });
 
-export const itemRowReverse = selectorFamily({
-  key: "itemRow",
-  get: ({ startIndex, endIndex, viewPortWidth }) => ({ get }) => {
-    const count = get(viewCount);
-    const threshold = get(tilingThreshold(viewPortWidth));
-    const getItem = (idx) =>
-      get(itemIsLoaded(idx)) ? get(itemData(idx)) : get(baseItemData);
-    let index = startIndex;
-    let aspectRatio = 0;
-    let data = [];
-    let item;
-    const reducer = (acc, val) => (acc += val.aspectRatio);
-    while (index >= 0 && index < count) {
-      item = getItem(index);
-      aspectRatio += item.aspectRatio;
-      data.unshift({ ...item, index });
-      index -= 1;
-      if (aspectRatio >= threshold && index > 0 && !endIndex) {
-        const prev = get(itemData(index));
-        const check = [prev, ...data.slice(0, data.length - 1)];
-        const checkAspectRatio = check.reduce(reducer, 0);
-        if (checkAspectRatio < threshold) {
-          data.unshift(prev);
-          index -= 1;
-          aspectRatio += prev.aspectRatio;
-        }
-        break;
-      }
-      if (endIndex !== null && index < endIndex) break;
-    }
-
-    return {
-      data,
-      aspectRatio,
-    };
-  },
-});
-
 export const isSegmentStart = selectorFamily({
   key: "isSegmentStart",
   get: (index) => ({ get }) => {
@@ -509,6 +471,7 @@ export const currentLayout = selector({
   key: "currentLayout",
   get: ({ get }) => {
     const [viewPortWidth, unused] = get(mainSize);
+    if (viewPortWidth === 0) return;
     const items = get(itemsToRender);
     const segments = get(segmentsToRender);
     const first = get(firstBase);
@@ -518,13 +481,13 @@ export const currentLayout = selector({
     const mapping = {};
     if (first.index === null) {
       first.index = 0;
-      mapping[0] = first;
     }
 
     if (second.index === null) {
       second.index = 1;
-      mapping[1] = second;
     }
+    mapping[0] = first;
+    mapping[1] = second;
 
     const top = get(liveTop);
     const root = get(rootIndex);
@@ -551,46 +514,54 @@ export const currentLayout = selector({
           base.height = cache.height;
           base.index = segmentIndex;
           index += segmentItems.length;
-          segmentsComputed += 1;
-          itemsComputed += segmentItems.length;
-          continue;
-        }
-      } else {
-        if (!rowStart) rowStart = index;
-        let layout = {
-          startIndex: rowStart,
-          endIndex: null,
-          y: currentTop,
-          height: 0,
-          items: [],
-        };
-        let start = rowStart;
-        let y = margin;
-        while (rowEnd < segmentItems[segmentItems.length - 1]) {
-          alert("gg");
-          row = get(itemRow({ startIndex: start, viewPortWidth }));
-          let x = margin;
-          for (let i = 0; i < row.length; i++) {
-            if (segmentItems.indexOf(row[i].index) >= 0) {
-              layout.items.push({
-                index: row[i].index,
-                x: x,
-                y: y,
-                scaleX: row[i].width / baseSize.width,
-                scaleY: row[i].height / baseSize.height,
-              });
-              itemsComputed += 1;
-              x += row[i].width + margin;
+          currentTop += cache.height;
+        } else {
+          if (!rowStart) rowStart = index;
+          let layout = {
+            index: segmentIndex,
+            startIndex: rowStart,
+            endIndex: null,
+            y: currentTop,
+            height: 0,
+            items: [],
+          };
+          let start = rowStart;
+          let y = margin;
+          while (
+            rowEnd !== null ||
+            rowEnd < segmentItems[segmentItems.length - 1]
+          ) {
+            row = get(itemRow({ startIndex: start, viewPortWidth })).data;
+            let x = margin;
+            for (let i = 0; i < row.length; i++) {
+              if (segmentItems.indexOf(row[i].index) >= 0) {
+                layout.items.push({
+                  index: row[i].index,
+                  x: x,
+                  y: y,
+                  scaleX: row[i].width / baseSize.width,
+                  scaleY: row[i].height / baseSize.height,
+                });
+                x += row[i].width + margin;
+              }
+              rowEnd = row[row.length - 1].index;
+              start = rowEnd + 1;
             }
-            rowEnd = row[row.length - 1].index;
+            y += row[0].height + margin;
+            layout.height = y;
+            if (rowEnd >= segmentItems[segmentItems.length - 1]) break;
           }
-          y += row[0].height + margin;
-          if (rowEnd >= segmentItems[segmentItems.length - 1]) break;
+          layout.endIndex = rowEnd;
+          mapping[segmentIndex].startIndex = layout.startIndex;
+          mapping[segmentIndex].endIndex = layout.endIndex;
+          mapping[segmentIndex].y = layout.y;
+          mapping[segmentIndex].index = layout.index;
+          mapping[segmentIndex].height = layout.height;
+          mapping[segmentIndex].items = layout.items;
+          currentTop += layout.height;
         }
-        layout.endIndex = rowEnd;
-        console.log(layout);
-        mapping[segmentIndex] = layout;
-        break;
+        segmentsComputed += 1;
+        itemsComputed += segmentItems.length;
       }
       index += segmentItems.length;
     }

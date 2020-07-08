@@ -16,6 +16,7 @@ import {
   firstBase,
   secondBase,
 } from "./atoms";
+import { currentLayout } from "./selectors";
 
 export const useTrackMousePosition = () => {
   let timeout;
@@ -39,6 +40,7 @@ export const useTrackMousePosition = () => {
 
 export const useScrollListener = (ref, setFirst, setSecond) => {
   const [liveTopValue, setLiveTop] = useRecoilState(liveTop);
+  const currentLayoutValue = useRecoilValue(currentLayout);
   const firstBaseValue = useRecoilValue(firstBase);
   const secondBaseValue = useRecoilValue(secondBase);
 
@@ -67,7 +69,7 @@ export const useScrollListener = (ref, setFirst, setSecond) => {
       y: secondBaseValue.y,
       height: secondBaseValue.height,
     });
-  }, [liveTopValue]);
+  }, [currentLayoutValue]);
 };
 
 export const useResizeObserver = () => {
