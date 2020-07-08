@@ -1,6 +1,18 @@
 FiftyOne Release Notes
 ======================
 
+Future changes
+--------------
+
+- Added an option to image loaders in :mod:`fiftyone.utils.torch` to convert
+  images to RGB
+- Fixed an issue where :func:`fiftyone.core.dataset.Dataset.delete_sample_field`
+  would not permanently delete fields if they were modified after deletion
+- Fixed an issue that could cause launching the app to fail on Windows under
+  Python 3.6 and older
+- Improved the string representation of :class:`fiftyone.core.stages.ViewStage`
+  instances
+
 FiftyOne 0.3.0
 --------------
 Released June 24, 2020
