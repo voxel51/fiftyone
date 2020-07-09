@@ -5,7 +5,7 @@ body {
 
 article.pytorch-article pre,
 span.pre {
-  background: var(--bg-light-secondary);
+  background-color: var(--bg-light-secondary);
 }
 
 .ui.tabular.menu .item {
@@ -47,11 +47,11 @@ article.pytorch-article .note {
 }
 
 div.nbinput.container div.input_area {
-  background: var(--bg-light-secondary);
+  background-color: var(--bg-light-secondary);
 }
 
 div.nbinput.container div.input_area div[class*="highlight"] {
-  background: var(--bg-light-secondary);
+  background-color: var(--bg-light-secondary);
 }
 
 div.nboutput.nblast.docutils.container {
@@ -172,7 +172,7 @@ article.pytorch-article .reference.download.internal {
 }
 
 .footer-wrapper {
-  background: var(--bg-dark-secondary);
+  background-color: var(--bg-dark-secondary);
 }
 
 .footer {
