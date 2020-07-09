@@ -38,10 +38,44 @@ class Processor {
     this.margin = margin;
     this.rootIndex = rootIndex;
     this.socket = socket;
+
     this.baseNumCols = this.getBaseNumCols(this.containerWidth);
     this.baseItemSize = this.getBaseItemSize(this.containerWidth, this.margin);
 
     this._segmentItemIndicesStore = {};
+    this._itemRowCache = {};
+  }
+
+  get currentIndex() {
+    const top = get(liveTop);
+    const root = get(rootIndex);
+    const rootTop = get(topFromIndex(root));
+    const numItemsInSegment = get(itemsPerRequest);
+    const margin = get(gridMargin);
+    const [viewPortWidth, unused] = get(mainSize);
+    let currentTop = rootTop;
+    let index = root;
+    let segmentIndex;
+    let segmentLayout;
+    let row;
+    while (currentTop < top) {
+      segmentIndex = get(segmentIndexFromItemIndex(index));
+      segmentLayout = get(segmentLayoutCache(segmentIndex));
+      if (segmentLayout && segmentLayout.top + segmentLayout.height > top) {
+        row = get(itemRowCache((segmentIndex + 1) * numItemsInSegment - 1));
+        index = row[row.length - 1] + 1;
+        currentTop = segmentLayout.top + segmentLayout.height;
+      } else {
+        row = get(itemRow({ startIndex: index, viewPortWidth })).data;
+        index = row[row.length - 1].index + 1;
+        currentTop += row[0].height + margin;
+      }
+    }
+    return index;
+  }
+
+  set currentIndex(index) {
+    this.rootIndex = index;
   }
 
   static getBaseNumCols(containerWidth) {
@@ -68,6 +102,14 @@ class Processor {
 
   static getSegmentIndexFromItemIndex(itemIndex, itemsPerRequest) {
     return Math.floor(itemIndex / itemsPerRequest);
+  }
+
+  getTopFromIndex(index) {
+    index = index in this._itemRowCache ? this._ItemRowCache[index] : index;
+    return (
+      Math.max(0, Math.floor(index / this.baseNumCols) - 1) *
+      (this.baseItemSize.height + this.margin)
+    );
   }
 
   getSegmentItemIndices(segmentIndex) {
