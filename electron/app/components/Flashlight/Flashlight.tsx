@@ -30,6 +30,59 @@ import {
 import Scrubber from "./Scrubber";
 import { Item } from "./Player51";
 
+class Processor {
+  constructor(containerSize, itemsPerRequest, margin, socket, rootIndex = 0) {
+    this.containerWidth = containerSize[0];
+    this.containerHeight = containerSize[1];
+    this.itemsPerRequest = itemsPerRequest;
+    this.margin = margin;
+    this.rootIndex = rootIndex;
+    this.socket = socket;
+    this.baseNumCols = this.getBaseNumCols(this.containerWidth);
+    this.baseItemSize = this.getBaseItemSize(this.containerWidth, this.margin);
+
+    this._segmentItemIndicesStore = {};
+  }
+
+  static getBaseNumCols(containerWidth) {
+    if (containerWidth <= 600) {
+      return 2;
+    } else if (containerWidth < 768) {
+      return 3;
+    } else if (containerWidth < 992) {
+      return 4;
+    } else if (containerWidth < 1200) {
+      return 5;
+    } else {
+      return 7;
+    }
+  }
+
+  static getbaseItemSize(baseNumCols, containerWidth, margin) {
+    const size = (containerWidth - (baseNumCols + 1) * margin) / baseNumCols;
+    return {
+      width: size,
+      height: size,
+    };
+  }
+
+  static getSegmentIndexFromItemIndex(itemIndex, itemsPerRequest) {
+    return Math.floor(itemIndex / itemsPerRequest);
+  }
+
+  getSegmentItemIndices(segmentIndex) {
+    if (segmentIndex in this._segmentItemIndicesStore) {
+      return this._segmentItemIndicesStore[segmentIndex];
+    }
+    const start = segmentIndex * this.itemsPerRequest;
+    this._segmentItemIndicesStore[segmentIndex] = [
+      ...Array(this.itemsPerRequest).keys(),
+    ].map((i) => start + i);
+
+    return this._segmentItemIndicesStore[segmentIndex];
+  }
+}
+
 const Container = styled.div`
   width: 100%;
   height: 100%;
