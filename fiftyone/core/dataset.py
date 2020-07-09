@@ -32,6 +32,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
+import fiftyone.core.evaluation as foe
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
@@ -865,6 +866,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags=tags,
             expand_schema=expand_schema,
         )
+
+    def evaluate(self, prediction_field, gt_field="ground_truth"):
+        """Looks at the type of the ``ground_truth`` field and runs a corresponding
+            evaluation protocol with the specified ``predictions``.
+
+        Args:
+            prediction_field: the name of the field to evaluate over
+            gt_field: the name of the field containing the ground truth to use for
+                evaluation
+        """
+        foe.evaluate_detections(self, prediction_field, gt_field)
 
     @classmethod
     def from_dir(
