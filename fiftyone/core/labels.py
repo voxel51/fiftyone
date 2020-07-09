@@ -157,6 +157,19 @@ class Classification(ImageLabel):
         return image_labels
 
 
+class Classifications(ImageLabel):
+    """A set of object classifications for an image sample in a
+    :class:`fiftyone.core.dataset.Dataset`.
+
+    Args:
+        classifications (None): a list of :class:`Classification` instances
+    """
+
+    meta = {"allow_inheritance": True}
+
+    classifications = fof.ListField(fof.EmbeddedDocumentField(Classification))
+
+
 class Detection(ODMEmbeddedDocument):
     """An object detection.
 
