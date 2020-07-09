@@ -21,6 +21,8 @@ SSD = "ssd"
 FASTER_RCNN = "faster_rcnn"
 GROUND_TRUTH = "detections"
 
+###############################################################################
+
 
 def load_open_images(split="test"):
     """
@@ -189,7 +191,26 @@ for model_name in [SSD, FASTER_RCNN]:
 
 dataset = fo.load_dataset("open-images-V6-test")
 
-dataset.evaluate(prediction_field=SSD, gt_field=GROUND_TRUTH)
+# dataset.evaluate(prediction_field=SSD, gt_field=GROUND_TRUTH)
+dataset.evaluate(prediction_field=FASTER_RCNN, gt_field=GROUND_TRUTH)
+
+threshold = 0.1
+field_name = ("%s_T0_1" % (FASTER_RCNN)).replace(".", "_")
+for sample in dataset:
+    sample[field_name] = fo.Detections(
+        detections=[
+            det
+            for det in sample[FASTER_RCNN].detections
+            if det.confidence > threshold
+        ]
+    )
+    sample.save()
+
+###############################################################################
+
+import fiftyone as fo
+
+dataset = fo.load_dataset("oi-V6-test-100")
 
 
-session = fo.launch_app(dataset=dataset)
+s = fo.launch_app(dataset=dataset)
