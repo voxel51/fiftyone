@@ -35,40 +35,41 @@ class Processor {
     this.containerWidth = containerSize[0];
     this.containerHeight = containerSize[1];
     this.itemsPerRequest = itemsPerRequest;
+    this.liveTop = 0;
     this.margin = margin;
     this.rootIndex = rootIndex;
     this.socket = socket;
 
-    this.baseNumCols = this.getBaseNumCols(this.containerWidth);
-    this.baseItemSize = this.getBaseItemSize(this.containerWidth, this.margin);
+    this.baseNumCols = Processor.getBaseNumCols(this.containerWidth);
+    this.baseItemSize = Processor.getBaseItemSize(
+      this.baseNumCols,
+      this.containerWidth,
+      this.margin
+    );
 
-    this._segmentItemIndicesStore = {};
     this._itemRowCache = {};
+    this._segmentItemIndicesCache = {};
+    this._segmentLayoutCache = {};
   }
 
   get currentIndex() {
-    const top = get(liveTop);
-    const root = get(rootIndex);
-    const rootTop = get(topFromIndex(root));
-    const numItemsInSegment = get(itemsPerRequest);
-    const margin = get(gridMargin);
     const [viewPortWidth, unused] = get(mainSize);
-    let currentTop = rootTop;
-    let index = root;
+    let currentTop = this.getTopFromIndex(this.rootIndex);
+    let index = this.rootIndex;
     let segmentIndex;
     let segmentLayout;
     let row;
-    while (currentTop < top) {
-      segmentIndex = get(segmentIndexFromItemIndex(index));
-      segmentLayout = get(segmentLayoutCache(segmentIndex));
+    while (currentTop < this.liveTop) {
+      segmentIndex = Processor.getSegmentIndexFromItemIndex(index);
+      segmentLayout = this._segmentLayoutCache[segmentIndex];
       if (segmentLayout && segmentLayout.top + segmentLayout.height > top) {
-        row = get(itemRowCache((segmentIndex + 1) * numItemsInSegment - 1));
+        row = this._itemRowCache[(segmentIndex + 1) * this.itemsPerRequest - 1];
         index = row[row.length - 1] + 1;
         currentTop = segmentLayout.top + segmentLayout.height;
       } else {
-        row = get(itemRow({ startIndex: index, viewPortWidth })).data;
+        row = this.getItemRow({ startIndex: index, viewPortWidth }).data;
         index = row[row.length - 1].index + 1;
-        currentTop += row[0].height + margin;
+        currentTop += row[0].height + this.margin;
       }
     }
     return index;
@@ -76,6 +77,30 @@ class Processor {
 
   set currentIndex(index) {
     this.rootIndex = index;
+  }
+
+  getItemRow() {
+    //...
+  }
+
+  getSegmentItemIndices(segmentIndex) {
+    if (segmentIndex in this._segmentItemIndicesStore) {
+      return this._segmentItemIndicesStore[segmentIndex];
+    }
+    const start = segmentIndex * this.itemsPerRequest;
+    this._segmentItemIndicesStore[segmentIndex] = [
+      ...Array(this.itemsPerRequest).keys(),
+    ].map((i) => start + i);
+
+    return this._segmentItemIndicesStore[segmentIndex];
+  }
+
+  getTopFromIndex(index) {
+    index = index in this._itemRowCache ? this._ItemRowCache[index] : index;
+    return (
+      Math.max(0, Math.floor(index / this.baseNumCols) - 1) *
+      (this.baseItemSize.height + this.margin)
+    );
   }
 
   static getBaseNumCols(containerWidth) {
@@ -92,7 +117,7 @@ class Processor {
     }
   }
 
-  static getbaseItemSize(baseNumCols, containerWidth, margin) {
+  static getBaseItemSize(baseNumCols, containerWidth, margin) {
     const size = (containerWidth - (baseNumCols + 1) * margin) / baseNumCols;
     return {
       width: size,
@@ -102,26 +127,6 @@ class Processor {
 
   static getSegmentIndexFromItemIndex(itemIndex, itemsPerRequest) {
     return Math.floor(itemIndex / itemsPerRequest);
-  }
-
-  getTopFromIndex(index) {
-    index = index in this._itemRowCache ? this._ItemRowCache[index] : index;
-    return (
-      Math.max(0, Math.floor(index / this.baseNumCols) - 1) *
-      (this.baseItemSize.height + this.margin)
-    );
-  }
-
-  getSegmentItemIndices(segmentIndex) {
-    if (segmentIndex in this._segmentItemIndicesStore) {
-      return this._segmentItemIndicesStore[segmentIndex];
-    }
-    const start = segmentIndex * this.itemsPerRequest;
-    this._segmentItemIndicesStore[segmentIndex] = [
-      ...Array(this.itemsPerRequest).keys(),
-    ].map((i) => start + i);
-
-    return this._segmentItemIndicesStore[segmentIndex];
   }
 }
 
