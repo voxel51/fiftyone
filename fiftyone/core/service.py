@@ -261,14 +261,16 @@ class ServerService(Service):
                 "http://127.0.0.1:%i/fiftyone" % self._port, timeout=2
             ).json()["version"]
         except Exception:
+            pass
+
+        if server_version is None:
             # There is likely not a fiftyone server running (remote or local),
             # so start a local server. If there actually is a fiftyone server
             # running that didn't respond to /fiftyone, the local server will
             # fail to start but the app will still connect successfully.
             super().start()
             self._wait_for_child_port(self._port)
-
-        if server_version is not None:
+        else:
             logger.info("Connected to fiftyone on local port %i" % self._port)
             if server_version != foc.VERSION:
                 logger.warn(
