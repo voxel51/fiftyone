@@ -33,6 +33,10 @@ article.pytorch-article .note .admonition-title {
   background-color: var(--color-secondary);
 }
 
+article.pytorch-article h3 {
+  font-size: 1.3rem;
+}
+
 .pytorch-left-menu li.toctree-l1.current > a:before {
   display: none;
 }

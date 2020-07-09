@@ -41,14 +41,15 @@ class DatasetSingleton(type):
         cls._instances = weakref.WeakValueDictionary()
         return cls
 
-    def __call__(cls, name, _create=True, *args, **kwargs):
+    def __call__(cls, name=None, _create=True, *args, **kwargs):
         if (
             _create
             or name not in cls._instances
             or cls._instances[name].deleted
         ):
-            instance = cls.__new__(cls, name)
-            instance.__init__(name, _create=_create, *args, **kwargs)
+            instance = cls.__new__(cls)
+            instance.__init__(name=name, _create=_create, *args, **kwargs)
+            name = instance.name  # `__init__` may have changed `name`
             cls._instances[name] = instance
 
         return cls._instances[name]
