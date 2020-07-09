@@ -113,5 +113,4 @@ DatasetViews
 ____________
 
 A |DatasetView|_ is a powerful and fast tool for taking your |Dataset|_ and
-looking at subsets of it without worrying about augmenting the |Dataset|
-itself.
+looking at subsets of it without worrying about augmenting the dataset itself.
