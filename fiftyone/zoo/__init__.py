@@ -664,7 +664,7 @@ class ZooDataset(object):
                     classes,
                 ) = self._download_and_prepare(dataset_dir, scratch_dir, None)
 
-                # Create ZooDastasetInfo
+                # Create ZooDatasetInfo
                 info = ZooDatasetInfo(
                     self, dataset_type, num_samples, classes=classes
                 )

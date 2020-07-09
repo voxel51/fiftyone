@@ -377,7 +377,7 @@ class COCO2014Dataset(TFDSDataset):
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser(
-            bounding_box_field="bbox", normalized=False,
+            bounding_box_field="bbox", normalized=True,
         )
         return _download_and_prepare(
             dataset_dir,
@@ -433,7 +433,7 @@ class COCO2017Dataset(TFDSDataset):
         ].names
         get_num_samples_fcn = lambda info: info.splits[split].num_examples
         sample_parser = _TFDSImageDetectionSampleParser(
-            bounding_box_field="bbox", normalized=False,
+            bounding_box_field="bbox", normalized=True,
         )
         return _download_and_prepare(
             dataset_dir,
@@ -670,6 +670,16 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
         return super(_TFDSImageDetectionSampleParser, self)._parse_label(
             target, img=img
         )
+
+    def _parse_bbox(self, obj):
+        """Returns: tlx, tly, w, h
+
+        source: www.tensorflow.org/datasets/api_docs/python/tfds/features/BBoxFeature
+        """
+        ymin, xmin, ymax, xmax = obj[self.bounding_box_field]
+        w = xmax - xmin
+        h = ymax - ymin
+        return xmin, ymin, w, h
 
 
 def _download_and_prepare(
