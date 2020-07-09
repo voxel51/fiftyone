@@ -84,7 +84,8 @@ def _ensure_package(package_name, min_version=None):
 
         raise ImportError(
             "The requested operation requires that '%s' is installed on your "
-            "machine" % pkg_str
+            "machine" % pkg_str,
+            name=package_name,
         ) from e
 
     if has_min_ver:
@@ -93,7 +94,8 @@ def _ensure_package(package_name, min_version=None):
             raise ImportError(
                 "The requested operation requires that '%s>=%s' is installed "
                 "on your machine; found '%s==%s'"
-                % (package_name, min_version, package_name, pkg_version)
+                % (package_name, min_version, package_name, pkg_version),
+                name=package_name,
             )
 
 
