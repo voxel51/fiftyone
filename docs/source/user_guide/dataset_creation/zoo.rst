@@ -514,35 +514,43 @@ Controlling where zoo datasets are downloaded
 By default, zoo datasets are downloaded into subdirectories of
 ``fiftyone.config.default_dataset_dir`` corresponding to their names.
 
-You can customize this directory in any of the following ways:
+You can customize this backend by modifying the `default_dataset_dir` setting
+of your :doc:`FiftyOne config </user_guide/config>`.
 
--  Directly editing your FiftyOne config at ``~/.fiftyone/config.json``
+.. tabs::
 
-.. code-block:: shell
+    .. group-tab:: JSON
 
-    # Print your current config
-    fiftyone config
+        Directly edit your FiftyOne config at `~/.fiftyone/config.json`:
 
-    # Locate your config, and then edit it
-    fiftyone constants FIFTYONE_CONFIG_PATH
+        .. code-block:: shell
 
--  Setting the ``FIFTYONE_DEFAULT_DATASET_DIR`` environment variable
+            # Print your current config
+            fiftyone config
 
-.. code-block:: shell
+            # Locate your config (and edit the `default_dataset_dir` field)
+            fiftyone constants FIFTYONE_CONFIG_PATH
 
-    # Customize where zoo datasets are downloaded
-    export FIFTYONE_DEFAULT_DATASET_DIR=/your/custom/directory
+    .. group-tab:: Environment
 
--  Setting the ``default_dataset_dir`` config setting from your Python
-   code
+        Set the ``FIFTYONE_DEFAULT_DATASET_DIR`` environment variable:
 
-.. code-block:: python
-    :linenos:
+        .. code-block:: shell
 
-    # Customize where zoo datasets are downloaded
-    import fiftyone.core.config as foc
+            # Customize where zoo datasets are downloaded
+            export FIFTYONE_DEFAULT_DATASET_DIR=/your/custom/directory
 
-    foc.set_config_settings(default_dataset_dir="/your/custom/directory")
+    .. group-tab:: Code
+
+        Set the `default_dataset_dir` config setting from Python code:
+
+        .. code-block:: python
+            :linenos:
+
+            # Customize where zoo datasets are downloaded
+            import fiftyone.core.config as foc
+
+            foc.set_config_settings(default_dataset_dir="/your/custom/directory")
 
 Customizing your ML backend
 ---------------------------
@@ -564,31 +572,40 @@ requested zoo dataset. If a dataset is available through both backends, it will
 use the backend specified by the `fo.config.default_ml_backend` setting in your
 FiftyOne config.
 
-You can customize this backend in any of the following ways:
+You can customize this backend by modifying the `default_ml_backend` setting
+of your :doc:`FiftyOne config </user_guide/config>`.
 
--  Directly editing your FiftyOne config at `~/.fiftyone/config.json`:
+.. tabs::
 
-.. code-block:: shell
+    .. group-tab:: JSON
 
-    # Print your current config
-    fiftyone config
+        Directly edit your FiftyOne config at `~/.fiftyone/config.json`:
 
-    # Locate your config, and then edit it
-    fiftyone constants FIFTYONE_CONFIG_PATH
+        .. code-block:: shell
 
--  Setting the ``FIFTYONE_DEFAULT_ML_BACKEND`` environment variable:
+            # Print your current config
+            fiftyone config
 
-.. code-block:: shell
+            # Locate your config (and edit the `default_ml_backend` field)
+            fiftyone constants FIFTYONE_CONFIG_PATH
 
-    # Use the `tensorflow` backend
-    export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
+    .. group-tab:: Environment
 
--  Setting the `default_ml_backend` config setting from your Python code:
+        Set the ``FIFTYONE_DEFAULT_ML_BACKEND`` environment variable:
 
-.. code-block:: python
-    :linenos:
+        .. code-block:: shell
 
-    # Use the `torch` backend
-    import fiftyone.core.config as foc
+            # Use the `tensorflow` backend
+            export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
 
-    foc.set_config_settings(default_ml_backend="torch")
+    .. group-tab:: Code
+
+        Set the `default_ml_backend` config setting from Python code:
+
+        .. code-block:: python
+            :linenos:
+
+            # Use the `torch` backend
+            import fiftyone.core.config as foc
+
+            foc.set_config_settings(default_ml_backend="torch")
