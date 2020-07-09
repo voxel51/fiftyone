@@ -20,18 +20,19 @@ import {
   useScrollListener,
   useSetter,
 } from "../../state/hooks";
-import {
-  currentListHeight,
-  segmentsToRender,
-  segmentData,
-  currentLayout,
-} from "../../state/selectors";
 
 import Scrubber from "./Scrubber";
 import { Item } from "./Player51";
 
 class Processor {
-  constructor(containerSize, itemsPerRequest, margin, socket, rootIndex = 0) {
+  constructor(
+    containerSize,
+    itemsPerRequest,
+    margin,
+    socket,
+    rootIndex = 0,
+    viewCount
+  ) {
     this.containerWidth = containerSize[0];
     this.containerHeight = containerSize[1];
     this.itemsPerRequest = itemsPerRequest;
@@ -39,6 +40,7 @@ class Processor {
     this.margin = margin;
     this.rootIndex = rootIndex;
     this.socket = socket;
+    this.count = viewCount;
 
     this.baseNumCols = Processor.getBaseNumCols(this.containerWidth);
     this.baseItemSize = Processor.getBaseItemSize(
@@ -47,31 +49,36 @@ class Processor {
       this.margin
     );
 
+    this.baseItemData = { aspectRatio: 1 };
+
     this._itemRowCache = {};
+    this._segmentDataCache = {};
     this._segmentItemIndicesCache = {};
     this._segmentLayoutCache = {};
   }
 
   get currentIndex() {
-    const [viewPortWidth, unused] = get(mainSize);
     let currentTop = this.getTopFromIndex(this.rootIndex);
     let index = this.rootIndex;
     let segmentIndex;
     let segmentLayout;
     let row;
+
     while (currentTop < this.liveTop) {
       segmentIndex = Processor.getSegmentIndexFromItemIndex(index);
       segmentLayout = this._segmentLayoutCache[segmentIndex];
+
       if (segmentLayout && segmentLayout.top + segmentLayout.height > top) {
         row = this._itemRowCache[(segmentIndex + 1) * this.itemsPerRequest - 1];
         index = row[row.length - 1] + 1;
         currentTop = segmentLayout.top + segmentLayout.height;
       } else {
-        row = this.getItemRow({ startIndex: index, viewPortWidth }).data;
+        row = this.getItemRow(index).data;
         index = row[row.length - 1].index + 1;
         currentTop += row[0].height + this.margin;
       }
     }
+
     return index;
   }
 
@@ -79,8 +86,71 @@ class Processor {
     this.rootIndex = index;
   }
 
-  getItemRow() {
-    //...
+  get tilingThreshold() {
+    return this.baseNumCols;
+  }
+
+  animate() {
+    // Main function that sends updates
+  }
+
+  getItemData(index) {
+    const data = this._getItemDataFromCache(index);
+    switch (data) {
+      case "pending":
+        return this.baseItemData;
+      default:
+        return data[index];
+    }
+  }
+
+  _getItemDataCache(index) {
+    const data = this.getSegmentData(
+      Processor.getSegmentIndexFromItemIndex(index)
+    );
+    return data === "pending" ? data : data[index];
+  }
+
+  getSegmentData(segmentIndex) {
+    switch (this._segmentDataCache[segmentIndex]) {
+      case undefined:
+        this._segmentDataCache[segmentIndex] = "pending";
+        Processor.getPage(this.socket, segmentIndex).then((data) => {
+          this._segmentDataCache[segmentIndex] = data;
+          this.animate();
+        });
+        return "pending";
+      case "pending":
+        return "pending";
+      default:
+        return this._segmentDataCache[segmentIndex];
+    }
+  }
+
+  getItemRow(startIndex) {
+    let index = startIndex;
+    let aspectRatio = 0;
+    let data = [];
+    let item;
+
+    while (index < count && aspectRatio < this.tilingThreshold) {
+      item = this.getItemData(index);
+      aspectRatio += item.aspectRatio;
+      data.push({ ...item, index });
+      index += 1;
+    }
+
+    const workingWidth = this.containerWidth - (data.length + 1) * this.margin;
+    const height = aspectRatio !== 0 ? workingWidth / aspectRatio : 0;
+
+    return {
+      data: data.map((item) => ({
+        ...item,
+        height,
+        width: item.aspectRatio * height,
+      })),
+      aspectRatio,
+    };
   }
 
   getSegmentItemIndices(segmentIndex) {
@@ -99,7 +169,7 @@ class Processor {
     index = index in this._itemRowCache ? this._ItemRowCache[index] : index;
     return (
       Math.max(0, Math.floor(index / this.baseNumCols) - 1) *
-      (this.baseItemSize.height + this.margin)
+      (this.baseItemSize + this.margin)
     );
   }
 
@@ -117,12 +187,16 @@ class Processor {
     }
   }
 
+  static async getPage(socket, page) {
+    return new Promise((resolve) => {
+      socket.emit("page", page, (data) => {
+        resolve(data);
+      });
+    });
+  }
+
   static getBaseItemSize(baseNumCols, containerWidth, margin) {
-    const size = (containerWidth - (baseNumCols + 1) * margin) / baseNumCols;
-    return {
-      width: size,
-      height: size,
-    };
+    return (containerWidth - (baseNumCols + 1) * margin) / baseNumCols;
   }
 
   static getSegmentIndexFromItemIndex(itemIndex, itemsPerRequest) {
