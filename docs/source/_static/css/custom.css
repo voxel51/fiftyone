@@ -14,6 +14,25 @@ span.pre {
   margin: unset;
 }
 
+@media screen and (min-width: 1101px) {
+  .pytorch-left-menu {
+    width: 250px;
+  }
+
+  .pytorch-left-menu .pytorch-side-scroll {
+    width: 100%;
+    overflow-y: auto;
+  }
+
+  .pytorch-container {
+    margin-left: 250px;
+  }
+}
+
+article.pytorch-article {
+  max-width: unset;
+}
+
 .pytorch-left-menu a:link,
 .pytorch-left-menu a:visited,
 .pytorch-right-menu a:link,
