@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import itertools
 import logging
 import multiprocessing
 import os
@@ -149,13 +150,13 @@ class Service(object):
             retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
         )
         def find_port():
-            child_pids = set(
-                child.pid for child in self.child.children(recursive=True)
+            child_connections = itertools.chain.from_iterable(  # flatten
+                child.connections()
+                for child in self.child.children(recursive=True)
             )
-            for conn in psutil.net_connections():
+            for conn in child_connections:
                 if (
-                    conn.pid in child_pids
-                    and conn.type == socket.SOCK_STREAM  # TCP
+                    conn.type == socket.SOCK_STREAM  # TCP
                     and not conn.raddr  # not connected to a remote socket
                     and conn.status == psutil.CONN_LISTEN
                 ):
