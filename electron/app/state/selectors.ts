@@ -121,74 +121,6 @@ export const displacementFromTop = selectorFamily({
   },
 });
 
-export const currentIndex = selector({
-  key: "currentIndex",
-  get: ({ get }) => {
-    const top = get(liveTop);
-    const root = get(rootIndex);
-    const rootTop = get(topFromIndex(root));
-    const numItemsInSegment = get(itemsPerRequest);
-    const margin = get(gridMargin);
-    const [viewPortWidth, unused] = get(mainSize);
-    let currentTop = rootTop;
-    let index = root;
-    let segmentIndex;
-    let segmentLayout;
-    let row;
-    while (currentTop < top) {
-      segmentIndex = get(segmentIndexFromItemIndex(index));
-      segmentLayout = get(segmentLayoutCache(segmentIndex));
-      if (segmentLayout && segmentLayout.top + segmentLayout.height > top) {
-        row = get(itemRowCache((segmentIndex + 1) * numItemsInSegment - 1));
-        index = row[row.length - 1] + 1;
-        currentTop = segmentLayout.top + segmentLayout.height;
-      } else {
-        row = get(itemRow({ startIndex: index, viewPortWidth })).data;
-        index = row[row.length - 1].index + 1;
-        currentTop += row[0].height + margin;
-      }
-    }
-    return index;
-  },
-  set: ({ set }, index) => {
-    set(rootIndex, index);
-  },
-});
-
-export const currentDisplacement = selector({
-  key: "currentDisplacement",
-  get: ({ get }) => {
-    const top = get(liveTop);
-    const root = get(rootIndex);
-    const rootTop = get(topFromIndex(root));
-    const numItemsInSegment = get(itemsPerRequest);
-    const margin = get(gridMargin);
-    const [viewPortWidth, unused] = get(mainSize);
-    let currentTop = rootTop;
-    let index = root;
-    let segmentIndex;
-    let segmentLayout;
-    let row;
-    while (currentTop < top) {
-      segmentIndex = get(segmentIndexFromItemIndex(index));
-      segmentLayout = get(segmentLayoutCache(segmentIndex));
-      if (segmentLayout && segmentLayout.top + segmentLayout.height > top) {
-        row = get(itemRowCache((segmentIndex + 1) * numItemsInSegment - 1));
-        index = row[row.length - 1] + 1;
-        currentTop = segmentLayout.top + segmentLayout.height;
-      } else {
-        row = get(itemRow({ startIndex: index, viewPortWidth })).data;
-        index = row[row.length - 1].index + 1;
-        currentTop += row[0].height + margin;
-      }
-    }
-    row = get(itemRow({ startIndex: index, viewPortWidth })).data;
-    if (row.length === 0) return 0;
-
-    return (currentTop - top) / (row[0].height + margin);
-  },
-});
-
 export const currentIndexPercentage = selector({
   key: "currentIndexPercentage",
   get: ({ get }) => {
@@ -470,7 +402,6 @@ export const itemsToRender = selector({
 export const currentLayout = selector({
   key: "currentLayout",
   get: ({ get }) => {
-    const ss = Date.now();
     const [viewPortWidth, unused] = get(mainSize);
     if (viewPortWidth === 0) return;
     const items = get(itemsToRender);
@@ -553,12 +484,6 @@ export const currentLayout = selector({
             if (rowEnd >= segmentItems[segmentItems.length - 1]) break;
           }
           layout.endIndex = rowEnd;
-          mapping[segmentIndex].startIndex = layout.startIndex;
-          mapping[segmentIndex].endIndex = layout.endIndex;
-          mapping[segmentIndex].y = layout.y;
-          mapping[segmentIndex].index = layout.index;
-          mapping[segmentIndex].height = layout.height;
-          mapping[segmentIndex].items = layout.items;
           currentTop += layout.height;
         }
         segmentsComputed += 1;
