@@ -158,6 +158,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
+    See :doc:`this guide </user_guide/basics>` for an overview of the basics of
+    working with FiftyOne datasets.
+
     Args:
         name (None): the name of the dataset. By default,
             :func:`get_default_dataset_name` is used
@@ -544,6 +547,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Adds the contents of the given directory to the dataset.
 
+        See :doc:`this guide </user_guide/dataset_creation/common_datasets>`
+        for descriptions of available dataset types.
+
         Args:
             dataset_dir: the dataset directory
             dataset_type (None): the
@@ -585,6 +591,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Adds the samples from the given
         :class:`fiftyone.utils.data.importers.DatasetImporter` to the dataset.
+
+        See :doc:`this guide </user_guide/dataset_creation/custom_datasets>`
+        for more details about importing datasets in custom formats by defining
+        your own
+        :class:`DatasetImporter <fiftyone.utils.data.importers.DatasetImporter>`.
 
         Args:
             dataset_importer: a
@@ -643,6 +654,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         This operation does not read the images.
 
+        See :doc:`this guide </user_guide/dataset_creation/custom_datasets>`
+        for more details about adding images to a dataset by defining your own
+        :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
+
         Args:
             samples: an iterable of samples
             sample_parser: a
@@ -682,6 +697,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         This operation will iterate over all provided samples, but the images
         will not be read.
+
+        See :doc:`this guide </user_guide/dataset_creation/custom_datasets>`
+        for more details about adding labeled images to a dataset by defining
+        your own
+        :class:`LabeledImageSampleParser <fiftyone.utils.data.parsers.LabeledImageSampleParser>`.
 
         Args:
             samples: an iterable of samples
@@ -769,6 +789,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         The images are read in-memory and written to ``dataset_dir``.
 
+        See :doc:`this guide </user_guide/dataset_creation/custom_datasets>`
+        for more details about ingesting images into a dataset by defining your
+        own
+        :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
+
         Args:
             samples: an iterable of samples
             sample_parser: a
@@ -806,6 +831,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.
 
         The images are read in-memory and written to ``dataset_dir``.
+
+        See :doc:`this guide </user_guide/dataset_creation/custom_datasets>`
+        for more details about ingesting labeled images into a dataset by
+        defining your own
+        :class:`LabeledImageSampleParser <fiftyone.utils.data.parsers.LabeledImageSampleParser>`.
 
         Args:
             samples: an iterable of samples
@@ -863,6 +893,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Creates a :class:`Dataset` from the contents of the given directory.
 
+        See :doc:`this guide </user_guide/dataset_creation/common_datasets>`
+        for descriptions of available dataset types.
+
         Args:
             dataset_dir: the dataset directory
             dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
@@ -897,6 +930,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Creates a :class:`Dataset` by importing the samples in the given
         :class:`fiftyone.utils.data.importers.DatasetImporter`.
 
+        See :doc:`this guide </user_guide/dataset_creation/custom_datasets>`
+        for more details about providing a custom
+        :class:`DatasetImporter <fiftyone.utils.data.importers.DatasetImporter>`
+        to import datasets into FiftyOne.
+
         Args:
             dataset_importer: a
                 :class:`fiftyone.utils.data.importers.DatasetImporter`
@@ -920,6 +958,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Creates a :class:`Dataset` from the given images.
 
         This operation does not read the images.
+
+        See :doc:`this guide </user_guide/dataset_creation/custom_datasets>`
+        for more details about providing a custom
+        :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`
+        to load image samples into FiftyOne.
 
         Args:
             samples: an iterable of samples
@@ -950,6 +993,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         This operation will iterate over all provided samples, but the images
         will not be read.
+
+        See :doc:`this guide </user_guide/dataset_creation/custom_datasets>`
+        for more details about providing a custom
+        :class:`LabeledImageSampleParser <fiftyone.utils.data.parsers.LabeledImageSampleParser>`
+        to load labeled image samples into FiftyOne.
 
         Args:
             samples: an iterable of samples

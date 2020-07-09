@@ -94,6 +94,15 @@ Use the FiftyOne Brain to automatically get insights into your |Dataset|
    fob.compute_uniqueness(dataset)
    rank_view = dataset.view().sort_by("uniqueness")
 
+:doc:`Configuring FiftyOne <config>`
+
+Configure FiftyOne's default behavior to suit your needs.
+
+.. code-block:: shell
+   :linenos:
+
+   export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
+
 .. toctree::
     :maxdepth: 1
     :hidden:
@@ -104,3 +113,4 @@ Use the FiftyOne Brain to automatically get insights into your |Dataset|
     Exporting datasets<export_datasets>
     Viewing datasets in the App<app>
     FiftyOne Brain<brain>
+    Configuring FiftyOne<config>

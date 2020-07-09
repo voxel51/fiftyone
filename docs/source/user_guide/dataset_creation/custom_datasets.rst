@@ -4,15 +4,15 @@ Creating Custom Format Datasets
 .. default-role:: code
 
 FiftyOne datasets are composed of :class:`fiftyone.core.sample.Sample`
-instances, and FiftyOne provides the ability for you to construct your
-own dataset manually by providing samples or their constituent fields in
-a variety of common formats.
+instances, and FiftyOne provides the ability for you to construct your own
+dataset manually by providing samples or their constituent fields in a variety
+of common formats.
 
 Building datasets from scratch
 ------------------------------
 
 The most flexible way to create a FiftyOne dataset is to manually
-construct your own :class:`fiftyone.core.sample.Sample` instances.
+construct your own :class:`Samples <fiftyone.core.sample.Sample>`.
 
 The following example demonstrates the construction of a dataset with
 ground truth labels stored in a ``ground_truth`` field:

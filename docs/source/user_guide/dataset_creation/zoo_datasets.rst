@@ -3,9 +3,8 @@ Loading Zoo Datasets
 
 .. default-role:: code
 
-FiftyOne provides a Dataset Zoo that contains a collection of common
-datasets that you can download and load into FiftyOne via a few simple
-commands.
+FiftyOne provides a Dataset Zoo that contains a collection of common datasets
+that you can download and load into FiftyOne via a few simple commands.
 
 You can interact with the Dataset Zoo either via the Python library or
 the CLI.
@@ -25,7 +24,7 @@ the CLI.
 
         $ fiftyone zoo -h
 
-        usage: fiftyone zoo [-h] [--all-help] {list,info,download,load} ...
+        usage: fiftyone zoo [-h] [--all-help] {list,find,info,download,load} ...
 
         Tools for working with the FiftyOne Dataset Zoo.
 
@@ -34,11 +33,12 @@ the CLI.
           --all-help            show help recurisvely and exit
 
         available commands:
-          {list,info,download,load}
-            list                Tools for listing datasets in the FiftyOne Dataset Zoo.
-            info                Tools for printing info about downloaded zoo datasets.
-            download            Tools for downloading zoo datasets.
-            load                Tools for loading zoo datasets as persistent FiftyOne datasets.
+          {list,find,info,download,load}
+            list                List datasets in the FiftyOne Dataset Zoo.
+            find                Locate the downloaded zoo dataset on disk.
+            info                Print information about downloaded zoo datasets.
+            download            Download zoo datasets.
+            load                Load zoo datasets as persistent FiftyOne datasets.
 
 Listing zoo datasets
 --------------------
@@ -85,7 +85,7 @@ Listing zoo datasets
         downloaded_datasets = foz.list_downloaded_zoo_datasets()
         pprint(downloaded_datasets)
 
-    .. code-block:: python
+    .. code-block:: text
 
         {
             'cifar10': (
@@ -173,7 +173,7 @@ Listing zoo datasets
     split is available through multiple sources.
 
 Getting information about zoo datasets
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------
 
 .. tabs::
 
@@ -436,8 +436,8 @@ Downloading zoo datasets
         Dataset created
         Dataset info written to '~/fiftyone/cifar10/info.json'
 
-Loading zoo datasets into FiftyOne
-----------------------------------
+Loading zoo datasets
+--------------------
 
 .. tabs::
 
