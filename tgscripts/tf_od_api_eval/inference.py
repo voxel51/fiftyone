@@ -26,9 +26,9 @@ MODEL_HANDLE = (
 
 # images_dir = "/Users/tylerganter/data/open-images-dataset/images"
 # object_detection_dir = "/Users/tylerganter/source/theta/tensorflow/models/research/object_detection"
-images_dir = "/scratch/user/tyler/data/open-images/images"
+images_dir = "/home/tylerganter/data/open-images/images"
 object_detection_dir = (
-    "/home/tyler/code/tensorflow/models/research/object_detection"
+    "/home/tylerganter/tensorflow/models/research/object_detection"
 )
 
 output_dir = "."

@@ -6,11 +6,6 @@ Follow
 [this link](https://storage.googleapis.com/openimages/web/download_v4.html)
 
 -   Test Images (36GB)
-
-```bash
-aws s3 --no-sign-request sync s3://open-images-dataset/test [target_dir/test]
-```
-
 -   [x] Boxes (Test)
 -   [ ] Image Labels (Test)
 -   [ ] Image IDs (Test)
@@ -18,6 +13,20 @@ aws s3 --no-sign-request sync s3://open-images-dataset/test [target_dir/test]
 
 We also need the
 [hierarchy file](https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy.json).
+
+Or just run the following:
+
+```bash
+aws s3 --no-sign-request sync s3://open-images-dataset/test [target_dir/test]
+```
+
+```bash
+wget https://storage.googleapis.com/openimages/2018_04/test/test-annotations-bbox.csv
+wget https://storage.googleapis.com/openimages/2018_04/test/test-annotations-human-imagelabels-boxable.csv
+wget https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv
+wget https://storage.googleapis.com/openimages/2018_04/class-descriptions-boxable.csv
+wget https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy.json
+```
 
 ## 2. Clone tensorflow/models
 
