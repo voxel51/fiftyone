@@ -194,8 +194,8 @@ dataset = fo.load_dataset("open-images-V6-test")
 # dataset.evaluate(prediction_field=SSD, gt_field=GROUND_TRUTH)
 dataset.evaluate(prediction_field=FASTER_RCNN, gt_field=GROUND_TRUTH)
 
-threshold = 0.1
-field_name = ("%s_T0_1" % (FASTER_RCNN)).replace(".", "_")
+threshold = 0.2
+field_name = ("%s_T0_2" % (FASTER_RCNN)).replace(".", "_")
 for sample in dataset:
     sample[field_name] = fo.Detections(
         detections=[

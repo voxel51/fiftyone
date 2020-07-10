@@ -31,8 +31,9 @@ git clone https://github.com/tensorflow/models
 ln -s /path/to/models/research/object_detection object_detection
 ```
 
-```
 Finally directory structure:
+
+```
 ├── images
 │   └── test
 │       ├── 000026e7ee790996.jpg
