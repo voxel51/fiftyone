@@ -14,6 +14,18 @@ span.pre {
   margin: unset;
 }
 
+.pytorch-page-level-bar {
+  z-index: 500;
+}
+
+.pytorch-left-menu {
+  overflow: auto;
+}
+
+.pytorch-menu-vertical {
+  padding-bottom: 0;
+}
+
 @media screen and (min-width: 1101px) {
   .pytorch-left-menu {
     width: 250px;
