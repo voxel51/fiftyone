@@ -15,6 +15,7 @@ from tensorflow.keras.utils import Progbar
 
 # PARAMETERS ##################################################################
 
+# SPLIT = "validation"
 SPLIT = "test"
 
 # Specify Model Handle
@@ -23,16 +24,15 @@ MODEL_HANDLE = (
     "https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1"
 )
 
-NUM_TO_PROCESS = 2
 
-images_dir = "/Users/tylerganter/data/open-images-dataset/images"
-object_detection_dir = "/Users/tylerganter/source/theta/tensorflow/models/research/object_detection"
-v4_dir = "/Users/tylerganter/data/open-images-dataset/v4"
-
-model_name = (
-    MODEL_HANDLE.lstrip("https://tfhub.dev/").rstrip("/1").replace("/", "-")
+# images_dir = "/Users/tylerganter/data/open-images-dataset/images"
+# object_detection_dir = "/Users/tylerganter/source/theta/tensorflow/models/research/object_detection"
+images_dir = "/scratch/user/tyler/data/open-images/images"
+object_detection_dir = (
+    "/home/tyler/code/tensorflow/models/research/object_detection"
 )
-output_predictions_path = "%s_predictions.csv" % model_name
+
+output_dir = "."
 
 ###############################################################################
 
@@ -209,10 +209,19 @@ if __name__ == "__main__":
     # get list of paths to images
     imgs_pattern = os.path.join(images_dir, "%s/*.jpg" % SPLIT)
     img_paths = glob.glob(imgs_pattern)
-    img_paths = img_paths[:NUM_TO_PROCESS]
 
+    # specify output path
+    model_name = (
+        MODEL_HANDLE.lstrip("https://tfhub.dev/")
+        .rstrip("/1")
+        .replace("/", "-")
+    )
+    output_predictions_path = os.path.join(
+        output_dir, "%s_predictions.csv" % model_name
+    )
+
+    # generate predictions
     detections = {}
-
     pbar = Progbar(len(img_paths))
     for idx, img_path in enumerate(img_paths):
         image_id = os.path.splitext(os.path.basename(img_path))[0]
