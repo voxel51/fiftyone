@@ -1,9 +1,9 @@
 """
-Analyze Open Images V6
-
-dataset = fo.load_dataset("open-images-V6-validation")
+Run inference on the Open Images V4 test set images using a TensorFlow hub
+pre-trained model.
 
 """
+import csv
 import glob
 import os
 
@@ -28,6 +28,11 @@ NUM_TO_PROCESS = 2
 images_dir = "/Users/tylerganter/data/open-images-dataset/images"
 object_detection_dir = "/Users/tylerganter/source/theta/tensorflow/models/research/object_detection"
 v4_dir = "/Users/tylerganter/data/open-images-dataset/v4"
+
+model_name = (
+    MODEL_HANDLE.lstrip("https://tfhub.dev/").rstrip("/1").replace("/", "-")
+)
+output_predictions_path = "%s_predictions.csv" % model_name
 
 ###############################################################################
 
@@ -150,7 +155,52 @@ class TensorFlowHubDetector:
         return detections
 
 
-###############################################################################
+def detections_to_csv(detections, output_path):
+    """Writes the detections to a CSV file.
+
+    Output file structure will have a single header row followed by one row
+    per image as follows:
+
+        ImageID,PredictionString
+        ImageID,{Label Confidence XMin YMin XMax YMax} {...}
+
+    Example output for two images with two detections each:
+
+        ImageID,PredictionString
+        b5d912e06f74e948,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
+        be137cf6bb0b62d5,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
+
+    Args:
+        detections: reshaped output list of detection dicts output from
+            TensorFlowHubDetector.detect()
+        output_path: the CSV filepath to write to
+    """
+
+    with open(output_path, "w") as csvfile:
+        writer = csv.writer(csvfile)
+
+        # write header
+        writer.writerow(["ImageID", "PredictionString"])
+
+        for image_id, cur_dets in detections.items():
+            preds_str = " ".join(
+                [
+                    " ".join(
+                        [
+                            det["Class Name"].decode("utf-8"),
+                            "%.4f" % det["Confidence"],
+                            "%.4f" % det["XMin"],
+                            "%.4f" % det["YMin"],
+                            "%.4f" % det["XMax"],
+                            "%.4f" % det["YMax"],
+                        ]
+                    )
+                    for det in cur_dets
+                ]
+            )
+
+            writer.writerow([image_id, preds_str])
+
 
 if __name__ == "__main__":
     # load detector
@@ -161,14 +211,14 @@ if __name__ == "__main__":
     img_paths = glob.glob(imgs_pattern)
     img_paths = img_paths[:NUM_TO_PROCESS]
 
+    detections = {}
+
     pbar = Progbar(len(img_paths))
     for idx, img_path in enumerate(img_paths):
         image_id = os.path.splitext(os.path.basename(img_path))[0]
 
-        from pprint import pprint
-
-        dets = detector.detect(img_path)
-
-        pprint(dets)
+        detections[image_id] = detector.detect(img_path)
 
         pbar.update(idx)
+
+    detections_to_csv(detections, output_predictions_path)
