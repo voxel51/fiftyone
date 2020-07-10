@@ -51,7 +51,7 @@ $(function () {
           .removeClass("not-expanded")
           .addClass("expanded");
 
-        if (clicked) {
+        if (clicked && currentLink.siblings("ul").length) {
           currentLink.removeClass("not-expanded").addClass("expanded");
           currentLink.siblings("ul").show();
         }
