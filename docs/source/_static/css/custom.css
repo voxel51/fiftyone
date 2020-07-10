@@ -31,6 +31,11 @@ span.pre {
     padding-right: 25px;
   }
 
+  .pytorch-page-level-bar.left-menu-is-fixed {
+    left: 250px;
+    width: calc(100% - 250px);
+  }
+
   .pytorch-breadcrumbs-wrapper,
   .pytorch-content-left {
     margin-left: 25px;
@@ -38,6 +43,25 @@ span.pre {
 
   .pytorch-container {
     margin-left: 250px;
+  }
+
+  .pytorch-shortcuts-wrapper {
+    margin-left: 25px;
+  }
+
+  .pytorch-right-menu.scrolling-fixed {
+    left: calc(250px + ((100% - 250px) * 0.75) + 25px);
+    width: 250px;
+  }
+
+  .pytorch-right-menu .pytorch-side-scroll > ul {
+    padding-left: 25px;
+  }
+}
+
+@media screen and (min-width: 1600px) {
+  .pytorch-right-menu.scrolling-fixed {
+    left: calc(250px + 850px + 25px);
   }
 }
 
