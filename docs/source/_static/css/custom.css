@@ -224,7 +224,18 @@ article.pytorch-article .reference.download.internal {
 #nav__main__items {
   text-align: right;
   width: 100%;
-  max-width: 900px;
+}
+
+@media only screen and (min-width: 1101px) {
+  #nav__main__items {
+    margin-right: 19%;
+  }
+}
+
+@media only screen and (min-width: 1600px) {
+  #nav__main__items {
+    max-width: 800px;
+  }
 }
 
 .nav__main a {
