@@ -17,11 +17,23 @@ span.pre {
 @media screen and (min-width: 1101px) {
   .pytorch-left-menu {
     width: 250px;
+    padding-left: 25px;
+    padding-right: 0;
   }
 
   .pytorch-left-menu .pytorch-side-scroll {
     width: 100%;
     overflow-y: auto;
+  }
+
+  .pytorch-menu-vertical {
+    padding-left: 0;
+    padding-right: 25px;
+  }
+
+  .pytorch-breadcrumbs-wrapper,
+  .pytorch-content-left {
+    margin-left: 25px;
   }
 
   .pytorch-container {
