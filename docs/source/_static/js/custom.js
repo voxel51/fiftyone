@@ -12,8 +12,10 @@ $(function () {
 
   function updateSidebar(e) {
     let currentSection = undefined;
+    let clicked = false;
     if (e.target && e.target.href && e.target.href.indexOf("#") >= 0) {
       currentSection = e.target.href.split("#").pop();
+      clicked = true;
     } else {
       for (let i = sections.length - 1; i >= 0; i--) {
         if (
@@ -48,6 +50,11 @@ $(function () {
           .siblings("a.not-expanded")
           .removeClass("not-expanded")
           .addClass("expanded");
+
+        if (clicked) {
+          currentLink.removeClass("not-expanded").addClass("expanded");
+          currentLink.siblings("ul").show();
+        }
       }
     }
   }
