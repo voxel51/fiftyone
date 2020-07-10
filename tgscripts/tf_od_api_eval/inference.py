@@ -10,7 +10,6 @@ import os
 from PIL import Image, ImageOps
 import tensorflow as tf
 import tensorflow_hub as hub
-from tensorflow.keras.utils import Progbar
 
 
 # PARAMETERS ##################################################################
@@ -222,7 +221,7 @@ if __name__ == "__main__":
 
     # generate predictions
     detections = {}
-    pbar = Progbar(len(img_paths))
+    pbar = tf.keras.utils.Progbar(len(img_paths))
     for idx, img_path in enumerate(img_paths):
         image_id = os.path.splitext(os.path.basename(img_path))[0]
 
