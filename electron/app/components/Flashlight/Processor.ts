@@ -29,6 +29,55 @@ interface SegmentLayoutCache {
   [key: number]: any;
 }
 
+interface Offset {
+  index: number;
+  displacement: number;
+}
+
+interface SegmentLayout {
+  rows: Array<Row>;
+  top: number;
+  height: number;
+}
+
+enum ScrollDirection {
+  Up = "UP",
+  Down = "DOWN",
+}
+
+enum Base {
+  First = "FIRST",
+  Second = "SECOND",
+}
+
+type Bases = {
+  [key in Base]: SegmentLayout;
+};
+
+class ProcessorError extends Error {
+  readonly name: string = "ProcessorError";
+
+  constructor(message) {
+    super(message);
+  }
+}
+
+interface NumberValidator {
+  isValid(value: number): boolean;
+}
+
+class IntegerValidator {
+  static isValid(value: number): boolean {
+    return Number.isInteger(value);
+  }
+}
+
+class PositiveIntegerValidator implements NumberValidator {
+  static isValid(value: number): boolean {
+    return value > 0 && Number.isInteger(value);
+  }
+}
+
 class Processor {
   baseNumCols: number;
   baseItemSize: number;
@@ -42,6 +91,8 @@ class Processor {
   margin: number;
   rootIndex: number;
   socket: any;
+  scrollDirection: ScrollDirection = ScrollDirection.Down;
+  bases: Bases;
 
   private _itemRowCache: ItemRowCache = {};
   private _segmentDataCache: SegmentDataCache = {};
@@ -54,7 +105,7 @@ class Processor {
     margin: number,
     socket: any,
     rootIndex: number = 0,
-    viewCount: number
+    count: number
   ) {
     this.containerWidth = containerSize[0];
     this.containerHeight = containerSize[1];
@@ -63,7 +114,8 @@ class Processor {
     this.margin = margin;
     this.rootIndex = rootIndex;
     this.socket = socket;
-    this.count = viewCount;
+    this.count = count;
+    this.validate();
 
     this.baseNumCols = Processor.getBaseNumCols(this.containerWidth);
     this.baseItemSize = Processor.getBaseItemSize(
@@ -71,9 +123,37 @@ class Processor {
       this.containerWidth,
       this.margin
     );
+
+    this.bases;
   }
 
-  get currentListHeight(): number {
+  private validate(): void {
+    if (this.count < 1) {
+      throw new ProcessorError("count must be greater than zero");
+    }
+
+    if (this.containerWidth < 1) {
+      throw new ProcessorError("containerWidth must be greater than zero");
+    }
+
+    if (this.containerHeight < 1) {
+      throw new FlashlightProcessorError(
+        "containerHeight must be greater than zero"
+      );
+    }
+
+    if (this.itemsPerRequest < 1) {
+      throw new FlashlightProcessorError(
+        "itemsPerRequest must be greater than zero"
+      );
+    }
+
+    if (this.margin < 0) {
+      throw new FlashlightProcessorError("margin must be non-negative");
+    }
+  }
+
+  currentListHeight(): number {
     return (
       Math.ceil(this.count / this.baseNumCols) *
         (this.baseItemSize + this.margin) +
@@ -81,12 +161,14 @@ class Processor {
     );
   }
 
-  get currentDisplacement(): number {
+  currentOffset(): Offset {
     let currentTop = this.getTopFromIndex(this.rootIndex);
     let index = this.rootIndex;
+    let displacement;
     let segmentIndex;
     let segmentLayout;
     let row;
+
     while (currentTop < this.liveTop) {
       segmentIndex = Processor.getSegmentIndexFromItemIndex(
         index,
@@ -105,38 +187,18 @@ class Processor {
       }
     }
     row = this.getItemRow(index).items;
-    if (row.length === 0) return 0;
+    displacement =
+      row.length === 0
+        ? (displacement = 0)
+        : (currentTop - this.liveTop) / (row[0].height + this.margin);
 
-    return (currentTop - this.liveTop) / (row[0].height + this.margin);
+    return {
+      index,
+      displacement,
+    };
   }
 
-  get currentIndex(): number {
-    let currentTop = this.getTopFromIndex(this.rootIndex);
-    let index = this.rootIndex;
-    let segmentIndex;
-    let segmentLayout;
-    let row;
-
-    while (currentTop < this.liveTop) {
-      segmentIndex = Processor.getSegmentIndexFromItemIndex(
-        index,
-        this.itemsPerRequest
-      );
-      segmentLayout = this._segmentLayoutCache[segmentIndex];
-
-      if (segmentLayout && segmentLayout.top + segmentLayout.height > top) {
-        row = this._itemRowCache[(segmentIndex + 1) * this.itemsPerRequest - 1];
-        index = row[row.length - 1] + 1;
-        currentTop = segmentLayout.top + segmentLayout.height;
-      } else {
-        row = this.getItemRow(index).items;
-        index = row[row.length - 1].index + 1;
-        currentTop += row[0].height + this.margin;
-      }
-    }
-
-    return index;
-  }
+  get itemsToRender(): number {}
 
   set currentIndex(index: number) {
     this.rootIndex = index;
@@ -220,7 +282,7 @@ class Processor {
 
     const start = segmentIndex * this.itemsPerRequest;
     this._segmentItemIndicesCache[segmentIndex] = [
-      ...Array(this.itemsPerRequest).keys(),
+      ...Array(Math.min(this.itemsPerRequest, this.count - start)).keys(),
     ].map((i) => start + i);
 
     return this._segmentItemIndicesCache[segmentIndex];
@@ -271,5 +333,9 @@ class Processor {
     itemsPerRequest: number
   ): number {
     return Math.floor(itemIndex / itemsPerRequest);
+  }
+
+  static getNumSegments(count: number, itemsPerRequest: number): number {
+    return Math.ceil(count / itemsPerRequest);
   }
 }
