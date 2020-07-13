@@ -1,3 +1,8 @@
+/**
+ *
+ * @c
+ */
+
 interface Item {
   aspectRatio: number;
   index?: number;
@@ -54,27 +59,15 @@ type Bases = {
   [key in Base]: SegmentLayout;
 };
 
+function isPositiveInteger(value: number): boolean {
+  return value > 0 && Number.isInteger(value);
+}
+
 class ProcessorError extends Error {
   readonly name: string = "ProcessorError";
 
   constructor(message) {
     super(message);
-  }
-}
-
-interface NumberValidator {
-  isValid(value: number): boolean;
-}
-
-class IntegerValidator {
-  static isValid(value: number): boolean {
-    return Number.isInteger(value);
-  }
-}
-
-class PositiveIntegerValidator implements NumberValidator {
-  static isValid(value: number): boolean {
-    return value > 0 && Number.isInteger(value);
   }
 }
 
@@ -90,21 +83,30 @@ class Processor {
   itemsPerRequest: number;
   margin: number;
   rootIndex: number;
-  socket: any;
-  scrollDirection: ScrollDirection = ScrollDirection.Down;
-  bases: Bases;
+  private socket: any;
+  private scrollDirection: ScrollDirection = ScrollDirection.Down;
+  private bases: Bases;
 
-  private _itemRowCache: ItemRowCache = {};
-  private _segmentDataCache: SegmentDataCache = {};
-  private _segmentItemIndicesCache: SegmentItemIndicesCache = {};
-  private _segmentLayoutCache: SegmentLayoutCache = {};
+  private itemRowCache: ItemRowCache = {};
+  private segmentDataCache: SegmentDataCache = {};
+  private segmentItemIndicesCache: SegmentItemIndicesCache = {};
+  private segmentLayoutCache: SegmentLayoutCache = {};
 
+  /**
+   *
+   * @param containerSize
+   * @param itemsPerRequest
+   * @param margin
+   * @param socket
+   * @param rootIndex
+   * @param count
+   */
   constructor(
     containerSize: [number, number],
-    itemsPerRequest: number,
-    margin: number,
-    socket: any,
-    rootIndex: number = 0,
+    private itemsPerRequest: number,
+    private margin: number,
+    private socket: any,
+    private rootIndex: number = 0,
     count: number
   ) {
     this.containerWidth = containerSize[0];
@@ -128,31 +130,31 @@ class Processor {
   }
 
   private validate(): void {
-    if (this.count < 1) {
+    if (!isPositiveInteger(this.count)) {
       throw new ProcessorError("count must be greater than zero");
     }
 
-    if (this.containerWidth < 1) {
+    if (!isPositiveInteger(this.containerWidth)) {
       throw new ProcessorError("containerWidth must be greater than zero");
     }
 
-    if (this.containerHeight < 1) {
-      throw new FlashlightProcessorError(
-        "containerHeight must be greater than zero"
-      );
+    if (!isPositiveInteger(this.containerHeight)) {
+      throw new ProcessorError("containerHeight must be greater than zero");
     }
 
-    if (this.itemsPerRequest < 1) {
-      throw new FlashlightProcessorError(
-        "itemsPerRequest must be greater than zero"
-      );
+    if (!isPositiveInteger(this.containerWidth)) {
+      throw new ProcessorError("itemsPerRequest must be greater than zero");
     }
 
     if (this.margin < 0) {
-      throw new FlashlightProcessorError("margin must be non-negative");
+      throw new ProcessorError("margin must be non-negative");
     }
   }
 
+  /**
+   * @remarks
+   * This is
+   */
   currentListHeight(): number {
     return (
       Math.ceil(this.count / this.baseNumCols) *
@@ -161,7 +163,10 @@ class Processor {
     );
   }
 
-  currentOffset(): Offset {
+  /**
+   *
+   */
+  computeCurrentOffset(): Offset {
     let currentTop = this.getTopFromIndex(this.rootIndex);
     let index = this.rootIndex;
     let displacement;
@@ -174,10 +179,10 @@ class Processor {
         index,
         this.itemsPerRequest
       );
-      segmentLayout = this._segmentLayoutCache[segmentIndex];
+      segmentLayout = this.segmentLayoutCache[segmentIndex];
 
       if (segmentLayout && segmentLayout.top + segmentLayout.height > top) {
-        row = this._itemRowCache[(segmentIndex + 1) * this.itemsPerRequest - 1];
+        row = this.itemRowCache[(segmentIndex + 1) * this.itemsPerRequest - 1];
         index = row[row.length - 1] + 1;
         currentTop = segmentLayout.top + segmentLayout.height;
       } else {
@@ -198,22 +203,29 @@ class Processor {
     };
   }
 
-  get itemsToRender(): number {}
-
-  set currentIndex(index: number) {
-    this.rootIndex = index;
-  }
-
+  /**
+   * Returns the tiling threshold, currently the only hyperparameter of the algorithm.
+   *
+   * @remarks
+   * When a row meets this aspect ratio, we consider the row built. This is equivalent to the base number columns where items have a 1:1 aspect ratio
+   *
+   * @returns the aspect ratio threshold for row building
+   */
   get tilingThreshold(): number {
     return this.baseNumCols;
   }
 
-  animate(): void {
-    // Main function that sends updates
-  }
+  /**
+   *
+   */
+  animate(): void {}
 
+  /**
+   *
+   * @param index
+   */
   getItemData(index: number): Item {
-    const data = this._getItemDataFromCache(index);
+    const data = this.getItemDataFromCache(index);
     switch (data) {
       case "pending":
         return {
@@ -225,29 +237,40 @@ class Processor {
     }
   }
 
-  _getItemDataFromCache(index: number): Item | "pending" {
+  /**
+   *
+   * @param index
+   */
+  getItemDataFromCache(index: number): Item | "pending" {
     const data = this.getSegmentData(
       Processor.getSegmentIndexFromItemIndex(index, this.itemsPerRequest)
     );
     return data === "pending" ? data : data[index];
   }
-
+  /**
+   *
+   * @param segmentIndex
+   */
   getSegmentData(segmentIndex: number): Array<Item> | "pending" {
-    switch (this._segmentDataCache[segmentIndex]) {
+    switch (this.segmentDataCache[segmentIndex]) {
       case undefined:
-        this._segmentDataCache[segmentIndex] = "pending";
+        this.segmentDataCache[segmentIndex] = "pending";
         Processor.getPage(this.socket, segmentIndex).then((data) => {
-          this._segmentDataCache[segmentIndex] = data;
+          this.segmentDataCache[segmentIndex] = data;
           this.animate();
         });
         return "pending";
       case "pending":
         return "pending";
       default:
-        return this._segmentDataCache[segmentIndex];
+        return this.segmentDataCache[segmentIndex];
     }
   }
 
+  /**
+   *
+   * @param startIndex
+   */
   getItemRow(startIndex: number): Row {
     let index = startIndex;
     let aspectRatio = 0;
@@ -275,23 +298,31 @@ class Processor {
     };
   }
 
+  /**
+   *
+   * @param segmentIndex
+   */
   getSegmentItemIndices(segmentIndex: number): Array<number> {
-    if (segmentIndex in this._segmentItemIndicesCache) {
-      return this._segmentItemIndicesCache[segmentIndex];
+    if (segmentIndex in this.segmentItemIndicesCache) {
+      return this.segmentItemIndicesCache[segmentIndex];
     }
 
     const start = segmentIndex * this.itemsPerRequest;
-    this._segmentItemIndicesCache[segmentIndex] = [
+    this.segmentItemIndicesCache[segmentIndex] = [
       ...Array(Math.min(this.itemsPerRequest, this.count - start)).keys(),
     ].map((i) => start + i);
 
-    return this._segmentItemIndicesCache[segmentIndex];
+    return this.segmentItemIndicesCache[segmentIndex];
   }
 
+  /**
+   *
+   * @param index
+   */
   getTopFromIndex(index: number): number {
     index =
-      index in this._itemRowCache
-        ? this._itemRowCache[index].items[0].index
+      index in this.itemRowCache
+        ? this.itemRowCache[index].items[0].index
         : index;
     return (
       Math.max(0, Math.floor(index / this.baseNumCols) - 1) *
@@ -299,7 +330,11 @@ class Processor {
     );
   }
 
-  static getBaseNumCols(containerWidth: number): number {
+  /**
+   *
+   * @param containerWidth
+   */
+  private static getBaseNumCols(containerWidth: number): number {
     if (containerWidth <= 600) {
       return 2;
     } else if (containerWidth < 768) {
@@ -313,29 +348,54 @@ class Processor {
     }
   }
 
-  // todo socket type
-  static async getPage(socket: any, page: number): Promise<Array<Item>> {
+  /**
+   *
+   * @param socket
+   * @param page
+   */
+  private static async getPage(
+    socket: any,
+    page: number
+  ): Promise<Array<Item>> {
     return new Promise((resolve) => {
       socket.emit("page", page, (data) => resolve(data));
     });
   }
 
-  static getBaseItemSize(
+  /**
+   *
+   * @param baseNumCols
+   * @param containerWidth
+   * @param margin
+   */
+  private static getBaseItemSize(
     baseNumCols: number,
     containerWidth: number,
     margin: number
   ): number {
     return (containerWidth - (baseNumCols + 1) * margin) / baseNumCols;
   }
-
-  static getSegmentIndexFromItemIndex(
+  /**
+   *
+   * @param itemIndex
+   * @param itemsPerRequest
+   */
+  private static getSegmentIndexFromItemIndex(
     itemIndex: number,
     itemsPerRequest: number
   ): number {
     return Math.floor(itemIndex / itemsPerRequest);
   }
 
-  static getNumSegments(count: number, itemsPerRequest: number): number {
+  /**
+   *
+   * @param count
+   * @param itemsPerRequest
+   */
+  private static getNumSegments(
+    count: number,
+    itemsPerRequest: number
+  ): number {
     return Math.ceil(count / itemsPerRequest);
   }
 }

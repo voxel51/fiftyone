@@ -166,15 +166,6 @@ export const ticks = selector({
   },
 });
 
-export const numSegments = selector({
-  key: "numSegments",
-  get: ({ get }) => {
-    const ipr = get(itemsPerRequest);
-    const vc = get(viewCount);
-    return Math.ceil(vc / ipr);
-  },
-});
-
 export const segmentItemIndices = selectorFamily({
   key: "segmentItemIndices",
   get: (segmentIndex) => ({ get }) => {
@@ -311,91 +302,11 @@ export const listHeight = selectorFamily({
   },
 });
 
-export const baseNumCols = selectorFamily({
-  key: "baseNumCols",
-  get: (viewPortWidth) => ({ get }) => {
-    if (viewPortWidth <= 600) {
-      return 2;
-    } else if (viewPortWidth < 768) {
-      return 3;
-    } else if (viewPortWidth < 992) {
-      return 4;
-    } else if (viewPortWidth < 1200) {
-      return 5;
-    } else {
-      return 7;
-    }
-  },
-});
-
-export const tilingThreshold = selectorFamily({
-  key: "tilingThreshold",
-  get: (viewPortWidth) => ({ get }) => {
-    return get(baseNumCols(viewPortWidth));
-  },
-});
-
-export const itemRow = selectorFamily({
-  key: "itemRow",
-  get: ({ startIndex, endIndex, viewPortWidth }) => ({ get }) => {
-    const count = get(viewCount);
-    const threshold = get(tilingThreshold(viewPortWidth));
-    const margin = get(gridMargin);
-    let index = startIndex;
-    let aspectRatio = 0;
-    let data = [];
-    let item;
-    while (index < count && aspectRatio < threshold) {
-      if (endIndex !== null && index > endIndex) break;
-      item = get(itemIsLoaded(index))
-        ? get(itemData(index))
-        : get(baseItemData);
-      aspectRatio += item.aspectRatio;
-      data.push({ ...item, index });
-      index += 1;
-    }
-
-    const workingWidth = viewPortWidth - (data.length + 1) * margin;
-    const height = aspectRatio !== 0 ? workingWidth / aspectRatio : 0;
-
-    return {
-      data: data.map((item) => ({
-        ...item,
-        height,
-        width: item.aspectRatio * height,
-      })),
-      aspectRatio,
-    };
-  },
-});
-
-export const isSegmentStart = selectorFamily({
-  key: "isSegmentStart",
-  get: (index) => ({ get }) => {
-    const segmentLength = get(itemsPerRequest);
-    const count = get(viewCount);
-    if (index % segmentLength === 0) return true;
-    return false;
-  },
-});
-
 export const segmentsToRender = selector({
   key: "segmentsToRender",
   get: ({ get }) => {
     const index = get(currentIndex);
     return [0, 1];
-  },
-});
-
-export const itemsToRender = selector({
-  key: "itemsToRender",
-  get: ({ get }) => {
-    const segments = get(segmentsToRender);
-    let items = [];
-    for (let i = 0; i < segments.length; i++) {
-      items = [...items, ...get(segmentItemIndices(segments[i]))];
-    }
-    return items;
   },
 });
 
