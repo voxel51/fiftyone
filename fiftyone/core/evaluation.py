@@ -19,10 +19,7 @@ from builtins import *
 # pragma pylint: enable=wildcard-import
 
 from collections import defaultdict
-import datetime
-import inspect
 import logging
-import numbers
 import os
 
 import numpy as np
@@ -33,14 +30,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.collections as foc
 import fiftyone.core.metadata as fom
-import fiftyone.core.odm as foo
-import fiftyone.core.sample as fos
-from fiftyone.core.singleton import DatasetSingleton
-import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
-import fiftyone.utils.data as foud
 import fiftyone.utils.coco as fouc
 
 
@@ -60,9 +51,9 @@ def evaluate_detections(dataset, prediction_field, gt_field="ground_truth"):
             evaluation
     """
 
-    image_id = -1
-    anno_id = -1
-    det_id = -1
+    image_id = 0
+    anno_id = 0
+    det_id = 0
 
     images = []
     annotations = []
@@ -132,8 +123,7 @@ def evaluate_detections(dataset, prediction_field, gt_field="ground_truth"):
                 predictions.append(obj.__dict__)
 
             sample.save()
-
-
+        
     # Populate observed category IDs, if necessary
     classes = sorted(_classes)
     labels_map_rev = {c: i for i, c in enumerate(classes)}
@@ -231,12 +221,12 @@ def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
                             matches[image_id] = {}
                         for dt_ind, dt_id in enumerate(e['dtIds']):
                             dt_matches = e['dtMatches']
-                            matches[image_id][dt_id] = {}
-                            matches[image_id][dt_id]["gtId_5"] = \
+                            matches[image_id][dt_id-1] = {}
+                            matches[image_id][dt_id-1]["gtId_5"] = \
                                 dt_matches[0, dt_ind] 
-                            matches[image_id][dt_id]["gtId_75"] = \
+                            matches[image_id][dt_id-1]["gtId_75"] = \
                                 dt_matches[5, dt_ind] 
-                            matches[image_id][dt_id]["gtId_95"] = \
+                            matches[image_id][dt_id-1]["gtId_95"] = \
                                 dt_matches[-1, dt_ind] 
 
                     dtScores = np.array(e['dtScores'][0:maxDet])
@@ -270,9 +260,9 @@ def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
                         ss = np.zeros((R,))
 
                         if nd:
-                            sample_r[e['image_id'],t,k,a] = rc[-1]
+                            sample_r[e['image_id']-1,t,k,a] = rc[-1]
                         else:
-                            sample_r[e['image_id'],t,k,a] = 0
+                            sample_r[e['image_id']-1,t,k,a] = 0
 
                         # numpy is slow without cython optimization for accessing elements
                         # use python array gets significant speed improvement
@@ -290,62 +280,60 @@ def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
                         except:
                             pass
 
-                        sample_p[e['image_id'],t,:,k,a] = np.array(q)
-                        sample_s[e['image_id'],t,:,k,a] = np.array(ss)
+                        sample_p[e['image_id']-1,t,:,k,a] = np.array(q)
+                        sample_s[e['image_id']-1,t,:,k,a] = np.array(ss)
 
     logger.info("Adding evaluation results to dataset")
-    #with fou.ProgressBar() as pb:
-    # Write sample-wise metrics to database
-    #for image_id in pb(p.imgIds):
-    for image_id in p.imgIds:
+    with fou.ProgressBar() as pb:
+        # Write sample-wise metrics to database
+        for image_id in pb(p.imgIds):
+            sample = dataset[sample_id_map[image_id]]
+            # AP, AP@0.5, AP@0.75, AP small, AP med, AP large 
+            # areaRng = ["all", "small", "medium", "large"]
+            # maxDets = [1,10,100]
+            # iouThrs = [0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95] 
 
-        sample = dataset[sample_id_map[image_id]]
-        # AP, AP@0.5, AP@0.75, AP small, AP med, AP large 
-        # areaRng = ["all", "small", "medium", "large"]
-        # maxDets = [1,10,100]
-        # iouThrs = [0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95] 
+            aind = 0 # "all"
+            s_AP = sample_p[image_id-1,:,:,:,aind]
+            if len(s_AP[s_AP>-1])>0:
+                sample["AP"] = np.mean(s_AP[s_AP>-1])
 
-        aind = 0 # "all"
-        s_AP = sample_p[image_id,:,:,:,aind]
-        if len(s_AP[s_AP>-1])>0:
-            sample["AP"] = np.mean(s_AP[s_AP>-1])
+            iouind = 0 # 0.5
+            s_AP_0_5 = sample_p[image_id-1,iouind,:,:,aind]
+            if len(s_AP_0_5[s_AP_0_5>-1])>0:
+                sample["AP_0_5"] = np.mean(s_AP_0_5[s_AP_0_5>-1])
 
-        iouind = 0 # 0.5
-        s_AP_0_5 = sample_p[image_id,iouind,:,:,aind]
-        if len(s_AP_0_5[s_AP_0_5>-1])>0:
-            sample["AP_0_5"] = np.mean(s_AP_0_5[s_AP_0_5>-1])
+            iouind = 5 # 0.75
+            s_AP_0_75 = sample_p[image_id-1,iouind,:,:,aind]
+            if len(s_AP_0_75[s_AP_0_75>-1])>0:
+                sample["AP_0_75"] = np.mean(s_AP_0_75[s_AP_0_75>-1])
 
-        iouind = 5 # 0.75
-        s_AP_0_75 = sample_p[image_id,iouind,:,:,aind]
-        if len(s_AP_0_75[s_AP_0_75>-1])>0:
-            sample["AP_0_75"] = np.mean(s_AP_0_75[s_AP_0_75>-1])
+            aind = 1 # "small"
+            s_AP_small = sample_p[image_id-1,:,:,:,aind]
+            if len(s_AP_small[s_AP_small>-1])>0:
+                sample["AP_small"] = np.mean(s_AP_small[s_AP_small>-1])
 
-        aind = 1 # "small"
-        s_AP_small = sample_p[image_id,:,:,:,aind]
-        if len(s_AP_small[s_AP_small>-1])>0:
-            sample["AP_small"] = np.mean(s_AP_small[s_AP_small>-1])
+            aind = 2 # "medium"
+            s_AP_medium = sample_p[image_id-1,:,:,:,aind]
+            if len(s_AP_medium[s_AP_medium>-1])>0:
+                sample["AP_medium"] = np.mean(s_AP_medium[s_AP_medium>-1])
 
-        aind = 2 # "medium"
-        s_AP_medium = sample_p[image_id,:,:,:,aind]
-        if len(s_AP_medium[s_AP_medium>-1])>0:
-            sample["AP_medium"] = np.mean(s_AP_medium[s_AP_medium>-1])
+            aind = 3 # "large"
+            s_AP_large = sample_p[image_id-1,:,:,:,aind]
+            if len(s_AP_large[s_AP_large>-1])>0:
+                sample["AP_large"] = np.mean(s_AP_large[s_AP_large>-1])
 
-        aind = 3 # "large"
-        s_AP_large = sample_p[image_id,:,:,:,aind]
-        if len(s_AP_large[s_AP_large>-1])>0:
-            sample["AP_large"] = np.mean(s_AP_large[s_AP_large>-1])
+            for det in sample[prediction_field].detections:
+                det_id = det.attributes["coco_id"].value-1
+                gtId_5 = matches[image_id][det_id]["gtId_5"] 
+                gtId_75 = matches[image_id][det_id]["gtId_75"] 
+                gtId_95 = matches[image_id][det_id]["gtId_95"] 
+                det.attributes["gtId_5"] = \
+                    fo.core.labels.NumericAttribute(value=gtId_5)
+                det.attributes["gtId_75"] = \
+                    fo.core.labels.NumericAttribute(value=gtId_75)
+                det.attributes["gtId_95"] = \
+                    fo.core.labels.NumericAttribute(value=gtId_95)
 
-        for det in sample[prediction_field].detections:
-            det_id = det.attributes["coco_id"].value
-            gtId_5 = matches[image_id][det_id]["gtId_5"] 
-            gtId_75 = matches[image_id][det_id]["gtId_75"] 
-            gtId_95 = matches[image_id][det_id]["gtId_95"] 
-            det.attributes["gtId_5"] = \
-                fo.core.labels.NumericAttribute(value=gtId_5)
-            det.attributes["gtId_75"] = \
-                fo.core.labels.NumericAttribute(value=gtId_75)
-            det.attributes["gtId_95"] = \
-                fo.core.labels.NumericAttribute(value=gtId_95)
-
-        
-        sample.save()
+            
+            sample.save()
