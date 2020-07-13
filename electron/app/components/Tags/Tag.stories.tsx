@@ -6,4 +6,4 @@ export default {
   title: "Tag",
 };
 
-export const standard = () => <Tag>tag</Tag>;
+export const standard = () => <Tag name="tag"></Tag>;
