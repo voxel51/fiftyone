@@ -1,5 +1,22 @@
 # Evaluating a SOTA Model Using Tensorflow Object Detection API
 
+## ?. Install requirements
+
+Install the appropriate version of `tensorflow` depending on whether or not
+you have a GPU:
+
+```bash
+pip install tensorflow
+# OR
+pip install tensorflow-gpu
+```
+
+Install other requirements:
+
+```bash
+pip install -r requirements.txt
+```
+
 ## 1. Download the test data
 
 Follow

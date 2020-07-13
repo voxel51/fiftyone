@@ -1,3 +1,2 @@
 Pillow
-tensorflow
 tensorflow-hub
