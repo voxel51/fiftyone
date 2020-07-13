@@ -114,7 +114,7 @@ HIERARCHY_FILE=v4/bbox_labels_600_hierarchy.json
 BOUNDING_BOXES=v4/test-annotations-bbox
 IMAGE_LABELS=v4/test-annotations-human-imagelabels-boxable
 INPUT_PREDICTIONS=v4/google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions.csv
-OUTPUT_METRICS=output_metrics
+OUTPUT_METRICS=output_metrics.csv
 
 python object_detection/metrics/oid_challenge_evaluation.py \
     --input_annotations_boxes=${BOUNDING_BOXES}_expanded.csv \

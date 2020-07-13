@@ -14,6 +14,9 @@ from object_detection.protos import string_int_label_map_pb2
 from object_detection.utils import object_detection_evaluation
 
 
+from object_detection.utils import per_image_evaluation
+
+
 ###############################################################################
 
 HIERARCHY_FILE = "/Users/tylerganter/data/open-images-dataset/v4/bbox_labels_600_hierarchy.json"
