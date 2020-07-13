@@ -77,8 +77,26 @@ if __name__ == "__main__":
 
     print("Reading labelmap...")
     class_label_map, categories = _load_labelmap(CLASS_LABELMAP)
+
+
     challenge_evaluator = object_detection_evaluation.OpenImagesChallengeEvaluator(
         categories, evaluate_masks=is_instance_segmentation_eval
+    )
+    # recall_lower_bound = 0.0
+    # recall_upper_bound = 1.0
+    # evaluate_corlocs = False
+    # evaluate_precision_recall = False
+    # metric_prefix = None
+    # use_weighted_mean_ap = False
+    # evaluate_masks = is_instance_segmentation_eval
+    num_classes = max([cat['id'] for cat in categories])
+    if min(cat['id'] for cat in categories) < 1:
+        raise ValueError('Classes should be 1-indexed.')
+
+    per_image_eval = per_image_evaluation.PerImageEvaluation(
+        num_groundtruth_classes=num_classes,
+        nms_iou_threshold=1.0,
+        nms_max_output_boxes=10000
     )
 
     print("Reading predictions...")
@@ -86,16 +104,22 @@ if __name__ == "__main__":
     images_processed = 0
 
     print("Processing...")
-    for image_id, cur_predictions in all_predictions.groupby("ImageID"):
+    # for image_id, cur_predictions in all_predictions.groupby("ImageID"):
+    for image_id in ["0032485d3a9720dc"]:
         print("Processing image %d" % images_processed)
 
         cur_groundtruth = all_annotations.loc[
             all_annotations["ImageID"] == image_id
         ]
 
+        cur_predictions = all_predictions.loc[
+            all_predictions["ImageID"] == image_id
+        ]
+
         groundtruth_dictionary = utils.build_groundtruth_dictionary(
             cur_groundtruth, class_label_map
         )
+
         prediction_dictionary = utils.build_predictions_dictionary(
             cur_predictions, class_label_map
         )
@@ -109,9 +133,6 @@ if __name__ == "__main__":
         )
 
         images_processed += 1
-
-        if images_processed > 10:
-            break
 
     metrics = challenge_evaluator.evaluate()
 
