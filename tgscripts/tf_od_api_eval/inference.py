@@ -156,26 +156,62 @@ class TensorFlowHubDetector:
         return detections
 
 
-def detections_to_csv(detections, output_path):
+def detections_to_csv(detections, output_path, format="oi_kaggle"):
     """Writes the detections to a CSV file.
 
-    Output file structure will have a single header row followed by one row
-    per image as follows:
+    FORMAT: "oi_kaggle" (Open Images Kaggle Competition)
 
-        ImageID,PredictionString
-        ImageID,{Label Confidence XMin YMin XMax YMax} {...}
+        Output file structure will have a single header row followed by one row
+        per image as follows:
 
-    Example output for two images with two detections each:
+            ImageID,PredictionString
+            ImageID,{Label Confidence XMin YMin XMax YMax} {...}
 
-        ImageID,PredictionString
-        b5d912e06f74e948,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
-        be137cf6bb0b62d5,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
+        Example output for two images with two detections each:
+
+            ImageID,PredictionString
+            b5d912e06f74e948,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
+            be137cf6bb0b62d5,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
+
+    FORMAT: "tf_object_detection_api" (Tensorflow Object Detection API)
+
+        Output file structure will have a single header row followed by one row
+        per detection as follows:
+
+            ImageID,LabelName,Score,XMin,XMax,YMin,YMax
+            ...,...,...,...,...,...,...
+            ...,...,...,...,...,...,...
+
+        Example output for two images with two detections each:
+
+            ImageID,LabelName,Score,XMin,XMax,YMin,YMax
+            000026e7ee790996,/m/07j7r,0.1,0.071905,0.145346,0.206591,0.391306
+            000026e7ee790996,/m/07j7r,0.2,0.439756,0.572466,0.264153,0.435122
+            000062a39995e348,/m/015p6,0.4,0.205719,0.849912,0.154144,1.000000
+            000062a39995e348,/m/05s2s,0.5,0.137133,0.377634,0.000000,0.884185
 
     Args:
         detections: reshaped output list of detection dicts output from
             TensorFlowHubDetector.detect()
         output_path: the CSV filepath to write to
+        format:
+            either "oi_kaggle" or "tf_object_detection_api"
+            "oi_kaggle": open images kaggle competition format
+            "tf_object_detection_api": Tensorflow Object Detection API format
     """
+    if format == "oi_kaggle":
+        _detections_to_csv_oi_kaggle(
+            detections=detections, output_path=output_path
+        )
+    elif format == "tf_object_detection_api":
+        _detections_to_csv_tf_obj_det(
+            detections=detections, output_path=output_path
+        )
+    else:
+        raise ValueError("Unknown CSV output format: %s" % format)
+
+
+def _detections_to_csv_oi_kaggle(detections, output_path):
     write_header = not os.path.exists(output_path)
 
     with open(output_path, "a") as csvfile:
@@ -205,7 +241,44 @@ def detections_to_csv(detections, output_path):
             writer.writerow([image_id, preds_str])
 
 
-def csv_to_detections(input_path):
+def _detections_to_csv_tf_obj_det(detections, output_path):
+    write_header = not os.path.exists(output_path)
+
+    #
+
+    with open(output_path, "a") as csvfile:
+        writer = csv.writer(csvfile)
+
+        # write header
+        if write_header:
+            writer.writerow(
+                [
+                    "ImageID",
+                    "LabelName",
+                    "Score",
+                    "XMin",
+                    "XMax",
+                    "YMin",
+                    "YMax",
+                ]
+            )
+
+        for image_id, cur_dets in detections.items():
+            for det in cur_dets:
+                writer.writerow(
+                    [
+                        image_id,  # ImageID
+                        det["Class Name"].decode("utf-8"),  # LabelName
+                        "%.4f" % det["Confidence"],  # Score
+                        "%.4f" % det["XMin"],  # XMin
+                        "%.4f" % det["XMax"],  # XMax
+                        "%.4f" % det["YMin"],  # YMin
+                        "%.4f" % det["YMax"],  # YMax
+                    ]
+                )
+
+
+def csv_to_detections(input_path, format="oi_kaggle"):
     if not os.path.exists(input_path):
         return {}
 
@@ -219,7 +292,7 @@ def csv_to_detections(input_path):
                 continue
 
             image_id, preds_str = row
-            
+
             image_ids.add(image_id)
 
     return image_ids
