@@ -197,7 +197,8 @@ def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
     setI = set(_pe.imgIds)
     # get inds to evaluate
     k_list = [n for n, k in enumerate(p.catIds)  if k in setK]
-    a_list = [n for n, a in enumerate(map(lambda x: tuple(x), p.areaRng)) if a in setA]
+    a_list = [n for n, a in enumerate(map(lambda x: tuple(x), p.areaRng)) 
+            if a in setA]
     i_list = [n for n, i in enumerate(p.imgIds)  if i in setI]
     I0 = len(_pe.imgIds)
     A0 = len(_pe.areaRng)
@@ -231,8 +232,9 @@ def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
 
                     dtScores = np.array(e['dtScores'][0:maxDet])
 
-                    # different sorting method generates slightly different results.
-                    # mergesort is used to be consistent as Matlab implementation.
+                    # different sorting method generates slightly different 
+                    # results. mergesort is used to be consistent as Matlab 
+                    # implementation.
                     inds = np.argsort(-dtScores, kind='mergesort')
                     dtScoresSorted = dtScores[inds]
 
@@ -240,10 +242,9 @@ def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
                     dtIg = np.array(e['dtIgnore'][:,0:maxDet][:,inds])
                     gtIg = np.array(e['gtIgnore'])
                     npig = np.count_nonzero(gtIg==0 )
-                    #if npig == 0:
-                    #    continue
-                    tps = np.logical_and(               dtm,  np.logical_not(dtIg) )
-                    fps = np.logical_and(np.logical_not(dtm), np.logical_not(dtIg) )
+                    tps = np.logical_and(dtm, np.logical_not(dtIg))
+                    fps = np.logical_and(np.logical_not(dtm), 
+                            np.logical_not(dtIg))
 
                     tp_sum = np.cumsum(tps, axis=1).astype(dtype=np.float)
                     fp_sum = np.cumsum(fps, axis=1).astype(dtype=np.float)
@@ -264,8 +265,9 @@ def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
                         else:
                             sample_r[e['image_id']-1,t,k,a] = 0
 
-                        # numpy is slow without cython optimization for accessing elements
-                        # use python array gets significant speed improvement
+                        # numpy is slow without cython optimization for 
+                        # accessing elements use python array gets 
+                        # significant speed improvement
                         pr = pr.tolist(); q = q.tolist()
 
                         for i in range(nd-1, 0, -1):
