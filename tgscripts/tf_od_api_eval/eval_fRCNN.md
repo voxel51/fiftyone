@@ -2,8 +2,8 @@
 
 ## ?. Install requirements
 
-Install the appropriate version of `tensorflow` depending on whether or not
-you have a GPU:
+Install the appropriate version of `tensorflow` depending on whether or not you
+have a GPU:
 
 ```bash
 pip install tensorflow

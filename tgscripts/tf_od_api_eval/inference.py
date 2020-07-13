@@ -17,6 +17,8 @@ import tensorflow_hub as hub
 # SPLIT = "validation"
 SPLIT = "test"
 
+SAVE_EVERY = 10
+
 # Specify Model Handle
 # MODEL_HANDLE = "https://tfhub.dev/google/openimages_v4/ssd/mobilenet_v2/1"
 MODEL_HANDLE = (
@@ -174,12 +176,14 @@ def detections_to_csv(detections, output_path):
             TensorFlowHubDetector.detect()
         output_path: the CSV filepath to write to
     """
+    write_header = not os.path.exists(output_path)
 
-    with open(output_path, "w") as csvfile:
+    with open(output_path, "a") as csvfile:
         writer = csv.writer(csvfile)
 
         # write header
-        writer.writerow(["ImageID", "PredictionString"])
+        if write_header:
+            writer.writerow(["ImageID", "PredictionString"])
 
         for image_id, cur_dets in detections.items():
             preds_str = " ".join(
@@ -201,6 +205,23 @@ def detections_to_csv(detections, output_path):
             writer.writerow([image_id, preds_str])
 
 
+def csv_to_detections(input_path):
+    if not os.path.exists(input_path):
+        return {}
+
+    with open(input_path) as csvfile:
+        reader = csv.reader(csvfile)
+
+        for row_no, row in enumerate(reader):
+            if row_no == 0:
+                continue
+
+            print(row)
+
+            image_id, preds_str = row
+            print(image_id)
+
+
 if __name__ == "__main__":
     # load detector
     detector = TensorFlowHubDetector(model_handle=MODEL_HANDLE)
@@ -219,6 +240,8 @@ if __name__ == "__main__":
         output_dir, "%s_predictions.csv" % model_name
     )
 
+    temp = csv_to_detections(output_predictions_path)
+
     # generate predictions
     detections = {}
     pbar = tf.keras.utils.Progbar(len(img_paths))
@@ -229,4 +252,6 @@ if __name__ == "__main__":
 
         pbar.update(idx)
 
-    detections_to_csv(detections, output_predictions_path)
+        if idx % SAVE_EVERY == 0:
+            detections_to_csv(detections, output_predictions_path)
+            detections = {}
