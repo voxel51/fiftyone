@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class StateDescription(etas.Serializable):
-    """Class that describes the shared state between the FiftyOne Dashboard and
+    """Class that describes the shared state between the FiftyOne App and
     a corresponding :class:`fiftyone.core.session.Session`.
 
     Attributes:

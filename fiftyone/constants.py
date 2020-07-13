@@ -18,8 +18,8 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from datetime import datetime
 import os
-import sys
 
 try:
     from importlib.metadata import metadata  # Python 3.8
@@ -31,11 +31,12 @@ FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
-EXAMPLES_DIR = os.path.join(FIFTYONE_DIR, "examples")
-if not os.path.isdir(EXAMPLES_DIR):
-    EXAMPLES_DIR = os.path.join(BASE_DIR, "examples")
+RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
+
 DEV_INSTALL = os.path.isdir(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
+    os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
+    )
 )
 
 # Package metadata
@@ -48,6 +49,7 @@ AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
 VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
+COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
 
 # MongoDB setup
 try:
@@ -66,4 +68,6 @@ SERVER_ADDR = "http://127.0.0.1:%d"
 try:
     from fiftyone.gui import FIFTYONE_APP_DIR
 except ImportError:
-    FIFTYONE_APP_DIR = os.path.join(FIFTYONE_DIR, "../electron")
+    FIFTYONE_APP_DIR = os.path.normpath(
+        os.path.join(FIFTYONE_DIR, "../electron")
+    )

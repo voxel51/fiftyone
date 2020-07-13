@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<annotations>
+    <version>{{ version }}</version>
+    <meta>
+        <task>
+            <size>{{ size }}</size>
+            <mode>{{ mode }}</mode>
+            <labels>
+{% for label in labels %}
+                <label>
+                    <name>{{ label.name }}</name>
+                    <attributes>
+{% for attribute in label.attributes %}
+                        <attribute>
+                            <name>{{ attribute.name }}</name>
+                            <values>{{ attribute.categories|join(',') }}</value>
+                        </attribute>
+{% endfor %}
+                    </attributes>
+                </label>
+{% endfor %}
+            </labels>
+        </task>
+        <dumped>{{ dumped }}</dumped>
+    </meta>
+{% for image in images %}
+    <image id="{{ image.id }}" name="{{ image.name }}" width="{{ image.width }}" height="{{ image.height }}">
+{% for box in image.boxes %}
+        <box label="{{ box.label }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"
+            {%- for attr in box.attributes %} {{ attr.name }}="{{ attr.value }}"
+            {%- endfor -%}>
+        </box>
+{% endfor %}
+    </image>
+{% endfor %}
+</annotations>

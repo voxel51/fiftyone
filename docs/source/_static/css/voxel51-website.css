@@ -1,0 +1,433 @@
+:root {
+  --color-primary: rgb(255, 109, 4);
+  --color-primary-muted: rgb(208, 87, 0);
+  --color-primary-saturated: rgb(255, 240, 229);
+
+  --color-secondary: rgb(73, 156, 239);
+  --color-secondary-saturated: rgb(165, 205, 247);
+
+  --color-tertiary: rgb(109, 4, 255);
+  --color-tertiary-saturated: rgb(182, 129, 255);
+
+  --gray-dark1: rgb(23, 25, 28);
+  --gray-dark2: rgb(33, 37, 41);
+  --gray-dark3: rgb(108, 117, 125);
+  --gray-neutral: rgb(166, 167, 169);
+  --gray-light3: rgb(232, 233, 233);
+  --gray-light2: rgb(244, 244, 244);
+  --gray-light1: rgb(255, 255, 255);
+
+  --transparent: rgba(0, 0, 0, 0);
+
+  --green-check: rgb(83, 182, 129);
+  --purple-check: rgb(265, 100, 51);
+
+  --text-brand: var(--color-primary);
+  --text-primary: var(--gray-dark1);
+  --text-primary-on-light: var(--gray-dark1);
+  --text-primary-on-dark: var(--gray-light1);
+  --text-secondary-on-light: var(--gray-dark3);
+  --text-secondary-on-dark: var(--gray-neutral);
+  --text-tertiary-on-light: var(--gray-light2);
+  --text-tertiary-on-dark: var(--gray-light3);
+
+  --fontsize-body: 1.8rem;
+  --fontsize-body-smaller: 1.4rem;
+  --fontsize-body-smallest: 1.25rem;
+
+  --bg-brand: var(--color-primary);
+  --bg-light-primary: var(--gray-light1);
+  --bg-light-secondary: var(--gray-light2);
+  --bg-dark-primary: var(--gray-dark2);
+  --bg-dark-secondary: var(--gray-dark1);
+
+  --padding-x: 10rem;
+  --padding-y: 10rem;
+}
+
+/*  NAV  */
+
+.nav__main {
+  background-color: var(--bg-dark-primary);
+  color: var(--text-primary-on-dark);
+  font-size: var(--fontsize-body-smaller);
+
+  padding: 1rem var(--padding-x);
+
+  z-index: 100;
+  min-width: 100vw;
+  height: 90px; /* this is a fixed height */
+
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@media screen and (min-width: 1240px) {
+  .nav__main {
+    padding: 1rem calc((100vw - 1040px) / 2);
+  }
+}
+
+.nav__main img {
+  width: 180px;
+}
+
+#nav__main__mobilebutton--on,
+#nav__main__mobilebutton--off {
+  display: none;
+}
+
+#nav__main__items {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.nav__spacer {
+  min-width: 2rem;
+}
+
+.nav__item {
+  padding: 0 1rem;
+  color: var(--text-primary-on-dark);
+}
+
+.nav__item a {
+  color: var(--text-primary-on-dark);
+  text-decoration: none;
+}
+
+.nav__item a:hover {
+  text-decoration: underline;
+}
+
+.nav__item--brand {
+  color: var(--color-primary);
+}
+
+.nav__item--brand a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.nav__item--brand a:hover {
+  text-decoration: underline;
+}
+
+/* mobile responsive nav elements all here */
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  /* navs do not stay at top in mobile mode */
+  .stay_at_top {
+    position: relative;
+  }
+
+  .nav__main {
+    font-size: var(--fontsize-body-smaller);
+
+    padding: 1rem 3rem;
+
+    z-index: 100;
+    min-width: 100vw;
+    height: 50px;
+
+    position: relative;
+  }
+
+  .nav__main__logo {
+    width: 100%;
+    min-width: 100%;
+    height: 50px;
+
+    padding: 0.5rem;
+
+    display: flex;
+    justify-content: center;
+  }
+
+  .nav__main img,
+  .nav__main__logo img {
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  #nav__main__mobilebutton--on {
+    display: block;
+    position: absolute;
+    right: 1rem;
+  }
+
+  #nav__main__mobilebutton--off {
+    display: none;
+    position: absolute;
+    right: 1rem;
+  }
+
+  #nav__main__mobilebutton--on a,
+  #nav__main__mobilebutton--off a {
+    color: var(--text-secondary-on-dark);
+  }
+
+  #nav__main__items {
+    display: none;
+    z-index: 102;
+
+    background-color: var(--bg-dark-primary);
+    width: 100%;
+
+    position: absolute;
+    left: 0;
+    top: 100%;
+
+    padding: 1rem 3rem;
+  }
+
+  #nav__main__items .nav__item {
+    z-index: 102;
+  }
+
+  .nav__spacer {
+    display: none;
+  }
+
+  .nav__divider {
+    display: none;
+  }
+
+  .nav__dropdown {
+    position: relative;
+    display: block;
+  }
+
+  .nav__dropdown .arrow-up--light-primary {
+    display: none;
+  }
+
+  .nav__dropdown__trigger {
+    cursor: inherit;
+  }
+
+  .nav__dropdown__menu {
+    display: block;
+    position: relative;
+    background-color: inherit;
+
+    left: inherit;
+
+    margin-top: 0rem;
+    padding: 0rem 3rem;
+  }
+
+  .nav__dropdown__menu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .nav__dropdown__menu a {
+    color: var(--text-secondary-on-dark);
+  }
+
+  .nav__dropdown:hover .nav__dropdown__trigger {
+    color: var(--text-secondary-on-dark);
+  }
+
+  .nav__dropdown:hover .nav__dropdown__menu {
+    display: block;
+  }
+
+  /* functionality now is to make the product nav disappear in phone view and only show logo */
+
+  .nav__product {
+    z-index: 99;
+  }
+
+  .nav__product__items {
+    display: none;
+  }
+
+  .nav__product__logo {
+    width: 100%;
+    min-width: 100%;
+    height: 40px;
+
+    padding: 0.5rem;
+
+    display: flex;
+    justify-content: center;
+  }
+
+  .nav__product img,
+  .nav__product__logo img {
+    object-fit: contain;
+    max-width: 100%;
+    max-height: 100%;
+  }
+} /* end of media query for mobile responsive nav */
+
+/* FOOTER */
+/* Footer uses grid to keep everything aligned. */
+.footer {
+  display: grid;
+  grid-template-columns: 20% 25% 15% 40%;
+  grid-template-rows: 1fr 1fr auto;
+  grid-template-areas:
+    "logo address . links"
+    ". contact . links"
+    "copyright copyright copyright icons";
+
+  background: var(--bg-dark-secondary);
+  color: var(--text-secondary-on-dark);
+  font-size: 1.5rem;
+  padding-bottom: 1rem;
+}
+
+.footer a {
+  color: var(--text-secondary-on-dark);
+}
+
+.footer__copyright {
+  grid-area: copyright;
+  align-self: end;
+  justify-self: start;
+
+  padding-top: 3rem;
+}
+
+.footer__icons {
+  grid-area: icons;
+  align-self: end;
+  justify-self: end;
+
+  padding-top: 3rem;
+}
+
+.footer__logo {
+  grid-area: logo;
+  align-self: start;
+  justify-self: start;
+}
+
+.footer__logo img {
+  width: 80%;
+}
+
+.footer__address {
+  grid-area: address;
+}
+
+.footer__contact {
+  grid-area: contact;
+}
+
+.footer__links {
+  grid-area: links;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.footer__links a {
+  display: block;
+}
+
+.footer__links p {
+  font-size: unset;
+}
+
+.footer__links--col1 {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.footer__links--col2 {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.footer__links--col3 {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+/* Use Media Query for Mobile to Change Footer Completely */
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .footer {
+    display: grid;
+    grid-template-columns: 100%;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "logo"
+      "copyright"
+      "icons";
+
+    background: var(--bg-dark-secondary);
+    color: var(--text-secondary-on-dark);
+    font-size: 1.2rem;
+    padding-top: 3rem;
+    padding-bottom: 1rem;
+
+    justify-items: center;
+    align-items: center;
+  }
+
+  .footer__copyright {
+    grid-area: copyright;
+
+    align-self: center;
+    justify-self: center;
+
+    padding-top: 1rem;
+  }
+
+  .footer__icons {
+    grid-area: icons;
+    align-self: center;
+    justify-self: center;
+
+    padding-top: 1rem;
+    font-size: 1.5rem;
+  }
+
+  .footer__logo {
+    grid-area: logo;
+    align-self: center;
+    justify-self: center;
+    text-align: center;
+  }
+
+  .footer__logo img {
+    width: 50%;
+  }
+
+  .footer__address {
+    display: none;
+  }
+
+  .footer__contact {
+    display: none;
+  }
+
+  .footer__links {
+    display: none;
+  }
+}
+
+/* lists.  info: https://www.blustemy.io/styling-inline-lists-in-css/ */
+.list-inline {
+  list-style: none;
+  padding: 0;
+}
+
+.list-inline > li {
+  display: inline;
+}
+
+.list-inline > li:not(:last-child) {
+  padding-right: 2rem;
+}

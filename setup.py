@@ -6,8 +6,6 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
@@ -28,20 +26,21 @@ class BdistWheelCustom(bdist_wheel):
 
 setup(
     name="fiftyone",
-    version="0.2.1",
-    description="Project FiftyOne",
+    version="0.3.0",
+    description=(
+        "FiftyOne: a powerful package for dataset curation, analysis, and "
+        "visualization"
+    ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="",
-    packages=find_packages(exclude=["fiftyone.experimental"])
-    + ["fiftyone.examples"],
-    package_dir={"fiftyone.examples": "examples"},
-    include_package_data=True,
-    exclude_package_data={
-        "fiftyone": ["experimental/*"],
-        "fiftyone.examples": ["archive/*", "data/*"],
+    packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
+    package_dir={
+        "fiftyone.recipes": "docs/source/recipes",
+        "fiftyone.tutorials": "docs/source/tutorials",
     },
+    include_package_data=True,
     install_requires=[
         # third-party packages
         "argcomplete",
@@ -49,6 +48,7 @@ setup(
         "Flask",
         "flask-socketio",
         "future",
+        "Jinja2",
         "mongoengine",
         "numpy",
         "packaging",
@@ -63,6 +63,7 @@ setup(
         "retrying",
         "setuptools",
         "tabulate",
+        "xmltodict",
         # internal packages
         "voxel51-eta>=0.1.1",
     ],

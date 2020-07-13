@@ -170,11 +170,6 @@ class ODMSample(SerializableDocument):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
-    def _to_str_dict(self, for_repr=False):
-        d = {"dataset_name": self.dataset_name}
-        d.update(super(ODMSample, self)._to_str_dict(for_repr=for_repr))
-        return d
-
     @classmethod
     def _get_class_repr(cls):
         return "Sample"
@@ -203,7 +198,7 @@ class ODMDatasetSample(ODMDocument, ODMSample):
         has_field = self.has_field(name)
 
         if name.startswith("_") or (hasattr(self, name) and not has_field):
-            super(ODMDatasetSample, self).__setattr__(name, value)
+            super().__setattr__(name, value)
             return
 
         if not has_field:
@@ -215,7 +210,7 @@ class ODMDatasetSample(ODMDocument, ODMSample):
         if value is not None:
             self._fields[name].validate(value)
 
-        super(ODMDatasetSample, self).__setattr__(name, value)
+        super().__setattr__(name, value)
 
     @property
     def dataset_name(self):
@@ -422,6 +417,11 @@ class ODMDatasetSample(ODMDocument, ODMSample):
         ]
         dataset._meta.save()
 
+    def _to_repr_dict(self):
+        d = {"dataset_name": self.dataset_name}
+        d.update(super()._to_repr_dict())
+        return d
+
 
 class ODMNoDatasetSample(ODMSample):
     """Backing document for samples that have not been added to a dataset."""
@@ -450,17 +450,17 @@ class ODMNoDatasetSample(ODMSample):
         except Exception:
             pass
 
-        return super(ODMNoDatasetSample, self).__getattribute__(name)
+        return super().__getattribute__(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_"):
-            super(ODMNoDatasetSample, self).__setattr__(name, value)
+            super().__setattr__(name, value)
             return
 
         has_field = self.has_field(name)
 
         if hasattr(self, name) and not has_field:
-            super(ODMNoDatasetSample, self).__setattr__(name, value)
+            super().__setattr__(name, value)
             return
 
         if not has_field:

@@ -38,6 +38,11 @@ from .core.fields import (
 from .core.labels import (
     Label,
     ImageLabel,
+    Attribute,
+    BooleanAttribute,
+    CategoricalAttribute,
+    NumericAttribute,
+    VectorAttribute,
     Classification,
     Detection,
     Detections,
@@ -49,8 +54,8 @@ from .core.metadata import (
 )
 from .core.sample import Sample
 from .core.session import (
-    close_dashboard,
-    launch_dashboard,
+    close_app,
+    launch_app,
     Session,
 )
 from .core.view import DatasetView

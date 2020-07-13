@@ -10,6 +10,7 @@ on:
       - github-actions-*
     tags:
       - v*
+      - docs-publish
     paths:
       - .github/workflows/build-docs.yml
       - docs/
@@ -43,10 +44,18 @@ jobs:
         with:
           python-version: 3.8
       - name: Install dependencies
+        env:
+          PIP_INDEX_URL: https://voxel51-ci:${{ secrets.FIFTYONE_GITHUB_TOKEN }}@pypi.voxel51.com
         run: |
-          pip install -e . --index https://pypi.voxel51.com
+          sudo apt-get install pandoc
+          pip install -e .
           pip install -r requirements/docs.txt
           pip install tensorflow torch torchvision
+      - name: Install fiftyone-db
+        working-directory: package/db
+        run: |
+          python setup.py bdist_wheel
+          pip install dist/*.whl
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
@@ -58,7 +67,7 @@ jobs:
 
   publish:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docs-publish'
     runs-on: ubuntu-18.04
     steps:
       - name: Clone website
