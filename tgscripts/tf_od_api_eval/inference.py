@@ -209,6 +209,8 @@ def csv_to_detections(input_path):
     if not os.path.exists(input_path):
         return {}
 
+    image_ids = set()
+
     with open(input_path) as csvfile:
         reader = csv.reader(csvfile)
 
@@ -216,10 +218,11 @@ def csv_to_detections(input_path):
             if row_no == 0:
                 continue
 
-            print(row)
-
             image_id, preds_str = row
-            print(image_id)
+            
+            image_ids.add(image_id)
+
+    return image_ids
 
 
 if __name__ == "__main__":
@@ -240,7 +243,7 @@ if __name__ == "__main__":
         output_dir, "%s_predictions.csv" % model_name
     )
 
-    temp = csv_to_detections(output_predictions_path)
+    image_ids = csv_to_detections(output_predictions_path)
 
     # generate predictions
     detections = {}
@@ -248,10 +251,13 @@ if __name__ == "__main__":
     for idx, img_path in enumerate(img_paths):
         image_id = os.path.splitext(os.path.basename(img_path))[0]
 
+        if image_id in image_ids:
+            continue
+
         detections[image_id] = detector.detect(img_path)
 
         pbar.update(idx)
 
-        if idx % SAVE_EVERY == 0:
+        if idx % SAVE_EVERY == 0 and detections:
             detections_to_csv(detections, output_predictions_path)
             detections = {}
