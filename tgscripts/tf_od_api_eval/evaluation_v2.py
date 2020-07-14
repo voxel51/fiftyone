@@ -1,6 +1,9 @@
 """"""
+import logging
 import os
+import six
 
+import numpy as np
 import pandas as pd
 from google.protobuf import text_format
 
@@ -12,6 +15,7 @@ from object_detection.metrics import io_utils
 from object_detection.metrics import oid_challenge_evaluation_utils as utils
 from object_detection.protos import string_int_label_map_pb2
 from object_detection.utils import object_detection_evaluation
+from object_detection.core import standard_fields
 
 
 from object_detection.utils import per_image_evaluation
@@ -53,15 +57,6 @@ def _load_labelmap(labelmap_path):
 
 
 if __name__ == "__main__":
-    for arg in [
-        HIERARCHY_FILE,
-        BOUNDING_BOXES,
-        IMAGE_LABELS,
-        INPUT_PREDICTIONS,
-        CLASS_LABELMAP,
-    ]:
-        assert os.path.exists(arg), "Missing file: %" % arg
-
     print("Reading location annotations...")
     all_location_annotations = pd.read_csv(BOUNDING_BOXES)
     print("Reading label annotations...")
@@ -70,7 +65,7 @@ if __name__ == "__main__":
         columns={"Confidence": "ConfidenceImageLabel"}, inplace=True
     )
 
-    is_instance_segmentation_eval = False
+    evaluate_masks = False
     all_annotations = pd.concat(
         [all_location_annotations, all_label_annotations]
     )
@@ -80,18 +75,14 @@ if __name__ == "__main__":
 
 
     challenge_evaluator = object_detection_evaluation.OpenImagesChallengeEvaluator(
-        categories, evaluate_masks=is_instance_segmentation_eval
+        categories, evaluate_masks=evaluate_masks
     )
-    # recall_lower_bound = 0.0
-    # recall_upper_bound = 1.0
-    # evaluate_corlocs = False
-    # evaluate_precision_recall = False
-    # metric_prefix = None
-    # use_weighted_mean_ap = False
-    # evaluate_masks = is_instance_segmentation_eval
+
+
     num_classes = max([cat['id'] for cat in categories])
     if min(cat['id'] for cat in categories) < 1:
         raise ValueError('Classes should be 1-indexed.')
+    label_id_offset = 1
 
     per_image_eval = per_image_evaluation.PerImageEvaluation(
         num_groundtruth_classes=num_classes,
@@ -116,21 +107,107 @@ if __name__ == "__main__":
             all_predictions["ImageID"] == image_id
         ]
 
-        groundtruth_dictionary = utils.build_groundtruth_dictionary(
+        groundtruth_dict = utils.build_groundtruth_dictionary(
             cur_groundtruth, class_label_map
         )
 
-        prediction_dictionary = utils.build_predictions_dictionary(
+        prediction_dict = utils.build_predictions_dictionary(
             cur_predictions, class_label_map
         )
 
         challenge_evaluator.add_single_ground_truth_image_info(
-            image_id, groundtruth_dictionary
+            image_id, groundtruth_dict
         )
 
-        challenge_evaluator.add_single_detected_image_info(
-            image_id, prediction_dictionary
+        RESULT = challenge_evaluator.add_single_detected_image_info(
+            image_id, prediction_dict
         )
+
+        scores, tp_fp_labels, is_class_correctly_detected_in_image = RESULT
+        print("scores: ", scores, "\n")
+        print("tp_fp_labels: ", tp_fp_labels, "\n")
+        print("is_class_correctly_detected_in_image: ", is_class_correctly_detected_in_image, "\n")
+        import sys; sys.exit("DONE")
+
+        # # ADD GROUND TRUTH
+        # groundtruth_classes = (
+        #         groundtruth_dict[
+        #             standard_fields.InputDataFields.groundtruth_classes] -
+        #         label_id_offset)
+        # # If the key is not present in the groundtruth_dict or the array is empty
+        # # (unless there are no annotations for the groundtruth on this image)
+        # # use values from the dictionary or insert None otherwise.
+        # if (
+        #         standard_fields.InputDataFields.groundtruth_group_of in six.viewkeys(
+        #         groundtruth_dict) and
+        #         (groundtruth_dict[
+        #              standard_fields.InputDataFields.groundtruth_group_of]
+        #                  .size or not groundtruth_classes.size)):
+        #     groundtruth_group_of = groundtruth_dict[
+        #         standard_fields.InputDataFields.groundtruth_group_of]
+        # else:
+        #     groundtruth_group_of = None
+        #     if not len(self._image_ids) % 1000:
+        #         logging.warning(
+        #             'image %s does not have groundtruth group_of flag specified',
+        #             image_id)
+        # if evaluate_masks:
+        #     groundtruth_masks = groundtruth_dict[
+        #         standard_fields.InputDataFields.groundtruth_instance_masks]
+        # else:
+        #     groundtruth_masks = None
+        #
+        # self._evaluation.add_single_ground_truth_image_info(
+        #     image_id,
+        #     groundtruth_dict[
+        #         standard_fields.InputDataFields.groundtruth_boxes],
+        #     groundtruth_classes,
+        #     groundtruth_is_difficult_list=None,
+        #     groundtruth_is_group_of_list=groundtruth_group_of,
+        #     groundtruth_masks=groundtruth_masks)
+        # self._image_ids.update([image_id])
+        # input_fields = standard_fields.InputDataFields
+        # groundtruth_classes = (
+        #         groundtruth_dict[input_fields.groundtruth_classes] -
+        #         label_id_offset)
+        # image_classes = np.array([], dtype=int)
+        # if input_fields.groundtruth_image_classes in groundtruth_dict:
+        #     image_classes = groundtruth_dict[
+        #         input_fields.groundtruth_image_classes]
+        # elif input_fields.groundtruth_labeled_classes in groundtruth_dict:
+        #     image_classes = groundtruth_dict[
+        #         input_fields.groundtruth_labeled_classes]
+        # image_classes -= label_id_offset
+        # evaluatable_labels = np.unique(
+        #     np.concatenate((image_classes, groundtruth_classes)))
+
+        # # ADD PREDICTIONS
+        # detection_classes = (
+        #         prediction_dict[
+        #             standard_fields.DetectionResultFields.detection_classes]
+        #         - label_id_offset)
+        # allowed_classes = np.where(
+        #     np.isin(detection_classes, evaluatable_labels))
+        # detection_classes = detection_classes[allowed_classes]
+        # detected_boxes = prediction_dict[
+        #     standard_fields.DetectionResultFields.detection_boxes][
+        #     allowed_classes]
+        # detected_scores = prediction_dict[
+        #     standard_fields.DetectionResultFields.detection_scores][
+        #     allowed_classes]
+        #
+        # if evaluate_masks:
+        #     detection_masks = \
+        #     prediction_dict[standard_fields.DetectionResultFields
+        #         .detection_masks][allowed_classes]
+        # else:
+        #     detection_masks = None
+        # self._evaluation.add_single_detected_image_info(
+        #     image_key=image_id,
+        #     detected_boxes=detected_boxes,
+        #     detected_scores=detected_scores,
+        #     detected_class_labels=detection_classes,
+        #     detected_masks=detection_masks)
 
         images_processed += 1
 
