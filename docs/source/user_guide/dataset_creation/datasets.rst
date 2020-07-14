@@ -8,6 +8,9 @@ FiftyOne provides native support for importing datasets from disk in a
 variety of :ref:`common formats <Supported formats>`, and it can be easily
 extended to import datasets in :ref:`custom formats <Custom formats>`.
 
+If you have individual or in-memory samples that you would like to load into a
+FiftyOne dataset, see :doc:`adding samples to datasets <samples>`.
+
 Basic recipe
 ------------
 
