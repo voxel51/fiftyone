@@ -45,36 +45,7 @@ import tensorflow.compat.v1 as tf
 from object_detection.utils import label_map_util
 
 
-class ObjectDetectionEvaluator:
-    """A class to evaluate detections."""
-
-    def __init__(
-        self,
-        evaluate_corlocs=False,
-        evaluate_precision_recall=False,
-        metric_prefix=None,
-    ):
-        self._image_ids = set([])
-        self._evaluate_corlocs = evaluate_corlocs
-        self._evaluate_precision_recall = evaluate_precision_recall
-        self._metric_prefix = (metric_prefix + "_") if metric_prefix else ""
-        self._expected_keys = set(
-            [
-                standard_fields.InputDataFields.key,
-                standard_fields.InputDataFields.groundtruth_boxes,
-                standard_fields.InputDataFields.groundtruth_classes,
-                standard_fields.InputDataFields.groundtruth_difficult,
-                standard_fields.InputDataFields.groundtruth_instance_masks,
-                standard_fields.DetectionResultFields.detection_boxes,
-                standard_fields.DetectionResultFields.detection_scores,
-                standard_fields.DetectionResultFields.detection_classes,
-                standard_fields.DetectionResultFields.detection_masks,
-            ]
-        )
-        self._build_metric_names()
-
-
-class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
+class OpenImagesDetectionEvaluator:
     def __init__(
         self,
         categories,
@@ -84,6 +55,7 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
         recall_upper_bound=1.0,
         use_weighted_mean_ap=False,
         evaluate_corlocs=False,
+        evaluate_precision_recall=False,
         group_of_weight=1.0,
     ):
         if not evaluate_masks:
@@ -111,10 +83,24 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
             label_id_offset=self._label_id_offset,
             group_of_weight=self._group_of_weight,
         )
-        super(OpenImagesDetectionEvaluator, self).__init__(
-            evaluate_corlocs=evaluate_corlocs,
-            metric_prefix=metric_prefix,
+        self._image_ids = set([])
+        self._evaluate_corlocs = evaluate_corlocs
+        self._evaluate_precision_recall = evaluate_precision_recall
+        self._metric_prefix = (metric_prefix + "_") if metric_prefix else ""
+        self._expected_keys = set(
+            [
+                standard_fields.InputDataFields.key,
+                standard_fields.InputDataFields.groundtruth_boxes,
+                standard_fields.InputDataFields.groundtruth_classes,
+                standard_fields.InputDataFields.groundtruth_difficult,
+                standard_fields.InputDataFields.groundtruth_instance_masks,
+                standard_fields.DetectionResultFields.detection_boxes,
+                standard_fields.DetectionResultFields.detection_scores,
+                standard_fields.DetectionResultFields.detection_classes,
+                standard_fields.DetectionResultFields.detection_masks,
+            ]
         )
+        self._build_metric_names()
 
         self._expected_keys = set(
             [
