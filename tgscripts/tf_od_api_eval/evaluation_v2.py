@@ -45,105 +45,7 @@ import tensorflow.compat.v1 as tf
 from object_detection.utils import label_map_util
 
 
-class DetectionEvaluator(six.with_metaclass(ABCMeta, object)):
-    """Interface for object detection evalution classes.
-
-  Example usage of the Evaluator:
-  ------------------------------
-  evaluator = DetectionEvaluator(categories)
-
-  # Detections and groundtruth for image 1.
-  evaluator.add_single_groundtruth_image_info(...)
-  evaluator.add_single_detected_image_info(...)
-
-  # Detections and groundtruth for image 2.
-  evaluator.add_single_groundtruth_image_info(...)
-  evaluator.add_single_detected_image_info(...)
-
-  metrics_dict = evaluator.evaluate()
-  """
-
-    def __init__(self, categories):
-        """Constructor.
-
-    Args:
-      categories: A list of dicts, each of which has the following keys -
-        'id': (required) an integer id uniquely identifying this category.
-        'name': (required) string representing category name e.g., 'cat', 'dog'.
-    """
-        self._categories = categories
-
-    def observe_result_dict_for_single_example(self, eval_dict):
-        """Observes an evaluation result dict for a single example.
-
-    When executing eagerly, once all observations have been observed by this
-    method you can use `.evaluate()` to get the final metrics.
-
-    When using `tf.estimator.Estimator` for evaluation this function is used by
-    `get_estimator_eval_metric_ops()` to construct the metric update op.
-
-    Args:
-      eval_dict: A dictionary that holds tensors for evaluating an object
-        detection model, returned from
-        eval_util.result_dict_for_single_example().
-
-    Returns:
-      None when executing eagerly, or an update_op that can be used to update
-      the eval metrics in `tf.estimator.EstimatorSpec`.
-    """
-        raise NotImplementedError("Not implemented for this evaluator!")
-
-    @abstractmethod
-    def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
-        """Adds groundtruth for a single image to be used for evaluation.
-
-    Args:
-      image_id: A unique string/integer identifier for the image.
-      groundtruth_dict: A dictionary of groundtruth numpy arrays required for
-        evaluations.
-    """
-        pass
-
-    @abstractmethod
-    def add_single_detected_image_info(self, image_id, detections_dict):
-        """Adds detections for a single image to be used for evaluation.
-
-    Args:
-      image_id: A unique string/integer identifier for the image.
-      detections_dict: A dictionary of detection numpy arrays required for
-        evaluation.
-    """
-        pass
-
-    def get_estimator_eval_metric_ops(self, eval_dict):
-        """Returns dict of metrics to use with `tf.estimator.EstimatorSpec`.
-
-    Note that this must only be implemented if performing evaluation with a
-    `tf.estimator.Estimator`.
-
-    Args:
-      eval_dict: A dictionary that holds tensors for evaluating an object
-        detection model, returned from
-        eval_util.result_dict_for_single_example().
-
-    Returns:
-      A dictionary of metric names to tuple of value_op and update_op that can
-      be used as eval metric ops in `tf.estimator.EstimatorSpec`.
-    """
-        pass
-
-    @abstractmethod
-    def evaluate(self):
-        """Evaluates detections and returns a dictionary of metrics."""
-        pass
-
-    @abstractmethod
-    def clear(self):
-        """Clears the state to prepare for a fresh evaluation."""
-        pass
-
-
-class ObjectDetectionEvaluator(DetectionEvaluator):
+class ObjectDetectionEvaluator:
     """A class to evaluate detections."""
 
     def __init__(
@@ -190,7 +92,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     Raises:
       ValueError: If the category ids are not 1-indexed.
     """
-        super(ObjectDetectionEvaluator, self).__init__(categories)
+        self._categories = categories
         self._num_classes = max([cat["id"] for cat in categories])
         if min(cat["id"] for cat in categories) < 1:
             raise ValueError("Classes should be 1-indexed.")
@@ -625,20 +527,13 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
 
 
 class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
-    """A class to evaluate detections using Open Images V2 metrics.
-
-    Open Images V2 introduce group_of type of bounding boxes and this metric
-    handles those boxes appropriately.
-  """
-
     def __init__(
         self,
         categories,
-        matching_iou_threshold=0.5,
         evaluate_masks=False,
+        matching_iou_threshold=0.5,
         evaluate_corlocs=False,
-        metric_prefix="OpenImagesV2",
-        group_of_weight=0.0,
+        group_of_weight=1.0,
     ):
         """Constructor.
 
@@ -659,6 +554,10 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
         detection falls within a group-of box, weight group_of_weight is added
         to false negatives.
     """
+        if not evaluate_masks:
+            metric_prefix = "OpenImagesDetectionChallenge"
+        else:
+            metric_prefix = "OpenImagesInstanceSegmentationChallenge"
 
         super(OpenImagesDetectionEvaluator, self).__init__(
             categories,
@@ -686,6 +585,16 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
             self._expected_keys.add(
                 standard_fields.DetectionResultFields.detection_masks
             )
+
+        self._evaluatable_labels = {}
+        # Only one of the two has to be provided, but both options are given
+        # for compatibility with previous codebase.
+        self._expected_keys.update(
+            [
+                standard_fields.InputDataFields.groundtruth_image_classes,
+                standard_fields.InputDataFields.groundtruth_labeled_classes,
+            ]
+        )
 
     def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
         """Adds groundtruth for a single image to be used for evaluation.
@@ -757,114 +666,10 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
         )
         self._image_ids.update([image_id])
 
-
-class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
-    """A class implements Open Images Challenge metrics.
-
-    Both Detection and Instance Segmentation evaluation metrics are implemented.
-
-    Open Images Challenge Detection metric has two major changes in comparison
-    with Open Images V2 detection metric:
-    - a custom weight might be specified for detecting an object contained in
-    a group-of box.
-    - verified image-level labels should be explicitelly provided for
-    evaluation: in case in image has neither positive nor negative image level
-    label of class c, all detections of this class on this image will be
-    ignored.
-
-    Open Images Challenge Instance Segmentation metric allows to measure per
-    formance of models in case of incomplete annotations: some instances are
-    annotations only on box level and some - on image-level. In addition,
-    image-level labels are taken into account as in detection metric.
-
-    Open Images Challenge Detection metric default parameters:
-    evaluate_masks = False
-    group_of_weight = 1.0
-
-
-    Open Images Challenge Instance Segmentation metric default parameters:
-    evaluate_masks = True
-    (group_of_weight will not matter)
-  """
-
-    def __init__(
-        self,
-        categories,
-        evaluate_masks=False,
-        matching_iou_threshold=0.5,
-        evaluate_corlocs=False,
-        group_of_weight=1.0,
-    ):
-        """Constructor.
-
-    Args:
-      categories: A list of dicts, each of which has the following keys -
-        'id': (required) an integer id uniquely identifying this category.
-        'name': (required) string representing category name e.g., 'cat', 'dog'.
-      evaluate_masks: set to true for instance segmentation metric and to false
-        for detection metric.
-      matching_iou_threshold: IOU threshold to use for matching groundtruth
-        boxes to detection boxes.
-      evaluate_corlocs: if True, additionally evaluates and returns CorLoc.
-      group_of_weight: Weight of group-of boxes. If set to 0, detections of the
-        correct class within a group-of box are ignored. If weight is > 0, then
-        if at least one detection falls within a group-of box with
-        matching_iou_threshold, weight group_of_weight is added to true
-        positives. Consequently, if no detection falls within a group-of box,
-        weight group_of_weight is added to false negatives.
-    """
-        if not evaluate_masks:
-            metrics_prefix = "OpenImagesDetectionChallenge"
-        else:
-            metrics_prefix = "OpenImagesInstanceSegmentationChallenge"
-
-        super(OpenImagesChallengeEvaluator, self).__init__(
-            categories,
-            matching_iou_threshold,
-            evaluate_masks=evaluate_masks,
-            evaluate_corlocs=evaluate_corlocs,
-            group_of_weight=group_of_weight,
-            metric_prefix=metrics_prefix,
-        )
-
-        self._evaluatable_labels = {}
-        # Only one of the two has to be provided, but both options are given
-        # for compatibility with previous codebase.
-        self._expected_keys.update(
-            [
-                standard_fields.InputDataFields.groundtruth_image_classes,
-                standard_fields.InputDataFields.groundtruth_labeled_classes,
-            ]
-        )
-
-    def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
-        """Adds groundtruth for a single image to be used for evaluation.
-
-    Args:
-      image_id: A unique string/integer identifier for the image.
-      groundtruth_dict: A dictionary containing -
-        standard_fields.InputDataFields.groundtruth_boxes: float32 numpy array
-          of shape [num_boxes, 4] containing `num_boxes` groundtruth boxes of
-          the format [ymin, xmin, ymax, xmax] in absolute image coordinates.
-        standard_fields.InputDataFields.groundtruth_classes: integer numpy array
-          of shape [num_boxes] containing 1-indexed groundtruth classes for the
-          boxes.
-        standard_fields.InputDataFields.groundtruth_image_classes: integer 1D
-          numpy array containing all classes for which labels are verified.
-        standard_fields.InputDataFields.groundtruth_group_of: Optional length M
-          numpy boolean array denoting whether a groundtruth box contains a
-          group of instances.
-
-    Raises:
-      ValueError: On adding groundtruth for an image more than once.
-    """
-        super(
-            OpenImagesChallengeEvaluator, self
-        ).add_single_ground_truth_image_info(image_id, groundtruth_dict)
         input_fields = standard_fields.InputDataFields
         groundtruth_classes = (
-            groundtruth_dict[input_fields.groundtruth_classes]
-            - self._label_id_offset
+                groundtruth_dict[input_fields.groundtruth_classes]
+                - self._label_id_offset
         )
         image_classes = np.array([], dtype=int)
         if input_fields.groundtruth_image_classes in groundtruth_dict:
@@ -938,7 +743,7 @@ class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
     def clear(self):
         """Clears stored data."""
 
-        super(OpenImagesChallengeEvaluator, self).clear()
+        super().clear()
         self._evaluatable_labels.clear()
 
 
@@ -985,7 +790,7 @@ if __name__ == "__main__":
     print("Reading labelmap...")
     class_label_map, categories = _load_labelmap(CLASS_LABELMAP)
 
-    challenge_evaluator = OpenImagesChallengeEvaluator(
+    challenge_evaluator = OpenImagesDetectionEvaluator(
         categories, evaluate_masks=evaluate_masks
     )
 
