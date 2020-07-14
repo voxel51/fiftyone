@@ -9,7 +9,17 @@ export default {
 };
 
 export const standard = () => (
-  <div style={{ margin: 10, width: 150 }}>
-    <SearchResults results={["example"]} />
+  <div
+    style={{
+      padding: 10,
+      margin: 10,
+      width: 150,
+      height: 50,
+      position: "relative",
+      background: "pink",
+    }}
+  >
+    I am the parent container
+    <SearchResults results={["cat", "dog"]} />
   </div>
 );
