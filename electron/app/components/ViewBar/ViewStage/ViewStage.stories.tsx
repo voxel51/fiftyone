@@ -1,7 +1,7 @@
 import React from "react";
 import ViewStage from "./ViewStage";
 
-import "../../app.global.css";
+import "../../../app.global.css";
 
 export default {
   component: ViewStage,

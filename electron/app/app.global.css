@@ -1,9 +1,14 @@
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 @import "./player51/src/css/player51.css";
 
 :root {
   --bg: #ffffff;
   --bg-darker: #f8f8f8;
-  --border: #e8e8e8;
+  --bg-darkest: #e8e8e8;
+  --std-border-color: var(--bg-darkest);
+  --std-border-radius: 0.2rem;
+
+  font-family: Palanquin;
 }
 
 body {
