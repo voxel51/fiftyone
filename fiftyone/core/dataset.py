@@ -664,14 +664,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        if not sample_parser.has_image_path:
+            raise ValueError(
+                "Sample parser must have `has_image_path == True` to add its "
+                "samples"
+            )
 
         def parse_sample(sample):
             sample_parser.with_sample(sample)
-            image_path = sample_parser.get_image_path()
 
+            image_path = sample_parser.get_image_path()
             filepath = os.path.abspath(os.path.expanduser(image_path))
 
-            return fos.Sample(filepath=filepath, tags=tags)
+            if sample_parser.has_image_metadata:
+                metadata = sample_parser.get_image_metadata()
+            else:
+                metadata = None
+
+            return fos.Sample(filepath=filepath, metadata=metadata, tags=tags)
 
         try:
             num_samples = len(samples)
@@ -714,16 +724,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        if not sample_parser.has_image_path:
+            raise ValueError(
+                "Sample parser must have `has_image_path == True` to add its "
+                "samples"
+            )
 
         def parse_sample(sample):
             sample_parser.with_sample(sample)
-            image_path = sample_parser.get_image_path()
-            label = sample_parser.get_label()
 
+            image_path = sample_parser.get_image_path()
             filepath = os.path.abspath(os.path.expanduser(image_path))
 
+            if sample_parser.has_image_metadata:
+                metadata = sample_parser.get_image_metadata()
+            else:
+                metadata = None
+
+            label = sample_parser.get_label()
+
             return fos.Sample(
-                filepath=filepath, tags=tags, **{label_field: label},
+                filepath=filepath,
+                metadata=metadata,
+                tags=tags,
+                **{label_field: label},
             )
 
         try:
