@@ -8,7 +8,7 @@ const DropdownHandle = styled(CellHeader)`
 `;
 
 type Props = {
-  label: number;
+  label: string;
   expanded: boolean;
 };
 

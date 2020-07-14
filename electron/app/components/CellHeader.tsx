@@ -1,11 +1,9 @@
 import React from "react";
 import styled from "styled-components";
 
-const CellHeader = styled.div`
-  padding: 1em;
-  box-sizing: border-box;
-  border: 2px solid #e0e0e0;
-  background-color: #ffffff;
+import { Box } from "./utils";
+
+const CellHeader = styled(Box)`
   cursor: ${({ clickable }) => (clickable ? "pointer" : undefined)};
 
   .icon {
