@@ -7,6 +7,15 @@ const DropdownHandle = styled(CellHeader)`
   width: 15rem;
 `;
 
-export default ({ label, expanded }) => {
-  return <DropdownHandle icon={expanded ? "^" : "v"}>{label}</DropdownHandle>;
+type Props = {
+  label: number;
+  expanded: boolean;
+};
+
+export default ({ label, expanded }: Props) => {
+  return (
+    <DropdownHandle icon={expanded ? "^" : "v"} clickable>
+      {label}
+    </DropdownHandle>
+  );
 };
