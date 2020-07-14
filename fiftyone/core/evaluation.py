@@ -95,6 +95,8 @@ def evaluate_detections(dataset, prediction_field, gt_field="ground_truth"):
                 }
             )
 
+
+
             gt_annots = sample[gt_field]
             for detection in gt_annots.detections:
                 anno_id += 1
@@ -123,7 +125,7 @@ def evaluate_detections(dataset, prediction_field, gt_field="ground_truth"):
                 predictions.append(obj.__dict__)
 
             sample.save()
-        
+            
     # Populate observed category IDs, if necessary
     classes = sorted(_classes)
     labels_map_rev = {c: i for i, c in enumerate(classes)}
@@ -337,5 +339,4 @@ def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
                 det.attributes["gtId_95"] = \
                     fo.core.labels.NumericAttribute(value=gtId_95)
 
-            
             sample.save()

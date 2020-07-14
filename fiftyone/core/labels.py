@@ -235,7 +235,7 @@ class Detections(ImageLabel):
         thrsh_detections = []
         for det in self.detections:
             if det.confidence > threshold:
-                thrsh_detections.append(det)
+                thrsh_detections.append(det.copy())
         return Detections(detections=thrsh_detections)
 
     def to_image_labels(self):
