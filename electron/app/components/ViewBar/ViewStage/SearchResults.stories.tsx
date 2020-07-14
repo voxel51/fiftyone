@@ -5,7 +5,7 @@ import "../../../app.global.css";
 
 export default {
   component: SearchResults,
-  title: "SearchResults",
+  title: "ViewBar/ViewStage/SearchResults",
 };
 
 export const standard = () => (

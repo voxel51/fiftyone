@@ -1,17 +1,31 @@
 import React from "react";
 import styled from "styled-components";
 import { useSpring } from "react-spring";
+import { useRecoilValue } from "recoil";
+import { viewStages } from "../../recoil/selectors";
+import ViewStage from "./ViewStage/ViewStage";
 
 const ViewBar = styled.div`
-  width: calc(100% - 2.4rem);
-  margin: 1rem;
+  background-color: var(--bg);
+  border-radius: 0.2rem;
+  border: 0.2rem solid var(--std-border-color);
+  box-sizing: border-box;
   height: 3rem;
   line-height: 3rem;
-  border-radius: 0.2rem;
-  border: 0.2rem solid var(--border);
-  background-color: var(--bg);
+  width: 100%;
 `;
 
 export default () => {
-  return <ViewBar />;
+  const stages = useRecoilValue(viewStages);
+  return (
+    <ViewBar>
+      {stages.length ? (
+        stages.map((stage, i) => {
+          return <ViewStage empty={false} key={i} />;
+        })
+      ) : (
+        <ViewStage empty={true} key={0} />
+      )}
+    </ViewBar>
+  );
 };

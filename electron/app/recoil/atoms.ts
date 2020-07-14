@@ -1,6 +1,8 @@
 import { atom } from "recoil";
 
-export const activeTags = atom({
-  key: "activeTags",
-  default: ["tag"],
+export const stateDescription = atom({
+  key: "stateDescription",
+  default: {
+    viewStages: [],
+  },
 });
