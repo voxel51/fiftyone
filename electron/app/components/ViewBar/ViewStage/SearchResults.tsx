@@ -4,7 +4,10 @@ import styled from "styled-components";
 
 const SearchResultDiv = animated(styled.div`
   border: var(--std-border-radius) solid var(--std-border-color);
-  background-color: ;
+  border-radius: var(--std-border-radius);
+  background-color: var(--bg);
+  cursor: pointer;
+  padding-left: 0.5rem;
 `);
 
 const SearchResult = React.memo(({ name, handleClick }) => {
@@ -20,7 +23,7 @@ const SearchResult = React.memo(({ name, handleClick }) => {
     <SearchResultDiv
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
-      onMouseLeaver={handleMouseLeave}
+      onMouseLeave={handleMouseLeave}
       style={props}
     >
       {name}

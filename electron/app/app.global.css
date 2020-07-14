@@ -6,6 +6,7 @@
   --bg-darker: #f8f8f8;
   --bg-darkest: #e8e8e8;
   --std-border-color: var(--bg-darkest);
+  --std-border-size: 0.2rem;
   --std-border-radius: 0.2rem;
 
   font-family: Palanquin;
