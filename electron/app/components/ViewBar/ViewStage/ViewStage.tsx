@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
-import { useSpring } from "react-spring";
+import { animated, useSpring } from "react-spring";
 
 const ViewStageParameterDiv = styled.div``;
 
@@ -8,16 +8,17 @@ const ViewStageParameter = () => {
   return <ViewStageParameterDiv />;
 };
 
-const ViewStageDiv = styled.div`
+const ViewStageDiv = animated(styled.div`
   background-color: var(--bg);
   border-color: var(--std-border-color);
-  border-radius: 0.2rem;
-  border-width: 0.2rem;
+  border-radius: var(--std-border-radius);
+  border-width: var(--std-border-width);
   box-sizing: border-box;
-  height: 3rem;
-  line-height: 3rem;
-  width: 100%;
-`;
+  display: inline-block;
+  line-height: 1.5rem;
+  margin: 0.25rem;
+  padding: 0 0.5rem;
+`);
 
 export default ({ name, parameters, empty }) => {
   const isActive = useState(false);

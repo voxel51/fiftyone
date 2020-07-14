@@ -7,3 +7,10 @@ export const viewStages = selector({
     return get(stateDescription).viewStages;
   },
 });
+
+export const numViewStages = selector({
+  key: "numStages",
+  get: ({ get }) => {
+    return get(numViewStages).length;
+  },
+});

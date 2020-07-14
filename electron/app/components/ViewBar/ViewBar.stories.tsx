@@ -13,7 +13,6 @@ export const standard = () => (
     style={{
       padding: 10,
       width: "calc(100% - 20)",
-      height: 50,
       position: "relative",
       background: "pink",
     }}
