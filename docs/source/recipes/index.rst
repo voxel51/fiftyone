@@ -48,9 +48,28 @@ your model's predictions.
         )
         sample.save()
 
+:doc:`Convert dataset formats on disk <convert_datasets>`
+
+Use FiftyOne's data powerful dataset import/export features to convert your
+datasets on disk between standard (or custom) formats.
+
+.. code-block:: shell
+
+    #
+    # Convert a COCO dataset to CVAT image format
+    #
+
+    INPUT_DIR=/path/to/coco/dataset
+    OUTPUT_DIR=/path/for/cvat/dataset
+
+    fiftyone convert \
+        --input-dir ${INPUT_DIR} --input-type fiftyone.types.COCODetectionDataset \
+        --output-dir ${OUTPUT_DIR} --output-type fiftyone.types.CVATImageDataset
+
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    Remove duplicate images<image_deduplication.ipynb>
    Add model predictions<model_inference.ipynb>
+   Convert dataset formats<convert_datasets.ipynb>
