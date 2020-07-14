@@ -1,8 +1,10 @@
-/*
- * @NOTE: Prepend a `~` to css file paths that are in your node_modules
- *        See https://github.com/webpack-contrib/sass-loader#imports
- */
 @import "./player51/src/css/player51.css";
+
+:root {
+  --bg: #ffffff;
+  --bg-darker: #f8f8f8;
+  --border: #e8e8e8;
+}
 
 body {
   position: relative;

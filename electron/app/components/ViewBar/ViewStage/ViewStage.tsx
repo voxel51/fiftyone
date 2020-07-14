@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import { useSpring } from "react-spring";
 
-const ViewBar = styled.div`
+const ViewStage = styled.div`
   width: calc(100% - 2.4rem);
   margin: 1rem;
   height: 3rem;
@@ -13,5 +13,5 @@ const ViewBar = styled.div`
 `;
 
 export default () => {
-  return <ViewBar />;
+  return <ViewStage />;
 };
