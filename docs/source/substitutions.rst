@@ -5,6 +5,8 @@
 
 .. |DatasetView| replace:: :class:`DatasetView <fiftyone.core.view.DatasetView>`
 
+.. |ViewStage| replace:: :class:`ViewStage <fiftyone.core.stages.ViewStage>`
+
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
 
 .. |Field| replace:: :class:`Field <fiftyone.core.fields.Field>`
