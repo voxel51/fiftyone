@@ -235,7 +235,7 @@ class DatasetExporter(object):
         """Performs any necessary actions after the last sample has been
         exported.
 
-        This method is called when the importer's context manager interface is
+        This method is called when the exporter's context manager interface is
         exited, :func:`DatasetExporter.__exit__`.
 
         Args:
@@ -333,7 +333,7 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         Args:
             image_or_path: an image or the path to the image on disk
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
-                isinstance for the sample. Only required when
+                instance for the sample. Only required when
                 :meth:`requires_image_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
@@ -388,7 +388,7 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
             image_or_path: an image or the path to the image on disk
             label: an instance of :meth:`label_cls`
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
-                isinstance for the sample. Only required when
+                instance for the sample. Only required when
                 :meth:`requires_image_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
