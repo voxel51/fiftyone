@@ -6,3 +6,8 @@ export const stateDescription = atom({
     viewStages: [],
   },
 });
+
+export const viewStages = atom({
+  key: "viewStages",
+  default: ["exclude", "exists"],
+});

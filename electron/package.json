@@ -316,6 +316,7 @@
     "semantic-ui-react": "^0.88.2",
     "source-map-support": "^0.5.16",
     "styled-components": "^5.1.1",
+    "uuid-v4": "^0.1.0",
     "xstate": "^4.11.0"
   },
   "devEngines": {

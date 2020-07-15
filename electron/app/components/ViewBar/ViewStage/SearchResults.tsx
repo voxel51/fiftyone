@@ -1,6 +1,7 @@
 import React, { useCallback } from "react";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
+import { send } from "xstate";
 
 const SearchResultDiv = animated(styled.div`
   background-color: var(--bg);
@@ -10,7 +11,7 @@ const SearchResultDiv = animated(styled.div`
   padding-left: 0.5rem;
 `);
 
-const SearchResult = React.memo(({ name, handleClick, isActive }) => {
+const SearchResult = React.memo(({ value, isActive, send }) => {
   const [props, set] = useSpring(() => ({
     backgroundColor: isActive ? "var(--bg-darkest)" : "var(--bg)",
   }));
@@ -19,14 +20,17 @@ const SearchResult = React.memo(({ name, handleClick, isActive }) => {
 
   const handleMouseLeave = () => set({ backgroundColor: "var(--bg)" });
 
+  const setResult = (e) => send("COMMIT", e.target.dataset.value);
+
   return (
     <SearchResultDiv
-      onClick={handleClick}
+      onClick={setResult}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       style={props}
+      data-value={value}
     >
-      {name}
+      {value}
     </SearchResultDiv>
   );
 });
@@ -36,16 +40,18 @@ const SearchResultsDiv = animated(styled.div`
   border-radius: var(--std-border-radius);
   box-sizing: border-box;
   left: 0;
+  margin-top: 0.5rem;
   position: absolute;
   top: 100%;
   width: 100%;
 `);
 
-export default ({ results, setResult }) => {
+export default ({ results, send }) => {
+  if (!results.length) return null;
   return (
     <SearchResultsDiv>
       {results.map((result, i) => (
-        <SearchResult key={i} name={result} handleClick={() => {}} />
+        <SearchResult key={i} value={result} />
       ))}
     </SearchResultsDiv>
   );

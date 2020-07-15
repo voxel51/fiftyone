@@ -2,15 +2,11 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilValue } from "recoil";
+import { useMachine } from "@xstate/react";
 
+import { viewStages } from "../../../recoil/atoms";
 import { numViewStages } from "../../../recoil/selectors";
-import { SearchResults } from "semantic-ui-react";
-
-const ViewStageParameterDiv = styled.div``;
-
-const ViewStageParameter = () => {
-  return <ViewStageParameterDiv />;
-};
+import SearchResults from "./SearchResults";
 
 const ViewStageDiv = animated(styled.div`
   background-color: var(--bg);
@@ -24,10 +20,11 @@ const ViewStageDiv = animated(styled.div`
   padding: 0 0.5rem;
 `);
 
-export default ({ key, name, parameters, empty }) => {
+export default ({ index, stageRef }) => {
+  const [state, send] = useMachine(stageRef);
   const numViewStagesValue = useRecoilValue(numViewStages);
+  const viewStagesValue = useRecoilValue(viewStages);
   const isActive = useState(false);
-  alert(key);
 
   const props = useSpring({
     borderStyle: isActive ? "dashed" : "solid",
@@ -35,7 +32,7 @@ export default ({ key, name, parameters, empty }) => {
 
   return (
     <ViewStageDiv style={props}>
-      {empty ? <div>empty</div> : <div>populated</div>}
+      {numViewStagesValue === index ? <div>empty</div> : <div>populated</div>}
     </ViewStageDiv>
   );
 };
