@@ -32,8 +32,6 @@ OUTPUT_METRICS = "output_metrics.csv"
 
 ###############################################################################
 
-from abc import ABCMeta
-from abc import abstractmethod
 import logging
 import unicodedata
 import numpy as np
@@ -554,14 +552,10 @@ def get_class_AP(eval_result, label_name):
     assert len(keys) == 1, "unexpected number of keys: %d" % len(keys)
     return eval_result[keys[0]]
 
-def get_TP_FP_FN(state, groundtruth_dict, prediction_dict):
+def get_TP_FP(state, prediction_dict):
     """
-
-        state.num_gt_instances_per_class
         state.scores_per_class
         state.tp_fp_labels_per_class
-        state.num_gt_imgs_per_class
-        state.num_images_correctly_detected_per_class
 
         groundtruth_dict['groundtruth_classes']
         groundtruth_dict['groundtruth_boxes']
@@ -571,8 +565,39 @@ def get_TP_FP_FN(state, groundtruth_dict, prediction_dict):
         prediction_dict['detection_classes']
         prediction_dict['detection_scores']
         prediction_dict['detection_boxes']
+
+
+    USELESS?
+        state.num_gt_instances_per_class
+        state.num_gt_imgs_per_class
+        state.num_images_correctly_detected_per_class
     """
-    pass
+    detection_classes = prediction_dict['detection_classes']
+    detection_scores = prediction_dict['detection_scores']
+
+    true_positive_idxs = []
+    false_positive_idxs = []
+
+    for class_label in range(1, len(state.scores_per_class) + 1):
+        cur_scores = state.scores_per_class[class_label-1]
+        if not cur_scores:
+            continue
+        for i, score in enumerate(cur_scores[0]):
+            match_idxs = np.where(np.logical_and(detection_classes == class_label, detection_scores == score))[0]
+            if len(match_idxs) == 1:
+                is_tp = bool(
+                    state.tp_fp_labels_per_class[class_label - 1][0][i])
+                if is_tp:
+                    true_positive_idxs.append(match_idxs[0])
+                else:
+                    false_positive_idxs.append(match_idxs[0])
+            else:
+                # @todo(Tyler) this is an unaccounted-for match. It is unclear
+                #   what box it refers to because multiple boxes have the same
+                #   class label and score
+                pass
+
+    return true_positive_idxs, false_positive_idxs
 
 ###############################################################################
 
