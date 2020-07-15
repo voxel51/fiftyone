@@ -1,8 +1,8 @@
 Creating FiftyOne Datasets
 ==========================
 
-.. include:: ../../substitutions.rst
 .. default-role:: code
+.. include:: ../../substitutions.rst
 
 FiftyOne supports automatic creation of datasets stored in various common
 formats. If your dataset is stored in a custom format, don't worry, FiftyOne
@@ -10,9 +10,9 @@ also provides support for easily loading datasets in custom formats.
 
 .. note::
 
-    When you create a FiftyOne |Dataset2|_, its samples and all of their fields
-    (metadata, labels, custom fields, etc.) are written to FiftyOne's backing
-    database.
+    When you create a |WhatIsAFiftyOneDataset|, its samples and all of their
+    fields (metadata, labels, custom fields, etc.) are written to FiftyOne's
+    backing database.
 
     Note, however, that samples only store the `filepath` to the media, not the
     raw media itself. FiftyOne does not create duplicate copies of your data!

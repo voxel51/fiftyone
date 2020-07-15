@@ -4,12 +4,14 @@ Using FiftyOne Datasets
 .. include:: ../substitutions.rst
 .. default-role:: code
 
-After a |Dataset2|_ has been loaded or created, FiftyOne provides powerful
-functionality to inspect, search, and modify it from a |Dataset|-wide down to a
-|Sample| level.
+After a |WhatIsAFiftyOneDataset| has been loaded or created, FiftyOne provides
+powerful functionality to inspect, search, and modify it from a |Dataset|-wide
+down to a |Sample| level.
 
 The following sections provide details of how to use various aspects of a
 FiftyOne |Dataset|.
+
+.. _using-datasets:
 
 Datasets
 ________
@@ -44,7 +46,8 @@ Dataset objects are singletons. Cool!
     dataset2_reference is dataset2  # True
 
 If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
-:meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to have a bad time.
+:meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to
+have a bad time.
 
 .. code-block:: python
     :linenos:
@@ -111,6 +114,8 @@ attributes, but calling any other attribute or method will raise a
 
     print(dataset.persistent)
     # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_first_dataset' is deleted
+
+.. _using-samples:
 
 Samples
 _______
@@ -241,6 +246,8 @@ a |Sample| that has never been added to the |Dataset|:
 
     print(sample.id)
     # None
+
+.. _using-fields:
 
 Fields
 ______
@@ -379,6 +386,8 @@ every |Sample| in the |Dataset|:
     sample.integer_field
     # AttributeError: Sample has no field 'integer_field'
 
+.. _using-tags:
+
 Tags
 ----
 
@@ -414,6 +423,8 @@ low quality images:
 
     If the |Sample| is in a |Dataset|, then `sample.save()` must be used
     whenever the |Sample| is updated.
+
+.. _using-dataset-views:
 
 DatasetViews
 ____________
