@@ -17,6 +17,7 @@ Turn your data into a FiftyOne |Dataset| and automatically find and remove
 duplicate and near-duplicate images from your dataset.
 
 .. code-block:: python
+    :linenos:
 
     # Find duplicates
     dup_view = (
@@ -36,6 +37,7 @@ Add FiftyOne to your model training and analysis loop to visualize and analyze
 your model's predictions.
 
 .. code-block:: python
+    :linenos:
 
     for img, sample_id in your_data:
         # Perform prediction
@@ -54,10 +56,9 @@ Use FiftyOne's data powerful dataset import/export features to convert your
 datasets on disk between standard (or custom) formats.
 
 .. code-block:: shell
+    :linenos:
 
-    #
     # Convert a COCO dataset to CVAT image format
-    #
 
     INPUT_DIR=/path/to/coco/dataset
     OUTPUT_DIR=/path/for/cvat/dataset
