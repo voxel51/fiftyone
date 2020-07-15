@@ -13,10 +13,6 @@ import fiftyone as fo
 import fiftyone.core.utils as fou
 
 
-SSD = "ssd"
-FASTER_RCNN = "faster_rcnn"
-GROUND_TRUTH = "detections"
-
 ###############################################################################
 
 IMAGES_DIR = "/Users/tylerganter/data/open-images-dataset/images/test"
@@ -38,7 +34,26 @@ def load_open_images_dataset(
     predictions_path=None,
     prediction_field_name=None,
     class_descriptions_path=None,
+    load_images_with_preds=False,
 ):
+    """
+
+    Args:
+        dataset_name:
+        images_dir:
+        bounding_boxes_path:
+        image_labels_path:
+        predictions_path:
+        prediction_field_name:
+        class_descriptions_path: optional metadata file. if provided, the
+            MID labels are mapped to descriptive labels
+        load_images_with_preds: if True, skip any images that do not have
+            predictions
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset` instance
+    """
+    # read data from disk
     all_location_annotations = (
         pd.read_csv(bounding_boxes_path) if bounding_boxes_path else None
     )
@@ -51,12 +66,38 @@ def load_open_images_dataset(
     else:
         all_predictions = None
     prediction_field_name = prediction_field_name or "predicted_detections"
+    class_descriptions = (
+        pd.read_csv(class_descriptions_path, header=None, index_col=0)
+        if class_descriptions_path
+        else None
+    )
 
-    dataset = fo.Dataset(dataset_name)
+    # map label MID to descriptive label
+    if class_descriptions is not None:
+        for df in [
+            all_location_annotations,
+            all_label_annotations,
+            all_predictions,
+        ]:
+            if df is None:
+                continue
+
+            temp = class_descriptions.loc[df["LabelName"], 1]
+            temp.index = df.index
+            df["LabelName"] = temp
+
+    if load_images_with_preds:
+        img_paths = [
+            os.path.join(images_dir, image_id + ".jpg")
+            for image_id in set(all_predictions["ImageID"])
+        ]
+    else:
+        img_paths = glob.glob(os.path.join(images_dir, "*.jpg"))
+
+    # @todo(Tyler)
+    img_paths = img_paths[:100]
 
     _samples = []
-    img_paths = glob.glob(os.path.join(images_dir, "*.jpg"))
-    img_paths = img_paths[:20]
     with fou.ProgressBar(img_paths) as pb:
         for image_path in pb(img_paths):
             image_id = os.path.splitext(os.path.basename(image_path))[0]
@@ -91,24 +132,26 @@ def load_open_images_dataset(
                 if not cur_preds.empty:
                     kwargs[prediction_field_name] = df2detections(cur_preds)
 
-            if (
-                "groundtruth_image_labels" not in kwargs
-                or prediction_field_name not in kwargs
-            ):
-                continue
-
-            print(cur_lab_anns.head())
-            print(cur_loc_anns.head())
-            print(cur_preds.head())
-            print(kwargs["groundtruth_image_labels"].classifications[0])
-            # print(kwargs["groundtruth_image_labels"].classifications[1])
-            print(kwargs["groundtruth_detections"].detections[0])
-            # print(kwargs["groundtruth_detections"].detections[1])
-            print(kwargs[prediction_field_name].detections[0])
-            print(kwargs[prediction_field_name].detections[1])
-            assert False, ":ASDF"
+            # if (
+            #     "groundtruth_image_labels" not in kwargs
+            #     or prediction_field_name not in kwargs
+            # ):
+            #     continue
+            #
+            # print(cur_lab_anns.head())
+            # print(cur_loc_anns.head())
+            # print(cur_preds.head())
+            # print(kwargs["groundtruth_image_labels"].classifications[0])
+            # # print(kwargs["groundtruth_image_labels"].classifications[1])
+            # print(kwargs["groundtruth_detections"].detections[0])
+            # # print(kwargs["groundtruth_detections"].detections[1])
+            # print(kwargs[prediction_field_name].detections[0])
+            # print(kwargs[prediction_field_name].detections[1])
+            # assert False, ":ASDF"
 
             _samples.append(fo.Sample(**kwargs))
+
+    dataset = fo.Dataset(dataset_name)
     dataset.add_samples(_samples)
 
     return dataset
@@ -207,49 +250,6 @@ def df2detections(df):
     )
 
 
-def load_open_images(split="test"):
-    """
-
-    Args:
-        split: "validation" or "test"
-    """
-    dataset_name = "open-images-V6-%s" % split
-    if dataset_name in fo.list_dataset_names():
-        return fo.load_dataset(dataset_name)
-
-    base_dir = "/Users/tylerganter/data/open-images-dataset"
-    images_rel_dir = "images"
-
-    class_descriptions_filename = "class-descriptions-boxable.csv"
-    img_labels_filename = (
-        "%s-annotations-human-imagelabels-boxable.csv" % split
-    )
-    bbox_filename = "%s-annotations-bbox.csv" % split
-
-    images_dir = os.path.join(base_dir, images_rel_dir, split)
-    class_descriptions_filepath = os.path.join(
-        base_dir, class_descriptions_filename
-    )
-    img_labels_filepath = os.path.join(base_dir, img_labels_filename)
-    bbox_filepath = os.path.join(base_dir, bbox_filename)
-
-    class_descriptions = pd.read_csv(
-        class_descriptions_filepath, header=None, index_col=0
-    )
-    image_labels = pd.read_csv(img_labels_filepath)
-    bboxes = pd.read_csv(bbox_filepath)
-
-    # map image label MID to descriptive label
-    temp = class_descriptions.loc[image_labels["LabelName"], 1]
-    temp.index = image_labels.index
-    image_labels["LabelName"] = temp
-
-    # map bbox MID to descriptive label
-    temp = class_descriptions.loc[bboxes["LabelName"], 1]
-    temp.index = bboxes.index
-    bboxes["LabelName"] = temp
-
-
 ###############################################################################
 
 if __name__ == "__main__":
@@ -261,43 +261,11 @@ if __name__ == "__main__":
         predictions_path=INPUT_PREDICTIONS,
         prediction_field_name="faster_rcnn",
         class_descriptions_path=CLASS_DESCRIPTIONS,
+        load_images_with_preds=True,
     )
+
+    dataset.persistent = True
 
     print(dataset)
-    print(dataset.view().first())
-
-
-import sys
-
-sys.exit("SUCCESS")
-
-###############################################################################
-
-
-###############################################################################
-
-dataset = fo.load_dataset("open-images-V6-test")
-
-# dataset.evaluate(prediction_field=SSD, gt_field=GROUND_TRUTH)
-dataset.evaluate(prediction_field=FASTER_RCNN, gt_field=GROUND_TRUTH)
-
-threshold = 0.2
-field_name = ("%s_T0_2" % (FASTER_RCNN)).replace(".", "_")
-for sample in dataset:
-    sample[field_name] = fo.Detections(
-        detections=[
-            det
-            for det in sample[FASTER_RCNN].detections
-            if det.confidence > threshold
-        ]
-    )
-    sample.save()
-
-###############################################################################
-
-import fiftyone as fo
-
-dataset = fo.load_dataset("oi-V6-test-100")
-
-
-s = fo.launch_app(dataset=dataset)
+    for sample in dataset.view()[:2]:
+        print(sample)
