@@ -542,7 +542,37 @@ class OpenImagesDetectionEvaluator:
                 )
         return eval_metric_ops
 
+###############################################################################
 
+def get_mAP(eval_result):
+    keys = [key for key in eval_result if "mAP" in key]
+    assert len(keys) == 1, "unexpected number of mAP keys: %d" % len(keys)
+    return eval_result[keys[0]]
+
+def get_class_AP(eval_result, label_name):
+    keys = [key for key in eval_result if label_name in key]
+    assert len(keys) == 1, "unexpected number of keys: %d" % len(keys)
+    return eval_result[keys[0]]
+
+def get_TP_FP_FN(state, groundtruth_dict, prediction_dict):
+    """
+
+        state.num_gt_instances_per_class
+        state.scores_per_class
+        state.tp_fp_labels_per_class
+        state.num_gt_imgs_per_class
+        state.num_images_correctly_detected_per_class
+
+        groundtruth_dict['groundtruth_classes']
+        groundtruth_dict['groundtruth_boxes']
+        groundtruth_dict['groundtruth_group_of']
+        groundtruth_dict['groundtruth_image_classes']
+
+        prediction_dict['detection_classes']
+        prediction_dict['detection_scores']
+        prediction_dict['detection_boxes']
+    """
+    pass
 
 ###############################################################################
 
@@ -587,7 +617,7 @@ if __name__ == "__main__":
     print("Reading labelmap...")
     class_label_map, categories = _load_labelmap(CLASS_LABELMAP)
 
-    challenge_evaluator = OpenImagesDetectionEvaluator(
+    challenge_evaluator = object_detection_evaluation.OpenImagesChallengeEvaluator(
         categories, evaluate_masks=evaluate_masks
     )
 
@@ -635,22 +665,23 @@ if __name__ == "__main__":
             image_id, prediction_dict
         )
 
-        scores, tp_fp_labels, is_class_correctly_detected_in_image = RESULT
-        # print("scores: ", scores, "\n")
-        # print("tp_fp_labels: ", tp_fp_labels, "\n")
-        # print("is_class_correctly_detected_in_image: ", is_class_correctly_detected_in_image, "\n")
-        scores_stack = np.hstack(scores)
-        print("np.hstack(scores): ", scores_stack, "\n")
-        assert len(scores_stack) == 25, "len: %d" % len(scores_stack)
-        assert scores_stack[0] == 0.5392, (
-            "scores_stack[0]: %f" % scores_stack[0]
-        )
-        assert scores_stack[-1] == 0.6171, (
-            "scores_stack[-1]: %f" % scores_stack[-1]
-        )
-        import sys
+        state, _ = challenge_evaluator.get_internal_state()
+        eval_result = challenge_evaluator.evaluate()
 
-        sys.exit("DONE")
+        # scores, tp_fp_labels, is_class_correctly_detected_in_image = RESULT
+        # # print("scores: ", scores, "\n")
+        # # print("tp_fp_labels: ", tp_fp_labels, "\n")
+        # # print("is_class_correctly_detected_in_image: ", is_class_correctly_detected_in_image, "\n")
+        # scores_stack = np.hstack(scores)
+        # print("np.hstack(scores): ", scores_stack, "\n")
+        # assert len(scores_stack) == 25, "len: %d" % len(scores_stack)
+        # assert scores_stack[0] == 0.5392, (
+        #     "scores_stack[0]: %f" % scores_stack[0]
+        # )
+        # assert scores_stack[-1] == 0.6171, (
+        #     "scores_stack[-1]: %f" % scores_stack[-1]
+        # )
+        import sys; sys.exit("DONE")
 
         # # ADD GROUND TRUTH
         # groundtruth_classes = (
