@@ -5,6 +5,7 @@ import { Box } from "./utils";
 
 const CellHeader = styled(Box)`
   cursor: ${({ clickable }) => (clickable ? "pointer" : undefined)};
+  font-weight: bold;
 
   .icon {
     float: right;
