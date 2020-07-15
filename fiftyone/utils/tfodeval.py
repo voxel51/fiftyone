@@ -20,7 +20,7 @@ class TensorflowObjectDetectionAPIEvaluator:
         """
         self._iou_threshold = iou_threshold
 
-        self._class_label_map, self._categories = self._load_labelmap(
+        self._class_label_map, self._categories = self.load_labelmap(
             class_label_map_path
         )
         self._reverse_label_map = {
@@ -152,7 +152,7 @@ class TensorflowObjectDetectionAPIEvaluator:
         return d
 
     @staticmethod
-    def _load_labelmap(labelmap_path):
+    def load_labelmap(labelmap_path):
         """Loads labelmap from the labelmap path.
 
       Args:
@@ -171,5 +171,11 @@ class TensorflowObjectDetectionAPIEvaluator:
         categories = []
         for item in label_map.item:
             labelmap_dict[item.name] = item.id
-            categories.append({"id": item.id, "name": item.name})
+            categories.append(
+                {
+                    "id": item.id,
+                    "name": item.name,
+                    "display_name": item.display_name,
+                }
+            )
         return labelmap_dict, categories
