@@ -67,6 +67,36 @@ datasets on disk between standard (or custom) formats.
         --input-dir ${INPUT_DIR} --input-type fiftyone.types.COCODetectionDataset \
         --output-dir ${OUTPUT_DIR} --output-type fiftyone.types.CVATImageDataset
 
+:doc:`Import datasets in custom formats <custom_importer>`
+
+Write your own :ref:`custom DatasetImporter <custom-dataset-importer>` and use
+it to import datasets in your custom format into FiftyOne.
+
+.. code-block:: python
+    :linenos:
+
+    dataset_dir = "/path/to/custom-dataset"
+
+    # Create an instance of your custom importer
+    importer = CustomDatasetImporter(dataset_dir)
+
+    dataset = fo.Dataset.from_importer(importer)
+
+:doc:`Export datasets in custom formats <custom_exporter>`
+
+Write your own :ref:`custom DatasetExporter <custom-dataset-exporter>` and use
+it to export a FiftyOne |Dataset| to disk in your custom format.
+
+.. code-block:: python
+    :linenos:
+
+    export_dir = "/path/for/custom-dataset"
+
+    # Create an instance of your custom exporter
+    exporter = CustomDatasetExporter(export_dir)
+
+    dataset.export(dataset_exporter=exporter)
+
 .. toctree::
    :maxdepth: 1
    :hidden:
@@ -74,3 +104,5 @@ datasets on disk between standard (or custom) formats.
    Remove duplicate images<image_deduplication.ipynb>
    Add model predictions<model_inference.ipynb>
    Convert dataset formats<convert_datasets.ipynb>
+   Custom dataset importers<custom_importer.ipynb>
+   Custom dataset exporters<custom_exporter.ipynb>
