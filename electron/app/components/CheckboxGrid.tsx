@@ -4,8 +4,10 @@ import styled from "styled-components";
 const Body = styled.div`
   display: grid;
   grid-template-columns: repeat(${({ dataColumns }) => dataColumns + 1}, auto);
+  vertical-align: middle;
 
   input {
+    vertical-align: bottom;
     margin-right: 6px;
   }
 `;
