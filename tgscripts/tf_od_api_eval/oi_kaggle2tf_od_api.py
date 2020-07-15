@@ -15,13 +15,13 @@ Tensorflow Format:
 import numpy as np
 import pandas as pd
 
+import fiftyone.core.utils as fou
+
 
 # PARAMETERS ##################################################################
 
-IN_PATH = "kaggle_preds.csv"
-OUT_PATH = (
-    "google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions.csv"
-)
+IN_PATH = "/Users/tylerganter/data/open-images-dataset/v4/predictions/google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions/kaggle_format/74061_images.csv"
+OUT_PATH = "/Users/tylerganter/data/open-images-dataset/v4/predictions/google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions/tf_od_api_format/74061_images.csv"
 
 ###############################################################################
 
@@ -31,31 +31,26 @@ if __name__ == "__main__":
     print("IN:")
     print(df)
 
-    df2 = pd.DataFrame(
-        columns=[
-            "ImageID",
-            "LabelName",
-            "Score",
-            "XMin",
-            "XMax",
-            "YMin",
-            "YMax",
-        ]
-    )
+    dataframes = []
 
-    for row_idx, (image_id, pred_str) in df.iterrows():
-        pred_matrix = np.array(pred_str.split()).reshape(6, 100).reshape(-1, 6)
-        d = {"ImageID": image_id, "LabelName": pred_matrix[:, 0]}
-        numbers = pred_matrix[:, 1:].astype(float)
-        d["Score"] = numbers[:, 0]
-        d["XMin"] = numbers[:, 1]
-        d["YMin"] = numbers[:, 2]
-        d["XMax"] = numbers[:, 3]
-        d["YMax"] = numbers[:, 4]
+    with fou.ProgressBar(df) as pb:
+        for row_idx, (image_id, pred_str) in pb(df.iterrows()):
+            pred_matrix = (
+                np.array(pred_str.split()).reshape(6, 100).reshape(-1, 6)
+            )
+            d = {"ImageID": image_id, "LabelName": pred_matrix[:, 0]}
+            numbers = pred_matrix[:, 1:].astype(float)
+            d["Score"] = numbers[:, 0]
+            d["XMin"] = numbers[:, 1]
+            d["YMin"] = numbers[:, 2]
+            d["XMax"] = numbers[:, 3]
+            d["YMax"] = numbers[:, 4]
 
-        df2 = df2.append(pd.DataFrame(d))
+            dataframes.append(pd.DataFrame(d))
+
+    df2 = pd.concat(dataframes)
 
     print("OUT:")
     print(df2)
 
-    df2.to_csv(OUT_PATH)
+    df2.to_csv(OUT_PATH, index=False)

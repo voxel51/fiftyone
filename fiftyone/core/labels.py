@@ -137,6 +137,7 @@ class Classification(ImageLabel):
     label = fof.StringField()
     confidence = fof.FloatField()
     logits = fof.VectorField()
+    attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
     def to_image_labels(self, attr_name="label"):
         """Returns an ``eta.core.image.ImageLabels`` representation of this

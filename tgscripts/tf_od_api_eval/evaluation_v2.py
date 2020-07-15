@@ -7,19 +7,17 @@ from fiftyone.utils.tfodeval import TensorflowObjectDetectionAPIEvaluator
 
 ###############################################################################
 
-HIERARCHY_FILE = "/Users/tylerganter/data/open-images-dataset/v4/bbox_labels_600_hierarchy.json"
-BOUNDING_BOXES = "/Users/tylerganter/data/open-images-dataset/v4/test-annotations-bbox_expanded.csv"
-IMAGE_LABELS = "/Users/tylerganter/data/open-images-dataset/v4/test-annotations-human-imagelabels-boxable_expanded.csv"
+BOUNDING_BOXES_EXPANDED = "/Users/tylerganter/data/open-images-dataset/v4/test-annotations-bbox_expanded.csv"
+IMAGE_LABELS_EXPANDED = "/Users/tylerganter/data/open-images-dataset/v4/test-annotations-human-imagelabels-boxable_expanded.csv"
 INPUT_PREDICTIONS = "/Users/tylerganter/data/open-images-dataset/v4/google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions/small.csv"
 CLASS_LABELMAP = "/Users/tylerganter/data/open-images-dataset/object_detection/data/oid_v4_label_map.pbtxt"
-OUTPUT_METRICS = "output_metrics.csv"
 
 ###############################################################################
 
 
 if __name__ == "__main__":
-    all_location_annotations = pd.read_csv(BOUNDING_BOXES)
-    all_label_annotations = pd.read_csv(IMAGE_LABELS)
+    all_location_annotations = pd.read_csv(BOUNDING_BOXES_EXPANDED)
+    all_label_annotations = pd.read_csv(IMAGE_LABELS_EXPANDED)
     all_label_annotations.rename(
         columns={"Confidence": "ConfidenceImageLabel"}, inplace=True
     )
