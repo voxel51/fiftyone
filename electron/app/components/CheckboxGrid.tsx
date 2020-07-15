@@ -12,7 +12,7 @@ const Body = styled.div`
   }
 `;
 
-type Entry = {
+export type Entry = {
   name: string;
   selected: boolean;
   data: Array;
