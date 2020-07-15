@@ -45,7 +45,7 @@ a |DatasetView| into any format of your choice via the basic recipe below.
 
         # Export the dataset!
         dataset_or_view.export(
-            export_dir, label_field=label_field, dataset_type=dataset_type
+            export_dir=export_dir, dataset_type=dataset_type, label_field=label_field
         )
 
     Note the `label_field` argument in the above example, which specifies the
@@ -163,7 +163,9 @@ disk as follows:
         dataset_or_view = fo.Dataset(...)
 
         # Export the dataset
-        dataset_or_view.export(export_dir, dataset_type=fo.types.ImageDirectory)
+        dataset_or_view.export(
+            export_dir=export_dir, dataset_type=fo.types.ImageDirectory
+        )
 
   .. group-tab:: CLI
 
@@ -236,9 +238,9 @@ disk in the above format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.FiftyOneImageClassificationDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -297,9 +299,9 @@ stored on disk in the above format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.ImageClassificationDirectoryTree,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -369,9 +371,9 @@ format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.TFImageClassificationDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -461,9 +463,9 @@ format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.FiftyOneImageDetectionDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -566,9 +568,9 @@ format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.COCODetectionDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -676,9 +678,9 @@ format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.VOCDetectionDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -776,9 +778,9 @@ format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.KITTIDetectionDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -870,9 +872,9 @@ format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.TFObjectDetectionDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -976,9 +978,9 @@ as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.CVATImageDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -1061,9 +1063,9 @@ format as follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir,
-            label_field=label_field,
+            export_dir=export_dir,
             dataset_type=fo.types.FiftyOneImageLabelsDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -1155,7 +1157,9 @@ follows:
 
         # Export the dataset
         dataset_or_view.export(
-            export_dir, label_field=label_field, dataset_type=fo.types.BDDDataset,
+            export_dir=export_dir,
+            dataset_type=fo.types.BDDDataset,
+            label_field=label_field,
         )
 
   .. group-tab:: CLI
@@ -1196,11 +1200,11 @@ a |Dataset| or |DatasetView| in your custom format using the following recipe:
     dataset_or_view = fo.Dataset(...)
 
     # Create an instance of your custom dataset exporter
-    exporter = CustomDatasetExporter(...)
+    exporter = CustomDatasetExporter(export_dir, ...)
 
     # Export the dataset
     dataset_or_view.export(
-        export_dir, label_field=label_field, dataset_exporter=exporter,
+        dataset_exporter=exporter, label_field=label_field,
     )
 
 You can also define a custom |DatasetType| type, which enables you to export
@@ -1230,7 +1234,7 @@ datasets in your custom format using the following recipe:
 
         # Export the dataset!
         dataset_or_view.export(
-            export_dir, label_field=label_field, dataset_type=dataset_type,
+            export_dir=export_dir, dataset_type=dataset_type, label_field=label_field,
         )
 
   .. group-tab:: CLI
