@@ -286,6 +286,7 @@
     "@hot-loader/react-dom": "^16.13.0",
     "@xstate/react": "^0.8.1",
     "babel-plugin-styled-components": "^1.10.7",
+    "classnames": "^2.2.6",
     "connected-react-router": "^6.6.1",
     "core-js": "^3.6.4",
     "devtron": "^1.4.0",

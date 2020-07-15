@@ -11,6 +11,6 @@ export const viewStages = selector({
 export const numViewStages = selector({
   key: "numStages",
   get: ({ get }) => {
-    return get(numViewStages).length;
+    return get(viewStages).length;
   },
 });

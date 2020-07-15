@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
+import { useRecoilValue } from "recoil";
+
+import { numViewStages } from "../../../recoil/selectors";
+import { SearchResults } from "semantic-ui-react";
 
 const ViewStageParameterDiv = styled.div``;
 
@@ -20,8 +24,10 @@ const ViewStageDiv = animated(styled.div`
   padding: 0 0.5rem;
 `);
 
-export default ({ name, parameters, empty }) => {
+export default ({ key, name, parameters, empty }) => {
+  const numViewStagesValue = useRecoilValue(numViewStages);
   const isActive = useState(false);
+  alert(key);
 
   const props = useSpring({
     borderStyle: isActive ? "dashed" : "solid",

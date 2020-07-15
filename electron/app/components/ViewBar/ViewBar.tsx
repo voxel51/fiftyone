@@ -16,12 +16,13 @@ const ViewBarDiv = styled.div`
 
 export default () => {
   const stages = useRecoilValue(viewStages);
+  const tailIndex = stages.length + 1;
   return (
     <ViewBarDiv>
       {stages.map((stage, i) => {
-        return <ViewStage key={i} />;
+        return <ViewStage index={i} key={i} />;
       })}
-      <ViewStage empty={true} key={stages.length + 1} />
+      <ViewStage index={tailIndex} key={tailIndex} />
     </ViewBarDiv>
   );
 };
