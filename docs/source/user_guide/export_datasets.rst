@@ -1172,6 +1172,8 @@ follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.BDDDataset
 
+.. _custom-dataset-exporter:
+
 Custom formats
 --------------
 

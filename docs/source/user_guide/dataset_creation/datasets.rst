@@ -1407,6 +1407,8 @@ as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.BDDDataset
 
+.. _custom-dataset-importer:
+
 Custom formats
 --------------
 
