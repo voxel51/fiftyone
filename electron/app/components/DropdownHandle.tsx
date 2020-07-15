@@ -10,11 +10,15 @@ const DropdownHandle = styled(CellHeader)`
 type Props = {
   label: string;
   expanded: boolean;
+  icon: (expanded: boolean) => ReactNode;
 };
 
-export default ({ label, expanded }: Props) => {
+export const ArrowButton = (expanded) => (expanded ? "^" : "v");
+export const PlusMinusButton = (expanded) => (expanded ? "-" : "+");
+
+export default ({ label, expanded, icon = ArrowButton }: Props) => {
   return (
-    <DropdownHandle icon={expanded ? "^" : "v"} clickable>
+    <DropdownHandle icon={icon(expanded)} clickable>
       {label}
     </DropdownHandle>
   );

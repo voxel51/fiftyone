@@ -2,7 +2,7 @@ import React from "react";
 import styled from "styled-components";
 
 import { Box } from "./utils";
-import DropdownHandle from "./DropdownHandle";
+import DropdownHandle, { PlusMinusButton } from "./DropdownHandle";
 
 const Wrapper = styled.div`
   margin-bottom: -2px;
@@ -25,7 +25,7 @@ type Props = {
 export default ({ children, label, expanded }: Props) => {
   return (
     <Wrapper>
-      <Header label={label} expanded={expanded} />
+      <Header label={label} expanded={expanded} icon={PlusMinusButton} />
       {expanded ? <Body>{children}</Body> : null}
     </Wrapper>
   );
