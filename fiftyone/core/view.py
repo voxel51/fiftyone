@@ -448,7 +448,7 @@ class DatasetView(foc.SampleCollection):
             "sample_fields": self._dataset._get_fields_dict(),
             "pipeline_stages": [str(d) for d in self._pipeline],
         }
-        d.update(super(DatasetView, self).to_dict())
+        d.update(super().to_dict())
         return d
 
     def _slice(self, s):

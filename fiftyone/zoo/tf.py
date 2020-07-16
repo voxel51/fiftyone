@@ -623,26 +623,22 @@ class _TFDSImageClassificationSampleParser(
     foud.ImageClassificationSampleParser
 ):
     def __init__(self, image_field="image", label_field="label", **kwargs):
-        super(_TFDSImageClassificationSampleParser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.image_field = image_field
         self.label_field = label_field
 
     def parse_image(self, sample):
         img = sample[self.image_field]
-        return super(_TFDSImageClassificationSampleParser, self).parse_image(
-            (img, None)
-        )
+        return super().parse_image((img, None))
 
     def parse_label(self, sample):
         target = sample[self.label_field]
-        return super(_TFDSImageClassificationSampleParser, self).parse_label(
-            (None, target)
-        )
+        return super().parse_label((None, target))
 
 
 class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
     def __init__(self, image_field="image", objects_field="objects", **kwargs):
-        super(_TFDSImageDetectionSampleParser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.image_field = image_field
         self.objects_field = objects_field
 
@@ -678,9 +674,7 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
             )
         ]
 
-        return super(_TFDSImageDetectionSampleParser, self)._parse_label(
-            target, img=img
-        )
+        return super()._parse_label(target, img=img)
 
 
 def _download_and_prepare(

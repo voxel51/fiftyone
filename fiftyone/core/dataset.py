@@ -1790,7 +1790,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "tags": list(self.get_tags()),
             "sample_fields": self._get_fields_dict(),
         }
-        d.update(super(Dataset, self).to_dict())
+        d.update(super().to_dict())
         return d
 
     @classmethod

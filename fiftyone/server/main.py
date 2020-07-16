@@ -86,7 +86,7 @@ class StateController(Namespace):
 
     def __init__(self, *args, **kwargs):
         self.state = fos.StateDescription().serialize()
-        super(StateController, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def on_connect(self):
         """Handles connection to the server."""
