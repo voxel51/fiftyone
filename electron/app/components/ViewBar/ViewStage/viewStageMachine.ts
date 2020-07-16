@@ -13,7 +13,7 @@ const createParameter = (stage, parameter, value) => {
   };
 };
 
-export const viewStageMachine = Machine({
+const viewStageMachine = Machine({
   id: "viewStage",
   context: {
     id: undefined,
@@ -55,3 +55,5 @@ export const viewStageMachine = Machine({
     },
   },
 });
+
+export default viewStageMachine;

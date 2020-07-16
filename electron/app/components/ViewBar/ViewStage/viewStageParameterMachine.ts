@@ -1,7 +1,8 @@
 import { Machine, actions, sendParent } from "xstate";
+import viewStageMachine from "./viewStageMachine";
 const { assign } = actions;
 
-export const viewStageParameterMachine = Machine({
+const viewStageParameterMachine = Machine({
   id: "viewStageParameter",
   initial: "reading",
   context: {
@@ -42,7 +43,10 @@ export const viewStageParameterMachine = Machine({
               target: "completed",
               actions: [
                 assign({ completed: true }),
-                sendParent((ctx) => ({ type: "PARAMETER.COMMIT", todo: ctx })),
+                sendParent((ctx) => ({
+                  type: "PARAMETER.COMMIT",
+                  parameter: ctx,
+                })),
               ],
             },
           },
@@ -53,14 +57,20 @@ export const viewStageParameterMachine = Machine({
               target: "pending",
               actions: [
                 assign({ completed: false }),
-                sendParent((ctx) => ({ type: "PARAMETER.COMMIT", todo: ctx })),
+                sendParent((ctx) => ({
+                  type: "PARAMETER.COMMIT",
+                  parameter: ctx,
+                })),
               ],
             },
             SET_ACTIVE: {
               target: "pending",
               actions: [
                 assign({ completed: false }),
-                sendParent((ctx) => ({ type: "PARAMETER.COMMIT", todo: ctx })),
+                sendParent((ctx) => ({
+                  type: "PARAMETER.COMMIT",
+                  parameter: ctx,
+                })),
               ],
             },
           },
@@ -110,3 +120,5 @@ export const viewStageParameterMachine = Machine({
     },
   },
 });
+
+export default viewStageParameterMachine;

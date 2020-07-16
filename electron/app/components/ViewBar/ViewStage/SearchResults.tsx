@@ -1,7 +1,6 @@
-import React, { useCallback } from "react";
-import { animated, useSpring } from "react-spring";
+import React from "react";
+import { animated, config, useSpring } from "react-spring";
 import styled from "styled-components";
-import { send } from "xstate";
 
 const SearchResultDiv = animated(styled.div`
   background-color: var(--bg);
@@ -11,29 +10,39 @@ const SearchResultDiv = animated(styled.div`
   padding-left: 0.5rem;
 `);
 
-const SearchResult = React.memo(({ value, isActive, send }) => {
-  const [props, set] = useSpring(() => ({
-    backgroundColor: isActive ? "var(--bg-darkest)" : "var(--bg)",
-  }));
+interface SearchResultProps {
+  result: string;
+  isActive: boolean;
+  send: any;
+}
 
-  const handleMouseEnter = () => set({ backgroundColor: "var(--bg-darkest)" });
+const SearchResult = React.memo(
+  ({ result, isActive, send }: SearchResultProps) => {
+    const [props, set] = useSpring(() => ({
+      background: isActive ? "#FFF" : "#FFF",
+      color: "black",
+      config: config.gentle,
+    }));
 
-  const handleMouseLeave = () => set({ backgroundColor: "var(--bg)" });
+    const handleMouseEnter = () => set({ background: "#000", color: "pink" });
 
-  const setResult = (e) => send("COMMIT", e.target.dataset.value);
+    const handleMouseLeave = () => set({ background: "var(--bg)" });
 
-  return (
-    <SearchResultDiv
-      onClick={setResult}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      style={props}
-      data-value={value}
-    >
-      {value}
-    </SearchResultDiv>
-  );
-});
+    const setResult = (e) => send("COMMIT", e.target.dataset.value);
+
+    return (
+      <SearchResultDiv
+        onClick={setResult}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={props}
+        data-result={result}
+      >
+        {result}
+      </SearchResultDiv>
+    );
+  }
+);
 
 const SearchResultsDiv = animated(styled.div`
   border: var(--std-border-radius) solid var(--std-border-color);
@@ -46,12 +55,22 @@ const SearchResultsDiv = animated(styled.div`
   width: 100%;
 `);
 
-export default ({ results, send }) => {
+interface SearchResultsProps {
+  results: Array<string>;
+  send: any;
+}
+
+export default ({ results, send }: SearchResultsProps) => {
   if (!results.length) return null;
   return (
     <SearchResultsDiv>
       {results.map((result, i) => (
-        <SearchResult key={i} value={result} />
+        <SearchResult
+          key={result}
+          result={result}
+          isActive={false}
+          send={() => {}}
+        />
       ))}
     </SearchResultsDiv>
   );

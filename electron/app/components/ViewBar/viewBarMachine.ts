@@ -1,8 +1,8 @@
 import { Machine, assign, spawn } from "xstate";
 import uuid from "uuid-v4";
-import viewStage from "./ViewStage/viewStageMachine";
+import viewStageMachine from "./ViewStage/viewStageMachine";
 
-const createStage = (stage, parameter, value) => {
+const createStage = (stage) => {
   return {
     id: uuid(),
     completed: false,
@@ -20,10 +20,10 @@ const viewBarMachine = Machine({
   states: {
     initializing: {
       entry: assign({
-        todos: (ctx, e) => {
+        stages: (ctx, e) => {
           return ctx.stages.map((stage) => ({
             ...stage,
-            ref: spawn(Machine.withContext(stage)),
+            ref: spawn(viewStageMachine.withContext(stage)),
           }));
         },
       }),
@@ -38,7 +38,7 @@ const viewBarMachine = Machine({
   on: {
     "NEWSTAGE.CHANGE": {
       actions: assign({
-        todo: (ctx, e) => e.value,
+        stage: (ctx, e) => e.value,
       }),
     },
     "NEWSTAGE.COMMIT": {
@@ -53,29 +53,29 @@ const viewBarMachine = Machine({
             });
           },
         }),
-        "persist",
+        "submit",
       ],
       cond: (ctx, e) => e.value.trim().length,
     },
     "STAGE.COMMIT": {
       actions: [
         assign({
-          todos: (ctx, e) =>
-            ctx.stage.map((todo) => {
+          stages: (ctx, e) =>
+            ctx.stage.map((stage) => {
               return stage.id === e.stage.id
                 ? { ...stage, ...e.stage, ref: stage.ref }
                 : stage;
             }),
         }),
-        "persist",
+        "submit",
       ],
     },
     "STAGE.DELETE": {
       actions: [
         assign({
-          todos: (ctx, e) => ctx.stages.filter((stage) => stage.id !== e.id),
+          stages: (ctx, e) => ctx.stages.filter((stage) => stage.id !== e.id),
         }),
-        "persist",
+        "submit",
       ],
     },
   },
