@@ -390,13 +390,13 @@ class COCOObject(etas.Serializable):
             area = self.area / (width * height)
             detection.attributes["area"] = fol.NumericAttribute(value=area)
 
+        # @todo parse `segmentation`
+
         if self.iscrowd is not None:
             # pylint: disable=unsupported-assignment-operation
             detection.attributes["iscrowd"] = fol.NumericAttribute(
                 value=self.iscrowd
             )
-
-        # @todo parse `segmentation`
 
         return detection
 
@@ -413,11 +413,11 @@ class COCOObject(etas.Serializable):
             "bbox",
         ]
         if self.area is not None:
-            _attrs.append(self.area)
+            _attrs.append("area")
         if self.segmentation is not None:
-            _attrs.append(self.segmentation)
+            _attrs.append("segmentation")
         if self.iscrowd is not None:
-            _attrs.append(self.iscrowd)
+            _attrs.append("iscrowd")
         return _attrs
 
     @classmethod
