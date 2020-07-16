@@ -24,8 +24,9 @@ from datetime import datetime
 import logging
 import os
 
-import eta.core.utils as etau
+import eta.core.image as etai
 import eta.core.serial as etas
+import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
@@ -68,25 +69,25 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
+
+    Args:
+        classes (None): a list of class label strings. If not provided, the
+            ``category_id`` of the annotations will be used as labels
     """
 
-    def __init__(self):
+    def __init__(self, classes=None):
         super().__init__(
-            label_field="category_id",
-            bounding_box_field="bbox",
-            classes=None,
-            normalized=False,
+            label_field=None,
+            bounding_box_field=None,
+            confidence_field=None,
+            classes=classes,
+            normalized=False,  # image required to convert to relative coords
         )
 
     def _parse_detection(self, obj, img=None):
-        detection = super()._parse_detection(obj, img=img)
-        if "area" in obj:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["area"] = fol.NumericAttribute(
-                value=obj["area"]
-            )
-
-        return detection
+        coco_obj = COCOObject.from_annotation_dict(obj)
+        frame_size = etai.to_frame_size(img=img)
+        return coco_obj.to_detection(frame_size, classes=self.classes)
 
 
 class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -130,7 +131,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         frame_size = (width, height)
         detections = fol.Detections(
             detections=[
-                obj.to_detection(frame_size, self._classes)
+                obj.to_detection(frame_size, classes=self._classes)
                 for obj in self._annotations.get(image_id, [])
             ]
         )
@@ -291,9 +292,9 @@ class COCOObject(etas.Serializable):
         bbox: a bounding box for the object in ``[xmin, ymin, width, height]``
             format
         area (None): the area of the bounding box
-        segmentation (None): a list of segmentation data
         iscrowd (None): 0 for polygon (object instance) segmentation and 1 for
             uncompressed RLE (crowd)
+        segmentation (None): a list of segmentation data
     """
 
     def __init__(
@@ -303,16 +304,17 @@ class COCOObject(etas.Serializable):
         category_id,
         bbox,
         area=None,
-        segmentation=None,
         iscrowd=None,
+        segmentation=None,
+        **kwargs,
     ):
         self.id = id
         self.image_id = image_id
         self.category_id = category_id
         self.bbox = bbox
         self.area = area
-        self.segmentation = segmentation
         self.iscrowd = iscrowd
+        self.segmentation = segmentation
 
     @classmethod
     def from_annotation_dict(cls, d):
@@ -361,27 +363,30 @@ class COCOObject(etas.Serializable):
         else:
             area = round(bbox[2] * bbox[3], 1)
 
-        # @todo parse `segmentation`
-
         if detection.has_attribute("iscrowd"):
             iscrowd = int(detection.get_attribute_value("iscrowd"))
         else:
             iscrowd = None
 
+        # @todo parse `segmentation`
+
         return cls(None, None, category_id, bbox, area=area, iscrowd=iscrowd)
 
-    def to_detection(self, frame_size, classes):
+    def to_detection(self, frame_size, classes=None):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of
         the object.
 
         Args:
             frame_size: the ``(width, height)`` of the image
-            classes: the list of classes
+            classes (None): the list of classes
 
         Returns:
             a :class:`fiftyone.core.labels.Detection`
         """
-        label = classes[self.category_id]
+        if classes:
+            label = classes[self.category_id]
+        else:
+            label = str(self.category_id)
 
         width, height = frame_size
         x, y, w, h = self.bbox
@@ -394,13 +399,13 @@ class COCOObject(etas.Serializable):
             area = self.area / (width * height)
             detection.attributes["area"] = fol.NumericAttribute(value=area)
 
-        # @todo parse `segmentation`
-
         if self.iscrowd is not None:
             # pylint: disable=unsupported-assignment-operation
             detection.attributes["iscrowd"] = fol.NumericAttribute(
                 value=self.iscrowd
             )
+
+        # @todo parse `segmentation`
 
         return detection
 
@@ -418,10 +423,10 @@ class COCOObject(etas.Serializable):
         ]
         if self.area is not None:
             _attrs.append("area")
-        if self.segmentation is not None:
-            _attrs.append("segmentation")
         if self.iscrowd is not None:
             _attrs.append("iscrowd")
+        if self.segmentation is not None:
+            _attrs.append("segmentation")
         return _attrs
 
     @classmethod

@@ -405,7 +405,7 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
         try:
             label = self.classes[target]
         except:
-            label = target
+            label = str(target)
 
         return fol.Classification(label=label)
 
@@ -511,7 +511,7 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         try:
             label = self.classes[label]
         except:
-            pass
+            label = str(label)
 
         tlx, tly, w, h = self._parse_bbox(obj)
 
