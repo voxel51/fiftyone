@@ -1089,9 +1089,6 @@ class LabelsTest(unittest.TestCase):
         labels = fo.Classification(label="cow", confidence=0.98)
         self.assertIsInstance(labels, fo.Classification)
 
-        with self.assertRaises(FieldDoesNotExist):
-            fo.Classification(made_up_field=100)
-
         with self.assertRaises(ValidationError):
             fo.Classification(label=100)
 
