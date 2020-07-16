@@ -56,6 +56,11 @@ span.pre {
 
   .pytorch-breadcrumbs-wrapper {
     margin-left: 25px;
+    width: calc(100% - 250px);
+  }
+
+  .pytorch-shortcuts-wrapper {
+    margin-left: 0;
   }
 
   .pytorch-container {
@@ -97,6 +102,10 @@ span.pre {
 }
 
 @media screen and (min-width: 1600px) {
+  .pytorch-breadcrumbs-wrapper {
+    width: 875px;
+  }
+
   .pytorch-container .pytorch-content-left {
     width: 850px;
     padding-right: 0;
