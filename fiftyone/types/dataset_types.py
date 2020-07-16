@@ -519,7 +519,7 @@ class KITTIDetectionDataset(ImageDetectionDataset):
     the following meanings:
 
     +---------+------------+----------------------------------------+---------+
-    | \# cols | Name       | Description                            | Default |
+    | \\# cols | Name       | Description                            | Default |
     +=========+============+========================================+=========+
     | 1       | type       | The object label                       |         |
     +---------+------------+----------------------------------------+---------+

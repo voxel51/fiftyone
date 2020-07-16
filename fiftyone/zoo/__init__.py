@@ -203,14 +203,18 @@ def load_zoo_dataset(
     return dataset
 
 
-def find_zoo_dataset(name):
+def find_zoo_dataset(name, split=None):
     """Returns the directory containing the given zoo dataset.
+
+    If a ``split`` is provided, the path to the dataset split is returned;
+    otherwise, the path to the root directory is returned.
 
     The dataset must be downloaded. Use :func:`download_zoo_dataset` to
     download datasets.
 
     Args:
         name: the name of the zoo dataset
+        split (None) a dataset split to locate
 
     Returns:
         the directory containing the dataset
@@ -220,6 +224,18 @@ def find_zoo_dataset(name):
         zoo_dataset.load_info(dataset_dir)
     except OSError:
         raise ValueError("Dataset '%s' is not downloaded" % name)
+
+    if split:
+        if not zoo_dataset.has_split(split):
+            raise ValueError("Dataset '%s' has no split '%s'" % (name, split))
+
+        info = zoo_dataset.load_info(dataset_dir)
+        if not info.is_split_downloaded(split):
+            raise ValueError(
+                "Dataset '%s' split '%s' is not downloaded" % (name, split)
+            )
+
+        return zoo_dataset.get_split_dir(dataset_dir, split)
 
     return dataset_dir
 
@@ -664,7 +680,7 @@ class ZooDataset(object):
                     classes,
                 ) = self._download_and_prepare(dataset_dir, scratch_dir, None)
 
-                # Create ZooDastasetInfo
+                # Create ZooDatasetInfo
                 info = ZooDatasetInfo(
                     self, dataset_type, num_samples, classes=classes
                 )

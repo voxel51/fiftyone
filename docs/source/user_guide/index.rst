@@ -69,7 +69,9 @@ Export your dataset to disk in any number of formats.
 .. code-block:: python
    :linenos:
 
-   dataset.export(export_dir, dataset_type=fo.types.COCODetectionDataset)
+   dataset.export(
+       export_dir=export_dir, dataset_type=fo.types.COCODetectionDataset
+   )
 
 :doc:`Visualizing datasets in the App <app>`
 

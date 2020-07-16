@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import itertools
 import logging
 import multiprocessing
 import os
@@ -28,6 +29,7 @@ import sys
 from packaging.version import Version
 import psutil
 import requests
+from retrying import retry
 
 import eta.core.utils as etau
 
@@ -35,6 +37,26 @@ import fiftyone.constants as foc
 
 
 logger = logging.getLogger(__name__)
+
+
+class ServiceException(Exception):
+    """Base class for service-related exceptions."""
+
+    pass
+
+
+class ServiceListenTimeout(ServiceException):
+    """Exception raised when a network-bound service fails to bind to a port."""
+
+    def __init__(self, name, port=None):
+        self.name = name
+        self.port = port
+
+    def __str__(self):
+        message = "%s failed to bind to port" % self.name
+        if self.port is not None:
+            message += " " + str(self.port)
+        return message
 
 
 class Service(object):
@@ -104,6 +126,44 @@ class Service(object):
     def wait(self):
         """Waits for the Service to exit and returns its exit code."""
         return self.child.wait()
+
+    def _wait_for_child_port(self, port=None, timeout=10):
+        """
+        Waits for any child process of this service to bind to a TCP port.
+
+        Args:
+            port: if specified, wait for a child to bind to this port
+            timeout: the number of seconds to wait before failing
+
+        Returns:
+            the port the child has bound to (equal to the ``port`` argument
+            if specified)
+
+        Raises:
+            ServiceListenTimeout: if the timeout was exceeded
+        """
+
+        @retry(
+            wait_fixed=250,
+            stop_max_delay=timeout * 1000,
+            retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
+        )
+        def find_port():
+            child_connections = itertools.chain.from_iterable(  # flatten
+                child.connections(kind="tcp")
+                for child in self.child.children(recursive=True)
+            )
+            for conn in child_connections:
+                if (
+                    not conn.raddr  # not connected to a remote socket
+                    and conn.status == psutil.CONN_LISTEN
+                ):
+                    local_port = conn.laddr[1]
+                    if port is None or port == local_port:
+                        return local_port
+            raise ServiceListenTimeout(etau.get_class_name(self), port)
+
+        return find_port()
 
 
 class DatabaseService(Service):
@@ -200,13 +260,16 @@ class ServerService(Service):
                 "http://127.0.0.1:%i/fiftyone" % self._port, timeout=2
             ).json()["version"]
         except Exception:
+            pass
+
+        if server_version is None:
             # There is likely not a fiftyone server running (remote or local),
             # so start a local server. If there actually is a fiftyone server
             # running that didn't respond to /fiftyone, the local server will
             # fail to start but the app will still connect successfully.
             super().start()
-
-        if server_version is not None:
+            self._wait_for_child_port(self._port)
+        else:
             logger.info("Connected to fiftyone on local port %i" % self._port)
             if server_version != foc.VERSION:
                 logger.warn(

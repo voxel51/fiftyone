@@ -970,6 +970,9 @@ class ZooFindCommand(Command):
 
         # Print the location of the downloaded zoo dataset on disk
         fiftyone zoo find <name>
+
+        # Print the location of a specific split of the dataset
+        fiftyone zoo find <name> --split <split>
     """
 
     @staticmethod
@@ -977,12 +980,16 @@ class ZooFindCommand(Command):
         parser.add_argument(
             "name", metavar="NAME", help="the name of the dataset"
         )
+        parser.add_argument(
+            "-s", "--split", metavar="SPLIT", help="a dataset split",
+        )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
+        split = args.split
 
-        dataset_dir = foz.find_zoo_dataset(name)
+        dataset_dir = foz.find_zoo_dataset(name, split=split)
         print(dataset_dir)
 
 

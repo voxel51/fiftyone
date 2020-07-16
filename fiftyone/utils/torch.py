@@ -45,18 +45,25 @@ class TorchImageDataset(Dataset):
         sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
             IDs
         transform (None): an optional transform to apply to the images
+        force_rgb (False): force convert the images to RGB
     """
 
-    def __init__(self, image_paths, sample_ids=None, transform=None):
+    def __init__(
+        self, image_paths, sample_ids=None, transform=None, force_rgb=False
+    ):
         self.image_paths = list(image_paths)
         self.sample_ids = list(sample_ids) if sample_ids else None
         self.transform = transform
+        self.force_rgb = force_rgb
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
         img = PIL.Image.open(self.image_paths[idx])
+
+        if self.force_rgb:
+            img = img.convert("RGB")
 
         if self.transform:
             img = self.transform(img)
@@ -86,13 +93,22 @@ class TorchImageClassificationDataset(Dataset):
         sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
             IDs
         transform (None): an optional transform to apply to the images
+        force_rgb (False): force convert the images to RGB
     """
 
-    def __init__(self, image_paths, targets, sample_ids=None, transform=None):
+    def __init__(
+        self,
+        image_paths,
+        targets,
+        sample_ids=None,
+        transform=None,
+        force_rgb=False,
+    ):
         self.image_paths = list(image_paths)
         self.targets = list(targets)
         self.sample_ids = list(sample_ids) if sample_ids else None
         self.transform = transform
+        self.force_rgb = force_rgb
 
     def __len__(self):
         return len(self.image_paths)
@@ -100,6 +116,9 @@ class TorchImageClassificationDataset(Dataset):
     def __getitem__(self, idx):
         img = PIL.Image.open(self.image_paths[idx])
         target = self.targets[idx]
+
+        if self.force_rgb:
+            img = img.convert("RGB")
 
         if self.transform:
             img = self.transform(img)

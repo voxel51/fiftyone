@@ -102,6 +102,7 @@ class UnlabeledImageSampleParser(SampleParser):
             img = sample_parser.get_image()
             if sample_parser.has_image_path:
                 image_path = sample_parser.get_image_path()
+
             if sample_parser.has_image_metadata:
                 image_metadata = sample_parser.get_image_metadata()
     """
@@ -512,7 +513,8 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         except:
             pass
 
-        tlx, tly, w, h = obj[self.bounding_box_field]
+        tlx, tly, w, h = self._parse_bbox(obj)
+
         if not self.normalized:
             height, width = img.shape[:2]
             tlx /= width
@@ -530,6 +532,10 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         return fol.Detection(
             label=label, bounding_box=bounding_box, confidence=confidence,
         )
+
+    def _parse_bbox(self, obj):
+        """Returns: tlx, tly, w, h"""
+        return obj[self.bounding_box_field]
 
 
 class ImageLabelsSampleParser(LabeledImageTupleSampleParser):

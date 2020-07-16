@@ -47,8 +47,8 @@ Listing zoo datasets
 
   .. group-tab:: Python
 
-    You can list the available zoo datasets via the
-    :meth:`fiftyone.zoo.list_zoo_datasets()` method:
+    You can list the available zoo datasets via
+    :meth:`list_zoo_datasets() <fiftyone.zoo.list_zoo_datasets>`:
 
     .. code-block:: python
         :linenos:
@@ -73,8 +73,8 @@ Listing zoo datasets
          'fashion-mnist',
          'caltech101']
 
-    To view the zoo datasets that you have downloaded, you can use the
-    :meth:`fiftyone.zoo.list_downloaded_zoo_datasets()` method:
+    To view the zoo datasets that you have downloaded, you can use
+    :meth:`list_downloaded_zoo_datasets() <fiftyone.zoo.list_downloaded_zoo_datasets>`:
 
     .. code-block:: python
         :linenos:
@@ -179,9 +179,9 @@ Getting information about zoo datasets
 
   .. group-tab:: Python
 
-    Each zoo dataset is represented by a :class:`fiftyone.zoo.ZooDataset`
-    subclass, which contains information about the dataset, its available
-    splits, and more.
+    Each zoo dataset is represented by a
+    :class:`ZooDataset <fiftyone.zoo.ZooDataset>` subclass, which contains
+    information about the dataset, its available splits, and more.
 
     For example, let's print some information about the CIFAR-10 dataset:
 
@@ -214,14 +214,14 @@ Getting information about zoo datasets
         ***** Supported splits *****
         test, train
 
-    When a zoo dataset is downloaded, a :class:`fiftyone.zoo.ZooDatasetInfo`
-    instance is created in its root directory that contains additional
-    information about the dataset, including which splits have been
-    downloaded (if applicable).
+    When a zoo dataset is downloaded, a
+    :class:`ZooDatasetInfo <fiftyone.zoo.ZooDatasetInfo>` instance is created
+    in its root directory that contains additional information about the
+    dataset, including which splits have been downloaded (if applicable).
 
-    You can load the :class:`fiftyone.zoo.ZooDatasetInfo` instance for a
-    downloaded dataset via the :meth:`fiftyone.zoo.load_zoo_dataset_info()`
-    method.
+    You can load the :class:`ZooDatasetInfo <fiftyone.zoo.ZooDatasetInfo>`
+    instance for a downloaded dataset via
+    :meth:`load_zoo_dataset_info() <fiftyone.zoo.load_zoo_dataset_info>`.
 
     For example, let's print some information about the CIFAR-10 dataset
     (assuming it is downloaded):
@@ -243,7 +243,7 @@ Getting information about zoo datasets
     .. code-block:: text
 
         ***** Dataset location *****
-        /Users/Brian/fiftyone/cifar10
+        ~/fiftyone/cifar10
 
         ***** Dataset info *****
         {
@@ -361,7 +361,7 @@ Downloading zoo datasets
   .. group-tab:: Python
 
     You can download zoo datasets (or individual split(s) of them) from the
-    web via the :meth:`fiftyone.zoo.download_zoo_dataset()` method.
+    web via :meth:`download_zoo_dataset() <fiftyone.zoo.download_zoo_dataset>`.
 
     For example, let's download the ``train`` split of CIFAR-10:
 
@@ -374,15 +374,15 @@ Downloading zoo datasets
 
     .. code-block:: text
 
-        Downloading split 'train' to '/Users/Brian/fiftyone/cifar10/train'
-        Downloading https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz to /Users/Brian/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz
+        Downloading split 'train' to '~/fiftyone/cifar10/train'
+        Downloading https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz to ~/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz
         170500096it [00:04, 34734776.49it/s]
-        Extracting /Users/Brian/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz to /Users/Brian/fiftyone/cifar10/tmp-download
-        Writing samples to '/Users/Brian/fiftyone/cifar10/train' in 'fiftyone.types.dataset_types.ImageClassificationDataset' format...
+        Extracting ~/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz to ~/fiftyone/cifar10/tmp-download
+        Writing samples to '~/fiftyone/cifar10/train' in 'fiftyone.types.dataset_types.ImageClassificationDataset' format...
          100% |█████████████████████████████████████████████| 50000/50000 [24.3s elapsed, 0s remaining, 1.7K samples/s]
-        Writing labels to '/Users/Brian/fiftyone/cifar10/train/labels.json'
+        Writing labels to '~/fiftyone/cifar10/train/labels.json'
         Dataset created
-        Dataset info written to '/Users/Brian/fiftyone/cifar10/info.json'
+        Dataset info written to '~/fiftyone/cifar10/info.json'
 
   .. group-tab:: CLI
 
@@ -443,10 +443,11 @@ Loading zoo datasets
 
   .. group-tab:: Python
 
-    You can load a zoo dataset (or individual split(s) of them) via the
-    :meth:`fiftyone.zoo.load_zoo_dataset()` method. By default, the dataset will
-    be automatically downloaded from the web the first time you access it if
-    it is not already downloaded:
+    You can load a zoo dataset (or individual split(s) of them) via
+    :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>`.
+
+    By default, the dataset will be automatically downloaded from the web the
+    first time you access it if it is not already downloaded:
 
     .. code-block:: python
         :linenos:
@@ -514,35 +515,43 @@ Controlling where zoo datasets are downloaded
 By default, zoo datasets are downloaded into subdirectories of
 ``fiftyone.config.default_dataset_dir`` corresponding to their names.
 
-You can customize this directory in any of the following ways:
+You can customize this backend by modifying the `default_dataset_dir` setting
+of your :doc:`FiftyOne config </user_guide/config>`.
 
--  Directly editing your FiftyOne config at ``~/.fiftyone/config.json``
+.. tabs::
 
-.. code-block:: shell
+    .. group-tab:: JSON
 
-    # Print your current config
-    fiftyone config
+        Directly edit your FiftyOne config at `~/.fiftyone/config.json`:
 
-    # Locate your config, and then edit it
-    fiftyone constants FIFTYONE_CONFIG_PATH
+        .. code-block:: shell
 
--  Setting the ``FIFTYONE_DEFAULT_DATASET_DIR`` environment variable
+            # Print your current config
+            fiftyone config
 
-.. code-block:: shell
+            # Locate your config (and edit the `default_dataset_dir` field)
+            fiftyone constants FIFTYONE_CONFIG_PATH
 
-    # Customize where zoo datasets are downloaded
-    export FIFTYONE_DEFAULT_DATASET_DIR=/your/custom/directory
+    .. group-tab:: Environment
 
--  Setting the ``default_dataset_dir`` config setting from your Python
-   code
+        Set the ``FIFTYONE_DEFAULT_DATASET_DIR`` environment variable:
 
-.. code-block:: python
-    :linenos:
+        .. code-block:: shell
 
-    # Customize where zoo datasets are downloaded
-    import fiftyone.core.config as foc
+            # Customize where zoo datasets are downloaded
+            export FIFTYONE_DEFAULT_DATASET_DIR=/your/custom/directory
 
-    foc.set_config_settings(default_dataset_dir="/your/custom/directory")
+    .. group-tab:: Code
+
+        Set the `default_dataset_dir` config setting from Python code:
+
+        .. code-block:: python
+            :linenos:
+
+            # Customize where zoo datasets are downloaded
+            import fiftyone.core.config as foc
+
+            foc.set_config_settings(default_dataset_dir="/your/custom/directory")
 
 Customizing your ML backend
 ---------------------------
@@ -564,31 +573,40 @@ requested zoo dataset. If a dataset is available through both backends, it will
 use the backend specified by the `fo.config.default_ml_backend` setting in your
 FiftyOne config.
 
-You can customize this backend in any of the following ways:
+You can customize this backend by modifying the `default_ml_backend` setting
+of your :doc:`FiftyOne config </user_guide/config>`.
 
--  Directly editing your FiftyOne config at `~/.fiftyone/config.json`:
+.. tabs::
 
-.. code-block:: shell
+    .. group-tab:: JSON
 
-    # Print your current config
-    fiftyone config
+        Directly edit your FiftyOne config at `~/.fiftyone/config.json`:
 
-    # Locate your config, and then edit it
-    fiftyone constants FIFTYONE_CONFIG_PATH
+        .. code-block:: shell
 
--  Setting the ``FIFTYONE_DEFAULT_ML_BACKEND`` environment variable:
+            # Print your current config
+            fiftyone config
 
-.. code-block:: shell
+            # Locate your config (and edit the `default_ml_backend` field)
+            fiftyone constants FIFTYONE_CONFIG_PATH
 
-    # Use the `tensorflow` backend
-    export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
+    .. group-tab:: Environment
 
--  Setting the `default_ml_backend` config setting from your Python code:
+        Set the ``FIFTYONE_DEFAULT_ML_BACKEND`` environment variable:
 
-.. code-block:: python
-    :linenos:
+        .. code-block:: shell
 
-    # Use the `torch` backend
-    import fiftyone.core.config as foc
+            # Use the `tensorflow` backend
+            export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
 
-    foc.set_config_settings(default_ml_backend="torch")
+    .. group-tab:: Code
+
+        Set the `default_ml_backend` config setting from Python code:
+
+        .. code-block:: python
+            :linenos:
+
+            # Use the `torch` backend
+            import fiftyone.core.config as foc
+
+            foc.set_config_settings(default_ml_backend="torch")

@@ -84,7 +84,7 @@ class DatasetImporter(object):
         the dataset.
 
         This method is called when the importer's context manager interface is
-        entered, :function:`DatasetImporter.__enter__`.
+        entered, :func:`DatasetImporter.__enter__`.
         """
         pass
 
@@ -93,7 +93,7 @@ class DatasetImporter(object):
         imported.
 
         This method is called when the importer's context manager interface is
-        exited, :function:`DatasetImporter.__exit__`.
+        exited, :func:`DatasetImporter.__exit__`.
 
         Args:
             *args: the arguments to :func:`DatasetImporter.__exit__`
@@ -129,8 +129,7 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
             -   ``image_path`` is the path to the image on disk
             -   ``image_metadata`` is an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
-                image, or ``None`` if :property:`has_image_metadata` is
-                ``False``
+                image, or ``None`` if :meth:`has_image_metadata` is ``False``
 
         Raises:
             StopIteration: if there are no more samples to import
@@ -178,9 +177,8 @@ class LabeledImageDatasetImporter(DatasetImporter):
             -   ``image_path`` is the path to the image on disk
             -   ``image_metadata`` is an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
-                image, or ``None`` if :property:`has_image_metadata` is
-                ``False``
-            -   ``label`` is an instance of :property:`label_cls`
+                image, or ``None`` if :meth:`has_image_metadata` is ``False``
+            -   ``label`` is an instance of :meth:`label_cls`
 
         Raises:
             StopIteration: if there are no more samples to import
