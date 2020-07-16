@@ -212,7 +212,7 @@ class DatasetView(foc.SampleCollection):
                 :class:``fiftyone.core.fields.Field``
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
+                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
 
         Returns:
              a dictionary mapping field names to field types
