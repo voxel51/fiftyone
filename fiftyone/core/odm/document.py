@@ -23,7 +23,7 @@ import json
 
 from bson import json_util
 from bson.objectid import ObjectId
-from mongoengine import Document, EmbeddedDocument, DynamicEmbeddedDocument
+import mongoengine
 
 try:
     import pprintpp as pprint
@@ -140,9 +140,9 @@ class SerializableDocument(object):
         return cls.from_dict(d, extended=False)
 
 
-class MongoSerializableDocument(SerializableDocument):
-    """:class:`SerializableDocument` mixin for ``mongoengine.Document``
-    subclasses.
+class MongoEngineBaseDocument(SerializableDocument):
+    """Mixin for all ``mongoengine.base.BaseDocument`` subclasses that
+    implements the :class:`SerializableDocument` interface.
     """
 
     @property
@@ -178,8 +178,9 @@ class MongoSerializableDocument(SerializableDocument):
         return json_util.dumps(self.to_mongo(use_db_field=True))
 
 
-class ODMDocument(MongoSerializableDocument, Document):
-    """Base class for documents that are stored in a MongoDB collection.
+class BaseDocument(MongoEngineBaseDocument):
+    """Base class for documents that are written to the database in their own
+    collections.
 
     The ID of a document is automatically populated when it is added to the
     database, and the ID of a document is ``None`` if it has not been added to
@@ -187,17 +188,15 @@ class ODMDocument(MongoSerializableDocument, Document):
 
     Attributes:
         id: the ID of the document, or ``None`` if it has not been added to the
-            dataset
+            database
     """
-
-    meta = {"abstract": True}
 
     def __eq__(self, other):
         # pylint: disable=no-member
         if self.id != other.id:
             return False
 
-        return super(ODMDocument, self).__eq__(other)
+        return super().__eq__(other)
 
     @property
     def _to_str_fields(self):
@@ -214,7 +213,7 @@ class ODMDocument(MongoSerializableDocument, Document):
 
     @property
     def in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
+        """Whether the underlying :class:`fiftyone.core.odm.Document` has
         been inserted into the database.
         """
         return getattr(self, "id", None) is not None
@@ -223,18 +222,60 @@ class ODMDocument(MongoSerializableDocument, Document):
         """Returns a copy of the document that does not have its `id` set.
 
         Returns:
-            a :class:`ODMDocument`
+            a :class:`Document`
         """
         doc = deepcopy(self)
         if doc.id is not None:
+            # pylint: disable=attribute-defined-outside-init
             doc.id = None
 
         return doc
 
 
-class ODMEmbeddedDocument(MongoSerializableDocument, EmbeddedDocument):
+class BaseEmbeddedDocument(MongoEngineBaseDocument):
     """Base class for documents that are embedded within other documents and
-    therefore aren't stored in their own collection in the database.
+    therefore are not stored in their own collection in the database.
+    """
+
+    pass
+
+
+class Document(BaseDocument, mongoengine.Document):
+    """Base class for documents that are stored in a MongoDB collection.
+
+    The ID of a document is automatically populated when it is added to the
+    database, and the ID of a document is ``None`` if it has not been added to
+    the database.
+
+    Attributes:
+        id: the ID of the document, or ``None`` if it has not been added to the
+            database
+    """
+
+    meta = {"abstract": True}
+
+
+class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
+    """Base class for dynamic documents that are stored in a MongoDB
+    collection.
+
+    Dynamic documents can have arbitrary fields added to them.
+
+    The ID of a document is automatically populated when it is added to the
+    database, and the ID of a document is ``None`` if it has not been added to
+    the database.
+
+    Attributes:
+        id: the ID of the document, or ``None`` if it has not been added to the
+            database
+    """
+
+    meta = {"abstract": True}
+
+
+class EmbeddedDocument(BaseEmbeddedDocument, mongoengine.EmbeddedDocument):
+    """Base class for documents that are embedded within other documents and
+    therefore are not stored in their own collection in the database.
     """
 
     meta = {"abstract": True}
@@ -244,12 +285,14 @@ class ODMEmbeddedDocument(MongoSerializableDocument, EmbeddedDocument):
         self.validate()
 
 
-class ODMDynamicEmbeddedDocument(
-    MongoSerializableDocument, DynamicEmbeddedDocument,
+class DynamicEmbeddedDocument(
+    BaseEmbeddedDocument, mongoengine.DynamicEmbeddedDocument,
 ):
     """Base class for dynamic documents that are embedded within other
     documents and therefore aren't stored in their own collection in the
     database.
+
+    Dynamic documents can have arbitrary fields added to them.
     """
 
     meta = {"abstract": True}
