@@ -2,6 +2,11 @@
 @todo(Tyler)
 """
 from google.protobuf import text_format
+import numpy as np
+import pandas as pd
+
+import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
 
 import sys
 
@@ -130,9 +135,9 @@ class TensorflowObjectDetectionAPIEvaluator:
                     else:
                         false_positive_idxs.append(match_idxs[0])
                 else:
-                    # @todo(Tyler) this is an unaccounted-for match. It is unclear
-                    #   what box it refers to because multiple boxes have the same
-                    #   class label and score
+                    # @todo(Tyler) this is an unaccounted-for match. It is
+                    #   unclear what box it refers to because multiple boxes
+                    #   have the same class label and score
                     pass
 
         return true_positive_idxs, false_positive_idxs
@@ -155,14 +160,14 @@ class TensorflowObjectDetectionAPIEvaluator:
     def load_labelmap(labelmap_path):
         """Loads labelmap from the labelmap path.
 
-      Args:
-        labelmap_path: Path to the labelmap.
+        Args:
+            labelmap_path: Path to the labelmap.
 
-      Returns:
-        A dictionary mapping class name to class numerical id
-        A list with dictionaries, one dictionary per category.
-      """
-
+        Returns:
+            A dictionary mapping class name to class numerical id
+            A list with dictionaries, one dictionary per category.
+        """
+        # pylint: disable=no-member
         label_map = string_int_label_map_pb2.StringIntLabelMap()
         with open(labelmap_path, "r") as fid:
             label_map_string = fid.read()
@@ -179,3 +184,179 @@ class TensorflowObjectDetectionAPIEvaluator:
                 }
             )
         return labelmap_dict, categories
+
+
+def detections2df(
+    image_id, detections, display2name_map=None, is_groundtruth=False
+):
+    """
+
+    Args:
+        detections:
+        display2name_map:
+        is_groundtruth:
+
+    Returns:
+        a pandas.DataFrame
+    """
+    confidence_key = "Confidence" if is_groundtruth else "Score"
+
+    if detections is None:
+        columns = ["ImageID", "LabelName"]
+        if is_groundtruth:
+            columns += [
+                "Source",
+                "IsOccluded",
+                "IsTruncated",
+                "IsGroupOf",
+                "IsDepiction",
+                "IsInside",
+            ]
+        df = pd.DataFrame(columns=columns)
+        # these columns need to be float dtype
+        df2 = pd.DataFrame(
+            columns=[confidence_key, "XMin", "XMax", "YMin", "YMax"],
+            dtype=float,
+        )
+        for col in df2.columns:
+            df[col] = df2[col]
+
+        return df
+
+    dets = detections.detections
+
+    d = {
+        "ImageID": image_id,
+        "LabelName": [det.label for det in dets],
+        confidence_key: [int(det.confidence) for det in dets],
+    }
+
+    if display2name_map:
+        d["LabelName"] = [display2name_map[label] for label in d["LabelName"]]
+
+    # (N,4) [<top-left-x>, <top-left-y>, <width>, <height>]
+    bboxes = np.vstack([det.bounding_box for det in dets])
+    d["XMin"] = bboxes[:, 0]
+    d["XMax"] = bboxes[:, 0] + bboxes[:, 2]
+    d["YMin"] = bboxes[:, 1]
+    d["YMax"] = bboxes[:, 1] + bboxes[:, 3]
+
+    if is_groundtruth:
+        d["Source"] = [det.attributes["Source"].value for det in dets]
+
+        # boolean attributes
+        for col_name in [
+            "IsOccluded",
+            "IsTruncated",
+            "IsGroupOf",
+            "IsDepiction",
+            "IsInside",
+        ]:
+            d[col_name] = [int(det.attributes[col_name].value) for det in dets]
+
+    return pd.DataFrame(d)
+
+
+def classifications2df(image_id, classifications, display2name_map=None):
+    """
+
+    Args:
+        classifications:
+        display2name_map:
+
+    Returns:
+         a pandas.DataFrame
+    """
+    if classifications is None:
+        columns = ["ImageID", "LabelName", "ConfidenceImageLabel", "Source"]
+        return pd.DataFrame(columns=columns)
+
+    labs = classifications.classifications
+
+    d = {
+        "ImageID": image_id,
+        "LabelName": [lab.label for lab in labs],
+        "ConfidenceImageLabel": [int(lab.confidence) for lab in labs],
+    }
+
+    if display2name_map:
+        d["LabelName"] = [display2name_map[label] for label in d["LabelName"]]
+
+    d["Source"] = [lab.attributes["Source"].value for lab in labs]
+
+    return pd.DataFrame(d)
+
+
+def evaluate_dataset(
+    dataset,
+    label_map_path,
+    groundtruth_loc_field_name="groundtruth_detections",
+    groundtruth_img_labels_field_name="groundtruth_image_labels",
+    predictions_field_name="predicted_detections",
+    iou_threshold=0.5,
+):
+    _, categories = TensorflowObjectDetectionAPIEvaluator.load_labelmap(
+        label_map_path
+    )
+    display2name_map = {d["display_name"]: d["name"] for d in categories}
+    name2display_map = {d["name"]: d["display_name"] for d in categories}
+
+    evaluator = TensorflowObjectDetectionAPIEvaluator(
+        label_map_path, iou_threshold=iou_threshold
+    )
+
+    with fou.ProgressBar(dataset) as pb:
+        for sample in pb(dataset):
+            # convert groundtruth to dataframe
+            loc_annos = detections2df(
+                sample.open_images_id,
+                sample[groundtruth_loc_field_name],
+                display2name_map=display2name_map,
+                is_groundtruth=True,
+            )
+            label_annos = classifications2df(
+                sample.open_images_id,
+                sample[groundtruth_img_labels_field_name],
+                display2name_map=display2name_map,
+            )
+            groundtruth = pd.concat([loc_annos, label_annos])
+
+            # convert predictions to dataframe
+            predictions = detections2df(
+                sample.open_images_id,
+                sample[predictions_field_name],
+                display2name_map=display2name_map,
+            )
+
+            # evaluate
+            result = evaluator.evaluate_image(
+                sample.open_images_id, groundtruth, predictions
+            )
+
+            # store mAP
+            mAP = result["mAP"]
+            if not np.isnan(mAP):
+                sample["mAP"] = mAP
+
+            # store AP per class
+            sample["AP_per_class"] = {
+                name2display_map[k]: v
+                for k, v in result["AP_per_class"].items()
+                if not np.isnan(v)
+            }
+
+            # store false positives
+            for idx in result["false_positive_indexes"]:
+                det = sample[predictions_field_name].detections[idx]
+                det.attributes["eval"] = fol.CategoricalAttribute(
+                    value="false_positive"
+                )
+
+            # store true positives
+            for idx in result["true_positive_indexes"]:
+                det = sample[predictions_field_name].detections[idx]
+                det.attributes["eval"] = fol.CategoricalAttribute(
+                    value="true_positive"
+                )
+
+            sample.save()
