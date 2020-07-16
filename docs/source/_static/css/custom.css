@@ -67,6 +67,12 @@ span.pre {
     margin-left: 25px;
   }
 
+  .pytorch-content-right .pytorch-right-menu,
+  .pytorch-content-right .pytorch-side-scroll {
+    width: 250px;
+    overflow-y: auto;
+  }
+
   .pytorch-right-menu.scrolling-fixed {
     left: calc(250px + ((100% - 250px) * 0.75) + 25px);
     width: 250px;
