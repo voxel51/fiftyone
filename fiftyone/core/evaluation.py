@@ -26,9 +26,6 @@ import numpy as np
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-import eta.core.serial as etas
-import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -157,13 +154,13 @@ def evaluate_detections(dataset, prediction_field, gt_field="ground_truth"):
     cocoEval = COCOeval(cocoGt,cocoDt,"bbox")
 
     cocoEval.evaluate()
-    accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field)
+    _accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field)
     del cocoEval
     del cocoDt
     del cocoGt
 
 
-def accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
+def _accumulate_coco(cocoEval, dataset, sample_id_map, prediction_field):
     '''Accumulate per image evaluation results and store the results in each
     sample of the given FiftyOne Dataset
 
