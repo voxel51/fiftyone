@@ -19,7 +19,6 @@ import time
 import unittest
 import urllib
 
-from retrying import retry
 import socketio
 
 import eta.core.utils as etau
@@ -27,8 +26,6 @@ import eta.core.utils as etau
 import fiftyone as fo
 from fiftyone.constants import SERVER_ADDR
 import fiftyone.core.client as foc
-import fiftyone.core.odm as foo
-import fiftyone.core.service as fos
 from fiftyone.core.session import Session
 from fiftyone.core.state import StateDescription
 
@@ -75,6 +72,12 @@ class ServerServiceTests(unittest.TestCase):
         cls.sample1["scalar"] = 1
         cls.sample1["label"] = fo.Classification(label="test")
         cls.sample1.tags.append("tag")
+        cls.sample1["floats"] = [
+            0.5,
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+        ]
         cls.sample1.save()
 
     @classmethod
@@ -118,7 +121,11 @@ class ServerServiceTests(unittest.TestCase):
         self.wait_for_response()
         self.client.emit("page", 1, callback=self.client_callback)
         client = self.wait_for_response()
-        self.assertIs(len(client["results"]), 2)
+        results = client["results"]
+        self.assertIs(len(results), 2)
+        # this will raise an error if special floats exist that are not JSON
+        # compliant
+        json.dumps(results, allow_nan=False)
 
     def step_lengths(self):
         self.session.dataset = self.dataset

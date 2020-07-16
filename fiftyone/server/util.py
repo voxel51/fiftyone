@@ -28,8 +28,6 @@ import os
 import io
 import struct
 
-from bson import json_util
-
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
 
 
@@ -279,19 +277,4 @@ def get_image_metadata_from_bytesio(input, size, file_path=None):
         file_size=size,
         width=width,
         height=height,
-    )
-
-
-def json_util_dumps_safe(obj, *args, **kwargs):
-    """Handles special floats (NaN, Infinity, -Infinity) by converting to
-    strings.
-    """
-    s = json_util.dumps(
-        obj, json_options=json_util.RELAXED_JSON_OPTIONS, *args, **kwargs
-    )
-
-    return (
-        s.replace('{"$numberDouble": "NaN"}', '"NaN"')
-        .replace('{"$numberDouble": "Infinity"}', '"Inf"')
-        .replace('{"$numberDouble": "-Infinity"}', '"-Inf"')
     )
