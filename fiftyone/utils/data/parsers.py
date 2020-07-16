@@ -534,7 +534,6 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         )
 
     def _parse_bbox(self, obj):
-        """Returns: tlx, tly, w, h"""
         return obj[self.bounding_box_field]
 
 
