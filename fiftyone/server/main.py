@@ -64,7 +64,7 @@ def get_fiftyone_info():
 
 def _load_state(func):
     def wrapper(self, *args, **kwargs):
-        state = fos.StateDescription.from_dict(self.state)
+        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
         state = func(self, state, *args, **kwargs)
         self.state = state.serialize()
         emit("update", self.state, broadcast=True, include_self=False)
@@ -77,15 +77,16 @@ class StateController(Namespace):
     """State controller.
 
     Attributes:
-        state: a :class:`fiftyone.core.state.StateDescription` instance
+        state: a :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+               instance
 
     Args:
-        **args: postional arguments for ``flask_socketio.Namespace``
+        **args: positional arguments for ``flask_socketio.Namespace``
         **kwargs: keyword arguments for ``flask_socketio.Namespace``
     """
 
     def __init__(self, *args, **kwargs):
-        self.state = fos.StateDescription().serialize()
+        self.state = fos.StateDescriptionWithDerivables().serialize()
         super(StateController, self).__init__(*args, **kwargs)
 
     def on_connect(self):
@@ -96,20 +97,23 @@ class StateController(Namespace):
         """Handles disconnection from the server."""
         pass
 
-    def on_update(self, state):
+    def on_update(self, state_dict):
         """Updates the state.
 
         Args:
-            state: a serialized :class:`fiftyone.core.state.StateDescription`
+            state_dict: a serialized
+                :class:`fiftyone.core.state.StateDescription`
         """
-        self.state = state
-        emit("update", state, broadcast=True, include_self=False)
+        self.state = fos.StateDescriptionWithDerivables.from_dict(
+            state_dict
+        ).serialize()
+        emit("update", self.state, broadcast=True, include_self=False)
 
     def on_get_current_state(self, _):
         """Gets the current state.
 
         Returns:
-            a :class:`fiftyone.core.state.StateDescription`
+            a :class:`fiftyone.core.state.StateDescriptionWithDerivables`
         """
         return self.state
 
@@ -118,11 +122,13 @@ class StateController(Namespace):
         """Adds a sample to the selected samples list.
 
         Args:
-            state: the current :class:`fiftyone.core.state.StateDescription`
+            state: the current
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
             _id: the sample ID
 
         Returns:
-            the updated :class:`fiftyone.core.state.StateDescription`
+            the updated
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
         """
         selected = set(state.selected)
         selected.add(_id)
@@ -134,11 +140,13 @@ class StateController(Namespace):
         """Remove a sample from the selected samples list
 
         Args:
-            state: the current :class:`fiftyone.core.state.StateDescription`
+            state: the current
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
             _id: the sample ID
 
         Returns:
-            the updated :class:`fiftyone.core.state.StateDescription`
+            the updated
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
         """
         selected = set(state.selected)
         selected.remove(_id)
@@ -155,7 +163,7 @@ class StateController(Namespace):
         Returns:
             the list of sample dicts for the page
         """
-        state = fos.StateDescription.from_dict(self.state)
+        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -181,7 +189,7 @@ class StateController(Namespace):
         return {"results": results, "more": more}
 
     def on_lengths(self, _):
-        state = fos.StateDescription.from_dict(self.state)
+        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -191,7 +199,8 @@ class StateController(Namespace):
         return {"labels": view.get_label_fields(), "tags": view.get_tags()}
 
     def on_get_distributions(self, group):
-        """Gets the distributions for the current state with respect to a group,
+        """Gets the distributions for the current state with respect to a
+        group.
 
         Args:
             group: one of "labels", "tags", or "scalars"
@@ -199,7 +208,7 @@ class StateController(Namespace):
         Returns:
             a list of distributions
         """
-        state = fos.StateDescription.from_dict(self.state)
+        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
