@@ -304,7 +304,7 @@ class COCOObject(etas.Serializable):
         bbox,
         area=None,
         segmentation=None,
-        iscrowd=0,
+        iscrowd=None,
     ):
         self.id = id
         self.image_id = image_id
@@ -355,9 +355,16 @@ class COCOObject(etas.Serializable):
             round(w * width, 1),
             round(h * height, 1),
         ]
-        area = round(bbox[2] * bbox[3], 1)
 
-        return cls(None, None, category_id, bbox, area=area)
+        area = detection.get_attribute_value("area", default=None)
+        if area is None:
+            area = round(bbox[2] * bbox[3], 1)
+
+        # @todo parse `segmentation`
+
+        iscrowd = detection.get_attribute_value("iscrowd", default=None)
+
+        return cls(None, None, category_id, bbox, area=area, iscrowd=iscrowd)
 
     def to_detection(self, frame_size, classes):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of
@@ -383,6 +390,14 @@ class COCOObject(etas.Serializable):
             area = self.area / (width * height)
             detection.attributes["area"] = fol.NumericAttribute(value=area)
 
+        if self.iscrowd is not None:
+            # pylint: disable=unsupported-assignment-operation
+            detection.attributes["iscrowd"] = fol.NumericAttribute(
+                value=self.iscrowd
+            )
+
+        # @todo parse `segmentation`
+
         return detection
 
     def attributes(self):
@@ -391,15 +406,19 @@ class COCOObject(etas.Serializable):
         Returns:
             a list of class attributes
         """
-        return [
+        _attrs = [
             "id",
             "image_id",
             "category_id",
             "bbox",
-            "area",
-            "segmentation",
-            "iscrowd",
         ]
+        if self.area is not None:
+            _attrs.append(self.area)
+        if self.segmentation is not None:
+            _attrs.append(self.segmentation)
+        if self.iscrowd is not None:
+            _attrs.append(self.iscrowd)
+        return _attrs
 
     @classmethod
     def from_dict(cls, d):
@@ -424,10 +443,12 @@ def load_coco_detection_annotations(json_path):
         json_path: the path to the annotations JSON file
 
     Returns:
-        classes: a list of classes
-        images: a dict mapping image filenames to image dicts
-        annotations: a dict mapping image IDs to list of :class:`COCOObject`
-            instances
+        a tuple of
+
+        -   classes: a list of classes
+        -   images: a dict mapping image filenames to image dicts
+        -   annotations: a dict mapping image IDs to list of
+            :class:`COCOObject` instances
     """
     d = etas.load_json(json_path)
 
@@ -494,8 +515,12 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
         cleanup (True): whether to cleanup the zip files after extraction
 
     Returns:
-        images_dir: the path to the directory containing the extracted images
-        anno_path: the path to the detections JSON file, or ``None`` if ``split == "test"``
+        a tuple of
+
+        -   images_dir: the path to the directory containing the extracted
+            mages
+        -   anno_path: the path to the detections JSON file, or ``None`` if
+            ``split == "test"``
     """
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
