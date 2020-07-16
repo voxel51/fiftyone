@@ -3,11 +3,11 @@
 """
 import numpy as np
 import pandas as pd
-from pprintpp import pprint
 
 from fiftyone.utils.tfodeval import TensorflowObjectDetectionAPIEvaluator
 
 import fiftyone as fo
+import fiftyone.core.utils as fou
 
 pd.set_option("display.max_columns", 500)
 
@@ -31,12 +31,36 @@ def detections2df(
     Returns:
         a pandas.DataFrame
     """
+    confidence_key = "Confidence" if is_groundtruth else "Score"
+
+    if detections is None:
+        columns = ["ImageID", "LabelName"]
+        if is_groundtruth:
+            columns += [
+                "Source",
+                "IsOccluded",
+                "IsTruncated",
+                "IsGroupOf",
+                "IsDepiction",
+                "IsInside",
+            ]
+        df = pd.DataFrame(columns=columns)
+        # these columns need to be float dtype
+        df2 = pd.DataFrame(
+            columns=[confidence_key, "XMin", "XMax", "YMin", "YMax"],
+            dtype=float,
+        )
+        for col in df2.columns:
+            df[col] = df2[col]
+
+        return df
+
     dets = detections.detections
 
     d = {
         "ImageID": image_id,
         "LabelName": [det.label for det in dets],
-        "Confidence": [int(det.confidence) for det in dets],
+        confidence_key: [int(det.confidence) for det in dets],
     }
 
     if display2name_map:
@@ -75,6 +99,10 @@ def classifications2df(image_id, classifications, display2name_map=None):
     Returns:
          a pandas.DataFrame
     """
+    if classifications is None:
+        columns = ["ImageID", "LabelName", "ConfidenceImageLabel", "Source"]
+        return pd.DataFrame(columns=columns)
+
     labs = classifications.classifications
 
     d = {
@@ -91,79 +119,90 @@ def classifications2df(image_id, classifications, display2name_map=None):
     return pd.DataFrame(d)
 
 
+def evaluate_dataset(
+    dataset,
+    label_map_path,
+    groundtruth_loc_field_name="groundtruth_detections",
+    groundtruth_img_labels_field_name="groundtruth_image_labels",
+    predictions_field_name="predicted_detections",
+    iou_threshold=0.5,
+):
+    _, categories = TensorflowObjectDetectionAPIEvaluator.load_labelmap(
+        label_map_path
+    )
+    display2name_map = {d["display_name"]: d["name"] for d in categories}
+    name2display_map = {d["name"]: d["display_name"] for d in categories}
+
+    evaluator = TensorflowObjectDetectionAPIEvaluator(
+        label_map_path, iou_threshold=iou_threshold
+    )
+
+    with fou.ProgressBar(dataset) as pb:
+        for sample in pb(dataset):
+            loc_annos = detections2df(
+                sample.open_images_id,
+                sample[groundtruth_loc_field_name],
+                display2name_map=display2name_map,
+                is_groundtruth=True,
+            )
+            label_annos = classifications2df(
+                sample.open_images_id,
+                sample[groundtruth_img_labels_field_name],
+                display2name_map=display2name_map,
+            )
+            groundtruth = pd.concat([loc_annos, label_annos])
+
+            predictions = detections2df(
+                sample.open_images_id,
+                sample[predictions_field_name],
+                display2name_map=display2name_map,
+            )
+
+            result = evaluator.evaluate_image(
+                sample.open_images_id, groundtruth, predictions
+            )
+
+            sample["mAP"] = result["mAP"]
+
+            sample["AP_per_class"] = {
+                name2display_map[k]: v
+                for k, v in result["AP_per_class"].items()
+                if not np.isnan(v)
+            }
+
+            for idx in result["false_positive_indexes"]:
+                det = sample[predictions_field_name].detections[idx]
+                det.attributes["eval"] = fo.CategoricalAttribute(
+                    value="false_positive"
+                )
+            for idx in result["true_positive_indexes"]:
+                det = sample[predictions_field_name].detections[idx]
+                det.attributes["eval"] = fo.CategoricalAttribute(
+                    value="true_positive"
+                )
+
+            sample.save()
+
+
 ###############################################################################
 
 dataset = fo.load_dataset("open-images-v4-test")
 
-_, categories = TensorflowObjectDetectionAPIEvaluator.load_labelmap(
-    CLASS_LABELMAP
-)
-display2name_map = {d["display_name"]: d["name"] for d in categories}
-
-print(dataset)
-print("~" * 100)
-
-gt_loc_field = "groundtruth_detections"
-gt_lab_field = "groundtruth_image_labels"
-preds_field = "faster_rcnn"
+evaluate_dataset(dataset, CLASS_LABELMAP, predictions_field_name="faster_rcnn")
 
 for sample in dataset:
-    df = detections2df(
-        sample.open_images_id,
-        sample[gt_loc_field],
-        display2name_map=display2name_map,
-        is_groundtruth=True,
-    )
-    df = detections2df(
-        sample.open_images_id,
-        sample[preds_field],
-        display2name_map=display2name_map,
-    )
-    df = classifications2df(
-        sample.open_images_id,
-        sample[gt_lab_field],
-        display2name_map=display2name_map,
-    )
-    print("~" * 100)
-    print(df)
-    break
+    if np.isnan(sample.mAP):
+        del sample.mAP
+        sample.save()
 
+###############################################################################
 
 import sys
 
 sys.exit()
 
-all_location_annotations = pd.read_csv(BOUNDING_BOXES_EXPANDED)
-all_label_annotations = pd.read_csv(IMAGE_LABELS_EXPANDED)
-all_label_annotations.rename(
-    columns={"Confidence": "ConfidenceImageLabel"}, inplace=True
-)
+import fiftyone as fo
 
-all_annotations = pd.concat([all_location_annotations, all_label_annotations])
+dataset = fo.load_dataset("open-images-v4-test")
 
-all_predictions = pd.read_csv(INPUT_PREDICTIONS)
-images_processed = 0
-
-evaluator = TensorflowObjectDetectionAPIEvaluator(
-    CLASS_LABELMAP, iou_threshold=0.5
-)
-
-# for image_id, cur_predictions in all_predictions.groupby("ImageID"):
-for image_id in ["0032485d3a9720dc"]:
-    print("Processing image %d" % images_processed)
-
-    cur_groundtruth = all_annotations.loc[
-        all_annotations["ImageID"] == image_id
-    ]
-
-    cur_predictions = all_predictions.loc[
-        all_predictions["ImageID"] == image_id
-    ]
-
-    result = evaluator.evaluate_image(
-        image_id, cur_groundtruth, cur_predictions
-    )
-
-    pprint(result)
-
-# s = fo.launch_app(dataset=dataset)
+s = fo.launch_app(dataset=dataset)
