@@ -573,7 +573,10 @@ class CVATBox(object):
             (self.ybr - self.ytl) / height,
         ]
 
-        attributes = {a.name: a.to_eta_attribute() for a in self.attributes}
+        attributes = {
+            a.name: fol.CategoricalAttribute(value=a.value)
+            for a in self.attributes
+        }
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, attributes=attributes,
