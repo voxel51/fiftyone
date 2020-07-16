@@ -136,6 +136,7 @@ class Classification(ImageLabel):
         label (None): the label string
         confidence (None): a confidence in ``[0, 1]`` for the label
         logits (None): logits associated with the labels
+        data ({}): a dict of additional data
     """
 
     meta = {"allow_inheritance": True}
@@ -143,6 +144,7 @@ class Classification(ImageLabel):
     label = fof.StringField()
     confidence = fof.FloatField()
     logits = fof.VectorField()
+    data = fof.DictField()
 
     def to_image_labels(self, attr_name="label"):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -176,6 +178,7 @@ class Detection(ODMEmbeddedDocument):
         confidence (None): a confidence in ``[0, 1]`` for the label
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
+        data ({}): a dict of additional data
     """
 
     meta = {"allow_inheritance": True}
@@ -184,6 +187,7 @@ class Detection(ODMEmbeddedDocument):
     bounding_box = fof.VectorField()
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
+    data = fof.DictField()
 
     def get_attribute_value(self, attr_name, default=no_default):
         """Gets the value of the attribute with the given name.
