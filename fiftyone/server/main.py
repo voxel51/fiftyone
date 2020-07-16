@@ -23,7 +23,6 @@ import json
 import logging
 import os
 
-from bson import json_util
 from flask import Flask, jsonify, request, send_file
 from flask_socketio import emit, Namespace, SocketIO
 
@@ -35,7 +34,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.state as fos
 
-from util import get_image_size
+from util import get_image_size, json_util_dumps_safe
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
@@ -165,7 +164,7 @@ class StateController(Namespace):
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [
-            json.loads(json_util.dumps(s.to_mongo_dict())) for s in view
+            json.loads(json_util_dumps_safe(s.to_mongo_dict())) for s in view
         ]
         more = False
         if len(samples) > page_length:

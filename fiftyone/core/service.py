@@ -23,7 +23,6 @@ import logging
 import multiprocessing
 import os
 import re
-import socket
 import subprocess
 import sys
 
@@ -151,13 +150,12 @@ class Service(object):
         )
         def find_port():
             child_connections = itertools.chain.from_iterable(  # flatten
-                child.connections()
+                child.connections(kind="tcp")
                 for child in self.child.children(recursive=True)
             )
             for conn in child_connections:
                 if (
-                    conn.type == socket.SOCK_STREAM  # TCP
-                    and not conn.raddr  # not connected to a remote socket
+                    not conn.raddr  # not connected to a remote socket
                     and conn.status == psutil.CONN_LISTEN
                 ):
                     local_port = conn.laddr[1]
