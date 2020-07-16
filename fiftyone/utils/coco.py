@@ -356,13 +356,17 @@ class COCOObject(etas.Serializable):
             round(h * height, 1),
         ]
 
-        area = detection.get_attribute_value("area", default=None)
-        if area is None:
+        if detection.has_attribute("area"):
+            area = int(detection.get_attribute_value("area"))
+        else:
             area = round(bbox[2] * bbox[3], 1)
 
         # @todo parse `segmentation`
 
-        iscrowd = detection.get_attribute_value("iscrowd", default=None)
+        if detection.has_attribute("iscrowd"):
+            iscrowd = int(detection.get_attribute_value("iscrowd"))
+        else:
+            iscrowd = None
 
         return cls(None, None, category_id, bbox, area=area, iscrowd=iscrowd)
 
