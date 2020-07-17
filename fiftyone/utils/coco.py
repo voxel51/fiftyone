@@ -583,12 +583,12 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
 _IMAGE_DOWNLOAD_LINKS = {
     "2014": {
         "train": "http://images.cocodataset.org/zips/train2014.zip",
-        "validation": "http://images.cocodataset.org/zips/validation2014.zip",
+        "validation": "http://images.cocodataset.org/zips/val2014.zip",
         "test": "http://images.cocodataset.org/zips/test2014.zip",
     },
     "2017": {
         "train": "http://images.cocodataset.org/zips/train2017.zip",
-        "validation": "http://images.cocodataset.org/zips/validation2017.zip",
+        "validation": "http://images.cocodataset.org/zips/val2017.zip",
         "test": "http://images.cocodataset.org/zips/test2017.zip",
     },
 }
