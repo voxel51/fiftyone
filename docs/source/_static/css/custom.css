@@ -69,22 +69,46 @@ article.pytorch-article .wy-table-responsive table thead th {
     width: calc(100% - 250px);
   }
 
-  .pytorch-breadcrumbs-wrapper,
-  .pytorch-content-left {
+  .pytorch-breadcrumbs-wrapper {
     margin-left: 25px;
+    width: calc(100% - 250px);
+  }
+
+  .pytorch-shortcuts-wrapper {
+    margin-left: 0;
   }
 
   .pytorch-container {
     margin-left: 250px;
   }
 
-  .pytorch-shortcuts-wrapper {
-    margin-left: 25px;
+  .pytorch-content-wrap {
+    position: relative;
+  }
+
+  .pytorch-container .pytorch-content-left {
+    width: 100%;
+    margin-left: 0;
+    padding-left: 25px;
+    padding-right: 250px;
+  }
+
+  .pytorch-container .pytorch-content-right {
+    position: absolute;
+    right: 0;
+    width: 250px;
+  }
+
+  .pytorch-content-right .pytorch-right-menu,
+  .pytorch-content-right .pytorch-side-scroll {
+    width: 250px;
+    overflow-y: auto;
   }
 
   .pytorch-right-menu.scrolling-fixed {
-    left: calc(250px + ((100% - 250px) * 0.75) + 25px);
     width: 250px;
+    left: unset;
+    right: 0;
   }
 
   .pytorch-right-menu .pytorch-side-scroll > ul {
@@ -93,6 +117,19 @@ article.pytorch-article .wy-table-responsive table thead th {
 }
 
 @media screen and (min-width: 1600px) {
+  .pytorch-breadcrumbs-wrapper {
+    width: 875px;
+  }
+
+  .pytorch-container .pytorch-content-left {
+    width: 850px;
+    padding-right: 0;
+  }
+
+  .pytorch-content-right {
+    left: calc(850px + 25px);
+  }
+
   .pytorch-right-menu.scrolling-fixed {
     left: calc(250px + 850px + 25px);
   }
@@ -114,7 +151,7 @@ ul.pytorch-breadcrumbs li {
 
 article.pytorch-article pre {
   margin-bottom: 1rem;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 article.pytorch-article .note .admonition-title {
@@ -263,13 +300,6 @@ article.pytorch-article .reference.download.internal {
   color: inherit;
 }
 
-@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
-  .nav__main__logo {
-    margin: 0;
-    padding-left: 30px;
-  }
-}
-
 @media screen and (max-width: 1099px) {
   .nav__main {
     height: unset;
@@ -298,6 +328,11 @@ article.pytorch-article .reference.download.internal {
 }
 
 @media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .nav__main__logo {
+    margin: 0;
+    padding-left: 30px;
+  }
+
   .footer {
     font-size: 12px;
     padding-top: 30px;
