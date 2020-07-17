@@ -306,7 +306,7 @@ class COCOObject(etas.Serializable):
         area=None,
         iscrowd=None,
         segmentation=None,
-        **kwargs,
+        **kwargs
     ):
         self.id = id
         self.image_id = image_id
