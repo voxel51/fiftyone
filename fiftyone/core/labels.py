@@ -187,9 +187,9 @@ class Classifications(ImageLabel):
         Returns:
             an ``eta.core.image.ImageLabels`` instance
         """
-        # pylint: disable=not-an-iterable
         image_labels = etai.ImageLabels()
 
+        # pylint: disable=not-an-iterable
         for idx, classification in enumerate(self.classifications, 1):
             image_labels.add_attribute(
                 etad.CategoricalAttribute(
@@ -273,9 +273,9 @@ class Detections(ImageLabel):
         Returns:
             an ``eta.core.image.ImageLabels`` instance
         """
-        # pylint: disable=not-an-iterable
         image_labels = etai.ImageLabels()
 
+        # pylint: disable=not-an-iterable
         for detection in self.detections:
             label = detection.label
 
