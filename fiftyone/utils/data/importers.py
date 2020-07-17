@@ -158,13 +158,15 @@ class LabeledImageDatasetImporter(DatasetImporter):
         importer = LabeledImageDatasetImporter(dataset_dir, ...)
         with importer:
             for image_path, image_metadata, label in importer:
-                dataset.add_sample(
-                    fo.Sample(
-                        filepath=image_path,
-                        metadata=image_metadata,
-                        **{label_field: label},
-                    )
-                )
+                sample = fo.Sample(
+                    filepath=image_path,
+                    metadata=image_metadata,
+                }
+
+                if label is not None:
+                    sample[label_field] = label
+
+                dataset.add_sample(sample)
 
     Args:
         dataset_dir: the dataset directory
