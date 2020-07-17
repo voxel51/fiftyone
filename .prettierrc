@@ -7,6 +7,12 @@
                 "proseWrap": "always",
                 "tabWidth": 4
             }
+        },
+        {
+            "files": "*.json",
+            "options": {
+                "tabWidth": 4
+            }
         }
     ]
 }
