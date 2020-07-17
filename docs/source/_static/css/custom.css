@@ -136,7 +136,7 @@ ul.pytorch-breadcrumbs li {
 
 article.pytorch-article pre {
   margin-bottom: 1rem;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 article.pytorch-article .note .admonition-title {
