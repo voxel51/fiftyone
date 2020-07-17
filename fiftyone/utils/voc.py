@@ -334,7 +334,9 @@ class VOCAnnotation(object):
 
         folder = annotation.get("folder", None)
         filename = annotation.get("filename", None)
-        path = annotation["path"]
+        path = None
+        if "path" in annotation:
+            path = annotation["path"]
 
         segmented = annotation.get("segmented", None)
 
