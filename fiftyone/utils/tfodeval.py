@@ -443,7 +443,7 @@ def detections2df(
     d = {
         "ImageID": image_id,
         "LabelName": [det.label for det in dets],
-        confidence_key: [int(det.confidence) for det in dets],
+        confidence_key: [det.confidence for det in dets],
     }
 
     if display2name_map:
