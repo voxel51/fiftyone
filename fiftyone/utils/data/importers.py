@@ -159,8 +159,7 @@ class LabeledImageDatasetImporter(DatasetImporter):
         with importer:
             for image_path, image_metadata, label in importer:
                 sample = fo.Sample(
-                    filepath=image_path,
-                    metadata=image_metadata,
+                    filepath=image_path, metadata=image_metadata,
                 }
 
                 if label is not None:
