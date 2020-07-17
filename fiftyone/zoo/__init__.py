@@ -22,7 +22,6 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import itertools
 import logging
 import os
 
