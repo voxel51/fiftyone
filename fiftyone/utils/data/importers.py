@@ -126,8 +126,9 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
 
         Returns:
             an ``(image_path, image_metadata)`` tuple, where:
-            -   ``image_path`` is the path to the image on disk
-            -   ``image_metadata`` is an
+
+            -   image_path: the path to the image on disk
+            -   image_metadata: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
 
@@ -174,11 +175,13 @@ class LabeledImageDatasetImporter(DatasetImporter):
 
         Returns:
             an  ``(image_path, image_metadata, label)`` tuple, where:
-            -   ``image_path`` is the path to the image on disk
-            -   ``image_metadata`` is an
+
+            -   image_path: the path to the image on disk
+            -   image_metadata: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
-            -   ``label`` is an instance of :meth:`label_cls`
+            -   label: an instance of :meth:`label_cls`, or ``None`` if no
+                label is available for the sample
 
         Raises:
             StopIteration: if there are no more samples to import
