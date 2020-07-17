@@ -19,7 +19,6 @@ samples in your data to start your model training off right.
 
 .. image:: ../images/uniqueness.png
    :alt: Exploring image uniqueness
-   :width: 100%
    :align: center
 
 :doc:`Finding label mistakes with FiftyOne <label_mistakes>`
@@ -29,7 +28,6 @@ automatically find possible label mistakes in your datasets.
 
 .. image:: ../images/label_mistakes.png
    :alt: Finding label mistakes
-   :width: 100%
    :align: center
 
 .. toctree::

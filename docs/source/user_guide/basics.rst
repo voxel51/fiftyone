@@ -11,7 +11,6 @@ represent your data and manipulate it through the Python library and the
 .. image:: ../images/dog.png
    :alt: App
    :align: center
-   :target: app.html
 
 .. _what-is-a-fiftyone-dataset:
 
