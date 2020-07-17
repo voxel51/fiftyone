@@ -406,6 +406,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         self._labels = None
         self._iter_labels = None
         self._num_samples = None
+        self._has_labels = False
 
     def __iter__(self):
         self._iter_labels = iter(iteritems(self._labels))
@@ -419,7 +420,10 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         image_path = self._image_paths_map[uuid]
 
         self._sample_parser.with_sample((image_path, target))
-        label = self._sample_parser.get_label()
+        if self._has_labels:
+            label = self._sample_parser.get_label()
+        else:
+            label = None
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -449,6 +453,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         labels = etas.load_json(labels_path)
         self._sample_parser.classes = labels.get("classes", None)
         self._labels = labels.get("labels", {})
+        self._has_labels = any(self._labels.values())
         self._num_samples = len(self._labels)
 
 
