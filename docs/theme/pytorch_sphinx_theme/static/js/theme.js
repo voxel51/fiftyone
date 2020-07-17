@@ -99,7 +99,13 @@ window.utilities = {
     return window.innerHeight ||
            document.documentElement.clientHeight ||
            document.body.clientHeight;
-  }
+  },
+
+  windowWidth: function() {
+    return window.innerWidth ||
+           document.documentElement.clientWidth ||
+           document.body.clientWidth;
+  },
 }
 
 },{}],2:[function(require,module,exports){
@@ -641,7 +647,9 @@ window.sideMenus = {
     var topOfFooterRelativeToWindow = document.getElementById("docs-tutorials-resources").getBoundingClientRect().top;
 
     if (topOfFooterRelativeToWindow >= windowHeight) {
-      document.getElementById("pytorch-left-menu").style.height = "100%";
+      document.getElementById("pytorch-left-menu").style.height = (
+        utilities.windowWidth() >= 1101 ? "100%" : ""
+      );
     } else {
       var howManyPixelsOfTheFooterAreInTheWindow = windowHeight - topOfFooterRelativeToWindow;
       var leftMenuDifference = howManyPixelsOfTheFooterAreInTheWindow;

@@ -100,6 +100,10 @@ html_static_path = ["_static"]
 html_css_files = ["css/voxel51-website.css", "css/custom.css"]
 html_js_files = ["js/voxel51-website.js", "js/custom.js"]
 
+# Prevent RST source files from being included in output
+html_copy_source = False
+
+# Links - copied from website config
 html_context = {
     "address_main_line1": "410 N 4th Ave, 3rd Floor",
     "address_main_line2": "Ann Arbor, MI 48104",

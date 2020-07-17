@@ -98,5 +98,11 @@ window.utilities = {
     return window.innerHeight ||
            document.documentElement.clientHeight ||
            document.body.clientHeight;
-  }
+  },
+
+  windowWidth: function() {
+    return window.innerWidth ||
+           document.documentElement.clientWidth ||
+           document.body.clientWidth;
+  },
 }

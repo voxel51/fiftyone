@@ -50,7 +50,7 @@ jobs:
           sudo apt-get install pandoc
           pip install -e .
           pip install -r requirements/docs.txt
-          pip install tensorflow torch torchvision
+          pip install fiftyone-brain tensorflow torch torchvision
       - name: Install fiftyone-db
         working-directory: package/db
         run: |
