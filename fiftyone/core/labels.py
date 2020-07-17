@@ -149,7 +149,7 @@ class Classification(ImageLabel):
         instance.
 
         Args:
-            attr_name ("label"): an optional frame attribute name to use
+            attr_name ("label"): the attribute name to use
 
         Returns:
             an ``eta.core.image.ImageLabels`` instance
@@ -252,7 +252,7 @@ class Detection(ODMEmbeddedDocument):
 
 
 class Detections(ImageLabel):
-    """A set of object detections for an image sample in a
+    """A list of object detections for an image sample in a
     :class:`fiftyone.core.dataset.Dataset`.
 
     See :class:`fiftyone.utils.data.ImageDetectionSampleParser` for a
