@@ -284,6 +284,13 @@ article.pytorch-article .reference.download.internal {
   width: 100%;
 }
 
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .nav__main__logo {
+    margin: 0;
+    padding-left: 30px;
+  }
+}
+
 @media only screen and (min-width: 1101px) {
   #nav__main__items {
     margin-right: 19%;
@@ -328,11 +335,6 @@ article.pytorch-article .reference.download.internal {
 }
 
 @media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
-  .nav__main__logo {
-    margin: 0;
-    padding-left: 30px;
-  }
-
   .footer {
     font-size: 12px;
     padding-top: 30px;
