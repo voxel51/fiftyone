@@ -668,25 +668,9 @@ class ZooDataset(object):
                 info.num_samples = sum(
                     si.num_samples for si in itervalues(info.downloaded_splits)
                 )
-                if info.classes != classes:
-                    if info.classes == None:
-                        info.classes = classes
 
-                    elif classes != None:
-                        merged_classes = []
-                        for c1, c2 in itertools.zip_longest(info.classes, classes):
-                            c_append = c1
-                            if (c1 == None) or (c1.isnumeric() and c2 != None):
-                                c_append = c2
-
-                            merged_classes.append(c_append)
-
-                            if (c1 and c2) and (not c1.isnumeric() and not
-                                    c2.isnumeric()) and c1 != c2:
-                                raise ValueError("Classes do not match between "\
-                                    "splits of dataset '%s'" % info.name)
-
-                        info.classes = merged_classes
+                if info.classes == None:
+                    info.classes = classes
 
                 write_info = True
         else:
