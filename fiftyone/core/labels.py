@@ -232,6 +232,26 @@ class Detections(ImageLabel):
 
     detections = fof.ListField(fof.EmbeddedDocumentField(Detection))
 
+    def filter(self, threshold):
+        """Filter detection confidences to be above the given ``threshold`` and
+        return a new :class:``fiftyone.core.labels.Detections`` object with the
+        thresholded detections.
+
+        Args:
+            threshold: a float between 0 and 1 used as a lower threshold when
+                deciding which detections to keep
+
+        Returns:
+            a :class:``fiftyone.core.labels.Detections`` object with only
+                detections above the given threshold
+        """
+
+        thrsh_detections = []
+        for det in self.detections:
+            if det.confidence > threshold:
+                thrsh_detections.append(det.copy())
+        return Detections(detections=thrsh_detections)
+
     def to_image_labels(self):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
         instance.
