@@ -163,6 +163,45 @@ class Classification(ImageLabel):
         return image_labels
 
 
+class Classifications(ImageLabel):
+    """A list of classifications (typically from a multilabel model) for an
+    image sample in a :class:`fiftyone.core.dataset.Dataset`.
+
+    Args:
+        classifications (None): a list of :class:`Classification` instances
+    """
+
+    meta = {"allow_inheritance": True}
+
+    classifications = fof.ListField(fof.EmbeddedDocumentField(Classification))
+    logits = fof.VectorField()
+
+    def to_image_labels(self, attr_name="label"):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            attr_name ("label"): the attribute name to use. The attributes are
+                written with names ``attr_name + "%d" % idx``
+
+        Returns:
+            an ``eta.core.image.ImageLabels`` instance
+        """
+        # pylint: disable=not-an-iterable
+        image_labels = etai.ImageLabels()
+
+        for idx, classification in enumerate(self.classifications, 1):
+            image_labels.add_attribute(
+                etad.CategoricalAttribute(
+                    attr_name + "%d" % idx,
+                    classification.label,
+                    confidence=classification.confidence,
+                )
+            )
+
+        return image_labels
+
+
 class Detection(ODMEmbeddedDocument):
     """An object detection.
 
