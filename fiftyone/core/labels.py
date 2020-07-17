@@ -193,6 +193,19 @@ class Detection(ODMEmbeddedDocument):
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
+    def has_attribute(self, attr_name):
+        """Determines whether the detection has an attribute with the given
+        name.
+
+        Args:
+            attr_name: the attribute name
+
+        Returns:
+            True/False
+        """
+        # pylint: disable=unsupported-membership-test
+        return attr_name in self.attributes
+
     def get_attribute_value(self, attr_name, default=no_default):
         """Gets the value of the attribute with the given name.
 

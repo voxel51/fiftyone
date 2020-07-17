@@ -84,7 +84,7 @@ class DatasetImporter(object):
         the dataset.
 
         This method is called when the importer's context manager interface is
-        entered, :function:`DatasetImporter.__enter__`.
+        entered, :func:`DatasetImporter.__enter__`.
         """
         pass
 
@@ -93,7 +93,7 @@ class DatasetImporter(object):
         imported.
 
         This method is called when the importer's context manager interface is
-        exited, :function:`DatasetImporter.__exit__`.
+        exited, :func:`DatasetImporter.__exit__`.
 
         Args:
             *args: the arguments to :func:`DatasetImporter.__exit__`
@@ -126,11 +126,11 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
 
         Returns:
             an ``(image_path, image_metadata)`` tuple, where:
-            -   ``image_path`` is the path to the image on disk
-            -   ``image_metadata`` is an
+
+            -   image_path: the path to the image on disk
+            -   image_metadata: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
-                image, or ``None`` if :property:`has_image_metadata` is
-                ``False``
+                image, or ``None`` if :meth:`has_image_metadata` is ``False``
 
         Raises:
             StopIteration: if there are no more samples to import
@@ -158,13 +158,14 @@ class LabeledImageDatasetImporter(DatasetImporter):
         importer = LabeledImageDatasetImporter(dataset_dir, ...)
         with importer:
             for image_path, image_metadata, label in importer:
-                dataset.add_sample(
-                    fo.Sample(
-                        filepath=image_path,
-                        metadata=image_metadata,
-                        **{label_field: label},
-                    )
-                )
+                sample = fo.Sample(
+                    filepath=image_path, metadata=image_metadata,
+                }
+
+                if label is not None:
+                    sample[label_field] = label
+
+                dataset.add_sample(sample)
 
     Args:
         dataset_dir: the dataset directory
@@ -175,12 +176,13 @@ class LabeledImageDatasetImporter(DatasetImporter):
 
         Returns:
             an  ``(image_path, image_metadata, label)`` tuple, where:
-            -   ``image_path`` is the path to the image on disk
-            -   ``image_metadata`` is an
+
+            -   image_path: the path to the image on disk
+            -   image_metadata: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
-                image, or ``None`` if :property:`has_image_metadata` is
-                ``False``
-            -   ``label`` is an instance of :property:`label_cls`
+                image, or ``None`` if :meth:`has_image_metadata` is ``False``
+            -   label: an instance of :meth:`label_cls`, or ``None`` if no
+                label is available for the sample
 
         Raises:
             StopIteration: if there are no more samples to import

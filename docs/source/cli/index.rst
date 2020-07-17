@@ -662,7 +662,7 @@ Locate the downloaded zoo dataset on disk.
 
 .. code-block:: text
 
-    fiftyone zoo find [-h] NAME
+    fiftyone zoo find [-h] [-s SPLIT] NAME
 
 **Arguments**
 
@@ -672,7 +672,8 @@ Locate the downloaded zoo dataset on disk.
       NAME        the name of the dataset
 
     optional arguments:
-      -h, --help  show this help message and exit
+      -h, --help            show this help message and exit
+      -s SPLIT, --split SPLIT
 
 **Examples**
 
@@ -680,6 +681,9 @@ Locate the downloaded zoo dataset on disk.
 
     # Print the location of the downloaded zoo dataset on disk
     fiftyone zoo find <name>
+
+    # Print the location of a specific split of the dataset
+    fiftyone zoo find <name> --split <split>
 
 Show zoo dataset info
 ~~~~~~~~~~~~~~~~~~~~~

@@ -24,8 +24,9 @@ from datetime import datetime
 import logging
 import os
 
-import eta.core.utils as etau
+import eta.core.image as etai
 import eta.core.serial as etas
+import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone as fo
@@ -68,25 +69,25 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
+
+    Args:
+        classes (None): a list of class label strings. If not provided, the
+            ``category_id`` of the annotations will be used as labels
     """
 
-    def __init__(self):
+    def __init__(self, classes=None):
         super().__init__(
-            label_field="category_id",
-            bounding_box_field="bbox",
-            classes=None,
-            normalized=False,
+            label_field=None,
+            bounding_box_field=None,
+            confidence_field=None,
+            classes=classes,
+            normalized=False,  # image required to convert to relative coords
         )
 
     def _parse_detection(self, obj, img=None):
-        detection = super()._parse_detection(obj, img=img)
-        if "area" in obj:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["area"] = fol.NumericAttribute(
-                value=obj["area"]
-            )
-
-        return detection
+        coco_obj = COCOObject.from_annotation_dict(obj)
+        frame_size = etai.to_frame_size(img=img)
+        return coco_obj.to_detection(frame_size, classes=self.classes)
 
 
 class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -130,7 +131,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         frame_size = (width, height)
         detections = fol.Detections(
             detections=[
-                obj.to_detection(frame_size, self._classes)
+                obj.to_detection(frame_size, classes=self._classes)
                 for obj in self._annotations.get(image_id, [])
             ]
         )
@@ -291,9 +292,9 @@ class COCOObject(etas.Serializable):
         bbox: a bounding box for the object in ``[xmin, ymin, width, height]``
             format
         area (None): the area of the bounding box
-        segmentation (None): a list of segmentation data
         iscrowd (None): 0 for polygon (object instance) segmentation and 1 for
             uncompressed RLE (crowd)
+        segmentation (None): a list of segmentation data
     """
 
     def __init__(
@@ -303,16 +304,17 @@ class COCOObject(etas.Serializable):
         category_id,
         bbox,
         area=None,
+        iscrowd=None,
         segmentation=None,
-        iscrowd=0,
+        **kwargs
     ):
         self.id = id
         self.image_id = image_id
         self.category_id = category_id
         self.bbox = bbox
         self.area = area
-        self.segmentation = segmentation
         self.iscrowd = iscrowd
+        self.segmentation = segmentation
 
     @classmethod
     def from_annotation_dict(cls, d):
@@ -355,22 +357,36 @@ class COCOObject(etas.Serializable):
             round(w * width, 1),
             round(h * height, 1),
         ]
-        area = round(bbox[2] * bbox[3], 1)
 
-        return cls(None, None, category_id, bbox, area=area)
+        if detection.has_attribute("area"):
+            area = int(detection.get_attribute_value("area"))
+        else:
+            area = round(bbox[2] * bbox[3], 1)
 
-    def to_detection(self, frame_size, classes):
+        if detection.has_attribute("iscrowd"):
+            iscrowd = int(detection.get_attribute_value("iscrowd"))
+        else:
+            iscrowd = None
+
+        # @todo parse `segmentation`
+
+        return cls(None, None, category_id, bbox, area=area, iscrowd=iscrowd)
+
+    def to_detection(self, frame_size, classes=None):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of
         the object.
 
         Args:
             frame_size: the ``(width, height)`` of the image
-            classes: the list of classes
+            classes (None): the list of classes
 
         Returns:
             a :class:`fiftyone.core.labels.Detection`
         """
-        label = classes[self.category_id]
+        if classes:
+            label = classes[self.category_id]
+        else:
+            label = str(self.category_id)
 
         width, height = frame_size
         x, y, w, h = self.bbox
@@ -383,6 +399,14 @@ class COCOObject(etas.Serializable):
             area = self.area / (width * height)
             detection.attributes["area"] = fol.NumericAttribute(value=area)
 
+        if self.iscrowd is not None:
+            # pylint: disable=unsupported-assignment-operation
+            detection.attributes["iscrowd"] = fol.NumericAttribute(
+                value=self.iscrowd
+            )
+
+        # @todo parse `segmentation`
+
         return detection
 
     def attributes(self):
@@ -391,15 +415,19 @@ class COCOObject(etas.Serializable):
         Returns:
             a list of class attributes
         """
-        return [
+        _attrs = [
             "id",
             "image_id",
             "category_id",
             "bbox",
-            "area",
-            "segmentation",
-            "iscrowd",
         ]
+        if self.area is not None:
+            _attrs.append("area")
+        if self.iscrowd is not None:
+            _attrs.append("iscrowd")
+        if self.segmentation is not None:
+            _attrs.append("segmentation")
+        return _attrs
 
     @classmethod
     def from_dict(cls, d):
@@ -424,10 +452,12 @@ def load_coco_detection_annotations(json_path):
         json_path: the path to the annotations JSON file
 
     Returns:
-        classes: a list of classes
-        images: a dict mapping image filenames to image dicts
-        annotations: a dict mapping image IDs to list of :class:`COCOObject`
-            instances
+        a tuple of
+
+        -   classes: a list of classes
+        -   images: a dict mapping image filenames to image dicts
+        -   annotations: a dict mapping image IDs to list of
+            :class:`COCOObject` instances
     """
     d = etas.load_json(json_path)
 
@@ -494,8 +524,11 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
         cleanup (True): whether to cleanup the zip files after extraction
 
     Returns:
-        images_dir: the path to the directory containing the extracted images
-        anno_path: the path to the detections JSON file, or ``None`` if ``split == "test"``
+        a tuple of
+
+        -   images_dir: the path to the directory containing the extracted
+            images
+        -   anno_path: the path to the annotations JSON file
     """
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
@@ -508,6 +541,10 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
             "Unsupported split '%s'; supported values are %s"
             % (year, tuple(_IMAGE_DOWNLOAD_LINKS[year].keys()))
         )
+
+    #
+    # Download images
+    #
 
     images_src_path = _IMAGE_DOWNLOAD_LINKS[year][split]
     images_zip_path = os.path.join(
@@ -525,31 +562,69 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
     else:
         logger.info("Image folder '%s' already exists", images_dir)
 
-    try:
+    #
+    # Download annotations
+    #
+
+    anno_path = os.path.join(dataset_dir, _ANNOTATION_PATHS[year][split])
+
+    if split == "test":
+        # Test split has no annotations, so we must populate the labels file
+        # manually
+        images = _make_images_list(images_dir)
+
+        labels = {
+            "info": {},
+            "licenses": [],
+            "categories": [],
+            "images": images,
+            "annotations": [],
+        }
+        etas.write_json(labels, anno_path)
+    else:
         anno_src_path = _ANNOTATION_DOWNLOAD_LINKS[year]
-        anno_path = os.path.join(dataset_dir, _ANNOTATION_PATHS[year][split])
         anno_zip_path = os.path.join(
             dataset_dir, os.path.basename(anno_src_path)
         )
-    except KeyError:
-        # No annotations
-        return images_dir, None
 
-    if not os.path.isfile(anno_path):
-        logger.info("Downloading annotations zip to '%s'", anno_zip_path)
-        etaw.download_file(anno_src_path, path=anno_zip_path)
-        logger.info("Extracting annotations to '%s'", anno_path)
-        etau.extract_zip(anno_zip_path, delete_zip=cleanup)
-    else:
-        logger.info("Annotations file '%s' already exists", anno_path)
+        if not os.path.isfile(anno_path):
+            logger.info("Downloading annotations zip to '%s'", anno_zip_path)
+            etaw.download_file(anno_src_path, path=anno_zip_path)
+            logger.info("Extracting annotations to '%s'", anno_path)
+            etau.extract_zip(anno_zip_path, delete_zip=cleanup)
+        else:
+            logger.info("Annotations file '%s' already exists", anno_path)
 
     return images_dir, anno_path
+
+
+def _make_images_list(images_dir):
+    logger.info("Computing image metadata for '%s'", images_dir)
+
+    image_paths = foud.parse_images_dir(images_dir)
+
+    images = []
+    with fou.ProgressBar() as pb:
+        for idx, image_path in pb(enumerate(image_paths)):
+            metadata = fom.ImageMetadata.build_for(image_path)
+            images.append(
+                {
+                    "id": idx,
+                    "file_name": os.path.basename(image_path),
+                    "height": metadata.height,
+                    "width": metadata.width,
+                    "license": None,
+                    "coco_url": None,
+                }
+            )
+
+    return images
 
 
 _IMAGE_DOWNLOAD_LINKS = {
     "2014": {
         "train": "http://images.cocodataset.org/zips/train2014.zip",
-        "validation": "http://images.cocodataset.org/zips/validation2014.zip",
+        "validation": "http://images.cocodataset.org/zips/val2014.zip",
         "test": "http://images.cocodataset.org/zips/test2014.zip",
     },
     "2017": {
@@ -566,12 +641,14 @@ _ANNOTATION_DOWNLOAD_LINKS = {
 
 _ANNOTATION_PATHS = {
     "2014": {
-        "train": "annotations/instances_train2017.json",
-        "validation": "annotations/instances_val2017.json",
+        "train": "annotations/instances_train2014.json",
+        "validation": "annotations/instances_val2014.json",
+        "test": "annotations/instances_test2014.json",
     },
     "2017": {
         "train": "annotations/instances_train2017.json",
         "validation": "annotations/instances_val2017.json",
+        "test": "annotations/instances_test2017.json",
     },
 }
 

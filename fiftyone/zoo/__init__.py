@@ -109,8 +109,10 @@ def download_zoo_dataset(name, split=None, splits=None, dataset_dir=None):
             is used
 
     Returns:
-        info: the :class:`fiftyone.zoo.ZooDatasetInfo` for the dataset
-        dataset_dir: the directory containing the dataset
+        tuple of
+
+        -   info: the :class:`fiftyone.zoo.ZooDatasetInfo` for the dataset
+        -   dataset_dir: the directory containing the dataset
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
     info = zoo_dataset.download_and_prepare(
@@ -203,14 +205,18 @@ def load_zoo_dataset(
     return dataset
 
 
-def find_zoo_dataset(name):
+def find_zoo_dataset(name, split=None):
     """Returns the directory containing the given zoo dataset.
+
+    If a ``split`` is provided, the path to the dataset split is returned;
+    otherwise, the path to the root directory is returned.
 
     The dataset must be downloaded. Use :func:`download_zoo_dataset` to
     download datasets.
 
     Args:
         name: the name of the zoo dataset
+        split (None) a dataset split to locate
 
     Returns:
         the directory containing the dataset
@@ -220,6 +226,18 @@ def find_zoo_dataset(name):
         zoo_dataset.load_info(dataset_dir)
     except OSError:
         raise ValueError("Dataset '%s' is not downloaded" % name)
+
+    if split:
+        if not zoo_dataset.has_split(split):
+            raise ValueError("Dataset '%s' has no split '%s'" % (name, split))
+
+        info = zoo_dataset.load_info(dataset_dir)
+        if not info.is_split_downloaded(split):
+            raise ValueError(
+                "Dataset '%s' split '%s' is not downloaded" % (name, split)
+            )
+
+        return zoo_dataset.get_split_dir(dataset_dir, split)
 
     return dataset_dir
 
@@ -645,12 +663,18 @@ class ZooDataset(object):
                         self, dataset_type, 0, classes=classes
                     )
 
+                if classes and not info.classes:
+                    info.classes = classes
+
                 info.downloaded_splits[split] = ZooDatasetSplitInfo(
                     split, num_samples
                 )
                 info.num_samples = sum(
                     si.num_samples for si in itervalues(info.downloaded_splits)
                 )
+
+                if info.classes == None:
+                    info.classes = classes
 
                 write_info = True
         else:
@@ -692,10 +716,12 @@ class ZooDataset(object):
                 not have splits
 
         Returns:
-            dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                type of the dataset
-            num_samples: the number of samples in the split
-            classes: an optional list of class label strings
+            tuple of
+
+            -   dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
+                    type of the dataset
+            -   num_samples: the number of samples in the split
+            -   classes: an optional list of class label strings
         """
         raise NotImplementedError(
             "subclasses must implement _download_and_prepare()"

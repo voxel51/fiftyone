@@ -174,9 +174,14 @@ your virtual environment:
    >>> session = fo.launch_app()
    >>> exit()
 
-**Linux users:** if you encounter an error related to MongoDB failing to start,
-such as "Could not find mongod", you may need to install additional packages.
-See the `troubleshooting section <#troubleshooting>`_ for details.
+**Linux users:**
+
+- The ``psutil`` package may require Python headers to be installed on your
+  system. On Debian-based distributions, these are available in the
+  ``python3-dev`` package.
+- If you encounter an error related to MongoDB failing to start, such as "Could
+  not find mongod", you may need to install additional packages. See the
+  `troubleshooting section <#troubleshooting>`_ for details.
 
 **Windows users:** If you encounter errors related to missing `msvcp140.dll`,
 you will need to install the 64-bit Visual Studio 2015 C++ redistributable
@@ -189,9 +194,9 @@ Installing extra packages
 
 Various tutorials and guides that we provide on this site require additional
 packages in order to run. If you encounter a missing package, you will see
-helpful instructions on what you need to install. Or, you can preemptively
-install what you'll need by installing the following additional packages via
-`pip` in your virtual environment:
+helpful instructions on what you need to install. Alternatively, you can
+preemptively install what you'll need by installing the following additional
+packages via `pip` in your virtual environment:
 
 * `ipython` to follow along with interactive examples more easily
 * `tensorflow` for examples requiring TensorFlow. The installation process

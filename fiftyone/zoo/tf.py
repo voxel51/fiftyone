@@ -672,10 +672,8 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
         )
 
     def _parse_bbox(self, obj):
-        """Returns: tlx, tly, w, h
-
-        source: www.tensorflow.org/datasets/api_docs/python/tfds/features/BBoxFeature
-        """
+        # Format reference:
+        # www.tensorflow.org/datasets/api_docs/python/tfds/features/BBoxFeature
         ymin, xmin, ymax, xmax = obj[self.bounding_box_field]
         w = xmax - xmin
         h = ymax - ymin
