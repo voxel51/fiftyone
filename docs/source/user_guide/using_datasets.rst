@@ -252,11 +252,54 @@ a |Sample| that has never been added to the |Dataset|:
 Fields
 ______
 
-A |Field| is an attribute of a |Sample| that is shared across all samples in a
-|Dataset|.
+A |Field| is an attribute of a |Sample| that stores information about the
+sample.
 
-By default, a |Dataset| and the samples therein have fields
-`filepath`, `metadata`, and `tags`. `filepath` is a required parameter.
+Fields can be dynamically created, modified, and deleted from samples on a
+per-sample basiss. When a new |Field is assigned to a |Sample| in a |Dataset|,
+it is automatically added to the dataset's schema and thus accessible on all
+other samples in the dataset. If a |Field| is unset on a particular |Sample|,
+its value will be ``None``.
+
+Default fields
+--------------
+
+By default, all |Sample| instances have the following fields:
+
+.. table::
+    :widths: 18 18 18 46
+
+    +------------+------------------------------------+-------------+---------------------------------------------------+
+    | Field      | Type                               | Default     | Description                                       |
+    +============+====================================+=============+===================================================+
+    | `filepath` | string                             | N/A         | (required) the path to the source data on disk    |
+    +------------+------------------------------------+-------------+---------------------------------------------------+
+    | `id`       | string                             | `None`      | the ID of the sample in its parent dataset, or    |
+    |            |                                    |             | `None` if the sample does not belong to a dataset |
+    +------------+------------------------------------+-------------+---------------------------------------------------+
+    | `metadata` | :class:`Metadata                   |`None`       | type-specific metadata about the source data      |
+    |            | <fiftyone.core.metadata.Metadata>` |             |                                                   |
+    +------------+------------------------------------+-------------+---------------------------------------------------+
+    | `tags`     | list                               | `[]`        | a list of string tags for the sample              |
+    +------------+------------------------------------+-------------+---------------------------------------------------+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png")
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': 'path/to/image.png',
+        'tags': [],
+        'metadata': None,
+    }>
 
 Accessing fields of a Sample
 ----------------------------
