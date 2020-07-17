@@ -673,9 +673,6 @@ class ZooDataset(object):
                     si.num_samples for si in itervalues(info.downloaded_splits)
                 )
 
-                if info.classes == None:
-                    info.classes = classes
-
                 write_info = True
         else:
             if info is not None:
