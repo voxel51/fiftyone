@@ -19,7 +19,7 @@ from object_detection.utils import object_detection_evaluation
 HIERARCHY_FILE = "/Users/tylerganter/data/open-images-dataset/v4/bbox_labels_600_hierarchy.json"
 BOUNDING_BOXES = "/Users/tylerganter/data/open-images-dataset/v4/test-annotations-bbox_expanded.csv"
 IMAGE_LABELS = "/Users/tylerganter/data/open-images-dataset/v4/test-annotations-human-imagelabels-boxable_expanded.csv"
-INPUT_PREDICTIONS = "/Users/tylerganter/data/open-images-dataset/v4/google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions.csv"
+INPUT_PREDICTIONS = "/Users/tylerganter/data/open-images-dataset/v4/predictions/google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions/tf_od_api_format/small.csv"
 CLASS_LABELMAP = "/Users/tylerganter/data/open-images-dataset/object_detection/data/oid_v4_label_map.pbtxt"
 OUTPUT_METRICS = "output_metrics.csv"
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
         INPUT_PREDICTIONS,
         CLASS_LABELMAP,
     ]:
-        assert os.path.exists(arg), "Missing file: %" % arg
+        assert os.path.exists(arg), "Missing file: %s" % arg
 
     print("Reading location annotations...")
     all_location_annotations = pd.read_csv(BOUNDING_BOXES)
