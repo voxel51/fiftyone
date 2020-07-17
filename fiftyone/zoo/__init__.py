@@ -22,7 +22,6 @@ from future.utils import iteritems, itervalues
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import itertools
 import logging
 import os
 
@@ -110,8 +109,10 @@ def download_zoo_dataset(name, split=None, splits=None, dataset_dir=None):
             is used
 
     Returns:
-        info: the :class:`fiftyone.zoo.ZooDatasetInfo` for the dataset
-        dataset_dir: the directory containing the dataset
+        tuple of
+
+        -   info: the :class:`fiftyone.zoo.ZooDatasetInfo` for the dataset
+        -   dataset_dir: the directory containing the dataset
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
     info = zoo_dataset.download_and_prepare(
@@ -662,6 +663,9 @@ class ZooDataset(object):
                         self, dataset_type, 0, classes=classes
                     )
 
+                if classes and not info.classes:
+                    info.classes = classes
+
                 info.downloaded_splits[split] = ZooDatasetSplitInfo(
                     split, num_samples
                 )
@@ -712,10 +716,12 @@ class ZooDataset(object):
                 not have splits
 
         Returns:
-            dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
-                type of the dataset
-            num_samples: the number of samples in the split
-            classes: an optional list of class label strings
+            tuple of
+
+            -   dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
+                    type of the dataset
+            -   num_samples: the number of samples in the split
+            -   classes: an optional list of class label strings
         """
         raise NotImplementedError(
             "subclasses must implement _download_and_prepare()"

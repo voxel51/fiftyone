@@ -527,9 +527,8 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
         a tuple of
 
         -   images_dir: the path to the directory containing the extracted
-            mages
-        -   anno_path: the path to the detections JSON file, or ``None`` if
-            ``split == "test"``
+            images
+        -   anno_path: the path to the annotations JSON file
     """
     if year not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
@@ -542,6 +541,10 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
             "Unsupported split '%s'; supported values are %s"
             % (year, tuple(_IMAGE_DOWNLOAD_LINKS[year].keys()))
         )
+
+    #
+    # Download images
+    #
 
     images_src_path = _IMAGE_DOWNLOAD_LINKS[year][split]
     images_zip_path = os.path.join(
@@ -559,25 +562,63 @@ def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
     else:
         logger.info("Image folder '%s' already exists", images_dir)
 
-    try:
+    #
+    # Download annotations
+    #
+
+    anno_path = os.path.join(dataset_dir, _ANNOTATION_PATHS[year][split])
+
+    if split == "test":
+        # Test split has no annotations, so we must populate the labels file
+        # manually
+        images = _make_images_list(images_dir)
+
+        labels = {
+            "info": {},
+            "licenses": [],
+            "categories": [],
+            "images": images,
+            "annotations": [],
+        }
+        etas.write_json(labels, anno_path)
+    else:
         anno_src_path = _ANNOTATION_DOWNLOAD_LINKS[year]
-        anno_path = os.path.join(dataset_dir, _ANNOTATION_PATHS[year][split])
         anno_zip_path = os.path.join(
             dataset_dir, os.path.basename(anno_src_path)
         )
-    except KeyError:
-        # No annotations
-        return images_dir, None
 
-    if not os.path.isfile(anno_path):
-        logger.info("Downloading annotations zip to '%s'", anno_zip_path)
-        etaw.download_file(anno_src_path, path=anno_zip_path)
-        logger.info("Extracting annotations to '%s'", anno_path)
-        etau.extract_zip(anno_zip_path, delete_zip=cleanup)
-    else:
-        logger.info("Annotations file '%s' already exists", anno_path)
+        if not os.path.isfile(anno_path):
+            logger.info("Downloading annotations zip to '%s'", anno_zip_path)
+            etaw.download_file(anno_src_path, path=anno_zip_path)
+            logger.info("Extracting annotations to '%s'", anno_path)
+            etau.extract_zip(anno_zip_path, delete_zip=cleanup)
+        else:
+            logger.info("Annotations file '%s' already exists", anno_path)
 
     return images_dir, anno_path
+
+
+def _make_images_list(images_dir):
+    logger.info("Computing image metadata for '%s'", images_dir)
+
+    image_paths = foud.parse_images_dir(images_dir)
+
+    images = []
+    with fou.ProgressBar() as pb:
+        for idx, image_path in pb(enumerate(image_paths)):
+            metadata = fom.ImageMetadata.build_for(image_path)
+            images.append(
+                {
+                    "id": idx,
+                    "file_name": os.path.basename(image_path),
+                    "height": metadata.height,
+                    "width": metadata.width,
+                    "license": None,
+                    "coco_url": None,
+                }
+            )
+
+    return images
 
 
 _IMAGE_DOWNLOAD_LINKS = {
@@ -600,12 +641,14 @@ _ANNOTATION_DOWNLOAD_LINKS = {
 
 _ANNOTATION_PATHS = {
     "2014": {
-        "train": "annotations/instances_train2017.json",
-        "validation": "annotations/instances_val2017.json",
+        "train": "annotations/instances_train2014.json",
+        "validation": "annotations/instances_val2014.json",
+        "test": "annotations/instances_test2014.json",
     },
     "2017": {
         "train": "annotations/instances_train2017.json",
         "validation": "annotations/instances_val2017.json",
+        "test": "annotations/instances_test2017.json",
     },
 }
 
