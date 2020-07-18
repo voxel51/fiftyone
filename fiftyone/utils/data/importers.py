@@ -419,8 +419,8 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         uuid, target = next(self._iter_labels)
         image_path = self._image_paths_map[uuid]
 
-        self._sample_parser.with_sample((image_path, target))
         if self._has_labels:
+            self._sample_parser.with_sample((image_path, target))
             label = self._sample_parser.get_label()
         else:
             label = None

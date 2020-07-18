@@ -655,7 +655,7 @@ def _watch_session(session, remote=False):
 
 
 class AppViewCommand(Command):
-    """View datasets in the FiftyOne App without persisting them to the database.
+    """View datasets in the App without persisting them to the database.
 
     Examples::
 
