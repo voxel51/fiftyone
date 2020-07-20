@@ -58,7 +58,7 @@ have a bad time.
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
     # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
-Dataset Persistence
+Dataset persistence
 -------------------
 
 By default, datasets are non-persistent. Non-persistent datasets are wiped
@@ -86,7 +86,7 @@ Start a new python session:
 Note that `my_second_dataset` and `my_third_dataset` have been wiped because
 they were not persistent.
 
-Deleting a Dataset
+Deleting a dataset
 ------------------
 
 Delete a dataset explicitly via
@@ -128,7 +128,7 @@ corresponding image on disk. The image is not read at this point:
 
     sample = fo.Sample(filepath="path/to/image.png")
 
-Adding Samples to a Dataset
+Adding samples to a dataset
 ---------------------------
 
 A |Sample| can easily be added to an existing |Dataset|:
@@ -170,16 +170,16 @@ time by providing a list of samples:
 
     dataset.add_samples(
         [
-            fo.Sample(filepath="/path/to/img1.jpg"),
-            fo.Sample(filepath="/path/to/img2.jpg"),
-            fo.Sample(filepath="/path/to/img3.jpg"),
+            fo.Sample(filepath="/path/to/image1.jpg"),
+            fo.Sample(filepath="/path/to/image2.jpg"),
+            fo.Sample(filepath="/path/to/image3.jpg"),
         ]
     )
 
     print(len(dataset))
     # 4
 
-Accessing samples in a Dataset
+Accessing samples in a dataset
 ------------------------------
 
 FiftyOne provides multiple ways to access a |Sample| in a |Dataset|.
@@ -204,10 +204,11 @@ instance:
     print(same_sample is sample)
     # True
 
-More ways of accessing samples are provided through a |DatasetView| described
-below.
+You can :ref:`use DatasetViews <using-dataset-views>` to perform more
+sophisticated operations on samples like searching, filtering, sorting, and
+slicing.
 
-Removing samples from a Dataset
+Removing samples from a dataset
 -------------------------------
 
 Samples can be removed from a |Dataset| through their ID, either one at a
@@ -256,7 +257,7 @@ A |Field| is an attribute of a |Sample| that stores information about the
 sample.
 
 Fields can be dynamically created, modified, and deleted from samples on a
-per-sample basiss. When a new |Field is assigned to a |Sample| in a |Dataset|,
+per-sample basiss. When a new |Field| is assigned to a |Sample| in a |Dataset|,
 it is automatically added to the dataset's schema and thus accessible on all
 other samples in the dataset. If a |Field| is unset on a particular |Sample|,
 its value will be ``None``.
@@ -272,15 +273,15 @@ By default, all |Sample| instances have the following fields:
     +------------+------------------------------------+-------------+---------------------------------------------------+
     | Field      | Type                               | Default     | Description                                       |
     +============+====================================+=============+===================================================+
-    | `filepath` | string                             | N/A         | (required) the path to the source data on disk    |
+    | `filepath` | string                             | N/A         | `(required)` The path to the source data on disk  |
     +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `id`       | string                             | `None`      | the ID of the sample in its parent dataset, or    |
+    | `id`       | string                             | `None`      | The ID of the sample in its parent dataset, or    |
     |            |                                    |             | `None` if the sample does not belong to a dataset |
     +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `metadata` | :class:`Metadata                   |`None`       | type-specific metadata about the source data      |
+    | `metadata` | :class:`Metadata                   |`None`       | Type-specific metadata about the source data      |
     |            | <fiftyone.core.metadata.Metadata>` |             |                                                   |
     +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `tags`     | list                               | `[]`        | a list of string tags for the sample              |
+    | `tags`     | list                               | `[]`        | A list of string tags for the sample              |
     +------------+------------------------------------+-------------+---------------------------------------------------+
 
 .. code-block:: python
@@ -301,7 +302,7 @@ By default, all |Sample| instances have the following fields:
         'metadata': None,
     }>
 
-Accessing fields of a Sample
+Accessing fields of a sample
 ----------------------------
 
 The names of available fields can be checked on any individual |Sample|:
@@ -319,13 +320,16 @@ field types:
     :linenos:
 
     dataset.get_field_schema()
-    # OrderedDict(
-    #     [
-    #         ('filepath', <fiftyone.core.fields.StringField object at 0x11436e710>),
-    #         ('tags',     <fiftyone.core.fields.ListField object at 0x11b7f2dd8>),
-    #         ('metadata', <fiftyone.core.fields.EmbeddedDocumentField object at 0x11b7f2e80>)
-    #     ]
-    # )
+
+.. code-block:: text
+
+    OrderedDict(
+        [
+            ('filepath', <fiftyone.core.fields.StringField object at 0x11436e710>),
+            ('tags',     <fiftyone.core.fields.ListField object at 0x11b7f2dd8>),
+            ('metadata', <fiftyone.core.fields.EmbeddedDocumentField object at 0x11b7f2e80>)
+        ]
+    )
 
 To to simply view the field schema print the dataset:
 
@@ -333,14 +337,17 @@ To to simply view the field schema print the dataset:
     :linenos:
 
     print(dataset)
-    # Name:           a_dataset
-    # Persistent:     False
-    # Num samples:    0
-    # Tags:           []
-    # Sample fields:
-    #     filepath: fiftyone.core.fields.StringField
-    #     tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-    #     metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+
+.. code-block:: text
+
+    Name:           a_dataset
+    Persistent:     False
+    Num samples:    0
+    Tags:           []
+    Sample fields:
+        filepath: fiftyone.core.fields.StringField
+        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
 The value of a |Field| for a given |Sample| can be accessed either by key or
 attribute access:
@@ -351,7 +358,7 @@ attribute access:
     sample.filepath
     sample["filepath"]
 
-Adding fields to a Sample
+Adding fields to a sample
 -------------------------
 
 New fields can be added to a |Sample| using key assignment:
@@ -369,15 +376,18 @@ updated:
     :linenos:
 
     print(dataset)
-    # Name:           a_dataset
-    # Persistent:     False
-    # Num samples:    0
-    # Tags:           []
-    # Sample fields:
-    #     filepath:      fiftyone.core.fields.StringField
-    #     tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-    #     metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-    #     integer_field: fiftyone.core.fields.IntField
+
+.. code-block:: text
+
+    Name:           a_dataset
+    Persistent:     False
+    Num samples:    0
+    Tags:           []
+    Sample fields:
+        filepath:      fiftyone.core.fields.StringField
+        tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        integer_field: fiftyone.core.fields.IntField
 
 A |Field| can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
 `dict`, or more complex data structures like |Label|:
@@ -403,11 +413,11 @@ a |Field| to an inappropriate type raises a `ValidationError`:
 
 .. note::
 
-    If the |Sample| is in a |Dataset|, then
+    If a |Sample| is in a |Dataset|, then
     :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
     whenever the |Sample| is updated.
 
-Removing fields from a Sample
+Removing fields from a sample
 -----------------------------
 
 A |Field| can be deleted from a |Sample| using `del`:
@@ -434,10 +444,9 @@ every |Sample| in the |Dataset|:
 Tags
 ----
 
-`Sample.tags` is a special :class:`ListField <fiftyone.core.fields.ListField>`
-that every |Sample| has by default. `tags` is just a list of strings, provided
-for convenience. For example, tags can be used to define dataset splits or mark
-low quality images:
+All |Sample| instances have a `tags` field, which is a |ListField|  of strings.
+By default, this list is empty, but it can be used (for example) to define
+dataset splits or mark low quality images:
 
 .. code-block:: python
     :linenos:
@@ -485,16 +494,19 @@ Basic ways to explore a |DatasetView| are available:
     # 2
 
     print(dataset.view())
-    # Dataset:        interesting_dataset
-    # Num samples:    2
-    # Tags:           ['test', 'train']
-    # Sample fields:
-    #     filepath: fiftyone.core.fields.StringField
-    #     tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-    #     metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
-Accessing Samples in DatasetViews
----------------------------------
+.. code-block:: text
+
+    Dataset:        interesting_dataset
+    Num samples:    2
+    Tags:           ['test', 'train']
+    Sample fields:
+        filepath: fiftyone.core.fields.StringField
+        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+
+Accessing samples in dataset views
+----------------------------------
 
 Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first()>` to get
 the first sample in a |DatasetView| or
@@ -524,7 +536,7 @@ array slicing:
 
     view.skip(2).limit(3)
 
-    # equivalently
+    # Equivalently
     view[2:5]
 
 Note that accessing an individual sample by its integer index in the view is
@@ -608,7 +620,7 @@ All of the aformentioned view stages can be chained together:
         .limit(5)
     )
 
-Removing a batch of samples from a Dataset
+Removing a batch of samples from a dataset
 ------------------------------------------
 
 Every |Sample| in a given |DatasetView| can be removed from a |Dataset| with a
