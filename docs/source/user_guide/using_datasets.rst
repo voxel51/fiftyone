@@ -4,12 +4,14 @@ Using FiftyOne Datasets
 .. include:: ../substitutions.rst
 .. default-role:: code
 
-After a |Dataset2|_ has been loaded or created, FiftyOne provides powerful
-functionality to inspect, search, and modify it from a |Dataset|-wide down to a
-|Sample| level.
+After a |WhatIsAFiftyOneDataset| has been loaded or created, FiftyOne provides
+powerful functionality to inspect, search, and modify it from a |Dataset|-wide
+down to a |Sample| level.
 
 The following sections provide details of how to use various aspects of a
 FiftyOne |Dataset|.
+
+.. _using-datasets:
 
 Datasets
 ________
@@ -34,7 +36,8 @@ Check to see what datasets exist at any time via :meth:`list_dataset_names()
     print(fo.list_dataset_names())
     # ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
 
-Load a dataset using :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`. Dataset objects are singletons. Cool!
+Load a dataset using :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`.
+Dataset objects are singletons. Cool!
 
 .. code-block:: python
     :linenos:
@@ -43,7 +46,8 @@ Load a dataset using :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`
     dataset2_reference is dataset2  # True
 
 If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
-:meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to have a bad time.
+:meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to
+have a bad time.
 
 .. code-block:: python
     :linenos:
@@ -85,10 +89,13 @@ they were not persistent.
 Deleting a Dataset
 ------------------
 
-Delete a dataset explicitly via :meth:`Dataset.delete() <fiftyone.core.dataset.Dataset.delete>`. Once a dataset is deleted,
-any existing reference in memory will be in a volatile state. :class:`Dataset.name <fiftyone.core.dataset.Dataset>`
-and :class:`Dataset.deleted <fiftyone.core.dataset.Dataset>` will still be valid attributes, but calling any other
-attribute or method will raise a `DoesNotExistError`.
+Delete a dataset explicitly via
+:meth:`Dataset.delete() <fiftyone.core.dataset.Dataset.delete>`. Once a dataset
+is deleted, any existing reference in memory will be in a volatile state.
+:class:`Dataset.name <fiftyone.core.dataset.Dataset>` and
+:class:`Dataset.deleted <fiftyone.core.dataset.Dataset>` will still be valid
+attributes, but calling any other attribute or method will raise a
+`DoesNotExistError`.
 
 .. code-block:: python
     :linenos:
@@ -107,6 +114,8 @@ attribute or method will raise a `DoesNotExistError`.
 
     print(dataset.persistent)
     # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_first_dataset' is deleted
+
+.. _using-samples:
 
 Samples
 _______
@@ -150,8 +159,8 @@ Every |Sample| in a |Dataset| is given a unique ID when it is added:
     print(sample.id)
     # 5ee0ebd72ceafe13e7741c42
 
-A batch of multiple |Sample| objects can be added to a |Dataset| at the same time by
-providing a list of samples:
+A batch of multiple |Sample| objects can be added to a |Dataset| at the same
+time by providing a list of samples:
 
 .. code-block:: python
     :linenos:
@@ -237,6 +246,8 @@ a |Sample| that has never been added to the |Dataset|:
 
     print(sample.id)
     # None
+
+.. _using-fields:
 
 Fields
 ______
@@ -349,7 +360,8 @@ a |Field| to an inappropriate type raises a `ValidationError`:
 
 .. note::
 
-    If the |Sample| is in a |Dataset|, then :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
+    If the |Sample| is in a |Dataset|, then
+    :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
     whenever the |Sample| is updated.
 
 Removing fields from a Sample
@@ -374,12 +386,15 @@ every |Sample| in the |Dataset|:
     sample.integer_field
     # AttributeError: Sample has no field 'integer_field'
 
+.. _using-tags:
+
 Tags
 ----
 
-`Sample.tags` is a special :class:`ListField <fiftyone.core.fields.ListField>` that every |Sample| has by default.
-`tags` is just a list of strings, provided for convenience. For example, tags
-can be used to define dataset splits or mark low quality images:
+`Sample.tags` is a special :class:`ListField <fiftyone.core.fields.ListField>`
+that every |Sample| has by default. `tags` is just a list of strings, provided
+for convenience. For example, tags can be used to define dataset splits or mark
+low quality images:
 
 .. code-block:: python
     :linenos:
@@ -409,6 +424,8 @@ can be used to define dataset splits or mark low quality images:
     If the |Sample| is in a |Dataset|, then `sample.save()` must be used
     whenever the |Sample| is updated.
 
+.. _using-dataset-views:
+
 DatasetViews
 ____________
 
@@ -436,7 +453,8 @@ Basic ways to explore a |DatasetView| are available:
 Accessing Samples in DatasetViews
 ---------------------------------
 
-Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first()>` to get the first sample in a |DatasetView| or
+Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first()>` to get
+the first sample in a |DatasetView| or
 :meth:`DatasetView.take(x) <fiftyone.core.view.DatasetView.take>` to get a new
 |DatasetView| containing `x` random |Sample| objects:
 
@@ -450,8 +468,10 @@ Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first()>` to get 
     print(len(new_view))
     # 2
 
-Ranges of |Sample| objects can be accessed using :meth:`skip() <fiftyone.core.view.DatasetView.skip>` and :meth:`limit() <fiftyone.core.view.DatasetView.limit>` or
-equivalently through array slicing:
+Ranges of |Sample| objects can be accessed using
+:meth:`skip() <fiftyone.core.view.DatasetView.skip>` and
+:meth:`limit() <fiftyone.core.view.DatasetView.limit>` or equivalently through
+array slicing:
 
 .. code-block:: python
     :linenos:
@@ -511,8 +531,8 @@ A |DatasetView| can be queried using :meth:`match()
 
 Convenience functions for common queries are also available.
 
-A |DatasetView| can be created by matching lists of |Sample| IDs, either to only
-include given a |Sample| or to include all but the given |Sample|:
+A |DatasetView| can be created by matching lists of |Sample| IDs, either to
+only include given a |Sample| or to include all but the given |Sample|:
 
 .. code-block:: python
     :linenos:

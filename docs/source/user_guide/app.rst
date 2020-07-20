@@ -5,7 +5,7 @@ Viewing Datasets in the FiftyOne App
 .. default-role:: code
 
 The FiftyOne App is a light weight user interface that allows you to browse and
-interact directly with your loaded |Dataset2|_.
+interact directly with your loaded |WhatIsAFiftyOneDataset|.
 
 Sessions
 ________

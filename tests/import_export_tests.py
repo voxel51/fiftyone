@@ -139,9 +139,9 @@ def test_classification_datasets(basedir, img):
         "test-classification", img, images_dir
     )
 
-    # ImageClassificationDataset
-    export_dir = os.path.join(basedir, "image-classification")
-    dataset_type = fo.types.ImageClassificationDataset
+    # FiftyOneImageClassificationDataset
+    export_dir = os.path.join(basedir, "fiftyone-image-classification")
+    dataset_type = fo.types.FiftyOneImageClassificationDataset
     dataset.export(export_dir, dataset_type=dataset_type)
     dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
 
@@ -173,9 +173,9 @@ def test_detection_datasets(basedir, img):
     images_dir = os.path.join(basedir, "source-images")
     dataset = make_detection_dataset("test-detection", img, images_dir)
 
-    # ImageDetectionDataset
-    export_dir = os.path.join(basedir, "image-detection")
-    dataset_type = fo.types.ImageDetectionDataset
+    # FiftyOneImageDetectionDataset
+    export_dir = os.path.join(basedir, "fiftyone-image-detection")
+    dataset_type = fo.types.FiftyOneImageDetectionDataset
     dataset.export(export_dir, dataset_type=dataset_type)
     dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
 
@@ -225,9 +225,9 @@ def test_image_labels_datasets(basedir, img):
     images_dir = os.path.join(basedir, "source-images")
     dataset = make_image_labels_dataset("test-image-labels", img, images_dir)
 
-    # ImageLabelsDataset
-    export_dir = os.path.join(basedir, "image-labels")
-    dataset_type = fo.types.ImageLabelsDataset
+    # FiftyOneImageLabelsDataset
+    export_dir = os.path.join(basedir, "fiftyone-image-labels")
+    dataset_type = fo.types.FiftyOneImageLabelsDataset
     dataset.export(export_dir, dataset_type=dataset_type)
     dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
 

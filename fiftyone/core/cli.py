@@ -107,27 +107,18 @@ class ConfigCommand(Command):
 
         # Print the location of your config
         fiftyone config --locate
-
-        # Save your current config to disk
-        fiftyone config --save
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "field", nargs="?", metavar="FIELD", help="a config field"
+            "field", nargs="?", metavar="FIELD", help="a config field to print"
         )
         parser.add_argument(
             "-l",
             "--locate",
             action="store_true",
             help="print the location of your config on disk",
-        )
-        parser.add_argument(
-            "-s",
-            "--save",
-            action="store_true",
-            help="save your current config to disk",
         )
 
     @staticmethod
@@ -140,20 +131,7 @@ class ConfigCommand(Command):
                     "No config file found at '%s'.\n"
                     % foc.FIFTYONE_CONFIG_PATH
                 )
-                print(
-                    "To save your current config (which may differ from the "
-                    "default config if you\n"
-                    "have any `FIFTYONE_XXX` environment variables set), run:"
-                    "\n\n"
-                    "fiftyone config --save"
-                    "\n"
-                )
 
-            return
-
-        if args.save:
-            fo.config.write_json(foc.FIFTYONE_CONFIG_PATH, pretty_print=True)
-            print("Config written to '%s'" % foc.FIFTYONE_CONFIG_PATH)
             return
 
         if args.field:
@@ -255,10 +233,7 @@ class ConvertCommand(Command):
         parser.add_argument(
             "--input-type",
             metavar="INPUT_TYPE",
-            help=(
-                "the type of the input dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the input dataset",
         )
         parser.add_argument(
             "--output-dir",
@@ -268,10 +243,7 @@ class ConvertCommand(Command):
         parser.add_argument(
             "--output-type",
             metavar="OUTPUT_TYPE",
-            help=(
-                "the desired output dataset type (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type to output",
         )
 
     @staticmethod
@@ -282,7 +254,12 @@ class ConvertCommand(Command):
         output_dir = args.output_dir
         output_type = etau.get_class(args.output_type)
 
-        foud.convert_dataset(input_dir, input_type, output_dir, output_type)
+        foud.convert_dataset(
+            input_dir=input_dir,
+            input_type=input_type,
+            output_dir=output_dir,
+            output_type=output_type,
+        )
 
 
 class DatasetsCommand(Command):
@@ -384,10 +361,7 @@ class DatasetsCreateCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the type of the dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the dataset",
         )
 
     @staticmethod
@@ -562,10 +536,7 @@ class DatasetsExportCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the format in which to export the dataset (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type in which to export",
         )
 
     @staticmethod
@@ -684,8 +655,7 @@ def _watch_session(session, remote=False):
 
 
 class AppViewCommand(Command):
-    """View datasets in the FiftyOne App without persisting them to the
-    database.
+    """View datasets in the App without persisting them to the database.
 
     Examples::
 
@@ -717,10 +687,7 @@ class AppViewCommand(Command):
             "-t",
             "--type",
             metavar="TYPE",
-            help=(
-                "the dataset type (a subclass of "
-                "`fiftyone.types.BaseDataset`)"
-            ),
+            help="the fiftyone.types.Dataset type of the dataset",
         )
         parser.add_argument(
             "-z",
@@ -1002,6 +969,9 @@ class ZooFindCommand(Command):
 
         # Print the location of the downloaded zoo dataset on disk
         fiftyone zoo find <name>
+
+        # Print the location of a specific split of the dataset
+        fiftyone zoo find <name> --split <split>
     """
 
     @staticmethod
@@ -1009,12 +979,16 @@ class ZooFindCommand(Command):
         parser.add_argument(
             "name", metavar="NAME", help="the name of the dataset"
         )
+        parser.add_argument(
+            "-s", "--split", metavar="SPLIT", help="a dataset split",
+        )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
+        split = args.split
 
-        dataset_dir = foz.find_zoo_dataset(name)
+        dataset_dir = foz.find_zoo_dataset(name, split=split)
         print(dataset_dir)
 
 

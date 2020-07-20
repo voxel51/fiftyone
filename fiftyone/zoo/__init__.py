@@ -109,8 +109,10 @@ def download_zoo_dataset(name, split=None, splits=None, dataset_dir=None):
             is used
 
     Returns:
-        info: the :class:`fiftyone.zoo.ZooDatasetInfo` for the dataset
-        dataset_dir: the directory containing the dataset
+        tuple of
+
+        -   info: the :class:`fiftyone.zoo.ZooDatasetInfo` for the dataset
+        -   dataset_dir: the directory containing the dataset
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
     info = zoo_dataset.download_and_prepare(
@@ -203,14 +205,18 @@ def load_zoo_dataset(
     return dataset
 
 
-def find_zoo_dataset(name):
+def find_zoo_dataset(name, split=None):
     """Returns the directory containing the given zoo dataset.
+
+    If a ``split`` is provided, the path to the dataset split is returned;
+    otherwise, the path to the root directory is returned.
 
     The dataset must be downloaded. Use :func:`download_zoo_dataset` to
     download datasets.
 
     Args:
         name: the name of the zoo dataset
+        split (None) a dataset split to locate
 
     Returns:
         the directory containing the dataset
@@ -220,6 +226,18 @@ def find_zoo_dataset(name):
         zoo_dataset.load_info(dataset_dir)
     except OSError:
         raise ValueError("Dataset '%s' is not downloaded" % name)
+
+    if split:
+        if not zoo_dataset.has_split(split):
+            raise ValueError("Dataset '%s' has no split '%s'" % (name, split))
+
+        info = zoo_dataset.load_info(dataset_dir)
+        if not info.is_split_downloaded(split):
+            raise ValueError(
+                "Dataset '%s' split '%s' is not downloaded" % (name, split)
+            )
+
+        return zoo_dataset.get_split_dir(dataset_dir, split)
 
     return dataset_dir
 
@@ -331,8 +349,8 @@ class ZooDatasetInfo(etas.Serializable):
 
     Args:
         zoo_dataset: the :class:`ZooDataset` instance for the dataset
-        dataset_type: the dataset type, a subclass of
-            :class:`fiftyone.types.BaseDataset`
+        dataset_type: the :class:`fiftyone.types.dataset_types.Dataset` type of
+            the dataset
         num_samples: the total number of samples in all downloaded splits of
             the dataset
         downloaded_splits (None): a dict of :class:`ZooDatasetSplitInfo`
@@ -373,8 +391,8 @@ class ZooDatasetInfo(etas.Serializable):
 
     @property
     def dataset_type(self):
-        """The fully-qualified class string of the dataset type, a subclass of
-        :class:`fiftyone.types.BaseDataset`.
+        """The fully-qualified class string of the
+        :class:`fiftyone.types.dataset_types.Dataset` type.
         """
         return etau.get_class_name(self._dataset_type)
 
@@ -394,11 +412,11 @@ class ZooDatasetInfo(etas.Serializable):
         return self._zoo_dataset
 
     def get_dataset_type(self):
-        """Returns the dataset type instance for the dataset, a subclass of
-        :class:`fiftyone.types.BaseDataset`.
+        """Returns the :class:`fiftyone.types.dataset_types.Dataset` type
+        instance for the dataset.
 
         Returns:
-            a :class:`fiftyone.types.BaseDataset` instance
+            a :class:`fiftyone.types.dataset_types.Dataset` instance
         """
         return self._dataset_type
 
@@ -645,6 +663,9 @@ class ZooDataset(object):
                         self, dataset_type, 0, classes=classes
                     )
 
+                if classes and not info.classes:
+                    info.classes = classes
+
                 info.downloaded_splits[split] = ZooDatasetSplitInfo(
                     split, num_samples
                 )
@@ -664,7 +685,7 @@ class ZooDataset(object):
                     classes,
                 ) = self._download_and_prepare(dataset_dir, scratch_dir, None)
 
-                # Create ZooDastasetInfo
+                # Create ZooDatasetInfo
                 info = ZooDatasetInfo(
                     self, dataset_type, num_samples, classes=classes
                 )
@@ -692,10 +713,12 @@ class ZooDataset(object):
                 not have splits
 
         Returns:
-            dataset_type: the dataset type, a subclass of
-                :class:`fiftyone.types.BaseDataset`
-            num_samples: the number of samples in the split
-            classes: an optional list of class label strings
+            tuple of
+
+            -   dataset_type: the :class:`fiftyone.types.dataset_types.Dataset`
+                    type of the dataset
+            -   num_samples: the number of samples in the split
+            -   classes: an optional list of class label strings
         """
         raise NotImplementedError(
             "subclasses must implement _download_and_prepare()"
