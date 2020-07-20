@@ -617,7 +617,7 @@ bounding box for the object should be stored in the
 :attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` attribute.
 
 .. note::
-    FiftyOne stores box coordinates as floats in `[0 ,1]` relative to the
+    FiftyOne stores box coordinates as floats in `[0, 1]` relative to the
     dimensions of the image. Bounding boxes are represented by a length-4 list
     in the format:
 
