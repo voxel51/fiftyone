@@ -23,16 +23,16 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
-from fiftyone.core.odm.document import ODMEmbeddedDocument
+from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 
 
-class Metadata(ODMEmbeddedDocument):
+class Metadata(DynamicEmbeddedDocument):
     """Base class for storing metadata about sample data.
 
     Args:
-        size_bytes: integer size of the media in bytes
-        mime_type: the MIME type of the media
+        size_bytes (None): integer size of the media in bytes
+        mime_type (None): the MIME type of the media
     """
 
     meta = {"allow_inheritance": True}
@@ -60,9 +60,11 @@ class ImageMetadata(Metadata):
     """Class for storing metadata about images in samples.
 
     Args:
-        width: integer width of the image in pixels
-        height: integer height of the image in pixels
-        num_channels: integer number of channels of the image
+        size_bytes (None): integer size of the media in bytes
+        mime_type (None): the MIME type of the media
+        width (None): integer width of the image in pixels
+        height (None): integer height of the image in pixels
+        num_channels (None): integer number of channels of the image
     """
 
     width = fof.IntField()

@@ -49,7 +49,7 @@ class Sample(object):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.ODMNoDatasetSample(
+        self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
         self._dataset = self._get_dataset()
@@ -62,7 +62,7 @@ class Sample(object):
 
     def __getattr__(self, name):
         try:
-            return super(Sample, self).__getattribute__(name)
+            return super().__getattribute__(name)
         except AttributeError:
             return self._doc.get_field(name)
 
@@ -70,7 +70,7 @@ class Sample(object):
         if name.startswith("_") or (
             hasattr(self, name) and not self._doc.has_field(name)
         ):
-            super(Sample, self).__setattr__(name, value)
+            super().__setattr__(name, value)
         else:
             self._doc.__setattr__(name, value)
 
@@ -78,7 +78,7 @@ class Sample(object):
         try:
             self.__delitem__(name)
         except KeyError:
-            super(Sample, self).__delattr__(name)
+            super().__delattr__(name)
 
     def __getitem__(self, key):
         try:
@@ -230,7 +230,7 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        doc = foo.ODMNoDatasetSample.from_dict(d, extended=True)
+        doc = foo.NoDatasetSampleDocument.from_dict(d, extended=True)
         return cls.from_doc(doc)
 
     def to_json(self, pretty_print=False):
@@ -255,7 +255,7 @@ class Sample(object):
         Returns:
             a :class:`Sample`
         """
-        doc = foo.ODMNoDatasetSample.from_json(s)
+        doc = foo.NoDatasetSampleDocument.from_json(s)
         return cls.from_doc(doc)
 
     def to_mongo_dict(self):
@@ -273,12 +273,12 @@ class Sample(object):
         document.
 
         Args:
-            document: a :class:`fiftyone.core.odm.ODMSample`
+            document: a :class:`fiftyone.core.odm.SampleDocument`
 
         Returns:
             a :class:`Sample`
         """
-        if isinstance(doc, foo.ODMNoDatasetSample):
+        if isinstance(doc, foo.NoDatasetSampleDocument):
             sample = cls.__new__(cls)
             sample._doc = doc
             return sample
@@ -349,7 +349,7 @@ class Sample(object):
 
     @property
     def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.ODMDocument` has
+        """Whether the underlying :class:`fiftyone.core.odm.Document` has
         been inserted into the database.
         """
         return self._doc.in_db
@@ -366,13 +366,13 @@ class Sample(object):
 
         For use **only** when adding a sample to a dataset.
         """
-        if isinstance(self._doc, foo.ODMDatasetSample):
+        if isinstance(self._doc, foo.DatasetSampleDocument):
             raise TypeError("Sample already belongs to a dataset")
 
-        if not isinstance(doc, foo.ODMDatasetSample):
+        if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
-                % (foo.ODMDatasetSample, type(doc))
+                % (foo.DatasetSampleDocument, type(doc))
             )
 
         # ensure the doc is saved to the database
@@ -391,7 +391,7 @@ class Sample(object):
     @classmethod
     def _reset_backing_docs(cls, dataset_name, sample_ids):
         """Resets the sample's backing document to a
-        :class:`fiftyone.core.odm.ODMNoDatasetSample` instance.
+        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance.
 
         For use **only** when removing samples from a dataset.
         """
@@ -404,8 +404,8 @@ class Sample(object):
     @classmethod
     def _reset_all_backing_docs(cls, dataset_name):
         """Resets the sample's backing document to a
-        :class:`fiftyone.core.odm.ODMNoDatasetSample` instance for all samples
-        in a dataset.
+        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance for all
+        samples in a dataset.
 
         For use **only** when clearing a dataset.
         """

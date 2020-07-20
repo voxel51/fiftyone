@@ -138,7 +138,7 @@ class Session(foc.HasClient):
         self._port = port
         self._remote = remote
 
-        super(Session, self).__init__(self._port)
+        super().__init__(self._port)
 
         if view is not None:
             self.view = view

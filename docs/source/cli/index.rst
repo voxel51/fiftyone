@@ -481,7 +481,7 @@ Tools for working with the FiftyOne App.
     available commands:
       {launch,view,connect}
         launch              Launch the FiftyOne App.
-        view                View datasets in the FiftyOne App without persisting them to the
+        view                View datasets in the App without persisting them to the database
         connect             Connect to a remote FiftyOne App.
 
 Launch the App

@@ -514,7 +514,12 @@ def _parse_voc_detection_labels(_):
 
 
 def _parse_coco_detection_labels_map(dataset):
-    return fouc.coco_categories_to_classes(dataset.coco.dataset["categories"])
+    try:
+        return fouc.coco_categories_to_classes(
+            dataset.coco.dataset["categories"]
+        )
+    except:
+        return None
 
 
 def _parse_classification_labels(dataset):

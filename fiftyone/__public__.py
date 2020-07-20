@@ -47,6 +47,7 @@ from .core.labels import (
     NumericAttribute,
     VectorAttribute,
     Classification,
+    Classifications,
     Detection,
     Detections,
     ImageLabels,

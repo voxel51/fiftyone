@@ -31,7 +31,7 @@ duplicate and near-duplicate images from your dataset.
     # Visualize in App
     fo.launch_app(view=dup_view)
 
-:doc:`Add model predictions to a datasets<model_inference>`
+:doc:`Add model predictions to a dataset<model_inference>`
 
 Add FiftyOne to your model training and analysis loop to visualize and analyze
 your model's predictions.
@@ -97,6 +97,23 @@ it to export a FiftyOne |Dataset| to disk in your custom format.
 
     dataset.export(dataset_exporter=exporter)
 
+:doc:`Parse samples in custom formats <custom_parser>`
+
+Write your own :ref:`custom SampleParser <custom-sample-parser>` and use it to
+add samples in your custom format to a FiftyOne |Dataset|.
+
+.. code-block:: python
+    :linenos:
+
+    # An iterable of custom samples
+    # For example, this can be a `tf.data.Dataset` or a `torch.utils.DataLoader`
+    samples = ...
+
+    # Create an instance of your custom parser
+    sample_parser = CustomSampleParser()
+
+    dataset.add_labeled_images(samples, sample_parser)
+
 .. toctree::
    :maxdepth: 1
    :hidden:
@@ -106,3 +123,4 @@ it to export a FiftyOne |Dataset| to disk in your custom format.
    Convert dataset formats<convert_datasets.ipynb>
    Custom dataset importers<custom_importer.ipynb>
    Custom dataset exporters<custom_exporter.ipynb>
+   Custom sample parsers<custom_parser.ipynb>

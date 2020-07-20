@@ -24,7 +24,7 @@ import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
 
-from fiftyone.core.odm.document import ODMEmbeddedDocument
+from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 
 
@@ -35,7 +35,7 @@ class _NoDefault(object):
 no_default = _NoDefault()
 
 
-class Label(ODMEmbeddedDocument):
+class Label(DynamicEmbeddedDocument):
     """Base class for labels.
 
     Label instances represent a logical collection of labels associated with a
@@ -63,7 +63,7 @@ class ImageLabel(Label):
         raise NotImplementedError("Subclass must implement to_image_labels()")
 
 
-class Attribute(ODMEmbeddedDocument):
+class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
 
     Attribute instances represent an atomic piece of information, its
@@ -143,7 +143,7 @@ class Classification(ImageLabel):
         instance.
 
         Args:
-            attr_name ("label"): an optional frame attribute name to use
+            attr_name ("label"): the attribute name to use
 
         Returns:
             an ``eta.core.image.ImageLabels`` instance
@@ -157,7 +157,46 @@ class Classification(ImageLabel):
         return image_labels
 
 
-class Detection(ODMEmbeddedDocument):
+class Classifications(ImageLabel):
+    """A list of classifications (typically from a multilabel model) for an
+    image sample in a :class:`fiftyone.core.dataset.Dataset`.
+
+    Args:
+        classifications (None): a list of :class:`Classification` instances
+    """
+
+    meta = {"allow_inheritance": True}
+
+    classifications = fof.ListField(fof.EmbeddedDocumentField(Classification))
+    logits = fof.VectorField()
+
+    def to_image_labels(self, attr_name="label"):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            attr_name ("label"): the attribute name to use. The attributes are
+                written with names ``attr_name + "%d" % idx``
+
+        Returns:
+            an ``eta.core.image.ImageLabels`` instance
+        """
+        image_labels = etai.ImageLabels()
+
+        # pylint: disable=not-an-iterable
+        for idx, classification in enumerate(self.classifications, 1):
+            image_labels.add_attribute(
+                etad.CategoricalAttribute(
+                    attr_name + "%d" % idx,
+                    classification.label,
+                    confidence=classification.confidence,
+                )
+            )
+
+        return image_labels
+
+
+class Detection(DynamicEmbeddedDocument):
     """An object detection.
 
     Args:
@@ -178,6 +217,19 @@ class Detection(ODMEmbeddedDocument):
     bounding_box = fof.VectorField()
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
+
+    def has_attribute(self, attr_name):
+        """Determines whether the detection has an attribute with the given
+        name.
+
+        Args:
+            attr_name: the attribute name
+
+        Returns:
+            True/False
+        """
+        # pylint: disable=unsupported-membership-test
+        return attr_name in self.attributes
 
     def get_attribute_value(self, attr_name, default=no_default):
         """Gets the value of the attribute with the given name.
@@ -207,7 +259,7 @@ class Detection(ODMEmbeddedDocument):
 
 
 class Detections(ImageLabel):
-    """A set of object detections for an image sample in a
+    """A list of object detections for an image sample in a
     :class:`fiftyone.core.dataset.Dataset`.
 
     Args:
@@ -245,9 +297,9 @@ class Detections(ImageLabel):
         Returns:
             an ``eta.core.image.ImageLabels`` instance
         """
-        # pylint: disable=not-an-iterable
         image_labels = etai.ImageLabels()
 
+        # pylint: disable=not-an-iterable
         for detection in self.detections:
             label = detection.label
 

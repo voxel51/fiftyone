@@ -1,5 +1,5 @@
-Installing FiftyOne
-===================
+FiftyOne Installation
+=====================
 
 .. default-role:: code
 
@@ -135,6 +135,8 @@ dealing with virtual environments frequently:
 * `virtualenvwrapper <https://virtualenvwrapper.readthedocs.io/en/latest/>`_
   adds some convenient shell support for creating and managing virtual
   environments.
+
+.. _installing-fiftyone:
 
 Installing FiftyOne
 -------------------
