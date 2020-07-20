@@ -84,19 +84,18 @@ Tools for working with your FiftyOne config.
 
 .. code-block:: text
 
-    fiftyone config [-h] [-l] [-s] [FIELD]
+    fiftyone config [-h] [-l] [FIELD]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      FIELD         a config field
+      FIELD         a config field to print
 
     optional arguments:
       -h, --help    show this help message and exit
       -l, --locate  print the location of your config on disk
-      -s, --save    save your current config to disk
 
 **Examples**
 
@@ -114,11 +113,6 @@ Tools for working with your FiftyOne config.
 
     # Print the location of your config
     fiftyone config --locate
-
-.. code:: shell
-
-    # Save your current config to disk
-    fiftyone config --save
 
 Print constants
 ---------------
@@ -170,11 +164,11 @@ Convert datasets on disk between supported formats.
       --input-dir INPUT_DIR
                             the directory containing the dataset
       --input-type INPUT_TYPE
-                            the type of the input dataset (a subclass of `fiftyone.types.BaseDataset`)
+                            the fiftyone.types.Dataset type of the input dataset
       --output-dir OUTPUT_DIR
                             the directory to which to write the output dataset
       --output-type OUTPUT_TYPE
-                            the desired output dataset type (a subclass of `fiftyone.types.BaseDataset`)
+                            the fiftyone.types.Dataset type to output
 
 **Examples**
 
@@ -294,7 +288,7 @@ Tools for creating FiftyOne datasets.
                             the directory containing the dataset
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to load
-      -t TYPE, --type TYPE  the type of the dataset (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
 
 **Examples**
 
@@ -426,7 +420,7 @@ Export FiftyOne datasets to disk in supported formats.
                             the path to export the dataset in JSON format
       -f LABEL_FIELD, --label-field LABEL_FIELD
                             the name of the label field to export
-      -t TYPE, --type TYPE  the format in which to export the dataset (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type in which to export
 
 **Examples**
 
@@ -487,7 +481,7 @@ Tools for working with the FiftyOne App.
     available commands:
       {launch,view,connect}
         launch              Launch the FiftyOne App.
-        view                View datasets in the FiftyOne App without persisting them to the
+        view                View datasets in the App without persisting them to the database
         connect             Connect to a remote FiftyOne App.
 
 Launch the App
@@ -526,8 +520,7 @@ Launch the FiftyOne App.
 View datasets in App
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-View datasets in the FiftyOne App without persisting them to the
-database.
+View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: text
 
@@ -544,7 +537,7 @@ database.
       -n NAME, --name NAME  a name for the dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             the directory containing the dataset to view
-      -t TYPE, --type TYPE  the dataset type (a subclass of `fiftyone.types.BaseDataset`)
+      -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
       -z NAME, --zoo-dataset NAME
                             the name of a zoo dataset to view
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
@@ -669,7 +662,7 @@ Locate the downloaded zoo dataset on disk.
 
 .. code-block:: text
 
-    fiftyone zoo find [-h] NAME
+    fiftyone zoo find [-h] [-s SPLIT] NAME
 
 **Arguments**
 
@@ -679,7 +672,8 @@ Locate the downloaded zoo dataset on disk.
       NAME        the name of the dataset
 
     optional arguments:
-      -h, --help  show this help message and exit
+      -h, --help            show this help message and exit
+      -s SPLIT, --split SPLIT
 
 **Examples**
 
@@ -687,6 +681,9 @@ Locate the downloaded zoo dataset on disk.
 
     # Print the location of the downloaded zoo dataset on disk
     fiftyone zoo find <name>
+
+    # Print the location of a specific split of the dataset
+    fiftyone zoo find <name> --split <split>
 
 Show zoo dataset info
 ~~~~~~~~~~~~~~~~~~~~~

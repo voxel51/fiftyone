@@ -3,15 +3,30 @@ body {
     sans-serif;
 }
 
+.ui.tabular.menu .item {
+  /* stop breaking tabs */
+  width: unset;
+  margin: unset;
+}
+
 article.pytorch-article pre,
 span.pre {
   background-color: var(--bg-light-secondary);
 }
 
-.ui.tabular.menu .item {
-  /* stop breaking tabs */
-  width: unset;
-  margin: unset;
+article.pytorch-article .wy-table-responsive table tbody .row-odd {
+  background-color: var(--bg-light-secondary);
+}
+
+article.pytorch-article .wy-table-responsive table tbody td {
+  padding-bottom: 0rem;
+}
+
+article.pytorch-article .wy-table-responsive table thead th {
+  line-height: 1rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  padding-bottom: 0rem;
 }
 
 .pytorch-page-level-bar {
@@ -176,6 +191,12 @@ p a:visited,
 .pytorch-left-menu li.toctree-l1.current > a:before,
 ul.pytorch-breadcrumbs a {
   color: var(--color-primary);
+}
+
+a:link.has-code span,
+a:hover.has-code span,
+a:visited.has-code span {
+  color: var(--color-secondary);
 }
 
 .rst-footer-buttons {
