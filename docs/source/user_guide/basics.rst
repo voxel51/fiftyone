@@ -171,10 +171,10 @@ as ground annotations or model predictions.
 
 FiftyOne provides a |Label| subclass for common tasks:
 
-- |Classification|: a classification label
-- |Classifications|: a list of classifications (typically for multilabel tasks)
-- |Detections|: a list of object detections
-- |ImageLabels|: a generic collection of multitask predictions for an image
+- :ref:`Classification <classification>`: a classification label
+- :ref:`Classifications <multitask-predictions>`: a list of classifications (typically for multilabel tasks)
+- :ref:`Detections <object-detection>`: a list of object detections
+- :ref:`ImageLabels <multitask-predictions>`: a generic collection of multitask predictions for an image
 
 See :ref:`using labels <using-labels>` for more information about storing
 labels in your samples.

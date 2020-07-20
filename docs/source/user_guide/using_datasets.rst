@@ -493,6 +493,8 @@ labels.
 
 FiftyOne provides a dedicated |Label| subclass for many common tasks.
 
+.. _classification:
+
 Classification
 --------------
 
@@ -531,6 +533,8 @@ be visualized in the App or used by Brain methods, e.g., when
         'ground_truth': <Classification: {'label': 'sunny', 'confidence': None, 'logits': None}>,
         'prediction': <Classification: {'label': 'sunny', 'confidence': 0.9, 'logits': None}>,
     }>
+
+.. _multilabel-classification:
 
 Multilabel classification
 -------------------------
@@ -595,6 +599,8 @@ overarching model (if applicable) in the
             'logits': None,
         }>,
     }>
+
+.. _object-detection:
 
 Object detection
 ----------------
@@ -772,6 +778,8 @@ schema of the attributes that you're storing.
             ]),
         }>,
     }>
+
+.. _multitask-predictions:
 
 Multitask predictions
 ---------------------
