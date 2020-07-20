@@ -442,9 +442,9 @@ every |Sample| in the |Dataset|:
 .. _using-tags:
 
 Tags
-----
+____
 
-All |Sample| instances have a `tags` field, which is a |ListField|  of strings.
+All |Sample| instances have a `tags` field, which is a |ListField| of strings.
 By default, this list is empty, but it can be used (for example) to define
 dataset splits or mark low quality images:
 
@@ -477,6 +477,101 @@ The `tags` field can be treated like a standard Python `list`:
     :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
     whenever the |Sample| is updated.
 
+.. _using-metadata:
+
+Metadata
+________
+
+All |Sample| instances have a `metadata` field, which can optionally be
+populated with a |Metadata| instance that stores data type-specific metadata
+about the raw data in the sample. The :doc:`FiftyOne App </user_guide/app>` and
+the :doc:`FiftyOne Brain </user_guide/brain>` will use this provided metadata
+in some workflows when it is available.
+
+.. tabs::
+
+    .. group-tab:: Images
+
+        For image data, use the |ImageMetadata| class to store information
+        about your image.
+
+        |ImageMetadata| instances can also store arbitrary custom fields, but,
+        by default, they provide
+        :attr:`size_bytes <fiftyone.core.metadata.ImageMetadata.size_bytes>`,
+        :attr:`mime_type <fiftyone.core.metadata.ImageMetadata.mime_type>`,
+        :attr:`width <fiftyone.core.metadata.ImageMetadata.width>`,
+        :attr:`height <fiftyone.core.metadata.ImageMetadata.height>`, and
+        :attr:`num_channels <fiftyone.core.metadata.ImageMetadata.num_channels>`
+        attributes, which are `None` by default.
+
+        FiftyOne provides a convenient
+        :meth:`ImageMetadata.build_for() <fiftyone.core.metadata.ImageMetadata.build_for>`
+        factory method that you can use to populate metdata for your images:
+
+        .. code-block:: python
+            :linenos:
+
+            image_path = "/path/to/image.png"
+
+            metadata = fo.ImageMetadata.build_for(image_path)
+
+            sample = fo.Sample(filepath=image_path, metadata=metadata)
+
+            print(sample)
+
+        .. code-block:: text
+
+            <Sample: {
+                'id': None,
+                'filepath': '/path/to/image.png',
+                'tags': [],
+                'metadata': <ImageMetadata: {
+                    'size_bytes': 544559,
+                    'mime_type': 'image/png',
+                    'width': 698,
+                    'height': 664,
+                    'num_channels': 3,
+                }>,
+            }>
+
+    .. group-tab:: Generic data
+
+        For generic data, use the |Metadata| class to store information about
+        your sample.
+
+        |Metadata| instances can store arbitrary custom fields as desired, but,
+        by default, they provide
+        :attr:`size_bytes <fiftyone.core.metadata.Metadata.size_bytes>` and
+        :attr:`mime_type <fiftyone.core.metadata.Metadata.mime_type>`
+        attributes, which are `None` by default.
+
+        FiftyOne provides a convenient
+        :meth:`Metadata.build_for() <fiftyone.core.metadata.Metadata.build_for>`
+        factory method that you can use to populate metdata for your samples:
+
+        .. code-block:: python
+            :linenos:
+
+            data_path = "/path/to/data.zip"
+
+            metadata = fo.Metadata.build_for(data_path)
+
+            sample = fo.Sample(filepath=data_path, metadata=metadata)
+
+            print(sample)
+
+        .. code-block:: text
+
+            <Sample: {
+                'id': None,
+                'filepath': '/path/to/data.zip',
+                'tags': [],
+                'metadata': <Metadata: {
+                    'size_bytes': 544559,
+                    'mime_type': 'application/zip',
+                }>,
+            }>
+
 .. _using-labels:
 
 Labels
@@ -490,6 +585,23 @@ Although such information can be stored in custom sample fields
 |Label| instances so that the :doc:`FiftyOne App </user_guide/app>` and the
 :doc:`FiftyOne Brain </user_guide/brain>` can visualize and compute on your
 labels.
+
+.. note::
+
+    All |Label| instances are dynamic! You can add custom fields to your
+    labels to store custom information:
+
+    .. code-block:: python
+
+        # Provide some default fields
+        label = fo.Classification(label="cat", confidence=0.98)
+
+        # Add custom fields
+        label["int"] = 5
+        label["float"] = 51.0
+        label["list"] = [1, 2, 3]
+        label["bool"] = True
+        label["dict"] = {"key": ["list", "of", "values"]}
 
 FiftyOne provides a dedicated |Label| subclass for many common tasks.
 
@@ -679,10 +791,13 @@ detection can be stored in the
         }>,
     }>
 
-Object attributes
-~~~~~~~~~~~~~~~~~
+.. -objects-with-attributes:
 
-Objects may also be given attributes, which should be stored in the
+Objects with attributes
+-----------------------
+
+Object detections stored in |Detections| may also be given attributes, which
+should be stored in the
 :attr:`attributes <fiftyone.core.labels.Detection.attributes>` attribute of
 each |Detection|; this field is a dictionary mapping attribute names to
 |Attribute| instances, which contain the
