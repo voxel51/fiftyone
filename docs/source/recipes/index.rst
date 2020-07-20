@@ -31,7 +31,7 @@ duplicate and near-duplicate images from your dataset.
     # Visualize in App
     fo.launch_app(view=dup_view)
 
-:doc:`Add model predictions to a datasets<model_inference>`
+:doc:`Add model predictions to a dataset<model_inference>`
 
 Add FiftyOne to your model training and analysis loop to visualize and analyze
 your model's predictions.
