@@ -455,26 +455,344 @@ dataset splits or mark low quality images:
 
     dataset.add_samples(
         [
-            fo.Sample(filepath="path/to/img1.png", tags=["train"]),
-            fo.Sample(filepath="path/to/img2.png", tags=["test", "low_quality"]),
+            fo.Sample(filepath="path/to/image1.png", tags=["train"]),
+            fo.Sample(filepath="path/to/image2.png", tags=["test", "low_quality"]),
         ]
     )
 
     print(dataset.get_tags())
     # {"test", "low_quality", "train"}
 
-`Sample.tags` can be treated like a standard python `list`:
+The `tags` field can be treated like a standard Python `list`:
 
 .. code-block:: python
     :linenos:
 
-    sample.tags += ["new_tag"]
+    sample.tags.append("new_tag")
     sample.save()
 
 .. note::
 
-    If the |Sample| is in a |Dataset|, then `sample.save()` must be used
+    If a |Sample| is in a |Dataset|, then
+    :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
     whenever the |Sample| is updated.
+
+.. _using-labels:
+
+Labels
+______
+
+The |Label| class hierarchy is used to store semantic information about ground
+truth or predicted labels in a sample.
+
+Although such information can be stored in custom sample fields
+(e.g, in a |DictField|), it is recommended that you store label information in
+|Label| instances so that the :doc:`FiftyOne App </user_guide/app>` and the
+:doc:`FiftyOne Brain </user_guide/brain>` can visualize and compute on your
+labels.
+
+FiftyOne provides a dedicated |Label| subclass for many common tasks.
+
+Classification
+--------------
+
+The |Classification| class represents a classification label for an image. The
+label itself is stored in the
+:attr:`label <fiftyone.core.labels.Classification.label>` attribute of the
+|Classification| object. This may be a ground truth label or a model
+prediction.
+
+The optional
+:attr:`confidence <fiftyone.core.labels.Classification.confidence>` and
+:attr:`logits <fiftyone.core.labels.Classification.logits>` attributes may be
+used to store metadata about the model prediction. These additional fields can
+be visualized in the App or used by Brain methods, e.g., when
+:ref:`computing label mistakes <brain-label-mistakes>`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png")
+
+    sample["ground_truth"] = fo.Classification(label="sunny")
+    sample["prediction"] = fo.Classification(label="sunny", confidence=0.9)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': 'path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Classification: {'label': 'sunny', 'confidence': None, 'logits': None}>,
+        'prediction': <Classification: {'label': 'sunny', 'confidence': 0.9, 'logits': None}>,
+    }>
+
+Multilabel classification
+-------------------------
+
+The |Classifications| class represents a list of classification labels for an
+image. The typical use case is to represent multilabel annotations/predictions
+for an image, where multiple labels from a model may apply to a given image.
+The labels are stored in a
+:attr:`classifications <fiftyone.core.labels.Classifications.classifications>`
+attribute of the object, which contains a list of |Classification| instances.
+
+Metadata about individual labels can be stored in the |Classification|
+instances as usual; additionally, you can optionally store logits for the
+overarching model (if applicable) in the
+:attr:`logits <fiftyone.core.labels.Classifications.logits>` attribute of the
+|Classifications| object.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png")
+
+    sample["ground_truth"] = fo.Classifications(
+        classifications=[
+            fo.Classification(label="animal"),
+            fo.Classification(label="cat"),
+            fo.Classification(label="tabby"),
+        ]
+    )
+    sample["prediction"] = fo.Classifications(
+        classifications=[
+            fo.Classification(label="animal", confidence=0.99),
+            fo.Classification(label="cat", confidence=0.98),
+            fo.Classification(label="tabby", confidence=0.72),
+        ]
+    )
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': 'path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Classifications: {
+            'classifications': BaseList([
+                <Classification: {'label': 'animal', 'confidence': None, 'logits': None}>,
+                <Classification: {'label': 'cat', 'confidence': None, 'logits': None}>,
+                <Classification: {'label': 'tabby', 'confidence': None, 'logits': None}>,
+            ]),
+            'logits': None,
+        }>,
+        'prediction': <Classifications: {
+            'classifications': BaseList([
+                <Classification: {'label': 'animal', 'confidence': 0.99, 'logits': None}>,
+                <Classification: {'label': 'cat', 'confidence': 0.98, 'logits': None}>,
+                <Classification: {'label': 'tabby', 'confidence': 0.72, 'logits': None}>,
+            ]),
+            'logits': None,
+        }>,
+    }>
+
+Object detection
+----------------
+
+The |Detections| class represents a list of object detections in an image. The
+detections are stored in the
+:attr:`detections <fiftyone.core.labels.Detections.detections>` attribute of
+the |Detections| object.
+
+Each individual object detection is represented by a |Detection| object. The
+string label of the object should be stored in the
+:attr:`label <fiftyone.core.labels.Detection.label>` attribute, and the
+bounding box for the object should be stored in the
+:attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` attribute.
+
+.. note::
+    FiftyOne stores box coordinates as floats in `[0 ,1]` relative to the
+    dimensions of the image. Bounding boxes are represented by a length-4 list
+    in the format:
+
+    .. code-block:: text
+
+        [<top-left-x>, <top-left-y>, <width>, <height>]
+
+In the case of model predictions, an optional confidence score for each
+detection can be stored in the
+:attr:`confidence <fiftyone.core.labels.Detection.confidence>` attribute.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png")
+
+    sample["ground_truth"] = fo.Detections(
+        detections=[fo.Detection(label="cat", bounding_box=[0.5, 0.5, 0.4, 0.3],),]
+    )
+    sample["prediction"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="cat",
+                bounding_box=[0.480, 0.513, 0.397, 0.288],
+                confidence=0.96,
+            ),
+        ]
+    )
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': 'path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'label': 'cat',
+                    'bounding_box': array([0.5, 0.5, 0.4, 0.3]),
+                    'confidence': None,
+                    'attributes': BaseDict({}),
+                }>,
+            ]),
+        }>,
+        'prediction': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'label': 'cat',
+                    'bounding_box': array([0.48 , 0.513, 0.397, 0.288]),
+                    'confidence': 0.96,
+                    'attributes': BaseDict({}),
+                }>,
+            ]),
+        }>,
+    }>
+
+Object attributes
+~~~~~~~~~~~~~~~~~
+
+Objects may also be given attributes, which should be stored in the
+:attr:`attributes <fiftyone.core.labels.Detection.attributes>` attribute of
+each |Detection|; this field is a dictionary mapping attribute names to
+|Attribute| instances, which contain the
+:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
+associated metadata.
+
+There are |Attribute| subclasses for various types of attributes you may want
+to store. Use the appropriate subclass when possible so that FiftyOne knows the
+schema of the attributes that you're storing.
+
+.. table::
+    :widths: 25 25 50
+
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | Attribute class                                                           | Value type | Description                     |
+    +===========================================================================+============+=================================+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png")
+
+    sample["ground_truth"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="cat",
+                bounding_box=[0.5, 0.5, 0.4, 0.3],
+                attributes={
+                    "age": fo.NumericAttribute(value=51),
+                    "mood": fo.CategoricalAttribute(value="salty"),
+                },
+            ),
+        ]
+    )
+    sample["prediction"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="cat",
+                bounding_box=[0.480, 0.513, 0.397, 0.288],
+                confidence=0.96,
+                attributes={
+                    "age": fo.NumericAttribute(value=51),
+                    "mood": fo.CategoricalAttribute(
+                        value="surly", confidence=0.95
+                    ),
+                },
+            ),
+        ]
+    )
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': 'path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'label': 'cat',
+                    'bounding_box': array([0.5, 0.5, 0.4, 0.3]),
+                    'confidence': None,
+                    'attributes': BaseDict({
+                        'age': <NumericAttribute: {'value': 51.0}>,
+                        'mood': <CategoricalAttribute: {'value': 'salty', 'confidence': None, 'logits': None}>,
+                    }),
+                }>,
+            ]),
+        }>,
+        'prediction': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'label': 'cat',
+                    'bounding_box': array([0.48 , 0.513, 0.397, 0.288]),
+                    'confidence': 0.96,
+                    'attributes': BaseDict({
+                        'age': <NumericAttribute: {'value': 51.0}>,
+                        'mood': <CategoricalAttribute: {'value': 'surly', 'confidence': 0.95, 'logits': None}>,
+                    }),
+                }>,
+            ]),
+        }>,
+    }>
+
+Multitask predictions
+---------------------
+
+The |ImageLabels| class represents a collection of multitask labels for an
+image. The labels are stored in the
+:attr:`labels <fiftyone.core.labels.ImageLabels.labels>` attribute of the
+|ImageLabels| object, which should contain an
+`eta.core.image.ImageLabels <https://voxel51.com/docs/api/#types-imagelabels>`_
+object.
+
+|ImageLabels| instances can contain one or more of the following:
+
+- frame-level classifications
+- semantic segmentation masks
+- object detections, optionally with attributes and/or instance segmentations
+
+The labels can be ground truth annotations or model predictions; in the
+latter case, additional metadata such as prediction confidences can be store.
+See the `ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_
+for more details.
 
 .. _using-dataset-views:
 
