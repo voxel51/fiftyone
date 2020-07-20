@@ -669,7 +669,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not sample_parser.has_image_path:
             raise ValueError(
                 "Sample parser must have `has_image_path == True` to add its "
-                "samples"
+                "samples to the dataset"
             )
 
         def parse_sample(sample):
@@ -729,7 +729,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not sample_parser.has_image_path:
             raise ValueError(
                 "Sample parser must have `has_image_path == True` to add its "
-                "samples"
+                "samples to the dataset"
             )
 
         def parse_sample(sample):
