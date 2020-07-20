@@ -70,10 +70,9 @@ setup(
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=2.7",
+    python_requires=">=3.5",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )
