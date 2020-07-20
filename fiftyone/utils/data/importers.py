@@ -131,10 +131,10 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
         """Returns information about the next sample in the dataset.
 
         Returns:
-            an ``(image_path, image_metadata)`` tuple, where:
+            an ``(image_path, image_metadata)`` tuple, where
 
-            -   image_path: the path to the image on disk
-            -   image_metadata: an
+            -   ``image_path``: the path to the image on disk
+            -   ``image_metadata``: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
 
@@ -184,13 +184,13 @@ class LabeledImageDatasetImporter(DatasetImporter):
         """Returns information about the next sample in the dataset.
 
         Returns:
-            an  ``(image_path, image_metadata, label)`` tuple, where:
+            an  ``(image_path, image_metadata, label)`` tuple, where
 
-            -   image_path: the path to the image on disk
-            -   image_metadata: an
+            -   ``image_path``: the path to the image on disk
+            -   ``image_metadata``: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
-            -   label: an instance of :meth:`label_cls`, or ``None`` if no
+            -   ``label``: an instance of :meth:`label_cls`, or ``None`` if no
                 label is available for the sample
 
         Raises:
