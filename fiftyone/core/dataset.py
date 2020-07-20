@@ -50,7 +50,7 @@ def list_dataset_names():
         a list of :class:`Dataset` names
     """
     # pylint: disable=no-member
-    return sorted(foo.ODMDataset.objects.distinct("name"))
+    return sorted(foo.DatasetDocument.objects.distinct("name"))
 
 
 def dataset_exists(name):
@@ -64,7 +64,7 @@ def dataset_exists(name):
     """
     try:
         # pylint: disable=no-member
-        foo.ODMDataset.objects.get(name=name)
+        foo.DatasetDocument.objects.get(name=name)
         return True
     except DoesNotExist:
         return False
@@ -276,7 +276,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:``fiftyone.core.fields.Field``
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
+                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
 
         Returns:
              a dictionary mapping field names to field types
@@ -295,7 +295,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ftype: the field type to create. Must be a subclass of
                 :class:``fiftyone.core.fields.Field``
             embedded_doc_type (None): the
-                ``fiftyone.core.odm.ODMEmbeddedDocument`` type of the field.
+                ``fiftyone.core.odm.BaseEmbeddedDocument`` type of the field.
                 Used only when ``ftype`` is
                 :class:``fiftyone.core.fields.EmbeddedDocumentField``
             subfield (None): the type of the contained field. Used only when
@@ -1106,7 +1106,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "tags": list(self.get_tags()),
             "sample_fields": self._get_fields_dict(),
         }
-        d.update(super(Dataset, self).to_dict())
+        d.update(super().to_dict())
         return d
 
     @classmethod
@@ -1234,12 +1234,12 @@ def _create_dataset(name, persistent=False):
         )
 
     # Create sample class
-    _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
+    _sample_doc_cls = type(name, (foo.DatasetSampleDocument,), {})
 
     # Create dataset meta document
-    _meta = foo.ODMDataset(
+    _meta = foo.DatasetDocument(
         name=name,
-        sample_fields=foo.SampleField.list_from_field_schema(
+        sample_fields=foo.SampleFieldDocument.list_from_field_schema(
             _sample_doc_cls.get_field_schema()
         ),
         persistent=persistent,
@@ -1257,11 +1257,11 @@ def _create_dataset(name, persistent=False):
 def _load_dataset(name):
     try:
         # pylint: disable=no-member
-        _meta = foo.ODMDataset.objects.get(name=name)
+        _meta = foo.DatasetDocument.objects.get(name=name)
     except DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)
 
-    _sample_doc_cls = type(name, (foo.ODMDatasetSample,), {})
+    _sample_doc_cls = type(name, (foo.DatasetSampleDocument,), {})
 
     num_default_fields = len(_sample_doc_cls.get_field_schema())
 

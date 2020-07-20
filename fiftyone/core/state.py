@@ -62,7 +62,7 @@ class StateDescription(etas.Serializable):
         self.view = view
         self.selected = selected or []
         self.count = len(dataset) if dataset is not None else 0
-        super(StateDescription, self).__init__()
+        super().__init__()
 
     @classmethod
     def from_dict(cls, d, **kwargs):

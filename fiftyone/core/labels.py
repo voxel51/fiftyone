@@ -24,7 +24,7 @@ import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
 
-from fiftyone.core.odm.document import ODMEmbeddedDocument
+from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 
 
@@ -35,7 +35,7 @@ class _NoDefault(object):
 no_default = _NoDefault()
 
 
-class Label(ODMEmbeddedDocument):
+class Label(DynamicEmbeddedDocument):
     """Base class for labels.
 
     Label instances represent a logical collection of labels associated with a
@@ -63,7 +63,7 @@ class ImageLabel(Label):
         raise NotImplementedError("Subclass must implement to_image_labels()")
 
 
-class Attribute(ODMEmbeddedDocument):
+class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
 
     Attribute instances represent an atomic piece of information, its
@@ -196,7 +196,7 @@ class Classifications(ImageLabel):
         return image_labels
 
 
-class Detection(ODMEmbeddedDocument):
+class Detection(DynamicEmbeddedDocument):
     """An object detection.
 
     Args:
