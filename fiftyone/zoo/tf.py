@@ -623,7 +623,7 @@ class _TFDSImageClassificationSampleParser(
     foud.ImageClassificationSampleParser
 ):
     def __init__(self, image_field="image", label_field="label", **kwargs):
-        super(_TFDSImageClassificationSampleParser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.image_field = image_field
         self.label_field = label_field
 
@@ -638,7 +638,7 @@ class _TFDSImageClassificationSampleParser(
 
 class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
     def __init__(self, image_field="image", objects_field="objects", **kwargs):
-        super(_TFDSImageDetectionSampleParser, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.image_field = image_field
         self.objects_field = objects_field
 
@@ -667,9 +667,7 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
             )
         ]
 
-        return super(_TFDSImageDetectionSampleParser, self)._parse_label(
-            target, img=img
-        )
+        return super()._parse_label(target, img=img)
 
     def _parse_bbox(self, obj):
         # Format reference:

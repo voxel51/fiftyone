@@ -135,7 +135,7 @@ class LazyModule(types.ModuleType):
     """
 
     def __init__(self, module_name, callback=None):
-        super(LazyModule, self).__init__(module_name)
+        super().__init__(module_name)
         self._module = None
         self._callback = callback
 
@@ -284,9 +284,7 @@ class ResourceLimit(object):
 class ProgressBar(etau.ProgressBar):
     def __init__(self, *args, **kwargs):
         quiet = not fo.config.show_progress_bars
-        super(ProgressBar, self).__init__(
-            *args, iters_str="samples", quiet=quiet, **kwargs
-        )
+        super().__init__(*args, iters_str="samples", quiet=quiet, **kwargs)
 
 
 class UniqueFilenameMaker(object):

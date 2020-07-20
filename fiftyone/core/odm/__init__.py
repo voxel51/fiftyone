@@ -7,10 +7,14 @@ ODM package declaration.
 """
 
 from .database import get_db_conn, drop_database
-from .dataset import SampleField, ODMDataset
+from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
-    ODMDocument,
-    ODMEmbeddedDocument,
-    ODMDynamicEmbeddedDocument,
+    Document,
+    EmbeddedDocument,
+    DynamicEmbeddedDocument,
 )
-from .sample import ODMSample, ODMDatasetSample, ODMNoDatasetSample
+from .sample import (
+    SampleDocument,
+    DatasetSampleDocument,
+    NoDatasetSampleDocument,
+)

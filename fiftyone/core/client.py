@@ -55,7 +55,7 @@ class BaseClient(socketio.ClientNamespace):
         self.data = data_cls()
         self.connected = False
         self.updated = False
-        super(BaseClient, self).__init__(namespace)
+        super().__init__(namespace)
         # disable socketio's interrupt handler because it closes the connection
         # on ctrl-c in interactive sessions
         signal.signal(signal.SIGINT, signal.default_int_handler)
@@ -139,7 +139,7 @@ class HasClient(object):
                 )
             self._hc_client.update(value)
         else:
-            super(HasClient, self).__setattr__(name, value)
+            super().__setattr__(name, value)
 
     @property
     def server_port(self):

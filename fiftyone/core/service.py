@@ -251,7 +251,7 @@ class ServerService(Service):
 
     def __init__(self, port):
         self._port = port
-        super(ServerService, self).__init__()
+        super().__init__()
 
     def start(self):
         server_version = None
