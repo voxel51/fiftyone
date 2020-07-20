@@ -172,7 +172,7 @@ as ground annotations or model predictions.
 FiftyOne provides a |Label| subclass for common tasks:
 
 - :ref:`Classification <classification>`: a classification label
-- :ref:`Classifications <multitask-predictions>`: a list of classifications (typically for multilabel tasks)
+- :ref:`Classifications <multilabel-classification>`: a list of classifications (typically for multilabel tasks)
 - :ref:`Detections <object-detection>`: a list of object detections
 - :ref:`ImageLabels <multitask-predictions>`: a generic collection of multitask predictions for an image
 
