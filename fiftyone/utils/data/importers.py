@@ -126,8 +126,9 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
 
         Returns:
             an ``(image_path, image_metadata)`` tuple, where:
-            -   ``image_path`` is the path to the image on disk
-            -   ``image_metadata`` is an
+
+            -   image_path: the path to the image on disk
+            -   image_metadata: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
 
@@ -157,13 +158,14 @@ class LabeledImageDatasetImporter(DatasetImporter):
         importer = LabeledImageDatasetImporter(dataset_dir, ...)
         with importer:
             for image_path, image_metadata, label in importer:
-                dataset.add_sample(
-                    fo.Sample(
-                        filepath=image_path,
-                        metadata=image_metadata,
-                        **{label_field: label},
-                    )
-                )
+                sample = fo.Sample(
+                    filepath=image_path, metadata=image_metadata,
+                }
+
+                if label is not None:
+                    sample[label_field] = label
+
+                dataset.add_sample(sample)
 
     Args:
         dataset_dir: the dataset directory
@@ -174,11 +176,13 @@ class LabeledImageDatasetImporter(DatasetImporter):
 
         Returns:
             an  ``(image_path, image_metadata, label)`` tuple, where:
-            -   ``image_path`` is the path to the image on disk
-            -   ``image_metadata`` is an
+
+            -   image_path: the path to the image on disk
+            -   image_metadata: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
-            -   ``label`` is an instance of :meth:`label_cls`
+            -   label: an instance of :meth:`label_cls`, or ``None`` if no
+                label is available for the sample
 
         Raises:
             StopIteration: if there are no more samples to import
@@ -402,6 +406,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         self._labels = None
         self._iter_labels = None
         self._num_samples = None
+        self._has_labels = False
 
     def __iter__(self):
         self._iter_labels = iter(iteritems(self._labels))
@@ -414,8 +419,11 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         uuid, target = next(self._iter_labels)
         image_path = self._image_paths_map[uuid]
 
-        self._sample_parser.with_sample((image_path, target))
-        label = self._sample_parser.get_label()
+        if self._has_labels:
+            self._sample_parser.with_sample((image_path, target))
+            label = self._sample_parser.get_label()
+        else:
+            label = None
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -445,6 +453,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         labels = etas.load_json(labels_path)
         self._sample_parser.classes = labels.get("classes", None)
         self._labels = labels.get("labels", {})
+        self._has_labels = any(self._labels.values())
         self._num_samples = len(self._labels)
 
 

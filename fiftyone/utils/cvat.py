@@ -14,6 +14,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
+from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -502,7 +503,21 @@ class CVATBox(object):
         xbr = int(round((x + w) * width))
         ybr = int(round((y + h) * height))
 
-        return cls(label, xtl, ytl, xbr, ybr)
+        if detection.attributes:
+            supported_attrs = (
+                fol.BooleanAttribute,
+                fol.CategoricalAttribute,
+                fol.NumericAttribute,
+            )
+
+            attributes = []
+            for name, attr in iteritems(detection.attributes):
+                if isinstance(attr, supported_attrs):
+                    attributes.append(CVATAttribute(name, attr.value))
+        else:
+            attributes = None
+
+        return cls(label, xtl, ytl, xbr, ybr, attributes=attributes)
 
     @classmethod
     def from_box_dict(cls, d):
@@ -525,7 +540,7 @@ class CVATBox(object):
         ybr = int(d.pop("@ybr"))
 
         attributes = [
-            CVATAttribute.from_anno(name, value) for name, value in d.items()
+            CVATAttribute(name, value) for name, value in iteritems(d)
         ]
 
         return cls(label, xtl, ytl, xbr, ybr, attributes=attributes)
@@ -573,7 +588,10 @@ class CVATBox(object):
             (self.ybr - self.ytl) / height,
         ]
 
-        attributes = {a.name: a.to_eta_attribute() for a in self.attributes}
+        attributes = {
+            a.name: fol.CategoricalAttribute(value=a.value)
+            for a in self.attributes
+        }
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, attributes=attributes,
@@ -591,19 +609,6 @@ class CVATAttribute(object):
     def __init__(self, name, value):
         self.name = name
         self.value = value
-
-    @classmethod
-    def from_anno(cls, name, value):
-        """Creates a :class:`CVATAttribute` from the given annotation info.
-
-        Args:
-            name: the attribute name
-            value: the attribute value
-
-        Returns:
-            a :class:`CVATAttribute`
-        """
-        return cls(name, value)
 
     @classmethod
     def from_eta_attribute(cls, attr):

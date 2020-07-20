@@ -622,12 +622,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 image_path, image_metadata, label = sample
                 filepath = os.path.abspath(os.path.expanduser(image_path))
 
-                return fos.Sample(
-                    filepath=filepath,
-                    metadata=image_metadata,
-                    tags=tags,
-                    **{label_field: label},
+                sample = fos.Sample(
+                    filepath=filepath, metadata=image_metadata, tags=tags,
                 )
+
+                if label is not None:
+                    sample[label_field] = label
+
+                return sample
 
         else:
             raise ValueError(
@@ -743,12 +745,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             label = sample_parser.get_label()
 
-            return fos.Sample(
-                filepath=filepath,
-                metadata=metadata,
-                tags=tags,
-                **{label_field: label},
+            sample = fos.Sample(
+                filepath=filepath, metadata=metadata, tags=tags,
             )
+
+            if label is not None:
+                sample[label_field] = label
+
+            return sample
 
         try:
             num_samples = len(samples)
