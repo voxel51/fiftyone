@@ -11,10 +11,6 @@ represent your data and manipulate it through the Python library and the
 .. image:: ../images/dog.png
    :alt: App
    :align: center
-   :target: app.html
-
-Datasets
-________
 
 .. _what-is-a-fiftyone-dataset:
 
@@ -40,30 +36,33 @@ include more representative samples and samples that your model found difficult
 into your training set.
 
 .. note::
-    Check out the :doc:`dataset loading guide <dataset_creation/index>` to see
-    how to load your data into FiftyOne.
+    Check out :doc:`creating FiftyOne datasets <dataset_creation/index>` for
+    more information about loading your data into FiftyOne.
 
 A |Dataset| is composed of multiple |Sample| objects which contain |Field|
 attributes, all of which can be dynamically created, modified and deleted.
 FiftyOne uses a lightweight non-relational database to store datasets, so you
-can easily scale to datasets of  with datasets of any size
-usage is easy on your computer's memory and scalable.
+can easily scale to datasets of any size without worrying about RAM
+constraints on your machine.
 
 Datasets should be thought of as an unordered collection. When a |Sample| is
 added to a |Dataset|, it is assigned a unique ID that can be used to retrieve
 the sample from the dataset.
 
-Slicing and sorting a |Dataset| is done through the use of a
-:ref:`DatasetView <using-dataset-views>`. A |DatasetView| provides an ordered
+Slicing and other batch operations on datasets are done through the use of
+:ref:`DatasetViews <using-dataset-views>`. A |DatasetView| provides an ordered
 view into the |Dataset|, which can be filtered, sorted, sampled, etc. along
 various axes to obtain a desired subset of the samples.
 
 Samples
-_______
+-------
 
 :ref:`Samples <using-samples>` are the atomic elements of a |Dataset| that
 store all the information related to a given piece of data (e.g., an image).
-All |Sample| instances store the path to their source data on disk:
+
+All |Sample| instances store the path to their source data on disk in their
+`filepath` field. Any number of fields can be dynamically added to samples to
+store additional custom information about the sample.
 
 .. code-block:: python
    :linenos:
@@ -73,39 +72,217 @@ All |Sample| instances store the path to their source data on disk:
    sample = fo.Sample(filepath="/path/to/image.png")
 
 Fields
-______
+------
 
 :ref:`Fields <using-fields>` are attributes of |Sample| instances that store
 customizable information about the samples. Thinking of a |Dataset| as a table
-where each row is a |Sample|, then each column of the table would be a |Field|.
+where each row is a |Sample|, each column of the table is a |Field|.
+
+All samples must have their `filepath` field populated, which points to the
+source data for the sample on disk. By default, samples are also given `id`,
+`metadata`, and `tags` fields that can store common information.
+
+See :ref:`using fields <using-fields>` for more information about sample
+fields.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png")
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': 'path/to/image.png',
+        'tags': [],
+        'metadata': None,
+    }>
 
 Fields can be dynamically created, modified, and deleted. When a new |Field|
 is assigned to a |Sample| in a |Dataset|, it is automatically added to the
 dataset's schema and thus accessible on all other samples in the dataset. If
-a |Field| is unset on a particular |Sample|, it's value will be ``None``.
+a |Field| is unset on a particular |Sample|, its value will be `None`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png")
+
+    sample["quality"] = 89.7
+    sample["keypoints"] = [[31, 27], [63, 72]]
+    sample["geo_json"] = {
+        "type": "Feature",
+        "geometry": {"type": "Point", "coordinates": [125.6, 10.1]},
+        "properties": {"name": "camera"},
+    }
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': 'path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'quality': 89.7,
+        'keypoints': [[31, 27], [63, 72]],
+        'geo_json': {
+            'type': 'Feature',
+            'geometry': {'type': 'Point', 'coordinates': [125.6, 10.1]},
+            'properties': {'name': 'camera'},
+        },
+    }>
 
 Tags
-____
+----
 
 :ref:`Tags <using-tags>` are a default |Field| provided on all |Sample|
 instances. The `tags` attribute of a |Sample| stores a list of strings that can
 be used flexibly to store information about a sample.
 
-A typical use case is to tag the dataset split
-(`test`, `train`, `validation`) to which the |Sample| belongs.
-However, you are free to use tags however you like:
+A typical use case is to tag the dataset split (`test`, `train`, `validation`)
+to which the |Sample| belongs. However, you are free to use tags however you
+like:
 
 .. code-block:: python
-   :linenos:
+    :linenos:
 
-   sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
-   sample.tags += ["my_favorite_samples"]
-   print(sample.tags)
-   # ["train", "my_favorite_samples"]
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
+    sample.tags.append("my_favorite_samples")
+
+    print(sample.tags)
+    # ["train", "my_favorite_samples"]
+
+Metadata
+--------
+
+:ref:`Metadata <using-metadata>` is a default |Field| provided on all |Sample|
+instances. The `metadata` attribute of a |Sample| stores data type-specific
+metadata about the raw data in the sample. For generic (non-image) data, there
+is a |Metadata| class. For images, the |ImageMetadata| subclass stores
+additional image-specific fields.
+
+See :ref:`using metadata <using-metadata>` for more details about adding
+metadata to your samples.
+
+.. code-block:: python
+    :linenos:
+
+    image_path = "/path/to/image.png"
+
+    metadata = fo.ImageMetadata.build_for(image_path)
+
+    sample = fo.Sample(filepath=image_path, metadata=metadata)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': <ImageMetadata: {
+            'size_bytes': 544559,
+            'mime_type': 'image/png',
+            'width': 698,
+            'height': 664,
+            'num_channels': 3,
+        }>,
+    }>
+
+Labels
+------
+
+:ref:`Labels <using-labels>` store semantic information about the sample, such
+as ground annotations or model predictions.
+
+FiftyOne provides a |Label| subclass for common tasks:
+
+- :ref:`Classification <classification>`: a classification label
+- :ref:`Classifications <multilabel-classification>`: a list of classifications (typically for multilabel tasks)
+- :ref:`Detections <object-detection>`: a list of object detections
+- :ref:`ImageLabels <multitask-predictions>`: a generic collection of multitask predictions for an image
+
+See :ref:`using labels <using-labels>` for more information about storing
+labels in your samples.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="path/to/image.png")
+
+    sample["weather"] = fo.Classification(label="sunny")
+    sample["animals"] = fo.Detections(
+        detections=[
+            fo.Detection(label="cat", bounding_box=[0.5, 0.5, 0.4, 0.3]),
+            fo.Detection(label="dog", bounding_box=[0.2, 0.2, 0.2, 0.4]),
+        ]
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': 'path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'weather': <Classification: {'label': 'sunny', 'confidence': None, 'logits': None}>,
+        'animals': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'label': 'cat',
+                    'bounding_box': array([0.5, 0.5, 0.4, 0.3]),
+                    'confidence': None,
+                    'attributes': BaseDict({}),
+                }>,
+                <Detection: {
+                    'label': 'dog',
+                    'bounding_box': array([0.2, 0.2, 0.2, 0.4]),
+                    'confidence': None,
+                    'attributes': BaseDict({}),
+                }>,
+            ]),
+        }>,
+    }>
 
 DatasetViews
-____________
+------------
 
 :ref:`DatasetViews <using-dataset-views>` are a powerful tool for exploring
 your datasets. You can use |DatasetView| instances to search, filter, sort, and
 manipulate subsets of your datasets to perform the analysis that you need.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.brain as fob
+
+    dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+    cats = dataset.view().match({"ground_truth.label": "cat"})
+    fob.compute_uniqueness(cats)
+
+    similar_cats = cats.sort_by("uniqueness", reverse=False)
+
+    fo.launch_app(view=similar_cats)
+
+.. image:: ../images/cats-similiar.png
+   :alt: App
+   :align: center

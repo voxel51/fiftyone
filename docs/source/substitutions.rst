@@ -8,11 +8,20 @@
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
 
 .. |Field| replace:: :class:`Field <fiftyone.core.fields.Field>`
+.. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
+.. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
 
 .. |Label| replace:: :class:`Label <fiftyone.core.labels.Label>`
 .. |Classification| replace:: :class:`Classification <fiftyone.core.labels.Classification>`
+.. |Classifications| replace:: :class:`Classifications <fiftyone.core.labels.Classifications>`
+.. |Detection| replace:: :class:`Detection <fiftyone.core.labels.Detection>`
 .. |Detections| replace:: :class:`Detections <fiftyone.core.labels.Detections>`
 .. |ImageLabels| replace:: :class:`ImageLabels <fiftyone.core.labels.ImageLabels>`
+
+.. |Attribute| replace:: :class:`Attribute <fiftyone.core.labels.Attribute>`
+.. |BooleanAttribute| replace:: :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`
+.. |CategoricalAttribute| replace:: :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>`
+.. |NumericAttribute| replace:: :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`
 
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
 .. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`
