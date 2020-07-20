@@ -67,8 +67,8 @@ to load datasets in your own custom formats.
 
 FiftyOne provides a number of options for building datasets from samples. You
 can take a fully customized approach and build your own |Sample| instances, or
-you can a builtin |SampleParser| clasess to parse samples from a variety of
-common formats, or you can provide your own |SampleParser| to automatically
+you can use one of the builtin |SampleParser| classes to parse samples from a
+variety of common formats, or provide your own |SampleParser| to automatically
 load samples in your own custom formats.
 
 - :doc:`Zoo datasets<zoo>`
