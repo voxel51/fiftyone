@@ -36,8 +36,8 @@ include more representative samples and samples that your model found difficult
 into your training set.
 
 .. note::
-    Check out the :doc:`dataset loading guide <dataset_creation/index>` to see
-    how to load your data into FiftyOne.
+    Check out :doc:`creating FiftyOne datasets <dataset_creation/index>` for
+    more information about loading your data into FiftyOne.
 
 A |Dataset| is composed of multiple |Sample| objects which contain |Field|
 attributes, all of which can be dynamically created, modified and deleted.
@@ -80,8 +80,10 @@ where each row is a |Sample|, each column of the table is a |Field|.
 
 All samples must have their `filepath` field populated, which points to the
 source data for the sample on disk. By default, samples are also given `id`,
-`metadata`, and `tags` fields that can store common information. See
-:ref:`using fields <using-fields>` for more information.
+`metadata`, and `tags` fields that can store common information.
+
+See :ref:`using fields <using-fields>` for more information about sample
+fields.
 
 .. code-block:: python
     :linenos:
@@ -165,12 +167,17 @@ Labels
 ------
 
 :ref:`Labels <using-labels>` store semantic information about the sample, such
-as ground annotations or model predictions. FiftyOne provides a |Label|
-subclass for common tasks:
+as ground annotations or model predictions.
+
+FiftyOne provides a |Label| subclass for common tasks:
 
 - |Classification|: a classification label
+- |Classifications|: a list of classifications (typically for multilabel tasks)
 - |Detections|: a list of object detections
 - |ImageLabels|: a generic collection of multitask predictions for an image
+
+See :ref:`using labels <using-labels>` for more information about storing
+labels in your samples.
 
 .. code-block:: python
     :linenos:
