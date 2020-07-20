@@ -40,6 +40,9 @@ from .parsers import (
 class DatasetImporter(object):
     """Base interface for importing datasets stored on disk into FiftyOne.
 
+    .. automethod:: __len__
+    .. automethod:: __next__
+
     Args:
         dataset_dir: the dataset directory
     """
@@ -104,6 +107,9 @@ class DatasetImporter(object):
 class UnlabeledImageDatasetImporter(DatasetImporter):
     """Interface for importing datasets of unlabeled image samples.
 
+    .. automethod:: __len__
+    .. automethod:: __next__
+
     Example Usage::
 
         import fiftyone as fo
@@ -147,6 +153,9 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
 
 class LabeledImageDatasetImporter(DatasetImporter):
     """Interface for importing datasets of labeled image samples.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
 
     Example Usage::
 
