@@ -65,7 +65,7 @@ setup(
         "tabulate",
         "xmltodict",
         # internal packages
-        "voxel51-eta>=0.1.1",
+        "voxel51-eta>=0.1.2",
     ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
