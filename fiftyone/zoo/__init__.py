@@ -459,19 +459,27 @@ class ZooDatasetInfo(etas.Serializable):
             a :class:`ZooDatasetInfo`
         """
         try:
-            # Legacy naming
+            # @legacy
             zoo_dataset = d["zoo_dataset_cls"]
         except KeyError:
             zoo_dataset = d["zoo_dataset"]
 
-        zoo_dataset = etau.get_class(zoo_dataset)()
-
         try:
-            # Legacy naming
+            # @legacy
             dataset_type = d["format_cls"]
         except KeyError:
             dataset_type = d["dataset_type"]
 
+        # @legacy
+        _dataset_types = "fiftyone.types.dataset_types"
+        if dataset_type.endswith(".ImageClassificationDataset"):
+            dataset_type = (
+                _dataset_types + ".FiftyOneImageClassificationDataset"
+            )
+        if dataset_type.endswith(".ImageDetectionDataset"):
+            dataset_type = _dataset_types + ".FiftyOneImageDetectionDataset"
+
+        zoo_dataset = etau.get_class(zoo_dataset)()
         dataset_type = etau.get_class(dataset_type)()
 
         downloaded_splits = d.get("downloaded_splits", None)
