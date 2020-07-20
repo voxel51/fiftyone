@@ -285,12 +285,12 @@ class VOCAnnotation(object):
         return fol.Detections(detections=detections)
 
     @classmethod
-    def from_labeled_image(cls, img_path, metadata, detections):
+    def from_labeled_image(cls, image_path, metadata, detections):
         """Creates a :class:`VOCAnnotation` instance for the given labeled
         image data.
 
         Args:
-            img_path: the path to the image on disk
+            image_path: the path to the image on disk
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` instance
                 for the image
             detections: a :class:`fiftyone.core.labels.Detections`
@@ -303,7 +303,7 @@ class VOCAnnotation(object):
             obj = VOCObject.from_detection(detection, metadata)
             objects.append(obj)
 
-        return cls(path=img_path, metadata=metadata, objects=objects)
+        return cls(path=image_path, metadata=metadata, objects=objects)
 
     @classmethod
     def from_xml(cls, xml_path):
@@ -332,9 +332,9 @@ class VOCAnnotation(object):
         """
         annotation = d["annotation"]
 
+        path = annotation.get("path", None)
         folder = annotation.get("folder", None)
         filename = annotation.get("filename", None)
-        path = annotation.get("path", None)
         segmented = annotation.get("segmented", None)
 
         if "size" in annotation:
