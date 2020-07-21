@@ -2,7 +2,6 @@ import React from "react";
 import { assign, Machine, spawn } from "xstate";
 import { useMachine } from "@xstate/react";
 
-import "../../../app.global.css";
 import { createParameter } from "./viewStageMachine";
 import ViewStageParameter from "./ViewStageParameter";
 import viewStageParameterMachine from "./viewStageParameterMachine";

@@ -9,21 +9,26 @@ import { numViewStages } from "../../../recoil/selectors";
 import SearchResults from "./SearchResults";
 
 const ViewStageDiv = animated(styled.div`
-  background-color: var(--bg);
-  border-color: var(--std-border-color);
-  border-radius: var(--std-border-radius);
-  border-width: var(--std-border-width);
   box-sizing: border-box;
+  height: 32px;
+  border: 1px dashed #6c757d;
+  border-radius: 3px;
+  background-color: rgba(108, 117, 125, 0.13);
   display: inline-block;
-  line-height: 1.5rem;
-  margin: 0.25rem;
-  padding: 0 0.5rem;
 `);
 
+const TextSpan = styled.span`
+  height: 16px;
+  color: #6c757d;
+  font-weight: bold;
+  letter-spacing: 0;
+  line-height: 25px;
+  text-align: center;
+  margin: 0.5rem 1rem;
+`;
+
 export default ({ index, stageRef }) => {
-  const [state, send] = useMachine(stageRef);
-  const numViewStagesValue = useRecoilValue(numViewStages);
-  const viewStagesValue = useRecoilValue(viewStages);
+  // const [state, send] = useMachine(stageRef);
   const isActive = useState(false);
 
   const props = useSpring({
@@ -32,7 +37,7 @@ export default ({ index, stageRef }) => {
 
   return (
     <ViewStageDiv style={props}>
-      {numViewStagesValue === index ? <div>empty</div> : <div>populated</div>}
+      <TextSpan>+ search sample</TextSpan>
     </ViewStageDiv>
   );
 };

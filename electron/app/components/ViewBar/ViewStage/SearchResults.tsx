@@ -3,8 +3,6 @@ import { animated, config, useSpring } from "react-spring";
 import styled from "styled-components";
 
 const SearchResultDiv = animated(styled.div`
-  background-color: var(--bg);
-  border-radius: var(--std-border-radius);
   cursor: pointer;
   margin: 0.25rem;
   padding-left: 0.5rem;
@@ -19,14 +17,13 @@ interface SearchResultProps {
 const SearchResult = React.memo(
   ({ result, isActive, send }: SearchResultProps) => {
     const [props, set] = useSpring(() => ({
-      background: isActive ? "#FFF" : "#FFF",
-      color: "black",
-      config: config.gentle,
+      backgroundColor: isActive ? "rgba(108,117,125,0.3)" : "rgb(255,255,255)",
     }));
 
-    const handleMouseEnter = () => set({ background: "#000", color: "pink" });
+    const handleMouseEnter = () =>
+      set({ backgroundColor: "rgba(108,117,125,0.3)" });
 
-    const handleMouseLeave = () => set({ background: "var(--bg)" });
+    const handleMouseLeave = () => set({ backgroundColor: "rgb(255,255,255)" });
 
     const setResult = (e) => send("COMMIT", e.target.dataset.value);
 
@@ -45,10 +42,14 @@ const SearchResult = React.memo(
 );
 
 const SearchResultsDiv = animated(styled.div`
-  border: var(--std-border-radius) solid var(--std-border-color);
-  border-radius: var(--std-border-radius);
+  background-color: #ffffff;
+  border: 1px solid #979797;
+  border-radius: 2px;
   box-sizing: border-box;
+  color: #95969b;
+  font-size: 1rem;
   left: 0;
+  letter-spacing: 0;
   margin-top: 0.5rem;
   position: absolute;
   top: 100%;

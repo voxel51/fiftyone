@@ -2,7 +2,7 @@ import { Machine, assign, spawn } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 
-const createStage = (stage) => {
+export const createStage = (stage) => {
   return {
     id: uuid(),
     completed: false,

@@ -9,36 +9,32 @@ import ViewStage from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 
 const ViewBarDiv = styled.div`
-  background-color: var(--bg);
-  border-radius: var(--std-border-radius);
-  border: var(--std-border-width) solid var(--std-border-color);
+  background-color: #f4f4f4;
+  border-radius: 3px;
+  border: 1px solid #d8d8d8;
   box-sizing: border-box;
   width: 100%;
 `;
 
-const connectedViewBarMachine = viewBarMachine.withConfig(
+/*const connectedViewBarMachine = viewBarMachine.withConfig(
   {
     actions: {
-      connect: (ctx) => {
+      submit: (ctx) => {
         // ...
       },
     },
   },
   // load view from recoil
   {
-    // ...
+    stage: 
   }
-);
+);*/
 
 export default () => {
-  const stages = useRecoilValue(viewStages);
-  const tailIndex = stages.length;
+  // const tailIndex = stages.length;
   return (
     <ViewBarDiv>
-      {stages.map((stage, i) => {
-        return <ViewStage index={i} key={i} />;
-      })}
-      <ViewStage index={tailIndex} key={tailIndex} />
+      <ViewStage index={0} key={0} />
     </ViewBarDiv>
   );
 };
