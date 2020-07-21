@@ -4,8 +4,9 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
-Future changes
+FiftyOne 0.4.0
 --------------
+*Released July 21, 2020*
 
 Core
 ^^^^
