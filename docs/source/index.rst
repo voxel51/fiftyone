@@ -141,7 +141,7 @@ ____________
 
 Where should you go from here? You could...
 
-* :doc:`Install FiftyOne <getting_started/install>`
+* :ref:`Install FiftyOne <installing-fiftyone>`
 * Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
   capabilities of FiftyOne
 * Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
