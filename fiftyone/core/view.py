@@ -554,13 +554,62 @@ class DatasetView(foc.SampleCollection):
             {
                 "$addFields": {
                     field_name: {
-                        "$filter": {
-                            "input": "$" + field_name,
-                            "as": "list",
-                            "cond": cond,
-                        }
+                        "$filter": {"input": "$" + field_name, "cond": cond,}
                     },
                 }
             }
             for field_name, cond in self._list_filters.items()
         ]
+
+
+class Cond:
+    @classmethod
+    def logical_not(cls, cond):
+        return {"$not": cond}
+
+    @classmethod
+    def logical_and(cls, conds):
+        return {"$and": conds}
+
+    @classmethod
+    def logical_or(cls, conds):
+        return {"$or": conds}
+
+    @classmethod
+    def eq(cls, field_name_or_exp, value):
+        return cls._comparison("eq", field_name_or_exp, value)
+
+    @classmethod
+    def ne(cls, field_name_or_exp, value):
+        return cls._comparison("ne", field_name_or_exp, value)
+
+    @classmethod
+    def gt(cls, field_name_or_exp, value):
+        return cls._comparison("gt", field_name_or_exp, value)
+
+    @classmethod
+    def gte(cls, field_name_or_exp, value):
+        return cls._comparison("gte", field_name_or_exp, value)
+
+    @classmethod
+    def lt(cls, field_name_or_exp, value):
+        return cls._comparison("lt", field_name_or_exp, value)
+
+    @classmethod
+    def lte(cls, field_name_or_exp, value):
+        return cls._comparison("lte", field_name_or_exp, value)
+
+    @classmethod
+    def bbox_area(cls):
+        return {
+            "$multiply": [
+                {"$arrayElemAt": ["$$this.bounding_box", 2]},
+                {"$arrayElemAt": ["$$this.bounding_box", 3]},
+            ]
+        }
+
+    @classmethod
+    def _comparison(cls, comparator, field_name_or_exp, value):
+        if isinstance(field_name_or_exp, str):
+            return {"$" + comparator: ["$$this." + field_name_or_exp, value]}
+        return {"$" + comparator: [field_name_or_exp, value]}
