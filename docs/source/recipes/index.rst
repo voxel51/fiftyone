@@ -12,6 +12,8 @@ into minutes so that you can focus on your models.
 Browse the recipes below to see how you can leverage FiftyOne to enhance key
 parts of your machine learning workflows.
 
+:doc:`Remove duplicate images from a dataset<image_deduplication>`
+
 Turn your data into a FiftyOne |Dataset| and automatically find and remove
 duplicate and near-duplicate images from your dataset.
 
