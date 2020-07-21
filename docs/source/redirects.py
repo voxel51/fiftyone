@@ -56,11 +56,22 @@ def generate_redirects(app):
             )
 
             redirect_path = os.path.join(app.builder.outdir, from_html_path)
-            etau.write_file(_REDIRECT_TEMPLATE % to_html_path, redirect_path)
+            etau.write_file(
+                _REDIRECT_TEMPLATE.format(url=to_html_path), redirect_path
+            )
 
 
 _REDIRECT_TEMPLATE = """
+<!DOCTYPE html>
 <html>
-  <head><meta http-equiv="refresh" content="0; url=%s"/></head>
+  <head>
+    <meta http-equiv="refresh" content="0; url={url}"/>
+    <script>
+      window.location.href = "{url}"
+    </script>
+  </head>
+  <body>
+    <p>This page has moved <a href="{url}">here</a>.</p>
+  </body>
 </html>
 """
