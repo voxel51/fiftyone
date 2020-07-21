@@ -425,8 +425,8 @@ class DatasetView(foc.SampleCollection):
         """
         return self.add_stage(fos.Exclude(sample_ids))
 
-    def set_list_filter(self, field_name, cond):
-        """Sets the list filter for a field / subfield of samples in the view.
+    def add_list_filter(self, field_name, cond, on_collison="and"):
+        """Adds the list filter for a field / subfield of samples in the view.
 
         A list filter filters elements from the list field of each sample, for
         example, filtering detections with a confidence below a given threshold
@@ -450,12 +450,35 @@ class DatasetView(foc.SampleCollection):
 
                 See https://docs.mongodb.com/manual/reference/operator/aggregation/filter/
                 for more details.
+            on_collison: specify what to do if a list filter already exists
+                for `field_name`:
+
+                    "and": a logical `and` of the previous and new `cond`
+                    "or": a logical `or` of the previous and new `cond`
+                    "replace": the previous `cond` is replaced
 
         Returns:
             a :class:`DatasetView`
         """
         view = copy(self)
-        view._list_filters[field_name] = cond
+
+        prev_cond = view._list_filters.get(field_name, None)
+
+        if prev_cond is not None and on_collison != "replace":
+            if on_collison == "and":
+                view._list_filters[field_name] = Cond.logical_and(
+                    [prev_cond, cond]
+                )
+            elif on_collison == "or":
+                view._list_filters[field_name] = Cond.logical_or(
+                    [prev_cond, cond]
+                )
+            else:
+                raise ValueError(
+                    "Unexpected value for `on_collision`: '%s'" % on_collison
+                )
+        else:
+            view._list_filters[field_name] = cond
         return view
 
     def clear_list_filter(self, field_name):
