@@ -448,7 +448,7 @@ class DatasetView(foc.SampleCollection):
                 :class:`Cond` class rather than generating these expressions
                 from scratch.
 
-                See [$filter](https://docs.mongodb.com/manual/reference/operator/aggregation/filter/)
+                See https://docs.mongodb.com/manual/reference/operator/aggregation/filter/
                 for more details.
 
         Returns:
