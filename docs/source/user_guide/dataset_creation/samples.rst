@@ -849,7 +849,7 @@ The pseudocode below provides a template for a custom
             # Return the label for `self.current_sample` here
             pass
 
-When :meth:`Dataset.add_labeled_samples() <fiftyone.core.dataset.Dataset.add_labeled_samples>`
+When :meth:`Dataset.add_labeled_images() <fiftyone.core.dataset.Dataset.add_labeled_images>`
 is called with a custom |LabeledImageSampleParser|, the import is effectively
 performed via the pseudocode below:
 

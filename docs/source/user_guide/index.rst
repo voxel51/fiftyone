@@ -80,9 +80,7 @@ real-time.
 
 .. image:: ../images/dog.png
    :alt: App
-   :width: 75%
    :align: center
-   :target: app.html
 
 :doc:`FiftyOne Brain <brain>`
 

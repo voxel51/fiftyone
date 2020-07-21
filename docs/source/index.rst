@@ -18,8 +18,7 @@ queryable fields such as ground truth and predicted labels, dataset splits, and
 much more!
 
 .. image:: images/video_placeholder.png
-   :alt: Overview Video
-   :width: 100%
+   :alt: Overview
    :align: center
 
 Core Capabilities
@@ -120,9 +119,7 @@ dataset into any aspect you need; and more.
 
 .. image:: images/dog.png
    :alt: App
-   :width: 75%
    :align: center
-   :target: user_guide/app.html
 
 :doc:`The FiftyOne Brain <user_guide/brain>`
 

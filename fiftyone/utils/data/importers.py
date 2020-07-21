@@ -40,6 +40,9 @@ from .parsers import (
 class DatasetImporter(object):
     """Base interface for importing datasets stored on disk into FiftyOne.
 
+    .. automethod:: __len__
+    .. automethod:: __next__
+
     Args:
         dataset_dir: the dataset directory
     """
@@ -104,6 +107,9 @@ class DatasetImporter(object):
 class UnlabeledImageDatasetImporter(DatasetImporter):
     """Interface for importing datasets of unlabeled image samples.
 
+    .. automethod:: __len__
+    .. automethod:: __next__
+
     Example Usage::
 
         import fiftyone as fo
@@ -125,10 +131,10 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
         """Returns information about the next sample in the dataset.
 
         Returns:
-            an ``(image_path, image_metadata)`` tuple, where:
+            an ``(image_path, image_metadata)`` tuple, where
 
-            -   image_path: the path to the image on disk
-            -   image_metadata: an
+            -   ``image_path``: the path to the image on disk
+            -   ``image_metadata``: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
 
@@ -147,6 +153,9 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
 
 class LabeledImageDatasetImporter(DatasetImporter):
     """Interface for importing datasets of labeled image samples.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
 
     Example Usage::
 
@@ -175,13 +184,13 @@ class LabeledImageDatasetImporter(DatasetImporter):
         """Returns information about the next sample in the dataset.
 
         Returns:
-            an  ``(image_path, image_metadata, label)`` tuple, where:
+            an  ``(image_path, image_metadata, label)`` tuple, where
 
-            -   image_path: the path to the image on disk
-            -   image_metadata: an
+            -   ``image_path``: the path to the image on disk
+            -   ``image_metadata``: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
-            -   label: an instance of :meth:`label_cls`, or ``None`` if no
+            -   ``label``: an instance of :meth:`label_cls`, or ``None`` if no
                 label is available for the sample
 
         Raises:
