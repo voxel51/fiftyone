@@ -124,9 +124,9 @@ dataset into any aspect you need; and more.
 :doc:`The FiftyOne Brain <user_guide/brain>`
 
 The FiftyOne Brain is a library of powerful machine learning-powered
-:ref:`capabilities <Capabilities>` that provide insights into your datasets and
-recommend ways to modify your datasets that will lead to measurably better
-performance of your models.
+:ref:`capabilities <Core Capabilities>` that provide insights into your
+datasets and recommend ways to modify your datasets that will lead to
+measurably better performance of your models.
 
 .. code-block:: python
    :linenos:
