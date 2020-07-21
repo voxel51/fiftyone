@@ -27,7 +27,7 @@ def generate_redirects(app):
 
     if not type(app.builder) == builders.StandaloneHTMLBuilder:
         logger.warning(
-            "Link redirection is only supported for the 'html' builder. "
+            "Page redirection is only supported for the 'html' builder. "
             "Skipping..."
         )
         return
