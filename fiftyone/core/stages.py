@@ -448,6 +448,8 @@ class ComparisonMultiValue(ViewStage):
 
 
 class IsIn(ComparisonMultiValue):
+    """Filters the samples to only samples where `field` in `values`."""
+
     @property
     def operator(self):
         """Returns the MongoDB operator string."""
@@ -455,6 +457,8 @@ class IsIn(ComparisonMultiValue):
 
 
 class IsNotIn(ComparisonMultiValue):
+    """Filters the samples to only samples where `field` not in `values`."""
+
     @property
     def operator(self):
         """Returns the MongoDB operator string."""
@@ -462,7 +466,17 @@ class IsNotIn(ComparisonMultiValue):
 
 
 class LogicalNot(ViewStage):
-    """"""
+    """Applies a logical `not` to the provided :class:`ViewStage`.
+
+    Args:
+        view_stage: a matching/filtering :class:`ViewStage` that directly
+            matches a field, i.e. is not nested under an operation. e.g.:
+
+            ```
+            {"my_int": 9}               # valid ViewStage MongoDB dict
+            {"my_int": {"$or": [...]}   # invalid ViewStage MongoDB dict
+            ```
+    """
 
     def __init__(self, view_stage):
         self._view_stage = view_stage
@@ -503,13 +517,21 @@ class LogicalNot(ViewStage):
 
 
 class LogicalCombination(ViewStage):
-    """"""
+    """Applies a logical combination to the provided list of
+    :class:`ViewStage`s.
+
+    Args:
+        view_stages: a list of a matching/filtering :class:`ViewStage`
+            instances. i.e. not :class:`SortBy`, :class:`Skip`, :class:`Limit`,
+            or :class:`Take`.
+    """
 
     def __init__(self, view_stages):
         self._view_stages = view_stages
 
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         raise NotImplementedError("Subclass must implement 'operator'")
 
     def to_mongo(self):
@@ -535,18 +557,33 @@ class LogicalCombination(ViewStage):
 
 
 class LogicalAnd(LogicalCombination):
+    """Applies a logical `and` to the input list of :class:`ViewStage`
+    instances
+    """
+
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$and"
 
 
 class LogicalOr(LogicalCombination):
+    """Applies a logical `or` to the input list of :class:`ViewStage`
+    instances
+    """
+
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$or"
 
 
 class LogicalNor(LogicalCombination):
+    """Applies a logical `nor` to the input list of :class:`ViewStage`
+    instances
+    """
+
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$nor"
