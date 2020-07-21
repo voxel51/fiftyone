@@ -286,6 +286,169 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fos.Match(filter))
 
     @view_stage
+    def eq(self, field, value):
+        """Filters the samples in the view to only samples where `field` ==
+        `value`.
+
+        Args:
+            field: the name of the field to compare
+            value: the value that the field is compared against
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.Equal(field, value))
+
+    @view_stage
+    def ne(self, field, value):
+        """Filters the samples in the view to only samples where `field` !=
+        `value`.
+
+        Args:
+            field: the name of the field to compare
+            value: the value that the field is compared against
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.NotEqual(field, value))
+
+    @view_stage
+    def gt(self, field, value):
+        """Filters the samples in the view to only samples where `field` >
+        `value`.
+
+        Args:
+            field: the name of the field to compare
+            value: the value that the field is compared against
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.GreaterThan(field, value))
+
+    @view_stage
+    def gte(self, field, value):
+        """Filters the samples in the view to only samples where `field` >=
+        `value`.
+
+        Args:
+            field: the name of the field to compare
+            value: the value that the field is compared against
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.GreaterThanOrEqual(field, value))
+
+    @view_stage
+    def lt(self, field, value):
+        """Filters the samples in the view to only samples where `field` <
+        `value`.
+
+        Args:
+            field: the name of the field to compare
+            value: the value that the field is compared against
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.LessThan(field, value))
+
+    @view_stage
+    def lte(self, field, value):
+        """Filters the samples in the view to only samples where `field` <=
+        `value`.
+
+        Args:
+            field: the name of the field to compare
+            value: the value that the field is compared against
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.LessThanOrEqual(field, value))
+
+    @view_stage
+    def is_in(self, field, values):
+        """Filters the samples in the view to only samples where `field`
+        is in `values`.
+
+        Args:
+            field: the name of the field to compare
+            values: the values that `field` must match one of
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.IsIn(field, values))
+
+    @view_stage
+    def is_not_in(self, field, values):
+        """Filters the samples in the view to only samples where `field`
+        is NOT in `values`.
+
+        Args:
+            field: the name of the field to compare
+            values: the values that `field` cannot match any of
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.IsNotIn(field, values))
+
+    @view_stage
+    def logical_not(self, view_stage):
+        """Logical `not` of a filtering/matching view stage.
+
+        Args:
+            view_stage: a :class:`fiftyone.core.stages.ViewStage` instance
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.LogicalNot(view_stage))
+
+    @view_stage
+    def logical_and(self, view_stages):
+        """Logical `and` of a list of filtering/matching view stages.
+
+        Args:
+            view_stages: a list of :class:`fiftyone.core.stages.ViewStage`
+                instances
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.LogicalAnd(view_stages))
+
+    @view_stage
+    def logical_or(self, view_stages):
+        """Logical `or` of a list of filtering/matching view stages.
+
+        Args:
+            view_stages: a list of :class:`fiftyone.core.stages.ViewStage`
+                instances
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.LogicalOr(view_stages))
+
+    @view_stage
+    def logical_nor(self, view_stages):
+        """Logical `nor` of a list of filtering/matching view stages.
+
+        Args:
+            view_stages: a list of :class:`fiftyone.core.stages.ViewStage`
+                instances
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.LogicalNor(view_stages))
+
+    @view_stage
     def match_tag(self, tag):
         """Returns a view containing the samples that have the given tag.
 

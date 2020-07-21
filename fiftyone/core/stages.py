@@ -138,8 +138,8 @@ class Limit(ViewStage):
         self._limit = limit
 
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Limit`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Limit` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -291,8 +291,8 @@ class Skip(ViewStage):
         self._skip = skip
 
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Skip`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Skip` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -315,8 +315,8 @@ class Take(ViewStage):
         self._size = size
 
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Take`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Take` instance
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -330,3 +330,162 @@ class Take(ViewStage):
 
     def _kwargs(self):
         return {"size": self._size}
+
+
+class ComparisonSingleValue(ViewStage):
+    def __init__(self, field, value):
+        self._field = field
+        self._value = value
+
+    @property
+    def operator(self):
+        raise NotImplementedError("Subclass must implement 'operator'")
+
+    def to_mongo(self):
+        return Match({self._field: {self.operator: self._value}}).to_mongo()
+
+    def _kwargs(self):
+        return {"field": self._field, "value": self._value}
+
+
+class Equal(ComparisonSingleValue):
+    @property
+    def operator(self):
+        return "$eq"
+
+
+class NotEqual(ComparisonSingleValue):
+    @property
+    def operator(self):
+        return "$ne"
+
+
+class GreaterThan(ComparisonSingleValue):
+    @property
+    def operator(self):
+        return "$gt"
+
+
+class GreaterThanOrEqual(ComparisonSingleValue):
+    @property
+    def operator(self):
+        return "$gte"
+
+
+class LessThan(ComparisonSingleValue):
+    @property
+    def operator(self):
+        return "$lt"
+
+
+class LessThanOrEqual(ComparisonSingleValue):
+    @property
+    def operator(self):
+        return "$lte"
+
+
+class ComparisonMultiValue(ViewStage):
+    def __init__(self, field, values):
+        self._field = field
+        self._values = values
+
+    @property
+    def operator(self):
+        raise NotImplementedError("Subclass must implement 'operator'")
+
+    def to_mongo(self):
+        return Match({self._field: {self.operator: self._values}}).to_mongo()
+
+    def _kwargs(self):
+        return {"field": self._field, "values": self._values}
+
+
+class IsIn(ComparisonMultiValue):
+    @property
+    def operator(self):
+        return "$in"
+
+
+class IsNotIn(ComparisonMultiValue):
+    @property
+    def operator(self):
+        return "$nin"
+
+
+class LogicalNot(ViewStage):
+    """"""
+
+    def __init__(self, view_stage):
+        self._view_stage = view_stage
+
+    def to_mongo(self):
+        try:
+            nested_stage = self._view_stage.to_mongo()["$match"]
+        except KeyError:
+            raise TypeError(
+                "Invalid ViewStage '%s' for logical operations"
+                % self._view_stage
+            )
+
+        if len(nested_stage) > 1:
+            raise ValueError(
+                "%s only accepts single-field ViewStage as input"
+                % (self.__class__.__name__)
+            )
+
+        field, expr = tuple(nested_stage.items())[0]
+        if field.startswith("$"):
+            raise ValueError(
+                "The match criterion passed to %s must be a field, not an"
+                " operator. Operator provided: '%s'"
+                % (self.__class__.__name__, field)
+            )
+
+        return {"$match": {field: {"$not": expr}}}
+
+    def _kwargs(self):
+        return {"view_stage": self._view_stage}
+
+
+class LogicalCombination(ViewStage):
+    """"""
+
+    def __init__(self, view_stages):
+        self._view_stages = view_stages
+
+    @property
+    def operator(self):
+        raise NotImplementedError("Subclass must implement 'operator'")
+
+    def to_mongo(self):
+        nested_stages = []
+        for stage in self._view_stages:
+            try:
+                nested_stages.append(stage.to_mongo()["$match"])
+            except KeyError:
+                raise TypeError(
+                    "Invalid ViewStage '%s' for logical operations" % stage
+                )
+
+        return {"$match": {self.operator: nested_stages}}
+
+    def _kwargs(self):
+        return {"view_stages": self._view_stages}
+
+
+class LogicalAnd(LogicalCombination):
+    @property
+    def operator(self):
+        return "$and"
+
+
+class LogicalOr(LogicalCombination):
+    @property
+    def operator(self):
+        return "$or"
+
+
+class LogicalNor(LogicalCombination):
+    @property
+    def operator(self):
+        return "$nor"

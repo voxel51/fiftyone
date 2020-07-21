@@ -15,6 +15,7 @@ unittest.TextTestRunner().run(singletest)
 """
 import datetime
 from functools import wraps
+import operator
 import unittest
 
 from mongoengine.errors import (
@@ -27,6 +28,7 @@ from pymongo.errors import DuplicateKeyError
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+import fiftyone.core.stages as fos
 
 
 def drop_datasets(func):
@@ -1129,6 +1131,113 @@ class ViewTest(unittest.TestCase):
         for sample in view.match({"labels.label": "label1"}):
             self.assertEqual(sample.labels.label, "label1")
 
+    @drop_datasets
+    def test_comparison(self):
+        dataset_name = self.test_comparison.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="filepath1.jpg", my_int=5),
+                fo.Sample(filepath="filepath2.jpg", my_int=7),
+                fo.Sample(filepath="filepath3.jpg", my_int=1),
+                fo.Sample(filepath="filepath4.jpg", my_int=9),
+            ]
+        )
+
+        field = "my_int"
+        value = 5
+
+        dataset_values = [s[field] for s in dataset]
+
+        op_func_pairs = [
+            (operator.eq, dataset.view().eq),
+            (operator.ne, dataset.view().ne),
+            (operator.gt, dataset.view().gt),
+            (operator.ge, dataset.view().gte),
+            (operator.lt, dataset.view().lt),
+            (operator.le, dataset.view().lte),
+        ]
+
+        for op, func in op_func_pairs:
+            view_values = [s[field] for s in func(field, value)]
+            filtered_values = [v for v in dataset_values if op(v, value)]
+            self.assertListEqual(view_values, filtered_values)
+
+        values = [1, 5]
+
+        for sample in dataset.view().is_in(field, values):
+            self.assertIn(sample[field], values)
+        for sample in dataset.view().is_not_in(field, values):
+            self.assertNotIn(sample[field], values)
+
+    @drop_datasets
+    def test_logic(self):
+        dataset_name = self.test_logic.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="filepath1.jpg", my_int=5),
+                fo.Sample(filepath="filepath2.jpg", my_int=7),
+                fo.Sample(filepath="filepath3.jpg", my_int=1),
+                fo.Sample(filepath="filepath4.jpg", my_int=9),
+            ]
+        )
+
+        field = "my_int"
+
+        # test non-match ViewStage raises TypeError
+        view = dataset.view().logical_or([fos.SortBy("my_int")])
+        with self.assertRaises(TypeError):
+            view.first()
+
+        value = 5
+
+        # test logical not with invalid input
+        view = dataset.view().logical_not(fos.LogicalAnd(
+            [fos.Equal(field, value), fos.NotEqual(field, value)]))
+        with self.assertRaises(ValueError):
+            view.first()
+
+        # test logical not
+        view = dataset.view().logical_not(fos.Equal(field, value))
+        for sample in view:
+            self.assertNotEqual(sample[field], value)
+
+        # test logical and
+        bounds = [3, 6]
+        view = dataset.view().logical_and(
+            [
+                fos.GreaterThan(field, bounds[0]),
+                fos.LessThan(field, bounds[1]),
+            ]
+        )
+        for sample in view:
+            self.assertGreater(sample[field], bounds[0])
+            self.assertLess(sample[field], bounds[1])
+
+        # test logical or
+        view = dataset.view().logical_or(
+            [
+                fos.LessThan(field, bounds[0]),
+                fos.GreaterThan(field, bounds[1]),
+            ]
+        )
+        for sample in view:
+            my_int = sample[field]
+            self.assertTrue(my_int < bounds[0] or my_int > bounds[1])
+
+        # test logical nor
+        view = dataset.view().logical_nor(
+            [
+                fos.LessThan(field, bounds[0]),
+                fos.GreaterThan(field, bounds[1]),
+            ]
+        )
+        for sample in view:
+            self.assertGreaterEqual(sample[field], bounds[0])
+            self.assertLessEqual(sample[field], bounds[1])
 
 class FieldTest(unittest.TestCase):
     @drop_datasets
