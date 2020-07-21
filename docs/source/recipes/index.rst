@@ -7,11 +7,10 @@ FiftyOne Recipes
 Welcome to FiftyOne recipes!
 
 FiftyOne turbocharges your current workflows, transforming hours of scripting
-into minutes so that you can focus on your models. Browse the recipes below to
-see how you can leverage FiftyOne to enhance key parts of your machine learning
-workflows.
+into minutes so that you can focus on your models.
 
-:doc:`Remove duplicate images from a dataset<image_deduplication>`
+Browse the recipes below to see how you can leverage FiftyOne to enhance key
+parts of your machine learning workflows.
 
 Turn your data into a FiftyOne |Dataset| and automatically find and remove
 duplicate and near-duplicate images from your dataset.
