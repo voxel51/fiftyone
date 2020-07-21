@@ -4,8 +4,9 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
-Future changes
+FiftyOne 0.4.0
 --------------
+*Released July 21, 2020*
 
 Core
 ^^^^
@@ -28,13 +29,14 @@ App
   Python 3.6 and older
 
 Documentation
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 - Added a recipe demonstrating how to
   :doc:`convert datasets </recipes/convert_datasets>` on disk between common
   formats
 - Added recipes demonstratings how to write your own
-  :doc:`custom dataset importers </recipes/custom_importer>` and
-  :doc:`custom dataset exporters </recipes/custom_exporter>`
+  :doc:`custom dataset importers </recipes/custom_importer>`,
+  :doc:`custom dataset exporters </recipes/custom_exporter>`, and
+  :doc:`custom sample parsers </recipes/custom_parser>`
 - Added a :doc:`Configuring FiftyOne </user_guide/config>` page to the User
   Guide that explains how to customize your FiftyOne Config
 
@@ -107,7 +109,7 @@ Core
 - Added a config option to control visibility of progress bars
 - Added progress reporting to
   :meth:`Dataset.add_samples() <fiftyone.core.dataset.Dataset.add_samples>`
-- Added a :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
+- Added a :meth:`SampleCollection.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
   method to enable population of the `metadata` fields of samples
 - Improved reliability of shutting down the App and database services
 - Improved string representations of |Dataset| and |Sample| objects
