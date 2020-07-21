@@ -103,7 +103,6 @@ const viewStageParameterMachine = Machine({
             })),
             cond: (ctx) => ctx.value.trim().length > 0,
           },
-          { target: "deleted" },
         ],
         BLUR: {
           target: "reading",

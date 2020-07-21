@@ -1,5 +1,6 @@
 import React from "react";
-import { spawn } from "xstate";
+import { assign, Machine, spawn } from "xstate";
+import { useMachine } from "@xstate/react";
 
 import "../../../app.global.css";
 import { createParameter } from "./viewStageMachine";
@@ -11,7 +12,7 @@ export default {
   title: "ViewBar/ViewStageParameter",
 };
 
-const makeMachine = () => {
+const spawnParameter = () => {
   return spawn(
     viewStageParameterMachine.withContext(
       createParameter("limit", "limit", undefined)
@@ -19,8 +20,22 @@ const makeMachine = () => {
   );
 };
 
+const dumbyViewStageMachine = Machine({
+  id: "dumbyViewStage",
+  initial: "start",
+  context: {
+    parameterRef: undefined,
+  },
+  states: {
+    start: {
+      entry: assign({
+        parameterRef: () => spawnParameter(),
+      }),
+    },
+  },
+});
+
 export const standard = () => {
-  const parameterRef = makeMachine();
-  console.log(parameterRef);
-  return <ViewStageParameter parameterRef={parameterRef} />;
+  const [current] = useMachine(dumbyViewStageMachine);
+  return <ViewStageParameter parameterRef={current.context.parameterRef} />;
 };

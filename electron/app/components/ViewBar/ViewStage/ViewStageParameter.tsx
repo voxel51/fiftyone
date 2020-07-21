@@ -11,7 +11,9 @@ const ViewStageParameterInput = styled.input``;
 
 export default ({ parameterRef }) => {
   console.log(parameterRef);
-  const [state, send] = useService(parameterRef);
+  const ss = useService(parameterRef);
+  console.log(ss);
+  const [state, send] = ss;
   const inputRef = useRef(null);
   console.log(state);
   const { id, completed, parameter, stage, value } = state.context;
