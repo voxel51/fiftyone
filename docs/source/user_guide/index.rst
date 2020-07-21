@@ -33,7 +33,7 @@ tags and |DatasetView|.
     for sample in view:
         print(sample)
 
-:doc:`Creating FiftyOne Datasets <dataset_creation/index>`
+:doc:`Loading data into FiftyOne <dataset_creation/index>`
 
 Get your data into a FiftyOne |Dataset| using standard formats, custom formats,
 or load an open-source dataset via the Dataset Zoo.
@@ -108,7 +108,7 @@ Configure FiftyOne's default behavior to suit your needs.
     :hidden:
 
     Dataset basics<basics>
-    Creating datasets<dataset_creation/index>
+    Loading datasets<dataset_creation/index>
     Using datasets<using_datasets>
     Exporting datasets<export_datasets>
     Viewing datasets in the App<app>
