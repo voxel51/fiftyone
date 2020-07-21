@@ -1,21 +1,39 @@
 import React, { useCallback, useEffect, useRef } from "react";
+import { animated } from "react-spring";
 import styled from "styled-components";
 import { useService } from "@xstate/react";
 import cn from "classnames";
 
 import SearchResults from "./SearchResults";
 
-const ViewStageParameterDiv = styled.div``;
+const ViewStageParameterDiv = animated(styled.div``);
 
-const ViewStageParameterInput = styled.input``;
+const ViewStageParameterInput = animated(styled.input`
+  background-color: var(--bg);
+  border-color: var(--std-border-color);
+  border-radius: var(--std-border-radius);
+  border-style: solid;
+  border-width: var(--std-border-width);
+  box-sizing: border-box;
+  display: inline-block;
+  line-height: 1rem;
+  margin: 0.25rem;
+  padding: 0.5rem;
+  color: var(--std-font-color);
+
+  :focus {
+    border-style: dashed;
+    outline: none;
+  }
+
+  ::placeholder {
+    color: var(--std-font-color);
+  }
+`);
 
 export default ({ parameterRef }) => {
-  console.log(parameterRef);
-  const ss = useService(parameterRef);
-  console.log(ss);
-  const [state, send] = ss;
+  const [state, send] = useService(parameterRef);
   const inputRef = useRef(null);
-  console.log(state);
   const { id, completed, parameter, stage, value } = state.context;
 
   useEffect(() => {
@@ -38,7 +56,7 @@ export default ({ parameterRef }) => {
       <ViewStageParameterInput
         placeholder={parameter}
         value={value}
-        onBlur={(_) => send("BLUR")}
+        onBlur={() => send("BLUR")}
         onChange={(e) => send("CHANGE", { value: e.target.value })}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
@@ -50,7 +68,7 @@ export default ({ parameterRef }) => {
             send("CANCEL");
           }
         }}
-        ref={parameterRef}
+        ref={inputRef}
       />
     </ViewStageParameterDiv>
   );
