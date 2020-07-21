@@ -39,8 +39,8 @@ Learn the basics of the FiftyOne |Dataset| class and its relation to |Sample|,
 :doc:`Creating FiftyOne Datasets <dataset_creation/index>`
 ----------------------------------------------------------
 
-Learn how to get your data into FiftyOne using standard formats, custom
-formats, or from open-source datasets via the Dataset Zoo.
+Get your data into FiftyOne using standard formats, custom formats, or
+open-source datasets via the Dataset Zoo.
 
 :doc:`>> Learn more about creating FiftyOne datasets! <dataset_creation/index>`
 
@@ -56,7 +56,8 @@ formats, or from open-source datasets via the Dataset Zoo.
 :doc:`Using datasets <using_datasets>`
 --------------------------------------
 
-Use FiftyOne datasets to search, sort, and modify your data.
+Take a deep dive into FiftyOne datasets and how to use them to search, sort,
+and filter your data.
 
 :doc:`>> Learn more about using datasets! <using_datasets>`
 
@@ -88,8 +89,8 @@ Export datasets to disk in any number of formats.
 :doc:`Visualizing datasets in the App <app>`
 --------------------------------------------
 
-Visualizing your datasets in the FiftyOne App and interactively search, sort,
-and filter them.
+Visualize your datasets in the FiftyOne App and interactively search, sort, and
+filter them.
 
 :doc:`>> Learn more about visualizing datasets! <app>`
 
@@ -115,7 +116,7 @@ Use the FiftyOne Brain to automatically get insights into your datasets.
 :doc:`Configuring FiftyOne <config>`
 ------------------------------------
 
-Configure FiftyOne's default behavior to suit your needs.
+Configure FiftyOne's behavior to suit your needs.
 
 :doc:`>> Learn how to configure FiftyOne! <config>`
 
