@@ -23,6 +23,15 @@ import numbers
 
 from bson import ObjectId, json_util
 
+try:
+    import pprintpp as pprint
+
+    # Monkey patch to prevent sorting keys
+    # https://stackoverflow.com/a/25688431
+    pprint._sorted = lambda x: x
+except:
+    import pprint
+
 import fiftyone.core.collections as foc
 import fiftyone.core.stages as fos
 
@@ -74,6 +83,7 @@ class DatasetView(foc.SampleCollection):
     def __init__(self, dataset):
         self._dataset = dataset
         self._pipeline = []
+        self._list_filters = {}
 
     def __len__(self):
         try:
@@ -104,6 +114,7 @@ class DatasetView(foc.SampleCollection):
     def __copy__(self):
         view = self.__class__(self._dataset)
         view._pipeline = deepcopy(self._pipeline)
+        view._list_filters = deepcopy(self._list_filters)
         return view
 
     def summary(self):
@@ -114,6 +125,7 @@ class DatasetView(foc.SampleCollection):
         """
         fields_str = self._dataset._get_fields_str()
 
+        # format pipeline
         if self._pipeline:
             pipeline_str = "    " + "\n    ".join(
                 [
@@ -124,6 +136,10 @@ class DatasetView(foc.SampleCollection):
         else:
             pipeline_str = "    ---"
 
+        # format list filters
+        list_filters_str = pprint.pformat(self._list_filters, indent=4)
+        list_filters_str = "    " + list_filters_str.replace("\n", "\n    ")
+
         return "\n".join(
             [
                 "Dataset:        %s" % self._dataset.name,
@@ -133,6 +149,8 @@ class DatasetView(foc.SampleCollection):
                 fields_str,
                 "Pipeline stages:",
                 pipeline_str,
+                "List filters:",
+                list_filters_str,
             ]
         )
 
@@ -407,6 +425,37 @@ class DatasetView(foc.SampleCollection):
         """
         return self.add_stage(fos.Exclude(sample_ids))
 
+    def set_list_filter(self, field_name, cond):
+        """
+
+        :param field_name:
+        :param cond:
+        :param type:
+        :return:
+        """
+        view = copy(self)
+        view._list_filters[field_name] = cond
+        return view
+
+    def clear_list_filter(self, field_name):
+        """
+
+        :param field_name:
+        :return:
+        """
+        view = copy(self)
+        view._list_filters.pop(field_name, None)
+        return view
+
+    def clear_all_list_filters(self):
+        """
+
+        :return:
+        """
+        view = copy(self)
+        view._list_filters = {}
+        return view
+
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.
 
@@ -421,7 +470,9 @@ class DatasetView(foc.SampleCollection):
             pipeline = []
 
         return self._dataset.aggregate(
-            [s.to_mongo() for s in self._pipeline] + pipeline
+            [s.to_mongo() for s in self._pipeline]
+            + self._get_list_filter_stages()
+            + pipeline
         )
 
     def serialize(self):
@@ -497,3 +548,19 @@ class DatasetView(foc.SampleCollection):
                 return stage["$skip"]
 
         return 0
+
+    def _get_list_filter_stages(self):
+        return [
+            {
+                "$addFields": {
+                    field_name: {
+                        "$filter": {
+                            "input": "$" + field_name,
+                            "as": "list",
+                            "cond": cond,
+                        }
+                    },
+                }
+            }
+            for field_name, cond in self._list_filters.items()
+        ]
