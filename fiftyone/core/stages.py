@@ -342,6 +342,12 @@ class ComparisonSingleValue(ViewStage):
         raise NotImplementedError("Subclass must implement 'operator'")
 
     def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.ComparisonSingleValue` instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         return Match({self._field: {self.operator: self._value}}).to_mongo()
 
     def _kwargs(self):
@@ -394,6 +400,12 @@ class ComparisonMultiValue(ViewStage):
         raise NotImplementedError("Subclass must implement 'operator'")
 
     def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.ComparisonMultiValue` instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         return Match({self._field: {self.operator: self._values}}).to_mongo()
 
     def _kwargs(self):
@@ -419,6 +431,12 @@ class LogicalNot(ViewStage):
         self._view_stage = view_stage
 
     def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.LogicalNot` instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         try:
             nested_stage = self._view_stage.to_mongo()["$match"]
         except KeyError:
@@ -458,6 +476,12 @@ class LogicalCombination(ViewStage):
         raise NotImplementedError("Subclass must implement 'operator'")
 
     def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.LogicalCombination` instance
+
+        Returns:
+            a MongoDB aggregation pipeline stage dict
+        """
         nested_stages = []
         for stage in self._view_stages:
             try:
