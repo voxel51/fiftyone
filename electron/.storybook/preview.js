@@ -1,13 +1,21 @@
 import { setConsoleOptions, withConsole } from "@storybook/addon-console";
 import { addDecorator } from "@storybook/react";
-import React, { Fragment } from "react";
+import React from "react";
 import { RecoilRoot } from "recoil";
 
-addDecorator((storyFn, context) => (
+import { GlobalStyle } from "../app/shared/global";
+
+addDecorator((story, context) => <>{withConsole()(story)(context)}</>);
+
+addDecorator((story) => (
   <>
-    <RecoilRoot>{withConsole()(storyFn)(context)}</RecoilRoot>
+    <GlobalStyle />
+    {story()}
   </>
 ));
+
+addDecorator((story) => <RecoilRoot>{story()}</RecoilRoot>);
+
 setConsoleOptions({
   panelExclude: [],
 });
