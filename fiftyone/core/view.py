@@ -442,7 +442,14 @@ class DatasetView(foc.SampleCollection):
                     field_name="tags"
                     field_name="my_classifications.classifications"
                     field_name="my_detections.detections"
-            cond: @todo
+            cond: a dict that represents a MongoDB aggregation expression that
+                resolves to a boolean value determining if the element should
+                be kept in the list. It is recommended to uses the helper
+                :class:`Cond` class rather than generating these expressions
+                from scratch.
+
+                See [$filter](https://docs.mongodb.com/manual/reference/operator/aggregation/filter/)
+                for more details.
 
         Returns:
             a :class:`DatasetView`
