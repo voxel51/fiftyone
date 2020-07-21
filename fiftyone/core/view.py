@@ -426,31 +426,50 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fos.Exclude(sample_ids))
 
     def set_list_filter(self, field_name, cond):
-        """
+        """Sets the list filter for a field / subfield of samples in the view.
 
-        :param field_name:
-        :param cond:
-        :param type:
-        :return:
+        A list filter filters elements from the list field of each sample, for
+        example, filtering detections with a confidence below a given threshold
+        value.
+
+        Unlike a :class:`fiftyone.core.stages.ViewStage`, a list filter does
+        not affect what samples are returned, but what list elements of the
+        specified list field are returned.
+
+        Args:
+            field_name: the name of the field or subfield to filter. This field
+                MUST be a set/list field. e.g.:
+                    field_name="tags"
+                    field_name="my_classifications.classifications"
+                    field_name="my_detections.detections"
+            cond: @todo
+
+        Returns:
+            a :class:`DatasetView`
         """
         view = copy(self)
         view._list_filters[field_name] = cond
         return view
 
     def clear_list_filter(self, field_name):
-        """
+        """Clears the list filter for a field / subfield.
 
-        :param field_name:
-        :return:
+        Args:
+            field_name: the name of the field or subfield to clear the list
+                filter. Error is not thrown if no filter exists.
+
+        Returns:
+            a :class:`DatasetView`
         """
         view = copy(self)
         view._list_filters.pop(field_name, None)
         return view
 
     def clear_all_list_filters(self):
-        """
+        """Clears all list filters set on the view.
 
-        :return:
+        Returns:
+            a :class:`DatasetView`
         """
         view = copy(self)
         view._list_filters = {}
@@ -563,16 +582,16 @@ class DatasetView(foc.SampleCollection):
 
 
 class Cond:
-    @classmethod
-    def logical_not(cls, cond):
+    @staticmethod
+    def logical_not(cond):
         return {"$not": cond}
 
-    @classmethod
-    def logical_and(cls, conds):
+    @staticmethod
+    def logical_and(conds):
         return {"$and": conds}
 
-    @classmethod
-    def logical_or(cls, conds):
+    @staticmethod
+    def logical_or(conds):
         return {"$or": conds}
 
     @classmethod
@@ -599,8 +618,8 @@ class Cond:
     def lte(cls, field_name_or_exp, value):
         return cls._comparison("lte", field_name_or_exp, value)
 
-    @classmethod
-    def bbox_area(cls):
+    @staticmethod
+    def bbox_area():
         return {
             "$multiply": [
                 {"$arrayElemAt": ["$$this.bounding_box", 2]},
@@ -608,8 +627,8 @@ class Cond:
             ]
         }
 
-    @classmethod
-    def _comparison(cls, comparator, field_name_or_exp, value):
+    @staticmethod
+    def _comparison(comparator, field_name_or_exp, value):
         if isinstance(field_name_or_exp, str):
             return {"$" + comparator: ["$$this." + field_name_or_exp, value]}
         return {"$" + comparator: [field_name_or_exp, value]}
