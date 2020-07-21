@@ -13,114 +13,83 @@ workflows.
 
 :doc:`Remove duplicate images from a dataset<image_deduplication>`
 
-Turn your data into a FiftyOne |Dataset| and automatically find and remove
-duplicate and near-duplicate images from your dataset.
+.. Recipe cards --------------------------------------------------------------
 
-.. code-block:: python
-    :linenos:
+.. raw:: html
 
-    # Find duplicates
-    dup_view = (
-        dataset.view()
-        # Extract samples with duplicate file hashes
-        .match({"file_hash": {"$in": dup_filehashes}})
-        # Sort by file hash so duplicates will be adjacent
-        .sort_by("file_hash")
-    )
+    <div id="tutorial-cards-container">
 
-    # Visualize in App
-    fo.launch_app(view=dup_view)
+    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
+        <div class="tutorial-tags-container">
+            <div id="dropdown-filter-tags">
+                <div class="tutorial-filter-menu">
+                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-:doc:`Add model predictions to a dataset<model_inference>`
+    <hr class="tutorials-hr">
 
-Add FiftyOne to your model training and analysis loop to visualize and analyze
-your model's predictions.
+    <div class="row">
 
-.. code-block:: python
-    :linenos:
+    <div id="tutorial-cards">
+    <div class="list">
 
-    for img, sample_id in your_data:
-        # Perform prediction
-        label, confidence = your_model.predict(img)
+.. Add recipe cards below
 
-        # Add prediction to FiftyOne dataset
-        sample = dataset[sample_id]
-        sample["your_model"] = fo.Classification(
-            label=label, confidence=confidence,
-        )
-        sample.save()
+.. customcarditem::
+    :header: Remove duplicate images from a dataset
+    :description: Turn your data into a FiftyOne Dataset and automatically find and remove duplicate and near-duplicate images from your dataset.
+    :link: image_deduplication.html
+    :image: ../_static/images/voxel51_300dpi.png
+    :tags: Getting-Started
 
-:doc:`Convert dataset formats on disk <convert_datasets>`
+.. customcarditem::
+    :header: Add model predictions to a dataset
+    :description: Add FiftyOne to your model training and analysis loop to visualize and analyze your model's predictions.
+    :link: model_inference.html
+    :image: ../_static/images/voxel51_300dpi.png
+    :tags: Getting-Started
 
-Use FiftyOne's data powerful dataset import/export features to convert your
-datasets on disk between standard (or custom) formats.
+.. customcarditem::
+    :header: Convert dataset formats on disk
+    :description: Use FiftyOne's powerful dataset import/export features to convert your datasets on disk between standard (or custom) formats.
+    :link: convert_datasets.html
+    :image: ../_static/images/voxel51_300dpi.png
+    :tags: Getting-Started
 
-.. code-block:: shell
-    :linenos:
+.. customcarditem::
+    :header: Import datasets in custom formats
+    :description: Write your own custom DatasetImporter and use it to import datasets in your custom format into FiftyOne.
+    :link: custom_importer.html
+    :image: ../_static/images/voxel51_300dpi.png
+    :tags: Advanced
 
-    # Convert a COCO dataset to CVAT image format
+.. customcarditem::
+    :header: Export datasets in custom formats
+    :description: Write your own custom DatasetExporter and use it to export a FiftyOne Dataset to disk in your custom format.
+    :link: custom_exporter.html
+    :image: ../_static/images/voxel51_300dpi.png
+    :tags: Advanced
 
-    INPUT_DIR=/path/to/coco/dataset
-    OUTPUT_DIR=/path/for/cvat/dataset
+.. customcarditem::
+    :header: Parse samples in custom formats
+    :description: Write your own custom SampleParser and use it to add samples in your custom format to a FiftyOne Dataset.
+    :link: custom_parser.html
+    :image: ../_static/images/voxel51_300dpi.png
+    :tags: Advanced
 
-    fiftyone convert \
-        --input-dir ${INPUT_DIR} --input-type fiftyone.types.COCODetectionDataset \
-        --output-dir ${OUTPUT_DIR} --output-type fiftyone.types.CVATImageDataset
+.. End of recipe cards
 
-:doc:`Import datasets in custom formats <custom_importer>`
+.. raw:: html
 
-Write your own :ref:`custom DatasetImporter <custom-dataset-importer>` and use
-it to import datasets in your custom format into FiftyOne.
+    </div>
 
-.. code-block:: python
-    :linenos:
+    <div class="pagination d-flex justify-content-center"></div>
 
-    dataset_dir = "/path/to/custom-dataset"
+    </div>
 
-    # Create an instance of your custom importer
-    importer = CustomDatasetImporter(dataset_dir)
+    </div>
 
-    dataset = fo.Dataset.from_importer(importer)
-
-:doc:`Export datasets in custom formats <custom_exporter>`
-
-Write your own :ref:`custom DatasetExporter <custom-dataset-exporter>` and use
-it to export a FiftyOne |Dataset| to disk in your custom format.
-
-.. code-block:: python
-    :linenos:
-
-    export_dir = "/path/for/custom-dataset"
-
-    # Create an instance of your custom exporter
-    exporter = CustomDatasetExporter(export_dir)
-
-    dataset.export(dataset_exporter=exporter)
-
-:doc:`Parse samples in custom formats <custom_parser>`
-
-Write your own :ref:`custom SampleParser <custom-sample-parser>` and use it to
-add samples in your custom format to a FiftyOne |Dataset|.
-
-.. code-block:: python
-    :linenos:
-
-    # An iterable of custom samples
-    # For example, this can be a `tf.data.Dataset` or a `torch.utils.DataLoader`
-    samples = ...
-
-    # Create an instance of your custom parser
-    sample_parser = CustomSampleParser()
-
-    dataset.add_labeled_images(samples, sample_parser)
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-
-   Remove duplicate images<image_deduplication.ipynb>
-   Add model predictions<model_inference.ipynb>
-   Convert dataset formats<convert_datasets.ipynb>
-   Custom dataset importers<custom_importer.ipynb>
-   Custom dataset exporters<custom_exporter.ipynb>
-   Custom sample parsers<custom_parser.ipynb>
+.. End Recipe cards ----------------------------------------------------------

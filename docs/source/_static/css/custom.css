@@ -385,3 +385,11 @@ article.pytorch-article .reference.download.internal {
   > a.reference.internal.not-expanded:before {
   margin-left: -3px;
 }
+
+/* tutorials cards */
+
+#tutorial-cards-container .card.tutorials-card .tutorials-image img {
+  height: 80%;
+  width: 80%;
+  margin: 10%;
+}

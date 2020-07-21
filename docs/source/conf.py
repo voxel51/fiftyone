@@ -8,6 +8,12 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath("."))
+
+from custom_directives import CustomCardItemDirective
 
 import fiftyone.constants as foc
 
@@ -141,3 +147,10 @@ html_context = {
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
 }
+
+# -- Custom setup ------------------------------------------------------------
+
+
+def setup(app):
+    # Custom directives
+    app.add_directive("customcarditem", CustomCardItemDirective)
