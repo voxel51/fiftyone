@@ -333,12 +333,21 @@ class Take(ViewStage):
 
 
 class ComparisonSingleValue(ViewStage):
+    """Compares the `field` against the `value`. Subclass must specify
+    comparison operator.
+
+    Args:
+        field: the name of the field to compare
+        value: the value that the field is compared against
+    """
+
     def __init__(self, field, value):
         self._field = field
         self._value = value
 
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         raise NotImplementedError("Subclass must implement 'operator'")
 
     def to_mongo(self):
@@ -355,48 +364,74 @@ class ComparisonSingleValue(ViewStage):
 
 
 class Equal(ComparisonSingleValue):
+    """Filters the samples to only samples where `field` == `value`."""
+
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$eq"
 
 
 class NotEqual(ComparisonSingleValue):
+    """Filters the samples to only samples where `field` != `value`."""
+
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$ne"
 
 
 class GreaterThan(ComparisonSingleValue):
+    """Filters the samples to only samples where `field` > `value`."""
+
     @property
     def operator(self):
         return "$gt"
 
 
 class GreaterThanOrEqual(ComparisonSingleValue):
+    """Filters the samples to only samples where `field` >= `value`."""
+
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$gte"
 
 
 class LessThan(ComparisonSingleValue):
+    """Filters the samples to only samples where `field` < `value`."""
+
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$lt"
 
 
 class LessThanOrEqual(ComparisonSingleValue):
+    """Filters the samples to only samples where `field` <= `value`."""
+
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$lte"
 
 
 class ComparisonMultiValue(ViewStage):
+    """Compares the `field` against the `values`. Subclass must specify
+    comparison operator.
+
+    Args:
+        field: the name of the field to compare
+        values: the list of values that the field is compared against
+    """
+
     def __init__(self, field, values):
         self._field = field
         self._values = values
 
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         raise NotImplementedError("Subclass must implement 'operator'")
 
     def to_mongo(self):
@@ -415,12 +450,14 @@ class ComparisonMultiValue(ViewStage):
 class IsIn(ComparisonMultiValue):
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$in"
 
 
 class IsNotIn(ComparisonMultiValue):
     @property
     def operator(self):
+        """Returns the MongoDB operator string."""
         return "$nin"
 
 
