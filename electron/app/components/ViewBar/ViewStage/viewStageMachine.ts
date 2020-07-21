@@ -3,7 +3,7 @@ import uuid from "uuid-v4";
 
 import viewStageParameterMachine from "./viewStageParameterMachine";
 
-const createParameter = (stage, parameter, value) => {
+export const createParameter = (stage, parameter, value) => {
   return {
     id: uuid(),
     completed: false,
@@ -26,7 +26,7 @@ const viewStageMachine = Machine({
     initializing: {
       entry: assign({
         parameters: (ctx, e) => {
-          return ctx.parameters.map((parameters) => ({
+          return ctx.parameters.map((parameter) => ({
             ...parameter,
             ref: spawn(viewStageParameterMachine.withContext(parameter)),
           }));
