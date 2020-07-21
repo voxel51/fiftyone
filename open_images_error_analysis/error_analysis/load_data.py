@@ -1,5 +1,13 @@
 """
 
+<dataset_dir>/
+    data/
+        <id1>.<ext>
+        <id2>.<ext>
+    annotations-bbox.csv
+    annotations-human-imagelabels-boxable.csv
+    class-descriptions-boxable.csv
+
 """
 import glob
 import os
@@ -11,15 +19,23 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
-import fiftyone.utils.data as foud
 
 
-class OpenImagesDatasetImporter():
-    pass
+# supplemental columns
+CLASSIFICATION_COLUMNS = ["Source"]
+DETECTION_COLUMNS = [
+    "Source",
+    "IsOccluded",
+    "IsTruncated",
+    "IsGroupOf",
+    "IsDepiction",
+    "IsInside",
+]
 
-
-class OpenImagesDatasetExporter():
-    pass
+# field names
+OPEN_IMAGES_ID = "open_images_id"
+GT_IMAGE_LABELS = "groundtruth_image_labels"
+GT_DETECTIONS = "groundtruth_detections"
 
 
 def load_open_images_dataset(
@@ -28,9 +44,10 @@ def load_open_images_dataset(
     bounding_boxes_path=None,
     image_labels_path=None,
     predictions_path=None,
-    prediction_field_name=None,
+    prediction_field_name="predicted_detections",
     class_descriptions_path=None,
     load_images_with_preds=False,
+    max_num_images=-1,
 ):
     """
 
@@ -62,7 +79,6 @@ def load_open_images_dataset(
         all_predictions.rename(columns={"Score": "Confidence"}, inplace=True)
     else:
         all_predictions = None
-    prediction_field_name = prediction_field_name or "predicted_detections"
     class_descriptions = (
         pd.read_csv(class_descriptions_path, header=None, index_col=0)
         if class_descriptions_path
@@ -91,15 +107,15 @@ def load_open_images_dataset(
     else:
         img_paths = glob.glob(os.path.join(images_dir, "*.jpg"))
 
-    # @todo(Tyler)
-    img_paths = img_paths[:300]
+    if max_num_images != -1:
+        img_paths = img_paths[:max_num_images]
 
     _samples = []
     with fou.ProgressBar(img_paths) as pb:
         for image_path in pb(img_paths):
             image_id = os.path.splitext(os.path.basename(image_path))[0]
 
-            kwargs = {"filepath": image_path, "open_images_id": image_id}
+            kwargs = {"filepath": image_path, OPEN_IMAGES_ID: image_id}
 
             # parse ground truth image labels
             if all_label_annotations is not None:
@@ -107,9 +123,7 @@ def load_open_images_dataset(
                     all_label_annotations["ImageID"] == image_id
                 ]
                 if not cur_lab_anns.empty:
-                    kwargs["groundtruth_image_labels"] = df2classifications(
-                        cur_lab_anns
-                    )
+                    kwargs[GT_IMAGE_LABELS] = df2classifications(cur_lab_anns)
 
             # parse ground truth bounding boxes
             if all_location_annotations is not None:
@@ -117,9 +131,7 @@ def load_open_images_dataset(
                     all_location_annotations["ImageID"] == image_id
                 ]
                 if not cur_loc_anns.empty:
-                    kwargs["groundtruth_detections"] = df2detections(
-                        cur_loc_anns
-                    )
+                    kwargs[GT_DETECTIONS] = df2detections(cur_loc_anns)
 
             # parse prediction bounding boxes
             if all_predictions is not None:
@@ -137,6 +149,44 @@ def load_open_images_dataset(
     return dataset
 
 
+def add_open_images_predictions(
+    dataset,
+    predictions_path,
+    class_descriptions_path=None,
+    prediction_field_name="predicted_detections",
+):
+    """
+
+    :param dataset:
+    :param predictions_path:
+    :param class_descriptions_path:
+    :param prediction_field_name:
+    :return:
+    """
+    all_predictions = pd.read_csv(predictions_path)
+    all_predictions.rename(columns={"Score": "Confidence"}, inplace=True)
+
+    # map label MID to descriptive label
+    if class_descriptions_path is not None:
+        class_descriptions = pd.read_csv(
+            class_descriptions_path, header=None, index_col=0
+        )
+
+        temp = class_descriptions.loc[all_predictions["LabelName"], 1]
+        temp.index = all_predictions.index
+        all_predictions["LabelName"] = temp
+
+    with fou.ProgressBar(dataset) as pb:
+        for sample in pb(dataset):
+            # parse prediction bounding boxes
+            cur_preds = all_predictions.loc[
+                all_predictions["ImageID"] == sample[OPEN_IMAGES_ID]
+            ]
+            if not cur_preds.empty:
+                sample[prediction_field_name] = df2detections(cur_preds)
+                sample.save()
+
+
 def df2classifications(df):
     """
 
@@ -152,19 +202,14 @@ def df2classifications(df):
     Returns:
          a :class:`fiftyone.core.labels.Classifications` instance
     """
-
-    def get_attributes(row):
-        attributes = {}
-        if "Source" in df:
-            attributes["Source"] = fol.CategoricalAttribute(value=row.Source)
-        return attributes
+    supplemental_columns = [fn for fn in CLASSIFICATION_COLUMNS if fn in df]
 
     return fol.Classifications(
         classifications=[
             fol.Classification(
                 label=row.LabelName,
                 confidence=row.Confidence,
-                attributes=get_attributes(row),
+                **dict(row[supplemental_columns]),
             )
             for _, row in df.iterrows()
         ]
@@ -195,23 +240,7 @@ def df2detections(df):
     Returns:
          a :class:`fiftyone.core.labels.Detections` instance
     """
-
-    def get_attributes(row):
-        attributes = {}
-        if "Source" in df:
-            attributes["Source"] = fol.CategoricalAttribute(value=row.Source)
-        for col_name in [
-            "IsOccluded",
-            "IsTruncated",
-            "IsGroupOf",
-            "IsDepiction",
-            "IsInside",
-        ]:
-            if col_name in df:
-                attributes[col_name] = fol.BooleanAttribute(
-                    value=row[col_name]
-                )
-        return attributes
+    supplemental_columns = [fn for fn in DETECTION_COLUMNS if fn in df]
 
     return fol.Detections(
         detections=[
@@ -225,7 +254,7 @@ def df2detections(df):
                     row.XMax - row.XMin,
                     row.YMax - row.YMin,
                 ],
-                attributes=get_attributes(row),
+                **dict(row[supplemental_columns]),
             )
             for _, row in df.iterrows()
         ]
@@ -288,7 +317,7 @@ def detections2df(
     d["YMax"] = bboxes[:, 1] + bboxes[:, 3]
 
     if is_groundtruth:
-        d["Source"] = [det.attributes["Source"].value for det in dets]
+        d["Source"] = [det["Source"] for det in dets]
 
         # boolean attributes
         for col_name in [
@@ -298,7 +327,7 @@ def detections2df(
             "IsDepiction",
             "IsInside",
         ]:
-            d[col_name] = [int(det.attributes[col_name].value) for det in dets]
+            d[col_name] = [int(det[col_name]) for det in dets]
 
     return pd.DataFrame(d)
 
@@ -328,6 +357,7 @@ def classifications2df(image_id, classifications, display2name_map=None):
     if display2name_map:
         d["LabelName"] = [display2name_map[label] for label in d["LabelName"]]
 
-    d["Source"] = [lab.attributes["Source"].value for lab in labs]
+    for col in CLASSIFICATION_COLUMNS:
+        d[col] = [lab[col] for lab in labs]
 
     return pd.DataFrame(d)

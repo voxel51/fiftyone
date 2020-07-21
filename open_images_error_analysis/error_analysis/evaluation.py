@@ -5,13 +5,19 @@ from google.protobuf import text_format
 import numpy as np
 import pandas as pd
 
+import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 from fiftyone.utils.open_images import detections2df, classifications2df
 
 import sys
 
-sys.path.append("/Users/tylerganter/source/theta/tensorflow/models/research")
+sys.path.insert(0, fo.config.tf_object_detection_dir)
+# pylint: disable=import-error
+
+object_detection = fou.lazy_import(
+    "object_detection", callback=fou.ensure_object_detection
+)
 
 from object_detection.metrics import oid_challenge_evaluation_utils as utils
 from object_detection.protos import string_int_label_map_pb2

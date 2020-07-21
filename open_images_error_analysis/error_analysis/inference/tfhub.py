@@ -1,50 +1,27 @@
 """
-Run inference on the Open Images V4 test set images using a TensorFlow hub
-pre-trained model.
+Object Detection wrapper for Tensorflow Hub detectors
 
 """
 import csv
-import glob
-import os
+from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image
 import tensorflow as tf
 import tensorflow_hub as hub
 
 
-# PARAMETERS ##################################################################
-
-# SPLIT = "validation"
-SPLIT = "test"
-
-SAVE_EVERY = 10
-
-# Specify Model Handle
-# MODEL_HANDLE = "https://tfhub.dev/google/openimages_v4/ssd/mobilenet_v2/1"
-MODEL_HANDLE = (
-    "https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1"
-)
-
-
-# images_dir = "/Users/tylerganter/data/open-images-dataset/images"
-# object_detection_dir = "/Users/tylerganter/source/theta/tensorflow/models/research/object_detection"
-images_dir = "/home/tylerganter/data/open-images/images"
-object_detection_dir = (
-    "/home/tylerganter/code/tensorflow/models/research/object_detection"
-)
-
-output_dir = "."
-
-###############################################################################
-
-
 class TensorFlowHubDetector:
     def __init__(self, model_handle):
+        """Initializes the detector.
+
+        Args:
+            model_handle: url to the model, starting with: https://tfhub.dev/
+        """
         self.model_handle = model_handle
         self._detector = hub.load(self.model_handle).signatures["default"]
 
     def detect(self, img_or_path, reshape_output=True):
-        """
+        """Runs inference on a single image.
 
         Args:
              img_or_path: image tensor or path to image on disk
@@ -102,21 +79,8 @@ class TensorFlowHubDetector:
         return detector_output
 
     @staticmethod
-    def _load_image(img_path, max_width=None, max_height=None):
-        """
-
-        :param img_path:
-        :param max_width:
-        :param max_height:
-        :return:
-        """
+    def _load_image(img_path):
         pil_image = Image.open(img_path)
-
-        # resize if requested
-        if max_width and max_height:
-            pil_image = ImageOps.fit(
-                pil_image, (max_width, max_height), Image.ANTIALIAS
-            )
 
         pil_image_rgb = pil_image.convert("RGB")
         img = tf.keras.preprocessing.image.img_to_array(
@@ -156,22 +120,10 @@ class TensorFlowHubDetector:
         return detections
 
 
-def detections_to_csv(detections, output_path, format="oi_kaggle"):
+def detections_to_csv(
+    detections, output_path, format="tf_object_detection_api"
+):
     """Writes the detections to a CSV file.
-
-    FORMAT: "oi_kaggle" (Open Images Kaggle Competition)
-
-        Output file structure will have a single header row followed by one row
-        per image as follows:
-
-            ImageID,PredictionString
-            ImageID,{Label Confidence XMin YMin XMax YMax} {...}
-
-        Example output for two images with two detections each:
-
-            ImageID,PredictionString
-            b5d912e06f74e948,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
-            be137cf6bb0b62d5,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
 
     FORMAT: "tf_object_detection_api" (Tensorflow Object Detection API)
 
@@ -190,14 +142,28 @@ def detections_to_csv(detections, output_path, format="oi_kaggle"):
             000062a39995e348,/m/015p6,0.4,0.205719,0.849912,0.154144,1.000000
             000062a39995e348,/m/05s2s,0.5,0.137133,0.377634,0.000000,0.884185
 
+    FORMAT: "oi_kaggle" (Open Images Kaggle Competition)
+
+        Output file structure will have a single header row followed by one row
+        per image as follows:
+
+            ImageID,PredictionString
+            ImageID,{Label Confidence XMin YMin XMax YMax} {...}
+
+        Example output for two images with two detections each:
+
+            ImageID,PredictionString
+            b5d912e06f74e948,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
+            be137cf6bb0b62d5,/m/05s2s 0.9 0.46 0.08 0.93 0.5 /m/0c9ph5 0.5 0.25 0.6 0.6 0.9
+
     Args:
         detections: reshaped output list of detection dicts output from
             TensorFlowHubDetector.detect()
         output_path: the CSV filepath to write to
         format:
-            either "oi_kaggle" or "tf_object_detection_api"
-            "oi_kaggle": open images kaggle competition format
+            either "tf_object_detection_api" or "oi_kaggle"
             "tf_object_detection_api": Tensorflow Object Detection API format
+            "oi_kaggle": open images kaggle competition format
     """
     if format == "oi_kaggle":
         _detections_to_csv_oi_kaggle(
@@ -212,7 +178,7 @@ def detections_to_csv(detections, output_path, format="oi_kaggle"):
 
 
 def _detections_to_csv_oi_kaggle(detections, output_path):
-    write_header = not os.path.exists(output_path)
+    write_header = not Path(output_path).exists()
 
     with open(output_path, "a") as csvfile:
         writer = csv.writer(csvfile)
@@ -242,9 +208,7 @@ def _detections_to_csv_oi_kaggle(detections, output_path):
 
 
 def _detections_to_csv_tf_obj_det(detections, output_path):
-    write_header = not os.path.exists(output_path)
-
-    #
+    write_header = not Path(output_path).exists()
 
     with open(output_path, "a") as csvfile:
         writer = csv.writer(csvfile)
@@ -276,61 +240,3 @@ def _detections_to_csv_tf_obj_det(detections, output_path):
                         "%.4f" % det["YMax"],  # YMax
                     ]
                 )
-
-
-def csv_to_detections(input_path, format="oi_kaggle"):
-    if not os.path.exists(input_path):
-        return {}
-
-    image_ids = set()
-
-    with open(input_path) as csvfile:
-        reader = csv.reader(csvfile)
-
-        for row_no, row in enumerate(reader):
-            if row_no == 0:
-                continue
-
-            image_id, preds_str = row
-
-            image_ids.add(image_id)
-
-    return image_ids
-
-
-if __name__ == "__main__":
-    # load detector
-    detector = TensorFlowHubDetector(model_handle=MODEL_HANDLE)
-
-    # get list of paths to images
-    imgs_pattern = os.path.join(images_dir, "%s/*.jpg" % SPLIT)
-    img_paths = glob.glob(imgs_pattern)
-
-    # specify output path
-    model_name = (
-        MODEL_HANDLE.lstrip("https://tfhub.dev/")
-        .rstrip("/1")
-        .replace("/", "-")
-    )
-    output_predictions_path = os.path.join(
-        output_dir, "%s_predictions.csv" % model_name
-    )
-
-    image_ids = csv_to_detections(output_predictions_path)
-
-    # generate predictions
-    detections = {}
-    pbar = tf.keras.utils.Progbar(len(img_paths))
-    for idx, img_path in enumerate(img_paths):
-        image_id = os.path.splitext(os.path.basename(img_path))[0]
-
-        if image_id in image_ids:
-            continue
-
-        detections[image_id] = detector.detect(img_path)
-
-        pbar.update(idx)
-
-        if idx % SAVE_EVERY == 0 and detections:
-            detections_to_csv(detections, output_predictions_path)
-            detections = {}

@@ -4,7 +4,12 @@ Analyze Open Images V6
 dataset = fo.load_dataset("open-images-V6-validation")
 
 """
-from fiftyone.utils.tfodeval import load_open_images_dataset
+import fiftyone as fo
+from fiftyone.utils.open_images import (
+    load_open_images_dataset,
+    add_open_images_predictions,
+)
+from fiftyone.utils.eval.tf import evaluate_dataset
 
 
 ###############################################################################
@@ -21,18 +26,34 @@ CLASS_LABELMAP = "/Users/tylerganter/data/open-images-dataset/object_detection/d
 
 if __name__ == "__main__":
     dataset = load_open_images_dataset(
-        dataset_name="open-images-v4-test",
+        # dataset_name="open-images-v4-test",
+        dataset_name="testinginginging",
         images_dir=IMAGES_DIR,
         bounding_boxes_path=BOUNDING_BOXES_EXPANDED,
         image_labels_path=IMAGE_LABELS_EXPANDED,
-        predictions_path=INPUT_PREDICTIONS,
-        prediction_field_name="faster_rcnn",
-        class_descriptions_path=CLASS_DESCRIPTIONS,
-        load_images_with_preds=True,
+        # predictions_path=INPUT_PREDICTIONS,
+        # prediction_field_name="faster_rcnn",
+        # class_descriptions_path=CLASS_DESCRIPTIONS,
+        # load_images_with_preds=True,
+        # max_num_images=2,
     )
 
-    dataset.persistent = True
+    # dataset.persistent = True
 
-    print(dataset)
+    # add_open_images_predictions(
+    #     dataset,
+    #     INPUT_PREDICTIONS,
+    #     class_descriptions_path=CLASS_DESCRIPTIONS,
+    #     prediction_field_name="asdf"
+    # )
+
+    # evaluate_dataset(
+    #     dataset,
+    #     label_map_path=CLASS_LABELMAP,
+    #     predictions_field_name="faster_rcnn",
+    # )
+
     for sample in dataset.view()[:2]:
         print(sample)
+
+    print(dataset)
