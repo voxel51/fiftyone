@@ -8,7 +8,7 @@ on:
       - release-*
       - team-setup
     paths:
-      - electron/**
+      - electron/
 
 jobs:
   test:
