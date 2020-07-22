@@ -61,7 +61,7 @@ interface SearchResultsProps {
   send: any;
 }
 
-export default ({ results, send }: SearchResultsProps) => {
+export default ({ results, send }) => {
   if (!results.length) return null;
   return (
     <SearchResultsDiv>

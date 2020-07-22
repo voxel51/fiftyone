@@ -1,8 +1,6 @@
 import React from "react";
 import SearchResults from "./SearchResults";
 
-import "../../../app.global.css";
-
 export default {
   component: SearchResults,
   title: "ViewBar/ViewStage/SearchResults",
