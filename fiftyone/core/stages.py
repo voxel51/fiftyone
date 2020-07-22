@@ -210,7 +210,7 @@ class Match(ViewStage):
         """
         filt = self._filter
         if isinstance(filt, ViewFieldCond):
-            filt = filt.to_mongo()
+            filt = {"$expr": filt.to_mongo()}
 
         return {"$match": filt}
 
@@ -449,7 +449,7 @@ class ViewField(_FieldExpression):
         Returns:
             a string
         """
-        return "$$this.%s" % self.name if in_list else self.name
+        return "$$this.%s" % self.name if in_list else "$" + self.name
 
 
 class ViewFieldCond(_FieldExpression):
