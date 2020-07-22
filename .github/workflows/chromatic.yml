@@ -15,8 +15,6 @@ on:
       - rel-*
       - release-*
       - team-setup
-    paths:
-      - electron/**
 
 jobs:
   test:
