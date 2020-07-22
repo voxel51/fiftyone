@@ -7,14 +7,17 @@ on:
       - rel-*
       - release-*
       - team-setup
+    paths:
+      - electron/**
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
-      - run: yarn
+      - run: cd electron && yarn
       - uses: chromaui/action@v1
         with:
-          projectToken: project-token
+          projectToken: q4dp60lftrp
           token: ${{ secrets.GITHUB_TOKEN }}
+          buildScriptName: build-storybook
