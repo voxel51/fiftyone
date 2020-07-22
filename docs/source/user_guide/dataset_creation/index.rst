@@ -81,7 +81,6 @@ option is best for you.
                     
                           import fiftyone as fo
                           
-                          num_samples = 100
                           image_directory = "/path/to/images/*"
       
                           # Load your unlabeled image samples
