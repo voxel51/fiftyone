@@ -5,6 +5,7 @@ export const white59 = "hsl(0, 0%, 59%)";
 export const white20 = "hsl(0, 0%, 20%)";
 
 export const white59a = "hsla(0, 0%, 59%, 0.5)";
+export const white100a = "hsla(0, 0% , 0%, 0.14";
 
 export const grey81 = "hsl(216, 5%, 81%)";
 export const grey66 = "hsl(220, 2%, 66%)";

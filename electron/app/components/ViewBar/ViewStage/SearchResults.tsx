@@ -2,7 +2,15 @@ import React from "react";
 import { animated, config, useSpring } from "react-spring";
 import styled from "styled-components";
 
+import {
+  white100 as searchResultsBackgroundColor,
+  white59 as searchResultsBorderColor,
+  white100a as searchResultsBoxShadowColor,
+  grey60 as fontColor,
+} from "../../../shared/colors";
+
 const SearchResultDiv = animated(styled.div`
+  color: ${fontColor};
   cursor: pointer;
   margin: 0.25rem;
   padding-left: 0.5rem;
@@ -42,11 +50,11 @@ const SearchResult = React.memo(
 );
 
 const SearchResultsDiv = animated(styled.div`
-  background-color: #ffffff;
-  border: 1px solid #979797;
+  background-color: ${searchResultsBackgroundColor};
+  border: 1px solid ${searchResultsBorderColor};
   border-radius: 2px;
+  box-shadow: 0 2px 20px ${searchResultsBoxShadowColor};
   box-sizing: border-box;
-  color: #95969b;
   font-size: 1rem;
   left: 0;
   letter-spacing: 0;
