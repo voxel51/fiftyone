@@ -165,6 +165,7 @@ class ListFilter(ViewStage):
     def __init__(self, field, filter):
         self._field = field
         self._filter = filter
+        self._validate()
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -188,6 +189,13 @@ class ListFilter(ViewStage):
     def _kwargs(self):
         return {"field": self._field, "filter": self._filter}
 
+    def _validate(self):
+        if not isinstance(self._filter, (ViewFieldCond, dict)):
+            raise ValueError(
+                "Filter must be a ViewFieldCond or a MongoDB query dict; "
+                "found '%s'" % self._filter
+            )
+
 
 class Match(ViewStage):
     """Filters the samples in the stage by the given filter.
@@ -200,6 +208,7 @@ class Match(ViewStage):
 
     def __init__(self, filter):
         self._filter = filter
+        self._validate()
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -216,6 +225,13 @@ class Match(ViewStage):
 
     def _kwargs(self):
         return {"filter": self._filter}
+
+    def _validate(self):
+        if not isinstance(self._filter, (ViewFieldCond, dict)):
+            raise ValueError(
+                "Filter must be a ViewFieldCond or a MongoDB query dict; "
+                "found '%s'" % self._filter
+            )
 
 
 class MatchTag(ViewStage):
