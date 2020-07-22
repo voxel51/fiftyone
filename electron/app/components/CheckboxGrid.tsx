@@ -3,7 +3,8 @@ import styled from "styled-components";
 
 const Body = styled.div`
   display: grid;
-  grid-template-columns: repeat(${({ dataColumns }) => dataColumns + 1}, auto);
+  grid-template-columns: ${({ columnWidths }) =>
+    columnWidths.map((c) => c + "fr").join(" ")};
   vertical-align: middle;
 
   input {
@@ -20,13 +21,17 @@ export type Entry = {
 
 type Props = {
   entries: Entry[];
+  columnWidths: number[];
 };
 
-export default ({ entries }: Props) => {
+export default ({ entries, columnWidths = [] }: Props) => {
   const dataColumns = Math.max(...entries.map((e) => e.data.length));
   const dataIndices = Array.from({ length: dataColumns }).map((_, i) => i);
+  const allColumnWidths = Array.from({ length: dataColumns + 1 }).map(
+    (_, i) => columnWidths[i] || 1
+  );
   return (
-    <Body dataColumns={dataColumns}>
+    <Body columnWidths={allColumnWidths}>
       {entries.map((entry) => (
         <React.Fragment key={entry.name}>
           <label>
