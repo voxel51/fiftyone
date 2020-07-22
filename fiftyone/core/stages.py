@@ -23,7 +23,7 @@ import reprlib
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
-import fiftyone.core.utils as fou
+import fiftyone.core.expressions as foe
 
 import eta.core.utils as etau
 
@@ -175,7 +175,7 @@ class ListFilter(ViewStage):
             a MongoDB aggregation pipeline stage dict
         """
         filt = self._filter
-        if isinstance(filt, ViewFieldCond):
+        if isinstance(filt, foe.MatchExpression):
             filt = filt.to_mongo(in_list=True)
 
         return {
@@ -190,7 +190,7 @@ class ListFilter(ViewStage):
         return {"field": self._field, "filter": self._filter}
 
     def _validate(self):
-        if not isinstance(self._filter, (ViewFieldCond, dict)):
+        if not isinstance(self._filter, (foe.MatchExpression, dict)):
             raise ValueError(
                 "Filter must be a ViewFieldCond or a MongoDB query dict; "
                 "found '%s'" % self._filter
@@ -218,7 +218,7 @@ class Match(ViewStage):
             a MongoDB aggregation pipeline stage dict
         """
         filt = self._filter
-        if isinstance(filt, ViewFieldCond):
+        if isinstance(filt, foe.MatchExpression):
             filt = {"$expr": filt.to_mongo()}
 
         return {"$match": filt}
@@ -227,7 +227,7 @@ class Match(ViewStage):
         return {"filter": self._filter}
 
     def _validate(self):
-        if not isinstance(self._filter, (ViewFieldCond, dict)):
+        if not isinstance(self._filter, (foe.MatchExpression, dict)):
             raise ValueError(
                 "Filter must be a ViewFieldCond or a MongoDB query dict; "
                 "found '%s'" % self._filter
@@ -389,185 +389,3 @@ class Take(ViewStage):
 
     def _kwargs(self):
         return {"size": self._size}
-
-
-class _FieldExpression(object):
-    """Mixin for classes that represent MongoDB field expressions."""
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        return fou.pformat(self.to_mongo())
-
-    def to_mongo(self, in_list=False):
-        """Returns a MongoDB representation of the expression.
-
-        Args:
-            in_list (False): whether this expression is being used in the
-                context of a list filter
-
-        Returns:
-            a MongoDB str/dict
-        """
-        raise NotImplementedError("subclasses must implement to_mongo()")
-
-    def __abs__(self):
-        return ViewFieldCond({"$abs": self})
-
-    def __add__(self, other):
-        return ViewFieldCond({"$add": [self, other]})
-
-    def __ceil__(self):
-        return ViewFieldCond({"$ceil": self})
-
-    def __eq__(self, other):
-        return ViewFieldCond({"$eq": [self, other]})
-
-    def __floor__(self):
-        return ViewFieldCond({"$floor": self})
-
-    def __ge__(self, other):
-        return ViewFieldCond({"$gte": [self, other]})
-
-    def __gt__(self, other):
-        return ViewFieldCond({"$gt": [self, other]})
-
-    def __round__(self, n=0):
-        return ViewFieldCond({"$round": [self, n]})
-
-    def __le__(self, other):
-        return ViewFieldCond({"$lte": [self, other]})
-
-    def __lt__(self, other):
-        return ViewFieldCond({"$lt": [self, other]})
-
-    def __mod__(self, other):
-        return ViewFieldCond({"$mod": [self, other]})
-
-    def __mul__(self, other):
-        return ViewFieldCond({"$multiply": [self, other]})
-
-    __rmul__ = __mul__
-
-    def __ne__(self, other):
-        return ViewFieldCond({"$ne": [self, other]})
-
-    def __pow__(self, power, modulo=None):
-        return ViewFieldCond({"pow": [self, power]})
-
-    def __sub__(self, other):
-        return ViewFieldCond({"$subtract": [self, other]})
-
-    def __truediv__(self, other):
-        return ViewFieldCond({"$divide": [self, other]})
-
-    def exp(self):
-        """Raises Euler’s number (i.e. e ) to the specified exponent and
-        returns the result.
-        """
-        return ViewFieldCond({"$exp": self})
-
-    def is_in(self, values):
-        """Returns a boolean indicating whether a specified value is in an
-        array.
-        """
-        return ViewFieldCond({"$in": [self, list(values)]})
-
-    def ln(self):
-        """Calculates the natural logarithm ln (i.e log_e) of a number and
-        returns the result.
-        """
-        return ViewFieldCond({"$ln": self})
-
-    def log(self, base):
-        """Calculates the log of a number in the specified base and returns the
-        result.
-        """
-        return ViewFieldCond({"$log": [self, base]})
-
-    def log10(self):
-        """Calculates the log base 10 of a number and returns the result."""
-        return ViewFieldCond({"$log10": self})
-
-    def sqrt(self):
-        """Calculates the square root of a positive number and returns the
-        result.
-        """
-        return ViewFieldCond({"$sqrt": self})
-
-    def trunc(self, place=0):
-        """Truncates a number to a specified decimal place."""
-        return ViewFieldCond({"$trunc": [self, place]})
-
-
-class ViewField(_FieldExpression):
-    """A field of an object in a :class:`ViewStage`.
-
-    Args:
-        name: the name of the field
-    """
-
-    def __init__(self, name):
-        self.name = name
-
-    def __getitem__(self, idx):
-        return ViewFieldCond({"$arrayElemAt": [self, idx]})
-
-    def to_mongo(self, in_list=False):
-        """Returns a MongoDB representation of the field.
-
-        Args:
-            in_list (False): whether this field is being used in the context of
-                a list filter
-
-        Returns:
-            a string
-        """
-        return "$$this.%s" % self.name if in_list else "$" + self.name
-
-
-class ViewFieldCond(_FieldExpression):
-    """A boolean condition involving a field of an object in a
-    :class:`ViewStage`.
-
-    Args:
-        expr: the MongoDB expression defining the condition
-    """
-
-    def __init__(self, expr):
-        self._expr = expr
-
-    def __invert__(self):
-        return ViewFieldCond({"$not": self})
-
-    def __and__(self, other):
-        return ViewFieldCond({"$and": [self, other]})
-
-    def __or__(self, other):
-        return ViewFieldCond({"$or": [self, other]})
-
-    def to_mongo(self, in_list=False):
-        """Returns a MongoDB representation of the condition.
-
-        Args:
-            in_list (False): whether this condition is being used in the
-                context of a list filter
-
-        Returns:
-            a MongoDB query dict
-        """
-        return _recurse(self._expr, in_list)
-
-
-def _recurse(val, in_list):
-    if isinstance(val, (ViewField, ViewFieldCond)):
-        return val.to_mongo(in_list=in_list)
-    if isinstance(val, dict):
-        return {
-            _recurse(k, in_list): _recurse(v, in_list) for k, v in val.items()
-        }
-    elif isinstance(val, list):
-        return [_recurse(v, in_list) for v in val]
-    else:
-        return val

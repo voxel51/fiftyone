@@ -27,7 +27,7 @@ from pymongo.errors import DuplicateKeyError
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
-from fiftyone import ViewField as F
+from fiftyone import MatchExpression as E
 
 
 def drop_datasets(func):
@@ -1130,6 +1130,8 @@ class ViewTest(unittest.TestCase):
         for sample in view.match({"labels.label": "label1"}):
             self.assertEqual(sample.labels.label, "label1")
 
+
+class ExpressionTest(unittest.TestCase):
     @drop_datasets
     def test_comparison(self):
         dataset_name = self.test_comparison.__name__
@@ -1152,47 +1154,47 @@ class ViewTest(unittest.TestCase):
 
         # test `==`
         filtered_values = [v for v in dataset_values if v == value]
-        view = dataset.view().match(F(field) == value)
+        view = dataset.view().match(E(field) == value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `!=`
         filtered_values = [v for v in dataset_values if v != value]
-        view = dataset.view().match(F(field) != value)
+        view = dataset.view().match(E(field) != value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `>`
         filtered_values = [v for v in dataset_values if v > value]
-        view = dataset.view().match(F(field) > value)
+        view = dataset.view().match(E(field) > value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `>=`
         filtered_values = [v for v in dataset_values if v >= value]
-        view = dataset.view().match(F(field) >= value)
+        view = dataset.view().match(E(field) >= value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `<`
         filtered_values = [v for v in dataset_values if v < value]
-        view = dataset.view().match(F(field) < value)
+        view = dataset.view().match(E(field) < value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `<=`
         filtered_values = [v for v in dataset_values if v <= value]
-        view = dataset.view().match(F(field) <= value)
+        view = dataset.view().match(E(field) <= value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `is_in`
-        view = dataset.view().match(F(field).is_in(values))
+        view = dataset.view().match(E(field).is_in(values))
         for sample in view:
             self.assertIn(sample[field], values)
 
         # test `NOT is_in`
-        view = dataset.view().match(~(F(field).is_in(values)))
+        view = dataset.view().match(~(E(field).is_in(values)))
         for sample in view:
             self.assertNotIn(sample[field], values)
 
@@ -1214,14 +1216,14 @@ class ViewTest(unittest.TestCase):
         value = 5
 
         # test logical not
-        view = dataset.view().match(~(F(field) == value))
+        view = dataset.view().match(~(E(field) == value))
         for sample in view:
             self.assertNotEqual(sample[field], value)
 
         # test logical and
         bounds = [3, 6]
         view = dataset.view().match(
-            (F(field) > bounds[0]) & (F(field) < bounds[1])
+            (E(field) > bounds[0]) & (E(field) < bounds[1])
         )
         for sample in view:
             self.assertGreater(sample[field], bounds[0])
@@ -1229,7 +1231,7 @@ class ViewTest(unittest.TestCase):
 
         # test logical or
         view = dataset.view().match(
-            (F(field) < bounds[0]) | (F(field) > bounds[1])
+            (E(field) < bounds[0]) | (E(field) > bounds[1])
         )
         for sample in view:
             my_int = sample[field]
@@ -1245,6 +1247,20 @@ class ViewTest(unittest.TestCase):
         # for sample in view:
         #     self.assertGreaterEqual(sample[field], bounds[0])
         #     self.assertLessEqual(sample[field], bounds[1])
+
+    @drop_datasets
+    def test_arithmetic(self):
+        dataset_name = self.test_arithmetic.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        # @todo(Tyler)
+
+    @drop_datasets
+    def test_array(self):
+        dataset_name = self.test_array.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        # @todo(Tyler)
 
 
 class FieldTest(unittest.TestCase):
@@ -1572,6 +1588,6 @@ if __name__ == "__main__":
     # unittest.main(verbosity=2)
 
     singletest = unittest.TestSuite()
-    singletest.addTest(ViewTest("test_comparison"))
-    singletest.addTest(ViewTest("test_logic"))
+    singletest.addTest(ExpressionTest("test_comparison"))
+    singletest.addTest(ExpressionTest("test_logic"))
     unittest.TextTestRunner().run(singletest)
