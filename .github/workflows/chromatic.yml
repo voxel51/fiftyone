@@ -1,0 +1,20 @@
+name: Chromatic
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+    branches:
+      - develop
+      - rel-*
+      - release-*
+      - team-setup
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - run: yarn
+      - uses: chromaui/action@v1
+        with:
+          projectToken: project-token
+          token: ${{ secrets.GITHUB_TOKEN }}
