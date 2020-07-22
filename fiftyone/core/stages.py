@@ -431,10 +431,10 @@ class _FieldExpression(object):
         return ViewFieldCond({"$lte": [self, other]})
 
     def is_in(self, values):
-        return ViewFieldCond({self: {"$in": list(values)}})
+        return ViewFieldCond({"$in": [self, list(values)]})
 
     def is_not_in(self, values):
-        return ViewFieldCond({self: {"$nin": list(values)}})
+        return ViewFieldCond({"$nin": [self, list(values)]})
 
     def __mul__(self, other):
         return ViewFieldCond({"$multiply": [self, other]})
