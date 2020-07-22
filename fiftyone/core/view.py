@@ -272,13 +272,36 @@ class DatasetView(foc.SampleCollection):
         return self._copy_with_new_stage(stage)
 
     @view_stage
+    def list_filter(self, field, filter):
+        """Filters the elements of the given list field.
+
+        Elements of ``field``, which must be a list field, for which ``filter``
+        returns ``False`` are omitted from the field.
+
+        Args:
+            field: the list field
+            filter: a :class:`fiftyone.core.stages.ViewFieldCond` or
+                `MongoDB query dict <https://docs.mongodb.com/manual/tutorial/query-documents>`_
+                describing the filter to apply
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.ListFilter(field, filter))
+
+    @view_stage
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
+        Samples for which ``filter`` returns ``False`` are omitted.
+
+        See https://docs.mongodb.com/manual/tutorial/query-documents for
+        details about passing a MongoDB query dict to this function.
+
         Args:
-            filter: a MongoDB query dict. See
-                https://docs.mongodb.com/manual/tutorial/query-documents
-                for details
+            filter: a :class:`fiftyone.core.stages.ViewFieldCond` or
+                `MongoDB query dict <https://docs.mongodb.com/manual/tutorial/query-documents>`_
+                describing the filter to apply
 
         Returns:
             a :class:`DatasetView`
