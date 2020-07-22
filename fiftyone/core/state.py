@@ -24,6 +24,7 @@ from bson import json_util
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
+import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 
@@ -99,4 +100,87 @@ class StateDescription(etas.Serializable):
             dataset=dataset,
             selected=selected,
             view=view,
+            **kwargs
         )
+
+
+class StateDescriptionWithDerivables(StateDescription):
+    """This class extends :class:`StateDescription` to include information that
+    does not define the state but needs to be fetched/computed and passed to
+    the frontend application, such as derived statistics (number of sample
+    occurrences with a given tag, etc.)
+
+    The python process should only ever see instances of
+    :class:`StateDescription` and the app should only ever see instances of
+    :class:`StateDescriptionWithDerivables` with the server acting as the
+    broker.
+    """
+
+    def __init__(self, derivables=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if derivables is not None:
+            self.derivables = derivables
+        else:
+            self.derivables = self.get_derivables()
+
+    def get_derivables(self):
+        """Computes all "derivable" data that needs to be passed to the app,
+        but does not define the state.
+
+        Returns:
+            a dictionary with key, value pairs for each piece of derivable
+                information.
+        """
+        return {"dataset_stats": self._get_dataset_stats()}
+
+    @classmethod
+    def from_dict(cls, d, **kwargs):
+        kwargs["derivables"] = d.get("derivables", None)
+        return super().from_dict(d, **kwargs)
+
+    def _get_dataset_stats(self):
+        if self.dataset is None:
+            return {}
+
+        return get_dataset_stats(self.dataset)
+
+
+def get_dataset_stats(dataset):
+    """Counts instances of each tag and each field within the samples of a
+    dataset
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset` instance
+
+    Returns:
+        a dictionary with structure:
+
+            {
+                'tags': {
+                    '<TAG 1>': <COUNT>,
+                    '<TAG 2>': <COUNT>,
+                    ...
+                },
+                'custom_fields': {
+                    '<FIELD 1>': <COUNT>,
+                    '<FIELD 2>': <COUNT>,
+                    ...
+                }
+            }
+    """
+    _sample_doc_cls = type(dataset.name, (foo.ODMDatasetSample,), {})
+    num_default_fields = len(_sample_doc_cls.get_field_schema())
+
+    field_names = [field_name for field_name in dataset.get_field_schema()]
+
+    return {
+        "tags": {
+            tag: len(dataset.view().match_tag(tag))
+            for tag in dataset.get_tags()
+        },
+        "custom_fields": {
+            field_name: len(dataset.view().exists(field_name))
+            for field_name in field_names[num_default_fields:]
+        },
+    }

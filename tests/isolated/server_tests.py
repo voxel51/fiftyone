@@ -30,7 +30,7 @@ import fiftyone.core.client as foc
 import fiftyone.core.odm as foo
 import fiftyone.core.service as fos
 from fiftyone.core.session import Session
-from fiftyone.core.state import StateDescription
+from fiftyone.core.state import StateDescriptionWithDerivables
 
 
 class AppClient(foc.BaseClient):
@@ -38,7 +38,9 @@ class AppClient(foc.BaseClient):
 
     def __init__(self):
         self.response = None
-        super(AppClient, self).__init__("/state", StateDescription)
+        super(AppClient, self).__init__(
+            "/state", StateDescriptionWithDerivables
+        )
 
     def on_update(self, data):
         super(AppClient, self).on_update(data)
@@ -46,7 +48,9 @@ class AppClient(foc.BaseClient):
 
 
 def _serialize(state):
-    return StateDescription.from_dict(state.serialize()).serialize()
+    return StateDescriptionWithDerivables.from_dict(
+        state.serialize()
+    ).serialize()
 
 
 class ServerServiceTests(unittest.TestCase):
