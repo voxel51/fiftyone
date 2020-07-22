@@ -33,6 +33,7 @@ except:
     import pprint
 
 import fiftyone.core.collections as foc
+import fiftyone.core.list_filter as folf
 import fiftyone.core.stages as fos
 
 
@@ -445,8 +446,8 @@ class DatasetView(foc.SampleCollection):
             cond: a dict that represents a MongoDB aggregation expression that
                 resolves to a boolean value determining if the element should
                 be kept in the list. It is recommended to uses the helper
-                :class:`Cond` class rather than generating these expressions
-                from scratch.
+                :class:`fiftyone.core.list_filter.Cond` class rather than
+                generating these expressions from scratch.
 
                 See https://docs.mongodb.com/manual/reference/operator/aggregation/filter/
                 for more details.
@@ -466,11 +467,11 @@ class DatasetView(foc.SampleCollection):
 
         if prev_cond is not None and on_collison != "replace":
             if on_collison == "and":
-                view._list_filters[field_name] = Cond.logical_and(
+                view._list_filters[field_name] = folf.logical_and(
                     [prev_cond, cond]
                 )
             elif on_collison == "or":
-                view._list_filters[field_name] = Cond.logical_or(
+                view._list_filters[field_name] = folf.logical_or(
                     [prev_cond, cond]
                 )
             else:
@@ -609,56 +610,3 @@ class DatasetView(foc.SampleCollection):
             }
             for field_name, cond in self._list_filters.items()
         ]
-
-
-class Cond:
-    @staticmethod
-    def logical_not(cond):
-        return {"$not": cond}
-
-    @staticmethod
-    def logical_and(conds):
-        return {"$and": conds}
-
-    @staticmethod
-    def logical_or(conds):
-        return {"$or": conds}
-
-    @classmethod
-    def eq(cls, field_name_or_exp, value):
-        return cls._comparison("eq", field_name_or_exp, value)
-
-    @classmethod
-    def ne(cls, field_name_or_exp, value):
-        return cls._comparison("ne", field_name_or_exp, value)
-
-    @classmethod
-    def gt(cls, field_name_or_exp, value):
-        return cls._comparison("gt", field_name_or_exp, value)
-
-    @classmethod
-    def gte(cls, field_name_or_exp, value):
-        return cls._comparison("gte", field_name_or_exp, value)
-
-    @classmethod
-    def lt(cls, field_name_or_exp, value):
-        return cls._comparison("lt", field_name_or_exp, value)
-
-    @classmethod
-    def lte(cls, field_name_or_exp, value):
-        return cls._comparison("lte", field_name_or_exp, value)
-
-    @staticmethod
-    def bbox_area():
-        return {
-            "$multiply": [
-                {"$arrayElemAt": ["$$this.bounding_box", 2]},
-                {"$arrayElemAt": ["$$this.bounding_box", 3]},
-            ]
-        }
-
-    @staticmethod
-    def _comparison(comparator, field_name_or_exp, value):
-        if isinstance(field_name_or_exp, str):
-            return {"$" + comparator: ["$$this." + field_name_or_exp, value]}
-        return {"$" + comparator: [field_name_or_exp, value]}
