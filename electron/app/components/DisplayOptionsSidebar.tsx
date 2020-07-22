@@ -14,21 +14,20 @@ type Props = {
 
 const Container = styled.div`
   margin-bottom: 2px;
-  grid-template-columns: repeat(2, auto);
 `;
+
+const Cell = ({ label, entries }) => (
+  <DropdownCell label={label} expanded>
+    <CheckboxGrid columnWidths={[3, 2]} entries={entries} />
+  </DropdownCell>
+);
 
 const DisplayOptionsSidebar = ({ tags, labels, scalars }: Props) => {
   return (
     <Container>
-      <DropdownCell label="Tags" expanded>
-        <CheckboxGrid columnWidths={[3, 2]} entries={tags} />
-      </DropdownCell>
-      <DropdownCell label="Labels" expanded>
-        <CheckboxGrid columnWidths={[3, 2]} entries={labels} />
-      </DropdownCell>
-      <DropdownCell label="Scalars" expanded>
-        <CheckboxGrid columnWidths={[3, 2]} entries={scalars} />
-      </DropdownCell>
+      <Cell label="Tags" entries={tags} />
+      <Cell label="Labels" entries={labels} />
+      <Cell label="Scalars" entries={scalars} />
     </Container>
   );
 };
