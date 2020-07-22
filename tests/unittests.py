@@ -1211,22 +1211,7 @@ class ViewTest(unittest.TestCase):
         )
 
         field = "my_int"
-
-        # # test non-match ViewStage raises TypeError
-        # view = dataset.view().logical_or([fos.SortBy("my_int")])
-        # with self.assertRaises(TypeError):
-        #     view.first()
-
         value = 5
-
-        # # test logical not with invalid input
-        # view = dataset.view().logical_not(
-        #     fos.LogicalAnd(
-        #         [fos.Equal(field, value), fos.NotEqual(field, value)]
-        #     )
-        # )
-        # with self.assertRaises(ValueError):
-        #     view.first()
 
         # test logical not
         view = dataset.view().match(~(F(field) == value))
