@@ -453,7 +453,7 @@ class ViewField(_FieldExpression):
         self.name = name
 
     def __getitem__(self, idx):
-        return ViewFieldCond({"$arrayElemAt": [self, idx]})
+        return DerivedViewField({"$arrayElemAt": [self, idx]})
 
     def to_mongo(self, in_list=False):
         """Returns a MongoDB representation of the field.
@@ -466,6 +466,29 @@ class ViewField(_FieldExpression):
             a string
         """
         return "$$this.%s" % self.name if in_list else "$" + self.name
+
+
+class DerivedViewField(ViewField):
+    """A dynamically derived field of an object in a :class:`ViewStage`.
+
+    Args:
+        expr: the MongoDB expression defining the derived field
+    """
+
+    def __init__(self, expr):
+        self._expr = expr
+
+    def to_mongo(self, in_list=False):
+        """Returns a MongoDB representation of the field.
+
+        Args:
+            in_list (False): whether this field is being used in the context of
+                a list filter
+
+        Returns:
+            a string
+        """
+        return _recurse(self._expr, in_list)
 
 
 class ViewFieldCond(_FieldExpression):
