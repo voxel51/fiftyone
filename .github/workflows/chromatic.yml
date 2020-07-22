@@ -40,7 +40,4 @@ jobs:
         run: yarn
       - name: Publish storybook
         working-directory: electron
-        uses: chromaui/action@v1
-        with:
-          projectToken: q4dp60lftrp
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: yarn chromatic
