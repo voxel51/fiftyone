@@ -179,7 +179,7 @@ class ListFilter(ViewStage):
             filt = filt.to_mongo(in_list=True)
 
         return {
-            "$project": {
+            "$addFields": {
                 self._field: {
                     "$filter": {"input": "$" + self._field, "cond": filt}
                 }
