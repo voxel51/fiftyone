@@ -1,5 +1,13 @@
 name: Chromatic
 on:
+  push:
+    branches:
+      - develop
+      - rel-*
+      - release-*
+      - github-actions-*
+    tags:
+      - v*
   pull_request:
     types: [opened, synchronize, ready_for_review]
     branches:
@@ -12,7 +20,8 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
+    if: github.event.pull_request.draft == false
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
@@ -29,8 +38,8 @@ jobs:
         working-directory: electron
         run: yarn
       - name: Publish storybook
-        uses: chromaui/action@v1
         working-directory: electron
+        uses: chromaui/action@v1
         with:
           projectToken: q4dp60lftrp
           token: ${{ secrets.GITHUB_TOKEN }}
