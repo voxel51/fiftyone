@@ -41,4 +41,3 @@ jobs:
         with:
           projectToken: q4dp60lftrp
           token: ${{ secrets.GITHUB_TOKEN }}
-          buildScriptName: build-storybook
