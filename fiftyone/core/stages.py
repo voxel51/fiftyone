@@ -412,34 +412,93 @@ class _FieldExpression(object):
         """
         raise NotImplementedError("subclasses must implement to_mongo()")
 
+    def __abs__(self):
+        return ViewFieldCond({"$abs": self})
+
+    def __add__(self, other):
+        return ViewFieldCond({"$add": [self, other]})
+
+    def __ceil__(self):
+        return ViewFieldCond({"$ceil": self})
+
     def __eq__(self, other):
         return ViewFieldCond({"$eq": [self, other]})
 
-    def __ne__(self, other):
-        return ViewFieldCond({"$ne": [self, other]})
-
-    def __gt__(self, other):
-        return ViewFieldCond({"$gt": [self, other]})
+    def __floor__(self):
+        return ViewFieldCond({"$floor": self})
 
     def __ge__(self, other):
         return ViewFieldCond({"$gte": [self, other]})
 
-    def __lt__(self, other):
-        return ViewFieldCond({"$lt": [self, other]})
+    def __gt__(self, other):
+        return ViewFieldCond({"$gt": [self, other]})
+
+    def __round__(self, n=0):
+        return ViewFieldCond({"$round": [self, n]})
 
     def __le__(self, other):
         return ViewFieldCond({"$lte": [self, other]})
 
-    def is_in(self, values):
-        return ViewFieldCond({"$in": [self, list(values)]})
+    def __lt__(self, other):
+        return ViewFieldCond({"$lt": [self, other]})
 
-    def is_not_in(self, values):
-        return ViewFieldCond({"$nin": [self, list(values)]})
+    def __mod__(self, other):
+        return ViewFieldCond({"$mod": [self, other]})
 
     def __mul__(self, other):
         return ViewFieldCond({"$multiply": [self, other]})
 
     __rmul__ = __mul__
+
+    def __ne__(self, other):
+        return ViewFieldCond({"$ne": [self, other]})
+
+    def __pow__(self, power, modulo=None):
+        return ViewFieldCond({"pow": [self, power]})
+
+    def __sub__(self, other):
+        return ViewFieldCond({"$subtract": [self, other]})
+
+    def __truediv__(self, other):
+        return ViewFieldCond({"$divide": [self, other]})
+
+    def exp(self):
+        """Raises Euler’s number (i.e. e ) to the specified exponent and
+        returns the result.
+        """
+        return ViewFieldCond({"$exp": self})
+
+    def is_in(self, values):
+        """Returns a boolean indicating whether a specified value is in an
+        array.
+        """
+        return ViewFieldCond({"$in": [self, list(values)]})
+
+    def ln(self):
+        """Calculates the natural logarithm ln (i.e log_e) of a number and
+        returns the result.
+        """
+        return ViewFieldCond({"$ln": self})
+
+    def log(self, base):
+        """Calculates the log of a number in the specified base and returns the
+        result.
+        """
+        return ViewFieldCond({"$log": [self, base]})
+
+    def log10(self):
+        """Calculates the log base 10 of a number and returns the result."""
+        return ViewFieldCond({"$log10": self})
+
+    def sqrt(self):
+        """Calculates the square root of a positive number and returns the
+        result.
+        """
+        return ViewFieldCond({"$sqrt": self})
+
+    def trunc(self, place=0):
+        """Truncates a number to a specified decimal place."""
+        return ViewFieldCond({"$trunc": [self, place]})
 
 
 class ViewField(_FieldExpression):
@@ -502,7 +561,7 @@ class ViewFieldCond(_FieldExpression):
     def __init__(self, expr):
         self._expr = expr
 
-    def __not__(self):
+    def __invert__(self):
         return ViewFieldCond({"$not": self})
 
     def __and__(self, other):

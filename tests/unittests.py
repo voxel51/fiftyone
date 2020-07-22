@@ -1191,12 +1191,10 @@ class ViewTest(unittest.TestCase):
         for sample in view:
             self.assertIn(sample[field], values)
 
-        # @todo(Tyler) CONTINUE HERE
-        #   use NOT(F(field).is_in(values))
-        # test `is_not_in`
-        # view = dataset.view().match(F(field).is_in(values))
-        # for sample in view:
-        #     self.assertNotIn(sample[field], values)
+        # test `NOT is_in`
+        view = dataset.view().match(~(F(field).is_in(values)))
+        for sample in view:
+            self.assertNotIn(sample[field], values)
 
     @drop_datasets
     def test_logic(self):
@@ -1218,9 +1216,9 @@ class ViewTest(unittest.TestCase):
         # view = dataset.view().logical_or([fos.SortBy("my_int")])
         # with self.assertRaises(TypeError):
         #     view.first()
-        #
-        # value = 5
-        #
+
+        value = 5
+
         # # test logical not with invalid input
         # view = dataset.view().logical_not(
         #     fos.LogicalAnd(
@@ -1229,35 +1227,29 @@ class ViewTest(unittest.TestCase):
         # )
         # with self.assertRaises(ValueError):
         #     view.first()
-        #
-        # # test logical not
-        # view = dataset.view().logical_not(fos.Equal(field, value))
-        # for sample in view:
-        #     self.assertNotEqual(sample[field], value)
-        #
-        # # test logical and
-        # bounds = [3, 6]
-        # view = dataset.view().logical_and(
-        #     [
-        #         fos.GreaterThan(field, bounds[0]),
-        #         fos.LessThan(field, bounds[1]),
-        #     ]
-        # )
-        # for sample in view:
-        #     self.assertGreater(sample[field], bounds[0])
-        #     self.assertLess(sample[field], bounds[1])
-        #
-        # # test logical or
-        # view = dataset.view().logical_or(
-        #     [
-        #         fos.LessThan(field, bounds[0]),
-        #         fos.GreaterThan(field, bounds[1]),
-        #     ]
-        # )
-        # for sample in view:
-        #     my_int = sample[field]
-        #     self.assertTrue(my_int < bounds[0] or my_int > bounds[1])
-        #
+
+        # test logical not
+        view = dataset.view().match(~(F(field) == value))
+        for sample in view:
+            self.assertNotEqual(sample[field], value)
+
+        # test logical and
+        bounds = [3, 6]
+        view = dataset.view().match(
+            (F(field) > bounds[0]) & (F(field) < bounds[1])
+        )
+        for sample in view:
+            self.assertGreater(sample[field], bounds[0])
+            self.assertLess(sample[field], bounds[1])
+
+        # test logical or
+        view = dataset.view().match(
+            (F(field) < bounds[0]) | (F(field) > bounds[1])
+        )
+        for sample in view:
+            my_int = sample[field]
+            self.assertTrue(my_int < bounds[0] or my_int > bounds[1])
+
         # # test logical nor
         # view = dataset.view().logical_nor(
         #     [
