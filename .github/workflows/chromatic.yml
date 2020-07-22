@@ -14,9 +14,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - run: cd electron && yarn
-      - uses: chromaui/action@v1
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+      - name: Fetch dependency cache
+        uses: actions/cache@v2
+        with:
+          key: electron-cache
+          path: electron/node_modules
+      - name: Clone submodules
+        run: |
+          git submodule set-url electron/app/player51 https://${{ secrets.FIFTYONE_GITHUB_TOKEN }}@github.com/voxel51/player51
+          git submodule update --init
+      - name: Install dependencies
+        working-directory: electron
+        run: yarn
+      - name: Publish storybook
+        uses: chromaui/action@v1
+        working-directory: electron
         with:
           projectToken: q4dp60lftrp
           token: ${{ secrets.GITHUB_TOKEN }}
