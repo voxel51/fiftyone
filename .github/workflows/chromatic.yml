@@ -40,4 +40,4 @@ jobs:
         run: yarn
       - name: Publish storybook
         working-directory: electron
-        run: yarn chromatic
+        run: yarn chromatic --project-token=${{ secrets.CHROMATIC_PROJECT_TOKEN }}

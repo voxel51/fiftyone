@@ -5,7 +5,6 @@
   "description": "FiftyOne by Voxel51",
   "scripts": {
     "build": "concurrently \"yarn build-main\" \"yarn build-renderer\"",
-    "build-storybook-docs": "build-storybook -s public --docs",
     "build-dll": "cross-env NODE_ENV=development webpack --config ./configs/webpack.config.renderer.dev.dll.babel.js --colors",
     "build-e2e": "cross-env E2E_BUILD=true yarn build",
     "build-main": "cross-env NODE_ENV=production webpack --config ./configs/webpack.config.main.prod.babel.js --colors",
@@ -39,7 +38,8 @@
     "test-watch": "yarn test --watch",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
-    "chromatic": "npx chromatic --project-token=q4dp60lftrp"
+    "build-storybook-docs": "build-storybook -s public --docs",
+    "chromatic": "npx chromatic"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
