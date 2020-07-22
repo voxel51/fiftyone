@@ -22,8 +22,8 @@ formats.
 Quickstart
 ----------
 
-Ingest a directory of images into FiftyOne and explore them in the FiftyOne
-App:
+Load a directory of unlabeled images into FiftyOne and explore them in the 
+FiftyOne App:
 
 .. tabs::
 
@@ -48,11 +48,12 @@ App:
         fiftyone app view \
             --dataset-dir /path/to/images-dir --type fiftyone.types.ImageDirectory
 
-Loading datasets
-----------------
+Loading labeled datasets
+------------------------
 
-Depending on the state of your data, FiftyOne provides a few different options
-for loading it. See the table below to figure out which option is best for you!
+Depending on the format of your labels, FiftyOne provides a few different 
+options for loading your |Dataset|. See the tabs below to figure out which 
+option is best for you.
 
 
 .. tabs::
@@ -65,36 +66,9 @@ for loading it. See the table below to figure out which option is best for you!
 
                 :doc:`Adding samples to your Dataset<samples>`
                 
-                You will build a |Dataset| by iterating over your 
-                images and labels and creating a FiftyOne |Sample| for each 
-                image.
-
-                .. code-block:: python
-                    :linenos:
-
-                    import fiftyone as fo
-                    
-                    num_samples = 100
-                    images_patt = "/path/to/images/%06d.jpg"
-
-                    label_field = "ground_truth"
-                    labels = {"/path/to/images/000001.jpg": "dog", ....}
-                    
-                    # Generate some labeled image samples
-                    samples = []
-                    for i in range(num_samples):
-                        # Path to the image on disk
-                        filepath = images_patt % i
-                        label = labels[filepath]
-
-                        sample = fo.Sample(filepath=filepath)
-                        sample[label_field] = fo.Classification(label=label)
-                        samples.append(sample)
-                    
-                    # Create the dataset
-                    dataset = fo.Dataset("classification-dataset")
-                    dataset.add_samples(samples)
-
+                The recommended approach to loading a |Dataset| is
+                by iterating over your images and labels and creating 
+                a FiftyOne |Sample| for each image/label pair.
 
                 .. tabs::
 
@@ -102,18 +76,19 @@ for loading it. See the table below to figure out which option is best for you!
                     
                       .. code:: python
                           :linenos:
+
+                          import glob
                     
                           import fiftyone as fo
                           
                           num_samples = 100
-                          images_patt = "/path/to/images/%06d.jpg"
+                          image_directory = "/path/to/images/*"
       
                           # Load your unlabeled image samples
                           samples = []
-                          for i in range(num_samples):
-                              # Path to the image on disk
-                              filepath = images_patt % i
 
+                          #Example: One way of iterating over image filepaths
+                          for filepath in glob.glob(image_directory):
                               samples.append(fo.Sample(filepath=filepath))
                           
                           # Create the dataset
@@ -125,20 +100,22 @@ for loading it. See the table below to figure out which option is best for you!
                       .. code:: python
                           :linenos:
 
+                          import glob
+
                           import fiftyone as fo
                           
-                          num_samples = 100
-                          images_patt = "/path/to/images/%06d.jpg"
-      
+                          images_directory = "/path/to/images/*"
                           label_field = "ground_truth"
-                          labels = {"/path/to/images/000001.jpg": "dog", ....}
+
+                          # For example, some custom label format 
+                          annotations = {"/path/to/images/000001.jpg": "dog", ....}
                           
                           # Load your labeled image samples
                           samples = []
-                          for i in range(num_samples):
-                              # Path to the image on disk
-                              filepath = images_patt % i
-                              label = labels[filepath]
+
+                          # Example: One way of iterating over image filepaths
+                          for filepath in glob.glob(image_directory):
+                              label = annotations[filepath]
       
                               sample = fo.Sample(filepath=filepath)
                               sample[label_field] = fo.Classification(label=label)
@@ -152,21 +129,23 @@ for loading it. See the table below to figure out which option is best for you!
                     
                       .. code:: python
                           :linenos:
-                    
+                            
+                          import glob
+
                           import fiftyone as fo
                     
-                          num_samples = 100
-                          images_patt = "/path/to/images/%06d.jpg"
-      
+                          images_directory = "/path/to/images/*"
                           label_field = "ground_truth"
-                          annotations = {"/path/to/images/000001.jpg": [{"bbox":...}], ...}
+
+                          # For example, some custom label format 
+                          annotations = {"/path/to/images/000001.jpg": [{"bbox":..., "label":...}], ...}
                     
                           # Load your detection samples
                           samples = []
-                          for i in range(num_samples):
-                              # Path to the image on disk
-                              filepath = images_patt % i
-                    
+
+                          # Example: One way of iterating over image filepaths
+                          for filepath in glob.glob(image_directory):
+
                               # Object detections
                               detections = []
                               for det in annotations[filepath]:
@@ -190,8 +169,8 @@ for loading it. See the table below to figure out which option is best for you!
                     
                       .. code:: python
                           :linenos:
-                    
-                          import random
+
+                          import glob
                     
                           import eta.core.data as etad
                           import eta.core.geometry as etag
@@ -200,13 +179,10 @@ for loading it. See the table below to figure out which option is best for you!
                     
                           import fiftyone as fo
                     
-                    
-                          num_samples = 3
-                          num_objects_per_sample = 4
+                          images_directory = "/path/to/images/*"
                           label_field = "ground_truth"
-                          images_patt = "/path/to/images/%06d.jpg"
 
-
+                          # For example, some custom label format 
                           annotations = {"/path/to/images/000001.jpg": 
                                 "label": ...,
                                 "objects": [{"bbox":..., "label":..., "age":...}],
@@ -214,9 +190,9 @@ for loading it. See the table below to figure out which option is best for you!
                     
                           # Load your multitask labels 
                           samples = []
-                          for i in range(num_samples):
-                              # Path to the image on disk
-                              filepath = images_patt % i
+
+                          # Example: One way of iterating over image filepaths
+                          for filepath in glob.glob(image_directory):
                     
                               image_labels = etai.ImageLabels()
                     
@@ -225,7 +201,6 @@ for loading it. See the table below to figure out which option is best for you!
                               image_labels.add_attribute(etad.CategoricalAttribute("label", label))
                     
                               # Object detections
-                              for j in range(num_objects_per_sample):
                               for det in annotations[filepath]["objects"]:
                                   label = det["label"]
                     
@@ -253,11 +228,8 @@ for loading it. See the table below to figure out which option is best for you!
 
                 .. note::
 
-                    The above example shows how to load a classification |Dataset|.
-
-                    :doc:`Click here<samples>` to find out how to load an 
-                    unlabeled, detection, or multitask prediction |Dataset| 
-                    and more!
+                    :doc:`Click here<samples>` to find out more information
+                    about loading samples into a |Dataset|.
 
             .. tab:: My images are **not** stored as individual files
 
@@ -296,32 +268,102 @@ for loading it. See the table below to figure out which option is best for you!
                     :ref:`Click here<Ingesting samples into datasets>` to learn 
                     more about ingesting samples!
 
-                You then need to load your labels into each |Sample| of the
-                |Dataset|.
+                If you just want to load your unlabeled images you can stop
+                here. Otherwise you now need to load your labels into each 
+                |Sample| of the |Dataset|.
+
+                
+                .. tabs::
+
+                    .. tab:: Classification
+
+                        .. code-block:: python
+                            :linenos:
+
+                            label_field = "ground_truth"
+
+                            # For example, some custom label format 
+                            annotations = {"/path/to/images/000001.jpg": "dog", ....}
+
+                            for sample in dataset:
+                                label = annotations[sample.filepath]
+
+                                # Add your label field
+                                sample[label_field] = fo.Classification(label=label)
+                                sample.save()
+
+                    .. tab:: Detection
+
+                        .. code-block:: python
+                            :linenos:
+
+                            label_field = "ground_truth"
+
+                            # For example, some custom label format 
+                            annotations = {"/path/to/images/000001.jpg": [{"bbox":..., "label":...}], ...}
+
+                            for sample in dataset:
+                              # Object detections
+                              detections = []
+                              for det in annotations[sample.filepath]:
+                                  label = det["label"]
+
+                                  # Relative coordinates ranging from 0 to 1
+                                  # [top-left-x, top-left-y, width, height] 
+                                  bounding_box = det["bbox"]
+
+                                  detections.append(fo.Detection(label=label, bounding_box=bounding_box))
+                    
+                              sample[label_field] = fo.Detections(detections=detections)
+                              sample.save()
+
+                    .. tab:: Multitask prediction 
+
+                        .. code-block:: python
+                            :linenos:
+
+                            label_field = "ground_truth"
+
+                            # For example, some custom label format 
+                            annotations = {"/path/to/images/000001.jpg": 
+                                  "label": ...,
+                                  "objects": [{"bbox":..., "label":..., "age":...}],
+                            ...}
 
 
-                .. code-block:: python
-                    :linenos:
+                            for sample in dataset:
+                    
+                              image_labels = etai.ImageLabels()
+                    
+                              # Frame-level classifications
+                              label = annotations[filepath]["label"]
+                              image_labels.add_attribute(etad.CategoricalAttribute("label", label))
+  
+                              # Object detections
+                              for det in annotations[filepath]["objects"]:
+                                  label = det["label"]
+                    
+                                  # Relative coordinates ranging from 0 to 1
+                                  # [top-left-x, top-left-y, bottom-right-x, bottom-right-y]
+                                  bbox = det["bbox"]
+                                  bounding_box = etag.BoundingBox.from_coords(bbox)
+                    
+                                  obj = etao.DetectedObject(label=label, bounding_box=bounding_box)
+                    
+                                  # Object attributes
+                                  age = det["age"]
+                                  obj.add_attribute(etad.NumericAttribute("age", age))
+                    
+                                  image_labels.add_object(obj)
 
-                    labels = # Some way for you to access labels for each image
-                    label_field = "ground_truth"
-
-                    for sample in dataset:
-                        label = labels[sample.filepath]
-
-                        # Add your label field
-                        sample[label_field] = fo.Classification(label=label)
-                        sample.save()
+                              sample[label_field] =fo.ImageLabels(labels=image_labels))
+                              sample.save()
 
 
                 .. note::
 
-                    The second portion of the above example shows how to load a 
-                    classification |Dataset|. 
-
-                    :doc:`Click here<samples>` to find out how to load an unlabeled,
-                    detection, or multitask prediction |Dataset| and
-                    more!
+                    :doc:`Click here<samples>` to find out more information
+                    about loading labeled samples into a |Dataset|.
 
 
     .. tab:: I have data in a common format 
@@ -370,7 +412,7 @@ for loading it. See the table below to figure out which option is best for you!
 
         .. note::
            
-            :doc:`Click here<datasets>` to learn more about loading datasets by type!
+            :doc:`Click here<datasets>` to learn more about loading datasets by type.
 
 
     .. tab:: I don't have data 
@@ -441,14 +483,16 @@ format.
     .. tab:: I have a data parser
 
         If you already have a way to efficiently parse your data into python,
-        then the recommended option is to wrap it in a FiftyOne SampleParser.
+        then the recommended option is to wrap it in a FiftyOne |SampleParser|.
         For example, a `torchvision.dataset` is a parser for various datasets
-        that has been wrapped in a FiftyOne SampleParser.
+        that has been wrapped in a FiftyOne |SampleParser|.
 
-        :ref:`Writing a custom SampleParser<Writing a custom SampleParser>` will allow you to use the
-        ``dataset.add_labeled_images()`` and ``dataset.ingest_labeled_images()``
-        functions directly without having to loop over the dataset again to add
-        your labels. Additionally, this will allow FiftyOne to load your
+        :ref:`Writing a custom SampleParser<Writing a custom SampleParser>` will allow you to use:
+
+        - :meth:`dataset.add_labeled_images()<fiftyone.core.dataset.Dataset.add_labeled_images>`
+        - :meth:`dataset.ingest_labeled_images()<fiftyone.core.dataset.Dataset.ingest_labeled_images>`
+
+        Additionally, this will allow FiftyOne to load your
         samples in batches for improved loading times.
 
         .. code-block:: python
@@ -478,17 +522,24 @@ format.
             dataset.ingest_labeled_images(samples, sample_parser, dataset_dir=dataset_dir)            
 
 
+        .. note::
+
+            :ref:`Click here<Writing a custom SampleParser>` to see how to 
+            implement a custom |SampleParser|.
 
     .. tab:: I don't have a data parser
 
         If you don't have a dedicated way of parsing your samples yet, then the
-        recommended option is to create a custom DatasetImporter.
-        DatasetImporters import your images and labels to disk and are used to
-        easily generate Datasets.
+        recommended option is to create a custom |DatasetImporter|.
+        A |DatasetImporter| will import your images and labels to disk and 
+        are is used to easily generate a |Dataset|.
 
-        Writing your own DatasetImporter will allow you to use
-        ``dataset.from_importer()`` to load your dataset directly without
-        needing to create individual samples. Additionally, this will allow FiftyOne to load your
+        :ref:`Writing your own DatasetImporter<Writing a custom Dataset type>` 
+        will allow you to use:
+
+        - :meth:`dataset.from_importer()<fiftyone.core.dataset.Dataset.from_importer>` 
+         
+        Additionally, this will allow FiftyOne to load your
         samples in batches for improved loading times.
 
 
@@ -506,10 +557,14 @@ format.
             # Import the dataset!
             dataset = fo.Dataset.from_importer(importer, name=name)
 
+        .. note::
+            :ref:`Click here<Writing a custom DatasetImporter>` to see how to 
+            implement a custom |DatasetImporter|.
 
 
         if you want to take this a step further, you can write a custom
-        Dataset type to gain access to the command ``dataset.from_dir()`` and
+        Dataset type to gain access to the command 
+        :meth:`dataset.from_dir()<fiftyone.core.dataset.Dataset.from_dir>` and
         to be able to export your |Dataset|.
 
         .. code-block:: python
@@ -527,131 +582,10 @@ format.
             dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
 
-.. comment
-    ..tabs::
-        .. tab:: I am a Poweruser
-    
-            .. tabs::
-    
-                .. tab:: Images are stored as separate files
-    
-                    .. tabs::
-    
-                        .. tab:: I have a parser for my data
-    
-                            You should then use your parser to iterate over your data
-                            and load each image and label into a FiftyOne Sample.
-    
-                        .. tab:: I don't have a good way of parsing my data
-    
-                            To then build a dataset, you could either convert your data
-                            to a common format or write a script to load each image and
-                            label into a Sample.
-                            
-                            (For Powerusers) Write a DatasetImporter to parse and load
-                            each image and labels through FiftyOne. This allows for
-                            batch loading of Samples for maximum efficiency.
-    
-                .. tab:: Images are stored in blobs (e.g. H5PY, Numpy, etc)
-    
-                    .. tabs::
-    
-                        .. tab:: I have a parser for my data
-    
-                            You will want to first ingest your data (save each image as
-                            a separate file) since FiftyOne does not load images into
-                            memory, only image paths.
-    
-                            You should then use your parser to iterate over your data
-                            and load each image and label into a FiftyOne Sample.
-    
-                        .. tab:: I don't have a good way of parsing my data
-    
-                            You will want to first ingest your data (save each image as
-                            a separate file) since FiftyOne does not load images into
-                            memory, only image paths.                   
-    
-                            To then build a dataset, you could either convert your data
-                            to a common format or write a script to load each image and
-                            label into a Sample.
-                            
-                            (For Powerusers) Write a DatasetImporter to parse and load
-                            each image and labels through FiftyOne. This allows for
-                            batch loading of Samples for maximum efficiency.
-    
+        .. note::
+            :ref:`Click here<Writing a custom Dataset type>` to see how to 
+            implement a custom |Dataset| type.
 
-
-.. comment
-    .. tabs::
-        If you are someone who needs the absolute fastest way to load data, or
-        you will be continuously loading various datasets in your custom
-        format, then these options will point you to the right place.
-    	
-    	.. tab:: I have data
-    
-            .. tabs:: 
-    
-                .. tab:: Images stored individually
-        
-                    .. tabs::
-        		    
-                        .. tab:: I have a parser
-                            
-                            SampleParser add_images()
-    
-                        .. tab:: I don't have a parser
-                            
-                            DatasetImporter add_images()
-        
-        
-                .. tab:: Images stored in a blob 
-        
-                    .. tabs::
-        		    
-                        .. tab:: I have a parser
-    
-                            SampleParser ingest_images()
-        
-                        .. tab:: I don't have a parser
-    
-                            DatasetImporter ingest_images()
-    
-        .. tab:: I don't have data
-            
-            foz.load_zoo_dataset("coco-2017")
-
-
-.. comment
-    There are three basic ways to get data into FiftyOne:
-    
-    - :doc:`Loading datasets from disk<datasets>`
-    
-    FiftyOne natively supports creating datasets in a variety of common formats,
-    including
-    `COCO <https://cocodataset.org/#home>`_,
-    `VOC <http://host.robots.ox.ac.uk/pascal/VOC>`_,
-    `CVAT <https://github.com/opencv/cvat>`_,
-    `BDD <https://bdd-data.berkeley.edu>`_,
-    `TFRecords <https://github.com/tensorflow/models/tree/master/research/object_detection>`_,
-    and more. You can also extend FiftyOne by providing your own |DatasetImporter|
-    to load datasets in your own custom formats.
-    
-    - :doc:`Adding samples to datasets<samples>`
-    
-    FiftyOne provides a number of options for building datasets from samples. You
-    can take a fully customized approach and build your own |Sample| instances, or
-    you can a builtin |SampleParser| clasess to parse samples from a variety of
-    common formats, or you can provide your own |SampleParser| to automatically
-    load samples in your own custom formats.
-    
-    - :doc:`Zoo datasets<zoo>`
-    
-    FiftyOne provides a Dataset Zoo that contains a variety of popular open source
-    datasets like
-    `CIFAR-10 <https://www.cs.toronto.edu/~kriz/cifar.html>`_,
-    `COCO <https://cocodataset.org/#home>`_, and
-    `ImageNet <http://www.image-net.org>`_
-    that can be downloaded and loaded into FiftyOne with a single line of code.
 
 .. toctree::
    :maxdepth: 1
