@@ -445,10 +445,6 @@ class DatasetView(foc.SampleCollection):
 
         complete_pipeline = [s.to_mongo() for s in self._pipeline] + pipeline
 
-        from pprintpp import pprint
-
-        pprint(complete_pipeline)
-
         return self._dataset.aggregate(complete_pipeline)
 
     def serialize(self):
