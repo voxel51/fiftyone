@@ -10,9 +10,12 @@ feature of FiftyOne, with the goal of getting you up-and-running with FiftyOne
 on your data quickly and easily.
 
 :doc:`FiftyOne Dataset basics <basics>`
+---------------------------------------
 
-Learn about FiftyOne the |Dataset| class and its relation to |Sample|, |Field|,
-tags and |DatasetView|.
+Learn the basics of the FiftyOne |Dataset| class and its relation to |Sample|,
+|Field|, tags and |DatasetView|.
+
+:doc:`>> Learn more about dataset basics! <basics>`
 
 .. code-block:: python
     :linenos:
@@ -34,9 +37,12 @@ tags and |DatasetView|.
         print(sample)
 
 :doc:`Creating FiftyOne Datasets <dataset_creation/index>`
+----------------------------------------------------------
 
-Get your data into a FiftyOne |Dataset| using standard formats, custom formats,
-or load an open-source dataset via the Dataset Zoo.
+Get your data into FiftyOne using standard formats, custom formats, or
+open-source datasets via the Dataset Zoo.
+
+:doc:`>> Learn more about creating FiftyOne datasets! <dataset_creation/index>`
 
 .. code-block:: python
    :linenos:
@@ -48,8 +54,12 @@ or load an open-source dataset via the Dataset Zoo.
    )
 
 :doc:`Using datasets <using_datasets>`
+--------------------------------------
 
-Use a FiftyOne Dataset to search, sort, and modify your data:
+Take a deep dive into FiftyOne datasets and how to use them to search, sort,
+and filter your data.
+
+:doc:`>> Learn more about using datasets! <using_datasets>`
 
 .. code-block:: python
    :linenos:
@@ -63,8 +73,11 @@ Use a FiftyOne Dataset to search, sort, and modify your data:
    )
 
 :doc:`Exporting datasets <export_datasets>`
+-------------------------------------------
 
-Export your dataset to disk in any number of formats.
+Export datasets to disk in any number of formats.
+
+:doc:`>> Learn more about exporting datasets! <export_datasets>`
 
 .. code-block:: python
    :linenos:
@@ -74,17 +87,23 @@ Export your dataset to disk in any number of formats.
    )
 
 :doc:`Visualizing datasets in the App <app>`
+--------------------------------------------
 
-Visualize your dataset in the FiftyOne App and visualize your changes to it in
-real-time.
+Visualize your datasets in the FiftyOne App and interactively search, sort, and
+filter them.
+
+:doc:`>> Learn more about visualizing datasets! <app>`
 
 .. image:: ../images/dog.png
    :alt: App
    :align: center
 
-:doc:`FiftyOne Brain <brain>`
+:doc:`The FiftyOne Brain <brain>`
+---------------------------------
 
-Use the FiftyOne Brain to automatically get insights into your |Dataset|
+Use the FiftyOne Brain to automatically get insights into your datasets.
+
+:doc:`>> Learn more about the FiftyOne Brain! <brain>`
 
 .. code-block:: python
    :linenos:
@@ -95,8 +114,11 @@ Use the FiftyOne Brain to automatically get insights into your |Dataset|
    rank_view = dataset.view().sort_by("uniqueness")
 
 :doc:`Configuring FiftyOne <config>`
+------------------------------------
 
-Configure FiftyOne's default behavior to suit your needs.
+Configure FiftyOne's behavior to suit your needs.
+
+:doc:`>> Learn how to configure FiftyOne! <config>`
 
 .. code-block:: shell
    :linenos:
