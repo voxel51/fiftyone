@@ -7,8 +7,15 @@ const Body = styled.div`
     columnWidths.map((c) => c + "fr").join(" ")};
   vertical-align: middle;
 
+  > label,
+  > span {
+    line-height: 1.5em;
+  }
+
   input {
-    vertical-align: bottom;
+    vertical-align: middle;
+    margin-top: 0;
+    margin-bottom: 3px;
     margin-right: 6px;
   }
 `;
