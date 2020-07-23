@@ -157,7 +157,7 @@ class ListFilter(ViewStage):
 
     Args:
         field: the field to filter, which must be a list
-        filter: a :class:`ViewFieldCond` or
+        filter: a :class:`fiftyone.core.expressions.MatchExpression` or
             `MongoDB query dict <https://docs.mongodb.com/manual/tutorial/query-documents>`_
             describing the filter to apply
     """
@@ -192,7 +192,7 @@ class ListFilter(ViewStage):
     def _validate(self):
         if not isinstance(self._filter, (foe.MatchExpression, dict)):
             raise ValueError(
-                "Filter must be a ViewFieldCond or a MongoDB query dict; "
+                "Filter must be a MatchExpression or a MongoDB query dict; "
                 "found '%s'" % self._filter
             )
 
@@ -201,7 +201,7 @@ class Match(ViewStage):
     """Filters the samples in the stage by the given filter.
 
     Args:
-        filter: a :class:`ViewFieldCond` or
+        filter: a :class:`fiftyone.core.expressions.MatchExpression` or
             `MongoDB query dict <https://docs.mongodb.com/manual/tutorial/query-documents>`_
             describing the filter to apply
     """
@@ -229,7 +229,7 @@ class Match(ViewStage):
     def _validate(self):
         if not isinstance(self._filter, (foe.MatchExpression, dict)):
             raise ValueError(
-                "Filter must be a ViewFieldCond or a MongoDB query dict; "
+                "Filter must be a MatchExpression or a MongoDB query dict; "
                 "found '%s'" % self._filter
             )
 
