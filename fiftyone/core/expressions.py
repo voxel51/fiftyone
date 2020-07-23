@@ -170,11 +170,7 @@ class MatchExpression(object):
     # Array Expression Operators
 
     def __getitem__(self, idx):
-        if self.is_field:
-            return MatchExpression({"$arrayElemAt": [self, idx]})
-        raise TypeError(
-            "Cannot index an expression. Only indexing fields is valid."
-        )
+        return MatchExpression({"$arrayElemAt": [self, idx]})
 
     def is_in(self, values):
         """Returns a boolean indicating whether the expression is in the
