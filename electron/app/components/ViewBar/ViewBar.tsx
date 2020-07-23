@@ -35,9 +35,15 @@ const ViewBarDiv = styled.div`
 
 export default () => {
   const [state, send] = useMachine(viewBarMachine);
+
+  const { stages, tailStage } = state.context;
+
   return (
     <ViewBarDiv>
-      <ViewStage index={0} key={0} />
+      {stages.map((stage) => (
+        <ViewStage key={stage.id} stageRef={stage.ref} />
+      ))}
+      <ViewStage key={tailStage.id} stageRef={tailStage.ref} />
     </ViewBarDiv>
   );
 };

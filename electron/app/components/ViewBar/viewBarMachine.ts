@@ -6,14 +6,14 @@ export const createStage = (stage) => {
   return {
     id: uuid(),
     completed: false,
-    stage: undefined,
+    stage: stage,
   };
 };
 
 const viewBarMachine = Machine({
   id: "stages",
   context: {
-    stage: "", // tail stage
+    tailStage: createStage(), // tail stage
     stages: [],
   },
   initial: "initializing",
@@ -44,7 +44,7 @@ const viewBarMachine = Machine({
     "NEWSTAGE.COMMIT": {
       actions: [
         assign({
-          stage: "", // clear tail stage
+          tailStage: createStage(),
           stages: (ctx, e) => {
             const newStage = createStage(e.value.trim());
             return ctx.stages.concat({

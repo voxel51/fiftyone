@@ -31,7 +31,7 @@ const ViewStageInput = styled.input`
   }
 `;
 
-export default ({ index, stageRef }) => {
+export default ({ stageRef }) => {
   // const [state, send] = useMachine(stageRef);
   const isActive = useState(false);
 
