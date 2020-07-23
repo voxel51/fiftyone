@@ -20,7 +20,13 @@ const Cell = ({ label, entries }) => {
   const [expanded, setExpanded] = useState(true);
   return (
     <DropdownCell label={label} expanded={expanded} onExpand={setExpanded}>
-      <CheckboxGrid columnWidths={[3, 2]} entries={entries} />
+      <CheckboxGrid
+        columnWidths={[3, 2]}
+        entries={entries.map((e) => ({
+          ...e,
+          data: [e.data[0].toLocaleString()],
+        }))}
+      />
     </DropdownCell>
   );
 };
