@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilValue } from "recoil";
@@ -35,18 +35,45 @@ const ViewStageButton = styled.button``;
 
 export default React.memo(({ stageRef, tailStage }) => {
   const [state, send] = useService(stageRef);
+  const inputRef = useRef(null);
+
+  const { value } = state.context;
 
   const props = useSpring({
     borderStyle: true ? "dashed" : "solid",
   });
 
+  useEffect(() => {
+    stageRef.execute(state, {
+      focusInput() {
+        inputRef.current && inputRef.current.select();
+      },
+    });
+  }, [state, stageRef]);
+
   return (
     <ViewStageDiv style={props}>
       <div>
         {tailStage ? (
-          <ViewStageInput placeholder="+ search sample" />
+          <ViewStageInput
+            placeholder="+ search sample"
+            value={value}
+            onBlur={(_) => send("BLUR")}
+            onChange={(e) => send("CHANGE", { value: e.target.value })}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                send("COMMIT");
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                send("CANCEL");
+              }
+            }}
+            ref={inputRef}
+          />
         ) : (
-          <ViewStageButton />
+          <ViewStageButton>+</ViewStageButton>
         )}
       </div>
     </ViewStageDiv>
