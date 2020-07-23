@@ -90,7 +90,7 @@ class ListField(mongoengine.ListField, Field):
                     % (type(field), Field)
                 )
 
-        super(ListField, self).__init__(field=field, **kwargs)
+        super().__init__(field=field, **kwargs)
 
     def __str__(self):
         if self.field is not None:
@@ -98,8 +98,8 @@ class ListField(mongoengine.ListField, Field):
                 etau.get_class_name(self),
                 etau.get_class_name(self.field),
             )
-        else:
-            return etau.get_class_name(self)
+
+        return etau.get_class_name(self)
 
 
 class DictField(mongoengine.DictField, Field):
@@ -120,7 +120,7 @@ class DictField(mongoengine.DictField, Field):
                     % (type(field), Field)
                 )
 
-        super(DictField, self).__init__(field=field, **kwargs)
+        super().__init__(field=field, **kwargs)
 
     def __str__(self):
         if self.field is not None:
@@ -128,8 +128,8 @@ class DictField(mongoengine.DictField, Field):
                 etau.get_class_name(self),
                 etau.get_class_name(self.field),
             )
-        else:
-            return etau.get_class_name(self)
+
+        return etau.get_class_name(self)
 
 
 class VectorField(Field):
@@ -176,7 +176,7 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             return None
 
         bytes = fou.serialize_numpy_array(value)
-        return super(ArrayField, self).to_mongo(bytes)
+        return super().to_mongo(bytes)
 
     def to_python(self, value):
         if value is None or isinstance(value, np.ndarray):
@@ -220,11 +220,11 @@ class ImageLabelsField(Field):
 
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
-    :class:`fiftyone.core.odm.ODMEmbeddedDocument` object.
+    :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.
 
     Args:
-        document_type: the :class:`fiftyone.core.odm.foo.ODMEmbeddedDocument`
-            type stored in this field
+        document_type: the :class:`fiftyone.core.odm.BaseEmbeddedDocument` type
+            stored in this field
     """
 
     def __init__(self, document_type, **kwargs):
@@ -234,14 +234,14 @@ class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
         #
         # import fiftyone.core.odm as foo
         #
-        # if not issubclass(document_type, foo.ODMEmbeddedDocument):
+        # if not issubclass(document_type, foo.BaseEmbeddedDocument):
         #     raise ValueError(
         #         "Invalid document type %s; must be a subclass of %s"
-        #         % (document_type, foo.ODMEmbeddedDocument)
+        #         % (document_type, foo.BaseEmbeddedDocument)
         #     )
         #
 
-        super(EmbeddedDocumentField, self).__init__(document_type, **kwargs)
+        super().__init__(document_type, **kwargs)
 
     def __str__(self):
         return "%s(%s)" % (

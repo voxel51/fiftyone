@@ -35,9 +35,7 @@ class DatasetSingleton(type):
     """
 
     def __new__(metacls, *args, **kwargs):
-        cls = super(DatasetSingleton, metacls).__new__(
-            metacls, *args, **kwargs
-        )
+        cls = super().__new__(metacls, *args, **kwargs)
         cls._instances = weakref.WeakValueDictionary()
         return cls
 

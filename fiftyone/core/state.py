@@ -63,7 +63,7 @@ class StateDescription(etas.Serializable):
         self.view = view
         self.selected = selected or []
         self.count = len(dataset) if dataset is not None else 0
-        super(StateDescription, self).__init__()
+        super().__init__()
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -169,7 +169,7 @@ def get_dataset_stats(dataset):
                 }
             }
     """
-    _sample_doc_cls = type(dataset.name, (foo.ODMDatasetSample,), {})
+    _sample_doc_cls = type(dataset.name, (foo.SampleDocument,), {})
     num_default_fields = len(_sample_doc_cls.get_field_schema())
 
     field_names = [field_name for field_name in dataset.get_field_schema()]

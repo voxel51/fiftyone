@@ -14,7 +14,6 @@ const ViewStageDiv = animated(styled.div`
   background-color: rgba(108, 117, 125, 0.13);
   display: inline-block;
   margin: 0.5rem;
-  max-width: 7.5rem;
 `);
 
 const ViewStageInput = styled.input`
@@ -24,6 +23,7 @@ const ViewStageInput = styled.input`
   margin: 0.5rem;
   width: auto;
   color: ${fontColor};
+  max-width: 6.5rem;
 
   :focus {
     boder: none;
@@ -58,7 +58,7 @@ export default React.memo(({ stageRef, tailStage }) => {
           <ViewStageInput
             placeholder="+ search sample"
             value={value}
-            onBlur={(_) => send("BLUR")}
+            onBlur={() => send("BLUR")}
             onChange={(e) => send("CHANGE", { value: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {

@@ -7,12 +7,13 @@ Core utilities.
 """
 import atexit
 from base64 import b64encode, b64decode
+from collections import defaultdict
 import importlib
 import io
 import itertools
 import logging
+import os
 import signal
-import sys
 import types
 import zlib
 
@@ -134,7 +135,7 @@ class LazyModule(types.ModuleType):
     """
 
     def __init__(self, module_name, callback=None):
-        super(LazyModule, self).__init__(module_name)
+        super().__init__(module_name)
         self._module = None
         self._callback = callback
 
@@ -283,9 +284,78 @@ class ResourceLimit(object):
 class ProgressBar(etau.ProgressBar):
     def __init__(self, *args, **kwargs):
         quiet = not fo.config.show_progress_bars
-        super(ProgressBar, self).__init__(
-            *args, iters_str="samples", quiet=quiet, **kwargs
+        super().__init__(*args, iters_str="samples", quiet=quiet, **kwargs)
+
+
+class UniqueFilenameMaker(object):
+    """A class that generates unique output paths in a directory.
+
+    This class provides a :meth:`get_output_path` method that generates unique
+    filenames in the specified output directory.
+
+    If an input filename is provided, the filename is maintained, unless a
+    name conflict in ``output_dir`` would occur, in which case an index of the
+    form ``"-%d" % count`` is appended to the base filename.
+
+    If no input filename is provided, an output filename of the form
+    ``<output_dir>/<count><default_ext>`` is generated, where ``count`` is the
+    number of files in ``output_dir``.
+
+    If no ``output_dir`` is provided, then unique filenames with no base
+    directory are generated.
+
+    Args:
+        output_dir (""): the directory in which to generate output paths
+        default_ext (""): the file extension to use when generating default
+            output paths
+        ignore_exts (False): whether to omit file extensions when checking for
+            duplicate filenames
+    """
+
+    def __init__(self, output_dir="", default_ext="", ignore_exts=False):
+        self.output_dir = output_dir
+        self.default_ext = default_ext
+        self.ignore_exts = ignore_exts
+
+        self._filename_counts = defaultdict(int)
+        self._default_filename_patt = (
+            fo.config.default_sequence_idx + default_ext
         )
+        self._idx = 0
+
+        if output_dir:
+            etau.ensure_dir(output_dir)
+            filenames = etau.list_files(output_dir)
+            self._idx = len(filenames)
+            for filename in filenames:
+                self._filename_counts[filename] += 1
+
+    def get_output_path(self, input_path=None):
+        """Returns a unique output path.
+
+        Args:
+            input_path (None): an input path from which to derive the output
+                path
+
+        Returns:
+            the output path
+        """
+        self._idx += 1
+
+        if not input_path:
+            input_path = self._default_filename_patt % self._idx
+
+        filename = os.path.basename(input_path)
+        name, ext = os.path.splitext(filename)
+
+        key = name if self.ignore_exts else filename
+        self._filename_counts[key] += 1
+
+        count = self._filename_counts[key]
+        if count > 1:
+            filename = name + ("-%d" % count) + ext
+
+        return os.path.join(self.output_dir, filename)
 
 
 def compute_filehash(filepath):

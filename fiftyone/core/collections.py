@@ -90,7 +90,7 @@ class SampleCollection(object):
                 :class:``fiftyone.core.fields.Field``
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.ODMEmbeddedDocument``
+                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
 
         Returns:
              a dictionary mapping field names to field types
@@ -132,135 +132,59 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement aggregate()")
 
     def export(
-        self, export_dir, label_field=None, dataset_type=None, **kwargs
+        self,
+        export_dir=None,
+        dataset_type=None,
+        dataset_exporter=None,
+        label_field=None,
+        **kwargs
     ):
         """Exports the samples in the collection to disk.
 
-        Args:
-            export_dir: the directory to which to export
-            label_field (None): the name of the label field to export. If not
-                specified, the first field of compatible type to
-                ``dataset_type`` is exported
-            dataset_type (None): the dataset type in which to export. Must be a
-                subclass of :class:`fiftyone.types.BaseDataset`. If not
-                specified, the default type for ``label_field`` is used. If
-                neither ``label_field`` nor ``dataset_type`` is provided, the
-                raw images are exported
-        """
-        if not self:
-            logger.info("No samples to export")
-            return
+        Provide either ``export_dir`` and ``dataset_type`` or
+        ``dataset_exporter`` to perform an export.
 
+        Args:
+            export_dir (None): the directory to which to export the samples in
+                format ``dataset_type``
+            dataset_type (None): the
+                :class:`fiftyone.types.dataset_types.Dataset` type to write. If
+                not specified, the default type for ``label_field`` is used
+            dataset_exporter (None): a
+                :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
+                to export the samples
+            label_field (None): the name of the label field to export, if
+                applicable. If not specified and the requested output type is
+                a labeled dataset, the first field of compatible type for the
+                output format is used
+            **kwargs: optional keyword arguments to pass to
+                ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
+        """
         if dataset_type is not None and inspect.isclass(dataset_type):
             dataset_type = dataset_type()
 
-        # If no dataset type was provided, choose the default type for the
-        # label field
-        if dataset_type is None:
-            # If no label field was provided, just export unlabeled images
-            if label_field is None:
-                dataset_type = fot.ImageDirectory()
-            else:
-                sample = next(self.iter_samples())
-                label = sample[label_field]
-                if isinstance(label, fol.Classification):
-                    dataset_type = fot.ImageClassificationDataset()
-                elif isinstance(label, fol.Detections):
-                    dataset_type = fot.ImageDetectionDataset()
-                elif isinstance(label, fol.ImageLabels):
-                    dataset_type = fot.ImageLabelsDataset()
-                else:
-                    raise ValueError("Unsupported label type %s" % type(label))
+        # If no dataset type or exporter was provided, choose the default type
+        # for the label field
+        if dataset_type is None and dataset_exporter is None:
+            dataset_type = _get_default_dataset_type(self, label_field)
+
+        # If no dataset exporter was provided, construct one based on the
+        # dataset type
+        if dataset_exporter is None:
+            dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
+            dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
 
         # If no label field was provided, choose the first label field that is
-        # compatible with the dataset type
-        if label_field is None and not isinstance(
-            dataset_type, fot.ImageDirectory
-        ):
-            if isinstance(dataset_type, fot.BaseImageClassificationDataset):
-                label_type = fol.Classification
-            elif isinstance(dataset_type, fot.BaseImageDetectionDataset):
-                label_type = fol.Detections
-            elif isinstance(dataset_type, fot.BaseImageLabelsDataset):
-                label_type = fol.ImageLabels
-            else:
-                raise ValueError("Unsupported dataset type %s" % dataset_type)
-
-            label_fields = self.get_field_schema(
-                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+        # compatible with the dataset exporter
+        if label_field is None:
+            label_field = _get_default_label_field_for_exporter(
+                self, dataset_exporter
             )
-            for field, field_type in label_fields.items():
-                if issubclass(field_type.document_type, label_type):
-                    label_field = field
-                    break
-
-            if label_field is None:
-                raise ValueError(
-                    "No compatible label field of type %s found to export a "
-                    "dataset with type %s" % (label_type, dataset_type)
-                )
 
         # Export the dataset
-        if isinstance(dataset_type, fot.ImageDirectory):
-            foud.export_images(self, export_dir, **kwargs)
-        elif isinstance(dataset_type, fot.ImageClassificationDataset):
-            foud.export_image_classification_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.ImageClassificationDirectoryTree):
-            foud.export_image_classification_dir_tree(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.TFImageClassificationDataset):
-            import fiftyone.utils.tf as fout
-
-            fout.export_tf_image_classification_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.ImageDetectionDataset):
-            foud.export_image_detection_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.COCODetectionDataset):
-            import fiftyone.utils.coco as fouco
-
-            fouco.export_coco_detection_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.VOCDetectionDataset):
-            import fiftyone.utils.voc as fouv
-
-            fouv.export_voc_detection_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.KITTIDetectionDataset):
-            import fiftyone.utils.kitti as fouk
-
-            fouk.export_kitti_detection_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.TFObjectDetectionDataset):
-            import fiftyone.utils.tf as fout
-
-            fout.export_tf_object_detection_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.CVATImageDataset):
-            import fiftyone.utils.cvat as foucv
-
-            foucv.export_cvat_image_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.ImageLabelsDataset):
-            foud.export_image_labels_dataset(
-                self, label_field, export_dir, **kwargs
-            )
-        elif isinstance(dataset_type, fot.BDDDataset):
-            import fiftyone.utils.bdd as foub
-
-            foub.export_bdd_dataset(self, label_field, export_dir, **kwargs)
-        else:
-            raise ValueError("Unsupported dataset type %s" % dataset_type)
+        foud.export_samples(
+            self, dataset_exporter=dataset_exporter, label_field=label_field
+        )
 
     def to_dict(self):
         """Returns a JSON dictionary representation of the collection.
@@ -297,3 +221,42 @@ class SampleCollection(object):
                 format with newlines and indentations
         """
         etas.write_json(self.to_dict(), json_path, pretty_print=pretty_print)
+
+
+def _get_default_dataset_type(sample_collection, label_field):
+    if label_field is None:
+        return fot.ImageDirectory()
+
+    sample = next(iter(sample_collection))
+    label = sample[label_field]
+
+    if isinstance(label, fol.Classification):
+        return fot.FiftyOneImageClassificationDataset()
+
+    if isinstance(label, fol.Detections):
+        return fot.FiftyOneImageDetectionDataset()
+
+    if isinstance(label, fol.ImageLabels):
+        return fot.FiftyOneImageLabelsDataset()
+
+    raise ValueError("Unsupported label type %s" % type(label))
+
+
+def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
+    if isinstance(dataset_exporter, foud.UnlabeledImageDatasetExporter):
+        return None
+
+    if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
+        label_cls = dataset_exporter.label_cls
+        label_fields = sample_collection.get_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+        )
+        for field, field_type in label_fields.items():
+            if issubclass(field_type.document_type, label_cls):
+                return field
+
+        raise ValueError(
+            "No compatible label field of type %s found" % label_cls
+        )
+
+    raise ValueError("Unsupported dataset exporter type %s" % dataset_exporter)

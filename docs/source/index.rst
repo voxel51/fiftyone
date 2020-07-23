@@ -18,8 +18,7 @@ queryable fields such as ground truth and predicted labels, dataset splits, and
 much more!
 
 .. image:: images/video_placeholder.png
-   :alt: Overview Video
-   :width: 100%
+   :alt: Overview
    :align: center
 
 Core Capabilities
@@ -120,16 +119,14 @@ dataset into any aspect you need; and more.
 
 .. image:: images/dog.png
    :alt: App
-   :width: 75%
    :align: center
-   :target: user_guide/app.html
 
 :doc:`The FiftyOne Brain <user_guide/brain>`
 
 The FiftyOne Brain is a library of powerful machine learning-powered
-:ref:`capabilities <Capabilities>` that provide insights into your datasets and
-recommend ways to modify your datasets that will lead to measurably better
-performance of your models.
+:ref:`capabilities <Core Capabilities>` that provide insights into your
+datasets and recommend ways to modify your datasets that will lead to
+measurably better performance of your models.
 
 .. code-block:: python
    :linenos:
@@ -144,7 +141,7 @@ ____________
 
 Where should you go from here? You could...
 
-* :doc:`Install FiftyOne <getting_started/install>`
+* :ref:`Install FiftyOne <installing-fiftyone>`
 * Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
   capabilities of FiftyOne
 * Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into

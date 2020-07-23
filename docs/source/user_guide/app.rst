@@ -5,7 +5,7 @@ Viewing Datasets in the FiftyOne App
 .. default-role:: code
 
 The FiftyOne App is a light weight user interface that allows you to browse and
-interact directly with your loaded |Dataset2|_.
+interact directly with your loaded |WhatIsAFiftyOneDataset|.
 
 Sessions
 ________
@@ -28,7 +28,7 @@ Sessions are the python objects that contain the instance of the app:
     session = fo.launch_app()
 
 .. image:: ../images/empty_app.png
-   :alt: App Startup Page
+   :alt: App Startup
    :align: center
 
 Update a session dataset
@@ -46,7 +46,7 @@ object directly:
     session.dataset = dataset
 
 .. image:: ../images/cifar10.png
-   :alt: Cifar10
+   :alt: CIFAR-10
    :align: center
 
 Update a session view
@@ -62,7 +62,7 @@ sort the |DatasetView| by ground truth labels and then select the first 10
     session.view = dataset.view().sort_by("ground_truth")[:10]
 
 .. image:: ../images/cifar10_sorted.png
-   :alt: Cifar10 Sorted
+   :alt: CIFAR-10 Sorted
    :align: center
 
 Remote sessions
@@ -148,7 +148,7 @@ sample images by toggling the corresponding buttons on the left hand side of
 the App.
 
 .. image:: ../images/cifar10_button_toggle.gif
-    :alt: Cifar10 Toggle
+    :alt: CIFAR-10 Toggle
     :align: center
 
 Accessing selected samples
@@ -157,7 +157,7 @@ Accessing selected samples
 First select samples in the App.
 
 .. image:: ../images/cifar10_selected.gif
-   :alt: Cifar10 Selected
+   :alt: CIFAR-10 Selected
    :align: center
 
 Second, load those samples into python:
@@ -180,7 +180,7 @@ A sample can be double clicked to view a large version of it in a sidebar. This
 sidebar also contains the fields of the sample.
 
 .. image:: ../images/cifar10_sidebar.gif
-    :alt: Cifar10 Sidebar
+    :alt: CIFAR-10 Sidebar
     :align: center
 
 
@@ -198,7 +198,7 @@ Scalar fields, for example if you computed `uniqueness` on your dataset, will
 be displayed under the Scalars tab.
 
 .. image:: ../images/cifar10_tabs.gif
-   :alt: Cifar10 Scalars
+   :alt: CIFAR-10 Scalars
    :align: center
 
 
@@ -212,7 +212,7 @@ select samples and bring those into your python terminal.
 First select samples in the App.
 
 .. image:: ../images/cifar10_selected.gif
-   :alt: Cifar10 Selected
+   :alt: CIFAR-10 Selected
    :align: center
 
 Second, load those samples into python:
