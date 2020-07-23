@@ -92,7 +92,7 @@ class Exclude(ViewStage):
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Exclude` instance
+        :class:`fiftyone.core.stages.Exclude` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -117,7 +117,7 @@ class Exists(ViewStage):
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Exists` instance
+        :class:`fiftyone.core.stages.Exists` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -140,8 +140,8 @@ class Limit(ViewStage):
         self._limit = limit
 
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Limit`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Limit` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -167,7 +167,7 @@ class Match(ViewStage):
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Match` instance
+        :class:`fiftyone.core.stages.Match` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -201,7 +201,7 @@ class MatchTag(ViewStage):
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.MatchTag` instance
+        :class:`fiftyone.core.stages.MatchTag` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -227,7 +227,7 @@ class MatchTags(ViewStage):
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.MatchTags` instance
+        :class:`fiftyone.core.stages.MatchTags` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -250,7 +250,7 @@ class Select(ViewStage):
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Select` instance
+        :class:`fiftyone.core.stages.Select` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -281,7 +281,7 @@ class SortBy(ViewStage):
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.SortBy` instance
+        :class:`fiftyone.core.stages.SortBy` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -305,8 +305,8 @@ class Skip(ViewStage):
         self._skip = skip
 
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Skip`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Skip` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
@@ -329,8 +329,8 @@ class Take(ViewStage):
         self._size = size
 
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Take`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Take` instance.
 
         Returns:
             a MongoDB aggregation pipeline stage dict
