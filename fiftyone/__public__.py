@@ -59,5 +59,5 @@ from .core.session import (
     launch_app,
     Session,
 )
-from .core.stages import ViewField, ViewFieldCond
+from .core.stages import ViewField, ViewExpression
 from .core.view import DatasetView
