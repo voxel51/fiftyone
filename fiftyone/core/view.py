@@ -272,6 +272,62 @@ class DatasetView(foc.SampleCollection):
         return self._copy_with_new_stage(stage)
 
     @view_stage
+    def exclude(self, sample_ids):
+        """Excludes the samples with the given IDs from the view.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.Exclude(sample_ids))
+
+    @view_stage
+    def exists(self, field):
+        """Returns a view containing the samples that have a non-``None`` value
+        for the given field.
+
+        Args:
+            field: the field
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.Exists(field))
+
+    @view_stage
+    def limit(self, limit):
+        """Limits the view to the given number of samples.
+
+        Args:
+            num: the maximum number of samples to return. If a non-positive
+                number is provided, an empty view is returned
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.Limit(limit))
+
+    @view_stage
+    def list_filter(self, field, filter):
+        """Filters the elements of the given list field.
+
+        Elements of ``field``, which must be a list field, for which ``filter``
+        returns ``False`` are omitted from the field.
+
+        Args:
+            field: the list field
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.ListFilter(field, filter))
+
+    @view_stage
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
@@ -316,17 +372,29 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fos.MatchTags(tags))
 
     @view_stage
-    def exists(self, field):
-        """Returns a view containing the samples that have a non-``None`` value
-        for the given field.
+    def select(self, sample_ids):
+        """Selects the samples with the given IDs from the view.
 
         Args:
-            field: the field
+            sample_ids: an iterable of sample IDs
 
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Exists(field))
+        return self.add_stage(fos.Select(sample_ids))
+
+    @view_stage
+    def skip(self, skip):
+        """Omits the given number of samples from the head of the view.
+
+        Args:
+            skip: the number of samples to skip. If a non-positive number is
+                provided, no samples are omitted
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.Skip(skip))
 
     @view_stage
     def sort_by(self, field_or_expr, reverse=False):
@@ -347,32 +415,6 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fos.SortBy(field_or_expr, reverse=reverse))
 
     @view_stage
-    def skip(self, skip):
-        """Omits the given number of samples from the head of the view.
-
-        Args:
-            skip: the number of samples to skip. If a non-positive number is
-                provided, no samples are omitted
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Skip(skip))
-
-    @view_stage
-    def limit(self, limit):
-        """Limits the view to the given number of samples.
-
-        Args:
-            num: the maximum number of samples to return. If a non-positive
-                number is provided, an empty view is returned
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Limit(limit))
-
-    @view_stage
     def take(self, size):
         """Randomly samples the given number of samples from the view.
 
@@ -384,48 +426,6 @@ class DatasetView(foc.SampleCollection):
             a :class:`DatasetView`
         """
         return self.add_stage(fos.Take(size))
-
-    @view_stage
-    def select(self, sample_ids):
-        """Selects the samples with the given IDs from the view.
-
-        Args:
-            sample_ids: an iterable of sample IDs
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Select(sample_ids))
-
-    @view_stage
-    def exclude(self, sample_ids):
-        """Excludes the samples with the given IDs from the view.
-
-        Args:
-            sample_ids: an iterable of sample IDs
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Exclude(sample_ids))
-
-    @view_stage
-    def list_filter(self, field, filter):
-        """Filters the elements of the given list field.
-
-        Elements of ``field``, which must be a list field, for which ``filter``
-        returns ``False`` are omitted from the field.
-
-        Args:
-            field: the list field
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.ListFilter(field, filter))
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.
