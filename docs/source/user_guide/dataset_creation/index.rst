@@ -4,8 +4,8 @@ Loading data into FiftyOne
 .. default-role:: code
 .. include:: ../../substitutions.rst
 
-The first step to using FiftyOne is to load your data into a FiftyOne 
-|WhatIsADataset|. FiftyOne supports automatic loading of datasets stored in 
+The first step to using FiftyOne is to load your data into a
+|WhatIsAFiftyOneDataset|. FiftyOne supports automatic loading of datasets stored in 
 various common formats. If your dataset is stored in a custom format, don't 
 worry, FiftyOne also provides support for easily loading datasets in custom 
 formats.
@@ -19,37 +19,8 @@ formats.
     Note that samples only store the `filepath` to the media, not the
     raw media itself. FiftyOne does not create duplicate copies of your data!
 
-Quickstart
-----------
-
-Load a directory of unlabeled images into FiftyOne and explore them in the 
-FiftyOne App:
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-
-        dataset_dir = "/path/to/images-dir"
-
-        # Visualize a directory of images in the FiftyOne App
-        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.ImageDirectory)
-        session = fo.launch_app(dataset=dataset)
-
-  .. group-tab:: CLI
-
-    .. code:: shell
-
-        # Visualize a directory of images in the FiftyOne App
-        fiftyone app view \
-            --dataset-dir /path/to/images-dir --type fiftyone.types.ImageDirectory
-
-Loading labeled datasets
-------------------------
+Loading datasets
+----------------
 
 Depending on the format of your labels, FiftyOne provides a few different 
 options for loading your |Dataset|. See the tabs below to figure out which 
@@ -57,6 +28,54 @@ option is best for you.
 
 
 .. tabs::
+
+    .. tab:: I have data in a common format 
+
+        :doc:`Loading Datasets from disk<datasets>`
+
+        FiftyOne provides ways to automatically load your data if it is stored
+        in one of the following formats:
+        
+        - :ref:`ImageDirectory`                      
+        - :ref:`FiftyOneImageClassificationDataset`  
+        - :ref:`ImageClassificationDirectoryTree`    
+        - :ref:`TFImageClassificationDataset`        
+        - :ref:`FiftyOneImageDetectionDataset`       
+        - :ref:`COCODetectionDataset`                
+        - :ref:`VOCDetectionDataset`                 
+        - :ref:`KITTIDetectionDataset`               
+        - :ref:`TFObjectDetectionDataset`            
+        - :ref:`CVATImageDataset`                    
+        - :ref:`FiftyOneImageLabelsDataset`          
+        - :ref:`BDDDataset`                          
+
+        If none of these formats match, then click another tab to see how to
+        load a |Dataset| in a custom format.
+
+        If one of these |Dataset| types does match your data, you can load it
+        with the following code. 
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone as fo
+
+            # A name for the dataset
+            name = "my-dataset"
+            
+            # The directory containing the dataset to import
+            dataset_dir = "/path/to/dataset"
+
+            # The type of the dataset being imported
+            # Any subclass of `fiftyone.types.Dataset` is supported
+            dataset_type = fo.types.COCODetectionDataset  # for example
+
+            dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
+
+
+        .. note::
+           
+            :doc:`Click here<datasets>` to learn more about loading datasets by type.
 
     .. tab:: I have data in a custom format 
 
@@ -363,55 +382,6 @@ option is best for you.
 
                     :doc:`Click here<samples>` to find out more information
                     about loading labeled samples into a |Dataset|.
-
-
-    .. tab:: I have data in a common format 
-
-        :doc:`Loading Datasets from disk<datasets>`
-
-        FiftyOne provides ways to automatically load your data if it is stored
-        in one of the following formats:
-        
-        - :ref:`ImageDirectory`                      
-        - :ref:`FiftyOneImageClassificationDataset`  
-        - :ref:`ImageClassificationDirectoryTree`    
-        - :ref:`TFImageClassificationDataset`        
-        - :ref:`FiftyOneImageDetectionDataset`       
-        - :ref:`COCODetectionDataset`                
-        - :ref:`VOCDetectionDataset`                 
-        - :ref:`KITTIDetectionDataset`               
-        - :ref:`TFObjectDetectionDataset`            
-        - :ref:`CVATImageDataset`                    
-        - :ref:`FiftyOneImageLabelsDataset`          
-        - :ref:`BDDDataset`                          
-
-        If none of these formats match, then click another tab to see how to
-        load a |Dataset| in a custom format.
-
-        If one of these |Dataset| types does match your data, you can load it
-        with the following code. 
-
-        .. code-block:: python
-            :linenos:
-
-            import fiftyone as fo
-
-            # A name for the dataset
-            name = "my-dataset"
-            
-            # The directory containing the dataset to import
-            dataset_dir = "/path/to/dataset"
-
-            # The type of the dataset being imported
-            # Any subclass of `fiftyone.types.Dataset` is supported
-            dataset_type = fo.types.COCODetectionDataset  # for example
-
-            dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
-
-
-        .. note::
-           
-            :doc:`Click here<datasets>` to learn more about loading datasets by type.
 
 
     .. tab:: I don't have data 
