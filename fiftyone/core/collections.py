@@ -202,11 +202,11 @@ class SampleCollection(object):
 
     @classmethod
     def list_stage_methods(cls):
-        """Returns a list of all available :class:`DatasetView` stage methods,
-        i.e., stages that return another :class:`DatasetView`.
+        """Returns a list of all available :class:`fiftyone.core.view.DatasetView` stage methods,
+        i.e., stages that return another :class:`fiftyone.core.view.DatasetView`.
 
         Returns:
-            a list of :class:`DatasetView` method names
+            a list of :class:`fiftyone.core.view.DatasetView` method names
         """
         return list(view_stage.all)
 
@@ -218,7 +218,7 @@ class SampleCollection(object):
             sample_ids: an iterable of sample IDs
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Exclude(sample_ids))
 
@@ -231,7 +231,7 @@ class SampleCollection(object):
             field: the field
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Exists(field))
 
@@ -244,7 +244,7 @@ class SampleCollection(object):
                 number is provided, an empty view is returned
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Limit(limit))
 
@@ -262,7 +262,7 @@ class SampleCollection(object):
                 that returns a boolean describing the filter to apply
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.ListFilter(field, filter))
 
@@ -278,7 +278,7 @@ class SampleCollection(object):
                 that returns a boolean describing the filter to apply
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Match(filter))
 
@@ -290,7 +290,7 @@ class SampleCollection(object):
             tag: a tag
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MatchTag(tag))
 
@@ -306,7 +306,7 @@ class SampleCollection(object):
             tags: an iterable of tags
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MatchTags(tags))
 
@@ -318,7 +318,7 @@ class SampleCollection(object):
             sample_ids: an iterable of sample IDs
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Select(sample_ids))
 
@@ -331,7 +331,7 @@ class SampleCollection(object):
                 provided, no samples are omitted
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Skip(skip))
 
@@ -349,7 +349,7 @@ class SampleCollection(object):
             reverse (False): whether to return the results in descending order
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.SortBy(field_or_expr, reverse=reverse))
 
@@ -362,7 +362,7 @@ class SampleCollection(object):
                 provided, an empty view is returned
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Take(size))
 
