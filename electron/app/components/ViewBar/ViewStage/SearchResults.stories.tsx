@@ -12,7 +12,7 @@ export const standard = () => (
       padding: 10,
       margin: 10,
       width: 150,
-      height: 50,
+      height: "auto",
       position: "relative",
       background: "pink",
     }}

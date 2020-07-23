@@ -27,13 +27,16 @@ interface SearchResultProps {
 const SearchResult = React.memo(
   ({ result, isActive, send }: SearchResultProps) => {
     const [props, set] = useSpring(() => ({
-      backgroundColor: isActive ? searchResultHoverBackground : "transparent",
+      backgroundColor: isActive
+        ? searchResultHoverBackground
+        : searchResultsBackgroundColor,
     }));
 
     const handleMouseEnter = () =>
       set({ backgroundColor: searchResultHoverBackground });
 
-    const handleMouseLeave = () => set({ backgroundColor: "transparent" });
+    const handleMouseLeave = () =>
+      set({ backgroundColor: searchResultsBackgroundColor });
 
     const setResult = (e) => send("COMMIT", e.target.dataset.value);
 
@@ -57,11 +60,11 @@ const SearchResultsDiv = animated(styled.div`
   border-radius: 2px;
   box-shadow: 0 2px 20px ${searchResultsBoxShadowColor};
   left: 0;
-  letter-spacing: 0;
   margin-top: 0.5rem;
   position: absolute;
   top: 100%;
   width: 100%;
+  z-index: 1000;
 `);
 
 interface SearchResultsProps {

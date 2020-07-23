@@ -17,14 +17,14 @@ const ViewStageDiv = animated(styled.div`
   display: inline-block;
 `);
 
-const TextSpan = styled.span`
-  height: 16px;
-  color: #6c757d;
-  font-weight: bold;
-  letter-spacing: 0;
-  line-height: 25px;
-  text-align: center;
-  margin: 0.5rem 1rem;
+const ViewStageInput = styled.input`
+  background-color: transparent;
+  border: none;
+
+  :focus {
+    boder: none;
+    outline: none;
+  }
 `;
 
 export default ({ index, stageRef }) => {
@@ -37,7 +37,7 @@ export default ({ index, stageRef }) => {
 
   return (
     <ViewStageDiv style={props}>
-      <TextSpan>+ search sample</TextSpan>
+      <ViewStageInput />
     </ViewStageDiv>
   );
 };
