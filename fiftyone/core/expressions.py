@@ -22,12 +22,13 @@ import fiftyone.core.utils as fou
 
 
 class MatchExpression(object):
-    """A field of an object in a :class:`ViewStage`.
+    """A field or expression that represents a part or whole of a MongoDB
+    Aggregation Pipeline Expression in a
+    :class:`fiftyone.core.stages.ViewStage`.
 
+    This class provides convenient syntax that wraps the functionality
+    supported here:
     https://docs.mongodb.com/manual/reference/operator/aggregation/
-
-    A boolean condition involving a field of an object in a
-    :class:`ViewStage`.
 
     Args:
         field_or_expr: the name of the field or the MongoDB expression defining
@@ -140,12 +141,6 @@ class MatchExpression(object):
         """
         return MatchExpression({"$exp": self})
 
-    def is_in(self, values):
-        """Returns a boolean indicating whether a specified value is in an
-        array.
-        """
-        return MatchExpression({"$in": [self, list(values)]})
-
     def ln(self):
         """Calculates the natural logarithm ln (i.e log_e) of a number and
         returns the result.
@@ -180,6 +175,18 @@ class MatchExpression(object):
         raise TypeError(
             "Cannot index an expression. Only indexing fields is valid."
         )
+
+    def is_in(self, values):
+        """Returns a boolean indicating whether the expression is in the
+        array of values
+        """
+        return MatchExpression({"$in": [self, list(values)]})
+
+    def contains(self, value):
+        """Returns a boolean indicating whether the specified value is in the
+        array field/expression.
+        """
+        return MatchExpression({"$in": [value, self]})
 
     @staticmethod
     def _recurse(val, in_list):

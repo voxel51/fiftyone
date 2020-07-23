@@ -15,6 +15,7 @@ unittest.TextTestRunner().run(singletest)
 """
 import datetime
 from functools import wraps
+import math
 import unittest
 
 from mongoengine.errors import (
@@ -1238,14 +1239,102 @@ class ExpressionTest(unittest.TestCase):
         dataset_name = self.test_arithmetic.__name__
         dataset = fo.Dataset(dataset_name)
 
-        # @todo(Tyler)
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="filepath1.jpg", my_int=5, my_float=0.51),
+                fo.Sample(
+                    filepath="filepath2.jpg", my_int=-6, my_float=-0.965
+                ),
+            ]
+        )
+
+        # test __abs__
+        manual_ids = [
+            sample.id for sample in dataset if abs(sample.my_int) == 6
+        ]
+        view = dataset.match(abs(E("my_int")) == 6)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __add__
+        manual_ids = [
+            sample.id for sample in dataset if sample.my_int + 0.5 == -5.5
+        ]
+        view = dataset.match(E("my_int") + 0.5 == -5.5)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __ceil__
+        manual_ids = [
+            sample.id for sample in dataset if math.ceil(sample.my_float) == 1
+        ]
+        view = dataset.match(math.ceil(E("my_float")) == 1)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __floor__
+        manual_ids = [
+            sample.id
+            for sample in dataset
+            if math.floor(sample.my_float) == -1
+        ]
+        view = dataset.match(math.floor(E("my_float")) == -1)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __round__
+        manual_ids = [
+            sample.id for sample in dataset if round(sample.my_float) == -1
+        ]
+        view = dataset.match(round(E("my_float")) == -1)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
 
     @drop_datasets
     def test_array(self):
         dataset_name = self.test_array.__name__
         dataset = fo.Dataset(dataset_name)
 
-        # @todo(Tyler)
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="filepath1.jpg",
+                    tags=["train"],
+                    my_int=5,
+                    my_list=["a", "b"],
+                ),
+                fo.Sample(
+                    filepath="filepath2.jpg",
+                    tags=["train"],
+                    my_int=6,
+                    my_list=["b", "c"],
+                ),
+                fo.Sample(
+                    filepath="filepath3.jpg",
+                    tags=["test"],
+                    my_int=7,
+                    my_list=["c", "d"],
+                ),
+            ]
+        )
+
+        # test contains
+        tag = "train"
+        manual_ids = [sample.id for sample in dataset if tag in sample.tags]
+        view = dataset.match(E("tags").contains(tag))
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test is_in
+        my_ints = [6, 7, 8]
+        manual_ids = [
+            sample.id for sample in dataset if sample.my_int in my_ints
+        ]
+        view = dataset.match(E("my_int").is_in(my_ints))
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __getitem__
+        idx = 1
+        value = "c"
+        manual_ids = [
+            sample.id for sample in dataset if sample.my_list[idx] == value
+        ]
+        view = dataset.match(E("my_list")[idx] == value)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
 
 
 class FieldTest(unittest.TestCase):
@@ -1570,9 +1659,4 @@ class AggregationTest(unittest.TestCase):
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
-    # unittest.main(verbosity=2)
-
-    singletest = unittest.TestSuite()
-    singletest.addTest(ExpressionTest("test_comparison"))
-    singletest.addTest(ExpressionTest("test_logic"))
-    unittest.TextTestRunner().run(singletest)
+    unittest.main(verbosity=2)

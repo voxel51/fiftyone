@@ -238,7 +238,7 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             field: the list field
-            filter: a :class:`fiftyone.core.stages.ViewFieldCond` or
+            filter: a :class:`fiftyone.core.expressions.MatchExpression` or
                 `MongoDB query dict <https://docs.mongodb.com/manual/tutorial/query-documents>`_
                 describing the filter to apply
 
@@ -257,7 +257,7 @@ class DatasetView(foc.SampleCollection):
         details about passing a MongoDB query dict to this function.
 
         Args:
-            filter: a :class:`fiftyone.core.stages.ViewFieldCond` or
+            filter: a :class:`fiftyone.core.expressions.MatchExpression` or
                 `MongoDB query dict <https://docs.mongodb.com/manual/tutorial/query-documents>`_
                 describing the filter to apply
 
