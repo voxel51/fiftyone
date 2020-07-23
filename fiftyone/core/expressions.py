@@ -63,32 +63,119 @@ class _ViewExpression(object):
     # Comparison Expression Operators
 
     def __eq__(self, other):
+        """Creates an expression that returns a boolean indicating whether:
+            `<resolved expression> == <other>`
+
+        Args:
+            other: a :class:`ViewExpression` or a python primitive understood
+                by MongoDB
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$eq": [self, other]})
 
     def __ge__(self, other):
+        """Creates an expression that returns a boolean indicating whether:
+            `<resolved expression> >= <other>`
+
+        Args:
+            other: a :class:`ViewExpression` or a python primitive understood
+                by MongoDB
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$gte": [self, other]})
 
     def __gt__(self, other):
+        """Creates an expression that returns a boolean indicating whether:
+            `<resolved expression> > <other>`
+
+        Args:
+            other: a :class:`ViewExpression` or a python primitive understood
+                by MongoDB
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$gt": [self, other]})
 
     def __le__(self, other):
+        """Creates an expression that returns a boolean indicating whether:
+            `<resolved expression> <= <other>`
+
+        Args:
+            other: a :class:`ViewExpression` or a python primitive understood
+                by MongoDB
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$lte": [self, other]})
 
     def __lt__(self, other):
+        """Creates an expression that returns a boolean indicating whether:
+            `<resolved expression> < <other>`
+
+        Args:
+            other: a :class:`ViewExpression` or a python primitive understood
+                by MongoDB
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$lt": [self, other]})
 
     def __ne__(self, other):
+        """Creates an expression that returns a boolean indicating whether:
+            `<resolved expression> != <other>`
+
+        Args:
+            other: a :class:`ViewExpression` or a python primitive understood
+                by MongoDB
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$ne": [self, other]})
 
     # Logic Expression Operators
 
     def __and__(self, other):
+        """Creates an expression that returns a boolean that is a logical
+        combination:
+            `<resolved expression> AND <other>`
+
+        Args:
+            other: a :class:`ViewField` or :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$and": [self, other]})
 
     def __invert__(self):
+        """Creates an expression that returns a boolean that the logical
+        inverse of this expression:
+            `NOT <resolved expression>`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$not": self})
 
     def __or__(self, other):
+        """Creates an expression that returns a boolean that is a logical
+        combination:
+            `<resolved expression> OR <other>`
+
+        Args:
+            other: a :class:`ViewField` or :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$or": [self, other]})
 
     def __rand__(self, other):
@@ -100,19 +187,53 @@ class _ViewExpression(object):
     # Arithmetic Expression Operators
 
     def __abs__(self):
+        """Creates an expression that returns a number that is the absolute
+        value of this expression.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$abs": self})
 
     def __add__(self, other):
         return ViewExpression({"$add": [self, other]})
 
     def __ceil__(self):
+        """Creates an expression that returns a number that is the CEIL of this
+        expression.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$ceil": self})
 
     def __floor__(self):
+        """Creates an expression that returns a number that is the FLOOR of
+        this expression.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$floor": self})
 
-    def __round__(self, n=0):
-        return ViewExpression({"$round": [self, n]})
+    def __round__(self, place=0):
+        """Creates an expression that returns a number that is the rounded
+        value of this expression.
+
+        Args:
+            place: the decimal place at which to round. Must be an integer
+                in range -20 < place < 100.
+
+                Positive values will round to `place` decimal places:
+                    e.g. `place=2`  1234.5678 --> 1234.57
+
+                Negative values will round digits left of the decimal with 0.
+                    e.g.  `place=-2`  1234.5678 --> 1200
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$round": [self, place]})
 
     def __mod__(self, other):
         return ViewExpression({"$mod": [self, other]})
@@ -121,6 +242,16 @@ class _ViewExpression(object):
         return ViewExpression({"$multiply": [self, other]})
 
     def __pow__(self, power, modulo=None):
+        """Creates an expression that returns a number that is the value of
+        this expression raised to the `power`.
+
+        Args:
+            power: the power that the resolved expression is raised to
+            module: unused arg
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"pow": [self, power]})
 
     def __radd__(self, other):
@@ -145,8 +276,8 @@ class _ViewExpression(object):
         return ViewExpression({"$divide": [self, other]})
 
     def exp(self):
-        """Raises Euler’s number (i.e. e ) to the specified exponent and
-        returns the result.
+        """Creates an expression that raises Euler’s number to the specified
+        exponent and returns the result.
 
         Returns:
             a :class:`ViewExpression`
@@ -154,8 +285,8 @@ class _ViewExpression(object):
         return ViewExpression({"$exp": self})
 
     def ln(self):
-        """Calculates the natural logarithm ln (i.e log_e) of a number and
-        returns the result.
+        """Creates an expression that calculates the natural logarithm of a
+        number and returns the result.
 
         Returns:
             a :class:`ViewExpression`
@@ -163,8 +294,8 @@ class _ViewExpression(object):
         return ViewExpression({"$ln": self})
 
     def log(self, base):
-        """Calculates the log of a number in the specified base and returns the
-        result.
+        """Creates an expression that calculates the log of a number in the
+        specified base and returns the result.
 
         Args:
             base: the base to compute the log on
@@ -175,7 +306,8 @@ class _ViewExpression(object):
         return ViewExpression({"$log": [self, base]})
 
     def log10(self):
-        """Calculates the log base 10 of a number and returns the result.
+        """Creates an expression that calculates the log base 10 of a number
+        and returns the result.
 
         Returns:
             a :class:`ViewExpression`
@@ -183,8 +315,8 @@ class _ViewExpression(object):
         return ViewExpression({"$log10": self})
 
     def sqrt(self):
-        """Calculates the square root of a positive number and returns the
-        result.
+        """Creates an expression that calculates the square root of a positive
+        number and returns the result.
 
         Returns:
             a :class:`ViewExpression`
@@ -192,7 +324,8 @@ class _ViewExpression(object):
         return ViewExpression({"$sqrt": self})
 
     def trunc(self, place=0):
-        """Truncates a number to a specified decimal place.
+        """Creates an expression that truncates a number to a specified
+        decimal place.
 
         Args:
             place: the decimal place at which to truncate. Must be an integer
@@ -215,8 +348,8 @@ class _ViewExpression(object):
         return ViewExpression({"$arrayElemAt": [self, idx]})
 
     def is_in(self, values):
-        """Returns a boolean indicating whether the expression is in the
-        array of values
+        """Creates an expression that returns a boolean indicating whether
+        the resolved expression is in the array of values.
 
         Args:
             values: a list of values to check if the resolved value of this
@@ -228,8 +361,8 @@ class _ViewExpression(object):
         return ViewExpression({"$in": [self, list(values)]})
 
     def contains(self, value):
-        """Returns a boolean indicating whether the specified value is in the
-        array field/expression.
+        """Creates an expression that returns a boolean indicating whether the
+        specified value is in the resolved array expression.
 
         Args:
             value: the value to check if it is contained in the resolved list
@@ -243,6 +376,27 @@ class _ViewExpression(object):
 
 class ViewField(_ViewExpression):
     """A field of an object in a :class:`fiftyone.core.stages.ViewStage`.
+
+    .. automethod:: __eq__
+    .. automethod:: __ge__
+    .. automethod:: __gt__
+    .. automethod:: __le__
+    .. automethod:: __lt__
+    .. automethod:: __ne__
+    .. automethod:: __and__
+    .. automethod:: __invert__
+    .. automethod:: __or__
+    .. automethod:: __abs__
+    .. automethod:: __add__
+    .. automethod:: __ceil__
+    .. automethod:: __floor__
+    .. automethod:: __round__
+    .. automethod:: __mod__
+    .. automethod:: __mul__
+    .. automethod:: __pow__
+    .. automethod:: __sub__
+    .. automethod:: __truediv__
+    .. automethod:: __getitem__
 
     Args:
         name: the name of the field
@@ -273,6 +427,27 @@ class ViewExpression(_ViewExpression):
 
     Typically, :class:`ViewExpression` instances are built by applying
     builtin operators to :class:`ViewField` instances.
+
+    .. automethod:: __eq__
+    .. automethod:: __ge__
+    .. automethod:: __gt__
+    .. automethod:: __le__
+    .. automethod:: __lt__
+    .. automethod:: __ne__
+    .. automethod:: __and__
+    .. automethod:: __invert__
+    .. automethod:: __or__
+    .. automethod:: __abs__
+    .. automethod:: __add__
+    .. automethod:: __ceil__
+    .. automethod:: __floor__
+    .. automethod:: __round__
+    .. automethod:: __mod__
+    .. automethod:: __mul__
+    .. automethod:: __pow__
+    .. automethod:: __sub__
+    .. automethod:: __truediv__
+    .. automethod:: __getitem__
 
     Args:
         expr: the MongoDB expression
