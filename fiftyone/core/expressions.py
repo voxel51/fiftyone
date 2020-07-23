@@ -101,6 +101,12 @@ class MatchExpression(object):
     def __or__(self, other):
         return MatchExpression({"$or": [self, other]})
 
+    def __rand__(self, other):
+        return MatchExpression({"$and": [other, self]})
+
+    def __ror__(self, other):
+        return MatchExpression({"$or": [other, self]})
+
     # Arithmetic Expression Operators
 
     def __abs__(self):
@@ -124,10 +130,23 @@ class MatchExpression(object):
     def __mul__(self, other):
         return MatchExpression({"$multiply": [self, other]})
 
-    __rmul__ = __mul__
-
     def __pow__(self, power, modulo=None):
         return MatchExpression({"pow": [self, power]})
+
+    def __radd__(self, other):
+        return MatchExpression({"$add": [other, self]})
+
+    def __rmod__(self, other):
+        return MatchExpression({"$mod": [other, self]})
+
+    def __rmul__(self, other):
+        return MatchExpression({"$multiply": [other, self]})
+
+    def __rsub__(self, other):
+        return MatchExpression({"$subtract": [other, self]})
+
+    def __rtruediv__(self, other):
+        return MatchExpression({"$divide": [other, self]})
 
     def __sub__(self, other):
         return MatchExpression({"$subtract": [self, other]})
