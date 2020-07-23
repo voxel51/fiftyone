@@ -1,5 +1,5 @@
 """
-Expressions for :class:`DatasetView` stage definitions.
+Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
