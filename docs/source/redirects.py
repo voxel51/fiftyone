@@ -8,10 +8,10 @@ Inspired by https://github.com/sphinx-contrib/redirects.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 import os
 
 from sphinx.builders import html as builders
+from sphinx.util import logging
 
 import eta.core.utils as etau
 
