@@ -21,22 +21,10 @@ from builtins import *
 import fiftyone.core.utils as fou
 
 
-class ViewExpression(object):
-    """An expression involving one or more fields of an object in a
-    :class:`fiftyone.core.stages.ViewStage`.
-
-    See `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-    for more details.
-
-    Typically, :class:`ViewExpression` instances are built by applying
-    builtin operators to :class:`ViewField` instances.
-
-    Args:
-        expr: the MongoDB expression
+class _ViewExpression(object):
+    """Base class that ViewField and ViewExpression inherit from. Specifies
+    operations that can be applied to either.
     """
-
-    def __init__(self, expr):
-        self._expr = expr
 
     def __str__(self):
         return repr(self)
@@ -69,11 +57,8 @@ class ViewExpression(object):
         Args:
             in_list (False): whether this expression is being used in the
                 context of a list filter
-
-        Returns:
-            a MongoDB expression
         """
-        return ViewExpression._recurse(self._expr, in_list)
+        raise NotImplementedError("Subclass must implement `to_mongo`")
 
     # Comparison Expression Operators
 
@@ -210,24 +195,24 @@ class ViewExpression(object):
 
     @staticmethod
     def _recurse(val, in_list):
-        if isinstance(val, ViewExpression):
+        if isinstance(val, _ViewExpression):
             return val.to_mongo(in_list=in_list)
 
         if isinstance(val, dict):
             return {
-                ViewExpression._recurse(k, in_list): ViewExpression._recurse(
+                _ViewExpression._recurse(k, in_list): _ViewExpression._recurse(
                     v, in_list
                 )
                 for k, v in val.items()
             }
 
         if isinstance(val, list):
-            return [ViewExpression._recurse(v, in_list) for v in val]
+            return [_ViewExpression._recurse(v, in_list) for v in val]
 
         return val
 
 
-class ViewField(ViewExpression):
+class ViewField(_ViewExpression):
     """A field of an object in a :class:`fiftyone.core.stages.ViewStage`.
 
     Args:
@@ -248,3 +233,33 @@ class ViewField(ViewExpression):
             a string
         """
         return "$$this.%s" % self.name if in_list else "$" + self.name
+
+
+class ViewExpression(_ViewExpression):
+    """An expression involving one or more fields of an object in a
+    :class:`fiftyone.core.stages.ViewStage`.
+
+    See `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+    for more details.
+
+    Typically, :class:`ViewExpression` instances are built by applying
+    builtin operators to :class:`ViewField` instances.
+
+    Args:
+        expr: the MongoDB expression
+    """
+
+    def __init__(self, expr):
+        self._expr = expr
+
+    def to_mongo(self, in_list=False):
+        """Returns a MongoDB representation of the expression.
+
+        Args:
+            in_list (False): whether this expression is being used in the
+                context of a list filter
+
+        Returns:
+            a MongoDB expression
+        """
+        return ViewExpression._recurse(self._expr, in_list)
