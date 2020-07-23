@@ -7,7 +7,7 @@ import {
   white96 as backgroundColor,
   white85 as borderColor,
 } from "../../shared/colors";
-
+import { getSocket, useSubscribe } from "../../utils/socket";
 import ViewStage from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 
@@ -35,6 +35,13 @@ const ViewBarDiv = styled.div`
 
 export default () => {
   const [state, send] = useMachine(viewBarMachine);
+  const socket = getSocket(5151, "state");
+
+  useSubscribe(socket, "connect", (data) => {
+    socket.emit("get_stages", "", (data) => {
+      console.log(data);
+    });
+  });
 
   const { stages, tailStage } = state.context;
 

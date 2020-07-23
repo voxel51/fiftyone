@@ -33,6 +33,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+from fiftyone.core.stages import _STAGES
 import fiftyone.core.state as fos
 
 from util import get_image_size
@@ -220,6 +221,13 @@ class StateController(Namespace):
             return []
 
         return _get_distributions(view, group)
+
+    def on_get_stages(self, _):
+        """Gets ViewStage descriptions"""
+        return [
+            {"name": stage.__name__, "params": stage._params()}
+            for stage in _STAGES
+        ]
 
 
 def _get_distributions(view, group):
