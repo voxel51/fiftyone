@@ -24,30 +24,6 @@ import numbers
 from bson import ObjectId, json_util
 
 import fiftyone.core.collections as foc
-import fiftyone.core.stages as fos
-
-
-def _make_registrar():
-    """Makes a decorator that keeps a registry of all functions decorated by
-    it.
-    Usage::
-        my_decorator = _make_registrar()
-        my_decorator.all  # dictionary mapping names to functions
-    """
-    registry = {}
-
-    def registrar(func):
-        registry[func.__name__] = func
-        # Normally a decorator returns a wrapped function, but here we return
-        # `func` unmodified, after registering it
-        return func
-
-    registrar.all = registry
-    return registrar
-
-
-# Keeps track of all DatasetView stage methods
-view_stage = _make_registrar()
 
 
 class DatasetView(foc.SampleCollection):
@@ -210,16 +186,6 @@ class DatasetView(foc.SampleCollection):
         ]
         return [f for f in self.aggregate(pipeline)]
 
-    @classmethod
-    def list_stage_methods(cls):
-        """Returns a list of all available :class:`DatasetView` stage methods,
-        i.e., stages that return another :class:`DatasetView`.
-
-        Returns:
-            a list of :class:`DatasetView` method names
-        """
-        return list(view_stage.all)
-
     def add_stage(self, stage):
         """Adds a :class:`fiftyone.core.stages.ViewStage` to the current view,
         returning a new view.
@@ -227,178 +193,7 @@ class DatasetView(foc.SampleCollection):
         Args:
             stage: a :class:`fiftyone.core.stages.ViewStage`
         """
-        return self._copy_with_new_stage(stage)
-
-    @view_stage
-    def exclude(self, sample_ids):
-        """Excludes the samples with the given IDs from the view.
-
-        Args:
-            sample_ids: an iterable of sample IDs
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Exclude(sample_ids))
-
-    @view_stage
-    def exists(self, field):
-        """Returns a view containing the samples that have a non-``None`` value
-        for the given field.
-
-        Args:
-            field: the field
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Exists(field))
-
-    @view_stage
-    def limit(self, limit):
-        """Limits the view to the given number of samples.
-
-        Args:
-            num: the maximum number of samples to return. If a non-positive
-                number is provided, an empty view is returned
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Limit(limit))
-
-    @view_stage
-    def list_filter(self, field, filter):
-        """Filters the elements of the given list field.
-
-        Elements of ``field``, which must be a list field, for which ``filter``
-        returns ``False`` are omitted from the field.
-
-        Args:
-            field: the list field
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.ListFilter(field, filter))
-
-    @view_stage
-    def match(self, filter):
-        """Filters the samples in the view by the given filter.
-
-        Samples for which ``filter`` returns ``False`` are omitted.
-
-        Args:
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Match(filter))
-
-    @view_stage
-    def match_tag(self, tag):
-        """Returns a view containing the samples that have the given tag.
-
-        Args:
-            tag: a tag
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.MatchTag(tag))
-
-    @view_stage
-    def match_tags(self, tags):
-        """Returns a view containing the samples that have any of the given
-        tags.
-
-        To match samples that contain multiple tags, simply chain
-        :func:`match_tag` or :func:`match_tags` calls together.
-
-        Args:
-            tags: an iterable of tags
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.MatchTags(tags))
-
-    @view_stage
-    def mongo(self, pipeline):
-        """Adds a view stage defined by the raw MongoDB aggregation pipeline.
-
-        See `MongoDB aggreation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
-        for more details.
-
-        Args:
-            pipeline: a MongoDB aggregation pipeline (list of dicts)
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Mongo(pipeline))
-
-    @view_stage
-    def select(self, sample_ids):
-        """Selects the samples with the given IDs from the view.
-
-        Args:
-            sample_ids: an iterable of sample IDs
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Select(sample_ids))
-
-    @view_stage
-    def skip(self, skip):
-        """Omits the given number of samples from the head of the view.
-
-        Args:
-            skip: the number of samples to skip. If a non-positive number is
-                provided, no samples are omitted
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Skip(skip))
-
-    @view_stage
-    def sort_by(self, field_or_expr, reverse=False):
-        """Sorts the samples in the view by the given field or expression.
-
-        When sorting by an expression, ``field_or_expr`` can either be a
-        :class:`fiftyone.core.expressions.ViewExpression` or a
-        `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-        that defines the quantity to sort by.
-
-        Args:
-            field_or_expr: the field or expression to sort by
-            reverse (False): whether to return the results in descending order
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.SortBy(field_or_expr, reverse=reverse))
-
-    @view_stage
-    def take(self, size):
-        """Randomly samples the given number of samples from the view.
-
-        Args:
-            size: the number of samples to return. If a non-positive number is
-                provided, an empty view is returned
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Take(size))
+        return self._add_view_stage(stage)
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.
@@ -481,7 +276,7 @@ class DatasetView(foc.SampleCollection):
 
         return self.skip(start).limit(stop - start)
 
-    def _copy_with_new_stage(self, stage):
+    def _add_view_stage(self, stage):
         view = copy(self)
         view._stages.append(stage)
         return view

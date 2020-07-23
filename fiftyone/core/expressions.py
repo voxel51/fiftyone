@@ -58,7 +58,7 @@ class _ViewExpression(object):
             in_list (False): whether this expression is being used in the
                 context of a list filter
         """
-        raise NotImplementedError("Subclass must implement `to_mongo`")
+        raise NotImplementedError("Subclass must implement to_mongo()")
 
     # Comparison Expression Operators
 

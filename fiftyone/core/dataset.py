@@ -215,12 +215,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return super().__getattribute__(name)
 
-    def __getattr__(self, name):
-        # pass through view methods
-        if name in fov.view_stage.all:
-            return getattr(self.view(), name)
-        return super().__getattribute__(name)
-
     @property
     def name(self):
         """The name of the dataset."""
@@ -1152,6 +1146,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         d = etas.load_json(path_or_str)
         return cls.from_dict(d, name=name)
+
+    def _add_view_stage(self, stage):
+        """Returns a :class:`fiftyone.core.view.DatasetView` instance with
+        the stage added to the end of the pipeline.
+        """
+        return self.view().add_stage(stage)
 
     @property
     def _collection_name(self):
