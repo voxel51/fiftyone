@@ -21,10 +21,43 @@ from builtins import *
 import fiftyone.core.utils as fou
 
 
-class _ViewExpression(object):
-    """Base class that ViewField and ViewExpression inherit from. Specifies
-    overloaded operators that can be applied to both.
+class ViewExpression(object):
+    """An expression involving one or more fields of an object in a
+    :class:`fiftyone.core.stages.ViewStage`.
+
+    See `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+    for more details.
+
+    Typically, :class:`ViewExpression` instances are built by applying
+    builtin operators to :class:`ViewField` instances.
+
+    .. automethod:: __eq__
+    .. automethod:: __ge__
+    .. automethod:: __gt__
+    .. automethod:: __le__
+    .. automethod:: __lt__
+    .. automethod:: __ne__
+    .. automethod:: __and__
+    .. automethod:: __invert__
+    .. automethod:: __or__
+    .. automethod:: __abs__
+    .. automethod:: __add__
+    .. automethod:: __ceil__
+    .. automethod:: __floor__
+    .. automethod:: __round__
+    .. automethod:: __mod__
+    .. automethod:: __mul__
+    .. automethod:: __pow__
+    .. automethod:: __sub__
+    .. automethod:: __truediv__
+    .. automethod:: __getitem__
+
+    Args:
+        expr: the MongoDB expression
     """
+
+    def __init__(self, expr):
+        self._expr = expr
 
     def __str__(self):
         return repr(self)
@@ -57,8 +90,11 @@ class _ViewExpression(object):
         Args:
             in_list (False): whether this expression is being used in the
                 context of a list filter
+
+        Returns:
+            a MongoDB expression
         """
-        raise NotImplementedError("Subclass must implement to_mongo()")
+        return ViewExpression._recurse(self._expr, in_list)
 
     # Comparison Expression Operators
 
@@ -418,8 +454,26 @@ class _ViewExpression(object):
         """
         return ViewExpression({"$in": [value, self]})
 
+    @staticmethod
+    def _recurse(val, in_list):
+        if isinstance(val, ViewExpression):
+            return val.to_mongo(in_list=in_list)
 
-class ViewField(_ViewExpression):
+        if isinstance(val, dict):
+            return {
+                ViewExpression._recurse(k, in_list): ViewExpression._recurse(
+                    v, in_list
+                )
+                for k, v in val.items()
+            }
+
+        if isinstance(val, list):
+            return [ViewExpression._recurse(v, in_list) for v in val]
+
+        return val
+
+
+class ViewField(ViewExpression):
     """A field of an object in a :class:`fiftyone.core.stages.ViewStage`.
 
     .. automethod:: __eq__
@@ -444,11 +498,13 @@ class ViewField(_ViewExpression):
     .. automethod:: __getitem__
 
     Args:
-        name: the name of the field
+        expr: the name of the field
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, expr):
+        if not isinstance(expr, str):
+            raise TypeError()
+        super().__init__(expr)
 
     def to_mongo(self, in_list=False):
         """Returns a MongoDB representation of the field.
@@ -460,73 +516,4 @@ class ViewField(_ViewExpression):
         Returns:
             a string
         """
-        return "$$this.%s" % self.name if in_list else "$" + self.name
-
-
-class ViewExpression(_ViewExpression):
-    """An expression involving one or more fields of an object in a
-    :class:`fiftyone.core.stages.ViewStage`.
-
-    See `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-    for more details.
-
-    Typically, :class:`ViewExpression` instances are built by applying
-    builtin operators to :class:`ViewField` instances.
-
-    .. automethod:: __eq__
-    .. automethod:: __ge__
-    .. automethod:: __gt__
-    .. automethod:: __le__
-    .. automethod:: __lt__
-    .. automethod:: __ne__
-    .. automethod:: __and__
-    .. automethod:: __invert__
-    .. automethod:: __or__
-    .. automethod:: __abs__
-    .. automethod:: __add__
-    .. automethod:: __ceil__
-    .. automethod:: __floor__
-    .. automethod:: __round__
-    .. automethod:: __mod__
-    .. automethod:: __mul__
-    .. automethod:: __pow__
-    .. automethod:: __sub__
-    .. automethod:: __truediv__
-    .. automethod:: __getitem__
-
-    Args:
-        expr: the MongoDB expression
-    """
-
-    def __init__(self, expr):
-        self._expr = expr
-
-    def to_mongo(self, in_list=False):
-        """Returns a MongoDB representation of the expression.
-
-        Args:
-            in_list (False): whether this expression is being used in the
-                context of a list filter
-
-        Returns:
-            a MongoDB expression
-        """
-        return ViewExpression._recurse(self._expr, in_list)
-
-    @staticmethod
-    def _recurse(val, in_list):
-        if isinstance(val, _ViewExpression):
-            return val.to_mongo(in_list=in_list)
-
-        if isinstance(val, dict):
-            return {
-                ViewExpression._recurse(k, in_list): ViewExpression._recurse(
-                    v, in_list
-                )
-                for k, v in val.items()
-            }
-
-        if isinstance(val, list):
-            return [ViewExpression._recurse(v, in_list) for v in val]
-
-        return val
+        return "$$this.%s" % self._expr if in_list else "$" + self._expr
