@@ -24,6 +24,8 @@ import fiftyone.core.utils as fou
 class MatchExpression(object):
     """A field of an object in a :class:`ViewStage`.
 
+    https://docs.mongodb.com/manual/reference/operator/aggregation/
+
     A boolean condition involving a field of an object in a
     :class:`ViewStage`.
 
@@ -66,8 +68,6 @@ class MatchExpression(object):
                 else "$" + self.field_or_expr
             )
         return self._recurse(self.field_or_expr, in_list)
-
-    # AGGREGATION PIPELINE OPERATORS ##########################################
 
     # Comparison Expression Operators
 

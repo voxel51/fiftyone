@@ -1233,17 +1233,6 @@ class ExpressionTest(unittest.TestCase):
             my_int = sample[field]
             self.assertTrue(my_int < bounds[0] or my_int > bounds[1])
 
-        # # test logical nor
-        # view = dataset.logical_nor(
-        #     [
-        #         fos.LessThan(field, bounds[0]),
-        #         fos.GreaterThan(field, bounds[1]),
-        #     ]
-        # )
-        # for sample in view:
-        #     self.assertGreaterEqual(sample[field], bounds[0])
-        #     self.assertLessEqual(sample[field], bounds[1])
-
     @drop_datasets
     def test_arithmetic(self):
         dataset_name = self.test_arithmetic.__name__
