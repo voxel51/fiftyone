@@ -33,17 +33,17 @@ const ViewStageInput = styled.input`
 
 const ViewStageButton = styled.button``;
 
-export default React.memo(({ stageRef, expandWhenEmpty }) => {
+export default React.memo(({ stageRef, tailStage }) => {
   const [state, send] = useService(stageRef);
 
   const props = useSpring({
-    borderStyle: isActive ? "dashed" : "solid",
+    borderStyle: true ? "dashed" : "solid",
   });
 
   return (
     <ViewStageDiv style={props}>
       <div>
-        {expandWhenEmpty ? (
+        {tailStage ? (
           <ViewStageInput placeholder="+ search sample" />
         ) : (
           <ViewStageButton />

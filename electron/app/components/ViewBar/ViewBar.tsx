@@ -43,7 +43,7 @@ export default () => {
       {stages.map((stage) => (
         <ViewStage key={stage.id} stageRef={stage.ref} />
       ))}
-      <ViewStage key={tailStage.id} stageRef={tailStage.ref} />
+      <ViewStage key={tailStage.id} stageRef={tailStage.ref} tailStage={true} />
     </ViewBarDiv>
   );
 };

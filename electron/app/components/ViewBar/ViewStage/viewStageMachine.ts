@@ -26,6 +26,7 @@ const viewStageMachine = Machine({
     initializing: {
       entry: assign({
         parameters: (ctx, e) => {
+          console.log(ctx);
           return ctx.parameters.map((parameter) => ({
             ...parameter,
             ref: spawn(viewStageParameterMachine.withContext(parameter)),

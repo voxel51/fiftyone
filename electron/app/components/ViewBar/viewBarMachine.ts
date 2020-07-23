@@ -7,6 +7,7 @@ export const createStage = (stage) => {
     id: uuid(),
     completed: false,
     stage: stage,
+    parameters: [],
   };
 };
 
