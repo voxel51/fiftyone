@@ -42,14 +42,14 @@ class ViewStage(object):
     """
 
     def __str__(self):
-        kwarg_str = ", ".join(
+        return repr(self)
+
+    def __repr__(self):
+        kwargs_str = ", ".join(
             ["%s=%s" % (k, reprlib.repr(v)) for k, v in self._kwargs().items()]
         )
 
-        return "%s(%s)" % (self.__class__.__name__, kwarg_str)
-
-    def __repr__(self):
-        return str(self)
+        return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
     def to_mongo(self):
         """Returns the MongoDB version of the
