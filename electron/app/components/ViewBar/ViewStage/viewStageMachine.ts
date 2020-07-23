@@ -26,7 +26,6 @@ const viewStageMachine = Machine({
     initializing: {
       entry: assign({
         parameters: (ctx, e) => {
-          console.log(ctx);
           return ctx.parameters.map((parameter) => ({
             ...parameter,
             ref: spawn(viewStageParameterMachine.withContext(parameter)),
@@ -34,12 +33,10 @@ const viewStageMachine = Machine({
         },
       }),
       on: {
-        "": "all",
+        "": "running",
       },
     },
-    all: {},
-    active: {},
-    completed: {},
+    running: {},
   },
   on: {
     "PARAMETER.COMMIT": {
