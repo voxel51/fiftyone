@@ -168,11 +168,13 @@ class ViewField(ViewExpression):
 def _recurse(val, in_list):
     if isinstance(val, ViewExpression):
         return val.to_mongo(in_list=in_list)
+
     if isinstance(val, dict):
         return {
             _recurse(k, in_list): _recurse(v, in_list) for k, v in val.items()
         }
-    elif isinstance(val, list):
+
+    if isinstance(val, list):
         return [_recurse(v, in_list) for v in val]
-    else:
-        return val
+
+    return val
