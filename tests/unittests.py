@@ -74,7 +74,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset.add_sample(sample3)
         self.assertIsNot(sample3, sample)
 
-        sample4 = dataset.view().match({"filepath": filepath}).first()
+        sample4 = dataset.match({"filepath": filepath}).first()
         self.assertIs(sample4, sample)
 
     @drop_datasets
@@ -1154,47 +1154,47 @@ class ExpressionTest(unittest.TestCase):
 
         # test `==`
         filtered_values = [v for v in dataset_values if v == value]
-        view = dataset.view().match(E(field) == value)
+        view = dataset.match(E(field) == value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `!=`
         filtered_values = [v for v in dataset_values if v != value]
-        view = dataset.view().match(E(field) != value)
+        view = dataset.match(E(field) != value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `>`
         filtered_values = [v for v in dataset_values if v > value]
-        view = dataset.view().match(E(field) > value)
+        view = dataset.match(E(field) > value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `>=`
         filtered_values = [v for v in dataset_values if v >= value]
-        view = dataset.view().match(E(field) >= value)
+        view = dataset.match(E(field) >= value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `<`
         filtered_values = [v for v in dataset_values if v < value]
-        view = dataset.view().match(E(field) < value)
+        view = dataset.match(E(field) < value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `<=`
         filtered_values = [v for v in dataset_values if v <= value]
-        view = dataset.view().match(E(field) <= value)
+        view = dataset.match(E(field) <= value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `is_in`
-        view = dataset.view().match(E(field).is_in(values))
+        view = dataset.match(E(field).is_in(values))
         for sample in view:
             self.assertIn(sample[field], values)
 
         # test `NOT is_in`
-        view = dataset.view().match(~(E(field).is_in(values)))
+        view = dataset.match(~(E(field).is_in(values)))
         for sample in view:
             self.assertNotIn(sample[field], values)
 
@@ -1216,29 +1216,25 @@ class ExpressionTest(unittest.TestCase):
         value = 5
 
         # test logical not
-        view = dataset.view().match(~(E(field) == value))
+        view = dataset.match(~(E(field) == value))
         for sample in view:
             self.assertNotEqual(sample[field], value)
 
         # test logical and
         bounds = [3, 6]
-        view = dataset.view().match(
-            (E(field) > bounds[0]) & (E(field) < bounds[1])
-        )
+        view = dataset.match((E(field) > bounds[0]) & (E(field) < bounds[1]))
         for sample in view:
             self.assertGreater(sample[field], bounds[0])
             self.assertLess(sample[field], bounds[1])
 
         # test logical or
-        view = dataset.view().match(
-            (E(field) < bounds[0]) | (E(field) > bounds[1])
-        )
+        view = dataset.match((E(field) < bounds[0]) | (E(field) > bounds[1]))
         for sample in view:
             my_int = sample[field]
             self.assertTrue(my_int < bounds[0] or my_int > bounds[1])
 
         # # test logical nor
-        # view = dataset.view().logical_nor(
+        # view = dataset.logical_nor(
         #     [
         #         fos.LessThan(field, bounds[0]),
         #         fos.GreaterThan(field, bounds[1]),

@@ -195,10 +195,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         if isinstance(sample_id, slice):
-            raise ValueError(
-                "Slicing datasets is not supported. Use `view()` to "
-                "obtain a DatasetView if you want to slice your samples"
-            )
+            return self.view()[sample_id]
 
         try:
             doc = self._get_query_set().get(id=sample_id)
@@ -216,6 +213,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if getattr(self, "_deleted", False):
             raise DoesNotExistError("Dataset '%s' is deleted" % self.name)
 
+        return super().__getattribute__(name)
+
+    def __getattr__(self, name):
+        # pass through view methods
+        if name in fov.view_stage.all:
+            return getattr(self.view(), name)
         return super().__getattribute__(name)
 
     @property

@@ -136,48 +136,6 @@ class DatasetView(foc.SampleCollection):
             ]
         )
 
-    def head(self, num_samples=3):
-        """Returns a string representation of the first few samples in the
-        view.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return "\n".join(str(s) for s in self[:num_samples])
-
-    def tail(self, num_samples=3):
-        """Returns a string representation of the last few samples in the view.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return "\n".join(str(s) for s in self[-num_samples:])
-
-    def first(self):
-        """Returns the first :class:`fiftyone.core.sample.Sample` in the view.
-
-        Returns:
-            a :class:`fiftyone.core.sample.Sample`
-        """
-        try:
-            return next(self.iter_samples())
-        except StopIteration:
-            raise ValueError("DatasetView is empty")
-
-    def last(self):
-        """Returns the last :class:`fiftyone.core.sample.Sample` in the view.
-
-        Returns:
-            a :class:`fiftyone.core.sample.Sample`
-        """
-        return self[-1:].first()
-
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
 
