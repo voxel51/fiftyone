@@ -13,13 +13,20 @@ export const createStage = (stage) => {
 const viewBarMachine = Machine({
   id: "stages",
   context: {
-    tailStage: createStage(), // tail stage
+    tailStage: undefined, // tail stage
     stages: [],
   },
   initial: "initializing",
   states: {
     initializing: {
       entry: assign({
+        tailStage: () => {
+          const newTailStage = createStage();
+          return {
+            ...newTailStage,
+            ref: spawn(viewStageMachine.withContext(newTailStage)),
+          };
+        },
         stages: (ctx, e) => {
           return ctx.stages.map((stage) => ({
             ...stage,
@@ -28,12 +35,10 @@ const viewBarMachine = Machine({
         },
       }),
       on: {
-        "": "all",
+        "": "running",
       },
     },
-    all: {},
-    active: {},
-    completed: {},
+    running: {},
   },
   on: {
     "NEWSTAGE.CHANGE": {
@@ -44,7 +49,13 @@ const viewBarMachine = Machine({
     "NEWSTAGE.COMMIT": {
       actions: [
         assign({
-          tailStage: createStage(),
+          tailStage: () => {
+            const newTailStage = createStage();
+            return {
+              ...newTailStage,
+              ref: spawn(viewStageMachine.withContext(newTailStage)),
+            };
+          },
           stages: (ctx, e) => {
             const newStage = createStage(e.value.trim());
             return ctx.stages.concat({

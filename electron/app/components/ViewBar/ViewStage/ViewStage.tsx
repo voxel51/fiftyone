@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilValue } from "recoil";
-import { useMachine } from "@xstate/react";
+import { useService } from "@xstate/react";
 
 import { grey46 as fontColor } from "../../../shared/colors";
 import SearchResults from "./SearchResults";
@@ -31,9 +31,10 @@ const ViewStageInput = styled.input`
   }
 `;
 
-export default ({ stageRef }) => {
-  // const [state, send] = useMachine(stageRef);
-  const isActive = useState(false);
+const ViewStageButton = styled.button``;
+
+export default React.memo(({ stageRef, expandWhenEmpty }) => {
+  const [state, send] = useService(stageRef);
 
   const props = useSpring({
     borderStyle: isActive ? "dashed" : "solid",
@@ -42,8 +43,12 @@ export default ({ stageRef }) => {
   return (
     <ViewStageDiv style={props}>
       <div>
-        <ViewStageInput placeholder="+ search sample" />
+        {expandWhenEmpty ? (
+          <ViewStageInput placeholder="+ search sample" />
+        ) : (
+          <ViewStageButton />
+        )}
       </div>
     </ViewStageDiv>
   );
-};
+});
