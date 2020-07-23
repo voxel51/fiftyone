@@ -285,6 +285,32 @@ class MatchTags(ViewStage):
         return {"tags": self._tags}
 
 
+class Mongo(ViewStage):
+    """View stage defined by a raw MongoDB aggregation pipeline.
+
+    See `MongoDB aggreation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
+    for more details.
+
+    Args:
+        pipeline: a MongoDB aggregation pipeline (list of dicts)
+    """
+
+    def __init__(self, pipeline):
+        self._pipeline = pipeline
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Mongo` instance.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return self._pipeline
+
+    def _kwargs(self):
+        return {"pipeline": self._pipeline}
+
+
 class Select(ViewStage):
     """Selects the samples with the given IDs from the view.
 
