@@ -221,7 +221,7 @@ class Match(ViewStage):
         """
         filt = self._filter
         if isinstance(filt, ViewExpression):
-            filt = [{"$expr": filt.to_mongo()}]
+            filt = {"$expr": filt.to_mongo()}
 
         return [{"$match": filt}]
 
