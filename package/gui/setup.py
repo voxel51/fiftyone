@@ -96,7 +96,7 @@ cmdclass = {
 
 setup(
     name="fiftyone_gui",
-    version="0.2.1",
+    version="0.2.2",
     description="Project FiftyOne app",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",

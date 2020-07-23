@@ -9,8 +9,20 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 |
 """
 
+import re
+
 import fiftyone.constants as foc
 
+
+with open("../../setup.py") as f:
+    setup_version = re.search(r'version="(.+?)"', f.read()).group(1)
+
+if setup_version != foc.VERSION:
+    raise RuntimeError(
+        "FiftyOne version in setup.py (%r) does not match installed version "
+        "(%r). If this is a dev install, reinstall with `pip install -e .` "
+        "and try again." % (setup_version, foc.VERSION)
+    )
 
 # -- Path setup --------------------------------------------------------------
 
