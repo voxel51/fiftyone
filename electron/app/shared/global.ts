@@ -11,7 +11,14 @@ export const styles = css`
     padding: 0 !important;
   }
 
+  body,
+  html {
+    height: 100%;
+  }
+
   #root {
+    height: 100%;
+    position: relative;
     overflow: hidden;
   }
 `;

@@ -28,6 +28,8 @@ import os
 import io
 import struct
 
+import fiftyone.core.odm as foo
+
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
 
 
