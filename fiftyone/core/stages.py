@@ -158,7 +158,7 @@ class ListFilter(ViewStage):
     Args:
         field: the field to filter, which must be a list
         filter: a :class:`fiftyone.core.expressions.MatchExpression` or
-            `MongoDB query dict <https://docs.mongodb.com/manual/tutorial/query-documents>`_
+            `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             describing the filter to apply
     """
 
