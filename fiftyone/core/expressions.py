@@ -147,33 +147,66 @@ class _ViewExpression(object):
     def exp(self):
         """Raises Euler’s number (i.e. e ) to the specified exponent and
         returns the result.
+
+        Returns:
+            a :class:`ViewExpression`
         """
         return ViewExpression({"$exp": self})
 
     def ln(self):
         """Calculates the natural logarithm ln (i.e log_e) of a number and
         returns the result.
+
+        Returns:
+            a :class:`ViewExpression`
         """
         return ViewExpression({"$ln": self})
 
     def log(self, base):
         """Calculates the log of a number in the specified base and returns the
         result.
+
+        Args:
+            base: the base to compute the log on
+
+        Returns:
+            a :class:`ViewExpression`
         """
         return ViewExpression({"$log": [self, base]})
 
     def log10(self):
-        """Calculates the log base 10 of a number and returns the result."""
+        """Calculates the log base 10 of a number and returns the result.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$log10": self})
 
     def sqrt(self):
         """Calculates the square root of a positive number and returns the
         result.
+
+        Returns:
+            a :class:`ViewExpression`
         """
         return ViewExpression({"$sqrt": self})
 
     def trunc(self, place=0):
-        """Truncates a number to a specified decimal place."""
+        """Truncates a number to a specified decimal place.
+
+        Args:
+            place: the decimal place at which to truncate. Must be an integer
+                in range -20 < place < 100.
+
+                Positive values will truncate to `place` decimal places:
+                    e.g. `place=2`  1234.5678 --> 1234.56
+
+                Negative values replace digits left of the decimal with 0.
+                    e.g.  `place=-2`  1234.5678 --> 1200
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$trunc": [self, place]})
 
     # Array Expression Operators
@@ -184,12 +217,26 @@ class _ViewExpression(object):
     def is_in(self, values):
         """Returns a boolean indicating whether the expression is in the
         array of values
+
+        Args:
+            values: a list of values to check if the resolved value of this
+                expression is in
+
+        Returns:
+            a :class:`ViewExpression`
         """
         return ViewExpression({"$in": [self, list(values)]})
 
     def contains(self, value):
         """Returns a boolean indicating whether the specified value is in the
         array field/expression.
+
+        Args:
+            value: the value to check if it is contained in the resolved list
+                from this expression
+
+        Returns:
+            a :class:`ViewExpression`
         """
         return ViewExpression({"$in": [value, self]})
 
