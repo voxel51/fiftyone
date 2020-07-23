@@ -9,8 +9,20 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 |
 """
 
+import re
+
 import fiftyone.constants as foc
 
+
+with open("../../setup.py") as f:
+    setup_version = re.search(r'version="(.+?)"', f.read()).group(1)
+
+if setup_version != foc.VERSION:
+    raise RuntimeError(
+        "FiftyOne version in setup.py (%r) does not match installed version "
+        "(%r). If this is a dev install, reinstall with `pip install -e .` "
+        "and try again." % (setup_version, foc.VERSION)
+    )
 
 # -- Path setup --------------------------------------------------------------
 
@@ -100,6 +112,10 @@ html_static_path = ["_static"]
 html_css_files = ["css/voxel51-website.css", "css/custom.css"]
 html_js_files = ["js/voxel51-website.js", "js/custom.js"]
 
+# Prevent RST source files from being included in output
+html_copy_source = False
+
+# Links - copied from website config
 html_context = {
     "address_main_line1": "410 N 4th Ave, 3rd Floor",
     "address_main_line2": "Ann Arbor, MI 48104",

@@ -3,9 +3,9 @@ Backing document classes for :class:`fiftyone.core.sample.Sample` instances.
 
 Class hierarchy::
 
-    ODMSample
-    ├── ODMNoDatasetSample
-    └── ODMDatasetSample
+    SampleDocument
+    ├── NoDatasetSampleDocument
+    └── DatasetSampleDocument
         ├── my_custom_dataset
         ├── another_dataset
         └── ...
@@ -13,34 +13,35 @@ Class hierarchy::
 Design invariants:
 
 -   a :class:`fiftyone.core.sample.Sample` always has a backing
-    ``sample._doc``, which is an instance of a subclass of :class:`ODMSample`
+    ``sample._doc``, which is an instance of a subclass of
+    :class:`SampleDocument`
 
 -   a :class:`fiftyone.core.dataset.Dataset` always has a backing
     ``dataset._sample_doc_cls`` which is a subclass of
-    :class:`ODMDatasetSample``.
+    :class:`DatasetSampleDocument``.
 
 **Implementation details**
 
 When a new :class:`fiftyone.core.sample.Sample` is created, its ``_doc``
-attribute is an instance of :class:`ODMNoDatasetSample`::
+attribute is an instance of :class:`NoDatasetSampleDocument`::
 
     import fiftyone as fo
 
     sample = fo.Sample()
-    sample._doc  # ODMNoDatasetSample
+    sample._doc  # NoDatasetSampleDocument
 
 When a new :class:`fiftyone.core.dataset.Dataset` is created, its
 ``_sample_doc_cls`` attribute holds a dynamically created subclass of
-:class:`ODMDatasetSample` whose name is the name of the dataset::
+:class:`DatasetSampleDocument` whose name is the name of the dataset::
 
     dataset = fo.Dataset(name="my_dataset")
-    dataset._sample_doc_cls  # my_dataset(ODMDatasetSample)
+    dataset._sample_doc_cls  # my_dataset(DatasetSampleDocument)
 
 When a sample is added to a dataset, its ``_doc`` attribute is changed from
-type :class:`ODMNoDatasetSample` to type ``dataset._sample_doc_cls``::
+type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 
     dataset.add_sample(sample)
-    sample._doc  # my_dataset(ODMDatasetSample)
+    sample._doc  # my_dataset(DatasetSampleDocument)
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -75,13 +76,17 @@ import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
-from .dataset import SampleField
-from .document import ODMDocument, ODMEmbeddedDocument, SerializableDocument
+from .dataset import SampleFieldDocument
+from .document import (
+    Document,
+    BaseEmbeddedDocument,
+    SerializableDocument,
+)
 
 
 def no_delete_default_field(func):
-    """Wrapper for :func:`ODMSample.delete_field` that prevents deleting
-    default fields of :class:`ODMSample`.
+    """Wrapper for :func:`SampleDocument.delete_field` that prevents deleting
+    default fields of :class:`SampleDocument`.
 
     This is a decorator because the subclasses implement this as either an
     instance or class method.
@@ -90,7 +95,7 @@ def no_delete_default_field(func):
     @wraps(func)
     def wrapper(cls_or_self, field_name, *args, **kwargs):
         # pylint: disable=no-member
-        if field_name in ODMDatasetSample._fields_ordered:
+        if field_name in DatasetSampleDocument._fields_ordered:
             raise ValueError("Cannot delete default field '%s'" % field_name)
 
         return func(cls_or_self, field_name, *args, **kwargs)
@@ -98,8 +103,8 @@ def no_delete_default_field(func):
     return wrapper
 
 
-class ODMSample(SerializableDocument):
-    """Interface for all sample backing documents."""
+class SampleDocument(SerializableDocument):
+    """Interface for sample backing documents."""
 
     @property
     def dataset_name(self):
@@ -175,7 +180,7 @@ class ODMSample(SerializableDocument):
         return "Sample"
 
 
-class ODMDatasetSample(ODMDocument, ODMSample):
+class DatasetSampleDocument(Document, SampleDocument):
     """Base class for sample documents backing samples in datasets.
 
     All ``fiftyone.core.dataset.Dataset._sample_doc_cls`` classes inherit from
@@ -234,7 +239,7 @@ class ODMDatasetSample(ODMDocument, ODMSample):
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:`fiftyone.core.odm.ODMEmbeddedDocument`
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
 
         Returns:
              a dictionary mapping field names to field types
@@ -297,7 +302,7 @@ class ODMDatasetSample(ODMDocument, ODMSample):
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.ODMEmbeddedDocument` type of the
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
                 field. Used only when ``ftype`` is
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             subfield (None): the type of the contained field. Used only when
@@ -320,7 +325,7 @@ class ODMDatasetSample(ODMDocument, ODMSample):
         cls._fields[field_name] = field
         cls._fields_ordered += (field_name,)
         try:
-            if issubclass(cls, ODMDatasetSample):
+            if issubclass(cls, DatasetSampleDocument):
                 # Only set the attribute if it is a class
                 setattr(cls, field_name, field)
         except TypeError:
@@ -334,7 +339,7 @@ class ODMDatasetSample(ODMDocument, ODMSample):
 
             dataset = fod.load_dataset(cls.__name__)
             field = cls._fields[field_name]
-            sample_field = SampleField.from_field(field)
+            sample_field = SampleFieldDocument.from_field(field)
             dataset._meta.sample_fields.append(sample_field)
             dataset._meta.save()
 
@@ -423,12 +428,12 @@ class ODMDatasetSample(ODMDocument, ODMSample):
         return d
 
 
-class ODMNoDatasetSample(ODMSample):
+class NoDatasetSampleDocument(SampleDocument):
     """Backing document for samples that have not been added to a dataset."""
 
     # pylint: disable=no-member
-    default_fields = ODMDatasetSample._fields
-    default_fields_ordered = ODMDatasetSample._fields_ordered
+    default_fields = DatasetSampleDocument._fields
+    default_fields_ordered = DatasetSampleDocument._fields_ordered
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()
@@ -626,28 +631,36 @@ class ODMNoDatasetSample(ODMSample):
 
 
 def _get_implied_field_kwargs(value):
-    if isinstance(value, ODMEmbeddedDocument):
+    if isinstance(value, BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),
         }
+
     if isinstance(value, bool):
         return {"ftype": fof.BooleanField}
+
     if isinstance(value, six.integer_types):
         return {"ftype": fof.IntField}
+
     if isinstance(value, numbers.Number):
         return {"ftype": fof.FloatField}
+
     if isinstance(value, six.string_types):
         return {"ftype": fof.StringField}
+
     if isinstance(value, (list, tuple)):
         return {"ftype": fof.ListField}
+
     if isinstance(value, np.ndarray):
         if value.ndim == 1:
             return {"ftype": fof.VectorField}
 
         return {"ftype": fof.ArrayField}
+
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
+
     raise TypeError("Unsupported field value '%s'" % type(value))
 
 

@@ -689,7 +689,7 @@ class DatasetTest(unittest.TestCase):
         dataset_name = self.test_backing_doc_class.__name__
         dataset = fo.Dataset(dataset_name)
         self.assertTrue(
-            issubclass(dataset._sample_doc_cls, foo.ODMDatasetSample)
+            issubclass(dataset._sample_doc_cls, foo.DatasetSampleDocument)
         )
 
     @drop_datasets
@@ -728,7 +728,7 @@ class SampleTest(unittest.TestCase):
     @drop_datasets
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="path/to/file.jpg")
-        self.assertIsInstance(sample._doc, foo.ODMNoDatasetSample)
+        self.assertIsInstance(sample._doc, foo.NoDatasetSampleDocument)
 
     @drop_datasets
     def test_get_field(self):
@@ -1088,9 +1088,6 @@ class LabelsTest(unittest.TestCase):
     def test_create(self):
         labels = fo.Classification(label="cow", confidence=0.98)
         self.assertIsInstance(labels, fo.Classification)
-
-        with self.assertRaises(FieldDoesNotExist):
-            fo.Classification(made_up_field=100)
 
         with self.assertRaises(ValidationError):
             fo.Classification(label=100)

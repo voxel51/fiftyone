@@ -87,7 +87,7 @@ class StateController(Namespace):
 
     def __init__(self, *args, **kwargs):
         self.state = fos.StateDescriptionWithDerivables().serialize()
-        super(StateController, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def on_connect(self):
         """Handles connection to the server."""
@@ -173,7 +173,10 @@ class StateController(Namespace):
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [
-            json.loads(json_util.dumps(s.to_mongo_dict())) for s in view
+            json.loads(
+                json_util.dumps(s.to_mongo_dict()), parse_constant=lambda c: c
+            )
+            for s in view
         ]
         more = False
         if len(samples) > page_length:

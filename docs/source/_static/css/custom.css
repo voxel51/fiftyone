@@ -3,15 +3,140 @@ body {
     sans-serif;
 }
 
-article.pytorch-article pre,
-span.pre {
-  background: var(--bg-light-secondary);
-}
-
 .ui.tabular.menu .item {
   /* stop breaking tabs */
   width: unset;
   margin: unset;
+}
+
+article.pytorch-article pre,
+span.pre {
+  background-color: var(--bg-light-secondary);
+}
+
+article.pytorch-article .wy-table-responsive table tbody .row-odd {
+  background-color: var(--bg-light-secondary);
+}
+
+article.pytorch-article .wy-table-responsive table tbody td {
+  padding-bottom: 0rem;
+}
+
+article.pytorch-article .wy-table-responsive table thead th {
+  line-height: 1rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  padding-bottom: 0rem;
+}
+
+.pytorch-page-level-bar {
+  z-index: 500;
+}
+
+.pytorch-left-menu {
+  overflow: auto;
+}
+
+.pytorch-menu-vertical {
+  padding-bottom: 0;
+}
+
+@media screen and (max-width: 1100px) {
+  .table-of-contents-link-wrapper {
+    display: block;
+  }
+}
+
+@media screen and (min-width: 1101px) {
+  .pytorch-left-menu {
+    width: 250px;
+    padding-left: 25px;
+    padding-right: 0;
+  }
+
+  .pytorch-left-menu .pytorch-side-scroll {
+    width: 100%;
+    overflow-y: auto;
+  }
+
+  .pytorch-menu-vertical {
+    padding-left: 0;
+    padding-right: 25px;
+  }
+
+  .pytorch-page-level-bar.left-menu-is-fixed {
+    left: 250px;
+    width: calc(100% - 250px);
+  }
+
+  .pytorch-breadcrumbs-wrapper {
+    margin-left: 25px;
+    width: calc(100% - 250px);
+  }
+
+  .pytorch-shortcuts-wrapper {
+    margin-left: 0;
+  }
+
+  .pytorch-container {
+    margin-left: 250px;
+  }
+
+  .pytorch-content-wrap {
+    position: relative;
+  }
+
+  .pytorch-container .pytorch-content-left {
+    width: 100%;
+    margin-left: 0;
+    padding-left: 25px;
+    padding-right: 250px;
+  }
+
+  .pytorch-container .pytorch-content-right {
+    position: absolute;
+    right: 0;
+    width: 250px;
+  }
+
+  .pytorch-content-right .pytorch-right-menu,
+  .pytorch-content-right .pytorch-side-scroll {
+    width: 250px;
+    overflow-y: auto;
+  }
+
+  .pytorch-right-menu.scrolling-fixed {
+    width: 250px;
+    left: unset;
+    right: 0;
+  }
+
+  .pytorch-right-menu .pytorch-side-scroll > ul {
+    padding-left: 25px;
+  }
+}
+
+@media screen and (min-width: 1600px) {
+  .pytorch-breadcrumbs-wrapper {
+    width: 875px;
+  }
+
+  .pytorch-container .pytorch-content-left {
+    width: 850px;
+    padding-right: 0;
+  }
+
+  .pytorch-content-right {
+    left: calc(850px + 25px);
+  }
+
+  .pytorch-right-menu.scrolling-fixed {
+    left: calc(250px + 850px + 25px);
+  }
+}
+
+article.pytorch-article {
+  max-width: unset;
 }
 
 .pytorch-left-menu a:link,
@@ -26,7 +151,7 @@ ul.pytorch-breadcrumbs li {
 
 article.pytorch-article pre {
   margin-bottom: 1rem;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 article.pytorch-article .note .admonition-title {
@@ -38,7 +163,7 @@ article.pytorch-article h3 {
 }
 
 .pytorch-left-menu li.toctree-l1.current > a:before {
-  top: -1rem;
+  display: none;
 }
 
 .pytorch-left-menu,
@@ -47,11 +172,11 @@ article.pytorch-article .note {
 }
 
 div.nbinput.container div.input_area {
-  background: var(--bg-light-secondary);
+  background-color: var(--bg-light-secondary);
 }
 
 div.nbinput.container div.input_area div[class*="highlight"] {
-  background: var(--bg-light-secondary);
+  background-color: var(--bg-light-secondary);
 }
 
 div.nboutput.nblast.docutils.container {
@@ -68,6 +193,12 @@ ul.pytorch-breadcrumbs a {
   color: var(--color-primary);
 }
 
+a:link.has-code span,
+a:hover.has-code span,
+a:visited.has-code span {
+  color: var(--color-secondary);
+}
+
 .rst-footer-buttons {
   /* the "next" button is floated and doesn't take up any height by itself */
   min-height: 2em;
@@ -77,6 +208,10 @@ ul.pytorch-breadcrumbs a {
 
 .nbinput .prompt,
 .nboutput .prompt {
+  display: none;
+}
+
+.nboutput .copybtn {
   display: none;
 }
 
@@ -147,11 +282,6 @@ article.pytorch-article .reference.download.internal {
 #nav__main__items {
   text-align: right;
   width: 100%;
-  max-width: 900px;
-}
-
-.nav__main a {
-  color: inherit;
 }
 
 @media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
@@ -161,6 +291,22 @@ article.pytorch-article .reference.download.internal {
   }
 }
 
+@media only screen and (min-width: 1101px) {
+  #nav__main__items {
+    margin-right: 19%;
+  }
+}
+
+@media only screen and (min-width: 1600px) {
+  #nav__main__items {
+    max-width: 800px;
+  }
+}
+
+.nav__main a {
+  color: inherit;
+}
+
 @media screen and (max-width: 1099px) {
   .nav__main {
     height: unset;
@@ -168,7 +314,7 @@ article.pytorch-article .reference.download.internal {
 }
 
 .footer-wrapper {
-  background: var(--bg-dark-secondary);
+  background-color: var(--bg-dark-secondary);
 }
 
 .footer {
