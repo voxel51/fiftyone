@@ -7,13 +7,13 @@ export const styles = css`
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
     font-weight: bold;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   body,
   html {
     height: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   #root {

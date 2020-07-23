@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import { useSpring } from "react-spring";
+import { useMachine } from "@xstate/react";
 
 import {
   white96 as backgroundColor,
@@ -33,7 +34,7 @@ const ViewBarDiv = styled.div`
 );*/
 
 export default () => {
-  // const tailIndex = stages.length;
+  const [state, send] = useMachine(viewBarMachine);
   return (
     <ViewBarDiv>
       <ViewStage index={0} key={0} />
