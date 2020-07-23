@@ -13,12 +13,22 @@ const CellHeader = styled(Box)`
 `;
 
 type Props = {
-  clickable: boolean;
+  onClick: () => void;
 };
 
-export default ({ children, icon, clickable, ...props }: Props) => {
+export default ({ children, icon, onClick, ...props }: Props) => {
+  const onClickWrapper = () => {
+    if (onClick) {
+      return onClick();
+    }
+  };
+
   return (
-    <CellHeader clickable={clickable} {...props}>
+    <CellHeader
+      clickable={Boolean(onClick)}
+      onClick={onClickWrapper}
+      {...props}
+    >
       {icon ? <span class="icon">{icon}</span> : null}
       {children}
     </CellHeader>

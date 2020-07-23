@@ -20,12 +20,20 @@ const Body = styled(Box)`
 type Props = {
   label: string;
   expanded: boolean;
+  onExpand: (expanded: boolean) => void;
 };
 
-export default ({ children, label, expanded }: Props) => {
+export default ({ children, label, expanded, onExpand }: Props) => {
+  const onExpandWrapper = onExpand ? () => onExpand(!expanded) : undefined;
+
   return (
     <Wrapper>
-      <Header label={label} expanded={expanded} icon={PlusMinusButton} />
+      <Header
+        label={label}
+        expanded={expanded}
+        onClick={onExpandWrapper}
+        icon={PlusMinusButton}
+      />
       {expanded ? <Body>{children}</Body> : null}
     </Wrapper>
   );

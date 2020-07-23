@@ -15,6 +15,7 @@ const DropdownHandle = styled(CellHeader)`
 type Props = {
   label: string;
   expanded: boolean;
+  onClick: () => void;
   icon: (expanded: boolean) => ReactNode;
 };
 
@@ -22,9 +23,9 @@ export const ArrowButton = (expanded) =>
   expanded ? <ExpandLess /> : <ExpandMore />;
 export const PlusMinusButton = (expanded) => (expanded ? <Remove /> : <Add />);
 
-export default ({ label, expanded, icon = ArrowButton }: Props) => {
+export default ({ label, expanded, onClick, icon = ArrowButton }: Props) => {
   return (
-    <DropdownHandle icon={icon(expanded)} clickable>
+    <DropdownHandle icon={icon(expanded)} onClick={onClick}>
       {label}
     </DropdownHandle>
   );
