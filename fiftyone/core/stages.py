@@ -23,7 +23,7 @@ import reprlib
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
-import fiftyone.core.utils as fou
+from fiftyone.core.expressions import ViewExpression
 
 import eta.core.utils as etau
 
@@ -152,11 +152,58 @@ class Limit(ViewStage):
         return {"limit": self._limit}
 
 
+class ListFilter(ViewStage):
+    """Filters the list elements in the samples in the stage.
+
+    Args:
+        field: the field to filter, which must be a list
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    def __init__(self, field, filter):
+        self._field = field
+        self._filter = filter
+        self._validate()
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Match` instance.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        cond = self._filter
+        if isinstance(cond, ViewExpression):
+            cond = cond.to_mongo(in_list=True)
+
+        return [
+            {
+                "$addFields": {
+                    self._field: {
+                        "$filter": {"input": "$" + self._field, "cond": cond}
+                    }
+                }
+            }
+        ]
+
+    def _kwargs(self):
+        return {"field": self._field, "filter": self._filter}
+
+    def _validate(self):
+        if not isinstance(self._filter, (ViewExpression, dict)):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB expression; "
+                "found '%s'" % self._filter
+            )
+
+
 class Match(ViewStage):
     """Filters the samples in the stage by the given filter.
 
     Args:
-        filter: a :class:`ViewExpression` or
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
     """
@@ -333,191 +380,14 @@ class Take(ViewStage):
         :class:`fiftyone.core.stages.Take` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         size = self._size
 
         if size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        return {"$sample": {"size": size}}
+        return [{"$sample": {"size": size}}]
 
     def _kwargs(self):
         return {"size": self._size}
-
-
-class ListFilter(ViewStage):
-    """Filters the list elements in the samples in the stage.
-
-    Args:
-        field: the field to filter, which must be a list
-        filter: a :class:`ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-    """
-
-    def __init__(self, field, filter):
-        self._field = field
-        self._filter = filter
-        self._validate()
-
-    def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Match` instance.
-
-        Returns:
-            a MongoDB aggregation pipeline stage dict
-        """
-        filt = self._filter
-        if isinstance(filt, ViewExpression):
-            filt = filt.to_mongo(in_list=True)
-
-        return {
-            "$project": {
-                self._field: {
-                    "$filter": {"input": "$" + self._field, "cond": filt}
-                }
-            }
-        }
-
-    def _kwargs(self):
-        return {"field": self._field, "filter": self._filter}
-
-    def _validate(self):
-        if not isinstance(self._filter, (ViewExpression, dict)):
-            raise ValueError(
-                "Filter must be a ViewExpression or a MongoDB expression; "
-                "found '%s'" % self._filter
-            )
-
-
-class ViewExpression(object):
-    """An expression involving one or more fields of an object in a
-    :class:`ViewStage`.
-
-    Args:
-        expr: the MongoDB object describing the expression
-    """
-
-    def __init__(self, expr):
-        self._expr = expr
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        return fou.pformat(self.to_mongo())
-
-    def __getitem__(self, idx):
-        return ViewExpression({"$arrayElemAt": [self, idx]})
-
-    def __not__(self):
-        return ViewExpression({"$not": self})
-
-    def __and__(self, other):
-        return ViewExpression({"$and": [self, other]})
-
-    def __or__(self, other):
-        return ViewExpression({"$or": [self, other]})
-
-    def __eq__(self, other):
-        return ViewExpression({"$eq": [self, other]})
-
-    def __neq__(self, other):
-        return ViewExpression({"$ne": [self, other]})
-
-    def __gt__(self, other):
-        return ViewExpression({"$gt": [self, other]})
-
-    def __ge__(self, other):
-        return ViewExpression({"$gte": [self, other]})
-
-    def __lt__(self, other):
-        return ViewExpression({"$lt": [self, other]})
-
-    def __le__(self, other):
-        return ViewExpression({"$lte": [self, other]})
-
-    def __add__(self, other):
-        return ViewExpression({"$add": [self, other]})
-
-    def __radd__(self, other):
-        return ViewExpression({"$add": [other, self]})
-
-    def __sub__(self, other):
-        return ViewExpression({"$subtract": [self, other]})
-
-    def __rsub__(self, other):
-        return ViewExpression({"$subtract": [other, self]})
-
-    def __mul__(self, other):
-        return ViewExpression({"$multiply": [self, other]})
-
-    def __rmul__(self, other):
-        return ViewExpression({"$multiply": [other, self]})
-
-    def __div__(self, other):
-        return ViewExpression({"$divide": [self, other]})
-
-    def __rdiv__(self, other):
-        return ViewExpression({"$divide": [other, self]})
-
-    def __mod__(self, other):
-        return ViewExpression({"$mod": [self, other]})
-
-    def __rmod__(self, other):
-        return ViewExpression({"$mod": [other, self]})
-
-    def is_in(self, values):
-        return ViewExpression({"$in": [self, list(values)]})
-
-    def is_not_in(self, values):
-        return ViewExpression({"$nin": [self, list(values)]})
-
-    def to_mongo(self, in_list=False):
-        """Returns a MongoDB representation of the expression.
-
-        Args:
-            in_list (False): whether this expression is being used in the
-                context of a list filter
-
-        Returns:
-            a MongoDB expression
-        """
-        return _recurse(self._expr, in_list)
-
-
-class ViewField(ViewExpression):
-    """A field of an object in a :class:`ViewStage`.
-
-    Args:
-        name: the name of the field
-    """
-
-    def __init__(self, name):
-        self.name = name
-
-    def to_mongo(self, in_list=False):
-        """Returns a MongoDB representation of the field.
-
-        Args:
-            in_list (False): whether this field is being used in the context of
-                a list filter
-
-        Returns:
-            a string
-        """
-        return "$$this.%s" % self.name if in_list else "$" + self.name
-
-
-def _recurse(val, in_list):
-    if isinstance(val, ViewExpression):
-        return val.to_mongo(in_list=in_list)
-    if isinstance(val, dict):
-        return {
-            _recurse(k, in_list): _recurse(v, in_list) for k, v in val.items()
-        }
-    elif isinstance(val, list):
-        return [_recurse(v, in_list) for v in val]
-    else:
-        return val

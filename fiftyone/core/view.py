@@ -278,7 +278,7 @@ class DatasetView(foc.SampleCollection):
         Samples for which ``filter`` returns ``False`` are omitted.
 
         Args:
-            filter: a :class:`ViewExpression` or
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
 
@@ -418,7 +418,7 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             field: the list field
-            filter: a :class:`ViewExpression` or
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
 
