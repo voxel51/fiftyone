@@ -196,6 +196,15 @@ class _ViewExpression(object):
         return ViewExpression({"$abs": self})
 
     def __add__(self, other):
+        """Creates an expression that returns a number that is:
+            `<resolved expression> + <other>`
+
+        Args:
+            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$add": [self, other]})
 
     def __ceil__(self):
@@ -236,9 +245,27 @@ class _ViewExpression(object):
         return ViewExpression({"$round": [self, place]})
 
     def __mod__(self, other):
+        """Creates an expression that returns a number that is:
+            `<resolved expression> % <other>`
+
+        Args:
+            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$mod": [self, other]})
 
     def __mul__(self, other):
+        """Creates an expression that returns a number that is:
+            `<resolved expression> * <other>`
+
+        Args:
+            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$multiply": [self, other]})
 
     def __pow__(self, power, modulo=None):
@@ -270,9 +297,27 @@ class _ViewExpression(object):
         return ViewExpression({"$divide": [other, self]})
 
     def __sub__(self, other):
+        """Creates an expression that returns a number that is:
+            `<resolved expression> - <other>`
+
+        Args:
+            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$subtract": [self, other]})
 
     def __truediv__(self, other):
+        """Creates an expression that returns a number that is:
+            `<resolved expression> - <other>`
+
+        Args:
+            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+
+        Returns:
+            a :class:`ViewExpression`
+        """
         return ViewExpression({"$divide": [self, other]})
 
     def exp(self):
