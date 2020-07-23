@@ -37,7 +37,9 @@
     "test-e2e-live": "node -r @babel/register ./internals/scripts/CheckBuildsExist.js && cross-env NODE_ENV=test testcafe --live electron:./app ./test/e2e/HomePage.e2e.ts",
     "test-watch": "yarn test --watch",
     "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook"
+    "build-storybook": "build-storybook",
+    "build-storybook-docs": "build-storybook -s public --docs",
+    "chromatic": "npx chromatic --exit-zero-on-changes"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -214,6 +216,7 @@
     "babel-plugin-transform-react-remove-prop-types": "^0.4.24",
     "browserslist-config-erb": "^0.0.1",
     "chalk": "^3.0.0",
+    "chromatic": "^5.0.0",
     "concurrently": "^5.0.2",
     "cross-env": "^7.0.0",
     "cross-spawn": "^7.0.1",
