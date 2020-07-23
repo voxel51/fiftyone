@@ -22,18 +22,17 @@ formats.
 Loading datasets
 ----------------
 
-Depending on the format of your labels, FiftyOne provides a few different 
-options for loading your |Dataset|. See the tabs below to figure out which 
-option is best for you.
+Depending on the format of your data and labels, FiftyOne provides a fhew 
+different options for loading your |Dataset|. See the tabs below to figure 
+out which option is best for you.
 
 
 .. tabs::
 
     .. tab:: I have data in a common format 
 
-        :doc:`Loading Datasets from disk<datasets>`
-
-        FiftyOne provides ways to automatically load your data if it is stored
+        FiftyOne provides simple functions to :doc:`load your datasets from
+        disk<datasets>`. You can automatically load your data if it is stored
         in one of the following formats:
         
         - :ref:`ImageDirectory`                      
@@ -73,21 +72,18 @@ option is best for you.
             dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
 
-        .. note::
-           
-            :doc:`Click here<datasets>` to learn more about loading datasets by type.
+        :doc:`>> Learn more about loading datasets by type!<datasets>`
 
     .. tab:: I have data in a custom format 
 
         .. tabs::
 
-            .. tab:: My images are stored as individual files
+            .. tab:: My data is stored in a directory
 
-                :doc:`Adding samples to your Dataset<samples>`
-                
                 The recommended approach to loading a |Dataset| is
-                by iterating over your images and labels and creating 
-                a FiftyOne |Sample| for each image/label pair.
+                by iterating over your data and labels and creating 
+                a FiftyOne |Sample| for each data/label pair and
+                :doc:`adding those samples to your Dataset<samples>`
 
                 .. tabs::
 
@@ -244,25 +240,22 @@ option is best for you.
                           dataset.add_samples(samples)
                     
 
-                .. note::
+                :doc:`>> Learn more about loading samples into a Dataset!<samples>`
 
-                    :doc:`Click here<samples>` to find out more information
-                    about loading samples into a |Dataset|.
+            .. tab:: My data is exposed as a Python iterable
 
-            .. tab:: My images are **not** stored as individual files
+                The best way for you to load your data is by :doc:`ingesting
+                your data and adding samples to your Dataset.<samples>`
+                This method is useful if you have:
 
-                :doc:`Adding samples to your Dataset<samples>`
-
-                The following method is useful if you have:
-
-                - Images stored together in a binary format like TFRecords, 
+                - Data stored together in a binary format like TFRecords, 
                   Numpy, etc. 
-                - Images in a temporary directory that you want to copy into a
+                - Data in a temporary directory that you want to copy into a
                   common backing location
-                - Images in memory that do not correspond to a file on disk
+                - Data in memory that do not correspond to a file on disk
 
-                First you will want to *ingest* your images into FiftyOne.
-                Ingesting data means saving each image individually in a 
+                First you will want to *ingest* your data into FiftyOne.
+                Ingesting data means saving each file individually in a 
                 backing directory. This is required because FiftyOne
                 does not store images in memory and only loads them as
                 needed.
@@ -281,12 +274,12 @@ option is best for you.
 
                     dataset.ingest_images(samples, sample_parser, dataset_dir=dataset_dir)
 
-                .. note::
 
-                    :ref:`Click here<Ingesting samples into datasets>` to learn 
-                    more about ingesting samples!
+                :ref:`>> Learn more about ingesting samples!
+                <Ingesting samples into datasets>`
 
-                If you just want to load your unlabeled images you can stop
+
+                If you just want to load your unlabeled samples you can stop
                 here. Otherwise you now need to load your labels into each 
                 |Sample| of the |Dataset|.
 
@@ -378,18 +371,14 @@ option is best for you.
                               sample.save()
 
 
-                .. note::
-
-                    :doc:`Click here<samples>` to find out more information
-                    about loading labeled samples into a |Dataset|.
+                :doc:`>> Learn more about loading samples into your Dataset!
+                <samples>`
 
 
     .. tab:: I don't have data 
 
-        :doc:`FiftyOne Dataset Zoo<zoo>`
-
-        Check out the :doc:`FiftyOne Dataset Zoo<zoo>` to automatically load and download a
-        popular image dataset. 
+        Check out how to automatically load and download a
+        popular dataset using the :doc:`FiftyOne Dataset Zoo<zoo>`. 
 
         You can list available zoo datasets using the following code:
 
@@ -426,15 +415,9 @@ option is best for you.
            dataset = foz.load_zoo_dataset("cifar10", split="train")
 
 
-        .. note::
-            
-            The FiftyOne Zoo uses the
-            `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_ or
-            `TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_
-            libraries to wrangle the datasets, depending on which you have
-            installed. More information can be found 
-            :ref:`here<Customizing your ML backend>`.
-            
+        :ref:`>> Learn more about the Tensorflow and Pytorch backends of the
+        FiftyOne Zoo!<Customizing your ML backend>`
+
         
             
 Advanced loading options
@@ -449,11 +432,11 @@ format.
 
 .. tabs::
     
-    .. tab:: I have a data parser
+    .. tab:: I have a Python iterable for my data
 
         If you already have a way to efficiently parse your data into python,
         then the recommended option is to wrap it in a FiftyOne |SampleParser|.
-        For example, a `torchvision.dataset` is a parser for various datasets
+        For example, a `torch.utils.data.Dataset` is a parser for various datasets
         that has been wrapped in a FiftyOne |SampleParser|.
 
         :ref:`Writing a custom SampleParser<Writing a custom SampleParser>` will allow you to use:
@@ -491,12 +474,10 @@ format.
             dataset.ingest_labeled_images(samples, sample_parser, dataset_dir=dataset_dir)            
 
 
-        .. note::
+        :ref:`>> Learn more about implementing your own custom SampleParser!<Writing a custom SampleParser>`
 
-            :ref:`Click here<Writing a custom SampleParser>` to see how to 
-            implement a custom |SampleParser|.
 
-    .. tab:: I don't have a data parser
+    .. tab:: My data is stored on disk
 
         If you don't have a dedicated way of parsing your samples yet, then the
         recommended option is to create a custom |DatasetImporter|.
@@ -526,10 +507,8 @@ format.
             # Import the dataset!
             dataset = fo.Dataset.from_importer(importer, name=name)
 
-        .. note::
-            :ref:`Click here<Writing a custom DatasetImporter>` to see how to 
-            implement a custom |DatasetImporter|.
 
+        :ref:`>> Learn more about implementing your own custom DatasetImporter!<Writing a custom DatasetImporter>`
 
         if you want to take this a step further, you can write a custom
         Dataset type to gain access to the command 
@@ -550,11 +529,7 @@ format.
             # Import the dataset!
             dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
-
-        .. note::
-            :ref:`Click here<Writing a custom Dataset type>` to see how to 
-            implement a custom |Dataset| type.
-
+        :ref:`>> Learn more about implementing your own custom Dataset type!<Writing a custom Dataset type>`
 
 .. toctree::
    :maxdepth: 1
