@@ -23,7 +23,7 @@ import fiftyone.core.utils as fou
 
 class _ViewExpression(object):
     """Base class that ViewField and ViewExpression inherit from. Specifies
-    operations that can be applied to either.
+    overloaded operators that can be applied to both.
     """
 
     def __str__(self):
@@ -193,24 +193,6 @@ class _ViewExpression(object):
         """
         return ViewExpression({"$in": [value, self]})
 
-    @staticmethod
-    def _recurse(val, in_list):
-        if isinstance(val, _ViewExpression):
-            return val.to_mongo(in_list=in_list)
-
-        if isinstance(val, dict):
-            return {
-                _ViewExpression._recurse(k, in_list): _ViewExpression._recurse(
-                    v, in_list
-                )
-                for k, v in val.items()
-            }
-
-        if isinstance(val, list):
-            return [_ViewExpression._recurse(v, in_list) for v in val]
-
-        return val
-
 
 class ViewField(_ViewExpression):
     """A field of an object in a :class:`fiftyone.core.stages.ViewStage`.
@@ -263,3 +245,21 @@ class ViewExpression(_ViewExpression):
             a MongoDB expression
         """
         return ViewExpression._recurse(self._expr, in_list)
+
+    @staticmethod
+    def _recurse(val, in_list):
+        if isinstance(val, _ViewExpression):
+            return val.to_mongo(in_list=in_list)
+
+        if isinstance(val, dict):
+            return {
+                ViewExpression._recurse(k, in_list): ViewExpression._recurse(
+                    v, in_list
+                )
+                for k, v in val.items()
+            }
+
+        if isinstance(val, list):
+            return [ViewExpression._recurse(v, in_list) for v in val]
+
+        return val
