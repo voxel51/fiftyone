@@ -73,7 +73,7 @@ class DatasetView(foc.SampleCollection):
 
     def __init__(self, dataset):
         self._dataset = dataset
-        self._pipeline = []
+        self._stages = []
 
     def __len__(self):
         try:
@@ -103,7 +103,7 @@ class DatasetView(foc.SampleCollection):
 
     def __copy__(self):
         view = self.__class__(self._dataset)
-        view._pipeline = deepcopy(self._pipeline)
+        view._stages = deepcopy(self._stages)
         return view
 
     def summary(self):
@@ -114,11 +114,11 @@ class DatasetView(foc.SampleCollection):
         """
         fields_str = self._dataset._get_fields_str()
 
-        if self._pipeline:
+        if self._stages:
             pipeline_str = "    " + "\n    ".join(
                 [
                     "%d. %s" % (idx, str(d))
-                    for idx, d in enumerate(self._pipeline, 1)
+                    for idx, d in enumerate(self._stages, 1)
                 ]
             )
         else:
@@ -329,22 +329,22 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fos.Exists(field))
 
     @view_stage
-    def sort_by(self, field, reverse=False):
-        """Sorts the samples in the view by the given field.
+    def sort_by(self, field_or_expr, reverse=False):
+        """Sorts the samples in the view by the given field or expression.
+
+        When sorting by an expression, ``field_or_expr`` can either be a
+        :class:`fiftyone.core.expressions.ViewExpression` or a
+        `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+        that defines the quantity to sort by.
 
         Args:
-            field: the field to sort by. Example fields::
-
-                filename
-                metadata.size_bytes
-                metadata.frame_size[0]
-
+            field_or_expr: the field or expression to sort by
             reverse (False): whether to return the results in descending order
 
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.SortBy(field, reverse=reverse))
+        return self.add_stage(fos.SortBy(field_or_expr, reverse=reverse))
 
     @view_stage
     def skip(self, skip):
@@ -431,18 +431,20 @@ class DatasetView(foc.SampleCollection):
         """Calls the current MongoDB aggregation pipeline on the view.
 
         Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before aggregation.
+            pipeline (None): an optional MongoDB aggregation pipeline (list of
+                dicts) to append to the view's pipeline before aggregation
 
         Returns:
             an iterable over the aggregation result
         """
-        if pipeline is None:
-            pipeline = []
+        _pipeline = []
+        for s in self._stages:
+            _pipeline.extend(s.to_mongo())
 
-        return self._dataset.aggregate(
-            [s.to_mongo() for s in self._pipeline] + pipeline
-        )
+        if pipeline is not None:
+            _pipeline.extend(pipeline)
+
+        return self._dataset.aggregate(_pipeline)
 
     def serialize(self):
         """Serializes the view.
@@ -452,7 +454,7 @@ class DatasetView(foc.SampleCollection):
         """
         return {
             "dataset": self._dataset.serialize(),
-            "view": json_util.dumps([s._serialize() for s in self._pipeline]),
+            "view": json_util.dumps([s._serialize() for s in self._stages]),
         }
 
     def to_dict(self):
@@ -466,7 +468,7 @@ class DatasetView(foc.SampleCollection):
             "num_samples": len(self),
             "tags": list(self.get_tags()),
             "sample_fields": self._dataset._get_fields_dict(),
-            "pipeline_stages": [str(d) for d in self._pipeline],
+            "pipeline_stages": [str(d) for d in self._stages],
         }
         d.update(super().to_dict())
         return d
@@ -508,11 +510,11 @@ class DatasetView(foc.SampleCollection):
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)
-        view._pipeline.append(stage)
+        view._stages.append(stage)
         return view
 
     def _get_latest_offset(self):
-        for stage in self._pipeline[::-1]:
+        for stage in self._stages[::-1]:
             if "$skip" in stage:
                 return stage["$skip"]
 

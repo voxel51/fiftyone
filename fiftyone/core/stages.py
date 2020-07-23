@@ -53,10 +53,10 @@ class ViewStage(object):
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.ViewStage` instance
+        :class:`fiftyone.core.stages.ViewStage` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         raise NotImplementedError("subclasses must implement `to_mongo()`")
 
@@ -95,7 +95,7 @@ class Exclude(ViewStage):
         :class:`fiftyone.core.stages.Exclude` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         sample_ids = [ObjectId(id) for id in self._sample_ids]
         return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
@@ -120,7 +120,7 @@ class Exists(ViewStage):
         :class:`fiftyone.core.stages.Exists` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         return Match({self._field: {"$exists": True, "$ne": None}}).to_mongo()
 
@@ -144,9 +144,9 @@ class Limit(ViewStage):
         :class:`fiftyone.core.stages.Limit` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
-        return {"$limit": self._limit}
+        return [{"$limit": self._limit}]
 
     def _kwargs(self):
         return {"limit": self._limit}
@@ -217,13 +217,13 @@ class Match(ViewStage):
         :class:`fiftyone.core.stages.Match` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         filt = self._filter
         if isinstance(filt, ViewExpression):
-            filt = {"$expr": filt.to_mongo()}
+            filt = [{"$expr": filt.to_mongo()}]
 
-        return {"$match": filt}
+        return [{"$match": filt}]
 
     def _kwargs(self):
         return {"filter": self._filter}
@@ -251,7 +251,7 @@ class MatchTag(ViewStage):
         :class:`fiftyone.core.stages.MatchTag` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         return Match({"tags": self._tag}).to_mongo()
 
@@ -277,7 +277,7 @@ class MatchTags(ViewStage):
         :class:`fiftyone.core.stages.MatchTags` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         return Match({"tags": {"$in": self._tags}}).to_mongo()
 
@@ -300,7 +300,7 @@ class Select(ViewStage):
         :class:`fiftyone.core.stages.Select` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         sample_ids = [ObjectId(id) for id in self._sample_ids]
         return Match({"_id": {"$in": sample_ids}}).to_mongo()
@@ -310,20 +310,20 @@ class Select(ViewStage):
 
 
 class SortBy(ViewStage):
-    """Sorts the samples in the view by the given field.
+    """Sorts the samples in the view by the given field or expression.
+
+    When sorting by an expression, ``field_or_expr`` can either be a
+    :class:`fiftyone.core.expressions.ViewExpression` or a
+    `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+    that defines the quantity to sort by.
 
     Args:
-        field: the field to sort by. Example fields::
-
-            filename
-            metadata.size_bytes
-            metadata.frame_size[0]
-
+        field_or_expr: the field or expression to sort by
         reverse (False): whether to return the results in descending order
     """
 
-    def __init__(self, field, reverse=False):
-        self._field = field
+    def __init__(self, field_or_expr, reverse=False):
+        self._field_or_expr = field_or_expr
         self._reverse = reverse
 
     def to_mongo(self):
@@ -331,13 +331,26 @@ class SortBy(ViewStage):
         :class:`fiftyone.core.stages.SortBy` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         order = DESCENDING if self._reverse else ASCENDING
-        return {"$sort": {self._field: order}}
+
+        if not isinstance(self._field_or_expr, (ViewExpression, dict)):
+            return [{"$sort": {self._field_or_expr: order}}]
+
+        if isinstance(self._field_or_expr, ViewExpression):
+            expr = self._field_or_expr.to_mongo()
+        else:
+            expr = self._field_or_expr
+
+        return [
+            {"$addFields": {"_sort_field": expr}},
+            {"$sort": {"_sort_field": order}},
+            {"$unset": "_sort_field"},
+        ]
 
     def _kwargs(self):
-        return {"field": self._field, "reverse": self._reverse}
+        return {"field": self._field_or_expr, "reverse": self._reverse}
 
 
 class Skip(ViewStage):
@@ -356,9 +369,9 @@ class Skip(ViewStage):
         :class:`fiftyone.core.stages.Skip` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
-        return {"$skip": self._skip}
+        return [{"$skip": self._skip}]
 
     def _kwargs(self):
         return {"skip": self._skip}
