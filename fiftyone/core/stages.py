@@ -1,5 +1,5 @@
 """
-FiftyOne :class:`DatasetView` stage definitions.
+FiftyOne :class:`fiftyone.core.view.DatasetView` stage definitions.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
