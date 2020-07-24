@@ -18,18 +18,13 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import reprlib
-
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 from fiftyone.core.expressions import ViewExpression
+import fiftyone.core.utils as fou
 
 import eta.core.utils as etau
-
-
-# max number of list elements to print
-reprlib.aRepr.maxlist = 3
 
 
 class ViewStage(object):
@@ -45,10 +40,7 @@ class ViewStage(object):
         return repr(self)
 
     def __repr__(self):
-        kwargs_str = ", ".join(
-            ["%s=%s" % (k, reprlib.repr(v)) for k, v in self._kwargs().items()]
-        )
-
+        kwargs_str = fou.pformat(self._kwargs())
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
     def to_mongo(self):

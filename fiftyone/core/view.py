@@ -25,6 +25,7 @@ from bson import ObjectId, json_util
 
 import fiftyone.core.collections as foc
 import fiftyone.core.stages as fos
+import fiftyone.core.utils as fou
 
 
 def _make_registrar():
@@ -117,7 +118,8 @@ class DatasetView(foc.SampleCollection):
         if self._stages:
             pipeline_str = "    " + "\n    ".join(
                 [
-                    "%d. %s" % (idx, str(d))
+                    "%d. %s"
+                    % (idx, fou.indent_lines(str(d), indent=7, skip=1))
                     for idx, d in enumerate(self._stages, 1)
                 ]
             )
