@@ -221,8 +221,8 @@ class ViewExpression(object):
         return ViewExpression({"$add": [self, other]})
 
     def __ceil__(self):
-        """Creates an expression that returns a number that is the CEIL of this
-        expression.
+        """Creates an expression that returns a number that is the ``CEIL``
+        of this expression.
 
         Returns:
             a :class:`ViewExpression`
@@ -230,7 +230,7 @@ class ViewExpression(object):
         return ViewExpression({"$ceil": self})
 
     def __floor__(self):
-        """Creates an expression that returns a number that is the FLOOR of
+        """Creates an expression that returns a number that is the ``FLOOR`` of
         this expression.
 
         Returns:
@@ -242,15 +242,18 @@ class ViewExpression(object):
         """Creates an expression that returns a number that is the rounded
         value of this expression.
 
+        Positive values of ``place`` will round to ``place`` decimal
+        places::
+
+            place=2: 1234.5678 --> 1234.57
+
+        Negative values of ``place`` will round digits left of the decimal::
+
+            place=-2: 1234.5678 --> 1200
+
         Args:
-            place: the decimal place at which to round. Must be an integer
-                in range -20 < place < 100.
-
-                Positive values will round to `place` decimal places:
-                    e.g. `place=2`  1234.5678 --> 1234.57
-
-                Negative values will round digits left of the decimal with 0.
-                    e.g.  `place=-2`  1234.5678 --> 1200
+            place (0): the decimal place at which to round. Must be an
+                integer in range ``(-20, 100)``
 
         Returns:
             a :class:`ViewExpression`
@@ -258,7 +261,7 @@ class ViewExpression(object):
         return ViewExpression({"$round": [self, place]})
 
     def __mod__(self, other):
-        """Creates an expression that returns ``self %% other``.
+        """Creates an expression that returns ``self % other``.
 
         Args:
             other: a :class:`ViewField`, :class:`ViewExpression` or numeric
@@ -280,10 +283,10 @@ class ViewExpression(object):
         return ViewExpression({"$multiply": [self, other]})
 
     def __pow__(self, power, modulo=None):
-        """Creates an expression that returns ``self ^ power``.
+        """Creates an expression that returns ``self ** power``.
 
         Args:
-            power: the power that the resolved expression is raised to
+            power: the power that ``self`` is raised to
             modulo (None): unsupported argument
 
         Returns:
@@ -307,8 +310,7 @@ class ViewExpression(object):
         return ViewExpression({"$divide": [other, self]})
 
     def __sub__(self, other):
-        """Creates an expression that returns a number that is:
-            `<resolved expression> - <other>`
+        """Creates an expression that returns ``self - other``.
 
         Args:
             other: a :class:`ViewField`, :class:`ViewExpression` or numeric
@@ -319,8 +321,7 @@ class ViewExpression(object):
         return ViewExpression({"$subtract": [self, other]})
 
     def __truediv__(self, other):
-        """Creates an expression that returns a number that is:
-            `<resolved expression> - <other>`
+        """Creates an expression that returns ``self / other``.
 
         Args:
             other: a :class:`ViewField`, :class:`ViewExpression` or numeric
@@ -405,7 +406,7 @@ class ViewExpression(object):
 
     def __getitem__(self, idx):
         """Returns the element at the given index in the expression, which must
-        resolve to an array.
+        resolve to an array ``self[idx]``.
 
         Args:
             idx: the index
@@ -436,11 +437,10 @@ class ViewExpression(object):
 
     def is_in(self, values):
         """Creates an expression that returns a boolean indicating whether
-        the resolved expression is in the array of values.
+        ``self in values``.
 
         Args:
-            values: a list of values to check if the resolved value of this
-                expression is in
+            values: a list of values to check if ``self`` is in
 
         Returns:
             a :class:`ViewExpression`
@@ -448,12 +448,11 @@ class ViewExpression(object):
         return ViewExpression({"$in": [self, list(values)]})
 
     def contains(self, value):
-        """Creates an expression that returns a boolean indicating whether the
-        specified value is in the resolved array expression.
+        """Creates an expression that returns a boolean indicating whether
+        ``value in self``.
 
         Args:
-            value: the value to check if it is contained in the resolved list
-                from this expression
+            value: the value to check if it is contained in ``self``
 
         Returns:
             a :class:`ViewExpression`
@@ -528,7 +527,10 @@ class ViewField(ViewExpression):
 
     def __init__(self, expr):
         if not isinstance(expr, str):
-            raise TypeError()
+            raise TypeError(
+                "Invalid `expr` type '%s' for %s. Expected 'str'"
+                % (type(expr), self.__class__.__name__)
+            )
         super().__init__(expr)
 
     def to_mongo(self, in_list=False):
