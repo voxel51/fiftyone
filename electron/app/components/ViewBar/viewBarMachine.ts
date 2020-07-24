@@ -6,15 +6,26 @@ export const createStage = (stage) => {
   return {
     id: uuid(),
     completed: false,
-    stage: stage,
+    stage: stage ? stage : "",
     parameters: [],
+  };
+};
+
+export const createBar = (socket) => {
+  return {
+    stages: [],
+    stageInfo: undefined,
+    socket: socket,
+    tailStage: undefined,
   };
 };
 
 function getStageInfo(context) {
   return new Promise((resolve) => {
-    context.socket.emit("get_stages", "", (data) => {
-      resolve(data);
+    context.socket.on("connect", () => {
+      context.socket.emit("get_stages", "", (data) => {
+        resolve(data);
+      });
     });
   });
 }
@@ -22,10 +33,10 @@ function getStageInfo(context) {
 const viewBarMachine = Machine({
   id: "stages",
   context: {
-    tailStage: undefined, // tail stage
     stages: [],
     stageInfo: undefined,
     socket: undefined,
+    tailStage: undefined,
   },
   initial: "initializing",
   states: {

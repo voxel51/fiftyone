@@ -1,8 +1,6 @@
 import io from "socket.io-client";
 import { useEffect } from "react";
 
-import { atom } from "recoil";
-
 const sockets = {};
 
 export function getSocket(server, name) {

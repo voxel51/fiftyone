@@ -9,7 +9,7 @@ export const createParameter = (stage, parameter, value) => {
     completed: false,
     parameter: parameter,
     stage: stage,
-    value: value,
+    value: value ? value : "",
   };
 };
 

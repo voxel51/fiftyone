@@ -14,6 +14,7 @@ const ViewStageDiv = animated(styled.div`
   background-color: rgba(108, 117, 125, 0.13);
   display: inline-block;
   margin: 0.5rem;
+  position: relative;
 `);
 
 const ViewStageInput = styled.input`
@@ -33,14 +34,18 @@ const ViewStageInput = styled.input`
 
 export const ViewStageButton = styled.button``;
 
-export default React.memo(({ stageRef, tailStage }) => {
+export default React.memo(({ stageRef, tailStage, stageInfo }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { value } = state.context;
+  const { stage } = state.context;
 
   const props = useSpring({
     borderStyle: true ? "dashed" : "solid",
+    opacity: 1,
+    from: {
+      opacity: 0,
+    },
   });
 
   useEffect(() => {
@@ -51,32 +56,39 @@ export default React.memo(({ stageRef, tailStage }) => {
     });
   }, [state, stageRef]);
 
+  console.log(state);
+
   return (
     <ViewStageDiv style={props}>
-      <div>
-        {tailStage ? (
-          <ViewStageInput
-            placeholder="+ search sample"
-            value={value}
-            onBlur={() => send("BLUR")}
-            onChange={(e) => send("CHANGE", { value: e.target.value })}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                send("COMMIT");
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send("CANCEL");
-              }
-            }}
-            ref={inputRef}
-          />
-        ) : (
-          <ViewStageButton>+</ViewStageButton>
-        )}
-        <SearchResults />
-      </div>
+      {tailStage ? (
+        <ViewStageInput
+          placeholder="+ search sample"
+          value={stage}
+          onBlur={() => send("BLUR")}
+          onChange={(e) => send("CHANGE", { stage: e.target.value })}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              send("COMMIT");
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              send("CANCEL");
+            }
+          }}
+          ref={inputRef}
+        />
+      ) : (
+        <ViewStageButton>+</ViewStageButton>
+      )}
+      {state.matches("editing") && (
+        <SearchResults
+          results={stageInfo
+            .map((s) => s.name)
+            .filter((n) => n.includes(stage))}
+          send={send}
+        />
+      )}
     </ViewStageDiv>
   );
 });
