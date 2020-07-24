@@ -56,7 +56,7 @@ export default React.memo(({ stageRef, tailStage, stageInfo }) => {
     });
   }, [state, stageRef]);
 
-  console.log(state);
+  console.log(state.toStrings());
 
   return (
     <ViewStageDiv style={props}>
@@ -64,6 +64,7 @@ export default React.memo(({ stageRef, tailStage, stageInfo }) => {
         <ViewStageInput
           placeholder="+ search sample"
           value={stage}
+          onFocus={() => send("EDIT")}
           onBlur={() => send("BLUR")}
           onChange={(e) => send("CHANGE", { stage: e.target.value })}
           onKeyPress={(e) => {

@@ -93,20 +93,23 @@ const viewStageMachine = Machine({
       on: {
         CHANGE: {
           actions: assign({
-            title: (ctx, e) => e.value,
+            stage: (ctx, e) => e.stage,
           }),
         },
         COMMIT: [
           {
             target: "reading.hist",
-            actions: sendParent((ctx) => ({ type: "STAGE.COMMIT", todo: ctx })),
-            cond: (ctx) => ctx.title.trim().length > 0,
+            actions: sendParent((ctx) => ({
+              type: "STAGE.COMMIT",
+              stage: ctx,
+            })),
+            cond: (ctx) => ctx.stage.trim().length > 0,
           },
           { target: "deleted" },
         ],
         BLUR: {
           target: "reading",
-          actions: sendParent((ctx) => ({ type: "STAGE.COMMIT", todo: ctx })),
+          actions: sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
         },
         CANCEL: {
           target: "reading",

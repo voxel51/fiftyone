@@ -100,7 +100,7 @@ const viewBarMachine = Machine({
       actions: [
         assign({
           stages: (ctx, e) =>
-            ctx.stage.map((stage) => {
+            ctx.stages.map((stage) => {
               return stage.id === e.stage.id
                 ? { ...stage, ...e.stage, ref: stage.ref }
                 : stage;

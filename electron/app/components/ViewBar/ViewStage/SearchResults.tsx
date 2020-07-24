@@ -73,7 +73,6 @@ interface SearchResultsProps {
 }
 
 export default ({ results, send }) => {
-  console.log(results);
   if (!results.length) return null;
   return (
     <SearchResultsDiv>
