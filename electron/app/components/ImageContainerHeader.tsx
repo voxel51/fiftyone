@@ -5,11 +5,11 @@ import DropdownHandle from "./DropdownHandle";
 
 type Props = {
   total: number;
+  showSidebar: boolean;
+  onShowSidebar: (show: boolean) => void;
 };
 
 const Wrapper = styled.div`
-  // clear: both;
-  // overflow: auto;
   display: grid;
   grid-template-columns: auto auto;
   border-top: 1px solid #e0e0e0;
@@ -35,12 +35,20 @@ const Wrapper = styled.div`
   }
 `;
 
-const ImageContainerHeader = ({ total = 0 }) => {
+const ImageContainerHeader = ({
+  total = 0,
+  showSidebar,
+  onShowSidebar,
+}: Props) => {
   return (
     <Wrapper>
       <div>
         <div>
-          <DropdownHandle label="Display Options" />
+          <DropdownHandle
+            label="Display Options"
+            expanded={showSidebar}
+            onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
+          />
         </div>
         <div className="tags">Tags</div>
       </div>
