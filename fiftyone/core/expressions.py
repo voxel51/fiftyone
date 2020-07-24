@@ -125,7 +125,7 @@ class ViewExpression(object):
         If the expression is null, 0 is returned.
 
         Returns:
-            a :class:`ViewExpression` that computes the length of the array
+            a :class:`ViewExpression`
         """
         return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
