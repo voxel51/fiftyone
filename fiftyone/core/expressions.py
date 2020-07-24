@@ -77,11 +77,11 @@ class ViewExpression(object):
         """
         return ViewExpression._recurse(self._expr, in_list)
 
-    # Comparison Expression Operators
+    # Comparison expression operators #########################################
 
     def __eq__(self, other):
-        """Creates an expression that returns a boolean indicating whether:
-            ``<resolved expression> == <other>``
+        """Creates an expression that returns a boolean indicating whether
+        ``self == other``.
 
         Args:
             other: a :class:`ViewExpression` or a python primitive understood
@@ -93,8 +93,8 @@ class ViewExpression(object):
         return ViewExpression({"$eq": [self, other]})
 
     def __ge__(self, other):
-        """Creates an expression that returns a boolean indicating whether:
-            ``<resolved expression> >= <other>``
+        """Creates an expression that returns a boolean indicating whether
+        ``self >= other``.
 
         Args:
             other: a :class:`ViewExpression` or a python primitive understood
@@ -106,8 +106,8 @@ class ViewExpression(object):
         return ViewExpression({"$gte": [self, other]})
 
     def __gt__(self, other):
-        """Creates an expression that returns a boolean indicating whether:
-            ``<resolved expression> > <other>``
+        """Creates an expression that returns a boolean indicating whether
+        ``self > other``.
 
         Args:
             other: a :class:`ViewExpression` or a python primitive understood
@@ -119,8 +119,8 @@ class ViewExpression(object):
         return ViewExpression({"$gt": [self, other]})
 
     def __le__(self, other):
-        """Creates an expression that returns a boolean indicating whether:
-            ``<resolved expression> <= <other>``
+        """Creates an expression that returns a boolean indicating whether
+        ``self <= other``.
 
         Args:
             other: a :class:`ViewExpression` or a python primitive understood
@@ -132,8 +132,8 @@ class ViewExpression(object):
         return ViewExpression({"$lte": [self, other]})
 
     def __lt__(self, other):
-        """Creates an expression that returns a boolean indicating whether:
-            ``<resolved expression> < <other>``
+        """Creates an expression that returns a boolean indicating whether
+        ``self < other``.
 
         Args:
             other: a :class:`ViewExpression` or a python primitive understood
@@ -145,8 +145,8 @@ class ViewExpression(object):
         return ViewExpression({"$lt": [self, other]})
 
     def __ne__(self, other):
-        """Creates an expression that returns a boolean indicating whether:
-            ``<resolved expression> != <other>``
+        """Creates an expression that returns a boolean indicating whether
+        ``self != other``.
 
         Args:
             other: a :class:`ViewExpression` or a python primitive understood
@@ -157,12 +157,11 @@ class ViewExpression(object):
         """
         return ViewExpression({"$ne": [self, other]})
 
-    # Logic Expression Operators
+    # Logical expression operators ############################################
 
     def __and__(self, other):
-        """Creates an expression that returns a boolean that is a logical
-        combination:
-            ``<resolved expression> AND <other>``
+        """Creates an expression that returns a boolean that is the logical
+        AND ``self & other``.
 
         Args:
             other: a :class:`ViewField` or :class:`ViewExpression`
@@ -173,9 +172,8 @@ class ViewExpression(object):
         return ViewExpression({"$and": [self, other]})
 
     def __invert__(self):
-        """Creates an expression that returns a boolean that the logical
-        inverse of this expression:
-            ``NOT <resolved expression>``
+        """Creates an expression that returns a boolean that is the logical
+        inversion ``~self``.
 
         Returns:
             a :class:`ViewExpression`
@@ -183,9 +181,8 @@ class ViewExpression(object):
         return ViewExpression({"$not": self})
 
     def __or__(self, other):
-        """Creates an expression that returns a boolean that is a logical
-        combination:
-            ``<resolved expression> OR <other>``
+        """Creates an expression that returns a boolean that is the logical OR
+        ``self | other``.
 
         Args:
             other: a :class:`ViewField` or :class:`ViewExpression`
@@ -201,7 +198,7 @@ class ViewExpression(object):
     def __ror__(self, other):
         return ViewExpression({"$or": [other, self]})
 
-    # Arithmetic Expression Operators
+    # Arithmetic expression operators #########################################
 
     def __abs__(self):
         """Creates an expression that returns a number that is the absolute
@@ -213,8 +210,7 @@ class ViewExpression(object):
         return ViewExpression({"$abs": self})
 
     def __add__(self, other):
-        """Creates an expression that returns a number that is:
-            ``<resolved expression> + <other>``
+        """Creates an expression that returns ``self + other``.
 
         Args:
             other: a :class:`ViewField`, :class:`ViewExpression` or numeric
@@ -246,15 +242,18 @@ class ViewExpression(object):
         """Creates an expression that returns a number that is the rounded
         value of this expression.
 
+        Positive values of ``place`` will round to ``place`` decimal
+        places::
+
+            place=2: 1234.5678 --> 1234.57
+
+        Negative values of ``place`` will round digits left of the decimal::
+
+            place=-2: 1234.5678 --> 1200
+
         Args:
-            place: the decimal place at which to round. Must be an integer
-                in range -20 < ``place`` < 100.
-
-                Positive values will round to ``place`` decimal places:
-                    e.g. ``place=2``  ``1234.5678 --> 1234.57``
-
-                Negative values will round digits left of the decimal with 0.
-                    e.g.  ``place=-2``  ``1234.5678 --> 1200``
+            place (0): the decimal place at which to round. Must be an
+                integer in range ``(-20, 100)``
 
         Returns:
             a :class:`ViewExpression`
@@ -262,8 +261,7 @@ class ViewExpression(object):
         return ViewExpression({"$round": [self, place]})
 
     def __mod__(self, other):
-        """Creates an expression that returns a number that is:
-            ``<resolved expression> % <other>``
+        """Creates an expression that returns ``self % other``.
 
         Args:
             other: a :class:`ViewField`, :class:`ViewExpression` or numeric
@@ -274,8 +272,7 @@ class ViewExpression(object):
         return ViewExpression({"$mod": [self, other]})
 
     def __mul__(self, other):
-        """Creates an expression that returns a number that is:
-            ``<resolved expression> * <other>``
+        """Creates an expression that returns ``self * other``.
 
         Args:
             other: a :class:`ViewField`, :class:`ViewExpression` or numeric
@@ -286,12 +283,11 @@ class ViewExpression(object):
         return ViewExpression({"$multiply": [self, other]})
 
     def __pow__(self, power, modulo=None):
-        """Creates an expression that returns a number that is the value of
-        this expression raised to the ``power``.
+        """Creates an expression that returns ``self ** power``.
 
         Args:
             power: the power that the resolved expression is raised to
-            modulo: unused arg
+            modulo (None): unsupported argument
 
         Returns:
             a :class:`ViewExpression`
@@ -346,20 +342,6 @@ class ViewExpression(object):
         """
         return ViewExpression({"$exp": self})
 
-    def filter(self, expr):
-        """Applies the filter to the elements of the expression, which must
-        resolve to an array.
-
-        The output array will only contain elements of the input array for
-        which ``expr`` returns ``True``.
-
-        Args:
-            expr: a :class:`ViewExpression` that returns a boolean
-        """
-        return ViewExpression(
-            {"$filter": {"input": self, "cond": expr.to_mongo(in_list=True)}}
-        )
-
     def ln(self):
         """Creates an expression that calculates the natural logarithm of a
         number and returns the result.
@@ -403,22 +385,38 @@ class ViewExpression(object):
         """Creates an expression that truncates a number to a specified
         decimal place.
 
+        Positive values of ``place`` will truncate to ``place`` decimal
+        places::
+
+            place=2: 1234.5678 --> 1234.56
+
+        Negative values of ``place`` replace digits left of the decimal with
+        zero::
+
+            place=-2: 1234.5678 --> 1200
+
         Args:
-            place: the decimal place at which to truncate. Must be an integer
-                in range -20 < ``place`` < 100.
-
-                Positive values will truncate to ``place`` decimal places:
-                    e.g. ``place=2``  ``1234.5678 --> 1234.56``
-
-                Negative values replace digits left of the decimal with 0.
-                    e.g.  ``place=-2``  ``1234.5678 --> 1200``
+            place (0): the decimal place at which to truncate. Must be an
+                integer in range ``(-20, 100)``
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$trunc": [self, place]})
 
-    # Array Expression Operators
+    # Array expression operators ##############################################
+
+    def __getitem__(self, idx):
+        """Returns the element at the given index in the expression, which must
+        resolve to an array.
+
+        Args:
+            idx: the index
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$arrayElemAt": [self, idx]})
 
     def __len__(self):
         # Annoyingly, Python enforces deep in its depths that __len__ must
@@ -435,21 +433,9 @@ class ViewExpression(object):
         If the expression is null, 0 is returned.
 
         Returns:
-            a :class:`ViewExpression` that computes the length of the array
-        """
-        return ViewExpression({"$size": {"$ifNull": [self, []]}})
-
-    def __getitem__(self, idx):
-        """Returns the element at the given index in the expression, which must
-        resolve to an array.
-
-        Args:
-            idx: the index
-
-        Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$arrayElemAt": [self, idx]})
+        return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
     def is_in(self, values):
         """Creates an expression that returns a boolean indicating whether
@@ -476,6 +462,25 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression({"$in": [value, self]})
+
+    def filter(self, expr):
+        """Applies the filter to the elements of the expression, which must
+        resolve to an array.
+
+        The output array will only contain elements of the input array for
+        which ``expr`` returns ``True``.
+
+        Args:
+            expr: a :class:`ViewExpression` that returns a boolean
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$filter": {"input": self, "cond": expr.to_mongo(in_list=True)}}
+        )
+
+    # Private methods #########################################################
 
     @staticmethod
     def _recurse(val, in_list):
