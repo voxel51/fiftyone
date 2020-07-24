@@ -532,11 +532,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample in pb(samples):
                 try:
                     _sample = self[sample.id]
-                    _sample[new_field_name] = deepcopy(sample[field_name])
-                    _sample.save()
-                    num_cloned += 1
                 except KeyError:
                     num_skipped += 1
+                    continue
+
+                _sample[new_field_name] = deepcopy(sample[field_name])
+                _sample.save()
+                num_cloned += 1
 
         return num_cloned, num_skipped
 
