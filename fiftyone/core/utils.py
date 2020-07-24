@@ -17,6 +17,15 @@ import signal
 import types
 import zlib
 
+try:
+    import pprintpp as _pprint
+
+    # Monkey patch to prevent sorting keys
+    # https://stackoverflow.com/a/25688431
+    _pprint._sorted = lambda x: x
+except:
+    import pprint as _pprint
+
 import numpy as np
 import packaging.version
 import xmltodict
@@ -27,6 +36,73 @@ import fiftyone as fo
 
 
 logger = logging.getLogger(__name__)
+
+
+def pprint(obj, stream=None, indent=4, width=80, depth=None):
+    """Pretty-prints the Python object.
+
+    Args:
+        obj: the Python object
+        stream (None): the stream to write to. The default is ``sys.stdout``
+        indent (4): the number of spaces to use when indenting
+        width (80): the max width of each line in the pretty representation
+        depth (None): the maximum depth at which to pretty render nested dicts
+    """
+    return _pprint.pprint(
+        obj, stream=stream, indent=indent, width=width, depth=depth
+    )
+
+
+def pformat(obj, indent=4, width=80, depth=None):
+    """Returns a pretty string representation of the Python object.
+
+    Args:
+        obj: the Python object
+        indent (4): the number of spaces to use when indenting
+        width (80): the max width of each line in the pretty representation
+        depth (None): the maximum depth at which to pretty render nested dicts
+
+    Returns:
+        the pretty-formatted string
+    """
+    return _pprint.pformat(obj, indent=indent, width=width, depth=depth)
+
+
+def indent_lines(s, indent=4, skip=0):
+    """Indents the lines in the given string.
+
+    Args:
+        s: the string
+        indent (4): the number of spaces to indent
+        skip (0): the number of lines to skip before indenting
+
+    Returns:
+        the indented string
+    """
+    lines = s.split("\n")
+
+    skipped_lines = lines[:skip]
+    if skipped_lines:
+        skipped = "\n".join(skipped_lines)
+    else:
+        skipped = None
+
+    indent_lines = lines[skip:]
+    if indent_lines:
+        indented = "\n".join((" " * indent) + l for l in indent_lines)
+    else:
+        indented = None
+
+    if skipped is not None and indented is not None:
+        return skipped + "\n" + indented
+
+    if skipped is not None:
+        return skipped
+
+    if indented is not None:
+        return indented
+
+    return s
 
 
 def ensure_tf():
