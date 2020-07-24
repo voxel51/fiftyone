@@ -28,14 +28,14 @@ from fiftyone.core.expressions import ViewExpression
 import eta.core.utils as etau
 
 
-class StageRepr(reprlib.Repr):
+class _StageRepr(reprlib.Repr):
     def repr_ViewExpression(self, expr, level):
         return self.repr1(expr.to_mongo(), level=level)
 
 
-aRepr = StageRepr()
-aRepr.maxlevel = 2
-aRepr.maxlist = 3
+_aRepr = _StageRepr()
+_aRepr.maxlevel = 2
+_aRepr.maxlist = 3
 
 
 class ViewStage(object):
@@ -52,7 +52,7 @@ class ViewStage(object):
 
     def __repr__(self):
         kwargs_str = ", ".join(
-            ["%s=%s" % (k, aRepr.repr(v)) for k, v in self._kwargs().items()]
+            ["%s=%s" % (k, _aRepr.repr(v)) for k, v in self._kwargs().items()]
         )
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
@@ -442,7 +442,7 @@ class SortBy(ViewStage):
         ]
 
     def _kwargs(self):
-        return {"field": self._field_or_expr, "reverse": self._reverse}
+        return {"field_or_expr": self._field_or_expr, "reverse": self._reverse}
 
 
 class Skip(ViewStage):
