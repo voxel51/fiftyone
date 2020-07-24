@@ -4,8 +4,6 @@ import styled from "styled-components";
 import CheckboxGrid, { Entry } from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 
-type AttributeMap = { [key: string]: number };
-
 type Props = {
   tags: Entry[];
   labels: Entry[];
