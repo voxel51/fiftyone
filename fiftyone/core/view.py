@@ -106,6 +106,13 @@ class DatasetView(foc.SampleCollection):
         view._stages = deepcopy(self._stages)
         return view
 
+    @property
+    def stages(self):
+        """The list of :class:`fiftyone.core.stages.ViewStage` instances in
+        this view's pipeline.
+        """
+        return self._stages
+
     def summary(self):
         """Returns a string summary of the view.
 
