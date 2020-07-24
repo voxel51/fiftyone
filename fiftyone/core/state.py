@@ -169,7 +169,7 @@ def get_dataset_stats(dataset):
                 }
             }
     """
-    _sample_doc_cls = type(dataset.name, (foo.SampleDocument,), {})
+    _sample_doc_cls = type(dataset.name, (foo.DatasetSampleDocument,), {})
     num_default_fields = len(_sample_doc_cls.get_field_schema())
 
     field_names = [field_name for field_name in dataset.get_field_schema()]
