@@ -192,7 +192,13 @@ class DatasetView(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self.aggregate():
-            yield self._dataset._load_sample_from_dict(d)
+            try:
+                yield self._dataset._load_sample_from_dict(d)
+            except Exception as e:
+                raise ValueError(
+                    "Failed to load database document as a Sample. This is"
+                    "likely due to an invalid stage in the DatasetView."
+                ) from e
 
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
