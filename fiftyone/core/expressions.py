@@ -65,25 +65,6 @@ class ViewExpression(object):
     def __repr__(self):
         return fou.pformat(self.to_mongo())
 
-    def __len__(self):
-        # Annoyingly, Python enforces deep in its depths that __len__ must
-        # return an int. So, we cannot return our length expression here...
-        raise TypeError(
-            "Computing the length of an expression via `len()` is not "
-            "allowed; use `expression.length()` instead"
-        )
-
-    def length(self):
-        """Computes the length of the expression, which must resolve to an
-        array.
-
-        If the expression is null, 0 is returned.
-
-        Returns:
-            a :class:`ViewExpression` that computes the length of the array
-        """
-        return ViewExpression({"$size": {"$ifNull": [self, []]}})
-
     def to_mongo(self, in_list=False):
         """Returns a MongoDB representation of the expression.
 
@@ -96,7 +77,7 @@ class ViewExpression(object):
         """
         return ViewExpression._recurse(self._expr, in_list)
 
-    # Comparison Expression Operators
+    # Comparison expression operators #########################################
 
     def __eq__(self, other):
         """Creates an expression that returns a boolean indicating whether:
@@ -176,7 +157,7 @@ class ViewExpression(object):
         """
         return ViewExpression({"$ne": [self, other]})
 
-    # Logic Expression Operators
+    # Logical expression operators ############################################
 
     def __and__(self, other):
         """Creates an expression that returns a boolean that is a logical
@@ -220,7 +201,7 @@ class ViewExpression(object):
     def __ror__(self, other):
         return ViewExpression({"$or": [other, self]})
 
-    # Arithmetic Expression Operators
+    # Arithmetic expression operators #########################################
 
     def __abs__(self):
         """Creates an expression that returns a number that is the absolute
@@ -423,10 +404,29 @@ class ViewExpression(object):
         """
         return ViewExpression({"$trunc": [self, place]})
 
-    # Array Expression Operators
+    # Array expression operators ##############################################
 
     def __getitem__(self, idx):
         return ViewExpression({"$arrayElemAt": [self, idx]})
+
+    def __len__(self):
+        # Annoyingly, Python enforces deep in its depths that __len__ must
+        # return an int. So, we cannot return our length expression here...
+        raise TypeError(
+            "Computing the length of an expression via `len()` is not "
+            "allowed; use `expression.length()` instead"
+        )
+
+    def length(self):
+        """Computes the length of the expression, which must resolve to an
+        array.
+
+        If the expression is null, 0 is returned.
+
+        Returns:
+            a :class:`ViewExpression` that computes the length of the array
+        """
+        return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
     def is_in(self, values):
         """Creates an expression that returns a boolean indicating whether
@@ -453,6 +453,25 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression({"$in": [value, self]})
+
+    def filter(self, expr):
+        """Applies the filter to the elements of the expression, which must
+        resolve to an array.
+
+        The output array will only contain elements of the input array for
+        which ``expr`` returns ``True``.
+
+        Args:
+            expr: a :class:`ViewExpression` that returns a boolean
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$filter": {"input": self, "cond": expr.to_mongo(in_list=True)}}
+        )
+
+    # Private methods #########################################################
 
     @staticmethod
     def _recurse(val, in_list):
