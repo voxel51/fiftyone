@@ -129,6 +129,23 @@ class ViewExpression(object):
         """
         return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
+    def filter(self, expr):
+        """Applies the filter to the elements of the expression, which must
+        resolve to an array.
+
+        The output array will only contain elements of the input array for
+        which ``expr`` returns ``True``.
+
+        Args:
+            expr: a :class:`ViewExpression` that returns a boolean
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$filter": {"input": self, "cond": expr.to_mongo(in_list=True)}}
+        )
+
     def to_mongo(self, in_list=False):
         """Returns a MongoDB representation of the expression.
 
