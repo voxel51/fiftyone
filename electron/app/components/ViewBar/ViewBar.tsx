@@ -50,18 +50,13 @@ export default () => {
         stages.map((stage, i) => {
           return (
             <>
-              <ViewStage
-                key={stage.id}
-                stageRef={stage.ref}
-                stageInfo={state.context.stageInfo}
-              />
+              <ViewStage key={stage.id} stageRef={stage.ref} />
               {i === stage.length - 1 && <ViewStageButton />}
             </>
           );
         }) && (
           <ViewStage
             key={tailStage.id}
-            stageInfo={state.context.stageInfo}
             stageRef={tailStage.ref}
             tailStage={true}
           />

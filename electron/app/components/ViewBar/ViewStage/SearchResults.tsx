@@ -38,8 +38,9 @@ const SearchResult = React.memo(
     const handleMouseLeave = () =>
       set({ backgroundColor: searchResultsBackgroundColor });
 
-    const setResult = (e) => send("COMMIT", e.target.dataset.value);
-
+    const setResult = (e) => {
+      send("COMMIT", e.target.dataset.value);
+    };
     return (
       <SearchResultDiv
         onClick={setResult}
@@ -76,12 +77,12 @@ export default ({ results, send }) => {
   if (!results.length) return null;
   return (
     <SearchResultsDiv>
-      {results.map((result, i) => (
+      {results.map((result) => (
         <SearchResult
           key={result}
           result={result}
           isActive={false}
-          send={() => {}}
+          send={send}
         />
       ))}
     </SearchResultsDiv>

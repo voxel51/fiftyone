@@ -2,12 +2,13 @@ import { Machine, assign, spawn } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 
-export const createStage = (stage) => {
+export const createStage = (stage, stageInfo) => {
   return {
     id: uuid(),
     completed: false,
-    stage: stage ? stage : "",
+    stage: stage,
     parameters: [],
+    stageInfo,
   };
 };
 
@@ -50,9 +51,11 @@ const viewBarMachine = Machine({
           }),
         },
       },
+    },
+    running: {
       entry: assign({
-        tailStage: () => {
-          const newTailStage = createStage();
+        tailStage: (ctx) => {
+          const newTailStage = createStage("", ctx.stageInfo);
           return {
             ...newTailStage,
             ref: spawn(viewStageMachine.withContext(newTailStage)),
@@ -66,7 +69,6 @@ const viewBarMachine = Machine({
         },
       }),
     },
-    running: {},
   },
   on: {
     "NEWSTAGE.CHANGE": {
@@ -77,8 +79,8 @@ const viewBarMachine = Machine({
     "NEWSTAGE.COMMIT": {
       actions: [
         assign({
-          tailStage: () => {
-            const newTailStage = createStage();
+          tailStage: (ctx) => {
+            const newTailStage = createStage("", ctx.stageInfo);
             return {
               ...newTailStage,
               ref: spawn(viewStageMachine.withContext(newTailStage)),

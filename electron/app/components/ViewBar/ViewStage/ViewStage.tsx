@@ -34,11 +34,12 @@ const ViewStageInput = styled.input`
 
 export const ViewStageButton = styled.button``;
 
-export default React.memo(({ stageRef, tailStage, stageInfo }) => {
+export default React.memo(({ stageRef, tailStage }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage } = state.context;
+  const { stage, stageInfo } = state.context;
+  console.log(stageInfo);
 
   const props = useSpring({
     borderStyle: true ? "dashed" : "solid",
@@ -55,8 +56,6 @@ export default React.memo(({ stageRef, tailStage, stageInfo }) => {
       },
     });
   }, [state, stageRef]);
-
-  console.log(state.toStrings());
 
   return (
     <ViewStageDiv style={props}>
@@ -86,7 +85,7 @@ export default React.memo(({ stageRef, tailStage, stageInfo }) => {
         <SearchResults
           results={stageInfo
             .map((s) => s.name)
-            .filter((n) => n.toLowerCase().includes(stage))}
+            .filter((n) => n.toLowerCase().includes(stage.toLowerCase()))}
           send={send}
         />
       )}

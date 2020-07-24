@@ -22,6 +22,7 @@ const viewStageMachine = Machine({
     stage: undefined,
     parameters: [],
     prevStage: "",
+    stageInfo: undefined,
   },
   initial: "initializing",
   states: {
@@ -70,7 +71,7 @@ const viewStageMachine = Machine({
                 );
               return parameters.map((parameter) => ({
                 ...parameter,
-                ref: spawn(viewStageParameterMachine.withContext(p)),
+                ref: spawn(viewStageParameterMachine.withContext(parameter)),
               }));
             },
           }),
@@ -97,23 +98,37 @@ const viewStageMachine = Machine({
         },
         COMMIT: [
           {
-            target: "reading.hist",
-            actions: sendParent((ctx) => ({
-              type: "STAGE.COMMIT",
-              stage: ctx,
-            })),
-            cond: (ctx) => ctx.stage.trim().length > 0,
+            target: "validating",
+            actions: [
+              assign({
+                stage: (ctx, e) => ctx.stage,
+              }),
+            ],
           },
-          { target: "deleted" },
         ],
         BLUR: {
-          target: "reading",
+          target: "validating",
           actions: sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
         },
         CANCEL: {
           target: "reading",
           actions: assign({ stage: (ctx) => ctx.prevStage }),
         },
+      },
+    },
+    validating: {
+      onEntry: [
+        assign({
+          stage: (ctx) => {
+            const result = ctx.stageInfo.filter(
+              (s) => s.name.toLowerCase() === ctx.stage.toLowerCase()
+            );
+            return result.length === 1 ? result[0].name : ctx.prevStage;
+          },
+        }),
+      ],
+      on: {
+        always: "reading",
       },
     },
     deleted: {
