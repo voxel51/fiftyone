@@ -11,15 +11,34 @@ export const createStage = (stage) => {
   };
 };
 
+function getStageInfo(context) {
+  return new Promise((resolve) => {
+    context.socket.emit("get_stages", "", (data) => {
+      resolve(data);
+    });
+  });
+}
+
 const viewBarMachine = Machine({
   id: "stages",
   context: {
     tailStage: undefined, // tail stage
     stages: [],
+    stageInfo: undefined,
+    socket: undefined,
   },
   initial: "initializing",
   states: {
     initializing: {
+      invoke: {
+        src: getStageInfo,
+        onDone: {
+          target: "running",
+          actions: assign({
+            stageInfo: (ctx, event) => event.data,
+          }),
+        },
+      },
       entry: assign({
         tailStage: () => {
           const newTailStage = createStage();
@@ -35,9 +54,6 @@ const viewBarMachine = Machine({
           }));
         },
       }),
-      on: {
-        "": "running",
-      },
     },
     running: {},
   },

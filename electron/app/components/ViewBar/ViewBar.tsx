@@ -7,8 +7,9 @@ import {
   white96 as backgroundColor,
   white85 as borderColor,
 } from "../../shared/colors";
+import { port } from "../../recoil/atoms";
 import { getSocket, useSubscribe } from "../../utils/socket";
-import ViewStage from "./ViewStage/ViewStage";
+import ViewStage, { ViewStageButton } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 
 const ViewBarDiv = styled.div`
@@ -34,22 +35,22 @@ const ViewBarDiv = styled.div`
 );*/
 
 export default () => {
-  const [state, send] = useMachine(viewBarMachine);
-  const socket = getSocket(5151, "state");
-
-  useSubscribe(socket, "connect", (data) => {
-    socket.emit("get_stages", "", (data) => {
-      console.log(data);
-    });
-  });
+  const [state, send] = useMachine(
+    viewBarMachine.withContext({ socket: getSocket(port, "state") })
+  );
 
   const { stages, tailStage } = state.context;
 
   return (
     <ViewBarDiv>
-      {stages.map((stage) => (
-        <ViewStage key={stage.id} stageRef={stage.ref} />
-      ))}
+      {stages.map((stage, i) => {
+        return (
+          <>
+            <ViewStage key={stage.id} stageRef={stage.ref} />
+            {i === stage.length - 1 && <ViewStageButton />}
+          </>
+        );
+      })}
       <ViewStage key={tailStage.id} stageRef={tailStage.ref} tailStage={true} />
     </ViewBarDiv>
   );

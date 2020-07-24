@@ -31,7 +31,7 @@ const ViewStageInput = styled.input`
   }
 `;
 
-const ViewStageButton = styled.button``;
+export const ViewStageButton = styled.button``;
 
 export default React.memo(({ stageRef, tailStage }) => {
   const [state, send] = useService(stageRef);
@@ -75,6 +75,7 @@ export default React.memo(({ stageRef, tailStage }) => {
         ) : (
           <ViewStageButton>+</ViewStageButton>
         )}
+        <SearchResults />
       </div>
     </ViewStageDiv>
   );
