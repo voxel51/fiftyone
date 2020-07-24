@@ -63,13 +63,13 @@ const viewStageMachine = Machine({
         completed: {
           entry: assign({
             parameters: (ctx) => {
-              const params = ctx.stageInfo
+              const parameters = ctx.stageInfo
                 .filter((s) => s.name.lowerCase().includes(ctx.stage))[0]
-                .params.map((p) => {
-                  createParameter(ctx.stage, p.name, p.type, "");
-                });
-              return params.map((p) => ({
-                ...p(),
+                .params.map((parameter) =>
+                  createParameter(ctx.stage, parameter.name, parameter.type, "")
+                );
+              return parameters.map((parameter) => ({
+                ...parameter,
                 ref: spawn(viewStageParameterMachine.withContext(p)),
               }));
             },
