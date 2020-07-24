@@ -187,11 +187,11 @@ class DatasetView(foc.SampleCollection):
         for d in self.aggregate():
             try:
                 yield self._dataset._load_sample_from_dict(d)
-            except Exception:
+            except Exception as e:
                 raise ValueError(
                     "There is an invalid stage in the DatasetView. ViewStages"
                     " must return Samples."
-                )
+                ) from e
 
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
