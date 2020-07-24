@@ -1,4 +1,4 @@
-import { Machine, assign, spawn } from "xstate";
+import { Machine, assign, spawn, sendParent } from "xstate";
 import uuid from "uuid-v4";
 
 import viewStageParameterMachine from "./viewStageParameterMachine";
@@ -20,6 +20,7 @@ const viewStageMachine = Machine({
     completed: false,
     stage: undefined,
     parameters: [],
+    prevStage: "",
   },
   initial: "initializing",
   states: {
@@ -33,10 +34,89 @@ const viewStageMachine = Machine({
         },
       }),
       on: {
-        "": "running",
+        "": "reading",
       },
     },
-    running: {},
+    reading: {
+      initial: "unknown",
+      states: {
+        unknown: {
+          on: {
+            "": [
+              { target: "completed", cond: (ctx) => ctx.completed },
+              { target: "pending" },
+            ],
+          },
+        },
+        pending: {
+          on: {
+            SET_COMPLETED: {
+              target: "completed",
+              actions: [
+                assign({ completed: true }),
+                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
+              ],
+            },
+          },
+        },
+        completed: {
+          on: {
+            TOGGLE_COMPLETE: {
+              target: "pending",
+              actions: [
+                assign({ completed: false }),
+                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
+              ],
+            },
+            SET_ACTIVE: {
+              target: "pending",
+              actions: [
+                assign({ completed: false }),
+                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
+              ],
+            },
+          },
+        },
+        hist: {
+          type: "history",
+        },
+      },
+      on: {
+        EDIT: {
+          target: "editing",
+          actions: "focusInput",
+        },
+      },
+    },
+    editing: {
+      onEntry: assign({ prevStage: (ctx) => ctx.stage }),
+      on: {
+        CHANGE: {
+          actions: assign({
+            title: (ctx, e) => e.value,
+          }),
+        },
+        COMMIT: [
+          {
+            target: "reading.hist",
+            actions: sendParent((ctx) => ({ type: "STAGE.COMMIT", todo: ctx })),
+            cond: (ctx) => ctx.title.trim().length > 0,
+          },
+          { target: "deleted" },
+        ],
+        BLUR: {
+          target: "reading",
+          actions: sendParent((ctx) => ({ type: "STAGE.COMMIT", todo: ctx })),
+        },
+        CANCEL: {
+          target: "reading",
+          actions: assign({ stage: (ctx) => ctx.prevStage }),
+        },
+      },
+    },
+    deleted: {
+      onEntry: sendParent((ctx) => ({ type: "STAGE.DELETE", id: ctx.id })),
+    },
   },
   on: {
     "PARAMETER.COMMIT": {
