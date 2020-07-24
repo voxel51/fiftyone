@@ -86,7 +86,7 @@ export default React.memo(({ stageRef, tailStage, stageInfo }) => {
         <SearchResults
           results={stageInfo
             .map((s) => s.name)
-            .filter((n) => n.includes(stage))}
+            .filter((n) => n.toLowerCase().includes(stage))}
           send={send}
         />
       )}

@@ -3,11 +3,12 @@ import uuid from "uuid-v4";
 
 import viewStageParameterMachine from "./viewStageParameterMachine";
 
-export const createParameter = (stage, parameter, value) => {
+export const createParameter = (stage, parameter, type, value) => {
   return {
     id: uuid(),
     completed: false,
     parameter: parameter,
+    type: type,
     stage: stage,
     value: value ? value : "",
   };
@@ -26,7 +27,7 @@ const viewStageMachine = Machine({
   states: {
     initializing: {
       entry: assign({
-        parameters: (ctx, e) => {
+        parameters: (ctx) => {
           return ctx.parameters.map((parameter) => ({
             ...parameter,
             ref: spawn(viewStageParameterMachine.withContext(parameter)),
@@ -60,23 +61,21 @@ const viewStageMachine = Machine({
           },
         },
         completed: {
-          on: {
-            TOGGLE_COMPLETE: {
-              target: "pending",
-              actions: [
-                assign({ completed: false }),
-                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
-              ],
+          entry: assign({
+            parameters: (ctx) => {
+              const params = ctx.stageInfo
+                .filter((s) => s.name.lowerCase().includes(ctx.stage))[0]
+                .params.map((p) => {
+                  createParameter(ctx.stage, p.name, p.type, "");
+                });
+              return params.map((p) => ({
+                ...p(),
+                ref: spawn(viewStageParameterMachine.withContext(p)),
+              }));
             },
-            SET_ACTIVE: {
-              target: "pending",
-              actions: [
-                assign({ completed: false }),
-                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
-              ],
-            },
-          },
+          }),
         },
+        submitted: {},
         hist: {
           type: "history",
         },
