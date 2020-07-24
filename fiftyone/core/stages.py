@@ -28,8 +28,14 @@ from fiftyone.core.expressions import ViewExpression
 import eta.core.utils as etau
 
 
-# max number of list elements to print
-reprlib.aRepr.maxlist = 3
+class StageRepr(reprlib.Repr):
+    def repr_ViewExpression(self, expr, level):
+        return self.repr1(expr.to_mongo(), level=level)
+
+
+aRepr = StageRepr()
+aRepr.maxlevel = 2
+aRepr.maxlist = 3
 
 
 class ViewStage(object):
@@ -46,7 +52,7 @@ class ViewStage(object):
 
     def __repr__(self):
         kwargs_str = ", ".join(
-            ["%s=%s" % (k, reprlib.repr(v)) for k, v in self._kwargs().items()]
+            ["%s=%s" % (k, aRepr.repr(v)) for k, v in self._kwargs().items()]
         )
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
@@ -90,6 +96,11 @@ class Exclude(ViewStage):
     def __init__(self, sample_ids):
         self._sample_ids = sample_ids
 
+    @property
+    def sample_ids(self):
+        """The iterable of sample IDs to exclude."""
+        return self._sample_ids
+
     def to_mongo(self):
         """Returns the MongoDB version of the
         :class:`fiftyone.core.stages.Exclude` instance.
@@ -115,6 +126,11 @@ class Exists(ViewStage):
     def __init__(self, field):
         self._field = field
 
+    @property
+    def field(self):
+        """The field to check if exists."""
+        return self._field
+
     def to_mongo(self):
         """Returns the MongoDB version of the
         :class:`fiftyone.core.stages.Exists` instance.
@@ -138,6 +154,11 @@ class Limit(ViewStage):
 
     def __init__(self, limit):
         self._limit = limit
+
+    @property
+    def limit(self):
+        """The maximum number of samples to return."""
+        return self._limit
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -166,6 +187,16 @@ class ListFilter(ViewStage):
         self._field = field
         self._filter = filter
         self._validate()
+
+    @property
+    def field(self):
+        """The list field to filter."""
+        return self._field
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -212,6 +243,11 @@ class Match(ViewStage):
         self._filter = filter
         self._validate()
 
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
     def to_mongo(self):
         """Returns the MongoDB version of the
         :class:`fiftyone.core.stages.Match` instance.
@@ -246,6 +282,11 @@ class MatchTag(ViewStage):
     def __init__(self, tag):
         self._tag = tag
 
+    @property
+    def tag(self):
+        """The tag to match."""
+        return self._tag
+
     def to_mongo(self):
         """Returns the MongoDB version of the
         :class:`fiftyone.core.stages.MatchTag` instance.
@@ -272,6 +313,11 @@ class MatchTags(ViewStage):
     def __init__(self, tags):
         self._tags = tags
 
+    @property
+    def tags(self):
+        """The iterable of tags to match."""
+        return self._tags
+
     def to_mongo(self):
         """Returns the MongoDB version of the
         :class:`fiftyone.core.stages.MatchTags` instance.
@@ -288,7 +334,7 @@ class MatchTags(ViewStage):
 class Mongo(ViewStage):
     """View stage defined by a raw MongoDB aggregation pipeline.
 
-    See `MongoDB aggreation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
+    See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
     for more details.
 
     Args:
@@ -297,6 +343,11 @@ class Mongo(ViewStage):
 
     def __init__(self, pipeline):
         self._pipeline = pipeline
+
+    @property
+    def pipeline(self):
+        """The MongoDB aggregation pipeline."""
+        return self._pipeline
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -320,6 +371,11 @@ class Select(ViewStage):
 
     def __init__(self, sample_ids):
         self._sample_ids = sample_ids
+
+    @property
+    def sample_ids(self):
+        """The iterable of sample IDs to select."""
+        return self._sample_ids
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -351,6 +407,16 @@ class SortBy(ViewStage):
     def __init__(self, field_or_expr, reverse=False):
         self._field_or_expr = field_or_expr
         self._reverse = reverse
+
+    @property
+    def field_or_expr(self):
+        """The field or expression to sort by."""
+        return self._field_or_expr
+
+    @property
+    def reverse(self):
+        """Whether to return the results in descending order."""
+        return self._reverse
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -390,6 +456,11 @@ class Skip(ViewStage):
     def __init__(self, skip):
         self._skip = skip
 
+    @property
+    def skip(self):
+        """The number of samples to skip."""
+        return self._skip
+
     def to_mongo(self):
         """Returns the MongoDB version of the
         :class:`fiftyone.core.stages.Skip` instance.
@@ -413,6 +484,11 @@ class Take(ViewStage):
 
     def __init__(self, size):
         self._size = size
+
+    @property
+    def size(self):
+        """The number of samples to return."""
+        return self._size
 
     def to_mongo(self):
         """Returns the MongoDB version of the
