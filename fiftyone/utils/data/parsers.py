@@ -529,9 +529,30 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         else:
             confidence = None
 
-        return fol.Detection(
+        detection = fol.Detection(
             label=label, bounding_box=bounding_box, confidence=confidence,
         )
+
+        # Get all other attributes that are not labels, bbox, confidence
+        for k, v in obj.items():
+            if k not in [self.label_field, self.bounding_box_field,
+                    self.confidence_field] and \
+                    (isinstance(v, dict) and "_cls" in v):
+
+                # TODO Find a better way of checking if the class name is
+                # fully qualified or not
+                cls_name = v["_cls"]
+                if cls_name[:8] != "fiftyone":
+                    cls_name = "fiftyone.core.labels."+cls_name
+
+                try:
+                    attr_cls = etau.get_class(cls_name)
+                except ModuleNotFoundError:
+                    continue
+
+                detection.attributes[k] = attr_cls(value=v["value"])
+
+        return detection
 
     def _parse_bbox(self, obj):
         return obj[self.bounding_box_field]
