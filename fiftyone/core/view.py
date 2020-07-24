@@ -82,6 +82,13 @@ class DatasetView(foc.SampleCollection):
         view._stages = deepcopy(self._stages)
         return view
 
+    @property
+    def stages(self):
+        """The list of :class:`fiftyone.core.stages.ViewStage` instances in
+        this view's pipeline.
+        """
+        return self._stages
+
     def summary(self):
         """Returns a string summary of the view.
 
@@ -121,11 +128,11 @@ class DatasetView(foc.SampleCollection):
         for d in self.aggregate():
             try:
                 yield self._dataset._load_sample_from_dict(d)
-            except Exception:
+            except Exception as e:
                 raise ValueError(
-                    "There is an invalid stage in the DatasetView. ViewStages"
-                    " must return Samples."
-                )
+                    "Failed to load sample from the database. This is likely "
+                    "due to an invalid stage in the DatasetView"
+                ) from e
 
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
