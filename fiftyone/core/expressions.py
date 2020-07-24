@@ -286,7 +286,7 @@ class ViewExpression(object):
         """Creates an expression that returns ``self ** power``.
 
         Args:
-            power: the power that the resolved expression is raised to
+            power: the power that ``self`` is raised to
             modulo (None): unsupported argument
 
         Returns:
@@ -310,8 +310,7 @@ class ViewExpression(object):
         return ViewExpression({"$divide": [other, self]})
 
     def __sub__(self, other):
-        """Creates an expression that returns a number that is:
-            ``<resolved expression> - <other>``
+        """Creates an expression that returns ``self - other``.
 
         Args:
             other: a :class:`ViewField`, :class:`ViewExpression` or numeric
@@ -322,8 +321,7 @@ class ViewExpression(object):
         return ViewExpression({"$subtract": [self, other]})
 
     def __truediv__(self, other):
-        """Creates an expression that returns a number that is:
-            ``<resolved expression> - <other>``
+        """Creates an expression that returns ``self / other``.
 
         Args:
             other: a :class:`ViewField`, :class:`ViewExpression` or numeric
@@ -408,7 +406,7 @@ class ViewExpression(object):
 
     def __getitem__(self, idx):
         """Returns the element at the given index in the expression, which must
-        resolve to an array.
+        resolve to an array ``self[idx]``.
 
         Args:
             idx: the index
@@ -439,11 +437,10 @@ class ViewExpression(object):
 
     def is_in(self, values):
         """Creates an expression that returns a boolean indicating whether
-        the resolved expression is in the array of values.
+        ``self in values``.
 
         Args:
-            values: a list of values to check if the resolved value of this
-                expression is in
+            values: a list of values to check if ``self`` is in
 
         Returns:
             a :class:`ViewExpression`
@@ -451,12 +448,11 @@ class ViewExpression(object):
         return ViewExpression({"$in": [self, list(values)]})
 
     def contains(self, value):
-        """Creates an expression that returns a boolean indicating whether the
-        specified value is in the resolved array expression.
+        """Creates an expression that returns a boolean indicating whether
+        ``value in self``.
 
         Args:
-            value: the value to check if it is contained in the resolved list
-                from this expression
+            value: the value to check if it is contained in ``self``
 
         Returns:
             a :class:`ViewExpression`
