@@ -2,6 +2,7 @@ import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef } from "react";
 import { Button, Modal, Label } from "semantic-ui-react";
 import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
+import { RecoilRoot } from "recoil";
 
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
@@ -74,7 +75,7 @@ function App(props: Props) {
   };
 
   return (
-    <>
+    <RecoilRoot>
       <Modal
         trigger={
           <Button
@@ -103,7 +104,7 @@ function App(props: Props) {
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
         {children}
       </div>
-    </>
+    </RecoilRoot>
   );
 }
 
