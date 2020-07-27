@@ -10,14 +10,11 @@ import {
   Segment,
 } from "semantic-ui-react";
 
+import SamplesContainer from "./SamplesContainer";
 import Distributions from "../components/Distributions";
 import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
-import Samples from "../components/Samples";
 import Search from "../components/Search";
-import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
-import ImageContainerHeader from "../components/ImageContainerHeader";
-import SidebarContainer from "../components/SidebarContainer";
 import routes from "../constants/routes.json";
 import connect from "../utils/connect";
 
@@ -142,22 +139,11 @@ function Dataset(props) {
             {hasDataset ? (
               <>
                 <Route path={routes.SAMPLES}>
-                  <ImageContainerHeader />
-                  <SidebarContainer
-                    sidebar={
-                      <DisplayOptionsSidebar
-                        tags={[]}
-                        labels={[]}
-                        scalars={[]}
-                      />
-                    }
-                  >
-                    <Samples
-                      {...props.socket}
-                      setView={setView}
-                      displayProps={displayProps}
-                    />
-                  </SidebarContainer>
+                  <SamplesContainer
+                    {...props.socket}
+                    setView={setView}
+                    displayProps={displayProps}
+                  />
                 </Route>
                 <Route path={routes.LABELS}>
                   <Distributions group="labels" />
