@@ -87,7 +87,7 @@ Export datasets to disk in any number of formats.
    )
 
 :doc:`Drawing labels on samples <draw_labels>`
--------------------------------------------
+----------------------------------------------
 
 Render labels on the samples in your FiftyOne dataset with a single line of
 code.
