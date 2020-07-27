@@ -15,6 +15,9 @@ import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
 import Samples from "../components/Samples";
 import Search from "../components/Search";
+import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
+import ImageContainerHeader from "../components/ImageContainerHeader";
+import SidebarContainer from "../components/SidebarContainer";
 import routes from "../constants/routes.json";
 import connect from "../utils/connect";
 
@@ -139,11 +142,22 @@ function Dataset(props) {
             {hasDataset ? (
               <>
                 <Route path={routes.SAMPLES}>
-                  <Samples
-                    {...props.socket}
-                    setView={setView}
-                    displayProps={displayProps}
-                  />
+                  <ImageContainerHeader />
+                  <SidebarContainer
+                    sidebar={
+                      <DisplayOptionsSidebar
+                        tags={[]}
+                        labels={[]}
+                        scalars={[]}
+                      />
+                    }
+                  >
+                    <Samples
+                      {...props.socket}
+                      setView={setView}
+                      displayProps={displayProps}
+                    />
+                  </SidebarContainer>
                 </Route>
                 <Route path={routes.LABELS}>
                   <Distributions group="labels" />

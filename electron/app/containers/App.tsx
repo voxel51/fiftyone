@@ -70,7 +70,6 @@ function App(props: Props) {
   });
   const bodyStyle = {
     height: "100%",
-    marginLeft: 260,
     padding: "0 2rem 2rem 2rem",
   };
 
@@ -101,7 +100,6 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
-      <Sidebar displayProps={displayProps} />
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
         {children}
       </div>
