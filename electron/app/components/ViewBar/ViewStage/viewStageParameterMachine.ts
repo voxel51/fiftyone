@@ -7,14 +7,14 @@ const viewStageParameterMachine = Machine({
   initial: "reading",
   context: {
     id: undefined,
-    stage: undefined,
     parameter: undefined,
+    stage: undefined,
+    type: undefined,
     value: undefined,
-    completed: undefined,
   },
   on: {
-    TOGGLE_COMPLETE: {
-      target: ".reading.completed",
+    TOGGLE_SUBMITTED: {
+      target: "reading.submitted",
       actions: [
         assign({ completed: true }),
         sendParent(
@@ -32,17 +32,19 @@ const viewStageParameterMachine = Machine({
         unknown: {
           on: {
             "": [
-              { target: "completed", cond: (ctx) => ctx.completed },
+              {
+                target: "submitted",
+                cond: (ctx) => ctx.value.trim().length > 0,
+              }, // more checks needed
               { target: "pending" },
             ],
           },
         },
         pending: {
           on: {
-            SET_COMPLETED: {
-              target: "completed",
+            SUBMIT: {
+              target: "submitted",
               actions: [
-                assign({ completed: true }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
                   parameter: ctx,
@@ -51,30 +53,7 @@ const viewStageParameterMachine = Machine({
             },
           },
         },
-        completed: {
-          on: {
-            TOGGLE_COMPLETE: {
-              target: "pending",
-              actions: [
-                assign({ completed: false }),
-                sendParent((ctx) => ({
-                  type: "PARAMETER.COMMIT",
-                  parameter: ctx,
-                })),
-              ],
-            },
-            SET_ACTIVE: {
-              target: "pending",
-              actions: [
-                assign({ completed: false }),
-                sendParent((ctx) => ({
-                  type: "PARAMETER.COMMIT",
-                  parameter: ctx,
-                })),
-              ],
-            },
-          },
-        },
+        submitted: {},
         hist: {
           type: "history",
         },

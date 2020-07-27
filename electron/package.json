@@ -308,6 +308,7 @@
     "react-highlight.js": "^1.0.7",
     "react-hot-loader": "^4.12.19",
     "react-infinite-scroller": "^1.2.4",
+    "react-input-autosize": "^2.2.2",
     "react-redux": "^7.1.3",
     "react-router": "^5.1.2",
     "react-router-dom": "^5.1.2",

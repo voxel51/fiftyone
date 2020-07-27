@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
+import AuosizeInput from "react-input-autosize";
 
 import { grey46 as fontColor } from "../../../shared/colors";
 import SearchResults from "./SearchResults";
@@ -16,18 +17,22 @@ const ViewStageDiv = animated(styled.div`
   display: inline-block;
   margin: 0.5rem;
   position: relative;
+
+  &.selected {
+  }
 `);
 
-const ViewStageInput = styled.input`
-  background-color: transparent;
-  border: none;
-  line-height: 1rem;
-  margin: 0.5rem;
-  width: auto;
-  color: ${fontColor};
-  max-width: 6.5rem;
+const ViewStageInput = styled(AuosizeInput)`
+  & > input {
+    background-color: transparent;
+    border: none;
+    margin: 0.5rem;
+    color: ${fontColor};
+    line-height: 1rem;
+    border: none;
+  }
 
-  :focus {
+  & > input:focus {
     boder: none;
     outline: none;
   }
@@ -79,6 +84,7 @@ export default React.memo(({ stageRef, tailStage }) => {
               send("CANCEL");
             }
           }}
+          style={{ fontiSize: "1rem" }}
           ref={inputRef}
         />
       ) : (

@@ -4,28 +4,20 @@ import styled from "styled-components";
 import { useService } from "@xstate/react";
 import cn from "classnames";
 
+import { grey46 as fontColor } from "../../../shared/colors";
 import SearchResults from "./SearchResults";
 
 const ViewStageParameterInput = animated(styled.input`
-  background-color: var(--bg);
-  border-color: var(--std-border-color);
-  border-radius: var(--std-border-radius);
-  border-style: solid;
-  border-width: var(--std-border-width);
-  box-sizing: border-box;
-  display: inline-block;
+  background-color: transparent;
+  border: none;
   line-height: 1rem;
-  margin: 0.25rem;
-  padding: 0.5rem;
-  color: var(--std-font-color);
+  margin: 0.5rem;
+  width: auto;
+  color: ${fontColor};
+  max-width: 6.5rem;
 
   :focus {
-    border-style: dashed;
     outline: none;
-  }
-
-  ::placeholder {
-    color: var(--std-font-color);
   }
 `);
 
