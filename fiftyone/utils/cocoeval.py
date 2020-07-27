@@ -185,7 +185,6 @@ def evaluate_detections(samples, pred_field, gt_field):
                     sample["fp_iou75"] = false_positives
                     sample["fn_iou75"] = false_negatives
 
-
         # TODO: Compute sample-wise AP 
 
         sample.save()
