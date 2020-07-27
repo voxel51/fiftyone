@@ -115,6 +115,34 @@ class Exclude(ViewStage):
         return {"sample_ids": self._sample_ids}
 
 
+class ExcludeFields(ViewStage):
+    """Excludes the samples with the given IDs from the view.
+
+    Args:
+        field_names: a list of names of sample fields to omit
+    """
+
+    def __init__(self, field_names):
+        self._field_names = field_names
+
+    @property
+    def field_names(self):
+        """The list of field names to exclude."""
+        return self._field_names
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.ExcludeFields` instance.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return [{"$unset": self._field_names}]
+
+    def _kwargs(self):
+        return {"field_names": self._field_names}
+
+
 class Exists(ViewStage):
     """Returns a view containing the samples that have a non-``None`` value
     for the given field.

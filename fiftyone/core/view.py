@@ -297,6 +297,18 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fos.Exclude(sample_ids))
 
     @view_stage
+    def exclude_fields(self, field_names):
+        """Excludes the samples with the given IDs from the view.
+
+        Args:
+            field_names: a list of names of sample fields to omit
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.ExcludeFields(field_names))
+
+    @view_stage
     def exists(self, field):
         """Returns a view containing the samples that have a non-``None`` value
         for the given field.
