@@ -18,7 +18,7 @@ export const viewStageParameterMachineConfig = {
       states: {
         unknown: {
           on: {
-            "": [
+            always: [
               {
                 target: "submitted",
                 cond: (ctx) => ctx.value.trim().length > 0,
@@ -62,10 +62,16 @@ export const viewStageParameterMachineConfig = {
         COMMIT: [
           {
             target: "reading.hist",
-            actions: sendParent((ctx) => ({
-              type: "PARAMETER.COMMIT",
-              parameter: ctx,
-            })),
+            actions: [
+              assign({
+                value: (ctx) => ctx.value,
+                submitted: true,
+              }),
+              sendParent((ctx) => ({
+                type: "PARAMETER.COMMIT",
+                parameter: ctx,
+              })),
+            ],
             cond: (ctx) => ctx.value.trim().length > 0,
           },
         ],
@@ -78,13 +84,17 @@ export const viewStageParameterMachineConfig = {
         },
         CANCEL: {
           target: "reading",
-          actions: assign({ value: (ctx) => ctx.value }),
+          actions: assign({ value: (ctx) => ctx.prevValue }),
         },
       },
     },
   },
 };
 
-const viewStageParameterMachine = Machine(viewStageParameterMachineConfig);
+const viewStageParameterMachine = Machine(viewStageParameterMachineConfig, {
+  actions: {
+    focusInput: () => {},
+  },
+});
 
 export default viewStageParameterMachine;

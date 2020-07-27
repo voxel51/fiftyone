@@ -46,8 +46,6 @@ export default ({ parameterRef }) => {
     });
   }, [state, parameterRef]);
 
-  console.log(state.toStrings());
-
   return (
     <ViewStageParameterDiv>
       <ViewStageParameterInput

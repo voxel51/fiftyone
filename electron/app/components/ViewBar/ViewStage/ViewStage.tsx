@@ -64,7 +64,6 @@ export default React.memo(({ stageRef, tailStage }) => {
       },
     });
   }, [state, stageRef]);
-  console.log(state.toStrings(), parameters);
 
   return (
     <ViewStageContainer>
