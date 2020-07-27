@@ -9,12 +9,19 @@ import Samples from "../components/Samples";
 const Container = styled.div``;
 
 const SamplesContainer = (props) => {
-  const showSidebar = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   return (
     <Container>
-      <ImageContainerHeader />
+      <ImageContainerHeader
+        showSidebar={showSidebar}
+        onShowSidebar={setShowSidebar}
+      />
       <SidebarContainer
-        sidebar={<DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />}
+        sidebar={
+          showSidebar && (
+            <DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />
+          )
+        }
       >
         <Samples {...props} />
       </SidebarContainer>
