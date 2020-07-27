@@ -1,23 +1,67 @@
 import React from "react";
 import styled from "styled-components";
 import { useSpring } from "react-spring";
+import { useMachine } from "@xstate/react";
+import { useRecoilValue } from "recoil";
 
-const ViewBar = styled.div`
-  width: calc(100% - 2.4rem);
-  margin: 1rem;
-  height: 3rem;
-  line-height: 3rem;
-  border-radius: 0.2rem;
-  border: 0.2rem solid #e0e0e0;
-  background-color: #f0f0f0;
+import {
+  white96 as backgroundColor,
+  white85 as borderColor,
+} from "../../shared/colors";
+import { port } from "../../recoil/atoms";
+import { getSocket, useSubscribe } from "../../utils/socket";
+import ViewStage, { ViewStageButton } from "./ViewStage/ViewStage";
+import viewBarMachine, { createBar } from "./viewBarMachine";
+
+const ViewBarDiv = styled.div`
+  background-color: ${backgroundColor};
+  border-radius: 3px;
+  border: 1px solid ${borderColor};
+  box-sizing: border-box;
+  height: 54px;
+  width: 100%;
 `;
 
-export default () => {
-  const props = useSpring({
-    opacity: 1,
-    from: {
-      opacity: 0,
+/*const connectedViewBarMachine = viewBarMachine.withConfig(
+  {
+    actions: {
+      submit: (ctx) => {
+        // ...
+      },
     },
-  });
-  return <ViewBar style={props}>{name}</ViewBar>;
+  },
+  // load view from recoil
+  {
+    stage: 
+  }
+);*/
+
+export default () => {
+  const portValue = useRecoilValue(port);
+  const [state, send] = useMachine(
+    viewBarMachine.withContext(createBar(portValue))
+  );
+
+  const { stages, tailStage } = state.context;
+  console.log(state.toStrings(), stages);
+
+  return (
+    <ViewBarDiv>
+      {state.matches("running") &&
+        stages.map((stage, i) => {
+          return (
+            <>
+              <ViewStage key={stage.id} stageRef={stage.ref} />
+              {i === stage.length - 1 && <ViewStageButton />}
+            </>
+          );
+        }) && (
+          <ViewStage
+            key={tailStage.id}
+            stageRef={tailStage.ref}
+            tailStage={true}
+          />
+        )}
+    </ViewBarDiv>
+  );
 };

@@ -6,4 +6,15 @@ export default {
   title: "ViewBar",
 };
 
-export const standard = () => <ViewBar />;
+export const standard = () => (
+  <div
+    style={{
+      padding: 10,
+      width: "calc(100% - 20)",
+      position: "relative",
+      background: "pink",
+    }}
+  >
+    <ViewBar />
+  </div>
+);

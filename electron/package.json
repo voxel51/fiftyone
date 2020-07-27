@@ -291,6 +291,7 @@
     "@material-ui/icons": "^4.9.1",
     "@xstate/react": "^0.8.1",
     "babel-plugin-styled-components": "^1.10.7",
+    "classnames": "^2.2.6",
     "connected-react-router": "^6.6.1",
     "core-js": "^3.6.4",
     "devtron": "^1.4.0",
@@ -307,6 +308,7 @@
     "react-highlight.js": "^1.0.7",
     "react-hot-loader": "^4.12.19",
     "react-infinite-scroller": "^1.2.4",
+    "react-input-autosize": "^2.2.2",
     "react-redux": "^7.1.3",
     "react-router": "^5.1.2",
     "react-router-dom": "^5.1.2",
@@ -320,6 +322,7 @@
     "semantic-ui-react": "^0.88.2",
     "source-map-support": "^0.5.16",
     "styled-components": "^5.1.1",
+    "uuid-v4": "^0.1.0",
     "xstate": "^4.11.0"
   },
   "devEngines": {

@@ -25,6 +25,7 @@ import os
 
 from bson import json_util
 from flask import Flask, jsonify, request, send_file
+from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
 
 import eta.core.utils as etau
@@ -33,6 +34,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+from fiftyone.core.stages import _STAGES
 import fiftyone.core.state as fos
 
 from util import get_image_size
@@ -41,6 +43,7 @@ from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 logger = logging.getLogger(__name__)
 foo.get_db_conn()
 app = Flask(__name__)
+CORS(app)
 app.config["SECRET_KEY"] = "fiftyone"
 
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
@@ -60,6 +63,17 @@ def get_sample_media():
 @app.route("/fiftyone")
 def get_fiftyone_info():
     return jsonify({"version": foc.VERSION})
+
+
+@app.route("/stages")
+def get_stages():
+    """Gets ViewStage descriptions"""
+    return {
+        "stages": [
+            {"name": stage.__name__, "params": stage._params()}
+            for stage in _STAGES
+        ]
+    }
 
 
 def _load_state(func):

@@ -101,6 +101,10 @@ class Exclude(ViewStage):
     def _kwargs(self):
         return {"sample_ids": self._sample_ids}
 
+    @classmethod
+    def _params(cls):
+        return [{"name": "sample_ids", "type": ["list", "str"]}]
+
 
 class Exists(ViewStage):
     """Returns a view containing the samples that have a non-``None`` value
@@ -125,6 +129,10 @@ class Exists(ViewStage):
     def _kwargs(self):
         return {"field": self._field}
 
+    @classmethod
+    def _params(cls):
+        return [{"name": "field", "type": "str"}]
+
 
 class Limit(ViewStage):
     """Limits the view to the given number of samples.
@@ -148,6 +156,10 @@ class Limit(ViewStage):
 
     def _kwargs(self):
         return {"limit": self._limit}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "limit", "type": "int"}]
 
 
 class Match(ViewStage):
@@ -174,6 +186,10 @@ class Match(ViewStage):
     def _kwargs(self):
         return {"filter": self._filter}
 
+    @classmethod
+    def _params(cls):
+        return [{"name": "filter", "type": "any"}]
+
 
 class MatchTag(ViewStage):
     """Returns a view containing the samples that have the given tag.
@@ -196,6 +212,10 @@ class MatchTag(ViewStage):
 
     def _kwargs(self):
         return {"tag": self._tag}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "tag", "type": "str"}]
 
 
 class MatchTags(ViewStage):
@@ -223,6 +243,10 @@ class MatchTags(ViewStage):
     def _kwargs(self):
         return {"tags": self._tags}
 
+    @classmethod
+    def _params(cls):
+        return [{"name": "tags", "type": ["list", "str"]}]
+
 
 class Select(ViewStage):
     """Selects the samples with the given IDs from the view.
@@ -246,6 +270,10 @@ class Select(ViewStage):
 
     def _kwargs(self):
         return {"sample_ids": self._sample_ids}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "sample_ids", "type": ["list", "str"]}]
 
 
 class SortBy(ViewStage):
@@ -278,6 +306,13 @@ class SortBy(ViewStage):
     def _kwargs(self):
         return {"field": self._field, "reverse": self._reverse}
 
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field", "type": "str"},
+            {"name": "reverse", "type": "bool"},
+        ]
+
 
 class Skip(ViewStage):
     """Omits the given number of samples from the head of the view.
@@ -301,6 +336,10 @@ class Skip(ViewStage):
 
     def _kwargs(self):
         return {"skip": self._skip}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "skip", "type": "int"}]
 
 
 class Take(ViewStage):
@@ -330,3 +369,22 @@ class Take(ViewStage):
 
     def _kwargs(self):
         return {"size": self._size}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "size", "type": "int"}]
+
+
+# simple registry for the server to grab available view stages
+_STAGES = [
+    Exclude,
+    Exists,
+    Limit,
+    Match,
+    MatchTag,
+    MatchTags,
+    Select,
+    SortBy,
+    Skip,
+    Take,
+]
