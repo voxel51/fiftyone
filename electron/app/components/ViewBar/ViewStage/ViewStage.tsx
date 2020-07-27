@@ -6,6 +6,7 @@ import { useService } from "@xstate/react";
 
 import { grey46 as fontColor } from "../../../shared/colors";
 import SearchResults from "./SearchResults";
+import ViewStageParameter from "./ViewStageParameter";
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
@@ -38,7 +39,7 @@ export default React.memo(({ stageRef, tailStage }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage, stageInfo } = state.context;
+  const { stage, stageInfo, parameters } = state.context;
 
   const props = useSpring({
     borderStyle: true ? "dashed" : "solid",
@@ -55,6 +56,7 @@ export default React.memo(({ stageRef, tailStage }) => {
       },
     });
   }, [state, stageRef]);
+  console.log(state.toStrings(), parameters);
 
   return (
     <ViewStageDiv style={props}>
@@ -90,6 +92,10 @@ export default React.memo(({ stageRef, tailStage }) => {
           send={send}
         />
       )}
+      {state.matches("reading.selected") &&
+        parameters.map((parameter) => (
+          <ViewStageParameter parameterRef={parameter.ref} />
+        ))}
     </ViewStageDiv>
   );
 });

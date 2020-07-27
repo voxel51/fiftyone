@@ -6,8 +6,6 @@ import cn from "classnames";
 
 import SearchResults from "./SearchResults";
 
-const ViewStageParameterDiv = animated(styled.div``);
-
 const ViewStageParameterInput = animated(styled.input`
   background-color: var(--bg);
   border-color: var(--std-border-color);
@@ -45,31 +43,22 @@ export default ({ parameterRef }) => {
   }, [state, parameterRef]);
 
   return (
-    <ViewStageParameterDiv
-      className={cn({
-        editing: state.matches("editing"),
-        completed,
-      })}
-      data-parameter-state={completed ? "completed" : "active"}
-      key={id}
-    >
-      <ViewStageParameterInput
-        placeholder={parameter}
-        value={value}
-        onBlur={() => send("BLUR")}
-        onChange={(e) => send("CHANGE", { value: e.target.value })}
-        onKeyPress={(e) => {
-          if (e.key === "Enter") {
-            send("COMMIT");
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            send("CANCEL");
-          }
-        }}
-        ref={inputRef}
-      />
-    </ViewStageParameterDiv>
+    <ViewStageParameterInput
+      placeholder={parameter}
+      value={value}
+      onBlur={() => send("BLUR")}
+      onChange={(e) => send("CHANGE", { value: e.target.value })}
+      onKeyPress={(e) => {
+        if (e.key === "Enter") {
+          send("COMMIT");
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          send("CANCEL");
+        }
+      }}
+      ref={inputRef}
+    />
   );
 };

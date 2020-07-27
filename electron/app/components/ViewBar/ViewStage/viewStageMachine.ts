@@ -6,7 +6,6 @@ import viewStageParameterMachine from "./viewStageParameterMachine";
 export const createParameter = (stage, parameter, type, value) => {
   return {
     id: uuid(),
-    completed: false,
     parameter: parameter,
     type: type,
     stage: stage,
@@ -18,7 +17,6 @@ const viewStageMachine = Machine({
   id: "viewStage",
   context: {
     id: undefined,
-    completed: false,
     stage: undefined,
     parameters: [],
     prevStage: "",
@@ -45,30 +43,32 @@ const viewStageMachine = Machine({
         unknown: {
           on: {
             "": [
-              { target: "completed", cond: (ctx) => ctx.completed },
+              { target: "selected", cond: (ctx) => ctx.stage !== "" },
               { target: "pending" },
             ],
           },
         },
         pending: {
           on: {
-            SET_COMPLETED: {
-              target: "completed",
+            SET_SELECTED: {
+              target: "selected",
               actions: [
-                assign({ completed: true }),
                 sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
               ],
             },
           },
         },
-        completed: {
+        selected: {
           entry: assign({
             parameters: (ctx) => {
               const parameters = ctx.stageInfo
-                .filter((s) => s.name.lowerCase().includes(ctx.stage))[0]
+                .filter((s) =>
+                  s.name.toLowerCase().includes(ctx.stage.toLowerCase())
+                )[0]
                 .params.map((parameter) =>
                   createParameter(ctx.stage, parameter.name, parameter.type, "")
                 );
+              console.log(parameters);
               return parameters.map((parameter) => ({
                 ...parameter,
                 ref: spawn(viewStageParameterMachine.withContext(parameter)),
@@ -131,7 +131,7 @@ const viewStageMachine = Machine({
         },
         COMMIT: [
           {
-            target: "reading",
+            target: "reading.selected",
             actions: [
               assign({
                 stage: (ctx, { stage }) => stage,
