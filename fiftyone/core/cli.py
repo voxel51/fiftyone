@@ -565,7 +565,7 @@ class DatasetsExportCommand(Command):
 
 
 class DatasetsDrawCommand(Command):
-    """Writes annotated versions of the samples in FiftyOne datasets to disk.
+    """Writes annotated versions of samples in FiftyOne datasets to disk.
 
     Examples::
 
