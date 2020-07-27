@@ -10,6 +10,7 @@ import SearchResults from "./SearchResults";
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed #6c757d;
+  border-left: none;
   border-radius: 3px;
   background-color: rgba(108, 117, 125, 0.13);
   display: inline-block;
@@ -44,6 +45,8 @@ export default ({ parameterRef }) => {
       },
     });
   }, [state, parameterRef]);
+
+  console.log(state.toStrings());
 
   return (
     <ViewStageParameterDiv>

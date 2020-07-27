@@ -2,7 +2,7 @@ import { Machine, actions, sendParent } from "xstate";
 import viewStageMachine from "./viewStageMachine";
 const { assign } = actions;
 
-const viewStageParameterMachine = Machine({
+export const viewStageParameterMachineConfig = {
   id: "viewStageParameter",
   initial: "reading",
   context: {
@@ -11,19 +11,6 @@ const viewStageParameterMachine = Machine({
     stage: undefined,
     type: undefined,
     value: undefined,
-  },
-  on: {
-    TOGGLE_SUBMITTED: {
-      target: "reading.submitted",
-      actions: [
-        assign({ completed: true }),
-        sendParent(
-          (ctx) => (
-            console.log("commit"), { type: "PARAMETER.COMMIT", parameter: ctx }
-          )
-        ),
-      ],
-    },
   },
   states: {
     reading: {
@@ -61,12 +48,11 @@ const viewStageParameterMachine = Machine({
       on: {
         EDIT: {
           target: "editing",
-          actions: "focusInput",
         },
       },
     },
     editing: {
-      onEntry: assign({ prevValue: (ctx) => ctx.value }),
+      onEntry: [assign({ prevValue: (ctx) => ctx.value }), "focusInput"],
       on: {
         CHANGE: {
           actions: assign({
@@ -97,6 +83,8 @@ const viewStageParameterMachine = Machine({
       },
     },
   },
-});
+};
+
+const viewStageParameterMachine = Machine(viewStageParameterMachineConfig);
 
 export default viewStageParameterMachine;

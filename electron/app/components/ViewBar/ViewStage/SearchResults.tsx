@@ -58,9 +58,9 @@ const SearchResultsDiv = animated(styled.div`
   border: 2px solid ${searchResultsBorderColor};
   border-radius: 2px;
   box-shadow: 0 2px 20px ${searchResultsBoxShadowColor};
+  box-sizing: border-box;
   left: 0;
   margin-top: 0.5rem;
-  margin-left: -2px;
   position: absolute;
   top: 100%;
   width: auto;

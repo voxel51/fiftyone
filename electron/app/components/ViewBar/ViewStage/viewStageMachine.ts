@@ -1,7 +1,9 @@
 import { Machine, assign, spawn, sendParent } from "xstate";
 import uuid from "uuid-v4";
 
-import viewStageParameterMachine from "./viewStageParameterMachine";
+import viewStageParameterMachine, {
+  viewStageParameterMachineConfig,
+} from "./viewStageParameterMachine";
 
 export const createParameter = (stage, parameter, type, value) => {
   return {
@@ -59,10 +61,17 @@ const viewStageMachine = Machine({
                 .params.map((parameter) =>
                   createParameter(ctx.stage, parameter.name, parameter.type, "")
                 );
-              console.log(parameters);
-              return parameters.map((parameter) => ({
+              return parameters.map((parameter, i) => ({
                 ...parameter,
-                ref: spawn(viewStageParameterMachine.withContext(parameter)),
+                ref: spawn(
+                  (i === 0
+                    ? Machine({
+                        ...viewStageParameterMachineConfig,
+                        initial: "editing",
+                      })
+                    : viewStageParameterMachine
+                  ).withContext(parameter)
+                ),
               }));
             },
           }),
