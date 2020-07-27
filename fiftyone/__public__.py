@@ -22,9 +22,6 @@ from .core.dataset import (
     delete_dataset,
     delete_non_persistent_datasets,
 )
-from .core.evaluation import (
-    evaluate_detections
-)
 from .core.fields import (
     Field,
     BooleanField,
