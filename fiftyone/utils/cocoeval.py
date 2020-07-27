@@ -18,22 +18,16 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from collections import defaultdict
 import logging
-import os
 
 import numpy as np
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
 import pycocotools.mask as maskUtils
 
-import fiftyone as fo
-import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
-import fiftyone.utils.coco as fouc
 
 
 logger = logging.getLogger(__name__)
+
 
 IOU_THRESHOLDS = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1,
         endpoint=True)
