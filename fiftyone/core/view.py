@@ -24,7 +24,8 @@ import numbers
 from bson import ObjectId, json_util
 
 import fiftyone.core.collections as foc
-import fiftyone.core.stages as fos
+import fiftyone.core.sample as fos
+import fiftyone.core.stages as fost
 
 
 def _make_registrar():
@@ -193,7 +194,10 @@ class DatasetView(foc.SampleCollection):
         """
         for d in self.aggregate():
             try:
-                yield self._dataset._load_sample_from_dict(d)
+                doc = self._dataset._sample_dict_to_doc(d)
+                yield fos.SampleView(
+                    doc, exclude_fields=self._get_exclude_fields()
+                )
             except Exception as e:
                 raise ValueError(
                     "Failed to load sample from the database. This is likely "
@@ -294,7 +298,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Exclude(sample_ids))
+        return self.add_stage(fost.Exclude(sample_ids))
 
     @view_stage
     def exclude_fields(self, field_names):
@@ -306,7 +310,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.ExcludeFields(field_names))
+        return self.add_stage(fost.ExcludeFields(field_names))
 
     @view_stage
     def exists(self, field):
@@ -319,7 +323,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Exists(field))
+        return self.add_stage(fost.Exists(field))
 
     @view_stage
     def limit(self, limit):
@@ -332,7 +336,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Limit(limit))
+        return self.add_stage(fost.Limit(limit))
 
     @view_stage
     def list_filter(self, field, filter):
@@ -350,7 +354,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.ListFilter(field, filter))
+        return self.add_stage(fost.ListFilter(field, filter))
 
     @view_stage
     def match(self, filter):
@@ -366,7 +370,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Match(filter))
+        return self.add_stage(fost.Match(filter))
 
     @view_stage
     def match_tag(self, tag):
@@ -378,7 +382,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.MatchTag(tag))
+        return self.add_stage(fost.MatchTag(tag))
 
     @view_stage
     def match_tags(self, tags):
@@ -394,7 +398,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.MatchTags(tags))
+        return self.add_stage(fost.MatchTags(tags))
 
     @view_stage
     def mongo(self, pipeline):
@@ -409,7 +413,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Mongo(pipeline))
+        return self.add_stage(fost.Mongo(pipeline))
 
     @view_stage
     def select(self, sample_ids):
@@ -421,7 +425,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Select(sample_ids))
+        return self.add_stage(fost.Select(sample_ids))
 
     @view_stage
     def skip(self, skip):
@@ -434,7 +438,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Skip(skip))
+        return self.add_stage(fost.Skip(skip))
 
     @view_stage
     def sort_by(self, field_or_expr, reverse=False):
@@ -452,7 +456,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.SortBy(field_or_expr, reverse=reverse))
+        return self.add_stage(fost.SortBy(field_or_expr, reverse=reverse))
 
     @view_stage
     def take(self, size):
@@ -465,7 +469,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Take(size))
+        return self.add_stage(fost.Take(size))
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.
@@ -559,3 +563,12 @@ class DatasetView(foc.SampleCollection):
                 return stage["$skip"]
 
         return 0
+
+    def _get_exclude_fields(self):
+        exclude_fields = set()
+
+        for stage in self._stages:
+            if isinstance(stage, fost.ExcludeFields):
+                exclude_fields.update(stage.field_names)
+
+        return exclude_fields

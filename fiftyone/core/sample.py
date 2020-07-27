@@ -30,7 +30,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 
 
-class Sample(object):
+class _Sample(object):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -45,20 +45,8 @@ class Sample(object):
         **kwargs: additional fields to dynamically set on the sample
     """
 
-    # Instance references keyed by [dataset_name][sample_id]
-    _instances = defaultdict(weakref.WeakValueDictionary)
-
-    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.NoDatasetSampleDocument(
-            filepath=filepath, tags=tags, metadata=metadata, **kwargs
-        )
+    def __init__(self):
         self._dataset = self._get_dataset()
-
-    def __str__(self):
-        return str(self._doc)
-
-    def __repr__(self):
-        return repr(self._doc)
 
     def __getattr__(self, name):
         try:
@@ -137,7 +125,7 @@ class Sample(object):
 
     @property
     def field_names(self):
-        """An ordered list of the names of the fields of this sample."""
+        """An ordered tuple of the names of the fields of this sample."""
         return self._doc.field_names
 
     def get_field(self, field_name):
@@ -267,6 +255,50 @@ class Sample(object):
         """
         return self._doc.to_dict(extended=False)
 
+    def save(self):
+        """Saves the sample to the database."""
+        self._doc.save()
+
+    def reload(self):
+        """Reload the sample from the database."""
+        self._doc.reload()
+
+    def _delete(self):
+        """Deletes the document from the database."""
+        self._doc.delete()
+
+    @property
+    def _in_db(self):
+        """Whether the underlying :class:`fiftyone.core.odm.Document` has
+        been inserted into the database.
+        """
+        return self._doc.in_db
+
+    def _get_dataset(self):
+        if self._in_db:
+            from fiftyone.core.dataset import load_dataset
+
+            return load_dataset(self.dataset_name)
+        return None
+
+
+class Sample(_Sample):
+    # Instance references keyed by [dataset_name][sample_id]
+    _instances = defaultdict(weakref.WeakValueDictionary)
+
+    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+        self._doc = foo.NoDatasetSampleDocument(
+            filepath=filepath, tags=tags, metadata=metadata, **kwargs
+        )
+
+        super().__init__()
+
+    def __str__(self):
+        return self._doc.fancy_repr(type(self).__name__)
+
+    def __repr__(self):
+        return self._doc.fancy_repr(type(self).__name__)
+
     @classmethod
     def from_doc(cls, doc):
         """Creates an instance of the :class:`Sample` class backed by the given
@@ -295,14 +327,6 @@ class Sample(object):
             sample._set_backing_doc(doc)
 
         return sample
-
-    def save(self):
-        """Saves the sample to the database."""
-        self._doc.save()
-
-    def reload(self):
-        """Reload the sample from the database."""
-        self._doc.reload()
 
     @classmethod
     def _save_dataset_samples(cls, dataset_name):
@@ -342,24 +366,6 @@ class Sample(object):
         """
         for sample in cls._instances[dataset_name].values():
             sample._doc._data.pop(field_name, None)
-
-    def _delete(self):
-        """Deletes the document from the database."""
-        self._doc.delete()
-
-    @property
-    def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
-        return self._doc.in_db
-
-    def _get_dataset(self):
-        if self._in_db:
-            from fiftyone.core.dataset import load_dataset
-
-            return load_dataset(self.dataset_name)
-        return None
 
     def _set_backing_doc(self, doc):
         """Updates the backing doc for the sample.
@@ -415,3 +421,49 @@ class Sample(object):
         dataset_instances = cls._instances.pop(dataset_name)
         for sample in itervalues(dataset_instances):
             sample._doc = sample.copy()._doc
+
+
+class SampleView(_Sample):
+    def __init__(self, doc, exclude_fields=None):
+        if not isinstance(doc, foo.DatasetSampleDocument):
+            raise TypeError(
+                "Backing doc must be an instance of %s; found %s"
+                % (foo.DatasetSampleDocument, type(doc))
+            )
+
+        if not doc.id:
+            raise ValueError("`doc` is not saved to the database.")
+
+        self._doc = doc
+        self._exclude_fields = exclude_fields
+
+        super().__init__()
+
+    @property
+    def field_names(self):
+        """An ordered list of the names of the fields of this sample."""
+        field_names = self._doc.field_names
+        if self._exclude_fields is not None:
+            field_names = tuple(
+                fn for fn in field_names if fn not in self._exclude_fields
+            )
+        return field_names
+
+    @property
+    def excluded_field_names(self):
+        """An ordered list of the names of the fields of this sample."""
+        return self._exclude_fields.copy()
+
+    def __str__(self):
+        return self._doc.fancy_repr(type(self).__name__, self._exclude_fields)
+
+    def __repr__(self):
+        return self._doc.fancy_repr(type(self).__name__, self._exclude_fields)
+
+    def __getattr__(self, name):
+        if not name.startswith("_") and name in self._exclude_fields:
+            raise NameError(
+                "Field '%s' is excluded from this %s"
+                % (name, type(self).__name__)
+            )
+        return super().__getattr__(name)

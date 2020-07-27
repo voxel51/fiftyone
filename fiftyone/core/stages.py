@@ -123,6 +123,8 @@ class ExcludeFields(ViewStage):
     """
 
     def __init__(self, field_names):
+        if "id" in field_names or "_id" in field_names:
+            raise ValueError("Cannot exclude ID field.")
         self._field_names = field_names
 
     @property

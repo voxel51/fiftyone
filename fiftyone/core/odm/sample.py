@@ -422,9 +422,9 @@ class DatasetSampleDocument(Document, SampleDocument):
         ]
         dataset._meta.save()
 
-    def _to_repr_dict(self):
+    def _to_repr_dict(self, *args, **kwargs):
         d = {"dataset_name": self.dataset_name}
-        d.update(super()._to_repr_dict())
+        d.update(super()._to_repr_dict(*args, **kwargs))
         return d
 
 

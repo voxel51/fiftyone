@@ -28,6 +28,7 @@ from pymongo.errors import DuplicateKeyError
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+import fiftyone.core.sample as fos
 from fiftyone import ViewField as F
 
 
@@ -76,7 +77,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         self.assertIsNot(sample3, sample)
 
         sample4 = dataset.view().match({"filepath": filepath}).first()
-        self.assertIs(sample4, sample)
+        self.assertIsNot(sample4, sample)
 
     @drop_datasets
     def test_dataset_add_delete_field(self):
@@ -1119,7 +1120,7 @@ class ViewTest(unittest.TestCase):
         view = dataset.view()
 
         self.assertEqual(len(view), len(dataset))
-        self.assertIsInstance(view.first(), fo.Sample)
+        self.assertIsInstance(view.first(), fos.SampleView)
 
         # tags
         for sample in view.match({"tags": "train"}):

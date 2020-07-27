@@ -203,7 +203,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         try:
             doc = self._get_query_set().get(id=sample_id)
-            return self._load_sample_from_doc(doc)
+            return fos.Sample.from_doc(doc)
         except DoesNotExist:
             raise KeyError("No sample found with ID '%s'" % sample_id)
 
@@ -351,7 +351,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for doc in self._get_query_set():
-            yield self._load_sample_from_doc(doc)
+            yield fos.Sample.from_doc(doc)
 
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
@@ -1211,13 +1211,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     )
                     fields = self.get_field_schema()
 
-    def _load_sample_from_dict(self, d):
-        doc = self._sample_doc_cls.from_dict(d, extended=False)
-        return self._load_sample_from_doc(doc)
-
-    @staticmethod
-    def _load_sample_from_doc(doc):
-        return fos.Sample.from_doc(doc)
+    def _sample_dict_to_doc(self, d):
+        return self._sample_doc_cls.from_dict(d, extended=False)
 
     def _get_query_set(self, **kwargs):
         # pylint: disable=no-member
