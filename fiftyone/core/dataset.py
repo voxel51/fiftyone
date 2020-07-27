@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from copy import deepcopy
 import datetime
 import inspect
 import logging
@@ -498,6 +499,48 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=sample_ids
         )
+
+    def clone_field(self, field_name, new_field_name, samples=None):
+        """Clones the field values of the samples into a new field of this
+        dataset.
+
+        Any samples in ``samples`` that are not in this dataset (i.e., their
+        sample ID does not match any samples in this dataset) are skipped.
+
+        The fields of the input samples are **deep copied**.
+
+        Args:
+            field_name: the field name to clone
+            new_field_name: the new field name to populate
+            samples (None): an iterable of :class:`fiftyone.core.sample.Sample`
+                instances whose fields to clone. For example, ``samples`` may
+                be a :class:`fiftyone.core.views.DatasetView`. By default, this
+                dataset itself is used
+
+        Returns:
+            tuple of
+
+            -   num_cloned: the number of samples that were cloned
+            -   num_skipped: the number of samples that were skipped
+        """
+        if samples is None:
+            samples = self
+
+        num_cloned = 0
+        num_skipped = 0
+        with fou.ProgressBar() as pb:
+            for sample in pb(samples):
+                try:
+                    _sample = self[sample.id]
+                except KeyError:
+                    num_skipped += 1
+                    continue
+
+                _sample[new_field_name] = deepcopy(sample[field_name])
+                _sample.save()
+                num_cloned += 1
+
+        return num_cloned, num_skipped
 
     def save(self):
         """Saves all modified in-memory samples in the dataset to the database.
