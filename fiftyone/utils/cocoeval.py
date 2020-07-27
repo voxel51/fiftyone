@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 IOU_THRESHOLDS = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1,
         endpoint=True)
 
-def coco_evaluation(samples, pred_field, gt_field):
+def evaluate_detections(samples, pred_field, gt_field):
     """Iterates through each sample and matches predicted detections to grouth
     truth detections. True and false positive counts for each IoU threshold are
     stored in every Detection object.
