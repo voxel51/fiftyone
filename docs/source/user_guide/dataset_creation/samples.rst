@@ -14,8 +14,8 @@ You can take a fully customized approach and
 :ref:`build your own samples <Manually building datasets>`, or you can
 :ref:`use a builtin SampleParser <Builtin SampleParser classes>` to parse
 samples from a variety of common formats, or you can
-:ref:`provide your own SampleParser <Writing a custom SampleParser>` to
-automatically load samples in your own custom formats.
+:ref:`provide your own SampleParser <custom-sample-parser>` to automatically
+load samples in your own custom formats.
 
 Manually building datasets
 --------------------------
@@ -223,8 +223,7 @@ Adding samples to datasets
 
 FiftyOne provides native support for loading samples in a variety of
 :ref:`common formats <Builtin SampleParser classes>`, and it can be easily
-extended to import datasets in
-:ref:`custom formats <Writing a custom SampleParser>`.
+extended to import datasets in :ref:`custom formats <custom-sample-parser>`.
 
 Basic recipe
 ~~~~~~~~~~~~
@@ -409,8 +408,7 @@ backing location.
 
 FiftyOne provides support for ingesting samples and their underlying source
 data in both :ref:`common formats <Builtin SampleParser classes>` and
-extended to import datasets in
-:ref:`custom formats <Writing a custom SampleParser>`.
+extended to import datasets in :ref:`custom formats <custom-sample-parser>`.
 
 Basic recipe
 ~~~~~~~~~~~~
@@ -576,12 +574,11 @@ Builtin SampleParser classes
 
 The table below lists the common data formats for which FiftyOne provides
 builtin |SampleParser| implementations. You can also write a
-:ref:`custom SampleParser <Writing a custom SampleParser>` to automate the
-parsing of samples in your own custom data format.
+:ref:`custom SampleParser <custom-sample-parser>` to automate the parsing of
+samples in your own custom data format.
 
 You can use a |SampleParser| to
-:ref:`add samples to datasets <Adding samples to datasets>`
-and
+:ref:`add samples to datasets <Adding samples to datasets>` and
 :ref:`ingest samples into datasets <Ingesting samples into datasets>`.
 
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
@@ -632,6 +629,8 @@ and
 | :class:`BDDSampleParser                                                | Parser for samples in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.                       |
 | <fiftyone.utils.bdd.BDDSampleParser>`                                  |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
+
+.. _custom-sample-parser:
 
 Writing a custom SampleParser
 -----------------------------
@@ -849,7 +848,7 @@ The pseudocode below provides a template for a custom
             # Return the label for `self.current_sample` here
             pass
 
-When :meth:`Dataset.add_labeled_samples() <fiftyone.core.dataset.Dataset.add_labeled_samples>`
+When :meth:`Dataset.add_labeled_images() <fiftyone.core.dataset.Dataset.add_labeled_images>`
 is called with a custom |LabeledImageSampleParser|, the import is effectively
 performed via the pseudocode below:
 

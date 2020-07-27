@@ -73,7 +73,7 @@ class DatasetView(foc.SampleCollection):
 
     def __init__(self, dataset):
         self._dataset = dataset
-        self._pipeline = []
+        self._stages = []
 
     def __len__(self):
         try:
@@ -103,8 +103,15 @@ class DatasetView(foc.SampleCollection):
 
     def __copy__(self):
         view = self.__class__(self._dataset)
-        view._pipeline = deepcopy(self._pipeline)
+        view._stages = deepcopy(self._stages)
         return view
+
+    @property
+    def stages(self):
+        """The list of :class:`fiftyone.core.stages.ViewStage` instances in
+        this view's pipeline.
+        """
+        return self._stages
 
     def summary(self):
         """Returns a string summary of the view.
@@ -114,11 +121,11 @@ class DatasetView(foc.SampleCollection):
         """
         fields_str = self._dataset._get_fields_str()
 
-        if self._pipeline:
+        if self._stages:
             pipeline_str = "    " + "\n    ".join(
                 [
                     "%d. %s" % (idx, str(d))
-                    for idx, d in enumerate(self._pipeline, 1)
+                    for idx, d in enumerate(self._stages, 1)
                 ]
             )
         else:
@@ -185,7 +192,13 @@ class DatasetView(foc.SampleCollection):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self.aggregate():
-            yield self._dataset._load_sample_from_dict(d)
+            try:
+                yield self._dataset._load_sample_from_dict(d)
+            except Exception as e:
+                raise ValueError(
+                    "Failed to load sample from the database. This is likely "
+                    "due to an invalid stage in the DatasetView"
+                ) from e
 
     def iter_samples_with_index(self):
         """Returns an iterator over the samples in the view together with
@@ -272,13 +285,71 @@ class DatasetView(foc.SampleCollection):
         return self._copy_with_new_stage(stage)
 
     @view_stage
+    def exclude(self, sample_ids):
+        """Excludes the samples with the given IDs from the view.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.Exclude(sample_ids))
+
+    @view_stage
+    def exists(self, field):
+        """Returns a view containing the samples that have a non-``None`` value
+        for the given field.
+
+        Args:
+            field: the field
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.Exists(field))
+
+    @view_stage
+    def limit(self, limit):
+        """Limits the view to the given number of samples.
+
+        Args:
+            num: the maximum number of samples to return. If a non-positive
+                number is provided, an empty view is returned
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.Limit(limit))
+
+    @view_stage
+    def list_filter(self, field, filter):
+        """Filters the elements of the given list field.
+
+        Elements of ``field``, which must be a list field, for which ``filter``
+        returns ``False`` are omitted from the field.
+
+        Args:
+            field: the list field
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fos.ListFilter(field, filter))
+
+    @view_stage
     def match(self, filter):
         """Filters the samples in the view by the given filter.
 
+        Samples for which ``filter`` returns ``False`` are omitted.
+
         Args:
-            filter: a MongoDB query dict. See
-                https://docs.mongodb.com/manual/tutorial/query-documents
-                for details
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
 
         Returns:
             a :class:`DatasetView`
@@ -314,35 +385,31 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fos.MatchTags(tags))
 
     @view_stage
-    def exists(self, field):
-        """Returns a view containing the samples that have a non-``None`` value
-        for the given field.
+    def mongo(self, pipeline):
+        """Adds a view stage defined by the raw MongoDB aggregation pipeline.
+
+        See `MongoDB aggreation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
+        for more details.
 
         Args:
-            field: the field
+            pipeline: a MongoDB aggregation pipeline (list of dicts)
 
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Exists(field))
+        return self.add_stage(fos.Mongo(pipeline))
 
     @view_stage
-    def sort_by(self, field, reverse=False):
-        """Sorts the samples in the view by the given field.
+    def select(self, sample_ids):
+        """Selects the samples with the given IDs from the view.
 
         Args:
-            field: the field to sort by. Example fields::
-
-                filename
-                metadata.size_bytes
-                metadata.frame_size[0]
-
-            reverse (False): whether to return the results in descending order
+            sample_ids: an iterable of sample IDs
 
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.SortBy(field, reverse=reverse))
+        return self.add_stage(fos.Select(sample_ids))
 
     @view_stage
     def skip(self, skip):
@@ -358,17 +425,22 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fos.Skip(skip))
 
     @view_stage
-    def limit(self, limit):
-        """Limits the view to the given number of samples.
+    def sort_by(self, field_or_expr, reverse=False):
+        """Sorts the samples in the view by the given field or expression.
+
+        When sorting by an expression, ``field_or_expr`` can either be a
+        :class:`fiftyone.core.expressions.ViewExpression` or a
+        `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+        that defines the quantity to sort by.
 
         Args:
-            num: the maximum number of samples to return. If a non-positive
-                number is provided, an empty view is returned
+            field_or_expr: the field or expression to sort by
+            reverse (False): whether to return the results in descending order
 
         Returns:
             a :class:`DatasetView`
         """
-        return self.add_stage(fos.Limit(limit))
+        return self.add_stage(fos.SortBy(field_or_expr, reverse=reverse))
 
     @view_stage
     def take(self, size):
@@ -383,46 +455,24 @@ class DatasetView(foc.SampleCollection):
         """
         return self.add_stage(fos.Take(size))
 
-    @view_stage
-    def select(self, sample_ids):
-        """Selects the samples with the given IDs from the view.
-
-        Args:
-            sample_ids: an iterable of sample IDs
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Select(sample_ids))
-
-    @view_stage
-    def exclude(self, sample_ids):
-        """Excludes the samples with the given IDs from the view.
-
-        Args:
-            sample_ids: an iterable of sample IDs
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fos.Exclude(sample_ids))
-
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the view.
 
         Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before aggregation.
+            pipeline (None): an optional MongoDB aggregation pipeline (list of
+                dicts) to append to the view's pipeline before aggregation
 
         Returns:
             an iterable over the aggregation result
         """
-        if pipeline is None:
-            pipeline = []
+        _pipeline = []
+        for s in self._stages:
+            _pipeline.extend(s.to_mongo())
 
-        return self._dataset.aggregate(
-            [s.to_mongo() for s in self._pipeline] + pipeline
-        )
+        if pipeline is not None:
+            _pipeline.extend(pipeline)
+
+        return self._dataset.aggregate(_pipeline)
 
     def serialize(self):
         """Serializes the view.
@@ -432,7 +482,7 @@ class DatasetView(foc.SampleCollection):
         """
         return {
             "dataset": self._dataset.serialize(),
-            "view": json_util.dumps([s._serialize() for s in self._pipeline]),
+            "view": json_util.dumps([s._serialize() for s in self._stages]),
         }
 
     def to_dict(self):
@@ -446,7 +496,7 @@ class DatasetView(foc.SampleCollection):
             "num_samples": len(self),
             "tags": list(self.get_tags()),
             "sample_fields": self._dataset._get_fields_dict(),
-            "pipeline_stages": [str(d) for d in self._pipeline],
+            "pipeline_stages": [str(d) for d in self._stages],
         }
         d.update(super().to_dict())
         return d
@@ -488,11 +538,11 @@ class DatasetView(foc.SampleCollection):
 
     def _copy_with_new_stage(self, stage):
         view = copy(self)
-        view._pipeline.append(stage)
+        view._stages.append(stage)
         return view
 
     def _get_latest_offset(self):
-        for stage in self._pipeline[::-1]:
+        for stage in self._stages[::-1]:
             if "$skip" in stage:
                 return stage["$skip"]
 

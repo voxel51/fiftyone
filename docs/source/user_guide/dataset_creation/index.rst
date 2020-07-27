@@ -51,7 +51,8 @@ Loading datasets
 
 There are three basic ways to get data into FiftyOne:
 
-- :doc:`Loading datasets from disk<datasets>`
+:doc:`Loading datasets from disk <datasets>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 FiftyOne natively supports creating datasets in a variety of common formats,
 including
@@ -63,7 +64,10 @@ including
 and more. You can also extend FiftyOne by providing your own |DatasetImporter|
 to load datasets in your own custom formats.
 
-- :doc:`Adding samples to datasets<samples>`
+:doc:`>> Learn more about loading datasets from disk! <datasets>`
+
+:doc:`Adding samples to datasets <samples>`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 FiftyOne provides a number of options for building datasets from samples. You
 can take a fully customized approach and build your own |Sample| instances, or
@@ -71,7 +75,10 @@ you can a builtin |SampleParser| clasess to parse samples from a variety of
 common formats, or you can provide your own |SampleParser| to automatically
 load samples in your own custom formats.
 
-- :doc:`Zoo datasets<zoo>`
+:doc:`>> Learn more about adding samples to datasets! <samples>`
+
+:doc:`Zoo datasets <zoo>`
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 FiftyOne provides a Dataset Zoo that contains a variety of popular open source
 datasets like
@@ -79,6 +86,8 @@ datasets like
 `COCO <https://cocodataset.org/#home>`_, and
 `ImageNet <http://www.image-net.org>`_
 that can be downloaded and loaded into FiftyOne with a single line of code.
+
+:doc:`>> Learn more about the Dataset Zoo! <zoo>`
 
 .. toctree::
    :maxdepth: 1

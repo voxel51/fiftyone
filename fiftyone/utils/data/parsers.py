@@ -296,10 +296,10 @@ class LabeledImageTupleSampleParser(LabeledImageSampleParser):
 
         - ``label`` is a :class:`fiftyone.core.labels.Label` instance
 
-    This implementation provides a :property:`_current_image` property that
+    This implementation provides a :meth:`_current_image` property that
     caches the image for the current sample, for efficiency in case multiple
     getters require access to the image (e.g., to normalize coordinates,
-        compute metadata, etc).
+    compute metadata, etc).
 
     See the following subclasses of this parser for implementations that parse
     labels for common tasks:

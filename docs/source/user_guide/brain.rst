@@ -44,6 +44,8 @@ demonstrating a workflow.
     FiftyOne Brain operations require the installation of `torch` and
     `tensorflow`
 
+.. _brain-image-uniqueness:
+
 Image Uniqueness
 ________________
 
@@ -86,6 +88,8 @@ most other samples are more unique.
     Check out the :doc:`uniqueness tutorial<../tutorials/uniqueness>` to see an
     example use case of the Brain's uniqueness method.
 
+.. _brain-label-mistakes:
+
 Label Mistakes
 ______________
 
@@ -120,6 +124,8 @@ ranks samples for which your prediction model is highly confident but wrong
 
     Check out the :doc:`label mistakes tutorial<../tutorials/label_mistakes>`
     to see an example use case of the Brain's mistakenness method.
+
+.. _brain-sample-hardness:
 
 Sample Hardness
 _______________

@@ -62,4 +62,5 @@ from .core.session import (
     launch_app,
     Session,
 )
+from .core.expressions import ViewField, ViewExpression
 from .core.view import DatasetView

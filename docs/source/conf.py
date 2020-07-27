@@ -8,8 +8,26 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.abspath("."))
+
+from redirects import generate_redirects
 
 import fiftyone.constants as foc
+
+
+with open("../../setup.py") as f:
+    setup_version = re.search(r'version="(.+?)"', f.read()).group(1)
+
+if setup_version != foc.VERSION:
+    raise RuntimeError(
+        "FiftyOne version in setup.py (%r) does not match installed version "
+        "(%r). If this is a dev install, reinstall with `pip install -e .` "
+        "and try again." % (setup_version, foc.VERSION)
+    )
 
 
 # -- Path setup --------------------------------------------------------------
@@ -18,6 +36,7 @@ import fiftyone.constants as foc
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+
 
 # -- Project information -----------------------------------------------------
 
@@ -78,6 +97,9 @@ nbsphinx_prolog = """
     :download:`{{ env.doc2path(env.docname, base=None) }} </{{ env.doc2path(env.docname, base=None) }}>`
 
 """
+
+# Path to the redirects file, relative to `source/`
+redirects_file = "redirects"
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -141,3 +163,11 @@ html_context = {
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
 }
+
+# -- Custom app setup --------------------------------------------------------
+
+
+def setup(app):
+    # Generate page redirects
+    app.add_config_value("redirects_file", "redirects", "env")
+    app.connect("builder-inited", generate_redirects)
