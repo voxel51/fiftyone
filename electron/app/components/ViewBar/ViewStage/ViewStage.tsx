@@ -55,6 +55,7 @@ export default React.memo(({ stageRef, tailStage }) => {
       },
     });
   }, [state, stageRef]);
+  console.log(state.toStrings(), stage);
 
   return (
     <ViewStageDiv style={props}>

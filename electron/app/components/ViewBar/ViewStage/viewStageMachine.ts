@@ -90,6 +90,40 @@ const viewStageMachine = Machine({
     },
     editing: {
       onEntry: assign({ prevStage: (ctx) => ctx.stage }),
+      type: "parallel",
+      initial: "focused",
+      states: {
+        input: {
+          initial: "focused",
+          states: {
+            focused: {
+              on: {
+                UNFOCUS_INPUT: "unfocused",
+              },
+            },
+            unfocused: {
+              on: {
+                FOCUS_INPUT: "focused",
+              },
+            },
+          },
+        },
+        searchResults: {
+          initial: "notHovering",
+          states: {
+            hovering: {
+              on: {
+                MOUSELEAVE_RESULTS: "notHovering",
+              },
+            },
+            notHovering: {
+              on: {
+                MOUSEENTER_RESULTS: "hovering",
+              },
+            },
+          },
+        },
+      },
       on: {
         CHANGE: {
           actions: assign({
