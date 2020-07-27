@@ -25,6 +25,7 @@ import os
 
 from bson import json_util
 from flask import Flask, jsonify, request, send_file
+from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
 
 import eta.core.utils as etau
@@ -42,6 +43,7 @@ from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 logger = logging.getLogger(__name__)
 foo.get_db_conn()
 app = Flask(__name__)
+CORS(app)
 app.config["SECRET_KEY"] = "fiftyone"
 
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
@@ -61,6 +63,17 @@ def get_sample_media():
 @app.route("/fiftyone")
 def get_fiftyone_info():
     return jsonify({"version": foc.VERSION})
+
+
+@app.route("/stages")
+def get_stages():
+    """Gets ViewStage descriptions"""
+    return {
+        "data": [
+            {"name": stage.__name__, "params": stage._params()}
+            for stage in _STAGES
+        ]
+    }
 
 
 def _load_state(func):
@@ -221,13 +234,6 @@ class StateController(Namespace):
             return []
 
         return _get_distributions(view, group)
-
-    def on_get_stages(self, _):
-        """Gets ViewStage descriptions"""
-        return [
-            {"name": stage.__name__, "params": stage._params()}
-            for stage in _STAGES
-        ]
 
 
 def _get_distributions(view, group):

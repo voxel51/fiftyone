@@ -39,10 +39,12 @@ const ViewBarDiv = styled.div`
 export default () => {
   const portValue = useRecoilValue(port);
   const [state, send] = useMachine(
-    viewBarMachine.withContext(createBar(getSocket(portValue, "state")))
+    viewBarMachine.withContext(createBar(portValue))
   );
 
-  const { stages, tailStage } = state.context;
+  const { stages, tailStage, stageInfo } = state.context;
+
+  console.log(stageInfo);
 
   return (
     <ViewBarDiv>

@@ -12,31 +12,27 @@ export const createStage = (stage, stageInfo) => {
   };
 };
 
-export const createBar = (socket) => {
+export const createBar = (port) => {
   return {
+    port: port,
     stages: [],
     stageInfo: undefined,
-    socket: socket,
-    tailStage: undefined,
+    tailStage: createStage(),
   };
 };
 
 function getStageInfo(context) {
-  return new Promise((resolve) => {
-    context.socket.on("connect", () => {
-      context.socket.emit("get_stages", "", (data) => {
-        resolve(data);
-      });
-    });
-  });
+  return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
+    response.json()
+  );
 }
 
 const viewBarMachine = Machine({
   id: "stages",
   context: {
+    port: undefined,
     stages: [],
     stageInfo: undefined,
-    socket: undefined,
     tailStage: undefined,
   },
   initial: "initializing",
@@ -47,25 +43,27 @@ const viewBarMachine = Machine({
         onDone: {
           target: "running",
           actions: assign({
-            stageInfo: (ctx, event) => event.data,
+            stageInfo: (ctx, event) => {
+              return event.data;
+            },
           }),
         },
       },
     },
     running: {
       entry: assign({
-        tailStage: (ctx) => {
-          const newTailStage = createStage("", ctx.stageInfo);
-          return {
-            ...newTailStage,
-            ref: spawn(viewStageMachine.withContext(newTailStage)),
-          };
-        },
-        stages: (ctx, e) => {
+        stages: (ctx) => {
           return ctx.stages.map((stage) => ({
             ...stage,
             ref: spawn(viewStageMachine.withContext(stage)),
           }));
+        },
+        tailStage: (ctx) => {
+          const { tailStage } = ctx;
+          return {
+            ...tailStage,
+            ref: spawn(viewStageMachine.withContext(tailStage)),
+          };
         },
       }),
     },

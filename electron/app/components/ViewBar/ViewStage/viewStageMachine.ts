@@ -36,7 +36,7 @@ const viewStageMachine = Machine({
         },
       }),
       on: {
-        "": "reading",
+        always: "reading",
       },
     },
     reading: {

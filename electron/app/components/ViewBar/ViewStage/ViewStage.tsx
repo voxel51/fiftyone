@@ -39,7 +39,6 @@ export default React.memo(({ stageRef, tailStage }) => {
   const inputRef = useRef(null);
 
   const { stage, stageInfo } = state.context;
-  console.log(stageInfo);
 
   const props = useSpring({
     borderStyle: true ? "dashed" : "solid",
