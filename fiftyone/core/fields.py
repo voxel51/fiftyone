@@ -35,6 +35,18 @@ class Field(mongoengine.fields.BaseField):
         return etau.get_class_name(self)
 
 
+class ObjectIdField(mongoengine.ObjectIdField, Field):
+    """An Object ID field."""
+
+    pass
+
+
+class UUIDField(mongoengine.UUIDField, Field):
+    """A UUID field."""
+
+    pass
+
+
 class BooleanField(mongoengine.BooleanField, Field):
     """A boolean field."""
 

@@ -19,6 +19,8 @@ from future.utils import iteritems
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from bson.objectid import ObjectId
+
 import eta.core.data as etad
 import eta.core.geometry as etag
 import eta.core.image as etai
@@ -134,9 +136,17 @@ class Classification(ImageLabel):
 
     meta = {"allow_inheritance": True}
 
+    _id = fof.ObjectIdField(
+        required=True, default=ObjectId, unique=True, primary_key=True
+    )
     label = fof.StringField()
     confidence = fof.FloatField()
     logits = fof.VectorField()
+
+    @property
+    def id(self):
+        """The ID of the document"""
+        return str(self._id)
 
     def to_image_labels(self, attr_name="label"):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -155,6 +165,11 @@ class Classification(ImageLabel):
             )
         )
         return image_labels
+
+    @property
+    def _to_str_fields(self):
+        # pylint: disable=no-member
+        return ("id",) + self._fields_ordered
 
 
 class Classifications(ImageLabel):
@@ -213,10 +228,18 @@ class Detection(DynamicEmbeddedDocument):
 
     meta = {"allow_inheritance": True}
 
+    _id = fof.ObjectIdField(
+        required=True, default=ObjectId, unique=True, primary_key=True
+    )
     label = fof.StringField()
     bounding_box = fof.VectorField()
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
+
+    @property
+    def id(self):
+        """The ID of the document"""
+        return str(self._id)
 
     def has_attribute(self, attr_name):
         """Determines whether the detection has an attribute with the given
@@ -256,6 +279,11 @@ class Detection(DynamicEmbeddedDocument):
                 return default
 
             raise
+
+    @property
+    def _to_str_fields(self):
+        # pylint: disable=no-member
+        return ("id",) + self._fields_ordered
 
 
 class Detections(ImageLabel):
