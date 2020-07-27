@@ -140,14 +140,12 @@ const viewStageMachine = Machine(
               target: "reading.selected",
               actions: [
                 assign({
-                  stage: (ctx, { stage }) => {
-                    return stage;
-                  },
+                  stage: (ctx, { stage }) => stage,
                 }),
               ],
               cond: (ctx, e) => {
-                const result = ctx.stageInfo.filter((s) =>
-                  s.name.toLowerCase().includes(e.stage.toLowerCase())
+                const result = ctx.stageInfo.filter(
+                  (s) => s.name.toLowerCase() === e.stage.toLowerCase()
                 );
                 return result.length === 1;
               },
