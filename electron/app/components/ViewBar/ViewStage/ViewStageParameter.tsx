@@ -43,6 +43,10 @@ export default ({ parameterRef }) => {
       focusInput() {
         inputRef.current && inputRef.current.select();
       },
+
+      blurInput() {
+        inputRef.current && inputRef.current.blur();
+      },
     });
   }, [state, parameterRef]);
 
@@ -51,6 +55,7 @@ export default ({ parameterRef }) => {
       <ViewStageParameterInput
         placeholder={parameter}
         value={value}
+        onFocus={() => send("EDIT")}
         onBlur={() => send("BLUR")}
         onChange={(e) => send("CHANGE", { value: e.target.value })}
         onKeyPress={(e) => {

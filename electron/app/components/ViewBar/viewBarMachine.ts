@@ -5,11 +5,11 @@ import viewStageMachine from "./ViewStage/viewStageMachine";
 export const createStage = (stage, insertAt, stageInfo) => {
   return {
     id: uuid(),
-    completed: false,
+    submitted: false,
     stage: stage,
     parameters: [],
     stageInfo,
-    insertAt: undefined,
+    insertAt,
   };
 };
 
@@ -73,45 +73,17 @@ const viewBarMachine = Machine({
     },
   },
   on: {
-    "NEWSTAGE.CHANGE": {
-      actions: assign({
-        stage: (ctx, e) => e.value,
-      }),
-    },
-    "NEWSTAGE.COMMIT": {
-      actions: [
-        assign({
-          tailStage: (ctx) => {
-            const newTailStage = createStage("", ctx.stageInfo);
-            return {
-              ...newTailStage,
-              ref: spawn(viewStageMachine.withContext(newTailStage)),
-            };
-          },
-          stages: (ctx, e) => {
-            const newStage = createStage(e.value.trim());
-            return ctx.stages.concat({
-              ...newStage,
-              ref: spawn(viewStageMachine.withContext(newStage)),
-            });
-          },
-        }),
-        "submit",
-      ],
-      cond: (ctx, e) => e.value.trim().length,
-    },
     "STAGE.COMMIT": {
       actions: [
         assign({
-          stages: (ctx, e) =>
-            ctx.stages.map((stage) => {
-              console.log(e);
+          stages: (ctx, e) => {
+            return ctx.stages.map((stage) => {
               return stage.id === e.stage.id
                 ? { ...stage, ...e.stage, ref: stage.ref }
                 : stage;
-            }),
+            });
+          },
         }),
-        "submit",
       ],
     },
     "STAGE.DELETE": {
@@ -119,7 +91,6 @@ const viewBarMachine = Machine({
         assign({
           stages: (ctx, e) => ctx.stages.filter((stage) => stage.id !== e.id),
         }),
-        "submit",
       ],
     },
   },

@@ -140,7 +140,23 @@ const viewStageMachine = Machine(
               target: "reading.selected",
               actions: [
                 assign({
-                  stage: (ctx, { stage }) => stage,
+                  stage: (ctx, { stage }) => {
+                    return stage;
+                  },
+                }),
+              ],
+              cond: (ctx, e) => {
+                const result = ctx.stageInfo.filter((s) =>
+                  s.name.toLowerCase().includes(e.stage.toLowerCase())
+                );
+                return result.length === 1;
+              },
+            },
+            {
+              target: "reading",
+              actions: [
+                assign({
+                  stage: (ctx, { prevStage }) => prevStage,
                 }),
               ],
             },
@@ -181,7 +197,7 @@ const viewStageMachine = Machine(
           }),
           pure((ctx) => {
             if (ctx.parameters.every((p) => p.submitted)) {
-              sendParent("STAGE.COMMIT", { stage: ctx });
+              sendParent({ type: "STAGE.COMMIT", stage: ctx });
             }
           }),
         ],

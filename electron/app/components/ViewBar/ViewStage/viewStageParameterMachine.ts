@@ -17,29 +17,15 @@ export const viewStageParameterMachineConfig = {
       initial: "unknown",
       states: {
         unknown: {
-          on: {
-            always: [
-              {
-                target: "submitted",
-                cond: (ctx) => ctx.value.trim().length > 0,
-              }, // more checks needed
-              { target: "pending" },
-            ],
-          },
-        },
-        pending: {
-          on: {
-            SUBMIT: {
+          always: [
+            {
               target: "submitted",
-              actions: [
-                sendParent((ctx) => ({
-                  type: "PARAMETER.COMMIT",
-                  parameter: ctx,
-                })),
-              ],
-            },
-          },
+              cond: (ctx) => ctx.value.trim().length > 0,
+            }, // more checks needed
+            { target: "pending" },
+          ],
         },
+        pending: {},
         submitted: {},
         hist: {
           type: "history",
@@ -71,6 +57,7 @@ export const viewStageParameterMachineConfig = {
                 type: "PARAMETER.COMMIT",
                 parameter: ctx,
               })),
+              "blurInput",
             ],
             cond: (ctx) => ctx.value.trim().length > 0,
           },

@@ -43,7 +43,6 @@ export default () => {
   );
 
   const { stages, tailStage } = state.context;
-  console.log(state.toStrings(), stages);
 
   return (
     <ViewBarDiv>
