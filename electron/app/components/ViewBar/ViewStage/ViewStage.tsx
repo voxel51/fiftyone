@@ -55,7 +55,6 @@ export default React.memo(({ stageRef, tailStage }) => {
       },
     });
   }, [state, stageRef]);
-  console.log(state.toStrings(), stage);
 
   return (
     <ViewStageDiv style={props}>
@@ -64,7 +63,9 @@ export default React.memo(({ stageRef, tailStage }) => {
           placeholder="+ search sample"
           value={stage}
           onFocus={() => send("EDIT")}
-          onBlur={() => send("BLUR")}
+          onBlur={() =>
+            state.matches("editing.searchResults.notHovering") && send("BLUR")
+          }
           onChange={(e) => send("CHANGE", { stage: e.target.value })}
           onKeyPress={(e) => {
             if (e.key === "Enter") {

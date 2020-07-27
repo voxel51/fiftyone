@@ -142,14 +142,9 @@ const viewStageMachine = Machine({
         BLUR: [
           {
             target: "reading",
-            actions: sendParent((ctx) => ({
-              type: "STAGE.COMMIT",
-              stage: ctx,
-            })),
-            in: "searchResults.notHovering",
-          },
-          {
-            target: "hist",
+            actions: assign({
+              stage: ({ prevStage }) => prevStage,
+            }),
           },
         ],
         CANCEL: {
