@@ -96,10 +96,15 @@ def coco_evaluation(samples, pred_field, gt_field):
                 sample_cats[cat]["preds"] = preds
     
                 gt_eval_ids = [g[gt_key]["eval_id"] for g in gts]
-                iscrowd = [g.attributes["iscrowd"].value for g in gts]
+
     
                 gt_boxes = [list(g.bounding_box) for g in gts]
                 pred_boxes = [list(p.bounding_box) for p in preds]
+
+                if "iscrowd" in g.attributes:
+                    iscrowd = [g.attributes["iscrowd"].value for g in gts]
+                else:
+                    iscrowd = [0]*len(gt_boxes)
     
                 # Get the iou of every prediction with every ground truth
                 # Shape = [num_preds, num_gts]
@@ -136,7 +141,11 @@ def coco_evaluation(samples, pred_field, gt_field):
                                 gt = gt_by_id[eval_id]
                                 curr_gt_match = \
                                     gt[gt_key]["matches"][str(iou_thresh)]
-                                iscrowd = int(gt.attributes["iscrowd"].value)
+
+                                if "iscrowd" in gt.attributes:
+                                    iscrowd = int(gt.attributes["iscrowd"].value)
+                                else:
+                                    iscrowd = 0
     
                                 # Cannot match two preds to the same gt unless the gt
                                 # is a crowd
