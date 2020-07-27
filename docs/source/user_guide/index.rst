@@ -86,6 +86,22 @@ Export datasets to disk in any number of formats.
        export_dir=export_dir, dataset_type=fo.types.COCODetectionDataset
    )
 
+:doc:`Drawing labels on samples <draw_labels>`
+-------------------------------------------
+
+Render labels on the samples in your FiftyOne dataset with a single line of
+code.
+
+:doc:`>> Learn more about drawing labels on samples! <draw_labels>`
+
+.. code-block:: python
+   :linenos:
+
+   anno_dir = "/path/for/annotated/images"
+   label_fields = ["ground_truth", "predictions"]
+
+   dataset.draw_labels(anno_dir, label_fields=label_fields)
+
 :doc:`Visualizing datasets in the App <app>`
 --------------------------------------------
 
@@ -133,6 +149,7 @@ Configure FiftyOne's behavior to suit your needs.
     Creating datasets<dataset_creation/index>
     Using datasets<using_datasets>
     Exporting datasets<export_datasets>
+    Drawing labels on samples<draw_labels>
     Viewing datasets in the App<app>
     FiftyOne Brain<brain>
     Configuring FiftyOne<config>
