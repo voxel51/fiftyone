@@ -42,9 +42,7 @@ export default () => {
     viewBarMachine.withContext(createBar(portValue))
   );
 
-  const { stages, tailStage, stageInfo } = state.context;
-
-  console.log(stageInfo);
+  const { stages, tailStage } = state.context;
 
   return (
     <ViewBarDiv>

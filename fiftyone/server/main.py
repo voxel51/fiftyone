@@ -69,7 +69,7 @@ def get_fiftyone_info():
 def get_stages():
     """Gets ViewStage descriptions"""
     return {
-        "data": [
+        "stages": [
             {"name": stage.__name__, "params": stage._params()}
             for stage in _STAGES
         ]

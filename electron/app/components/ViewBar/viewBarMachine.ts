@@ -17,7 +17,7 @@ export const createBar = (port) => {
     port: port,
     stages: [],
     stageInfo: undefined,
-    tailStage: createStage(),
+    tailStage: undefined,
   };
 };
 
@@ -44,7 +44,7 @@ const viewBarMachine = Machine({
           target: "running",
           actions: assign({
             stageInfo: (ctx, event) => {
-              return event.data;
+              return event.data.stages;
             },
           }),
         },
@@ -53,13 +53,16 @@ const viewBarMachine = Machine({
     running: {
       entry: assign({
         stages: (ctx) => {
-          return ctx.stages.map((stage) => ({
-            ...stage,
-            ref: spawn(viewStageMachine.withContext(stage)),
-          }));
+          return ctx.stages.map((stage) => {
+            const newStage = createStage(stage, ctx.stageInfo);
+            return {
+              stage: newStage,
+              ref: spawn(viewStageMachine.withContext(newStage)),
+            };
+          });
         },
         tailStage: (ctx) => {
-          const { tailStage } = ctx;
+          const tailStage = createStage("", ctx.stageInfo);
           return {
             ...tailStage,
             ref: spawn(viewStageMachine.withContext(tailStage)),
