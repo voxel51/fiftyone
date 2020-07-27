@@ -91,7 +91,6 @@ const viewStageMachine = Machine({
     editing: {
       onEntry: assign({ prevStage: (ctx) => ctx.stage }),
       type: "parallel",
-      initial: "focused",
       states: {
         input: {
           initial: "focused",
@@ -132,18 +131,27 @@ const viewStageMachine = Machine({
         },
         COMMIT: [
           {
-            target: "validating",
+            target: "reading",
             actions: [
               assign({
-                stage: (ctx, e) => ctx.stage,
+                stage: (ctx, { stage }) => stage,
               }),
             ],
           },
         ],
-        BLUR: {
-          target: "validating",
-          actions: sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
-        },
+        BLUR: [
+          {
+            target: "reading",
+            actions: sendParent((ctx) => ({
+              type: "STAGE.COMMIT",
+              stage: ctx,
+            })),
+            in: "searchResults.notHovering",
+          },
+          {
+            target: "hist",
+          },
+        ],
         CANCEL: {
           target: "reading",
           actions: assign({ stage: (ctx) => ctx.prevStage }),
@@ -167,6 +175,10 @@ const viewStageMachine = Machine({
     },
     deleted: {
       onEntry: sendParent((ctx) => ({ type: "STAGE.DELETE", id: ctx.id })),
+    },
+    hist: {
+      type: "history",
+      history: "deep",
     },
   },
   on: {
