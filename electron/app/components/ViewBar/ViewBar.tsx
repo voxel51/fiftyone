@@ -18,7 +18,7 @@ const ViewBarDiv = styled.div`
   border-radius: 3px;
   border: 1px solid ${borderColor};
   box-sizing: border-box;
-  height: 54px;
+  height: 56px;
   width: 100%;
 `;
 

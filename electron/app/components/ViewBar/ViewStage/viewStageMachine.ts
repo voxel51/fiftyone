@@ -48,16 +48,7 @@ const viewStageMachine = Machine({
             ],
           },
         },
-        pending: {
-          on: {
-            SET_SELECTED: {
-              target: "selected",
-              actions: [
-                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
-              ],
-            },
-          },
-        },
+        pending: {},
         selected: {
           entry: assign({
             parameters: (ctx) => {

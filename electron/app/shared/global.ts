@@ -16,6 +16,10 @@ export const styles = css`
     padding: 0 !important;
   }
 
+  input {
+    padding: 0;
+  }
+
   #root {
     height: 100%;
     position: relative;

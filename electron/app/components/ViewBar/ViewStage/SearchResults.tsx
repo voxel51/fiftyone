@@ -13,9 +13,8 @@ import {
 const SearchResultDiv = animated(styled.div`
   color: ${fontColor};
   cursor: pointer;
-  font-size: 1rem;
-  margin: 0.25rem;
-  padding-left: 0.5rem;
+  margin: 0.25rem 0.25rem;
+  padding: 0 0.25rem;
 `);
 
 interface SearchResultProps {
@@ -56,14 +55,15 @@ const SearchResult = React.memo(
 
 const SearchResultsDiv = animated(styled.div`
   background-color: ${searchResultsBackgroundColor};
-  border: 1px solid ${searchResultsBorderColor};
+  border: 2px solid ${searchResultsBorderColor};
   border-radius: 2px;
   box-shadow: 0 2px 20px ${searchResultsBoxShadowColor};
   left: 0;
   margin-top: 0.5rem;
+  margin-left: -2px;
   position: absolute;
   top: 100%;
-  width: 100%;
+  width: auto;
   z-index: 1000;
 `);
 

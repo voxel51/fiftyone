@@ -2,21 +2,32 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { animated } from "react-spring";
 import styled from "styled-components";
 import { useService } from "@xstate/react";
-import cn from "classnames";
+import AutosizeInput from "react-input-autosize";
 
 import { grey46 as fontColor } from "../../../shared/colors";
 import SearchResults from "./SearchResults";
 
-const ViewStageParameterInput = animated(styled.input`
-  background-color: transparent;
-  border: none;
-  line-height: 1rem;
-  margin: 0.5rem;
-  width: auto;
-  color: ${fontColor};
-  max-width: 6.5rem;
+const ViewStageParameterDiv = animated(styled.div`
+  box-sizing: border-box;
+  border: 2px dashed #6c757d;
+  border-radius: 3px;
+  background-color: rgba(108, 117, 125, 0.13);
+  display: inline-block;
+  position: relative;
+`);
 
-  :focus {
+const ViewStageParameterInput = animated(styled(AutosizeInput)`
+  & > input {
+    background-color: transparent;
+    border: none;
+    margin: 0.5rem;
+    color: ${fontColor};
+    line-height: 1rem;
+    border: none;
+  }
+
+  & > input:focus {
+    boder: none;
     outline: none;
   }
 `);
@@ -35,22 +46,24 @@ export default ({ parameterRef }) => {
   }, [state, parameterRef]);
 
   return (
-    <ViewStageParameterInput
-      placeholder={parameter}
-      value={value}
-      onBlur={() => send("BLUR")}
-      onChange={(e) => send("CHANGE", { value: e.target.value })}
-      onKeyPress={(e) => {
-        if (e.key === "Enter") {
-          send("COMMIT");
-        }
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") {
-          send("CANCEL");
-        }
-      }}
-      ref={inputRef}
-    />
+    <ViewStageParameterDiv>
+      <ViewStageParameterInput
+        placeholder={parameter}
+        value={value}
+        onBlur={() => send("BLUR")}
+        onChange={(e) => send("CHANGE", { value: e.target.value })}
+        onKeyPress={(e) => {
+          if (e.key === "Enter") {
+            send("COMMIT");
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            send("CANCEL");
+          }
+        }}
+        ref={inputRef}
+      />
+    </ViewStageParameterDiv>
   );
 };

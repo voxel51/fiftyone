@@ -9,17 +9,17 @@ import { grey46 as fontColor } from "../../../shared/colors";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 
+const ViewStageContainer = styled.div`
+  margin: 0.5rem;
+`;
+
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 1px dashed #6c757d;
+  border: 2px dashed #6c757d;
   border-radius: 3px;
   background-color: rgba(108, 117, 125, 0.13);
   display: inline-block;
-  margin: 0.5rem;
   position: relative;
-
-  &.selected {
-  }
 `);
 
 const ViewStageInput = styled(AuosizeInput)`
@@ -47,7 +47,10 @@ export default React.memo(({ stageRef, tailStage }) => {
   const { stage, stageInfo, parameters } = state.context;
 
   const props = useSpring({
-    borderStyle: true ? "dashed" : "solid",
+    borderStyle: state.matches("reading.selected") ? "solid" : "dashed",
+    borderTopRightRadius: state.matches("reading.selected") ? 0 : 3,
+    borderBottomRightRadius: state.matches("reading.selected") ? 0 : 3,
+    borderRightWidth: state.matches("reading.selected") ? 1 : 2,
     opacity: 1,
     from: {
       opacity: 0,
@@ -64,44 +67,46 @@ export default React.memo(({ stageRef, tailStage }) => {
   console.log(state.toStrings(), parameters);
 
   return (
-    <ViewStageDiv style={props}>
-      {tailStage ? (
-        <ViewStageInput
-          placeholder="+ search sample"
-          value={stage}
-          onFocus={() => send("EDIT")}
-          onBlur={() =>
-            state.matches("editing.searchResults.notHovering") && send("BLUR")
-          }
-          onChange={(e) => send("CHANGE", { stage: e.target.value })}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              send("COMMIT");
+    <ViewStageContainer>
+      <ViewStageDiv style={props}>
+        {tailStage ? (
+          <ViewStageInput
+            placeholder="+ search sample"
+            value={stage}
+            onFocus={() => send("EDIT")}
+            onBlur={() =>
+              state.matches("editing.searchResults.notHovering") && send("BLUR")
             }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              send("CANCEL");
-            }
-          }}
-          style={{ fontiSize: "1rem" }}
-          ref={inputRef}
-        />
-      ) : (
-        <ViewStageButton>+</ViewStageButton>
-      )}
-      {state.matches("editing") && (
-        <SearchResults
-          results={stageInfo
-            .map((s) => s.name)
-            .filter((n) => n.toLowerCase().includes(stage.toLowerCase()))}
-          send={send}
-        />
-      )}
+            onChange={(e) => send("CHANGE", { stage: e.target.value })}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                send("COMMIT");
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                send("CANCEL");
+              }
+            }}
+            style={{ fontSize: "1rem" }}
+            ref={inputRef}
+          />
+        ) : (
+          <ViewStageButton>+</ViewStageButton>
+        )}
+        {state.matches("editing") && (
+          <SearchResults
+            results={stageInfo
+              .map((s) => s.name)
+              .filter((n) => n.toLowerCase().includes(stage.toLowerCase()))}
+            send={send}
+          />
+        )}
+      </ViewStageDiv>
       {state.matches("reading.selected") &&
         parameters.map((parameter) => (
-          <ViewStageParameter parameterRef={parameter.ref} />
+          <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
         ))}
-    </ViewStageDiv>
+    </ViewStageContainer>
   );
 });
