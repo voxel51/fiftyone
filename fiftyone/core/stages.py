@@ -174,6 +174,111 @@ class Exists(ViewStage):
         return {"field": self._field}
 
 
+class _FilterList(ViewStage):
+    """Abstract class that specifies how to filter a list field to a subset of
+    elements.
+
+    Args:
+        field: the field to filter, which must be a list or an object that
+            contains a list
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    def __init__(self, field, filter):
+        self._field = field
+        self._filter = filter
+        self._validate()
+
+    @property
+    def field(self):
+        """The field that fully specifies what to filter."""
+        return self._field
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
+    @property
+    def list_field(self):
+        """The field (which must be a list) that is filtered."""
+        return self.field
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Match` instance.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        cond = self._filter
+        if isinstance(cond, ViewExpression):
+            cond = cond.to_mongo(in_list=True)
+
+        return [
+            {
+                "$addFields": {
+                    self.list_field: {
+                        "$filter": {
+                            "input": "$" + self.list_field,
+                            "cond": cond,
+                        }
+                    }
+                }
+            }
+        ]
+
+    def _kwargs(self):
+        return {"field": self._field, "filter": self._filter}
+
+    def _validate(self):
+        if not isinstance(self._filter, (ViewExpression, dict)):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB expression; "
+                "found '%s'" % self._filter
+            )
+
+
+class FilterClassifications(_FilterList):
+    """Filters the :class:`fiftyone.core.labels.Classification` elements in the
+    specified :class:`fiftyone.core.labels.Classifications` field of the samples in
+    the stage.
+
+    Args:
+        field: the field to filter, which must be a
+            :class:`fiftyone.core.labels.Classifications`
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    @property
+    def list_field(self):
+        """The field (which must be a list) that is filtered."""
+        return ".".join([self.field, "classifications"])
+
+
+class FilterDetections(_FilterList):
+    """Filters the :class:`fiftyone.core.labels.Detection` elements in the
+    specified :class:`fiftyone.core.labels.Detections` field of the samples in
+    the stage.
+
+    Args:
+        field: the field to filter, which must be a
+            :class:`fiftyone.core.labels.Detections`
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    @property
+    def list_field(self):
+        """The field (which must be a list) that is filtered."""
+        return ".".join([self.field, "detections"])
+
+
 class Limit(ViewStage):
     """Limits the view to the given number of samples.
 
@@ -201,63 +306,6 @@ class Limit(ViewStage):
 
     def _kwargs(self):
         return {"limit": self._limit}
-
-
-class ListFilter(ViewStage):
-    """Filters the list elements in the samples in the stage.
-
-    Args:
-        field: the field to filter, which must be a list
-        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that returns a boolean describing the filter to apply
-    """
-
-    def __init__(self, field, filter):
-        self._field = field
-        self._filter = filter
-        self._validate()
-
-    @property
-    def field(self):
-        """The list field to filter."""
-        return self._field
-
-    @property
-    def filter(self):
-        """The filter expression."""
-        return self._filter
-
-    def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Match` instance.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
-        cond = self._filter
-        if isinstance(cond, ViewExpression):
-            cond = cond.to_mongo(in_list=True)
-
-        return [
-            {
-                "$addFields": {
-                    self._field: {
-                        "$filter": {"input": "$" + self._field, "cond": cond}
-                    }
-                }
-            }
-        ]
-
-    def _kwargs(self):
-        return {"field": self._field, "filter": self._filter}
-
-    def _validate(self):
-        if not isinstance(self._filter, (ViewExpression, dict)):
-            raise ValueError(
-                "Filter must be a ViewExpression or a MongoDB expression; "
-                "found '%s'" % self._filter
-            )
 
 
 class Match(ViewStage):

@@ -331,6 +331,44 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fost.Exists(field))
 
     @view_stage
+    def filter_classifications(self, field, filter):
+        """Filters the classifications of the given
+        :class:`fiftyone.core.labels.Classifications` field.
+
+        Elements of ``field``, for which ``filter`` returns ``False`` are
+        omitted from the field.
+
+        Args:
+            field: the :class:`fiftyone.core.labels.Classifications` field
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fost.FilterClassifications(field, filter))
+
+    @view_stage
+    def filter_detections(self, field, filter):
+        """Filters the detections of the given
+        :class:`fiftyone.core.labels.Detections` field.
+
+        Elements of ``field``, for which ``filter`` returns ``False`` are
+        omitted from the field.
+
+        Args:
+            field: the :class:`fiftyone.core.labels.Detections` field
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fost.FilterDetections(field, filter))
+
+    @view_stage
     def limit(self, limit):
         """Limits the view to the given number of samples.
 
@@ -342,24 +380,6 @@ class DatasetView(foc.SampleCollection):
             a :class:`DatasetView`
         """
         return self.add_stage(fost.Limit(limit))
-
-    @view_stage
-    def list_filter(self, field, filter):
-        """Filters the elements of the given list field.
-
-        Elements of ``field``, which must be a list field, for which ``filter``
-        returns ``False`` are omitted from the field.
-
-        Args:
-            field: the list field
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-
-        Returns:
-            a :class:`DatasetView`
-        """
-        return self.add_stage(fost.ListFilter(field, filter))
 
     @view_stage
     def match(self, filter):
@@ -582,7 +602,7 @@ class DatasetView(foc.SampleCollection):
         filtered_fields = set()
 
         for stage in self._stages:
-            if isinstance(stage, fost.ListFilter):
-                filtered_fields.add(stage.field)
+            if isinstance(stage, fost._FilterList):
+                filtered_fields.add(stage.list_field)
 
         return filtered_fields
