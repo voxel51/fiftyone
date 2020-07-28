@@ -36,12 +36,24 @@ class StageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample2.id)
 
+    def test_exclude_fields(self):
+        # @todo(Tyler)
+        pass
+
     def test_exists(self):
         self.sample1["exists"] = True
         self.sample1.save()
         result = list(self.dataset.exists("exists"))
         self.assertIs(len(result), 1)
-        self.assertIs(result[0], self.sample1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_filter_classifications(self):
+        # @todo(Tyler)
+        pass
+
+    def test_filter_detections(self):
+        # @todo(Tyler)
+        pass
 
     def test_limit(self):
         result = list(self.dataset.limit(1))
@@ -52,39 +64,47 @@ class StageTests(unittest.TestCase):
         self.sample1.save()
         result = list(self.dataset.match({"value": "value"}))
         self.assertIs(len(result), 1)
-        self.assertIs(result[0], self.sample1)
+        self.assertEqual(result[0].id, self.sample1.id)
 
     def test_match_tag(self):
         self.sample1.tags.append("test")
         self.sample1.save()
         result = list(self.dataset.match_tag("test"))
         self.assertIs(len(result), 1)
-        self.assertIs(result[0], self.sample1)
+        self.assertEqual(result[0].id, self.sample1.id)
 
     def test_match_tags(self):
         self.sample1.tags.append("test")
         self.sample1.save()
         result = list(self.dataset.match_tags(["test"]))
         self.assertIs(len(result), 1)
-        self.assertIs(result[0], self.sample1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_mongo(self):
+        # @todo(Tyler)
+        pass
 
     def test_select(self):
         result = list(self.dataset.select([self.sample1.id]))
         self.assertIs(len(result), 1)
-        self.assertIs(result[0], self.sample1)
+        self.assertEqual(result[0].id, self.sample1.id)
 
-    def test_sort_by(self):
-        result = list(self.dataset.sort_by("filepath"))
-        self.assertIs(len(result), 2)
-        self.assertIs(result[0], self.sample1)
-        result = list(self.dataset.sort_by("filepath", reverse=True))
-        self.assertIs(len(result), 2)
-        self.assertIs(result[0], self.sample2)
+    def test_select_fields(self):
+        # @todo(Tyler)
+        pass
 
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))
         self.assertIs(len(result), 1)
-        self.assertIs(result[0], self.sample2)
+        self.assertEqual(result[0].id, self.sample2.id)
+
+    def test_sort_by(self):
+        result = list(self.dataset.sort_by("filepath"))
+        self.assertIs(len(result), 2)
+        self.assertEqual(result[0].id, self.sample1.id)
+        result = list(self.dataset.sort_by("filepath", reverse=True))
+        self.assertIs(len(result), 2)
+        self.assertEqual(result[0].id, self.sample2.id)
 
     def test_take(self):
         result = list(self.dataset.take(1))
