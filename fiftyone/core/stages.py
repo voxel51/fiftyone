@@ -335,7 +335,7 @@ class MatchTags(ViewStage):
     """Returns a view containing the samples that have any of the given
     tags.
 
-    To match samples that contain a single, use :class:`MatchTag`
+    To match samples that contain a single, use :class:`MatchTag`.
 
     Args:
         tags: an iterable of tags
