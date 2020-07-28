@@ -41,49 +41,49 @@ workflows.
     :description: Turn your data into a FiftyOne Dataset and automatically find and remove duplicate and near-duplicate images from your dataset.
     :link: image_deduplication.html
     :image: ../_static/images/recipes/image_deduplication.png
-    :tags: Getting-Started
+    :tags: Basics,Dataset-Curation
 
 .. customcarditem::
     :header: Add model predictions to a dataset
     :description: Add FiftyOne to your model training and analysis loop to visualize and analyze your model's predictions.
     :link: model_inference.html
     :image: ../_static/images/recipes/model_inference.png
-    :tags: Getting-Started
+    :tags: Basics,Model-Training
 
 .. customcarditem::
     :header: Convert dataset formats on disk
     :description: Use FiftyOne's powerful dataset import/export features to convert your datasets on disk between standard (or custom) formats.
     :link: convert_datasets.html
     :image: ../_static/images/recipes/convert_datasets.png
-    :tags: Getting-Started
+    :tags: Basics,I/O
 
 .. customcarditem::
     :header: Draw labels on samples
     :description: Render labels on the samples in your FiftyOne Dataset with a single line of code.
     :link: draw_labels.html
     :image: ../_static/images/recipes/draw_labels.png
-    :tags: Getting-Started
+    :tags: Basics,Visualization
 
 .. customcarditem::
     :header: Import datasets in custom formats
     :description: Write your own custom DatasetImporter and use it to import datasets in your custom format into FiftyOne.
     :link: custom_importer.html
     :image: ../_static/images/recipes/custom_importer.png
-    :tags: Advanced
+    :tags: Advanced,I/O
 
 .. customcarditem::
     :header: Export datasets in custom formats
     :description: Write your own custom DatasetExporter and use it to export a FiftyOne Dataset to disk in your custom format.
     :link: custom_exporter.html
     :image: ../_static/images/recipes/custom_exporter.png
-    :tags: Advanced
+    :tags: Advanced,I/O
 
 .. customcarditem::
     :header: Parse samples in custom formats
     :description: Write your own custom SampleParser and use it to add samples in your custom format to a FiftyOne Dataset.
     :link: custom_parser.html
     :image: ../_static/images/recipes/custom_parser.png
-    :tags: Advanced
+    :tags: Advanced,I/O
 
 .. End of recipe cards
 

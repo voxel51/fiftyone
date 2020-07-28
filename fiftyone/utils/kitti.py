@@ -59,6 +59,7 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
             label_field=None,
             bounding_box_field=None,
             confidence_field=None,
+            attributes_field=None,
             classes=None,
             normalized=False,  # image required to convert to relative coords
         )

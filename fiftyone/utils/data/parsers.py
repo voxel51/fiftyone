@@ -430,6 +430,10 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
                         <top-left-x>, <top-left-y>, <width>, <height>
                     ],
                     "<confidence_field>": <optional-confidence>,
+                    "<attributes_field>": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 ...
             ]
@@ -440,8 +444,8 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
           (if ``classes`` is provided) or a label string, and the bounding box
           coordinates can either be relative coordinates in ``[0, 1]``
           (if ``normalized == True``) or absolute pixels coordinates
-          (if ``normalized == False``). The confidence field is optional
-          for each sample.
+          (if ``normalized == False``). The confidence and attributes fields
+          are optional for each sample.
 
           The input field names can be configured as necessary when
           instantiating the parser.
@@ -452,6 +456,8 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         bounding_box_field ("bounding_box"): the name of the bounding box field
             in the target dicts
         confidence_field (None): the name of the optional confidence field in
+            the target dicts
+        attributes_field (None): the name of the optional attributes field in
             the target dicts
         classes (None): an optional list of class label strings. If provided,
             it is assumed that the ``target`` values are class IDs that should
@@ -466,6 +472,7 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         label_field="label",
         bounding_box_field="bounding_box",
         confidence_field=None,
+        attributes_field=None,
         classes=None,
         normalized=True,
     ):
@@ -473,6 +480,7 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         self.label_field = label_field
         self.bounding_box_field = bounding_box_field
         self.confidence_field = confidence_field
+        self.attributes_field = attributes_field
         self.classes = classes
         self.normalized = normalized
 
@@ -529,12 +537,37 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         else:
             confidence = None
 
-        return fol.Detection(
-            label=label, bounding_box=bounding_box, confidence=confidence,
+        if self.attributes_field:
+            _attrs = obj.get(self.attributes_field, {})
+            attributes = {
+                k: self._parse_attribute(v) for k, v in _attrs.items()
+            }
+        else:
+            attributes = None
+
+        detection = fol.Detection(
+            label=label,
+            bounding_box=bounding_box,
+            confidence=confidence,
+            attributes=attributes,
         )
+
+        return detection
 
     def _parse_bbox(self, obj):
         return obj[self.bounding_box_field]
+
+    def _parse_attribute(self, value):
+        if etau.is_str(value):
+            return fol.CategoricalAttribute(value=value)
+
+        if isinstance(value, bool):
+            return fol.BooleanAttribute(value=value)
+
+        if etau.is_numeric(value):
+            return fol.NumericAttribute(value=value)
+
+        return fol.Attribute(value=value)
 
 
 class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
@@ -607,6 +640,7 @@ class FiftyOneImageDetectionSampleParser(ImageDetectionSampleParser):
             label_field="label",
             bounding_box_field="bounding_box",
             confidence_field="confidence",
+            attributes_field="attributes",
             classes=classes,
             normalized=True,
         )
