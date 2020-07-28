@@ -5,19 +5,23 @@ import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 
-import { grey46 as fontColor } from "../../../shared/colors";
+import {
+  grey46 as fontColor,
+  grey46a30 as backgroundColorIncomplete,
+  white100 as backgroundColorComplete,
+} from "../../../shared/colors";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 
 const ViewStageContainer = styled.div`
   margin: 0.5rem;
+  display: inline-block;
 `;
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed #6c757d;
   border-radius: 3px;
-  background-color: rgba(108, 117, 125, 0.13);
   display: inline-block;
   position: relative;
 `);
@@ -51,6 +55,9 @@ export default React.memo(({ stageRef, tailStage }) => {
     borderTopRightRadius: state.matches("reading.selected") ? 0 : 3,
     borderBottomRightRadius: state.matches("reading.selected") ? 0 : 3,
     borderRightWidth: state.matches("reading.selected") ? 1 : 2,
+    backgroundColor: state.matches("reading.selected")
+      ? backgroundColorComplete
+      : backgroundColorIncomplete,
     opacity: 1,
     from: {
       opacity: 0,

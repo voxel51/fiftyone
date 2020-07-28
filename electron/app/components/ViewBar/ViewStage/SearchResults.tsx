@@ -72,7 +72,7 @@ interface SearchResultsProps {
   send: any;
 }
 
-export default ({ results, send }) => {
+export default React.memo(({ results, send }) => {
   if (!results.length) return null;
   return (
     <SearchResultsDiv
@@ -89,4 +89,4 @@ export default ({ results, send }) => {
       ))}
     </SearchResultsDiv>
   );
-};
+});

@@ -50,8 +50,8 @@ export default () => {
         stages.map((stage, i) => {
           return (
             <>
+              <ViewStageButton />
               <ViewStage key={stage.id} stageRef={stage.ref} />
-              {i === stage.length - 1 && <ViewStageButton />}
             </>
           );
         }) && (
