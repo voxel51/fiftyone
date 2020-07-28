@@ -15,7 +15,9 @@ on your data quickly and easily.
 Learn the basics of the FiftyOne |Dataset| class and its relation to |Sample|,
 |Field|, tags and |DatasetView|.
 
-:doc:`>> Learn more about dataset basics! <basics>`
+.. custombutton::
+    :button_text: Learn more about dataset basics
+    :button_link: basics.html
 
 .. code-block:: python
     :linenos:
@@ -42,7 +44,9 @@ Learn the basics of the FiftyOne |Dataset| class and its relation to |Sample|,
 Get your data into FiftyOne using standard formats, custom formats, or
 open-source datasets via the Dataset Zoo.
 
-:doc:`>> Learn more about creating FiftyOne datasets! <dataset_creation/index>`
+.. custombutton::
+    :button_text: Learn more about creating FiftyOne datasets
+    :button_link: dataset_creation/index.html
 
 .. code-block:: python
    :linenos:
@@ -59,7 +63,9 @@ open-source datasets via the Dataset Zoo.
 Take a deep dive into FiftyOne datasets and how to use them to search, sort,
 and filter your data.
 
-:doc:`>> Learn more about using datasets! <using_datasets>`
+.. custombutton::
+    :button_text: Learn more about using datasets
+    :button_link: using_datasets.html
 
 .. code-block:: python
    :linenos:
@@ -77,7 +83,9 @@ and filter your data.
 
 Export datasets to disk in any number of formats.
 
-:doc:`>> Learn more about exporting datasets! <export_datasets>`
+.. custombutton::
+    :button_text: Learn more about exporting datasets
+    :button_link: export_datasets.html
 
 .. code-block:: python
    :linenos:
@@ -92,7 +100,9 @@ Export datasets to disk in any number of formats.
 Render labels on the samples in your FiftyOne dataset with a single line of
 code.
 
-:doc:`>> Learn more about drawing labels on samples! <draw_labels>`
+.. custombutton::
+    :button_text: Learn more about drawing labels on samples
+    :button_link: draw_labels.html
 
 .. code-block:: python
    :linenos:
@@ -108,7 +118,9 @@ code.
 Visualize your datasets in the FiftyOne App and interactively search, sort, and
 filter them.
 
-:doc:`>> Learn more about visualizing datasets! <app>`
+.. custombutton::
+    :button_text: Learn more about visualizing datasets
+    :button_link: app.html
 
 .. image:: ../images/dog.png
    :alt: App
@@ -119,7 +131,9 @@ filter them.
 
 Use the FiftyOne Brain to automatically get insights into your datasets.
 
-:doc:`>> Learn more about the FiftyOne Brain! <brain>`
+.. custombutton::
+    :button_text: Learn more about the FiftyOne Brain
+    :button_link: brain.html
 
 .. code-block:: python
    :linenos:
@@ -134,7 +148,9 @@ Use the FiftyOne Brain to automatically get insights into your datasets.
 
 Configure FiftyOne's behavior to suit your needs.
 
-:doc:`>> Learn how to configure FiftyOne! <config>`
+.. custombutton::
+    :button_text: Learn how to configure FiftyOne
+    :button_link: config.html
 
 .. code-block:: shell
    :linenos:
