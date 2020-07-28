@@ -191,10 +191,12 @@ class StateController(Namespace):
             view = state.dataset.view()
         else:
             return []
-        return {"labels": view.get_label_fields(), "tags": view.get_tags()}
+
+        return {"labels": _get_label_fields(view), "tags": view.get_tags()}
 
     def on_get_distributions(self, group):
-        """Gets the distributions for the current state with respect to a group,
+        """Gets the distributions for the current state with respect to a
+        group.
 
         Args:
             group: one of "labels", "tags", or "scalars"
@@ -252,6 +254,15 @@ def _numeric_bounds(view, numerics):
         ]
 
     return list(view.aggregate(bounds_pipeline))[0] if len(numerics) else {}
+
+
+def _get_label_fields(view):
+    pipeline = [
+        {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+        {"$unwind": "$field"},
+        {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
+    ]
+    return [f for f in view.aggregate(pipeline)]
 
 
 def _numeric_distribution_pipelines(view, pipeline, buckets=50):
