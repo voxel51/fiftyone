@@ -444,7 +444,13 @@ class Sample(_Sample):
 
 
 class SampleView(_Sample):
-    def __init__(self, doc, excluded_fields=None, filtered_fields=None):
+    def __init__(
+        self,
+        doc,
+        selected_fields=None,
+        excluded_fields=None,
+        filtered_fields=None,
+    ):
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
@@ -454,7 +460,12 @@ class SampleView(_Sample):
         if not doc.id:
             raise ValueError("`doc` is not saved to the database.")
 
+        if selected_fields is not None and excluded_fields is not None:
+            selected_fields = selected_fields.difference(excluded_fields)
+            excluded_fields = None
+
         self._doc = doc
+        self._selected_fields = selected_fields
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
 
@@ -471,6 +482,10 @@ class SampleView(_Sample):
     def field_names(self):
         """An ordered list of the names of the fields of this sample."""
         field_names = self._doc.field_names
+        if self._selected_fields is not None:
+            field_names = tuple(
+                fn for fn in field_names if fn in self._selected_fields
+            )
         if self._excluded_fields is not None:
             field_names = tuple(
                 fn for fn in field_names if fn not in self._excluded_fields
@@ -478,20 +493,41 @@ class SampleView(_Sample):
         return field_names
 
     @property
+    def selected_field_names(self):
+        """An ordered list of the names of the fields of this sample."""
+        return self._selected_fields.copy()
+
+    @property
     def excluded_field_names(self):
         """An ordered list of the names of the fields of this sample."""
         return self._excluded_fields.copy()
 
     def __str__(self):
-        return self._doc.fancy_repr(type(self).__name__, self._excluded_fields)
+        return self._doc.fancy_repr(
+            type(self).__name__, self._selected_fields, self._excluded_fields
+        )
 
     def __repr__(self):
-        return self._doc.fancy_repr(type(self).__name__, self._excluded_fields)
+        return self._doc.fancy_repr(
+            type(self).__name__, self._selected_fields, self._excluded_fields
+        )
 
     def __getattr__(self, name):
-        if not name.startswith("_") and name in self._excluded_fields:
-            raise NameError(
-                "Field '%s' is excluded from this %s"
-                % (name, type(self).__name__)
-            )
+        if not name.startswith("_"):
+            if (
+                self._selected_fields is not None
+                and name not in self._selected_fields
+            ):
+                raise NameError(
+                    "Field '%s' is not selected from this %s"
+                    % (name, type(self).__name__)
+                )
+            if (
+                self._excluded_fields is not None
+                and name in self._excluded_fields
+            ):
+                raise NameError(
+                    "Field '%s' is excluded from this %s"
+                    % (name, type(self).__name__)
+                )
         return super().__getattr__(name)

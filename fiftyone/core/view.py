@@ -190,9 +190,9 @@ class DatasetView(foc.SampleCollection):
         """Returns an iterator over the samples in the view.
 
         Returns:
-            an iterator over :class:`fiftyone.core.sample.Sample` instances
+            an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
-        excluded_fields = self._get_excluded_fields()
+        selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
         for d in self.aggregate():
@@ -200,6 +200,7 @@ class DatasetView(foc.SampleCollection):
                 doc = self._dataset._sample_dict_to_doc(d)
                 yield fos.SampleView(
                     doc,
+                    selected_fields=selected_fields,
                     excluded_fields=excluded_fields,
                     filtered_fields=filtered_fields,
                 )
@@ -214,10 +215,10 @@ class DatasetView(foc.SampleCollection):
         their integer index in the collection.
 
         Returns:
-            an iterator that emits ``(index, sample)`` tuples, where:
+            an iterator that emits ``(index, sv)`` tuples, where:
                 - ``index`` is an integer index relative to the offset, where
                   ``offset <= view_idx < offset + limit``
-                - ``sample`` is a :class:`fiftyone.core.sample.Sample`
+                - ``sv`` is a :class:`fiftyone.core.sample.SampleView`
         """
         offset = self._get_latest_offset()
         iterator = self.iter_samples()
@@ -307,7 +308,8 @@ class DatasetView(foc.SampleCollection):
 
     @view_stage
     def exclude_fields(self, field_names):
-        """Excludes the samples with the given IDs from the view.
+        """Excludes the fields with the given names from the returned
+        :class:`fiftyone.core.sample.SampleView` instances.
 
         Args:
             field_names: a list of names of sample fields to omit
@@ -453,6 +455,19 @@ class DatasetView(foc.SampleCollection):
         return self.add_stage(fost.Select(sample_ids))
 
     @view_stage
+    def select_fields(self, field_names):
+        """Selects the fields with the given names as the only fields present
+        in the returned :class:`fiftyone.core.sample.SampleView` instances.
+
+        Args:
+            field_names: a list of names of sample fields to select
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self.add_stage(fost.SelectFields(field_names))
+
+    @view_stage
     def skip(self, skip):
         """Omits the given number of samples from the head of the view.
 
@@ -589,14 +604,31 @@ class DatasetView(foc.SampleCollection):
 
         return 0
 
-    def _get_excluded_fields(self):
+    def _get_selected_excluded_fields(self):
+        """Checks all stages to find the selected and excluded fields.
+
+        Returns:
+            selected_fields, excluded_fields: the sets of selected and excluded
+                fields. One of these will always be None, meaning nothing is
+                selected/excluded.
+        """
+        selected_fields = None
         excluded_fields = set()
 
         for stage in self._stages:
+            if isinstance(stage, fost.SelectFields):
+                if selected_fields is None:
+                    selected_fields = set(stage.field_names)
+                else:
+                    selected_fields.intersection_update(stage.field_names)
             if isinstance(stage, fost.ExcludeFields):
                 excluded_fields.update(stage.field_names)
 
-        return excluded_fields
+        if selected_fields is not None:
+            selected_fields.difference_update(excluded_fields)
+            excluded_fields = None
+
+        return selected_fields, excluded_fields
 
     def _get_filtered_fields(self):
         filtered_fields = set()

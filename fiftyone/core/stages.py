@@ -116,7 +116,8 @@ class Exclude(ViewStage):
 
 
 class ExcludeFields(ViewStage):
-    """Excludes the samples with the given IDs from the view.
+    """Excludes the fields with the given names from the returned
+        :class:`fiftyone.core.sample.SampleView` instances.
 
     Args:
         field_names: a list of names of sample fields to omit
@@ -467,6 +468,39 @@ class Select(ViewStage):
 
     def _kwargs(self):
         return {"sample_ids": self._sample_ids}
+
+
+class SelectFields(ViewStage):
+    """Selects the fields with the given names as the only fields present
+    in the returned :class:`fiftyone.core.sample.SampleView` instances.
+
+    Args:
+        field_names: a list of names of sample fields to omit
+    """
+
+    def __init__(self, field_names):
+        self._field_names = [
+            fn for fn in field_names if fn not in ["id", "_id"]
+        ]
+        if len(field_names) != len(self.field_names):
+            raise Warning("ID field is always selected.")
+
+    @property
+    def field_names(self):
+        """The list of field names to exclude."""
+        return self._field_names
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.ExcludeFields` instance.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return [{"$project": {fn: True for fn in self.field_names}}]
+
+    def _kwargs(self):
+        return {"field_names": self._field_names}
 
 
 class SortBy(ViewStage):

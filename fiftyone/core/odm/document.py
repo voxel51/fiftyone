@@ -50,21 +50,34 @@ class SerializableDocument(object):
     def __copy__(self):
         return self.copy()
 
-    def fancy_repr(self, class_name=None, exclude_fields=None):
+    def fancy_repr(
+        self, class_name=None, select_fields=None, exclude_fields=None
+    ):
         """Repr, but fancier.
 
         Args:
             class_name: optional string name to replace the class name
             exclude_fields: optional iterable of field names to exclude
         """
-        s = fou.pformat(self._to_repr_dict(exclude_fields=exclude_fields))
+        s = fou.pformat(
+            self._to_repr_dict(
+                select_fields=select_fields, exclude_fields=exclude_fields
+            )
+        )
         class_name = class_name or self._get_class_repr()
         return "<%s: %s>" % (class_name, s)
 
-    def _to_repr_dict(self, exclude_fields=None):
+    def _to_repr_dict(self, select_fields=None, exclude_fields=None):
+
         d = {}
         for f in self._to_str_fields:
-            if f.startswith("_") or exclude_fields and f in exclude_fields:
+            if f.startswith("_") or (
+                f != "id"
+                and (
+                    (select_fields is not None and f not in select_fields)
+                    or (exclude_fields is not None and f in exclude_fields)
+                )
+            ):
                 continue
 
             value = getattr(self, f)
