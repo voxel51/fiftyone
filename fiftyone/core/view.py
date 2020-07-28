@@ -29,7 +29,7 @@ import fiftyone.core.collections as foc
 class DatasetView(foc.SampleCollection):
     """A view into a :class:`fiftyone.core.dataset.Dataset`.
 
-    Dataset views represent read-only collections of
+    Dataset views represent oredered collections of subsets of
     :class:`fiftyone.core.sample.Sample` instances in a dataset.
 
     Operations on dataset views are designed to be chained together to yield

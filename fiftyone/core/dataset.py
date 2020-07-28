@@ -150,7 +150,7 @@ def delete_non_persistent_datasets():
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """A FiftyOne dataset.
 
-    Datasets represent a homogeneous collection of
+    Datasets represent an ordered collection of
     :class:`fiftyone.core.sample.Sample` instances that describe a particular
     type of raw media (e.g., images) together with a user-defined set of
     fields.
