@@ -97,7 +97,7 @@ class ServerServiceTests(unittest.TestCase):
         self.assertEqual(session, client)
 
     def step_get_current_state(self):
-        self.session.view = self.dataset.view().limit(1)
+        self.session.view = self.dataset.limit(1)
         self.wait_for_response()
         session = _serialize(self.session.state)
         self.client.emit(
