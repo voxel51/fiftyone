@@ -4,6 +4,6 @@ import styled from "styled-components";
 export const Box = styled.div`
   padding: 1em;
   box-sizing: border-box;
-  border: 2px solid #e0e0e0;
-  background-color: #ffffff;
+  border: 2px solid ${({ theme }) => theme.border};
+  background-color: ${({ theme }) => theme.background};
 `;

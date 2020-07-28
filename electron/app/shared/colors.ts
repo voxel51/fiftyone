@@ -16,3 +16,14 @@ export const grey10 = "hsl(216, 10%, 10%)";
 
 export const grey46a13 = "hsla(208, 7%, 46%, 0.13)";
 export const grey46a30 = "hsla(208, 7%, 46%, 0.3)";
+
+// for storybook
+export const lightTheme = {
+  background: white100,
+  border: white85,
+};
+
+export const darkTheme = {
+  background: grey10,
+  border: white85,
+};
