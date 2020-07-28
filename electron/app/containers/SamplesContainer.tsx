@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import styled from "styled-components";
 
-import { Rail, Sticky } from "semantic-ui-react";
+import { Grid, Sticky } from "semantic-ui-react";
 
 import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
 import ImageContainerHeader from "../components/ImageContainerHeader";
@@ -9,13 +9,13 @@ import SidebarContainer from "../components/SidebarContainer";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
 
-const Container = styled.div`
-  .content {
-    margin-left: ${({ showSidebar }) => (showSidebar ? "15rem" : undefined)};
+const Root = styled.div`
+  .ui.grid > .sidebar-column {
+    flex: 0 0 15rem;
   }
 
-  .ui.rail {
-    width: unset;
+  .ui.grid > .content-column {
+    flex: 1;
   }
 `;
 
@@ -32,7 +32,7 @@ const SamplesContainer = (props) => {
   }
 
   return (
-    <Container ref={containerRef} showSidebar={showSidebar}>
+    <Root ref={containerRef} showSidebar={showSidebar}>
       <Sticky
         ref={stickyHeaderRef}
         context={containerRef}
@@ -45,17 +45,19 @@ const SamplesContainer = (props) => {
           onShowSidebar={setShowSidebar}
         />
       </Sticky>
-      {showSidebar ? (
-        <Rail>
-          <Sticky context={containerRef} offset={headerHeight}>
-            <DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />
-          </Sticky>
-        </Rail>
-      ) : null}
-      <div class="content">
-        <Samples {...props} />
-      </div>
-    </Container>
+      <Grid>
+        {showSidebar ? (
+          <Grid.Column className="sidebar-column">
+            <Sticky context={containerRef} offset={headerHeight}>
+              <DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />
+            </Sticky>
+          </Grid.Column>
+        ) : null}
+        <Grid.Column className="content-column">
+          <Samples {...props} />
+        </Grid.Column>
+      </Grid>
+    </Root>
   );
 };
 
