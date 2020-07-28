@@ -406,12 +406,13 @@ class UniqueFilenameMaker(object):
             for filename in filenames:
                 self._filename_counts[filename] += 1
 
-    def get_output_path(self, input_path=None):
+    def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
 
         Args:
             input_path (None): an input path from which to derive the output
                 path
+            output_ext (None): an optional output extension to use
 
         Returns:
             the output path
@@ -423,6 +424,10 @@ class UniqueFilenameMaker(object):
 
         filename = os.path.basename(input_path)
         name, ext = os.path.splitext(filename)
+
+        if output_ext is not None:
+            ext = output_ext
+            filename = name + ext
 
         key = name if self.ignore_exts else filename
         self._filename_counts[key] += 1

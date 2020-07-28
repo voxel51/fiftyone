@@ -50,6 +50,19 @@ your model's predictions.
         )
         sample.save()
 
+:doc:`Draw labels on samples <draw_labels>`
+
+Render labels on the samples in your FiftyOne |Dataset| with a single line of
+code.
+
+.. code-block:: python
+   :linenos:
+
+   anno_dir = "/path/for/annotated/images"
+   label_fields = ["ground_truth", "predictions"]
+
+   dataset.draw_labels(anno_dir, label_fields=label_fields)
+
 :doc:`Convert dataset formats on disk <convert_datasets>`
 
 Use FiftyOne's data powerful dataset import/export features to convert your
@@ -120,6 +133,7 @@ add samples in your custom format to a FiftyOne |Dataset|.
 
    Remove duplicate images<image_deduplication.ipynb>
    Add model predictions<model_inference.ipynb>
+   Draw labels on samples<draw_labels.ipynb>
    Convert dataset formats<convert_datasets.ipynb>
    Custom dataset importers<custom_importer.ipynb>
    Custom dataset exporters<custom_exporter.ipynb>
