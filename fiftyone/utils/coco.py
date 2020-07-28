@@ -85,9 +85,6 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
         )
 
     def _parse_detection(self, obj, img=None):
-        for k,v in obj.items():
-            if isinstance(v, dict) and "value" in v:
-                obj[k] = v["value"]
         coco_obj = COCOObject.from_annotation_dict(obj)
         frame_size = etai.to_frame_size(img=img)
         return coco_obj.to_detection(frame_size, classes=self.classes)
