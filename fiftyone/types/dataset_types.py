@@ -321,6 +321,10 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
                             <top-left-x>, <top-left-y>, <width>, <height>
                         ],
                         "confidence": <optional-confidence>,
+                        "attributes": {
+                            <optional-name>: <optional-value>,
+                            ...
+                        }
                     },
                     ...
                 ],

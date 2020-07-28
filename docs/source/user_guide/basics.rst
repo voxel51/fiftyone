@@ -276,7 +276,7 @@ manipulate subsets of your datasets to perform the analysis that you need.
 
     dataset = foz.load_zoo_dataset("cifar10", split="test")
 
-    cats = dataset.view().match({"ground_truth.label": "cat"})
+    cats = dataset.match({"ground_truth.label": "cat"})
     fob.compute_uniqueness(cats)
 
     similar_cats = cats.sort_by("uniqueness", reverse=False)

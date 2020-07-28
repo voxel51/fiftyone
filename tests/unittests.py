@@ -76,8 +76,8 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset.add_sample(sample3)
         self.assertIsNot(sample3, sample)
 
-        sample4 = dataset.view().match({"filepath": filepath}).first()
-        self.assertIsNot(sample4, sample)
+        sv4 = dataset.match({"filepath": filepath}).first()
+        self.assertIsNot(sv4, sample)
 
     @drop_datasets
     def test_dataset_add_delete_field(self):
@@ -1156,47 +1156,47 @@ class ExpressionTest(unittest.TestCase):
 
         # test `==`
         filtered_values = [v for v in dataset_values if v == value]
-        view = dataset.view().match(F(field) == value)
+        view = dataset.match(F(field) == value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `!=`
         filtered_values = [v for v in dataset_values if v != value]
-        view = dataset.view().match(F(field) != value)
+        view = dataset.match(F(field) != value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `>`
         filtered_values = [v for v in dataset_values if v > value]
-        view = dataset.view().match(F(field) > value)
+        view = dataset.match(F(field) > value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `>=`
         filtered_values = [v for v in dataset_values if v >= value]
-        view = dataset.view().match(F(field) >= value)
+        view = dataset.match(F(field) >= value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `<`
         filtered_values = [v for v in dataset_values if v < value]
-        view = dataset.view().match(F(field) < value)
+        view = dataset.match(F(field) < value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `<=`
         filtered_values = [v for v in dataset_values if v <= value]
-        view = dataset.view().match(F(field) <= value)
+        view = dataset.match(F(field) <= value)
         view_values = [s[field] for s in view]
         self.assertListEqual(view_values, filtered_values)
 
         # test `is_in`
-        view = dataset.view().match(F(field).is_in(values))
+        view = dataset.match(F(field).is_in(values))
         for sample in view:
             self.assertIn(sample[field], values)
 
         # test `NOT is_in`
-        view = dataset.view().match(~(F(field).is_in(values)))
+        view = dataset.match(~(F(field).is_in(values)))
         for sample in view:
             self.assertNotIn(sample[field], values)
 
@@ -1218,23 +1218,19 @@ class ExpressionTest(unittest.TestCase):
         value = 5
 
         # test logical not
-        view = dataset.view().match(~(F(field) == value))
+        view = dataset.match(~(F(field) == value))
         for sample in view:
             self.assertNotEqual(sample[field], value)
 
         # test logical and
         bounds = [3, 6]
-        view = dataset.view().match(
-            (F(field) > bounds[0]) & (F(field) < bounds[1])
-        )
+        view = dataset.match((F(field) > bounds[0]) & (F(field) < bounds[1]))
         for sample in view:
             self.assertGreater(sample[field], bounds[0])
             self.assertLess(sample[field], bounds[1])
 
         # test logical or
-        view = dataset.view().match(
-            (F(field) < bounds[0]) | (F(field) > bounds[1])
-        )
+        view = dataset.match((F(field) < bounds[0]) | (F(field) > bounds[1]))
         for sample in view:
             my_int = sample[field]
             self.assertTrue(my_int < bounds[0] or my_int > bounds[1])
@@ -1257,21 +1253,21 @@ class ExpressionTest(unittest.TestCase):
         manual_ids = [
             sample.id for sample in dataset if abs(sample.my_int) == 6
         ]
-        view = dataset.view().match(abs(F("my_int")) == 6)
+        view = dataset.match(abs(F("my_int")) == 6)
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
         # test __add__
         manual_ids = [
             sample.id for sample in dataset if sample.my_int + 0.5 == -5.5
         ]
-        view = dataset.view().match(F("my_int") + 0.5 == -5.5)
+        view = dataset.match(F("my_int") + 0.5 == -5.5)
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
         # test __ceil__
         manual_ids = [
             sample.id for sample in dataset if math.ceil(sample.my_float) == 1
         ]
-        view = dataset.view().match(math.ceil(F("my_float")) == 1)
+        view = dataset.match(math.ceil(F("my_float")) == 1)
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
         # test __floor__
@@ -1280,14 +1276,14 @@ class ExpressionTest(unittest.TestCase):
             for sample in dataset
             if math.floor(sample.my_float) == -1
         ]
-        view = dataset.view().match(math.floor(F("my_float")) == -1)
+        view = dataset.match(math.floor(F("my_float")) == -1)
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
         # test __round__
         manual_ids = [
             sample.id for sample in dataset if round(sample.my_float) == -1
         ]
-        view = dataset.view().match(round(F("my_float")) == -1)
+        view = dataset.match(round(F("my_float")) == -1)
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
     @drop_datasets
@@ -1321,7 +1317,7 @@ class ExpressionTest(unittest.TestCase):
         # test contains
         tag = "train"
         manual_ids = [sample.id for sample in dataset if tag in sample.tags]
-        view = dataset.view().match(F("tags").contains(tag))
+        view = dataset.match(F("tags").contains(tag))
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
         # test is_in
@@ -1329,7 +1325,7 @@ class ExpressionTest(unittest.TestCase):
         manual_ids = [
             sample.id for sample in dataset if sample.my_int in my_ints
         ]
-        view = dataset.view().match(F("my_int").is_in(my_ints))
+        view = dataset.match(F("my_int").is_in(my_ints))
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
         # test __getitem__
@@ -1338,7 +1334,7 @@ class ExpressionTest(unittest.TestCase):
         manual_ids = [
             sample.id for sample in dataset if sample.my_list[idx] == value
         ]
-        view = dataset.view().match(F("my_list")[idx] == value)
+        view = dataset.match(F("my_list")[idx] == value)
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
 

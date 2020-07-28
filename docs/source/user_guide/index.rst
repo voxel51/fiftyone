@@ -27,12 +27,7 @@ Learn the basics of the FiftyOne |Dataset| class and its relation to |Sample|,
     dataset.add_sample(sample)
     sample.tags += ["train"]
     sample["custom_field"] = 51
-    view = (
-        dataset.view()
-        .match_tag("test")
-        .sort_by("custom_field", reverse=True)
-        .limit(1)
-    )
+    view = dataset.match_tag("test").sort_by("custom_field", reverse=True).limit(1)
     for sample in view:
         print(sample)
 
@@ -65,8 +60,7 @@ and filter your data.
    :linenos:
 
    view = (
-       dataset.view()
-       .match({"tags": "test"})
+       dataset.match({"tags": "test"})
        .exists("metadata")
        .sort_by("filepath")
        .limit(5)
@@ -127,7 +121,7 @@ Use the FiftyOne Brain to automatically get insights into your datasets.
    import fiftyone.brain as fob
 
    fob.compute_uniqueness(dataset)
-   rank_view = dataset.view().sort_by("uniqueness")
+   rank_view = dataset.sort_by("uniqueness")
 
 :doc:`Configuring FiftyOne <config>`
 ------------------------------------
