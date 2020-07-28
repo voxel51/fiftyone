@@ -294,9 +294,25 @@ class Document(BaseDocument, mongoengine.Document):
         try:
             # Save a new document or update an existing one
             if created:
-                object_id = self._save_create(doc, False, {})
+                # SAVE CREATE
+                # insert_one will provoke UniqueError alongside save does not
+                # therefore, it need to catch and call replace_one.
+                collection = self._get_collection()
+
+                object_id = None
+
+                if "_id" in doc:
+                    raw_object = collection.find_one_and_replace(
+                        {"_id": doc["_id"]}, doc
+                    )
+                    if raw_object:
+                        object_id = doc["_id"]
+
+                if not object_id:
+                    object_id = collection.insert_one(doc).inserted_id
             else:
-                object_id, created = self._save_update(doc, None, {})
+                # SAVE UPDATE
+                object_id, created = self._save_update(doc)
 
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
@@ -319,6 +335,41 @@ class Document(BaseDocument, mongoengine.Document):
         self._created = False
 
         return self
+
+    def _save_update(self, doc):
+        """Update an existing document.
+
+        Helper method, should only be used inside save().
+        """
+        created = False
+
+        object_id = doc["_id"]
+
+        updates, removals = self._delta()
+
+        update_doc = {}
+        if updates:
+            update_doc["$set"] = updates
+        if removals:
+            update_doc["$unset"] = removals
+
+        if update_doc:
+            # Update the document
+            last_error = self._get_collection().update_one(
+                {"_id": object_id},
+                update_doc,
+                upsert=True
+            ).raw_result
+
+            if last_error is not None:
+                updated_existing = last_error.get("updatedExisting")
+                if updated_existing is False:
+                    created = True
+                    # !!! This is bad, means we accidentally created a new,
+                    # potentially corrupted document. See
+                    # https://github.com/MongoEngine/mongoengine/issues/564
+
+        return object_id, created
 
 
 class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
