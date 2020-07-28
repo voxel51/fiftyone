@@ -1191,9 +1191,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return cls.from_dict(d, name=name)
 
     def _add_view_stage(self, stage):
-        """Returns a :class:`fiftyone.core.view.DatasetView` instance with
-        the stage added to the end of the pipeline.
-        """
         return self.view().add_stage(stage)
 
     @property
