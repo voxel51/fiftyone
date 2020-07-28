@@ -12,6 +12,7 @@ import ViewBar from "../components/ViewBar/ViewBar";
 const Root = styled.div`
   .ui.grid > .sidebar-column {
     flex: 0 0 15rem;
+    z-index: 400;
   }
 
   .ui.grid > .content-column {
