@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 IOU_THRESHOLDS = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1,
         endpoint=True)
-IOU_THRESHOLD_STR = [str(iou).replace('.',',') for iou in IOU_THRESHOLDS]
+IOU_THRESHOLD_STR = [str(iou).replace('.','_') for iou in IOU_THRESHOLDS]
 
 def evaluate_detections(samples, pred_field, gt_field):
     """Iterates through each sample and matches predicted detections to ground
