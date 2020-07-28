@@ -17,6 +17,7 @@ import unittest
 
 
 import fiftyone as fo
+from fiftyone import ViewField as F
 import fiftyone.core.odm as foo
 
 
@@ -37,8 +38,12 @@ class StageTests(unittest.TestCase):
         self.assertEqual(result[0].id, self.sample2.id)
 
     def test_exclude_fields(self):
-        # @todo(Tyler)
-        pass
+        for sv in self.dataset.exclude_fields(["tags"]):
+            self.assertIsNone(sv.selected_field_names)
+            self.assertSetEqual(sv.excluded_field_names, {"tags"})
+            with self.assertRaises(NameError):
+                sv.tags
+            self.assertIsInstance(sv.filepath, str)
 
     def test_exists(self):
         self.sample1["exists"] = True
@@ -48,12 +53,86 @@ class StageTests(unittest.TestCase):
         self.assertEqual(result[0].id, self.sample1.id)
 
     def test_filter_classifications(self):
-        # @todo(Tyler)
-        pass
+        self.sample1["test_clfs"] = fo.Classifications(
+            classifications=[
+                fo.Classification(label="friend", confidence=0.9,),
+                fo.Classification(label="friend", confidence=0.3,),
+                fo.Classification(label="stopper", confidence=0.1,),
+                fo.Classification(label="big bro", confidence=0.6,),
+            ]
+        )
+        self.sample1.save()
+        self.sample2["test_clfs"] = fo.Classifications(
+            classifications=[
+                fo.Classification(label="friend", confidence=0.99,),
+                fo.Classification(label="tricam", confidence=0.2,),
+                fo.Classification(label="hex", confidence=0.8,),
+            ]
+        )
+        self.sample2.save()
+
+        view = self.dataset.filter_classifications(
+            "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
+        )
+
+        for sv in view:
+            for clf in sv.test_clfs.classifications:
+                self.assertGreater(clf.confidence, 0.5)
+                self.assertEqual(clf.label, "friend")
 
     def test_filter_detections(self):
-        # @todo(Tyler)
-        pass
+        self.sample1["test_dets"] = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="friend",
+                    confidence=0.9,
+                    bounding_box=[0, 0, 0.5, 0.5],
+                ),
+                fo.Detection(
+                    label="friend",
+                    confidence=0.3,
+                    bounding_box=[0.25, 0, 0.5, 0.1],
+                ),
+                fo.Detection(
+                    label="stopper",
+                    confidence=0.1,
+                    bounding_box=[0, 0, 0.5, 0.5],
+                ),
+                fo.Detection(
+                    label="big bro",
+                    confidence=0.6,
+                    bounding_box=[0, 0, 0.1, 0.5],
+                ),
+            ]
+        )
+        self.sample1.save()
+        self.sample2["test_dets"] = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="friend", confidence=0.99, bounding_box=[0, 0, 1, 1],
+                ),
+                fo.Detection(
+                    label="tricam",
+                    confidence=0.2,
+                    bounding_box=[0, 0, 0.5, 0.5],
+                ),
+                fo.Detection(
+                    label="hex",
+                    confidence=0.8,
+                    bounding_box=[0.35, 0, 0.2, 0.25],
+                ),
+            ]
+        )
+        self.sample2.save()
+
+        view = self.dataset.filter_detections(
+            "test_dets", (F("confidence") > 0.5) & (F("label") == "friend")
+        )
+
+        for sv in view:
+            for det in sv.test_dets.detections:
+                self.assertGreater(det.confidence, 0.5)
+                self.assertEqual(det.label, "friend")
 
     def test_limit(self):
         result = list(self.dataset.limit(1))
@@ -81,8 +160,11 @@ class StageTests(unittest.TestCase):
         self.assertEqual(result[0].id, self.sample1.id)
 
     def test_mongo(self):
-        # @todo(Tyler)
-        pass
+        result = list(
+            self.dataset.mongo([{"$match": {"filepath": "test_two.png"}}])
+        )
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample2.id)
 
     def test_select(self):
         result = list(self.dataset.select([self.sample1.id]))
@@ -90,8 +172,14 @@ class StageTests(unittest.TestCase):
         self.assertEqual(result[0].id, self.sample1.id)
 
     def test_select_fields(self):
-        # @todo(Tyler)
-        pass
+        for sv in self.dataset.select_fields(["tags"]):
+            self.assertSetEqual(sv.selected_field_names, {"tags"})
+            self.assertIsNone(sv.excluded_field_names)
+            with self.assertRaises(NameError):
+                sv.filepath
+            with self.assertRaises(NameError):
+                sv.metadata
+            self.assertListEqual(sv.tags, [])
 
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))

@@ -479,8 +479,8 @@ class SampleView(_Sample):
         Sample._reload_dataset_sample(self.dataset_name, self.id)
 
     @property
-    def field_names(self):
-        """An ordered list of the names of the fields of this sample."""
+    def view_field_names(self):
+        """An ordered list of the names of the fields of this sample view."""
         field_names = self._doc.field_names
         if self._selected_fields is not None:
             field_names = tuple(
@@ -495,12 +495,12 @@ class SampleView(_Sample):
     @property
     def selected_field_names(self):
         """An ordered list of the names of the fields of this sample."""
-        return self._selected_fields.copy()
+        return self._selected_fields
 
     @property
     def excluded_field_names(self):
         """An ordered list of the names of the fields of this sample."""
-        return self._excluded_fields.copy()
+        return self._excluded_fields
 
     def __str__(self):
         return self._doc.fancy_repr(
