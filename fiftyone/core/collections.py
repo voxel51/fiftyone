@@ -28,6 +28,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.stages as fos
 import fiftyone.types as fot
+import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
 
 
@@ -187,18 +188,6 @@ class SampleCollection(object):
             for sample in pb(self):
                 if sample.metadata is None or overwrite:
                     sample.compute_metadata()
-
-    def aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the collection.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to aggregate on
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        raise NotImplementedError("Subclass must implement aggregate()")
 
     @classmethod
     def list_stage_methods(cls):
@@ -382,6 +371,54 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.Take(size))
 
+    def draw_labels(self, anno_dir, label_fields=None, annotation_config=None):
+        """Renders annotated versions of the samples in the collection with
+        label field(s) overlaid to the given directory.
+
+        The filenames of the sample data are maintained, unless a name conflict
+        would occur in ``anno_dir``, in which case an index of the form
+        ``"-%d" % count`` is appended to the base filename.
+
+        Images are written in format ``fo.config.default_image_ext``.
+
+        Args:
+            anno_dir: the directory to write the annotated files
+            label_fields (None): a list of :class:`fiftyone.core.labels.Label`
+                fields to render. By default, all
+                :class:`fiftyone.core.labels.Label` fields are drawn
+            annotation_config (None): an
+                :class:`fiftyone.utils.annotations.AnnotationConfig` specifying
+                how to render the annotations
+
+        Returns:
+            the list of paths to the labeled images
+        """
+        label_fields_schema = self.get_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+        )
+
+        if label_fields is None:
+            label_fields = list(label_fields_schema.keys())
+
+        non_image_label_fields = [
+            lf
+            for lf in label_fields
+            if not issubclass(
+                label_fields_schema[lf].document_type, fol.ImageLabel
+            )
+        ]
+
+        if non_image_label_fields:
+            raise ValueError(
+                "Cannot draw label fields %s; only "
+                "`fiftyone.core.labels.ImageLabel` fields are supported"
+            )
+
+        # Draw labeled images
+        return foua.draw_labeled_images(
+            self, label_fields, anno_dir, annotation_config=annotation_config,
+        )
+
     def export(
         self,
         export_dir=None,
@@ -436,6 +473,18 @@ class SampleCollection(object):
         foud.export_samples(
             self, dataset_exporter=dataset_exporter, label_field=label_field
         )
+
+    def aggregate(self, pipeline=None):
+        """Calls the current MongoDB aggregation pipeline on the collection.
+
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to aggregate on
+
+        Returns:
+            an iterable over the aggregation result
+        """
+        raise NotImplementedError("Subclass must implement aggregate()")
 
     def to_dict(self):
         """Returns a JSON dictionary representation of the collection.
