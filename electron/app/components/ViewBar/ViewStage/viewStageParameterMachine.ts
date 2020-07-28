@@ -11,6 +11,8 @@ export const viewStageParameterMachineConfig = {
     stage: undefined,
     type: undefined,
     value: undefined,
+    submitted: undefined,
+    tail: undefined,
   },
   states: {
     reading: {

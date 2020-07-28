@@ -7,7 +7,14 @@ import viewStageParameterMachine, {
 
 const { pure } = actions;
 
-export const createParameter = (stage, parameter, type, value, submitted) => {
+export const createParameter = (
+  stage,
+  parameter,
+  type,
+  value,
+  submitted,
+  tail
+) => {
   return {
     id: uuid(),
     parameter: parameter,
@@ -15,6 +22,7 @@ export const createParameter = (stage, parameter, type, value, submitted) => {
     stage: stage,
     value: value ? value : "",
     submitted,
+    tail,
   };
 };
 
@@ -36,7 +44,10 @@ const viewStageMachine = Machine(
           parameters: (ctx) => {
             return ctx.parameters.map((parameter) => ({
               ...parameter,
-              ref: spawn(viewStageParameterMachine.withContext(parameter)),
+              ref: spawn(
+                viewStageParameterMachine.withContext(parameter),
+                parameter.id
+              ),
             }));
           },
         }),
@@ -55,18 +66,19 @@ const viewStageMachine = Machine(
           selected: {
             entry: assign({
               parameters: (ctx) => {
-                const parameters = ctx.stageInfo
-                  .filter((s) =>
-                    s.name.toLowerCase().includes(ctx.stage.toLowerCase())
-                  )[0]
-                  .params.map((parameter) =>
-                    createParameter(
-                      ctx.stage,
-                      parameter.name,
-                      parameter.type,
-                      ""
-                    )
-                  );
+                const result = ctx.stageInfo.filter((s) =>
+                  s.name.toLowerCase().includes(ctx.stage.toLowerCase())
+                )[0].params;
+                const parameters = result.map((parameter, i) =>
+                  createParameter(
+                    ctx.stage,
+                    parameter.name,
+                    parameter.type,
+                    "",
+                    false,
+                    i === result.length - 1
+                  )
+                );
                 return parameters.map((parameter, i) => ({
                   ...parameter,
                   ref: spawn(
@@ -76,7 +88,8 @@ const viewStageMachine = Machine(
                           initial: "editing",
                         })
                       : viewStageParameterMachine
-                    ).withContext(parameter)
+                    ).withContext(parameter),
+                    parameter.id
                   ),
                 }));
               },
@@ -144,11 +157,20 @@ const viewStageMachine = Machine(
                 }),
               ],
               cond: (ctx, e) => {
+                console.log(ctx, e);
                 const result = ctx.stageInfo.filter(
                   (s) => s.name.toLowerCase() === e.stage.toLowerCase()
                 );
                 return result.length === 1;
               },
+            },
+            {
+              target: "hist",
+              actions: [
+                assign({
+                  stage: (ctx) => ctx.prevStage,
+                }),
+              ],
             },
             {
               target: "reading",
@@ -169,7 +191,7 @@ const viewStageMachine = Machine(
           ],
           CANCEL: {
             target: "reading",
-            actions: assign({ stage: (ctx) => ctx.prevStage }),
+            actions: [assign({ stage: (ctx) => ctx.prevStage }), "blurInput"],
           },
         },
       },
@@ -183,6 +205,7 @@ const viewStageMachine = Machine(
     },
     on: {
       "PARAMETER.COMMIT": {
+        target: "submitted",
         actions: [
           assign({
             parameters: (ctx, e) => {
@@ -195,7 +218,8 @@ const viewStageMachine = Machine(
           }),
           pure((ctx) => {
             if (ctx.parameters.every((p) => p.submitted)) {
-              sendParent({ type: "STAGE.COMMIT", stage: ctx });
+              send({ type: "STAGE.COMMIT", stage: ctx });
+            } else {
             }
           }),
         ],

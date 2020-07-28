@@ -11,9 +11,11 @@ import {
 } from "../../../shared/colors";
 import SearchResults from "./SearchResults";
 
+const borderColor = fontColor;
+
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed #6c757d;
+  border: 2px dashed ${borderColor};
   border-radius: 3px;
   display: inline-block;
   position: relative;
@@ -38,7 +40,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 export default React.memo(({ parameterRef }) => {
   const [state, send] = useService(parameterRef);
   const inputRef = useRef(null);
-  const { id, completed, parameter, stage, value } = state.context;
+  const { id, completed, parameter, stage, value, tail } = state.context;
 
   useEffect(() => {
     parameterRef.execute(state, {
@@ -57,9 +59,11 @@ export default React.memo(({ parameterRef }) => {
       ? backgroundColorComplete
       : backgroundColorIncomplete,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
-    borderLeft: "none",
-    borderTopLeftRadius: state.matches("reading.submitted") ? 0 : 3,
-    borderBottomLeftRadius: state.matches("reading.submitted") ? 0 : 3,
+    borderLeftWidth: 0,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    borderTopRightRadius: tail ? 3 : 0,
+    borderBottomRightRadius: tail ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,

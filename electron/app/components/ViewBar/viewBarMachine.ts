@@ -58,7 +58,7 @@ const viewBarMachine = Machine({
             const newStage = createStage(stage, undefined, ctx.stageInfo);
             return {
               stage: newStage,
-              ref: spawn(viewStageMachine.withContext(newStage)),
+              ref: spawn(viewStageMachine.withContext(newStage), newStage.id),
             };
           });
         },
@@ -66,7 +66,7 @@ const viewBarMachine = Machine({
           const tailStage = createStage("", ctx.stages.length, ctx.stageInfo);
           return {
             ...tailStage,
-            ref: spawn(viewStageMachine.withContext(tailStage)),
+            ref: spawn(viewStageMachine.withContext(tailStage), tailStage.id),
           };
         },
       }),

@@ -13,6 +13,8 @@ import {
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 
+const borderColor = fontColor;
+
 const ViewStageContainer = styled.div`
   margin: 0.5rem;
   display: inline-block;
@@ -20,7 +22,7 @@ const ViewStageContainer = styled.div`
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed #6c757d;
+  border: 2px dashed ${borderColor};
   border-radius: 3px;
   display: inline-block;
   position: relative;
@@ -69,6 +71,10 @@ export default React.memo(({ stageRef, tailStage }) => {
       focusInput() {
         inputRef.current && inputRef.current.select();
       },
+
+      blurInput() {
+        inputRef.current && inputRef.current.blur();
+      },
     });
   }, [state, stageRef]);
 
@@ -86,7 +92,7 @@ export default React.memo(({ stageRef, tailStage }) => {
             onChange={(e) => send("CHANGE", { stage: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
-                send("COMMIT");
+                send({ type: "COMMIT", stage: e.target.value });
               }
             }}
             onKeyDown={(e) => {
