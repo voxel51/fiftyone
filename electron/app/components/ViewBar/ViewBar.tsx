@@ -44,23 +44,26 @@ export default () => {
 
   const { stages, tailStage } = state.context;
 
+  const tail = () =>
+    stages.length ? (
+      <ViewStageButton />
+    ) : (
+      <ViewStage key={tailStage.id} stageRef={tailStage.ref} tailStage={true} />
+    );
+
   return (
     <ViewBarDiv>
-      {state.matches("running") &&
-        stages.map((stage, i) => {
-          return (
-            <>
-              <ViewStageButton />
-              <ViewStage key={stage.id} stageRef={stage.ref} />
-            </>
-          );
-        }) && (
-          <ViewStage
-            key={tailStage.id}
-            stageRef={tailStage.ref}
-            tailStage={true}
-          />
-        )}
+      {state.matches("running")
+        ? stages.map((stage, i) => {
+            return (
+              <>
+                <ViewStageButton key={`insert-button-${stage.id}`} />
+                <ViewStage key={stage.id} stageRef={stage.ref} />
+              </>
+            );
+          })
+        : null}
+      {state.matches("running") ? tail() : null}
     </ViewBarDiv>
   );
 };

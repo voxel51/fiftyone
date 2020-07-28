@@ -46,11 +46,11 @@ const ViewStageInput = styled(AuosizeInput)`
 
 export const ViewStageButton = styled.button``;
 
-export default React.memo(({ stageRef, tailStage }) => {
+export default React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage, stageInfo, parameters } = state.context;
+  const { id, stage, stageInfo, parameters } = state.context;
 
   const isCompleted = ["reading.selected", "reading.submitted"].some(
     state.matches
@@ -85,31 +85,27 @@ export default React.memo(({ stageRef, tailStage }) => {
   return (
     <ViewStageContainer>
       <ViewStageDiv style={props}>
-        {tailStage ? (
-          <ViewStageInput
-            placeholder="+ search sample"
-            value={stage}
-            onFocus={() => send("EDIT")}
-            onBlur={() =>
-              state.matches("editing.searchResults.notHovering") && send("BLUR")
+        <ViewStageInput
+          placeholder="+ search sample"
+          value={stage}
+          onFocus={() => !state.matches("editing") && send("EDIT")}
+          onBlur={() =>
+            state.matches("editing.searchResults.notHovering") && send("BLUR")
+          }
+          onChange={(e) => send("CHANGE", { stage: e.target.value })}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              send({ type: "COMMIT", stage: e.target.value });
             }
-            onChange={(e) => send("CHANGE", { stage: e.target.value })}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                send({ type: "COMMIT", stage: e.target.value });
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send("BLUR");
-              }
-            }}
-            style={{ fontSize: "1rem" }}
-            ref={inputRef}
-          />
-        ) : (
-          <ViewStageButton>+</ViewStageButton>
-        )}
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              send("BLUR");
+            }
+          }}
+          style={{ fontSize: "1rem" }}
+          ref={inputRef}
+        />
         {state.matches("editing") && (
           <SearchResults
             results={stageInfo

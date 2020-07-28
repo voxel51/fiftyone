@@ -65,18 +65,17 @@ const viewStageMachine = Machine(
           pending: {},
           selected: {},
           submitted: {},
-          hist: {
-            type: "history",
-          },
           validate: {
             always: [
               {
                 target: "submitted",
                 cond: (ctx) => ctx.parameters.every((p) => p.submitted),
-                actions: sendParent((ctx) => ({
-                  type: "STAGE.COMMIT",
-                  stage: ctx,
-                })),
+                actions: [
+                  sendParent((ctx) => ({
+                    type: "STAGE.COMMIT",
+                    stage: ctx,
+                  })),
+                ],
               },
               {
                 target: "selected",
@@ -88,26 +87,17 @@ const viewStageMachine = Machine(
         on: {
           EDIT: {
             target: "editing",
-            actions: "focusInput",
-          },
-          SUBMIT: {
-            target: "reading.submitted",
-            actions: sendParent((ctx) => ({
-              type: "STAGE.COMMIT",
-              stage: ctx,
-            })),
-          },
-          EDIT_PARAMETER: {
-            target: "reading.pending",
-            actions: send((ctx, e) => ({ type: "EDIT", to: e.parameter.ref })),
           },
         },
       },
       editing: {
-        onEntry: assign({
-          prevStage: (ctx) => ctx.stage,
-          prevSubmitted: (ctx) => ctx.submitted,
-        }),
+        onEntry: [
+          assign({
+            prevStage: (ctx) => ctx.stage,
+            prevSubmitted: (ctx) => ctx.submitted,
+          }),
+          "focusInput",
+        ],
         type: "parallel",
         states: {
           input: {
@@ -191,17 +181,6 @@ const viewStageMachine = Machine(
               },
             },
             {
-              target: "reading.hist",
-              actions: [
-                assign({
-                  stage: ({ prevStage }) => prevStage,
-                  submitted: ({ prevSubmitted }) => prevSubmitted,
-                }),
-                "blurInput",
-              ],
-              cond: (ctx) => ctx.prevSubmitted,
-            },
-            {
               target: "reading.pending",
               actions: [
                 assign({
@@ -213,17 +192,6 @@ const viewStageMachine = Machine(
             },
           ],
           BLUR: [
-            {
-              target: "reading.hist",
-              actions: [
-                assign({
-                  stage: ({ prevStage }) => prevStage,
-                  submitted: ({ prevSubmitted }) => prevSubmitted,
-                }),
-                "blurInput",
-              ],
-              cond: (ctx) => ctx.prevSubmitted,
-            },
             {
               target: "reading.pending",
               actions: [
@@ -239,10 +207,6 @@ const viewStageMachine = Machine(
       },
       deleted: {
         onEntry: sendParent((ctx) => ({ type: "STAGE.DELETE", id: ctx.id })),
-      },
-      hist: {
-        type: "history",
-        history: "deep",
       },
     },
     on: {
@@ -285,6 +249,16 @@ const viewStageMachine = Machine(
                     idx -= 1;
                   }
                 },
+              }),
+            },
+            {
+              cond: (ctx) =>
+                ctx.parameters.reduce(
+                  (acc, cur) => (cur.submitted ? acc : acc + 1),
+                  0
+                ) === 0,
+              actions: assign({
+                submitted: () => true,
               }),
             },
           ]),

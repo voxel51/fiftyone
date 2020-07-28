@@ -77,11 +77,36 @@ const viewBarMachine = Machine({
       actions: [
         assign({
           stages: (ctx, e) => {
+            if (e.stage.insertAt !== undefined) {
+              const r = [
+                ...ctx.stages.slice(0, e.stage.insertAt),
+                { ...e.stage, insertAt: undefined, ref: ctx.tailStage.ref },
+                ...ctx.stages.slice(e.stage.insertAt),
+              ];
+              return r;
+            }
             return ctx.stages.map((stage) => {
               return stage.id === e.stage.id
                 ? { ...stage, ...e.stage, ref: stage.ref }
                 : stage;
             });
+          },
+          tailStage: (ctx, { stage }) => {
+            if (
+              stage.insertAt !== undefined &&
+              stage.insertAt === ctx.stages.length
+            ) {
+              const tailStage = createStage(
+                "",
+                ctx.stages.length + 1,
+                ctx.stageInfo
+              );
+              return {
+                ...tailStage,
+                ref: spawn(viewStageMachine.withContext(tailStage)),
+              };
+            }
+            return ctx.tailStage;
           },
         }),
       ],

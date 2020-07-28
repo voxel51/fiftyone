@@ -54,6 +54,8 @@ export default React.memo(({ parameterRef }) => {
     });
   }, [state, parameterRef]);
 
+  console.log(state.toStrings());
+
   const props = useSpring({
     backgroundColor: state.matches("reading.submitted")
       ? backgroundColorComplete
@@ -78,10 +80,12 @@ export default React.memo(({ parameterRef }) => {
         value={value}
         onFocus={() => !state.matches("editing") && send("EDIT")}
         onBlur={() => state.matches("editing") && send("BLUR")}
-        onChange={(e) => send("CHANGE", { value: e.target.value })}
+        onChange={(e) => {
+          send("CHANGE", { value: e.target.value });
+        }}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
-            send("COMMIT");
+            state.matches("editing") && send("COMMIT");
           }
         }}
         onKeyDown={(e) => {

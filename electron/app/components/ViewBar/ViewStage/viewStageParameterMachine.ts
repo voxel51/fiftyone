@@ -29,40 +29,36 @@ export const viewStageParameterMachineConfig = {
         },
         pending: {},
         submitted: {},
-        hist: {
-          type: "history",
-        },
       },
       on: {
         EDIT: {
           target: "editing",
-          actions: ["focusInput"],
+          actions: () => console.log("edit"),
         },
       },
     },
     editing: {
-      onEntry: [assign({ prevValue: (ctx) => ctx.value }), "focusInput"],
+      onEntry: [
+        assign({
+          prevValue: (ctx) => {
+            return ctx.value;
+          },
+        }),
+        "focusInput",
+      ],
       on: {
         CHANGE: {
-          actions: assign({
-            value: (ctx, e) => {
-              return e.value;
-            },
-          }),
+          actions: [
+            assign({
+              value: (ctx, e) => e.value,
+            }),
+            () => console.log("change"),
+          ],
         },
         COMMIT: [
           {
             target: "reading.submitted",
-            actions: [
-              assign({
-                submitted: true,
-              }),
-              sendParent((ctx) => ({
-                type: "PARAMETER.COMMIT",
-                parameter: ctx,
-              })),
-              "blurInput",
-            ],
+            actions: ["blurInput", () => console.log("commit")],
             cond: (ctx) => {
               return ctx.value.trim().length > 0;
             },
@@ -70,12 +66,16 @@ export const viewStageParameterMachineConfig = {
         ],
         BLUR: {
           target: "reading",
+          actions: () => console.log("blur"),
         },
         CANCEL: {
           target: "reading",
-          actions: assign({
-            value: (ctx) => ctx.prevValue,
-          }),
+          actions: [
+            assign({
+              value: (ctx) => ctx.prevValue,
+            }),
+            () => console.log("cancel"),
+          ],
         },
       },
     },
