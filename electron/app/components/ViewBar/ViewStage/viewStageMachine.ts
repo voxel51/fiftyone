@@ -5,7 +5,7 @@ import viewStageParameterMachine, {
   viewStageParameterMachineConfig,
 } from "./viewStageParameterMachine";
 
-const { pure } = actions;
+const { choose } = actions;
 
 export const createParameter = (
   stage,
@@ -212,12 +212,44 @@ const viewStageMachine = Machine(
               });
             },
           }),
-          pure((ctx) => {
-            if (ctx.parameters.every((p) => p.submitted)) {
-              sendParent({ type: "STAGE.COMMIT", stage: ctx });
-            } else {
-            }
-          }),
+          choose([
+            {
+              cond: (ctx, e) => ctx.parameters.every((p) => p.submitted),
+              actions: [
+                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
+              ],
+            },
+            {
+              cond: (ctx, e) => !ctx.parameters.every((p) => p.submitted),
+              actions: [
+                send((ctx, e) => {
+                  const reducer = (acc, cur, idx) =>
+                    cur.id === e.id ? idx : acc;
+                  const refIndex = ctx.parameters.reduce(reducer, undefined);
+                  let idx = refIndex + 1;
+                  while (idx < ctx.parameters.length) {
+                    if (!ctx.parameters[idx].submitted) {
+                      return {
+                        type: "EDIT",
+                        to: ctx.parameters[idx].ref,
+                      };
+                    }
+                    idx += 1;
+                  }
+                  idx = refIndex - 1;
+                  while (true) {
+                    if (!ctx.parameters[idx].submitted) {
+                      return {
+                        type: "EDIT",
+                        to: ctx.parameters[idx].ref,
+                      };
+                    }
+                    idx -= 1;
+                  }
+                }),
+              ],
+            },
+          ]),
         ],
       },
     },
