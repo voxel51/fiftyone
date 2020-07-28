@@ -33,13 +33,13 @@ IOU_THRESHOLDS = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1,
         endpoint=True)
 
 def evaluate_detections(samples, pred_field, gt_field):
-    """Iterates through each sample and matches predicted detections to grouth
+    """Iterates through each sample and matches predicted detections to ground
     truth detections. True and false positive counts for each IoU threshold are
     stored in every Detection object.
 
     Args:
         samples: an iterator of samples like a Dataset or DatasetView 
-        pred_field: a string indicating the field namein each sample containing
+        pred_field: a string indicating the field name in each sample containing
             predicted detections
         gt_field: a string indicating the field name in each sample containing
             ground truth detections
@@ -57,6 +57,7 @@ def evaluate_detections(samples, pred_field, gt_field):
             # sort preds and gt detections by category label 
             sample_cats = {}
             for det in preds.detections:
+                det[pred_key] = {}
                 det[pred_key]["ious"] = {}
                 det[pred_key]["matches"] = dict(zip(IOU_THRESHOLDS.astype(str),
                     np.zeros(IOU_THRESHOLDS.shape)-1))
@@ -69,6 +70,7 @@ def evaluate_detections(samples, pred_field, gt_field):
                 sample_cats[det.label]["preds"].append(det)
     
             for det in gts.detections:
+                det[gt_key] = {}
                 det[gt_key]["matches"] = dict(zip(IOU_THRESHOLDS.astype(str),
                     np.zeros(IOU_THRESHOLDS.shape)-1))
                 det[gt_key]["eval_id"] = eval_id
@@ -94,11 +96,11 @@ def evaluate_detections(samples, pred_field, gt_field):
     
                 gt_boxes = [list(g.bounding_box) for g in gts]
                 pred_boxes = [list(p.bounding_box) for p in preds]
-
-                if "iscrowd" in g.attributes:
-                    iscrowd = [g.attributes["iscrowd"].value for g in gts]
-                else:
-                    iscrowd = [0]*len(gt_boxes)
+                
+                iscrowd = [0]*len(gt_boxes)
+                for gind, g in enumerate(gts):
+                    if "iscrowd" in g.attributes:
+                        iscrowd[gind] = g["iscrowd"].value
     
                 # Get the iou of every prediction with every ground truth
                 # Shape = [num_preds, num_gts]
@@ -111,9 +113,12 @@ def evaluate_detections(samples, pred_field, gt_field):
             # Store true and false positives
             # This follows:
             # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L273
-            sample[pred_field][pred_key]["true_positives"] = {}
-            sample[pred_field][pred_key]["false_positives"] = {}
-            sample[pred_field][pred_key]["false_negatives"] = {}
+            sample[pred_field][pred_key] = {
+                    "true_positives": {},
+                    "false_positives": {},
+                    "false_negatives": {}
+                }
+
             for iou_ind, iou_thresh in enumerate(IOU_THRESHOLDS):
                 true_positives = 0
                 false_positives = 0
@@ -158,7 +163,7 @@ def evaluate_detections(samples, pred_field, gt_field):
                                 # If the prediction was matched, store the eval id of
                                 # the pred in the gt and of the gt in the pred
                                 gt_by_id[best_match][gt_key]["matches"][str(iou_thresh)] = \
-                                    pred["eval_id"]
+                                    pred[pred_key]["eval_id"]
                                 pred[pred_key]["matches"][str(iou_thresh)] = \
                                     (best_match, best_match_iou)
                                 true_positives += 1
