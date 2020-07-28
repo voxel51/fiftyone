@@ -353,6 +353,8 @@ class Sample(_Sample):
             dataset_name: the name of the dataset to reload.
             sample_id: the ID of the sample to reload
         """
+        # @todo(Tyler) it could optimize the code to instead flag the sample as
+        #   "stale", then have it reload once __getattribute__ is called.
         dataset_instances = cls._instances[dataset_name]
         sample = dataset_instances.get(sample_id, None)
         if sample:
