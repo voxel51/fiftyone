@@ -201,7 +201,7 @@ class ListFilter(ViewStage):
     """Filters the list elements in the samples in the stage.
 
     Args:
-        field: the field to filter, which must be a list
+        field: the field to filter, which must be a list field
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
@@ -229,22 +229,27 @@ class ListFilter(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        cond = self._filter
-        if isinstance(cond, ViewExpression):
-            cond = cond.to_mongo(in_list=True)
-
         return [
             {
                 "$addFields": {
                     self._field: {
-                        "$filter": {"input": "$" + self._field, "cond": cond}
+                        "$filter": {
+                            "input": "$" + self._field,
+                            "cond": self._get_mongo_filter(),
+                        }
                     }
                 }
             }
         ]
 
+    def _get_mongo_filter(self):
+        if isinstance(self._filter, ViewExpression):
+            return self._filter.to_mongo(in_list=True)
+
+        return self._filter
+
     def _kwargs(self):
-        return {"field": self._field, "filter": self._filter}
+        return {"field": self._field, "filter": self._get_mongo_filter()}
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -279,14 +284,16 @@ class Match(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        filt = self._filter
-        if isinstance(filt, ViewExpression):
-            filt = {"$expr": filt.to_mongo()}
+        return [{"$match": self._get_mongo_filter()}]
 
-        return [{"$match": filt}]
+    def _get_mongo_filter(self):
+        if isinstance(self._filter, ViewExpression):
+            return {"$expr": self._filter.to_mongo()}
+
+        return self._filter
 
     def _kwargs(self):
-        return {"filter": self._filter}
+        return {"filter": self._get_mongo_filter()}
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -451,22 +458,28 @@ class SortBy(ViewStage):
         """
         order = DESCENDING if self._reverse else ASCENDING
 
-        if not isinstance(self._field_or_expr, (ViewExpression, dict)):
-            return [{"$sort": {self._field_or_expr: order}}]
+        field_or_expr = self._get_mongo_field_or_expr()
 
-        if isinstance(self._field_or_expr, ViewExpression):
-            expr = self._field_or_expr.to_mongo()
-        else:
-            expr = self._field_or_expr
+        if not isinstance(field_or_expr, dict):
+            return [{"$sort": {field_or_expr: order}}]
 
         return [
-            {"$addFields": {"_sort_field": expr}},
+            {"$addFields": {"_sort_field": field_or_expr}},
             {"$sort": {"_sort_field": order}},
             {"$unset": "_sort_field"},
         ]
 
+    def _get_mongo_field_or_expr(self):
+        if isinstance(self._field_or_expr, ViewExpression):
+            return self._field_or_expr.to_mongo()
+
+        return self._field_or_expr
+
     def _kwargs(self):
-        return {"field_or_expr": self._field_or_expr, "reverse": self._reverse}
+        return {
+            "field_or_expr": self._get_mongo_field_or_expr(),
+            "reverse": self._reverse,
+        }
 
 
 class Skip(ViewStage):
