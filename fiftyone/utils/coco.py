@@ -292,7 +292,7 @@ class COCOObject(etas.Serializable):
         category_id: the category ID of the object
         bbox: a bounding box for the object in ``[xmin, ymin, width, height]``
             format
-        area (None): the area of the bounding box
+        area (None): the area of the bounding box, in pixels
         iscrowd (None): 0 for polygon (object instance) segmentation and 1 for
             uncompressed RLE (crowd)
         segmentation (None): a list of segmentation data
@@ -360,8 +360,9 @@ class COCOObject(etas.Serializable):
         ]
 
         if detection.has_attribute("area"):
-            area = int(detection.get_attribute_value("area"))
+            area = detection.get_attribute_value("area")
         else:
+            # Round to one decimal place, as recommended by COCO authors
             area = round(bbox[2] * bbox[3], 1)
 
         if detection.has_attribute("iscrowd"):
@@ -397,8 +398,9 @@ class COCOObject(etas.Serializable):
 
         if self.area is not None:
             # pylint: disable=unsupported-assignment-operation
-            area = self.area / (width * height)
-            detection.attributes["area"] = fol.NumericAttribute(value=area)
+            detection.attributes["area"] = fol.NumericAttribute(
+                value=self.area
+            )
 
         if self.iscrowd is not None:
             # pylint: disable=unsupported-assignment-operation
