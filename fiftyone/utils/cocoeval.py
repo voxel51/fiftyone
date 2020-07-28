@@ -113,7 +113,7 @@ def evaluate_detections(samples, pred_field, gt_field):
             # Store true and false positives
             # This follows:
             # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L273
-            sample[pred_field][pred_key] = {
+            result_dict = {
                     "true_positives": {},
                     "false_positives": {},
                     "false_negatives": {}
@@ -170,17 +170,16 @@ def evaluate_detections(samples, pred_field, gt_field):
                             else:
                                 false_positives += 1
     
-                pred_result_dict = sample[pred_field][pred_key]
-                pred_result_dict["true_positives"][str(iou_thresh)] = \
+                result_dict["true_positives"][str(iou_thresh)] = \
                     true_positives
-                pred_result_dict["false_positives"][str(iou_thresh)] = \
+                result_dict["false_positives"][str(iou_thresh)] = \
                     false_positives
                 false_negatives = len( 
                         [g for g in dets["gts"] 
                             if g[gt_key]["matches"][str(iou_thresh)] == -1]
                     )
     
-                pred_result_dict["false_negatives"][str(iou_thresh)] = \
+                result_dict["false_negatives"][str(iou_thresh)] = \
                     false_negatives
 
                 # Add the top level fields for tps, fps, and fns of the most
@@ -189,6 +188,8 @@ def evaluate_detections(samples, pred_field, gt_field):
                     sample["tp_iou75"] = true_positives
                     sample["fp_iou75"] = false_positives
                     sample["fn_iou75"] = false_negatives
+
+            sample[pred_field][pred_key] = result_dict
 
             # TODO: Compute sample-wise AP
 
