@@ -25,7 +25,7 @@ def test_zoo():
     print(dataset)
 
     # Print a few random samples from the dataset
-    view = dataset.view().take(5)
+    view = dataset.take(5)
     for sample in view:
         label = sample.ground_truth.label
         print("%s: %s" % (label, sample.filepath))

@@ -97,7 +97,7 @@ class ServerServiceTests(unittest.TestCase):
         self.assertEqual(session, client)
 
     def step_get_current_state(self):
-        self.session.view = self.dataset.view().limit(1)
+        self.session.view = self.dataset.limit(1)
         self.wait_for_response()
         session = _serialize(self.session.state)
         self.client.emit(
@@ -130,7 +130,6 @@ class ServerServiceTests(unittest.TestCase):
     def step_lengths(self):
         self.session.dataset = self.dataset
         self.wait_for_response()
-        labels = self.dataset.view().get_label_fields()
         tags = self.dataset.view().get_tags()
 
         self.client.emit("lengths", "", callback=self.client_callback)
@@ -139,7 +138,6 @@ class ServerServiceTests(unittest.TestCase):
         def sort(l):
             return sorted(l, key=lambda f: f["_id"]["field"])
 
-        self.assertEqual(sort(client["labels"]), sort(labels))
         self.assertEqual(client["tags"], tags)
 
     def step_get_distributions(self):
