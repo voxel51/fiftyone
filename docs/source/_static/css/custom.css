@@ -439,6 +439,13 @@ article.pytorch-article .tutorials-callout-container {
   padding-bottom: 0px;
 }
 
+article.pytorch-article
+  .tutorials-callout-container
+  .text-container
+  .body-paragraph {
+  font-size: 1rem;
+}
+
 article.pytorch-article .tutorials-callout-container .btn.callout-button {
   font-size: 1rem;
 }
