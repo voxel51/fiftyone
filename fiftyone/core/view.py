@@ -38,8 +38,8 @@ class DatasetView(foc.SampleCollection):
 
     Example use::
 
-        # Print the paths for 5 random samples in the dataset
-        view = dataset.view().take(5)
+        # Print paths for 5 random samples from the test split
+        view = dataset.match_tag("test").take(5)
         for sample in view:
             print(sample.filepath)
 
