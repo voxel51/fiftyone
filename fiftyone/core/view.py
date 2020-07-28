@@ -209,11 +209,11 @@ class DatasetView(foc.SampleCollection):
         return self._add_view_stage(stage)
 
     def aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the view.
+        """Calls the view's current MongoDB aggregation pipeline.
 
         Args:
-            pipeline (None): an optional MongoDB aggregation pipeline (list of
-                dicts) to append to the view's pipeline before aggregation
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to append to the view's pipeline before calling it
 
         Returns:
             an iterable over the aggregation result
