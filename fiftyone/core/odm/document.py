@@ -259,12 +259,7 @@ class Document(BaseDocument, mongoengine.Document):
 
     meta = {"abstract": True}
 
-    def save(
-        self,
-        validate=True,
-        clean=True,
-        **kwargs
-    ):
+    def save(self, validate=True, clean=True, **kwargs):
         """Save the :class:`Document` to the database. If the document already
         exists, it will be updated, otherwise it will be created. Returns the
         saved object instance.
@@ -312,7 +307,27 @@ class Document(BaseDocument, mongoengine.Document):
                     object_id = collection.insert_one(doc).inserted_id
             else:
                 # SAVE UPDATE
-                object_id, created = self._save_update(doc)
+                object_id = doc["_id"]
+                created = False
+
+                updates, removals = self._delta()
+
+                update_doc = {}
+                if updates:
+                    update_doc["$set"] = updates
+                if removals:
+                    update_doc["$unset"] = removals
+
+                if update_doc:
+                    last_error = self._update(object_id, update_doc)
+
+                    if last_error is not None:
+                        updated_existing = last_error.get("updatedExisting")
+                        if updated_existing is False:
+                            created = True
+                            # !!! This is bad, means we accidentally created a
+                            # new, potentially corrupted document. See
+                            # https://github.com/MongoEngine/mongoengine/issues/564
 
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
@@ -336,40 +351,16 @@ class Document(BaseDocument, mongoengine.Document):
 
         return self
 
-    def _save_update(self, doc):
+    def _update(self, object_id, update_doc):
         """Update an existing document.
 
         Helper method, should only be used inside save().
         """
-        created = False
-
-        object_id = doc["_id"]
-
-        updates, removals = self._delta()
-
-        update_doc = {}
-        if updates:
-            update_doc["$set"] = updates
-        if removals:
-            update_doc["$unset"] = removals
-
-        if update_doc:
-            # Update the document
-            last_error = self._get_collection().update_one(
-                {"_id": object_id},
-                update_doc,
-                upsert=True
-            ).raw_result
-
-            if last_error is not None:
-                updated_existing = last_error.get("updatedExisting")
-                if updated_existing is False:
-                    created = True
-                    # !!! This is bad, means we accidentally created a new,
-                    # potentially corrupted document. See
-                    # https://github.com/MongoEngine/mongoengine/issues/564
-
-        return object_id, created
+        return (
+            self._get_collection()
+            .update_one({"_id": object_id}, update_doc, upsert=True)
+            .raw_result
+        )
 
 
 class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
