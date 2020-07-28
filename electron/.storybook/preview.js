@@ -28,8 +28,7 @@ const getTheme = () => {
   const raw = radios(
     "Theme",
     Object.fromEntries(Object.keys(themeChoices).map((k) => [k, k])),
-    "Light",
-    "theme"
+    "Light"
   );
   return themeChoices[raw];
 };

@@ -14,6 +14,7 @@ export const styles = css`
     height: 100%;
     margin: 0 !important;
     padding: 0 !important;
+    background-color: ${({ theme }) => theme.background};
   }
 
   input {
