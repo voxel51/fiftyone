@@ -109,7 +109,7 @@ function Dataset(props) {
       </Sidebar>
       <Ref innerRef={stickyRef}>
         <Container fluid={true}>
-          <Sticky context={stickyRef}>
+          {/*<Sticky context={stickyRef}>*/}
             <Container
               fluid={true}
               style={{
@@ -131,7 +131,7 @@ function Dataset(props) {
                 })}
               </Menu>
             </Container>
-          </Sticky>
+          {/*</Sticky>*/}
           <Switch>
             <Route exact path={routes.DATASET}>
               <Redirect to={routes.SAMPLES} />
