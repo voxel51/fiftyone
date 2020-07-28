@@ -196,8 +196,8 @@ class DatasetView(foc.SampleCollection):
                 yield self._dataset._load_sample_from_dict(d)
             except Exception as e:
                 raise ValueError(
-                    "Failed to load database document as a Sample. This is"
-                    "likely due to an invalid stage in the DatasetView."
+                    "Failed to load sample from the database. This is likely "
+                    "due to an invalid stage in the DatasetView"
                 ) from e
 
     def iter_samples_with_index(self):

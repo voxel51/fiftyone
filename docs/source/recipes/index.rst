@@ -34,8 +34,6 @@ workflows.
     <div id="tutorial-cards">
     <div class="list">
 
-.. Add recipe cards below
-
 .. customcarditem::
     :header: Remove duplicate images from a dataset
     :description: Turn your data into a FiftyOne Dataset and automatically find and remove duplicate and near-duplicate images from your dataset.
@@ -54,6 +52,13 @@ workflows.
     :header: Convert dataset formats on disk
     :description: Use FiftyOne's powerful dataset import/export features to convert your datasets on disk between standard (or custom) formats.
     :link: convert_datasets.html
+    :image: ../_static/images/voxel51_300dpi.png
+    :tags: Getting-Started
+
+.. customcarditem::
+    :header: Draw labels on samples
+    :description: Render labels on the samples in your FiftyOne Dataset with a single line of code.
+    :link: draw_labels.html
     :image: ../_static/images/voxel51_300dpi.png
     :tags: Getting-Started
 
@@ -77,8 +82,6 @@ workflows.
     :link: custom_parser.html
     :image: ../_static/images/voxel51_300dpi.png
     :tags: Advanced
-
-.. End of recipe cards
 
 .. raw:: html
 
