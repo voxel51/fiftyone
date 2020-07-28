@@ -44,7 +44,10 @@ const viewStageMachine = Machine(
           parameters: (ctx) => {
             return ctx.parameters.map((parameter) => ({
               ...parameter,
-              ref: spawn(viewStageParameterMachine.withContext(parameter)),
+              ref: spawn(
+                viewStageParameterMachine.withContext(parameter),
+                parameter.id
+              ),
             }));
           },
         }),
@@ -85,7 +88,8 @@ const viewStageMachine = Machine(
                           initial: "editing",
                         })
                       : viewStageParameterMachine
-                    ).withContext(parameter)
+                    ).withContext(parameter),
+                    parameter.id
                   ),
                 }));
               },
@@ -100,6 +104,17 @@ const viewStageMachine = Machine(
           EDIT: {
             target: "editing",
             actions: "focusInput",
+          },
+          SUBMIT: {
+            target: "reading.submitted",
+            actions: sendParent((ctx) => ({
+              type: "STAGE.COMMIT",
+              stage: ctx,
+            })),
+          },
+          EDIT_PARAMETER: {
+            target: "reading.pending",
+            actions: send((ctx, e) => ({ type: "EDIT", to: e.parameter.ref })),
           },
         },
       },
@@ -201,7 +216,7 @@ const viewStageMachine = Machine(
     },
     on: {
       "PARAMETER.COMMIT": {
-        target: "reading.submitted",
+        target: "reading",
         actions: [
           assign({
             parameters: (ctx, e) => {
@@ -214,40 +229,39 @@ const viewStageMachine = Machine(
           }),
           choose([
             {
-              cond: (ctx, e) => ctx.parameters.every((p) => p.submitted),
-              actions: [
-                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
-              ],
+              cond: (ctx) => ctx.parameters.every((p) => p.submitted),
+              actions: send((ctx) => ({ type: "STAGE.COMMIT" })),
             },
             {
-              cond: (ctx, e) => !ctx.parameters.every((p) => p.submitted),
-              actions: [
-                send((ctx, e) => {
-                  const reducer = (acc, cur, idx) =>
-                    cur.id === e.id ? idx : acc;
-                  const refIndex = ctx.parameters.reduce(reducer, undefined);
-                  let idx = refIndex + 1;
-                  while (idx < ctx.parameters.length) {
-                    if (!ctx.parameters[idx].submitted) {
-                      return {
-                        type: "EDIT",
-                        to: ctx.parameters[idx].ref,
-                      };
-                    }
-                    idx += 1;
+              cond: (ctx) => !ctx.parameters.every((p) => p.submitted),
+              actions: send((ctx, e) => {
+                const reducer = (acc, cur, idx) => {
+                  return cur.id === e.parameter.id ? idx : acc;
+                };
+
+                const refIndex = ctx.parameters.reduce(reducer, undefined);
+                let idx = refIndex + 1;
+                while (idx < ctx.parameters.length) {
+                  if (!ctx.parameters[idx].submitted) {
+                    console.log(ctx.parameters[idx].ref);
+                    return {
+                      type: "EDIT_PARAMETER",
+                      parameter: ctx.parameters[idx],
+                    };
                   }
-                  idx = refIndex - 1;
-                  while (true) {
-                    if (!ctx.parameters[idx].submitted) {
-                      return {
-                        type: "EDIT",
-                        to: ctx.parameters[idx].ref,
-                      };
-                    }
-                    idx -= 1;
+                  idx += 1;
+                }
+                idx = refIndex - 1;
+                while (true) {
+                  if (!ctx.parameters[idx].submitted) {
+                    return {
+                      type: "EDIT_PARAMETER",
+                      parameter: ctx.parameters[idx],
+                    };
                   }
-                }),
-              ],
+                  idx -= 1;
+                }
+              }),
             },
           ]),
         ],
