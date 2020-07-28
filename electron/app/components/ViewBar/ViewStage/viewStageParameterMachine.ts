@@ -66,10 +66,6 @@ export const viewStageParameterMachineConfig = {
         ],
         BLUR: {
           target: "reading",
-          actions: sendParent((ctx) => ({
-            type: "PARAMETER.COMMIT",
-            parameter: ctx,
-          })),
         },
         CANCEL: {
           target: "reading",
