@@ -432,3 +432,25 @@ article.pytorch-article .reference.download.internal {
 #tutorial-cards-container .pagination .page {
   border: 1px solid var(--bg-light-secondary);
 }
+
+/* callout button */
+
+article.pytorch-article .tutorials-callout-container {
+  padding-bottom: 0px;
+}
+
+article.pytorch-article .tutorials-callout-container .btn.callout-button {
+  font-size: 1rem;
+}
+
+article.pytorch-article
+  .tutorials-callout-container
+  .btn.callout-button:hover:after {
+  background-color: var(--color-primary);
+}
+
+/* image is located in docs/theme/images */
+a.with-right-arrow,
+.btn.with-right-arrow {
+  background-image: url(../images/chevron-right-orange.svg);
+}
