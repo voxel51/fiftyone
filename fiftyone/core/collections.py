@@ -61,7 +61,7 @@ view_stage = _make_registrar()
 
 
 class SampleCollection(object):
-    """Abstract class representing a collection of
+    """Abstract class representing an ordered collection of
     :class:`fiftyone.core.sample.Sample` instances in a
     :class:`fiftyone.core.dataset.Dataset`.
     """
