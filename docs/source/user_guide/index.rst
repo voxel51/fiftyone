@@ -43,7 +43,7 @@ on your data quickly and easily.
     :button_link: export_datasets.html
 
 .. customcalloutitem::
-    :header: Drawing labels on sample
+    :header: Drawing labels on samples
     :description: Render labels on the samples in your FiftyOne dataset with a single line of code.
     :button_text: Learn more about drawing labels on samples
     :button_link: draw_labels.html
