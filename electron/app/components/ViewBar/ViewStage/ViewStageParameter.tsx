@@ -59,6 +59,7 @@ export default React.memo(({ parameterRef }) => {
       ? backgroundColorComplete
       : backgroundColorIncomplete,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
+    borderRightWidth: state.matches("reading.submitted") && !tail ? 1 : 2,
     borderLeftWidth: 0,
     borderTopLeftRadius: 0,
     borderBottomLeftRadius: 0,
@@ -70,15 +71,13 @@ export default React.memo(({ parameterRef }) => {
     },
   });
 
-  console.log(state.toStrings());
-
   return (
     <ViewStageParameterDiv style={props}>
       <ViewStageParameterInput
         placeholder={parameter}
         value={value}
-        onFocus={() => send("EDIT")}
-        onBlur={() => send("BLUR")}
+        onFocus={() => !state.matches("editing") && send("EDIT")}
+        onBlur={() => state.matches("editing") && send("BLUR")}
         onChange={(e) => send("CHANGE", { value: e.target.value })}
         onKeyPress={(e) => {
           if (e.key === "Enter") {

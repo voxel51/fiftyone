@@ -63,41 +63,7 @@ const viewStageMachine = Machine(
             ],
           },
           pending: {},
-          selected: {
-            entry: assign({
-              parameters: (ctx) => {
-                if (ctx.parameters.length) {
-                  return ctx.parameters;
-                }
-                const result = ctx.stageInfo.filter((s) =>
-                  s.name.toLowerCase().includes(ctx.stage.toLowerCase())
-                )[0].params;
-                const parameters = result.map((parameter, i) =>
-                  createParameter(
-                    ctx.stage,
-                    parameter.name,
-                    parameter.type,
-                    "",
-                    false,
-                    i === result.length - 1
-                  )
-                );
-                return parameters.map((parameter, i) => ({
-                  ...parameter,
-                  ref: spawn(
-                    (i === 0
-                      ? Machine({
-                          ...viewStageParameterMachineConfig,
-                          initial: "editing",
-                        })
-                      : viewStageParameterMachine
-                    ).withContext(parameter),
-                    parameter.id
-                  ),
-                }));
-              },
-            }),
-          },
+          selected: {},
           submitted: {},
           hist: {
             type: "history",
@@ -187,10 +153,37 @@ const viewStageMachine = Machine(
               actions: [
                 assign({
                   stage: (ctx, { stage }) => stage,
+                  parameters: (ctx, { stage }) => {
+                    const result = ctx.stageInfo.filter((s) =>
+                      s.name.toLowerCase().includes(stage.toLowerCase())
+                    )[0].params;
+                    const parameters = result.map((parameter, i) =>
+                      createParameter(
+                        stage,
+                        parameter.name,
+                        parameter.type,
+                        "",
+                        false,
+                        i === result.length - 1
+                      )
+                    );
+                    return parameters.map((parameter, i) => ({
+                      ...parameter,
+                      ref: spawn(
+                        (i === 0
+                          ? Machine({
+                              ...viewStageParameterMachineConfig,
+                              initial: "editing",
+                            })
+                          : viewStageParameterMachine
+                        ).withContext(parameter),
+                        parameter.id
+                      ),
+                    }));
+                  },
                 }),
               ],
               cond: (ctx, e) => {
-                console.log(ctx, e);
                 const result = ctx.stageInfo.filter(
                   (s) => s.name.toLowerCase() === e.stage.toLowerCase()
                 );
@@ -198,37 +191,48 @@ const viewStageMachine = Machine(
               },
             },
             {
-              target: "hist",
+              target: "reading.hist",
               actions: [
                 assign({
-                  stage: (ctx) => ctx.prevStage,
+                  stage: ({ prevStage }) => prevStage,
+                  submitted: ({ prevSubmitted }) => prevSubmitted,
                 }),
+                "blurInput",
               ],
+              cond: (ctx) => ctx.prevSubmitted,
             },
             {
-              target: "reading",
+              target: "reading.pending",
               actions: [
                 assign({
-                  stage: (ctx, { prevStage }) => prevStage,
+                  stage: () => "",
+                  submitted: () => false,
                 }),
+                "blurInput",
               ],
             },
           ],
           BLUR: [
             {
               target: "reading.hist",
-              actions: assign({
-                stage: ({ prevStage }) => prevStage,
-                submitted: ({ prevSubmitted }) => prevSubmitted,
-              }),
+              actions: [
+                assign({
+                  stage: ({ prevStage }) => prevStage,
+                  submitted: ({ prevSubmitted }) => prevSubmitted,
+                }),
+                "blurInput",
+              ],
               cond: (ctx) => ctx.prevSubmitted,
             },
             {
               target: "reading.pending",
-              actions: assign({
-                stage: () => "",
-                submitted: () => false,
-              }),
+              actions: [
+                assign({
+                  stage: () => "",
+                  submitted: () => false,
+                }),
+                "blurInput",
+              ],
             },
           ],
         },

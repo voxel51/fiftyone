@@ -36,6 +36,7 @@ export const viewStageParameterMachineConfig = {
       on: {
         EDIT: {
           target: "editing",
+          actions: ["focusInput"],
         },
       },
     },
