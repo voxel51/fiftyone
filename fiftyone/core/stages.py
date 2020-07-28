@@ -67,17 +67,38 @@ class ViewStage(object):
         raise NotImplementedError("subclasses must implement `to_mongo()`")
 
     def _serialize(self):
+        """Returns a JSON dict representation of the :class:`ViewStage`.
+
+        Returns:
+            a JSON dict
+        """
         return {
             "kwargs": self._kwargs(),
             "_cls": etau.get_class_name(self),
         }
 
     def _kwargs(self):
+        """Returns a JSON dict describing the keyword arguments that define the
+        ViewStage.
+
+        Returns:
+            a JSON dict
+        """
         raise NotImplementedError("subclasses must implement `_kwargs()`")
 
     @classmethod
     def _from_dict(cls, d):
-        return etau.get_class(d["_cls"])(**d["kwargs"])
+        """Creates a :class:`ViewStage` instance from a serialized JSON dict
+        representation of it.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            a :class:`ViewStage`
+        """
+        view_stage_cls = etau.get_class(d["_cls"])
+        return view_stage_cls(**d["kwargs"])
 
 
 class ViewStageError(Exception):
