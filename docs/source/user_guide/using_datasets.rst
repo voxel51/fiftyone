@@ -345,9 +345,9 @@ To to simply view the field schema print the dataset:
     Num samples:    0
     Tags:           []
     Sample fields:
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
 The value of a |Field| for a given |Sample| can be accessed either by key or
 attribute access:
@@ -947,9 +947,9 @@ You can create a view that contains an entire dataset via
     Num samples:    2
     Tags:           ['test', 'train']
     Sample fields:
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
     Pipeline stages:
         ---
 
@@ -967,9 +967,9 @@ We'll discuss these operations in more detail later.
 Accessing samples in DatasetViews
 ---------------------------------
 
-Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first>` and
-:meth:`DatasetView.last() <fiftyone.core.view.DatasetView.last>` to retrieve
-the first and last samples in a view, respectively:
+Use :meth:`first() <fiftyone.core.view.DatasetView.first>` and
+:meth:`last() <fiftyone.core.view.DatasetView.last>` to retrieve the first and
+last samples in a view, respectively:
 
 .. code-block:: python
     :linenos:
@@ -1010,13 +1010,12 @@ and you can iterate over the samples in a |DatasetView|:
 .. note::
 
     Note that accessing a sample by its integer index in a |DatasetView| is
-    not allowed, as this is not an efficient operation with FiftyOne datasets.
+    not allowed, as this is not an efficient operation.
 
     The best practice is to lookup indidivual samples by ID, use array slicing
     to extract a range of samples, and iterate over samples in a view.
 
     .. code-block:: python
-        :linenos:
 
         view[0]
         # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
@@ -1028,8 +1027,8 @@ DatasetViews encapsulate a pipeline of logical operations that determine which
 samples appear in the view (and perhaps what subset of their contents).
 
 Each view operation is captured by a |ViewStage|, and these operations are
-conveniently exposed as methods on both |Dataset|---which creates an initial
-|DatasetView|---and on |DatasetView|---which returns another |DatasetView| so
+conveniently exposed as methods on both |Dataset|, which creates an initial
+|DatasetView|, and on |DatasetView|, which returns another |DatasetView| so
 that multiple operations can be chained together to form a pipeline.
 
 .. code-block:: python
