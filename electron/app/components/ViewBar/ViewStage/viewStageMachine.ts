@@ -66,6 +66,9 @@ const viewStageMachine = Machine(
           selected: {
             entry: assign({
               parameters: (ctx) => {
+                if (ctx.parameters.length) {
+                  return ctx.parameters;
+                }
                 const result = ctx.stageInfo.filter((s) =>
                   s.name.toLowerCase().includes(ctx.stage.toLowerCase())
                 )[0].params;
@@ -104,38 +107,14 @@ const viewStageMachine = Machine(
               {
                 target: "submitted",
                 cond: (ctx) => ctx.parameters.every((p) => p.submitted),
-                actions: send((ctx) => ({ type: "STAGE.COMMIT" })),
+                actions: sendParent((ctx) => ({
+                  type: "STAGE.COMMIT",
+                  stage: ctx,
+                })),
               },
               {
                 target: "selected",
                 cond: (ctx) => !ctx.parameters.every((p) => p.submitted),
-                actions: send((ctx, e) => {
-                  const reducer = (acc, cur, idx) => {
-                    console.log(cur, e);
-                    return cur.id === e.parameter.id ? idx : acc;
-                  };
-                  const refIndex = ctx.parameters.reduce(reducer, undefined);
-                  let idx = refIndex + 1;
-                  while (idx < ctx.parameters.length) {
-                    if (!ctx.parameters[idx].submitted) {
-                      return {
-                        type: "EDIT_PARAMETER",
-                        parameter: ctx.parameters[idx],
-                      };
-                    }
-                    idx += 1;
-                  }
-                  idx = refIndex - 1;
-                  while (true) {
-                    if (!ctx.parameters[idx].submitted) {
-                      return {
-                        type: "EDIT_PARAMETER",
-                        parameter: ctx.parameters[idx],
-                      };
-                    }
-                    idx -= 1;
-                  }
-                }),
               },
             ],
           },
@@ -265,15 +244,47 @@ const viewStageMachine = Machine(
     on: {
       "PARAMETER.COMMIT": {
         target: "reading.validate",
-        actions: assign({
-          parameters: (ctx, e) => {
-            return ctx.parameters.map((parameter) => {
-              return parameter.id === e.parameter.id
-                ? { ...e.parameter, ref: parameter.ref }
-                : parameter;
-            });
-          },
-        }),
+        actions: [
+          assign({
+            parameters: (ctx, e) => {
+              return ctx.parameters.map((parameter) => {
+                return parameter.id === e.parameter.id
+                  ? { ...e.parameter, ref: parameter.ref }
+                  : parameter;
+              });
+            },
+          }),
+          choose([
+            {
+              cond: (ctx) =>
+                ctx.parameters.reduce((acc, cur) => {
+                  return cur.submitted ? acc : acc + 1;
+                }, 0) > 0,
+              actions: send("EDIT", {
+                to: (ctx, e) => {
+                  const reducer = (acc, cur, idx) => {
+                    return cur.id === e.parameter.id ? idx : acc;
+                  };
+                  const refIndex = ctx.parameters.reduce(reducer, undefined);
+                  let idx = refIndex + 1;
+                  while (idx < ctx.parameters.length) {
+                    if (!ctx.parameters[idx].submitted) {
+                      return ctx.parameters[idx].ref;
+                    }
+                    idx += 1;
+                  }
+                  idx = refIndex - 1;
+                  while (idx) {
+                    if (!ctx.parameters[idx].submitted) {
+                      return ctx.parameters[idx].ref;
+                    }
+                    idx -= 1;
+                  }
+                },
+              }),
+            },
+          ]),
+        ],
       },
     },
   },
