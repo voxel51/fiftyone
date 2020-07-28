@@ -424,7 +424,7 @@ class Sample(_Sample):
 
 
 class SampleView(_Sample):
-    def __init__(self, doc, exclude_fields=None):
+    def __init__(self, doc, excluded_fields=None, filtered_fields=None):
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
@@ -435,33 +435,38 @@ class SampleView(_Sample):
             raise ValueError("`doc` is not saved to the database.")
 
         self._doc = doc
-        self._exclude_fields = exclude_fields
+        self._excluded_fields = excluded_fields
+        self._filtered_fields = filtered_fields
 
         super().__init__()
+
+    def save(self):
+        """Saves the sample to the database."""
+        self._doc.save(filtered_fields=self._filtered_fields)
 
     @property
     def field_names(self):
         """An ordered list of the names of the fields of this sample."""
         field_names = self._doc.field_names
-        if self._exclude_fields is not None:
+        if self._excluded_fields is not None:
             field_names = tuple(
-                fn for fn in field_names if fn not in self._exclude_fields
+                fn for fn in field_names if fn not in self._excluded_fields
             )
         return field_names
 
     @property
     def excluded_field_names(self):
         """An ordered list of the names of the fields of this sample."""
-        return self._exclude_fields.copy()
+        return self._excluded_fields.copy()
 
     def __str__(self):
-        return self._doc.fancy_repr(type(self).__name__, self._exclude_fields)
+        return self._doc.fancy_repr(type(self).__name__, self._excluded_fields)
 
     def __repr__(self):
-        return self._doc.fancy_repr(type(self).__name__, self._exclude_fields)
+        return self._doc.fancy_repr(type(self).__name__, self._excluded_fields)
 
     def __getattr__(self, name):
-        if not name.startswith("_") and name in self._exclude_fields:
+        if not name.startswith("_") and name in self._excluded_fields:
             raise NameError(
                 "Field '%s' is excluded from this %s"
                 % (name, type(self).__name__)

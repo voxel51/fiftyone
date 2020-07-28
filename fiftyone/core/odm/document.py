@@ -268,6 +268,7 @@ class Document(BaseDocument, mongoengine.Document):
         :param clean: call the document clean method, requires `validate` to be
             True.
         """
+        # pylint: disable=no-member
 
         if self._meta.get("abstract"):
             raise mongoengine.InvalidDocumentError(
@@ -319,15 +320,15 @@ class Document(BaseDocument, mongoengine.Document):
                     update_doc["$unset"] = removals
 
                 if update_doc:
-                    last_error = self._update(object_id, update_doc)
+                    updated_existing = self._update(
+                        object_id, update_doc, **kwargs
+                    )
 
-                    if last_error is not None:
-                        updated_existing = last_error.get("updatedExisting")
-                        if updated_existing is False:
-                            created = True
-                            # !!! This is bad, means we accidentally created a
-                            # new, potentially corrupted document. See
-                            # https://github.com/MongoEngine/mongoengine/issues/564
+                    if updated_existing is False:
+                        created = True
+                        # !!! This is bad, means we accidentally created a
+                        # new, potentially corrupted document. See
+                        # https://github.com/MongoEngine/mongoengine/issues/564
 
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
@@ -351,16 +352,23 @@ class Document(BaseDocument, mongoengine.Document):
 
         return self
 
-    def _update(self, object_id, update_doc):
+    def _update(self, object_id, update_doc, **kwargs):
         """Update an existing document.
 
         Helper method, should only be used inside save().
         """
-        return (
+        result = (
             self._get_collection()
             .update_one({"_id": object_id}, update_doc, upsert=True)
             .raw_result
         )
+
+        if result is not None:
+            updated_existing = result.get("updatedExisting")
+        else:
+            updated_existing = None
+
+        return updated_existing
 
 
 class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):

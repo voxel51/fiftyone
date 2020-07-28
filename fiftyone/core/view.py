@@ -192,11 +192,16 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
+        excluded_fields = self._get_excluded_fields()
+        filtered_fields = self._get_filtered_fields()
+
         for d in self.aggregate():
             try:
                 doc = self._dataset._sample_dict_to_doc(d)
                 yield fos.SampleView(
-                    doc, exclude_fields=self._get_exclude_fields()
+                    doc,
+                    excluded_fields=excluded_fields,
+                    filtered_fields=filtered_fields,
                 )
             except Exception as e:
                 raise ValueError(
@@ -564,11 +569,20 @@ class DatasetView(foc.SampleCollection):
 
         return 0
 
-    def _get_exclude_fields(self):
-        exclude_fields = set()
+    def _get_excluded_fields(self):
+        excluded_fields = set()
 
         for stage in self._stages:
             if isinstance(stage, fost.ExcludeFields):
-                exclude_fields.update(stage.field_names)
+                excluded_fields.update(stage.field_names)
 
-        return exclude_fields
+        return excluded_fields
+
+    def _get_filtered_fields(self):
+        filtered_fields = set()
+
+        for stage in self._stages:
+            if isinstance(stage, fost.ListFilter):
+                filtered_fields.add(stage.field)
+
+        return filtered_fields

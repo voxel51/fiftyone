@@ -427,6 +427,111 @@ class DatasetSampleDocument(Document, SampleDocument):
         d.update(super()._to_repr_dict(*args, **kwargs))
         return d
 
+    def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
+        """Update an existing document.
+
+        Helper method, should only be used inside save().
+        """
+        updated_existing = True
+
+        collection = self._get_collection()
+
+        select_dict = {"_id": object_id}
+
+        extra_updates = self._extract_extra_updates(
+            update_doc, filtered_fields
+        )
+
+        if update_doc:
+            result = collection.update_one(
+                select_dict, update_doc, upsert=True
+            ).raw_result
+            if result is not None:
+                updated_existing = result.get("updatedExisting")
+
+        for update, element_id in extra_updates:
+            print("element_id: ", element_id)
+            print("update: ", update)
+
+            result = collection.update_one(
+                select_dict,
+                update,
+                array_filters=[{"element._id": element_id}],
+                upsert=True,
+            ).raw_result
+
+            if result is not None:
+                updated_existing = updated_existing and result.get(
+                    "updatedExisting"
+                )
+
+        return updated_existing
+
+    def _extract_extra_updates(self, update_doc, filtered_fields):
+        """Extract updates for filtered list fields that need to be updated
+        by ID, not relative position (index).
+        """
+        extra_updates = []
+
+        if filtered_fields and "$set" in update_doc:
+            d = update_doc["$set"]
+            del_keys = []
+
+            for k, v in d.items():
+                filtered_field = None
+                for ff in filtered_fields:
+                    if k.startswith(ff):
+                        filtered_field = ff
+                        break
+
+                if filtered_field:
+                    element_id, el_filter = self._parse_id_and_array_filter(
+                        k, filtered_field
+                    )
+                    extra_updates.append(
+                        ({"$set": {el_filter: v}}, element_id)
+                    )
+
+                    del_keys.append(k)
+
+            for k in del_keys:
+                del d[k]
+
+            if not update_doc["$set"]:
+                del update_doc["$set"]
+
+        return extra_updates
+
+    def _parse_id_and_array_filter(self, list_element_field, filtered_field):
+        """Convert the `list_element_field` and `filtered_field` to an element
+        object ID and array filter.
+
+        Example:
+            Input:
+                list_element_field='test_dets.detections.1.label'
+                filtered_field='test_dets.detections'
+            Output:
+                ObjectID('5f2062bf27c024654f5286a0')
+                'test_dets.detections.$[element].label'
+
+        """
+        el = self
+        for field_name in filtered_field.split("."):
+            el = el[field_name]
+
+        el_fields = list_element_field.lstrip(filtered_field).split(".")
+        idx = el_fields.pop(0)
+        if not idx:
+            raise ValueError(
+                "Attempted modifying of a filtered list field: '%s'"
+                % filtered_field
+            )
+        idx = int(idx)
+        el = el[idx]
+        el_filter = ".".join([filtered_field, "$[element]"] + el_fields)
+
+        return el._id, el_filter
+
 
 class NoDatasetSampleDocument(SampleDocument):
     """Backing document for samples that have not been added to a dataset."""
