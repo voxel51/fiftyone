@@ -14,6 +14,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath("."))
 
+from custom_directives import CustomCardItemDirective
 from redirects import generate_redirects
 
 import fiftyone.constants as foc
@@ -171,3 +172,6 @@ def setup(app):
     # Generate page redirects
     app.add_config_value("redirects_file", "redirects", "env")
     app.connect("builder-inited", generate_redirects)
+
+    # Custom directives
+    app.add_directive("customcarditem", CustomCardItemDirective)
