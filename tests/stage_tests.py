@@ -34,7 +34,7 @@ class StageTests(unittest.TestCase):
     def test_exclude(self):
         result = list(self.dataset.view().exclude([self.sample1.id]))
         self.assertIs(len(result), 1)
-        self.assertIs(result[0], self.sample2)
+        self.assertEqual(result[0].id, self.sample2.id)
 
     def test_exists(self):
         self.sample1["exists"] = True

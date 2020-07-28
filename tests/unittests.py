@@ -1132,26 +1132,6 @@ class ViewTest(unittest.TestCase):
         for sample in view.match({"labels.label": "label1"}):
             self.assertEqual(sample.labels.label, "label1")
 
-    @drop_datasets
-    def test_stages(self):
-        dataset_name = self.test_stages.__name__
-        dataset = fo.Dataset(dataset_name)
-
-        dataset.add_samples(
-            [
-                fo.Sample(filepath="filepath1.jpg", my_int=5),
-                fo.Sample(filepath="filepath2.jpg", my_int=7),
-                fo.Sample(filepath="filepath3.jpg", my_int=1),
-                fo.Sample(filepath="filepath4.jpg", my_int=9),
-            ]
-        )
-
-        # test `sort_by`
-        sorted_values = sorted([s.my_int for s in dataset])
-        view = dataset.view().sort_by("my_int")
-        view_values = [s.my_int for s in view]
-        self.assertListEqual(view_values, sorted_values)
-
 
 class ExpressionTest(unittest.TestCase):
     @drop_datasets
