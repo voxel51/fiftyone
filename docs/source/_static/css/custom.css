@@ -389,7 +389,46 @@ article.pytorch-article .reference.download.internal {
 /* tutorials cards */
 
 #tutorial-cards-container .card.tutorials-card .tutorials-image img {
-  height: 80%;
-  width: 80%;
-  margin: 10%;
+  height: 100%;
+  width: 100%;
+  margin: 0%;
+}
+
+#tutorial-cards-container .card.tutorials-card:hover:after {
+  background-color: var(--color-primary);
+}
+
+#tutorial-cards-container .card.tutorials-card {
+  background-color: var(--bg-light-secondary);
+}
+
+#tutorial-cards-container .filter-btn {
+  color: var(--gray-neutral);
+  border: 1px solid var(--gray-neutral);
+}
+
+#tutorial-cards-container .filter-btn:hover {
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+#tutorial-cards-container .all-tag-selected,
+#tutorial-cards-container .filter-btn.selected {
+  color: #ffffff;
+  background-color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+#tutorial-cards-container .all-tag-selected:hover,
+#tutorial-cards-container .filter-btn.selected:hover {
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+
+#tutorial-cards-container .pagination .active .page {
+  background-color: var(--bg-light-secondary);
+}
+
+#tutorial-cards-container .pagination .page {
+  border: 1px solid var(--bg-light-secondary);
 }
