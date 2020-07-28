@@ -195,7 +195,8 @@ class SampleCollection(object):
     @classmethod
     def list_view_stages(cls):
         """Returns a list of all available methods on this collection that
-        return a :class:`fiftyone.core.view.DatasetView`.
+        apply :class:`fiftyone.core.stages.ViewStage` operations that return
+        :class:`fiftyone.core.view.DatasetView` instances.
 
         Returns:
             a list of :class:`SampleCollection` method names
