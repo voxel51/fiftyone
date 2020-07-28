@@ -111,6 +111,7 @@ const viewStageMachine = Machine(
                 cond: (ctx) => !ctx.parameters.every((p) => p.submitted),
                 actions: send((ctx, e) => {
                   const reducer = (acc, cur, idx) => {
+                    console.log(cur, e);
                     return cur.id === e.parameter.id ? idx : acc;
                   };
                   const refIndex = ctx.parameters.reduce(reducer, undefined);
@@ -158,7 +159,10 @@ const viewStageMachine = Machine(
         },
       },
       editing: {
-        onEntry: assign({ prevStage: (ctx) => ctx.stage }),
+        onEntry: assign({
+          prevStage: (ctx) => ctx.stage,
+          prevSubmitted: (ctx) => ctx.submitted,
+        }),
         type: "parallel",
         states: {
           input: {
@@ -233,16 +237,21 @@ const viewStageMachine = Machine(
           ],
           BLUR: [
             {
-              target: "reading",
+              target: "reading.hist",
               actions: assign({
                 stage: ({ prevStage }) => prevStage,
+                submitted: ({ prevSubmitted }) => prevSubmitted,
+              }),
+              cond: (ctx) => ctx.prevSubmitted,
+            },
+            {
+              target: "reading.pending",
+              actions: assign({
+                stage: () => "",
+                submitted: () => false,
               }),
             },
           ],
-          CANCEL: {
-            target: "reading",
-            actions: [assign({ stage: (ctx) => ctx.prevStage }), "blurInput"],
-          },
         },
       },
       deleted: {

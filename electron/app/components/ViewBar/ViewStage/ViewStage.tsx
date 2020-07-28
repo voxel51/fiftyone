@@ -101,7 +101,7 @@ export default React.memo(({ stageRef, tailStage }) => {
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
-                send("CANCEL");
+                send("BLUR");
               }
             }}
             style={{ fontSize: "1rem" }}
