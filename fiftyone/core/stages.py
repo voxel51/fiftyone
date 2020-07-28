@@ -115,11 +115,11 @@ class Exclude(ViewStage):
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = sample_ids
+        self._sample_ids = list(sample_ids)
 
     @property
     def sample_ids(self):
-        """The iterable of sample IDs to exclude."""
+        """The list of sample IDs to exclude."""
         return self._sample_ids
 
     def to_mongo(self):
@@ -332,11 +332,11 @@ class MatchTags(ViewStage):
     """
 
     def __init__(self, tags):
-        self._tags = tags
+        self._tags = list(tags)
 
     @property
     def tags(self):
-        """The iterable of tags to match."""
+        """The list of tags to match."""
         return self._tags
 
     def to_mongo(self):
@@ -391,11 +391,11 @@ class Select(ViewStage):
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = sample_ids
+        self._sample_ids = list(sample_ids)
 
     @property
     def sample_ids(self):
-        """The iterable of sample IDs to select."""
+        """The list of sample IDs to select."""
         return self._sample_ids
 
     def to_mongo(self):
