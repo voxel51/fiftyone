@@ -188,6 +188,9 @@ class Limit(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if self._limit <= 0:
+            return Match({"_id": None}).to_mongo()
+
         return [{"$limit": self._limit}]
 
     def _kwargs(self):
