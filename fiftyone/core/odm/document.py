@@ -263,45 +263,24 @@ class Document(BaseDocument, mongoengine.Document):
         self,
         validate=True,
         clean=True,
-        write_concern=None,
-        _refs=None,
-        save_condition=None,
-        signal_kwargs=None,
         **kwargs
     ):
-        """Save the :class:`~mongoengine.Document` to the database. If the
-        document already exists, it will be updated, otherwise it will be
-        created. Returns the saved object instance.
+        """Save the :class:`Document` to the database. If the document already
+        exists, it will be updated, otherwise it will be created. Returns the
+        saved object instance.
 
-        :param force_insert: only try to create a new document, don't allow
-            updates of existing documents.
         :param validate: validates the document; set to ``False`` to skip.
         :param clean: call the document clean method, requires `validate` to be
             True.
-        :param write_concern: Extra keyword arguments are passed down to
-            :meth:`~pymongo.collection.Collection.save` OR
-            :meth:`~pymongo.collection.Collection.insert`
-            which will be used as options for the resultant
-            ``getLastError`` command.  For example,
-            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
-            wait until at least two servers have recorded the write and
-            will force an fsync on the primary server.
-        :param _refs: A list of processed references used in cascading saves
-        :param save_condition: only perform save if matching record in db
-            satisfies condition(s) (e.g. version number).
-            Raises :class:`OperationError` if the conditions are not satisfied
-        :param signal_kwargs: (optional) kwargs dictionary to be passed to
-            the signal calls.
         """
 
         if self._meta.get("abstract"):
-            raise mongoengine.InvalidDocumentError("Cannot save an abstract document.")
+            raise mongoengine.InvalidDocumentError(
+                "Cannot save an abstract document."
+            )
 
         if validate:
             self.validate(clean=clean)
-
-        if write_concern is None:
-            write_concern = {}
 
         doc_id = self.to_mongo(fields=[self._meta["id_field"]])
         created = "_id" not in doc_id or self._created
@@ -315,11 +294,9 @@ class Document(BaseDocument, mongoengine.Document):
         try:
             # Save a new document or update an existing one
             if created:
-                object_id = self._save_create(doc, False, write_concern)
+                object_id = self._save_create(doc, False, {})
             else:
-                object_id, created = self._save_update(
-                    doc, save_condition, write_concern
-                )
+                object_id, created = self._save_update(doc, None, {})
 
         except pymongo.errors.DuplicateKeyError as err:
             message = "Tried to save duplicate unique keys (%s)"
@@ -342,7 +319,6 @@ class Document(BaseDocument, mongoengine.Document):
         self._created = False
 
         return self
-
 
 
 class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
