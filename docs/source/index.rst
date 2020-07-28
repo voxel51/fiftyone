@@ -95,7 +95,7 @@ adding custom tags, model predictions and more.
 
     dataset.add_sample(sample)
 
-    view = dataset.view().match_tag("train").sort_by("custom_field").limit(10)
+    view = dataset.match_tag("train").sort_by("custom_field").limit(10)
 
     for sample in view:
         print(sample)
@@ -134,7 +134,7 @@ measurably better performance of your models.
    import fiftyone.brain as fob
 
    fob.compute_uniqueness(dataset)
-   rank_view = dataset.view().sort_by("uniqueness")
+   rank_view = dataset.sort_by("uniqueness")
 
 What's Next?
 ____________

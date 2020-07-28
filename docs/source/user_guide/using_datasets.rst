@@ -1023,7 +1023,7 @@ A |DatasetView| can be queried using :meth:`match()
     :linenos:
 
     # Get only samples with the tag "train"
-    view = dataset.view().match({"tags": "train"})
+    train_view = view.match({"tags": "train"})
 
 Convenience functions for common queries are also available.
 
@@ -1034,8 +1034,9 @@ only include given a |Sample| or to include all but the given |Sample|:
     :linenos:
 
     sample_ids = [sample1.id, sample2.id]
-    included = dataset.view().select(sample_ids)
-    excluded = dataset.view().exclude(sample_ids)
+
+    included_view = view.select(sample_ids)
+    excluded_view = view.exclude(sample_ids)
 
 A |DatasetView| can also be filtered to only include samples for which a
 given |Field| exists and is not ``None``:
@@ -1043,7 +1044,7 @@ given |Field| exists and is not ``None``:
 .. code-block:: python
     :linenos:
 
-    metadata_view = dataset.view().exists("metadata")
+    metadata_view = view.exists("metadata")
 
 Chaining view stages
 --------------------
@@ -1054,8 +1055,7 @@ All of the aformentioned view stages can be chained together:
     :linenos:
 
     complex_view = (
-        dataset.view()
-        .match({"tags": "test"})
+        dataset.match({"tags": "test"})
         .exists("metadata")
         .sort_by("filepath")
         .limit(5)
