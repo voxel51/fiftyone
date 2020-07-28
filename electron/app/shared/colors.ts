@@ -21,9 +21,11 @@ export const grey46a30 = "hsla(208, 7%, 46%, 0.3)";
 export const lightTheme = {
   background: white100,
   border: white85,
+  text: white20,
 };
 
 export const darkTheme = {
   background: grey10,
   border: white85,
+  text: white85,
 };
