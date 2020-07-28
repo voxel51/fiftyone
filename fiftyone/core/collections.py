@@ -38,7 +38,9 @@ logger = logging.getLogger(__name__)
 def _make_registrar():
     """Makes a decorator that keeps a registry of all functions decorated by
     it.
+
     Usage::
+
         my_decorator = _make_registrar()
         my_decorator.all  # dictionary mapping names to functions
     """
@@ -54,13 +56,14 @@ def _make_registrar():
     return registrar
 
 
-# Keeps track of all DatasetView stage methods
+# Keeps track of all view stage methods
 view_stage = _make_registrar()
 
 
 class SampleCollection(object):
     """Abstract class representing a collection of
-    :class:`fiftyone.core.sample.Sample` instances.
+    :class:`fiftyone.core.sample.Sample` instances in a
+    :class:`fiftyone.core.dataset.Dataset`.
     """
 
     def __str__(self):
@@ -83,7 +86,7 @@ class SampleCollection(object):
 
         return True
 
-    def __getitem__(self, sample_id):
+    def __getitem__(self, sample_id_or_slice):
         raise NotImplementedError("Subclass must implement __getitem__()")
 
     def __iter__(self):
@@ -190,10 +193,9 @@ class SampleCollection(object):
                     sample.compute_metadata()
 
     @classmethod
-    def list_stage_methods(cls):
-        """Returns a list of all available :class:`SampleCollection` stage
-        methods, i.e., stages that return a
-        :class:`fiftyone.core.view.DatasetView`.
+    def list_view_stages(cls):
+        """Returns a list of all available methods on this collection that
+        return a :class:`fiftyone.core.view.DatasetView`.
 
         Returns:
             a list of :class:`SampleCollection` method names
@@ -202,7 +204,7 @@ class SampleCollection(object):
 
     @view_stage
     def exclude(self, sample_ids):
-        """Excludes the samples with the given IDs from the view.
+        """Excludes the samples with the given IDs from the collection.
 
         Args:
             sample_ids: an iterable of sample IDs
@@ -227,10 +229,10 @@ class SampleCollection(object):
 
     @view_stage
     def limit(self, limit):
-        """Limits the view to the given number of samples.
+        """Returns a view with at most the given number of samples.
 
         Args:
-            num: the maximum number of samples to return. If a non-positive
+            limit: the maximum number of samples to return. If a non-positive
                 number is provided, an empty view is returned
 
         Returns:
@@ -240,7 +242,8 @@ class SampleCollection(object):
 
     @view_stage
     def list_filter(self, field, filter):
-        """Filters the elements of the given list field.
+        """Filters the elements of the given list field for all samples in the
+        collection.
 
         Elements of ``field``, which must be a list field, for which ``filter``
         returns ``False`` are omitted from the field.
@@ -258,7 +261,7 @@ class SampleCollection(object):
 
     @view_stage
     def match(self, filter):
-        """Filters the samples in the view by the given filter.
+        """Filters the samples in the collection by the given filter.
 
         Samples for which ``filter`` returns ``False`` are omitted.
 
@@ -289,8 +292,8 @@ class SampleCollection(object):
         """Returns a view containing the samples that have any of the given
         tags.
 
-        To match samples that contain multiple tags, simply chain
-        :func:`match_tag` or :func:`match_tags` calls together.
+        To match samples that must contain multiple tags, chain multiple
+        :meth:`match_tag` or :meth:`match_tags` calls together.
 
         Args:
             tags: an iterable of tags
@@ -302,7 +305,7 @@ class SampleCollection(object):
 
     @view_stage
     def mongo(self, pipeline):
-        """Adds a view stage defined by the raw MongoDB aggregation pipeline.
+        """Adds a view stage defined by a raw MongoDB aggregation pipeline.
 
         See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
         for more details.
@@ -317,7 +320,7 @@ class SampleCollection(object):
 
     @view_stage
     def select(self, sample_ids):
-        """Selects the samples with the given IDs from the view.
+        """Returns a view containing only the samples with the given IDs.
 
         Args:
             sample_ids: an iterable of sample IDs
@@ -329,7 +332,7 @@ class SampleCollection(object):
 
     @view_stage
     def skip(self, skip):
-        """Omits the given number of samples from the head of the view.
+        """Omits the given number of samples from the head of the collection.
 
         Args:
             skip: the number of samples to skip. If a non-positive number is
@@ -342,7 +345,8 @@ class SampleCollection(object):
 
     @view_stage
     def sort_by(self, field_or_expr, reverse=False):
-        """Sorts the samples in the view by the given field or expression.
+        """Sorts the samples in the collection by the given field or
+        expression.
 
         When sorting by an expression, ``field_or_expr`` can either be a
         :class:`fiftyone.core.expressions.ViewExpression` or a
@@ -360,7 +364,7 @@ class SampleCollection(object):
 
     @view_stage
     def take(self, size):
-        """Randomly samples the given number of samples from the view.
+        """Randomly samples the given number of samples from the collection.
 
         Args:
             size: the number of samples to return. If a non-positive number is
@@ -475,11 +479,11 @@ class SampleCollection(object):
         )
 
     def aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the collection.
+        """Calls the collection's current MongoDB aggregation pipeline.
 
         Args:
             pipeline (None): an optional aggregation pipeline (list of dicts)
-                to aggregate on
+                to append to the collections's pipeline before calling it
 
         Returns:
             an iterable over the aggregation result
@@ -523,8 +527,16 @@ class SampleCollection(object):
         etas.write_json(self.to_dict(), json_path, pretty_print=pretty_print)
 
     def _add_view_stage(self, stage):
-        """Returns a :class:`fiftyone.core.view.DatasetView` instance with
-        the stage added to the end of the pipeline.
+        """Returns a :class:`fiftyone.core.view.DatasetView` containing the
+        contents of the collection with the given
+        :class:fiftyone.core.stages.ViewStage` appended to its aggregation
+        pipeline.
+
+        Args:
+            a :class:fiftyone.core.stages.ViewStage`
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
