@@ -9,7 +9,7 @@ import { GlobalStyle } from "../app/shared/global";
 import { lightTheme, darkTheme } from "../app/shared/colors";
 
 addDecorator((story, context) => <>{withConsole()(story)(context)}</>);
-addDecorator((story, context) => <>{withKnobs()(story)(context)}</>);
+addDecorator(withKnobs);
 
 addDecorator((story) => (
   <>
