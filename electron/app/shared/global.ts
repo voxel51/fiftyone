@@ -24,7 +24,6 @@ export const styles = css`
   #root {
     height: 100%;
     position: relative;
-    overflow: hidden;
   }
 `;
 
