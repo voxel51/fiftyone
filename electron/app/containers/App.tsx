@@ -3,9 +3,13 @@ import React, { ReactNode, useState, useRef } from "react";
 import { Button, Modal, Label } from "semantic-ui-react";
 import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
 import { RecoilRoot } from "recoil";
+import { ThemeProvider } from "styled-components";
 
+import { GlobalStyle } from "../shared/global";
+import { darkTheme } from "../shared/colors";
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
+
 import {
   updateState,
   updateConnected,
@@ -76,34 +80,37 @@ function App(props: Props) {
 
   return (
     <RecoilRoot>
-      <Modal
-        trigger={
-          <Button
-            style={{ padding: "1rem", display: "none" }}
-            ref={portRef}
-          ></Button>
-        }
-        size="tiny"
-        onClose={() => {
-          dispatch(updatePort(result.port));
-          setSocket(getSocket(result.port, "state"));
-        }}
-      >
-        <Modal.Header>Port number</Modal.Header>
-        <Modal.Content>
-          <Modal.Description>
-            <PortForm
-              setResult={setResultFromForm}
-              connected={connected}
-              port={port}
-              invalid={false}
-            />
-          </Modal.Description>
-        </Modal.Content>
-      </Modal>
-      <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
-        {children}
-      </div>
+      <ThemeProvider theme={darkTheme}>
+        <GlobalStyle />
+        <Modal
+          trigger={
+            <Button
+              style={{ padding: "1rem", display: "none" }}
+              ref={portRef}
+            ></Button>
+          }
+          size="tiny"
+          onClose={() => {
+            dispatch(updatePort(result.port));
+            setSocket(getSocket(result.port, "state"));
+          }}
+        >
+          <Modal.Header>Port number</Modal.Header>
+          <Modal.Content>
+            <Modal.Description>
+              <PortForm
+                setResult={setResultFromForm}
+                connected={connected}
+                port={port}
+                invalid={false}
+              />
+            </Modal.Description>
+          </Modal.Content>
+        </Modal>
+        <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
+          {children}
+        </div>
+      </ThemeProvider>
     </RecoilRoot>
   );
 }
