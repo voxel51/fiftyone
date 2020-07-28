@@ -44,3 +44,5 @@
 
 .. |Metadata| replace:: :class:`Metadata <fiftyone.core.metadata.Metadata>`
 .. |ImageMetadata| replace:: :class:`ImageMetadata <fiftyone.core.metadata.ImageMetadata>`
+
+.. |AnnotationConfig| replace:: :class:`AnnotationConfig <fiftyone.utils.annotations.AnnotationConfig>`
