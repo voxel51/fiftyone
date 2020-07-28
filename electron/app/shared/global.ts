@@ -6,7 +6,6 @@ export const styles = css`
   input {
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
-    font-weight: bold;
     color: ${({ theme }) => theme.text};
   }
 
