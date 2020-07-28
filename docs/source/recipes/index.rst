@@ -11,7 +11,7 @@ into minutes so that you can focus on your models. Browse the recipes below to
 see how you can leverage FiftyOne to enhance key parts of your machine learning
 workflows.
 
-.. Recipe cards --------------------------------------------------------------
+.. Recipe cards section -------------------------------------------------------
 
 .. raw:: html
 
@@ -33,6 +33,8 @@ workflows.
 
     <div id="tutorial-cards">
     <div class="list">
+
+.. Add recipe cards below
 
 .. customcarditem::
     :header: Remove duplicate images from a dataset
@@ -83,6 +85,8 @@ workflows.
     :image: ../_static/images/voxel51_300dpi.png
     :tags: Advanced
 
+.. End of recipe cards
+
 .. raw:: html
 
     </div>
@@ -93,4 +97,16 @@ workflows.
 
     </div>
 
-.. End Recipe cards ----------------------------------------------------------
+.. End Recipe cards section ---------------------------------------------------
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   Remove duplicate images<image_deduplication.ipynb>
+   Add model predictions<model_inference.ipynb>
+   Draw labels on samples<draw_labels.ipynb>
+   Convert dataset formats<convert_datasets.ipynb>
+   Custom dataset importers<custom_importer.ipynb>
+   Custom dataset exporters<custom_exporter.ipynb>
+   Custom sample parsers<custom_parser.ipynb>
