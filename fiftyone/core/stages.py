@@ -149,7 +149,7 @@ class Exists(ViewStage):
 
     @property
     def field(self):
-        """The field to check if exists."""
+        """The field to check for existence."""
         return self._field
 
     def to_mongo(self):
@@ -169,7 +169,7 @@ class Limit(ViewStage):
     """Limits the view to the given number of samples.
 
     Args:
-        num: the maximum number of samples to return. If a non-positive
+        limit: the maximum number of samples to return. If a non-positive
             number is provided, an empty view is returned
     """
 
