@@ -343,6 +343,24 @@ class Sample(_Sample):
             sample.save()
 
     @classmethod
+    def _reload_dataset_sample(cls, dataset_name, sample_id):
+        """Reloads the fields for a sample instance in memory belonging to the
+        specified dataset from the database.
+
+        If the sample does not exist in memory nothing is done.
+
+        Args:
+            dataset_name: the name of the dataset to reload.
+            sample_id: the ID of the sample to reload
+        """
+        dataset_instances = cls._instances[dataset_name]
+        sample = dataset_instances.get(sample_id, None)
+        if sample:
+            sample.reload()
+            return True
+        return False
+
+    @classmethod
     def _reload_dataset_samples(cls, dataset_name):
         """Reloads the fields for sample instances in memory belonging to the
         specified dataset from the database.
@@ -443,6 +461,9 @@ class SampleView(_Sample):
     def save(self):
         """Saves the sample to the database."""
         self._doc.save(filtered_fields=self._filtered_fields)
+
+        # reload the sample singleton if it exists in memory
+        Sample._reload_dataset_sample(self.dataset_name, self.id)
 
     @property
     def field_names(self):
