@@ -20,10 +20,12 @@ from builtins import *
 
 from copy import deepcopy
 import json
+import re
 
 from bson import json_util
 from bson.objectid import ObjectId
 import mongoengine
+import pymongo
 
 import fiftyone.core.utils as fou
 
@@ -256,6 +258,91 @@ class Document(BaseDocument, mongoengine.Document):
     """
 
     meta = {"abstract": True}
+
+    def save(
+        self,
+        validate=True,
+        clean=True,
+        write_concern=None,
+        _refs=None,
+        save_condition=None,
+        signal_kwargs=None,
+        **kwargs
+    ):
+        """Save the :class:`~mongoengine.Document` to the database. If the
+        document already exists, it will be updated, otherwise it will be
+        created. Returns the saved object instance.
+
+        :param force_insert: only try to create a new document, don't allow
+            updates of existing documents.
+        :param validate: validates the document; set to ``False`` to skip.
+        :param clean: call the document clean method, requires `validate` to be
+            True.
+        :param write_concern: Extra keyword arguments are passed down to
+            :meth:`~pymongo.collection.Collection.save` OR
+            :meth:`~pymongo.collection.Collection.insert`
+            which will be used as options for the resultant
+            ``getLastError`` command.  For example,
+            ``save(..., write_concern={w: 2, fsync: True}, ...)`` will
+            wait until at least two servers have recorded the write and
+            will force an fsync on the primary server.
+        :param _refs: A list of processed references used in cascading saves
+        :param save_condition: only perform save if matching record in db
+            satisfies condition(s) (e.g. version number).
+            Raises :class:`OperationError` if the conditions are not satisfied
+        :param signal_kwargs: (optional) kwargs dictionary to be passed to
+            the signal calls.
+        """
+
+        if self._meta.get("abstract"):
+            raise mongoengine.InvalidDocumentError("Cannot save an abstract document.")
+
+        if validate:
+            self.validate(clean=clean)
+
+        if write_concern is None:
+            write_concern = {}
+
+        doc_id = self.to_mongo(fields=[self._meta["id_field"]])
+        created = "_id" not in doc_id or self._created
+
+        # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
+        doc = self.to_mongo()
+
+        if self._meta.get("auto_create_index", True):
+            self.ensure_indexes()
+
+        try:
+            # Save a new document or update an existing one
+            if created:
+                object_id = self._save_create(doc, False, write_concern)
+            else:
+                object_id, created = self._save_update(
+                    doc, save_condition, write_concern
+                )
+
+        except pymongo.errors.DuplicateKeyError as err:
+            message = "Tried to save duplicate unique keys (%s)"
+            raise mongoengine.NotUniqueError(message % err)
+        except pymongo.errors.OperationFailure as err:
+            message = "Could not save document (%s)"
+            if re.match("^E1100[01] duplicate key", str(err)):
+                # E11000 - duplicate key error index
+                # E11001 - duplicate key on update
+                message = "Tried to save duplicate unique keys (%s)"
+                raise mongoengine.NotUniqueError(message % err)
+            raise mongoengine.OperationError(message % err)
+
+        # Make sure we store the PK on this document now that it's saved
+        id_field = self._meta["id_field"]
+        if created or id_field not in self._meta.get("shard_key", []):
+            self[id_field] = self._fields[id_field].to_python(object_id)
+
+        self._clear_changed_fields()
+        self._created = False
+
+        return self
+
 
 
 class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):
