@@ -111,7 +111,7 @@ class DatasetView(foc.SampleCollection):
             [
                 "Dataset:        %s" % self._dataset.name,
                 "Num samples:    %d" % len(self),
-                "Tags:           %s" % list(self.get_tags()),
+                "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
                 fields_str,
                 "Pipeline stages:",
@@ -169,7 +169,7 @@ class DatasetView(foc.SampleCollection):
         )
 
     def get_tags(self):
-        """Returns the list of tags in the collection.
+        """Returns the list of unique tags of samples in the view.
 
         Returns:
             a list of tags
@@ -247,7 +247,7 @@ class DatasetView(foc.SampleCollection):
         d = {
             "name": self._dataset.name,
             "num_samples": len(self),
-            "tags": list(self.get_tags()),
+            "tags": self.get_tags(),
             "sample_fields": self._dataset._get_fields_dict(),
             "pipeline_stages": [str(d) for d in self._stages],
         }

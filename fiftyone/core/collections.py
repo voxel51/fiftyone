@@ -171,7 +171,7 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
     def get_tags(self):
-        """Returns the list of tags in the collection.
+        """Returns the list of unique tags of samples in the collection.
 
         Returns:
             a list of tags

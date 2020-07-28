@@ -249,7 +249,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "Name:           %s" % self.name,
                 "Persistent:     %s" % self.persistent,
                 "Num samples:    %d" % len(self),
-                "Tags:           %s" % list(self.get_tags()),
+                "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
                 self._get_fields_str(),
             ]
@@ -319,12 +319,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._purge_field(self.name, field_name)
 
     def get_tags(self):
-        """Returns the set of tags in the dataset.
+        """Returns the list of unique tags of samples in the dataset.
 
         Returns:
-            a set of tags
+            a list of tags
         """
-        return self.distinct("tags")
+        return list(self.distinct("tags"))
 
     def distinct(self, field):
         """Finds all distinct values of a sample field across the dataset.
@@ -1139,7 +1139,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         d = {
             "name": self.name,
             "num_samples": len(self),
-            "tags": list(self.get_tags()),
+            "tags": self.get_tags(),
             "sample_fields": self._get_fields_dict(),
         }
         d.update(super().to_dict())
