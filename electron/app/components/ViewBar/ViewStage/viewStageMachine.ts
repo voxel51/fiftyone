@@ -1,4 +1,4 @@
-import { Machine, actions, assign, spawn, sendParent } from "xstate";
+import { Machine, actions, assign, send, spawn, sendParent } from "xstate";
 import uuid from "uuid-v4";
 
 import viewStageParameterMachine, {
@@ -44,10 +44,7 @@ const viewStageMachine = Machine(
           parameters: (ctx) => {
             return ctx.parameters.map((parameter) => ({
               ...parameter,
-              ref: spawn(
-                viewStageParameterMachine.withContext(parameter),
-                parameter.id
-              ),
+              ref: spawn(viewStageParameterMachine.withContext(parameter)),
             }));
           },
         }),
@@ -88,8 +85,7 @@ const viewStageMachine = Machine(
                           initial: "editing",
                         })
                       : viewStageParameterMachine
-                    ).withContext(parameter),
-                    parameter.id
+                    ).withContext(parameter)
                   ),
                 }));
               },
@@ -205,7 +201,7 @@ const viewStageMachine = Machine(
     },
     on: {
       "PARAMETER.COMMIT": {
-        target: "submitted",
+        target: "reading.submitted",
         actions: [
           assign({
             parameters: (ctx, e) => {
@@ -218,7 +214,7 @@ const viewStageMachine = Machine(
           }),
           pure((ctx) => {
             if (ctx.parameters.every((p) => p.submitted)) {
-              send({ type: "STAGE.COMMIT", stage: ctx });
+              sendParent({ type: "STAGE.COMMIT", stage: ctx });
             } else {
             }
           }),

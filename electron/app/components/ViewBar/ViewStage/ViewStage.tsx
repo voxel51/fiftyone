@@ -52,12 +52,16 @@ export default React.memo(({ stageRef, tailStage }) => {
 
   const { stage, stageInfo, parameters } = state.context;
 
+  const isCompleted = ["reading.selected", "reading.submitted"].some(
+    state.matches
+  );
+
   const props = useSpring({
-    borderStyle: state.matches("reading.selected") ? "solid" : "dashed",
-    borderTopRightRadius: state.matches("reading.selected") ? 0 : 3,
-    borderBottomRightRadius: state.matches("reading.selected") ? 0 : 3,
-    borderRightWidth: state.matches("reading.selected") ? 1 : 2,
-    backgroundColor: state.matches("reading.selected")
+    borderStyle: isCompleted ? "solid" : "dashed",
+    borderTopRightRadius: isCompleted ? 0 : 3,
+    borderBottomRightRadius: isCompleted ? 0 : 3,
+    borderRightWidth: isCompleted ? 1 : 2,
+    backgroundColor: isCompleted
       ? backgroundColorComplete
       : backgroundColorIncomplete,
     opacity: 1,
@@ -115,7 +119,7 @@ export default React.memo(({ stageRef, tailStage }) => {
           />
         )}
       </ViewStageDiv>
-      {state.matches("reading.selected") &&
+      {isCompleted &&
         parameters.map((parameter) => (
           <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
         ))}
