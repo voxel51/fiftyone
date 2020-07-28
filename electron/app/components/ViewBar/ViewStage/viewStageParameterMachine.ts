@@ -2,7 +2,7 @@ import { Machine, actions, sendParent } from "xstate";
 import viewStageMachine from "./viewStageMachine";
 const { assign } = actions;
 
-export const viewStageParameterMachineConfig = {
+export default Machine({
   id: "viewStageParameter",
   initial: "reading",
   context: {
@@ -13,6 +13,7 @@ export const viewStageParameterMachineConfig = {
     value: undefined,
     submitted: undefined,
     tail: undefined,
+    committed: false,
   },
   states: {
     reading: {
@@ -24,7 +25,7 @@ export const viewStageParameterMachineConfig = {
               target: "submitted",
               cond: (ctx) => ctx.value.trim().length > 0,
             }, // more checks needed
-            { target: "pending" },
+            { target: "pending", cond: () => true },
           ],
         },
         pending: {},
@@ -40,9 +41,7 @@ export const viewStageParameterMachineConfig = {
     editing: {
       onEntry: [
         assign({
-          prevValue: (ctx) => {
-            return ctx.value;
-          },
+          prevValue: (ctx) => ctx.value,
         }),
         "focusInput",
       ],
@@ -80,12 +79,4 @@ export const viewStageParameterMachineConfig = {
       },
     },
   },
-};
-
-const viewStageParameterMachine = Machine(viewStageParameterMachineConfig, {
-  actions: {
-    focusInput: () => {},
-  },
 });
-
-export default viewStageParameterMachine;

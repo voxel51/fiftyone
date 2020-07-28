@@ -73,19 +73,21 @@ export default React.memo(({ parameterRef }) => {
     },
   });
 
+  const isEditing = state.matches("editing");
+
   return (
     <ViewStageParameterDiv style={props}>
       <ViewStageParameterInput
         placeholder={parameter}
         value={value}
-        onFocus={() => !state.matches("editing") && send("EDIT")}
-        onBlur={() => state.matches("editing") && send("BLUR")}
+        onFocus={() => !isEditing && send("EDIT")}
+        onBlur={() => isEditing && send("BLUR")}
         onChange={(e) => {
           send("CHANGE", { value: e.target.value });
         }}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
-            state.matches("editing") && send("COMMIT");
+            isEditing && send("COMMIT");
           }
         }}
         onKeyDown={(e) => {

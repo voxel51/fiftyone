@@ -1,9 +1,7 @@
 import { Machine, actions, assign, send, spawn, sendParent } from "xstate";
 import uuid from "uuid-v4";
 
-import viewStageParameterMachine, {
-  viewStageParameterMachineConfig,
-} from "./viewStageParameterMachine";
+import viewStageParameterMachine from "./viewStageParameterMachine";
 
 const { choose } = actions;
 
@@ -157,17 +155,10 @@ const viewStageMachine = Machine(
                         i === result.length - 1
                       )
                     );
-                    return parameters.map((parameter, i) => ({
+                    return parameters.map((parameter) => ({
                       ...parameter,
-                      ref: spawn(
-                        (i === 0
-                          ? Machine({
-                              ...viewStageParameterMachineConfig,
-                              initial: "editing",
-                            })
-                          : viewStageParameterMachine
-                        ).withContext(parameter),
-                        parameter.id
+                      ref: spawn(viewStageParameterMachine).withContext(
+                        parameter
                       ),
                     }));
                   },
