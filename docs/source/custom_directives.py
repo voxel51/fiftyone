@@ -42,7 +42,7 @@ class CustomCardItemDirective(Directive):
         image = '<img src="%s">' % self.options.get("image", "")
         tags = self.options.get("tags", "")
 
-        card_rst = _CARD_TEMPLATE.format(
+        card_rst = _CUSTOM_CARD_TEMPLATE.format(
             header=header,
             description=description,
             link=link,
@@ -56,7 +56,7 @@ class CustomCardItemDirective(Directive):
         return [card]
 
 
-_CARD_TEMPLATE = """
+_CUSTOM_CARD_TEMPLATE = """
 .. raw:: html
 
     <div class="col-md-12 tutorials-card-container" data-tags={tags}>
@@ -79,5 +79,46 @@ _CARD_TEMPLATE = """
 
     </div>
 
+    </div>
+"""
+
+
+class CustomButtonDirective(Directive):
+    """A custom button for use on table of contents-style pages that link into
+    other pages.
+
+    The button is clickable and links to the provided link.
+
+    Example usage::
+
+        .. custombutton::
+            :button_text: Custom button
+            :button_link: other/page.html
+    """
+
+    option_spec = {
+        "button_text": directives.unchanged,
+        "button_link": directives.unchanged,
+    }
+
+    def run(self):
+        button_text = self.options.get("button_text", "")
+        button_link = self.options.get("button_link", "")
+
+        callout_rst = _CUSTOM_BUTTON_TEMPLATE.format(
+            button_text=button_text, button_link=button_link
+        )
+
+        button_list = StringList(callout_rst.split("\n"))
+        button = nodes.paragraph()
+        self.state.nested_parse(button_list, self.content_offset, button)
+        return [button]
+
+
+_CUSTOM_BUTTON_TEMPLATE = """
+.. raw:: html
+
+    <div class="tutorials-callout-container">
+        <a class="btn with-right-arrow callout-button" href="{button_link}">{button_text}</a>
     </div>
 """
