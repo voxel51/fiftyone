@@ -152,8 +152,8 @@ Where should you go from here? You could...
 Need Support?
 _____________
 
-If you run into any issue with FiftyOne that cannot be resolved wih this
-documentation, feel free to
+If you run into any issues with FiftyOne or have any burning questions, feel
+free to
 `connect with us on Slack <https://voxel51.slack.com/app_redirect?channel=C0154574MKJ>`_
 or reach out to us at support@voxel51.com.
 
