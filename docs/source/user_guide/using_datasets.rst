@@ -1027,9 +1027,10 @@ DatasetViews encapsulate a pipeline of logical operations that determine which
 samples appear in the view (and perhaps what subset of their contents).
 
 Each view operation is captured by a |ViewStage|, and these operations are
-conveniently exposed as methods on both |Dataset|, which creates an initial
-|DatasetView|, and on |DatasetView|, which returns another |DatasetView| so
-that multiple operations can be chained together to form a pipeline.
+conveniently exposed as methods on both |Dataset|, in which case they create an
+initial |DatasetView|, and on |DatasetView|, which case they return another
+|DatasetView| with the operation appended to its internal pipeline so that
+multiple operations can be chained together.
 
 .. code-block:: python
     :linenos:
