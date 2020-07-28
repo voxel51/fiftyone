@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import styled from "styled-components";
 
-import { Sticky } from "semantic-ui-react";
+import { Rail, Sticky } from "semantic-ui-react";
 
 import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
 import ImageContainerHeader from "../components/ImageContainerHeader";
@@ -12,6 +12,10 @@ import ViewBar from "../components/ViewBar/ViewBar";
 const Container = styled.div`
   .content {
     margin-left: ${({ showSidebar }) => (showSidebar ? "15rem" : undefined)};
+  }
+
+  .ui.rail {
+    width: unset;
   }
 `;
 
@@ -42,9 +46,11 @@ const SamplesContainer = (props) => {
         />
       </Sticky>
       {showSidebar ? (
-        <Sticky context={containerRef} offset={headerHeight}>
-          <DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />
-        </Sticky>
+        <Rail>
+          <Sticky context={containerRef} offset={headerHeight}>
+            <DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />
+          </Sticky>
+        </Rail>
       ) : null}
       <div class="content">
         <Samples {...props} />
