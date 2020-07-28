@@ -44,15 +44,16 @@ export const viewStageParameterMachineConfig = {
       on: {
         CHANGE: {
           actions: assign({
-            value: (ctx, e) => e.value,
+            value: (ctx, e) => {
+              return e.value;
+            },
           }),
         },
         COMMIT: [
           {
-            target: "reading.hist",
+            target: "reading.submitted",
             actions: [
               assign({
-                value: (ctx) => ctx.value,
                 submitted: true,
               }),
               sendParent((ctx) => ({
@@ -61,7 +62,9 @@ export const viewStageParameterMachineConfig = {
               })),
               "blurInput",
             ],
-            cond: (ctx) => ctx.value.trim().length > 0,
+            cond: (ctx) => {
+              return ctx.value.trim().length > 0;
+            },
           },
         ],
         BLUR: {
@@ -69,7 +72,9 @@ export const viewStageParameterMachineConfig = {
         },
         CANCEL: {
           target: "reading",
-          actions: assign({ value: (ctx) => ctx.prevValue }),
+          actions: assign({
+            value: (ctx) => ctx.prevValue,
+          }),
         },
       },
     },

@@ -99,6 +99,45 @@ const viewStageMachine = Machine(
           hist: {
             type: "history",
           },
+          validate: {
+            always: [
+              {
+                target: "submitted",
+                cond: (ctx) => ctx.parameters.every((p) => p.submitted),
+                actions: send((ctx) => ({ type: "STAGE.COMMIT" })),
+              },
+              {
+                target: "selected",
+                cond: (ctx) => !ctx.parameters.every((p) => p.submitted),
+                actions: send((ctx, e) => {
+                  const reducer = (acc, cur, idx) => {
+                    return cur.id === e.parameter.id ? idx : acc;
+                  };
+                  const refIndex = ctx.parameters.reduce(reducer, undefined);
+                  let idx = refIndex + 1;
+                  while (idx < ctx.parameters.length) {
+                    if (!ctx.parameters[idx].submitted) {
+                      return {
+                        type: "EDIT_PARAMETER",
+                        parameter: ctx.parameters[idx],
+                      };
+                    }
+                    idx += 1;
+                  }
+                  idx = refIndex - 1;
+                  while (true) {
+                    if (!ctx.parameters[idx].submitted) {
+                      return {
+                        type: "EDIT_PARAMETER",
+                        parameter: ctx.parameters[idx],
+                      };
+                    }
+                    idx -= 1;
+                  }
+                }),
+              },
+            ],
+          },
         },
         on: {
           EDIT: {
@@ -216,55 +255,16 @@ const viewStageMachine = Machine(
     },
     on: {
       "PARAMETER.COMMIT": {
-        target: "reading",
-        actions: [
-          assign({
-            parameters: (ctx, e) => {
-              return ctx.parameters.map((parameter) => {
-                return parameter.id === e.parameter.id
-                  ? { ...e.parameter, ref: parameter.ref }
-                  : parameter;
-              });
-            },
-          }),
-          choose([
-            {
-              cond: (ctx) => ctx.parameters.every((p) => p.submitted),
-              actions: send((ctx) => ({ type: "STAGE.COMMIT" })),
-            },
-            {
-              cond: (ctx) => !ctx.parameters.every((p) => p.submitted),
-              actions: send((ctx, e) => {
-                const reducer = (acc, cur, idx) => {
-                  return cur.id === e.parameter.id ? idx : acc;
-                };
-
-                const refIndex = ctx.parameters.reduce(reducer, undefined);
-                let idx = refIndex + 1;
-                while (idx < ctx.parameters.length) {
-                  if (!ctx.parameters[idx].submitted) {
-                    console.log(ctx.parameters[idx].ref);
-                    return {
-                      type: "EDIT_PARAMETER",
-                      parameter: ctx.parameters[idx],
-                    };
-                  }
-                  idx += 1;
-                }
-                idx = refIndex - 1;
-                while (true) {
-                  if (!ctx.parameters[idx].submitted) {
-                    return {
-                      type: "EDIT_PARAMETER",
-                      parameter: ctx.parameters[idx],
-                    };
-                  }
-                  idx -= 1;
-                }
-              }),
-            },
-          ]),
-        ],
+        target: "reading.validate",
+        actions: assign({
+          parameters: (ctx, e) => {
+            return ctx.parameters.map((parameter) => {
+              return parameter.id === e.parameter.id
+                ? { ...e.parameter, ref: parameter.ref }
+                : parameter;
+            });
+          },
+        }),
       },
     },
   },

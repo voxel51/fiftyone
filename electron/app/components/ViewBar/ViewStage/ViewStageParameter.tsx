@@ -70,6 +70,8 @@ export default React.memo(({ parameterRef }) => {
     },
   });
 
+  console.log(state.toStrings());
+
   return (
     <ViewStageParameterDiv style={props}>
       <ViewStageParameterInput

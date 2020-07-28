@@ -82,8 +82,6 @@ export default React.memo(({ stageRef, tailStage }) => {
     });
   }, [state, stageRef]);
 
-  console.log(state.toStrings());
-
   return (
     <ViewStageContainer>
       <ViewStageDiv style={props}>
