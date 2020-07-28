@@ -188,21 +188,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __len__(self):
         return self._collection.count_documents({})
 
-    def __getitem__(self, sample_id):
-        if isinstance(sample_id, numbers.Integral):
+    def __getitem__(self, sample_id_or_slice):
+        if isinstance(sample_id_or_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
                 "Use sample IDs instead"
             )
 
-        if isinstance(sample_id, slice):
-            return self.view()[sample_id]
+        if isinstance(sample_id_or_slice, slice):
+            return self.view()[sample_id_or_slice]
 
         try:
-            doc = self._get_query_set().get(id=sample_id)
+            doc = self._get_query_set().get(id=sample_id_or_slice)
             return self._load_sample_from_doc(doc)
         except DoesNotExist:
-            raise KeyError("No sample found with ID '%s'" % sample_id)
+            raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
 
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
