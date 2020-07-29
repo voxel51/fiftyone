@@ -42,7 +42,7 @@ class CustomCardItemDirective(Directive):
         image = '<img src="%s">' % self.options.get("image", "")
         tags = self.options.get("tags", "")
 
-        card_rst = _CARD_TEMPLATE.format(
+        card_rst = _CUSTOM_CARD_TEMPLATE.format(
             header=header,
             description=description,
             link=link,
@@ -56,7 +56,7 @@ class CustomCardItemDirective(Directive):
         return [card]
 
 
-_CARD_TEMPLATE = """
+_CUSTOM_CARD_TEMPLATE = """
 .. raw:: html
 
     <div class="col-md-12 tutorials-card-container" data-tags={tags}>
@@ -79,5 +79,60 @@ _CARD_TEMPLATE = """
 
     </div>
 
+    </div>
+"""
+
+
+class CustomCalloutItemDirective(Directive):
+    """A custom callout for use on table of contents-style pages that link into
+    other pages.
+
+    The callout contains a header, a body, and a clickable button that links to
+    the provided link.
+
+    Example usage::
+
+        .. customcalloutitem::
+            :header: Custom header
+            :description: Custom body
+            :button_text: Custom button
+            :button_link: other/page.html
+    """
+
+    option_spec = {
+        "header": directives.unchanged,
+        "description": directives.unchanged,
+        "button_text": directives.unchanged,
+        "button_link": directives.unchanged,
+    }
+
+    def run(self):
+        header = self.options.get("header", "")
+        description = self.options.get("description", "")
+        button_text = self.options.get("button_text", "")
+        button_link = self.options.get("button_link", "")
+
+        callout_rst = _CUSTOM_CALLOUT_TEMPLATE.format(
+            header=header,
+            description=description,
+            button_text=button_text,
+            button_link=button_link,
+        )
+
+        button_list = StringList(callout_rst.split("\n"))
+        button = nodes.paragraph()
+        self.state.nested_parse(button_list, self.content_offset, button)
+        return [button]
+
+
+_CUSTOM_CALLOUT_TEMPLATE = """
+.. raw:: html
+
+    <div class="col-md-6">
+        <div class="text-container">
+            <h3>{header}</h3>
+            <p class="body-paragraph">{description}</p>
+            <a class="btn with-right-arrow callout-button" href="{button_link}">{button_text}</a>
+        </div>
     </div>
 """

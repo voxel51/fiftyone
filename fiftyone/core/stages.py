@@ -42,6 +42,11 @@ class ViewStage(object):
     """Abstract base class for all :class:`fiftyone.core.view.DatasetView`
     stages.
 
+    :class:`ViewStage` instances represent a logical operation to apply to a
+    :class:`fiftyone.core.view.DatasetView`, which may decide what subset of
+    samples in a view should pass though the stage, and also what subset of the
+    contents of each :class:`fiftyone.core.sample.Sample` should be passed.
+
     Args:
         **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
             arguments
