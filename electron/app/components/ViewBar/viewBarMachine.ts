@@ -2,7 +2,7 @@ import { Machine, assign, spawn } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 
-export const createStage = (stage, insertAt, stageInfo) => {
+export const createStage = (stage, insertAt, stageInfo, focusOnInit) => {
   return {
     id: uuid(),
     submitted: false,
@@ -10,6 +10,7 @@ export const createStage = (stage, insertAt, stageInfo) => {
     parameters: [],
     stageInfo,
     insertAt,
+    focusOnInit,
   };
 };
 
@@ -74,7 +75,21 @@ const viewBarMachine = Machine({
   },
   on: {
     "STAGE.ADD": {
-      actions: [() => alert("add")],
+      actions: [
+        assign({
+          stages: (ctx, e) => {
+            const newStage = createStage("", e.insertAt, ctx.stageInfo, true);
+            return [
+              ...ctx.stages.slice(0, e.insertAt),
+              {
+                ...newStage,
+                ref: spawn(viewStageMachine.withContext(newStage)),
+              },
+              ...ctx.stages.slice(e.insertAt),
+            ];
+          },
+        }),
+      ],
     },
     "STAGE.COMMIT": {
       actions: [

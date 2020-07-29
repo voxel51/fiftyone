@@ -43,6 +43,12 @@ const viewStageMachine = Machine(
       decide: {
         always: [
           {
+            target: "editing",
+            cond: (ctx) => {
+              return ctx.focusOnInit;
+            },
+          },
+          {
             target: "reading.submitted",
             cond: (ctx) => ctx.submitted,
             actions: [
@@ -99,6 +105,7 @@ const viewStageMachine = Machine(
           assign({
             prevStage: (ctx) => ctx.stage,
             prevSubmitted: (ctx) => ctx.submitted,
+            focusOnInit: false,
           }),
           "focusInput",
         ],
