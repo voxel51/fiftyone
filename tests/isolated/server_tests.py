@@ -1,13 +1,11 @@
 """
-ServerService tests
+ServerService tests.
 
-To run a single test, modify the main code to:
+To run a single test, modify the main code to::
 
-```
-singletest = unittest.TestSuite()
-singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
-unittest.TextTestRunner().run(singletest)
-```
+    singletest = unittest.TestSuite()
+    singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
+    unittest.TextTestRunner().run(singletest)
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
