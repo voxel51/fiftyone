@@ -34,7 +34,9 @@ class DatasetView(foc.SampleCollection):
 
     Operations on dataset views are designed to be chained together to yield
     the desired subset of the dataset, which is then iterated over to directly
-    access the samples.
+    access the samples. Each stage in the pipeline definining a
+    :class:`DatasetView` is represented by a
+    :class:`fiftyone.core.stages.ViewStage` instance.
 
     Example use::
 
