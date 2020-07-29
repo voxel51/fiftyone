@@ -89,6 +89,9 @@ const viewStageMachine = Machine(
           EDIT: {
             target: "editing",
           },
+          DELETE: {
+            target: "deleted",
+          },
         },
       },
       editing: {
@@ -192,10 +195,19 @@ const viewStageMachine = Machine(
               actions: [
                 assign({
                   stage: () => "",
-                  submitted: () => false,
                 }),
                 "blurInput",
               ],
+              cond: (ctx) => !ctx.submitted,
+            },
+            {
+              target: "reading.submitted",
+              actions: [
+                assign({
+                  stage: (ctx) => ctx.prevStage,
+                }),
+              ],
+              cond: (ctx) => ctx.submitted,
             },
           ],
         },
