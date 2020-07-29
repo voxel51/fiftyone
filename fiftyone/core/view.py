@@ -79,6 +79,11 @@ class DatasetView(foc.SampleCollection):
 
     def __copy__(self):
         view = self.__class__(self._dataset)
+        #
+        # NOTE: `copy()` here, not `deepcopy()`. We want the underlying
+        # ViewStage to be the same object so that we can track whether the
+        # stages are used by any view containing them
+        #
         view._stages = copy(self._stages)
         return view
 
