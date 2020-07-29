@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+import random
 import reprlib
 
 from bson import ObjectId
@@ -521,6 +522,7 @@ class Take(ViewStage):
 
     def __init__(self, size):
         self._size = size
+        self._seed = random.randint(int(1e7), int(1e8))
 
     @property
     def size(self):
@@ -534,12 +536,26 @@ class Take(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        size = self._size
-
-        if size <= 0:
+        if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        return [{"$sample": {"size": size}}]
+        #
+        # Can't use this because it will return different results every time
+        # the pipeline is invoked...
+        #
+        # return [{"$sample": {"size": self._size}}]
+
+        return [
+            {
+                "$addFields": {
+                    # @todo is it possible to convert `_id` to an int!?!
+                    "_hash": {"$mod": [{"$toInt": "_id"}, self._seed]}
+                }
+            },
+            {"$sort": {"_hash": 1}},
+            {"$unset": "_hash"},
+            {"$limit": self._size},
+        ]
 
     def _kwargs(self):
         return {"size": self._size}
