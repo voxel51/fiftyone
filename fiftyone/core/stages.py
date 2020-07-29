@@ -68,7 +68,10 @@ class ViewStage(object):
 
     def _serialize(self):
         return {
-            "kwargs": self._kwargs(),
+            "kwargs": {
+                k: v.to_mongo() if hasattr(v, "to_mongo") else v
+                for k, v in self._kwargs().items()
+            },
             "_cls": etau.get_class_name(self),
         }
 
