@@ -48,6 +48,9 @@ class ViewStage(object):
             arguments
     """
 
+    def __init__(self):
+        self._used = False
+
     def __str__(self):
         return repr(self)
 
@@ -57,6 +60,22 @@ class ViewStage(object):
         )
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
+
+    @property
+    def is_randomized(self):
+        """Whether the stage is randomized; i.e., it may return different
+        samples each time it is invoked.
+        """
+        return False
+
+    @property
+    def used(self):
+        """Whether this stage has been used in an aggregation pipeline."""
+        return self._used
+
+    @used.setter
+    def used(self, val):
+        self._used = val
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -116,6 +135,7 @@ class Exclude(ViewStage):
     """
 
     def __init__(self, sample_ids):
+        super().__init__()
         self._sample_ids = list(sample_ids)
 
     @property
@@ -146,6 +166,7 @@ class Exists(ViewStage):
     """
 
     def __init__(self, field):
+        super().__init__()
         self._field = field
 
     @property
@@ -175,6 +196,7 @@ class Limit(ViewStage):
     """
 
     def __init__(self, limit):
+        super().__init__()
         self._limit = limit
 
     @property
@@ -209,6 +231,7 @@ class ListFilter(ViewStage):
     """
 
     def __init__(self, field, filter):
+        super().__init__()
         self._field = field
         self._filter = filter
         self._validate()
@@ -270,6 +293,7 @@ class Match(ViewStage):
     """
 
     def __init__(self, filter):
+        super().__init__()
         self._filter = filter
         self._validate()
 
@@ -312,6 +336,7 @@ class MatchTag(ViewStage):
     """
 
     def __init__(self, tag):
+        super().__init__()
         self._tag = tag
 
     @property
@@ -343,6 +368,7 @@ class MatchTags(ViewStage):
     """
 
     def __init__(self, tags):
+        super().__init__()
         self._tags = list(tags)
 
     @property
@@ -374,6 +400,7 @@ class Mongo(ViewStage):
     """
 
     def __init__(self, pipeline):
+        super().__init__()
         self._pipeline = pipeline
 
     @property
@@ -402,6 +429,7 @@ class Select(ViewStage):
     """
 
     def __init__(self, sample_ids):
+        super().__init__()
         self._sample_ids = list(sample_ids)
 
     @property
@@ -437,6 +465,7 @@ class SortBy(ViewStage):
     """
 
     def __init__(self, field_or_expr, reverse=False):
+        super().__init__()
         self._field_or_expr = field_or_expr
         self._reverse = reverse
 
@@ -492,6 +521,7 @@ class Skip(ViewStage):
     """
 
     def __init__(self, skip):
+        super().__init__()
         self._skip = skip
 
     @property
@@ -515,19 +545,29 @@ class Skip(ViewStage):
 class Take(ViewStage):
     """Randomly samples the given number of samples from the view.
 
+    Note that this stage is randomized; so it can only be invoked once within
+    a given :class:`fiftyone.core.view.DatasetView`.
+
     Args:
         size: the number of samples to return. If a non-positive number is
             provided, an empty view is returned
     """
 
     def __init__(self, size):
+        super().__init__()
         self._size = size
-        self._seed = random.randint(int(1e7), int(1e8))
 
     @property
     def size(self):
         """The number of samples to return."""
         return self._size
+
+    @property
+    def is_randomized(self):
+        """Whether the stage is randomized; i.e., it may return different
+        samples each time it is invoked.
+        """
+        return True
 
     def to_mongo(self):
         """Returns the MongoDB version of the
@@ -539,13 +579,7 @@ class Take(ViewStage):
         if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        # Returns different results every time the pipeline is invoked...
-        # return [{"$sample": {"size": self._size}}]
-
-        return [
-            {"$sort": {{"$mod": ["_rand", self._seed]}: 1}},
-            {"$limit": self._size},
-        ]
+        return [{"$sample": {"size": self._size}}]
 
     def _kwargs(self):
         return {"size": self._size}
