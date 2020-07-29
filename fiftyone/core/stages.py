@@ -122,7 +122,7 @@ class ViewStage(object):
 
 
 class ViewStageError(Exception):
-    """An error raise by a :class:`ViewStage`"""
+    """An error raised when a :class:`ViewStage` encounters a problem."""
 
     pass
 
