@@ -8,6 +8,7 @@ import ImageContainerHeader from "../components/ImageContainerHeader";
 import SidebarContainer from "../components/SidebarContainer";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
+import { VerticalSpacer } from "../components/utils";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
@@ -34,6 +35,7 @@ const SamplesContainer = (props) => {
 
   return (
     <Root ref={containerRef} showSidebar={showSidebar}>
+      <VerticalSpacer fill height={5} />
       <Sticky
         ref={stickyHeaderRef}
         context={containerRef}
@@ -41,10 +43,12 @@ const SamplesContainer = (props) => {
         onUnstick={() => setStuck(false)}
       >
         <ViewBar />
+        <VerticalSpacer fill height={5} />
         <ImageContainerHeader
           showSidebar={showSidebar}
           onShowSidebar={setShowSidebar}
         />
+        <VerticalSpacer fill height={5} />
       </Sticky>
       <Grid>
         {showSidebar ? (
