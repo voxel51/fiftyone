@@ -15,6 +15,7 @@ unittest.TextTestRunner().run(singletest)
 """
 import datetime
 from functools import wraps
+import math
 import unittest
 
 from mongoengine.errors import (
@@ -27,6 +28,7 @@ from pymongo.errors import DuplicateKeyError
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+from fiftyone import ViewField as F
 
 
 def drop_datasets(func):
@@ -73,7 +75,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset.add_sample(sample3)
         self.assertIsNot(sample3, sample)
 
-        sample4 = dataset.view().match({"filepath": filepath}).first()
+        sample4 = dataset.match({"filepath": filepath}).first()
         self.assertIs(sample4, sample)
 
     @drop_datasets
@@ -1128,6 +1130,231 @@ class ViewTest(unittest.TestCase):
         # labels
         for sample in view.match({"labels.label": "label1"}):
             self.assertEqual(sample.labels.label, "label1")
+
+    @drop_datasets
+    def test_stages(self):
+        dataset_name = self.test_stages.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="filepath1.jpg", my_int=5),
+                fo.Sample(filepath="filepath2.jpg", my_int=7),
+                fo.Sample(filepath="filepath3.jpg", my_int=1),
+                fo.Sample(filepath="filepath4.jpg", my_int=9),
+            ]
+        )
+
+        # test `sort_by`
+        sorted_values = sorted([s.my_int for s in dataset])
+        view = dataset.sort_by("my_int")
+        view_values = [s.my_int for s in view]
+        self.assertListEqual(view_values, sorted_values)
+
+
+class ExpressionTest(unittest.TestCase):
+    @drop_datasets
+    def test_comparison(self):
+        dataset_name = self.test_comparison.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="filepath1.jpg", my_int=5),
+                fo.Sample(filepath="filepath2.jpg", my_int=7),
+                fo.Sample(filepath="filepath3.jpg", my_int=1),
+                fo.Sample(filepath="filepath4.jpg", my_int=9),
+            ]
+        )
+
+        field = "my_int"
+        value = 5
+        values = [1, 5]
+
+        dataset_values = [s[field] for s in dataset]
+
+        # test `==`
+        filtered_values = [v for v in dataset_values if v == value]
+        view = dataset.match(F(field) == value)
+        view_values = [s[field] for s in view]
+        self.assertListEqual(view_values, filtered_values)
+
+        # test `!=`
+        filtered_values = [v for v in dataset_values if v != value]
+        view = dataset.match(F(field) != value)
+        view_values = [s[field] for s in view]
+        self.assertListEqual(view_values, filtered_values)
+
+        # test `>`
+        filtered_values = [v for v in dataset_values if v > value]
+        view = dataset.match(F(field) > value)
+        view_values = [s[field] for s in view]
+        self.assertListEqual(view_values, filtered_values)
+
+        # test `>=`
+        filtered_values = [v for v in dataset_values if v >= value]
+        view = dataset.match(F(field) >= value)
+        view_values = [s[field] for s in view]
+        self.assertListEqual(view_values, filtered_values)
+
+        # test `<`
+        filtered_values = [v for v in dataset_values if v < value]
+        view = dataset.match(F(field) < value)
+        view_values = [s[field] for s in view]
+        self.assertListEqual(view_values, filtered_values)
+
+        # test `<=`
+        filtered_values = [v for v in dataset_values if v <= value]
+        view = dataset.match(F(field) <= value)
+        view_values = [s[field] for s in view]
+        self.assertListEqual(view_values, filtered_values)
+
+        # test `is_in`
+        view = dataset.match(F(field).is_in(values))
+        for sample in view:
+            self.assertIn(sample[field], values)
+
+        # test `NOT is_in`
+        view = dataset.match(~(F(field).is_in(values)))
+        for sample in view:
+            self.assertNotIn(sample[field], values)
+
+    @drop_datasets
+    def test_logic(self):
+        dataset_name = self.test_logic.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="filepath1.jpg", my_int=5),
+                fo.Sample(filepath="filepath2.jpg", my_int=7),
+                fo.Sample(filepath="filepath3.jpg", my_int=1),
+                fo.Sample(filepath="filepath4.jpg", my_int=9),
+            ]
+        )
+
+        field = "my_int"
+        value = 5
+
+        # test logical not
+        view = dataset.match(~(F(field) == value))
+        for sample in view:
+            self.assertNotEqual(sample[field], value)
+
+        # test logical and
+        bounds = [3, 6]
+        view = dataset.match((F(field) > bounds[0]) & (F(field) < bounds[1]))
+        for sample in view:
+            self.assertGreater(sample[field], bounds[0])
+            self.assertLess(sample[field], bounds[1])
+
+        # test logical or
+        view = dataset.match((F(field) < bounds[0]) | (F(field) > bounds[1]))
+        for sample in view:
+            my_int = sample[field]
+            self.assertTrue(my_int < bounds[0] or my_int > bounds[1])
+
+    @drop_datasets
+    def test_arithmetic(self):
+        dataset_name = self.test_arithmetic.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="filepath1.jpg", my_int=5, my_float=0.51),
+                fo.Sample(
+                    filepath="filepath2.jpg", my_int=-6, my_float=-0.965
+                ),
+            ]
+        )
+
+        # test __abs__
+        manual_ids = [
+            sample.id for sample in dataset if abs(sample.my_int) == 6
+        ]
+        view = dataset.match(abs(F("my_int")) == 6)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __add__
+        manual_ids = [
+            sample.id for sample in dataset if sample.my_int + 0.5 == -5.5
+        ]
+        view = dataset.match(F("my_int") + 0.5 == -5.5)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __ceil__
+        manual_ids = [
+            sample.id for sample in dataset if math.ceil(sample.my_float) == 1
+        ]
+        view = dataset.match(math.ceil(F("my_float")) == 1)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __floor__
+        manual_ids = [
+            sample.id
+            for sample in dataset
+            if math.floor(sample.my_float) == -1
+        ]
+        view = dataset.match(math.floor(F("my_float")) == -1)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __round__
+        manual_ids = [
+            sample.id for sample in dataset if round(sample.my_float) == -1
+        ]
+        view = dataset.match(round(F("my_float")) == -1)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+    @drop_datasets
+    def test_array(self):
+        dataset_name = self.test_array.__name__
+        dataset = fo.Dataset(dataset_name)
+
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="filepath1.jpg",
+                    tags=["train"],
+                    my_int=5,
+                    my_list=["a", "b"],
+                ),
+                fo.Sample(
+                    filepath="filepath2.jpg",
+                    tags=["train"],
+                    my_int=6,
+                    my_list=["b", "c"],
+                ),
+                fo.Sample(
+                    filepath="filepath3.jpg",
+                    tags=["test"],
+                    my_int=7,
+                    my_list=["c", "d"],
+                ),
+            ]
+        )
+
+        # test contains
+        tag = "train"
+        manual_ids = [sample.id for sample in dataset if tag in sample.tags]
+        view = dataset.match(F("tags").contains(tag))
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test is_in
+        my_ints = [6, 7, 8]
+        manual_ids = [
+            sample.id for sample in dataset if sample.my_int in my_ints
+        ]
+        view = dataset.match(F("my_int").is_in(my_ints))
+        self.assertListEqual([sample.id for sample in view], manual_ids)
+
+        # test __getitem__
+        idx = 1
+        value = "c"
+        manual_ids = [
+            sample.id for sample in dataset if sample.my_list[idx] == value
+        ]
+        view = dataset.match(F("my_list")[idx] == value)
+        self.assertListEqual([sample.id for sample in view], manual_ids)
 
 
 class FieldTest(unittest.TestCase):

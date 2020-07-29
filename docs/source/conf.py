@@ -8,8 +8,14 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import os
 import re
+import sys
+
+sys.path.insert(0, os.path.abspath("."))
+
+from custom_directives import CustomCardItemDirective
+from redirects import generate_redirects
 
 import fiftyone.constants as foc
 
@@ -24,12 +30,14 @@ if setup_version != foc.VERSION:
         "and try again." % (setup_version, foc.VERSION)
     )
 
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+
 
 # -- Project information -----------------------------------------------------
 
@@ -90,6 +98,9 @@ nbsphinx_prolog = """
     :download:`{{ env.doc2path(env.docname, base=None) }} </{{ env.doc2path(env.docname, base=None) }}>`
 
 """
+
+# Path to the redirects file, relative to `source/`
+redirects_file = "redirects"
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -153,3 +164,14 @@ html_context = {
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
 }
+
+# -- Custom app setup --------------------------------------------------------
+
+
+def setup(app):
+    # Generate page redirects
+    app.add_config_value("redirects_file", "redirects", "env")
+    app.connect("builder-inited", generate_redirects)
+
+    # Custom directives
+    app.add_directive("customcarditem", CustomCardItemDirective)

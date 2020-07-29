@@ -275,6 +275,7 @@ class DatasetsCommand(Command):
         _register_command(subparsers, "tail", DatasetsTailCommand)
         _register_command(subparsers, "stream", DatasetsStreamCommand)
         _register_command(subparsers, "export", DatasetsExportCommand)
+        _register_command(subparsers, "draw", DatasetsDrawCommand)
         _register_command(subparsers, "delete", DatasetsDeleteCommand)
 
     @staticmethod
@@ -419,7 +420,7 @@ class DatasetsHeadCommand(Command):
         num_samples = args.num_samples
 
         dataset = fod.load_dataset(name)
-        print(dataset.view().head(num_samples=num_samples))
+        print(dataset.head(num_samples=num_samples))
 
 
 class DatasetsTailCommand(Command):
@@ -454,7 +455,7 @@ class DatasetsTailCommand(Command):
         num_samples = args.num_samples
 
         dataset = fod.load_dataset(name)
-        print(dataset.view().tail(num_samples=num_samples))
+        print(dataset.tail(num_samples=num_samples))
 
 
 class DatasetsStreamCommand(Command):
@@ -561,6 +562,50 @@ class DatasetsExportCommand(Command):
             raise ValueError(
                 "Either `export_dir` or `json_path` must be provided"
             )
+
+
+class DatasetsDrawCommand(Command):
+    """Writes annotated versions of samples in FiftyOne datasets to disk.
+
+    Examples::
+
+        # Write annotated versions of the samples in the dataset with the
+        # specified labels overlaid to disk
+        fiftyone datasets draw <name> \\
+            --anno-dir <anno-dir> --label-fields <label-fields>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset to annotate",
+        )
+        parser.add_argument(
+            "-d",
+            "--anno-dir",
+            metavar="ANNO_DIR",
+            help="the directory in which to write the annotated data",
+        )
+        parser.add_argument(
+            "-f",
+            "--label-fields",
+            metavar="LABEL_FIELDs",
+            help="a comma-separated list of label fields to export",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        anno_dir = args.anno_dir
+        label_fields = args.label_fields
+
+        dataset = fod.load_dataset(name)
+
+        if label_fields is not None:
+            label_fields = [f.strip() for f in label_fields.split(",")]
+
+        dataset.draw_labels(anno_dir, label_fields=label_fields)
+        print("Annotations written to '%s'" % anno_dir)
 
 
 class DatasetsDeleteCommand(Command):
