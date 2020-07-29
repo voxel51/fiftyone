@@ -13,8 +13,8 @@ const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
   display: grid;
   grid-template-columns: auto auto;
-  border-top: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
+  border-top: 1px solid ${({ theme }) => theme.border};
+  border-bottom: 1px solid ${({ theme }) => theme.border};
   padding-top: 5px;
   padding-bottom: 5px;
 

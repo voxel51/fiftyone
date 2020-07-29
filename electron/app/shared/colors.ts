@@ -30,6 +30,6 @@ export const lightTheme = {
 
 export const darkTheme = {
   background: blue15,
-  border: white85,
+  border: blue50,
   text: blue90,
 };
