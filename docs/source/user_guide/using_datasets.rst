@@ -949,5 +949,5 @@ you to take an individual |Sample| and change how you are looking the labels in
 it. For example, a |SampleView| allows you to filter out individual
 |Detections| below a specified threshold.
 
-:ref:`>> Click here to checkout the view docs and learn how to explore your
-Dataset<using-views>`
+:doc:`>> Click here to checkout the view docs and learn how to explore your
+Dataset<using_views>`
