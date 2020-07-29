@@ -29,3 +29,7 @@ const data = {
 };
 
 export const standard = () => <DisplayOptionsSidebar {...data} />;
+
+export const empty = () => (
+  <DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />
+);
