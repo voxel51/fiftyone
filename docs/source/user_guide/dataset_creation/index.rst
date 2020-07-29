@@ -22,15 +22,9 @@ formats.
 Loading datasets
 ----------------
 
-<<<<<<< HEAD
 Depending on the format of your data and labels, FiftyOne provides a few 
 different options for loading your |Dataset|. Navigate the tabs below to 
 figure out which option is best for you.
-=======
-Depending on the format of your data and labels, FiftyOne provides a fhew
-different options for loading your |Dataset|. See the tabs below to figure
-out which option is best for you.
->>>>>>> acc06fc02e1d4ee5004e7bad972a8108c66f2c27
 
 .. tabs::
 
@@ -53,16 +47,10 @@ out which option is best for you.
         - :ref:`FiftyOneImageLabelsDataset`
         - :ref:`BDDDataset`
 
-<<<<<<< HEAD
+
         If one of these |Dataset| types matches your data, you can load it
         with the following code. 
-=======
-        If none of these formats match, then click another tab to see how to
-        load a |Dataset| in a custom format.
 
-        If one of these |Dataset| types does match your data, you can load it
-        with the following code.
->>>>>>> acc06fc02e1d4ee5004e7bad972a8108c66f2c27
 
         .. code-block:: python
             :linenos:
@@ -82,8 +70,8 @@ out which option is best for you.
             dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
 
-        If none of these formats match, then click another tab to see how to
-        load a |Dataset| in a custom format.
+        Didn't see what you're looking for? Click the next tab to find out how
+        to load data in any format.
 
 
         :doc:`>> Learn more about loading common-format datasets!<datasets>`
@@ -483,12 +471,8 @@ format.
 
         :ref:`>> Learn more about implementing your own custom SampleParser!<Writing a custom SampleParser>`
 
-<<<<<<< HEAD
 
     .. tab:: My data is stored as media files on disk
-=======
-    .. tab:: My data is stored on disk
->>>>>>> acc06fc02e1d4ee5004e7bad972a8108c66f2c27
 
         If you don't have a dedicated way of parsing your samples yet, then the
         recommended option is to create a custom |DatasetImporter|.
