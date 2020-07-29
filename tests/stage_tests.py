@@ -87,7 +87,9 @@ class StageTests(unittest.TestCase):
         self.assertIs(result[0], self.sample2)
 
     def test_take(self):
-        result = list(self.dataset.take(1))
+        # list() invokes len() and then iterates, which is not allowed for
+        # randomized views
+        result = [s for s in self.dataset.take(1)]
         self.assertIs(len(result), 1)
 
 
