@@ -1,13 +1,11 @@
 """
-ViewStage tests
+ViewStage tests.
 
-To run a single test, modify the main code to:
+To run a single test, modify the main code to::
 
-```
-singletest = unittest.TestSuite()
-singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
-unittest.TextTestRunner().run(singletest)
-```
+    singletest = unittest.TestSuite()
+    singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
+    unittest.TextTestRunner().run(singletest)
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -17,15 +15,13 @@ import unittest
 
 
 import fiftyone as fo
-import fiftyone.core.odm as foo
 
 
 class StageTests(unittest.TestCase):
     """Tests for all ViewStages."""
 
     def setUp(self):
-        foo.drop_database()
-        self.dataset = fo.Dataset("test")
+        self.dataset = fo.Dataset()
         self.sample1 = fo.Sample(filepath="test_one.png")
         self.sample2 = fo.Sample(filepath="test_two.png")
         self.dataset.add_sample(self.sample1)

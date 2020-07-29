@@ -273,10 +273,11 @@ manipulate subsets of your datasets to perform the analysis that you need.
     import fiftyone as fo
     import fiftyone.zoo as foz
     import fiftyone.brain as fob
+    from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("cifar10", split="test")
 
-    cats = dataset.match({"ground_truth.label": "cat"})
+    cats = dataset.match(F("ground_truth.label") == "cat")
     fob.compute_uniqueness(cats)
 
     similar_cats = cats.sort_by("uniqueness", reverse=False)
