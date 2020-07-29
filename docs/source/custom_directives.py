@@ -111,12 +111,20 @@ class CustomCalloutItemDirective(Directive):
         description = self.options.get("description", "")
         button_text = self.options.get("button_text", "")
         button_link = self.options.get("button_link", "")
+        classes = "with-right-arrow" if button_link else ""
+        attributes = (
+            ""
+            if button_link
+            else 'onclick="return false;" style="pointer-events:none;cursor:default;"'
+        )
 
         callout_rst = _CUSTOM_CALLOUT_TEMPLATE.format(
             header=header,
             description=description,
             button_text=button_text,
             button_link=button_link,
+            classes=classes,
+            attributes=attributes,
         )
 
         button_list = StringList(callout_rst.split("\n"))
@@ -132,7 +140,7 @@ _CUSTOM_CALLOUT_TEMPLATE = """
         <div class="text-container">
             <h3>{header}</h3>
             <p class="body-paragraph">{description}</p>
-            <a class="btn with-right-arrow callout-button" href="{button_link}">{button_text}</a>
+            <a class="btn {classes} callout-button" href="{button_link}"{attributes}>{button_text}</a>
         </div>
     </div>
 """
