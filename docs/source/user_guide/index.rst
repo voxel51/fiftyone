@@ -26,7 +26,7 @@ on your data quickly and easily.
 
 .. customcalloutitem::
     :header: Creating FiftyOne Datasets
-    :description: Get your data into FiftyOne using standard formats, custom formats, or open-source datasets via the Dataset Zoo.
+    :description: Load data into FiftyOne using standard formats, custom formats, or the Dataset Zoo.
     :button_text: Learn more about creating FiftyOne datasets
     :button_link: dataset_creation/index.html
 

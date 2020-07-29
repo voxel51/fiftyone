@@ -359,6 +359,7 @@ class Sample(object):
             from fiftyone.core.dataset import load_dataset
 
             return load_dataset(self.dataset_name)
+
         return None
 
     def _set_backing_doc(self, doc):
