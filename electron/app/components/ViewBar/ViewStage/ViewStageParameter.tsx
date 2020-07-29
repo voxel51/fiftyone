@@ -44,10 +44,10 @@ export default React.memo(({ parameterRef }) => {
 
   const actionsMap = useMemo(
     () => ({
-      focusInput: () => inputRef.current.select(),
-      blurInput: () => inputRef.current.blur(),
+      focusInput: () => inputRef.current && inputRef.current.select(),
+      blurInput: () => inputRef.current && inputRef.current.blur(),
     }),
-    [inputRef]
+    [inputRef.current]
   );
 
   useEffect(() => {

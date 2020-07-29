@@ -45,10 +45,12 @@ const viewStageMachine = Machine(
           {
             target: "reading.submitted",
             cond: (ctx) => ctx.submitted,
-            actions: sendParent((ctx) => ({
-              type: "STAGE.COMMIT",
-              stage: ctx,
-            })),
+            actions: [
+              sendParent((ctx) => ({
+                type: "STAGE.COMMIT",
+                stage: ctx,
+              })),
+            ],
           },
           {
             target: "reading.selected",
@@ -77,7 +79,11 @@ const viewStageMachine = Machine(
         states: {
           pending: {},
           selected: {},
-          submitted: {},
+          submitted: {
+            exit: assign({
+              insertAt: undefined,
+            }),
+          },
         },
         on: {
           EDIT: {
