@@ -196,7 +196,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         if isinstance(sample_id_or_slice, slice):
-            return self.view()[sample_id_or_slice]
+            return self[sample_id_or_slice]
 
         try:
             doc = self._get_query_set().get(id=sample_id_or_slice)

@@ -179,6 +179,8 @@ time by providing a list of samples:
     print(len(dataset))
     # 4
 
+.. _accessing-samples-in-a-dataset:
+
 Accessing samples in a dataset
 ------------------------------
 
@@ -191,6 +193,16 @@ A |Dataset| is iterable allowing every |Sample| to be accessed one at a time:
 
     for sample in dataset:
         print(sample)
+
+Use :meth:`first() <fiftyone.core.dataset.Dataset.first>` and
+:meth:`last() <fiftyone.core.dataset.Dataset.last>` to retrieve the first and
+last samples in a dataset, respectively:
+
+.. code-block:: python
+    :linenos:
+
+    first_sample = dataset.first()
+    last_sample = dataset.last()
 
 A |Sample| can be accessed directly from a |Dataset| by its ID. The |Sample|
 that is returned when accessing a |Dataset| will always provide the same
@@ -928,7 +940,7 @@ subsets of samples in a |Dataset|.
 Creating DatasetViews
 ---------------------
 
-You can create a view that contains an entire dataset via
+You can explicitly create a view that contains an entire dataset via
 :meth:`Dataset.view() <fiftyone.core.dataset.Dataset.view>`:
 
 .. code-block:: python
@@ -953,8 +965,9 @@ You can create a view that contains an entire dataset via
     Pipeline stages:
         ---
 
-In addition, the |Dataset| class directly exposes a number of operations that
-return |DatasetView| instances defined by a |ViewStage| filter:
+In practice, you are going to want to use dataset views when sorting or
+filtering samples. The |Dataset| class directly exposes a number of operations
+that return |DatasetView| instances defined by a |ViewStage|:
 
 .. code-block:: python
     :linenos:
@@ -962,20 +975,60 @@ return |DatasetView| instances defined by a |ViewStage| filter:
     print(dataset.list_view_stages())
     # ['exclude', 'exists', 'limit', ..., 'skip', 'sort_by', 'take']
 
-We'll discuss these operations in more detail later.
+We'll discuss these operations in more detail in the following sections.
 
 Accessing samples in DatasetViews
 ---------------------------------
 
-Use :meth:`first() <fiftyone.core.view.DatasetView.first>` and
-:meth:`last() <fiftyone.core.view.DatasetView.last>` to retrieve the first and
-last samples in a view, respectively:
+Samples can be accessed from views in
+:ref:`all the same ways as for datasets <accessing-samples-in-a-dataset>`.
+
+.. note::
+
+    Note that accessing a sample by its integer index in a |DatasetView| is
+    not allowed, as this conflicts with access by ID.
+
+    The best practice is to lookup individual samples by ID, or use array
+    slicing to extract a range of samples, and iterate over samples in a view.
+
+    .. code-block:: python
+
+        view[0]
+        # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
+
+Adding Stages to DatasetViews
+-----------------------------
+
+Dataset views encapsulate a pipeline of logical operations that determine which
+samples appear in the view (and perhaps what subset of their contents).
+
+Each view operation is captured by a |ViewStage|, and these operations are
+conveniently exposed as methods on both |Dataset|, in which case they create an
+initial |DatasetView|, and on |DatasetView|, in which case they return another
+|DatasetView| with the operation appended to its internal pipeline so that
+multiple operations can be chained together.
 
 .. code-block:: python
     :linenos:
 
-    first_sample = view.first()
-    last_sample = view.last()
+    print(fo.Dataset.list_view_stages())
+    # ['exclude', 'exclude_fields', 'exists', ..., 'skip', 'sort_by', 'take']
+
+The sections below discuss each view stage operation in more detail.
+
+Sorting
+-------
+
+The samples in a |DatasetView| can be sorted by any |Field|:
+
+.. code-block:: python
+    :linenos:
+
+    filepath_sorted_view = view.sort_by("filepath")
+    id_sorted_view = view.sort_by("id", reverse=True)
+
+Slicing
+-------
 
 You can extract a range of |Sample| instances from a |Dataset| using
 :meth:`skip() <fiftyone.core.view.DatasetView.skip>` and
@@ -990,66 +1043,6 @@ by using array slicing:
 
     # Equivalently, using array slicing
     range_view2 = view[2:5]
-
-You can perform a random access lookup of a sample in a |DatasetView| via its
-sample ID:
-
-.. code-block:: python
-    :linenos:
-
-    sample = view[sample_id]
-
-and you can iterate over the samples in a |DatasetView|:
-
-.. code-block:: python
-    :linenos:
-
-    for sample in view:
-        print(sample)
-
-.. note::
-
-    Note that accessing a sample by its integer index in a |DatasetView| is
-    not allowed, as this is not an efficient operation.
-
-    The best practice is to lookup indidivual samples by ID, use array slicing
-    to extract a range of samples, and iterate over samples in a view.
-
-    .. code-block:: python
-
-        view[0]
-        # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
-
-Modifying DatasetViews
-----------------------
-
-DatasetViews encapsulate a pipeline of logical operations that determine which
-samples appear in the view (and perhaps what subset of their contents).
-
-Each view operation is captured by a |ViewStage|, and these operations are
-conveniently exposed as methods on both |Dataset|, in which case they create an
-initial |DatasetView|, and on |DatasetView|, which case they return another
-|DatasetView| with the operation appended to its internal pipeline so that
-multiple operations can be chained together.
-
-.. code-block:: python
-    :linenos:
-
-    print(view.list_view_stages())
-    # ['exclude', 'exists', 'limit', ..., 'skip', 'sort_by', 'take']
-
-The sections below discuss each view stage operation in more detail.
-
-Sorting
--------
-
-The samples in a |DatasetView| can be sorted by any |Field|:
-
-.. code-block:: python
-    :linenos:
-
-    filepath_sorted_view = view.sort_by("filepath")
-    id_sorted_view = view.sort_by("id", reverse=True)
 
 Querying
 --------
@@ -1084,6 +1077,32 @@ given |Field| exists and is not ``None``:
     :linenos:
 
     metadata_view = view.exists("metadata")
+
+Advanced Querying
++++++++++++++++++
+
+**TODO** This is a WIP
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+Filtering Sample Contents
+-------------------------
+
+**TODO** This is a WIP
+
+|DatasetView| instances differ from |Dataset| instances in that they return
+|SampleView| objects rather than |Sample| objects. For all intents and purposes
+these behave the same with two important exceptions:
+    - sample views can exclude fields and filter elements of a field, meaning
+      they don't necessarily represent all of the information for a sample.
+    - sample views are not singletons and thus can not be expected to stay
+      updated if the backing document is modified elsewhere
+
+To exclude fields...
+
 
 Chaining view stages
 --------------------
