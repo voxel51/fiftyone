@@ -1,13 +1,13 @@
-Exploring Datasets
-==================
+Dataset Views
+=============
 
 .. include:: ../substitutions.rst
 .. default-role:: code
 
 FiftyOne provides methods that allow you to sort, slice, and search your
 |Dataset| using any information that you have added to the |Dataset|. When you
-do so, you get a view (more specifically a |DatasetView|) into your |Dataset| that will show only the
-samples and labels therein that match your criteria.
+do so, you get a view (more specifically a |DatasetView|) into your |Dataset|
+that will show only the samples and labels therein that match your criteria.
 
 
 DatasetView Summary
@@ -140,11 +140,17 @@ a |DatasetView| by its ID.
         # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
 
 
-Searching
+Filtering
 _________
 
 The real power behind a |DatasetView| is the ability to write your own search
-query based off of any aspect of your data. 
+query based off of any aspect of your data.
+
+Querying Samples
+----------------
+
+To query for a subset of the samples in a dataset, the core stage to work with
+is :meth:`match() <fiftyone.core.view.DatasetView.match>`. This method takes a
 
 ViewFields and Expressions
 --------------------------
