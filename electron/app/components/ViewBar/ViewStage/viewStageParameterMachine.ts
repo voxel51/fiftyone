@@ -2,89 +2,94 @@ import { Machine, actions, sendParent, send } from "xstate";
 import viewStageMachine from "./viewStageMachine";
 const { assign, choose } = actions;
 
-export default Machine({
-  id: "viewStageParameter",
-  initial: "reading",
-  context: {
-    id: undefined,
-    parameter: undefined,
-    stage: undefined,
-    type: undefined,
-    value: undefined,
-    submitted: undefined,
-    tail: undefined,
-    focusOnInit: undefined,
-  },
-  states: {
-    reading: {
-      initial: "unknown",
-      entry: [() => alert("reading"), "blurInput"],
-      always: [
-        {
-          target: "editing",
-          cond: (ctx) => {
-            return ctx.focusOnInit;
-          },
-        },
-        {
-          target: "reading",
-        },
-      ],
-      states: {
-        unknown: {
-          always: [
-            {
-              target: "submitted",
-              cond: (ctx) => ctx.value.trim().length > 0,
-            }, // more checks needed
-            { target: "pending" },
-          ],
-        },
-        pending: {},
-        submitted: {},
-      },
-      on: {
-        EDIT: "editing",
-      },
+export default Machine(
+  {
+    id: "viewStageParameter",
+    initial: "decide",
+    context: {
+      id: undefined,
+      parameter: undefined,
+      stage: undefined,
+      type: undefined,
+      value: undefined,
+      submitted: undefined,
+      tail: undefined,
+      focusOnInit: undefined,
     },
-    editing: {
-      entry: [
-        assign({
-          prevValue: (ctx) => ctx.value,
-          focusOnInit: false,
-        }),
-        "focusInput",
-      ],
-      on: {
-        BLUR: "reading",
-        CHANGE: {
-          actions: [
-            assign({
-              value: (ctx, e) => e.value,
-            }),
-          ],
-        },
-        COMMIT: [
+    states: {
+      decide: {
+        always: [
           {
-            target: "reading",
-            actions: assign({
-              submitted: true,
-            }),
-            cond: (ctx) => {
-              return ctx.value.trim().length > 0;
-            },
+            target: "editing",
+            cond: (ctx) => ctx.focusOnInit,
+          },
+          {
+            target: "reading.submitted",
+            cond: (ctx) => ctx.submitted,
+          },
+          {
+            target: "reading.pending",
           },
         ],
-        CANCEL: {
-          target: "reading",
-          actions: [
-            assign({
-              value: (ctx) => ctx.prevValue,
-            }),
-            () => console.log("cancel"),
+      },
+      reading: {
+        initial: "pending",
+        entry: "blurInput",
+        states: {
+          pending: {},
+          submitted: {},
+        },
+        on: {
+          EDIT: "editing",
+        },
+      },
+      editing: {
+        entry: [
+          assign({
+            prevValue: (ctx) => ctx.value,
+            focusOnInit: false,
+          }),
+          "focusInput",
+        ],
+        on: {
+          BLUR: "reading",
+          CHANGE: {
+            actions: [
+              assign({
+                value: (ctx, e) => e.value,
+              }),
+            ],
+          },
+          COMMIT: [
+            {
+              target: "decide",
+              actions: assign({
+                submitted: true,
+              }),
+              cond: (ctx) => {
+                return ctx.value.trim().length > 0;
+              },
+            },
+            {
+              target: "decide",
+            },
           ],
+          CANCEL: {
+            target: "reading",
+            actions: [
+              assign({
+                value: (ctx) => ctx.prevValue,
+              }),
+            ],
+          },
         },
       },
     },
   },
-});
+  {
+    actions: {
+      blurInput: () => {},
+      focusInput: () => {},
+    },
+  }
+);

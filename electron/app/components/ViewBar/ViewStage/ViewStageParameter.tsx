@@ -59,8 +59,6 @@ export default React.memo(({ parameterRef }) => {
 
   const { id, completed, parameter, stage, value, tail } = state.context;
 
-  console.log(state.toStrings());
-
   const props = useSpring({
     backgroundColor: state.matches("reading.submitted")
       ? backgroundColorComplete
@@ -79,6 +77,8 @@ export default React.memo(({ parameterRef }) => {
   });
 
   const isEditing = state.matches("editing");
+
+  console.log(state.toStrings());
 
   return (
     <ViewStageParameterDiv style={props}>
