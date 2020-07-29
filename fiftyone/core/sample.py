@@ -31,19 +31,7 @@ import fiftyone.core.odm as foo
 
 
 class _Sample(object):
-    """A sample in a :class:`fiftyone.core.dataset.Dataset`.
-
-    Samples store all information associated with a particular piece of data in
-    a dataset, including basic metadata about the data, one or more sets of
-    labels (ground truth, user-provided, or FiftyOne-generated), and additional
-    features associated with subsets of the data and/or label sets.
-
-    Args:
-        filepath: the path to the data on disk
-        tags (None): a list of tags for the sample
-        metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
-        **kwargs: additional fields to dynamically set on the sample
-    """
+    """Base class with shared functionality for both Sample and SampleView."""
 
     def __init__(self):
         self._dataset = self._get_dataset()
@@ -283,6 +271,20 @@ class _Sample(object):
 
 
 class Sample(_Sample):
+    """A sample in a :class:`fiftyone.core.dataset.Dataset`.
+
+    Samples store all information associated with a particular piece of data in
+    a dataset, including basic metadata about the data, one or more sets of
+    labels (ground truth, user-provided, or FiftyOne-generated), and additional
+    features associated with subsets of the data and/or label sets.
+
+    Args:
+        filepath: the path to the data on disk
+        tags (None): a list of tags for the sample
+        metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
+        **kwargs: additional fields to dynamically set on the sample
+    """
+
     # Instance references keyed by [dataset_name][sample_id]
     _instances = defaultdict(weakref.WeakValueDictionary)
 
@@ -305,7 +307,7 @@ class Sample(_Sample):
         document.
 
         Args:
-            document: a :class:`fiftyone.core.odm.SampleDocument`
+            doc: a :class:`fiftyone.core.odm.SampleDocument`
 
         Returns:
             a :class:`Sample`
@@ -444,6 +446,26 @@ class Sample(_Sample):
 
 
 class SampleView(_Sample):
+    """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
+
+    SampleViews should never be created manually, only returned by dataset
+    views. Sample views differ from samples similar to how dataset views differ
+    from datasets:
+        - A sample view only exposes a subset of all data for a sample.
+        - If a user attempts to modify an excluded field an error is raised.
+        - If a user attempts to modify a filtered field (the field itself,
+          not its elements) behavior is not guaranteed.
+
+    Args:
+        doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
+        selected_fields (None): a set of field names that this sample view is
+            restricted to
+        excluded_fields (None): a set of field names that are excluded from
+            this sample view
+        filtered_fields (None): a set of field names of list fields that are
+            filtered in this view and thus need special handling when saving
+    """
+
     def __init__(
         self,
         doc,
@@ -472,7 +494,9 @@ class SampleView(_Sample):
         super().__init__()
 
     def save(self):
-        """Saves the sample to the database."""
+        """Saves any changed fields to the database and updates the in-memory
+        :class:`Sample` instance if one exists.
+        """
         self._doc.save(filtered_fields=self._filtered_fields)
 
         # reload the sample singleton if it exists in memory
@@ -480,7 +504,9 @@ class SampleView(_Sample):
 
     @property
     def view_field_names(self):
-        """An ordered list of the names of the fields of this sample view."""
+        """An ordered list of the names of the fields of this sample view,
+        which is a subset of ``field_names``.
+        """
         field_names = self._doc.field_names
         if self._selected_fields is not None:
             field_names = tuple(
@@ -494,12 +520,20 @@ class SampleView(_Sample):
 
     @property
     def selected_field_names(self):
-        """An ordered list of the names of the fields of this sample."""
+        """A set of the names of the fields selected in this view, or ``None``
+        if the :class:`fiftyone.core.view.DatasetView` that produced this
+        :class:`SampleView` does not contain at least one
+        :class:`fiftyone.core.stages.SelectFields` stage.
+        """
         return self._selected_fields
 
     @property
     def excluded_field_names(self):
-        """An ordered list of the names of the fields of this sample."""
+        """A set of the names of the fields excluded from this view, or
+        ``None`` if the :class:`fiftyone.core.view.DatasetView` that produced
+        this :class:`SampleView` does not contain at least one
+        :class:`fiftyone.core.stages.ExcludeFields` stage.
+        """
         return self._excluded_fields
 
     def __str__(self):

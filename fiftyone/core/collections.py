@@ -125,19 +125,19 @@ class SampleCollection(object):
         return "\n".join(str(s) for s in self[-num_samples:])
 
     def first(self):
-        """Returns the first :class:`fiftyone.core.sample.Sample` in the
+        """Returns the first :class:`fiftyone.core.sample.SampleView` in the
         collection.
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
         """
         try:
-            return next(self.iter_samples())
+            return next(iter(self[:1]))
         except StopIteration:
             raise ValueError("%s is empty" % self.__class__.__name__)
 
     def last(self):
-        """Returns the last :class:`fiftyone.core.sample.Sample` in the
+        """Returns the last :class:`fiftyone.core.sample.SampleView` in the
         collection.
 
         Returns:

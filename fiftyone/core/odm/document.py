@@ -53,10 +53,11 @@ class SerializableDocument(object):
     def fancy_repr(
         self, class_name=None, select_fields=None, exclude_fields=None
     ):
-        """Repr, but fancier.
+        """Repr, but fancier. (i.e. takes args)
 
         Args:
             class_name: optional string name to replace the class name
+            select_fields: optional iterable of field names to restrict to
             exclude_fields: optional iterable of field names to exclude
         """
         s = fou.pformat(

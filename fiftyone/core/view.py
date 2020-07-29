@@ -31,19 +31,25 @@ import fiftyone.core.stages as fost
 class DatasetView(foc.SampleCollection):
     """A view into a :class:`fiftyone.core.dataset.Dataset`.
 
-    Dataset views represent oredered collections of subsets of
+    Dataset views represent ordered collections of windowed subsets of
     :class:`fiftyone.core.sample.Sample` instances in a dataset.
+
+    The stages of a dataset view specify either:
+        - what subset of samples (and their order)
+        - what "parts" of the sample, which manifests in that dataset views
+            return :class:`fiftyone.core.sample.SampleView` objects, as opposed
+            to the sample instances themselves.
 
     Operations on dataset views are designed to be chained together to yield
     the desired subset of the dataset, which is then iterated over to directly
-    access the samples.
+    access the sample views.
 
     Example use::
 
         # Print paths for 5 random samples from the test split
         view = dataset.match_tag("test").take(5)
-        for sample in view:
-            print(sample.filepath)
+        for sv in view:
+            print(sv.filepath)
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
