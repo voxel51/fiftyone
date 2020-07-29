@@ -52,7 +52,19 @@ export default Machine(
           "focusInput",
         ],
         on: {
-          BLUR: "reading",
+          BLUR: [
+            {
+              target: "reading.pending",
+              cond: (ctx) => !ctx.submitted,
+            },
+            {
+              target: "reading.submitted",
+              cond: (ctx) => ctx.submitted,
+              actions: assign({
+                stage: (ctx) => ctx.prevStage,
+              }),
+            },
+          ],
           CHANGE: {
             actions: [
               assign({
