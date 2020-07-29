@@ -154,7 +154,7 @@ You can create a FiftyOne dataset from a directory of images as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -250,7 +250,7 @@ in the above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -329,7 +329,7 @@ stored in the above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -423,7 +423,7 @@ as a directory of TFRecords in the above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
     When the above command is executed, the images in the TFRecords will be
     written to the provided `images_dir`, which is required because FiftyOne
@@ -503,6 +503,10 @@ where `labels.json` is a JSON file in the following format:
                         <top-left-x>, <top-left-y>, <width>, <height>
                     ],
                     "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 ...
             ],
@@ -544,7 +548,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -668,7 +672,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -793,7 +797,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -910,7 +914,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -1027,7 +1031,7 @@ directory of TFRecords in the above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
     When the above command is executed, the images in the TFRecords will be
     written to the provided `images_dir`, which is required because FiftyOne
@@ -1162,7 +1166,7 @@ format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -1265,7 +1269,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -1374,7 +1378,7 @@ as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
