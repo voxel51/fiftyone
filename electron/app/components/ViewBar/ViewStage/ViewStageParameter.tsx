@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 import { useService, asEffect } from "@xstate/react";
@@ -38,17 +38,28 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 `);
 
 export default React.memo(({ parameterRef }) => {
-  const [state, send] = useService(parameterRef, {
-    actions: {
-      focusInput: asEffect(() => {
-        inputRef.current && inputRef.current.select();
-      }),
-      blurInput: asEffect(() => {
-        inputRef.current && inputRef.current.blur();
-      }),
-    },
-  });
+  const [state, send] = useService(parameterRef);
   const inputRef = useRef(null);
+
+  const actionsMap = useMemo(
+    () => ({
+      focusInput: () => inputRef.current.focus(),
+      blurInput: () => inputRef.current.blur(),
+    }),
+    []
+  );
+
+  useEffect(() => {
+    state.actions.forEach((action) => {
+      actionsMap[action.type] &&
+        actionsMap[action.type](state.context, state.event, {
+          state,
+          _event: state._event,
+          action,
+        });
+    });
+  }, [state]);
+
   const { id, completed, parameter, stage, value, tail } = state.context;
 
   console.log(state.toStrings());
@@ -80,7 +91,7 @@ export default React.memo(({ parameterRef }) => {
         onFocus={() => !isEditing && send("EDIT")}
         onBlur={() => isEditing && send("BLUR")}
         onChange={(e) => {
-          send("CHANGE", { value: e.target.value });
+          send({ type: "CHANGE", value: e.target.value });
         }}
         onKeyPress={(e) => {
           if (e.key === "Enter") {

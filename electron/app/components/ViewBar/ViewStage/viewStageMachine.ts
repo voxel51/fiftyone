@@ -11,7 +11,8 @@ export const createParameter = (
   type,
   value,
   submitted,
-  tail
+  tail,
+  focusOnInit
 ) => {
   return {
     id: uuid(),
@@ -21,6 +22,8 @@ export const createParameter = (
     value: value ? value : "",
     submitted,
     tail,
+    focusOnInit,
+    inputRef: {},
   };
 };
 
@@ -67,7 +70,7 @@ const viewStageMachine = Machine(
             always: [
               {
                 target: "submitted",
-                cond: (ctx) => ctx.parameters.every((p) => p.submitted),
+                cond: (ctx) => ctx.submitted,
                 actions: [
                   sendParent((ctx) => ({
                     type: "STAGE.COMMIT",
@@ -77,7 +80,6 @@ const viewStageMachine = Machine(
               },
               {
                 target: "selected",
-                cond: (ctx) => !ctx.parameters.every((p) => p.submitted),
               },
             ],
           },
@@ -152,7 +154,8 @@ const viewStageMachine = Machine(
                         parameter.type,
                         "",
                         false,
-                        i === result.length - 1
+                        i === result.length - 1,
+                        i === 0
                       )
                     );
                     return parameters.map((parameter) => ({
@@ -261,6 +264,7 @@ const viewStageMachine = Machine(
   {
     actions: {
       focusInput: () => {},
+      blurInput: () => {},
     },
   }
 );

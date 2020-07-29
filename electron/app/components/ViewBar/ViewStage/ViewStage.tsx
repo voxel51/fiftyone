@@ -92,7 +92,7 @@ export default React.memo(({ stageRef }) => {
           onBlur={() =>
             state.matches("editing.searchResults.notHovering") && send("BLUR")
           }
-          onChange={(e) => send("CHANGE", { stage: e.target.value })}
+          onChange={(e) => send({ type: "CHANGE", stage: e.target.value })}
           onKeyPress={(e) => {
             if (e.key === "Enter") {
               send({ type: "COMMIT", stage: e.target.value });
