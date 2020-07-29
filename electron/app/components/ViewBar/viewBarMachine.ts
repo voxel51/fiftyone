@@ -87,7 +87,7 @@ const viewBarMachine = Machine({
             }
             return ctx.stages.map((stage) => {
               return stage.id === e.stage.id
-                ? { ...stage, ...e.stage, ref: stage.ref }
+                ? { ...e.stage, ref: stage.ref }
                 : stage;
             });
           },

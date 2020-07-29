@@ -38,8 +38,28 @@ const viewStageMachine = Machine(
       stageInfo: undefined,
       insertAt: undefined,
     },
-    initial: "initializing",
+    initial: "decide",
     states: {
+      decide: {
+        entry: (ctx) => alert(ctx.id),
+        always: [
+          {
+            target: "reading.submitted",
+            cond: (ctx) => ctx.submitted,
+            actions: sendParent((ctx) => ({
+              type: "STAGE.COMMIT",
+              stage: ctx,
+            })),
+          },
+          {
+            target: "reading.selected",
+            cond: (ctx) => ctx.stage !== "",
+          },
+          {
+            target: "reading.pending",
+          },
+        ],
+      },
       initializing: {
         entry: assign({
           parameters: (ctx) => {
@@ -52,37 +72,13 @@ const viewStageMachine = Machine(
             }));
           },
         }),
-        always: "reading",
+        always: "decide",
       },
       reading: {
-        initial: "unknown",
         states: {
-          unknown: {
-            always: [
-              { target: "selected", cond: (ctx) => ctx.stage !== "" },
-              { target: "pending" },
-            ],
-          },
           pending: {},
           selected: {},
           submitted: {},
-          validate: {
-            always: [
-              {
-                target: "submitted",
-                cond: (ctx) => ctx.submitted,
-                actions: [
-                  sendParent((ctx) => ({
-                    type: "STAGE.COMMIT",
-                    stage: ctx,
-                  })),
-                ],
-              },
-              {
-                target: "selected",
-              },
-            ],
-          },
         },
         on: {
           EDIT: {
@@ -168,7 +164,6 @@ const viewStageMachine = Machine(
                 }),
               ],
               cond: (ctx, e) => {
-                console.log(ctx, e);
                 const result = ctx.stageInfo.filter(
                   (s) => s.name.toLowerCase() === e.stage.toLowerCase()
                 );
@@ -206,7 +201,7 @@ const viewStageMachine = Machine(
     },
     on: {
       "PARAMETER.COMMIT": {
-        target: "reading.validate",
+        target: "decide",
         actions: [
           assign({
             parameters: (ctx, e) => {

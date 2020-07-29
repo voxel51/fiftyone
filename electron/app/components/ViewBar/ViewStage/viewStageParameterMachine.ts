@@ -63,9 +63,15 @@ export default Machine(
           COMMIT: [
             {
               target: "decide",
-              actions: assign({
-                submitted: true,
-              }),
+              actions: [
+                assign({
+                  submitted: true,
+                }),
+                sendParent((ctx) => ({
+                  type: "PARAMETER.COMMIT",
+                  parameter: ctx,
+                })),
+              ],
               cond: (ctx) => {
                 return ctx.value.trim().length > 0;
               },

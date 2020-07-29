@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilValue } from "recoil";
@@ -70,17 +70,21 @@ export default React.memo(({ stageRef }) => {
     },
   });
 
-  useEffect(() => {
-    stageRef.execute(state, {
-      focusInput() {
-        inputRef.current && inputRef.current.select();
-      },
+  const actionsMap = useMemo(
+    () => ({
+      focusInput: () => inputRef.current.select(),
+      blurInput: () => inputRef.current.blur(),
+    }),
+    [inputRef.current]
+  );
 
-      blurInput() {
-        inputRef.current && inputRef.current.blur();
-      },
+  useEffect(() => {
+    stageRef.onTransition((state) => {
+      state.actions.forEach((action) => {
+        if (action.type in actionsMap) actionsMap[action.type]();
+      });
     });
-  }, [state, stageRef]);
+  }, [actionsMap]);
 
   return (
     <ViewStageContainer>

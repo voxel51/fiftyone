@@ -78,8 +78,6 @@ export default React.memo(({ parameterRef }) => {
 
   const isEditing = state.matches("editing");
 
-  console.log(state.toStrings());
-
   return (
     <ViewStageParameterDiv style={props}>
       <ViewStageParameterInput
