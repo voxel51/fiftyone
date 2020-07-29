@@ -43,22 +43,19 @@ export default React.memo(({ parameterRef }) => {
 
   const actionsMap = useMemo(
     () => ({
-      focusInput: () => inputRef.current.focus(),
+      focusInput: () => inputRef.current.select(),
       blurInput: () => inputRef.current.blur(),
     }),
-    []
+    [inputRef.current]
   );
 
   useEffect(() => {
-    state.actions.forEach((action) => {
-      actionsMap[action.type] &&
-        actionsMap[action.type](state.context, state.event, {
-          state,
-          _event: state._event,
-          action,
-        });
+    parameterRef.onTransition((state) => {
+      state.actions.forEach((action) => {
+        if (action.type in actionsMap) actionsMap[action.type]();
+      });
     });
-  }, [state]);
+  }, [actionsMap]);
 
   const { id, completed, parameter, stage, value, tail } = state.context;
 
