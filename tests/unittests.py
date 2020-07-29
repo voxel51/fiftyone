@@ -1634,6 +1634,17 @@ class SerializationTest(unittest.TestCase):
         self.assertEqual(s1, s2)
 
 
+class SampleCollectionTest(unittest.TestCase):
+    def test_first_last(self):
+        dataset = fo.Dataset()
+        dataset.add_samples([fo.Sample("test_%d.png" % i) for i in range(3)])
+
+        self.assertIsInstance(dataset.first(), fo.Sample)
+        self.assertIsInstance(dataset.last(), fo.Sample)
+        self.assertIsInstance(dataset.view().first(), fos.SampleView)
+        self.assertIsInstance(dataset.view().last(), fos.SampleView)
+
+
 class AggregationTest(unittest.TestCase):
     @drop_datasets
     def test_aggregate(self):

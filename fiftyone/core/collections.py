@@ -132,7 +132,7 @@ class SampleCollection(object):
             a :class:`fiftyone.core.sample.Sample`
         """
         try:
-            return next(iter(self[:1]))
+            return next(iter(self))
         except StopIteration:
             raise ValueError("%s is empty" % self.__class__.__name__)
 

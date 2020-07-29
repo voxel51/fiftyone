@@ -196,7 +196,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         if isinstance(sample_id_or_slice, slice):
-            return self[sample_id_or_slice]
+            return self.view()[sample_id_or_slice]
 
         try:
             doc = self._get_query_set().get(id=sample_id_or_slice)
@@ -254,6 +254,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._get_fields_str(),
             ]
         )
+
+    def last(self):
+        """Returns the last :class:`fiftyone.core.sample.SampleView` in the
+        collection.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        sample_view = self[-1:].first()
+        return fos.Sample.from_doc(sample_view._doc)
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the

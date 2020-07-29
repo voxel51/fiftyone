@@ -527,6 +527,8 @@ class SelectFields(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if not self.field_names:
+            return [{"$project": {"_id": True}}]
         return [{"$project": {fn: True for fn in self.field_names}}]
 
     def _kwargs(self):
