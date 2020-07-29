@@ -7,10 +7,9 @@ export const port = atom({
 
 export const stateDescription = atom({
   key: "stateDescription",
-  default: {
-    viewStages: [],
-  },
+  default: {},
 });
+
 export const stageInfo = atom({
   key: "stageInfo",
   default: undefined,

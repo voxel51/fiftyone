@@ -14,3 +14,10 @@ export const numViewStages = selector({
     return get(viewStages).length;
   },
 });
+
+export const numSamples = selector({
+  key: "numSamples",
+  get: ({ get }) => {
+    return get(stateDescription).count;
+  },
+});

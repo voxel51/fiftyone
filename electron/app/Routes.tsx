@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Switch, Route } from "react-router-dom";
+import { RecoilRoot } from "recoil";
 import { Dimmer, Loader } from "semantic-ui-react";
 
 import routes from "./constants/routes.json";
@@ -80,17 +81,19 @@ function Routes({ port }) {
     );
   }
   return (
-    <App displayProps={appProps} colors={colors}>
-      <Switch>
-        <Route path={routes.LOADING} exact component={Loading} />
-        <Route path={routes.SETUP} exact component={Setup} />
-        <Route path={routes.SAMPLES} exact render={dataset} />
-        <Route path={routes.LABELS} exact render={dataset} />
-        <Route path={routes.TAGS} exact render={dataset} />
-        <Route path={routes.SCALARS} exact render={dataset} />
-        <Route path={routes.DATASET} render={dataset} />
-      </Switch>
-    </App>
+    <RecoilRoot>
+      <App displayProps={appProps} colors={colors}>
+        <Switch>
+          <Route path={routes.LOADING} exact component={Loading} />
+          <Route path={routes.SETUP} exact component={Setup} />
+          <Route path={routes.SAMPLES} exact render={dataset} />
+          <Route path={routes.LABELS} exact render={dataset} />
+          <Route path={routes.TAGS} exact render={dataset} />
+          <Route path={routes.SCALARS} exact render={dataset} />
+          <Route path={routes.DATASET} render={dataset} />
+        </Switch>
+      </App>
+    </RecoilRoot>
   );
 }
 

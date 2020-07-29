@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { Grid, Sticky } from "semantic-ui-react";
@@ -9,6 +10,8 @@ import SidebarContainer from "../components/SidebarContainer";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { VerticalSpacer } from "../components/utils";
+
+import * as selectors from "../recoil/selectors";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
@@ -24,6 +27,7 @@ const Root = styled.div`
 const SamplesContainer = (props) => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [stuck, setStuck] = useState(false);
+  const numSamples = useRecoilValue(selectors.numSamples);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -45,6 +49,7 @@ const SamplesContainer = (props) => {
         <ViewBar />
         <VerticalSpacer fill height={5} />
         <ImageContainerHeader
+          total={numSamples}
           showSidebar={showSidebar}
           onShowSidebar={setShowSidebar}
         />
