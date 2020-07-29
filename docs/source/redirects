@@ -1,0 +1,14 @@
+# A list of page redirects that will be automatically added to the built docs
+#
+# Syntax:
+#
+#   from/broken/page1.rst to/existing.page1.rst
+#   from/broken/page2.rst to/existing.page2.rst
+#
+
+# Introduced in v0.4
+user_guide/dataset_creation/common_datasets.rst  user_guide/dataset_creation/datasets.rst
+
+# Introduced in v0.2
+examples/dataset_creation.rst  user_guide/dataset_creation/datasets.rst
+examples/index.rst  tutorials/index.rst

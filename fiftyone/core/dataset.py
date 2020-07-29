@@ -18,6 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
+from copy import deepcopy
 import datetime
 import inspect
 import logging
@@ -149,7 +150,7 @@ def delete_non_persistent_datasets():
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """A FiftyOne dataset.
 
-    Datasets represent a homogeneous collection of
+    Datasets represent an ordered collection of
     :class:`fiftyone.core.sample.Sample` instances that describe a particular
     type of raw media (e.g., images) together with a user-defined set of
     fields.
@@ -187,24 +188,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __len__(self):
         return self._collection.count_documents({})
 
-    def __getitem__(self, sample_id):
-        if isinstance(sample_id, numbers.Integral):
+    def __getitem__(self, sample_id_or_slice):
+        if isinstance(sample_id_or_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
                 "Use sample IDs instead"
             )
 
-        if isinstance(sample_id, slice):
-            raise ValueError(
-                "Slicing datasets is not supported. Use `view()` to "
-                "obtain a DatasetView if you want to slice your samples"
-            )
+        if isinstance(sample_id_or_slice, slice):
+            return self.view()[sample_id_or_slice]
 
         try:
-            doc = self._get_query_set().get(id=sample_id)
+            doc = self._get_query_set().get(id=sample_id_or_slice)
             return self._load_sample_from_doc(doc)
         except DoesNotExist:
-            raise KeyError("No sample found with ID '%s'" % sample_id)
+            raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
 
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
@@ -251,7 +249,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "Name:           %s" % self.name,
                 "Persistent:     %s" % self.persistent,
                 "Num samples:    %d" % len(self),
-                "Tags:           %s" % list(self.get_tags()),
+                "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
                 self._get_fields_str(),
             ]
@@ -321,12 +319,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._purge_field(self.name, field_name)
 
     def get_tags(self):
-        """Returns the set of tags in the dataset.
+        """Returns the list of unique tags of samples in the dataset.
 
         Returns:
-            a set of tags
+            a list of tags
         """
-        return self.distinct("tags")
+        return list(self.distinct("tags"))
 
     def distinct(self, field):
         """Finds all distinct values of a sample field across the dataset.
@@ -498,6 +496,48 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=sample_ids
         )
+
+    def clone_field(self, field_name, new_field_name, samples=None):
+        """Clones the field values of the samples into a new field of this
+        dataset.
+
+        Any samples in ``samples`` that are not in this dataset (i.e., their
+        sample ID does not match any samples in this dataset) are skipped.
+
+        The fields of the input samples are **deep copied**.
+
+        Args:
+            field_name: the field name to clone
+            new_field_name: the new field name to populate
+            samples (None): an iterable of :class:`fiftyone.core.sample.Sample`
+                instances whose fields to clone. For example, ``samples`` may
+                be a :class:`fiftyone.core.views.DatasetView`. By default, this
+                dataset itself is used
+
+        Returns:
+            tuple of
+
+            -   num_cloned: the number of samples that were cloned
+            -   num_skipped: the number of samples that were skipped
+        """
+        if samples is None:
+            samples = self
+
+        num_cloned = 0
+        num_skipped = 0
+        with fou.ProgressBar() as pb:
+            for sample in pb(samples):
+                try:
+                    _sample = self[sample.id]
+                except KeyError:
+                    num_skipped += 1
+                    continue
+
+                _sample[new_field_name] = deepcopy(sample[field_name])
+                _sample.save()
+                num_cloned += 1
+
+        return num_cloned, num_skipped
 
     def save(self):
         """Saves all modified in-memory samples in the dataset to the database.
@@ -1099,7 +1139,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         d = {
             "name": self.name,
             "num_samples": len(self),
-            "tags": list(self.get_tags()),
+            "tags": self.get_tags(),
             "sample_fields": self._get_fields_dict(),
         }
         d.update(super().to_dict())
@@ -1149,6 +1189,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         d = etas.load_json(path_or_str)
         return cls.from_dict(d, name=name)
+
+    def _add_view_stage(self, stage):
+        return self.view().add_stage(stage)
 
     @property
     def _collection_name(self):
