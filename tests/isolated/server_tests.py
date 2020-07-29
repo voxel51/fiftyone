@@ -128,7 +128,7 @@ class ServerServiceTests(unittest.TestCase):
     def step_lengths(self):
         self.session.dataset = self.dataset
         self.wait_for_response()
-        tags = self.dataset.view().get_tags()
+        tags = self.dataset.get_tags()
 
         self.client.emit("lengths", "", callback=self.client_callback)
         client = self.wait_for_response()
