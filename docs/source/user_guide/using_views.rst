@@ -275,6 +275,21 @@ fields respectively. These stages filter the list of |Classification| or
 Tips & Tricks
 _____________
 
+Chaining view stages
+--------------------
+
+All of the aformentioned view stages can be chained together:
+
+.. code-block:: python
+    :linenos:
+
+    complex_view = (
+        dataset.match_tag("test")
+        .exists("metadata")
+        .sort_by("filepath")
+        .limit(5)
+    )
+
 Bounding Box Area
 -----------------
 

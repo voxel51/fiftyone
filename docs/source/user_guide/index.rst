@@ -76,7 +76,7 @@ and filter your data.
    :linenos:
 
    view = (
-       dataset.match({"tags": "test"})
+       dataset.match_tag("test")
        .exists("metadata")
        .sort_by("filepath")
        .limit(5)
