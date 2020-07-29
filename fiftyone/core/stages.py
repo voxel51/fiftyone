@@ -47,6 +47,13 @@ class ViewStage(object):
     samples in a view should pass though the stage, and also what subset of the
     contents of each :class:`fiftyone.core.sample.Sample` should be passed.
 
+    The :meth:`ViewStage.is_randomized` property of a stage declares whether
+    it is *randomized*, i.e., whether its output is non-deterministic. To avoid
+    ambiguity, randomized stages are only allowed to be invoked once by any
+    :class:`fiftyone.core.view.DatasetView`. The :meth:`ViewStage.used`
+    property of a stage is used to track whether the stage has been used by a
+    :class:`fiftyone.core.view.DatasetView`..
+
     Args:
         **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
             arguments

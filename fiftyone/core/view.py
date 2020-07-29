@@ -38,6 +38,12 @@ class DatasetView(foc.SampleCollection):
     :class:`DatasetView` is represented by a
     :class:`fiftyone.core.stages.ViewStage` instance.
 
+    Note that :class:`DatasetView` provides a :meth:`DatasetView.is_randomized`
+    property, which indicates whether the view is _randmized_, i.e., it
+    contains at least one :class:`fiftyone.core.stages.ViewStage` whose
+    content is non-deterministic. To avoid ambiguity, a randomized view can
+    only be invoked once.
+
     Example use::
 
         # Print paths for 5 random samples from the test split
