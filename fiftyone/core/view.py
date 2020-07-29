@@ -136,21 +136,6 @@ class DatasetView(foc.SampleCollection):
                     "due to an invalid stage in the DatasetView"
                 ) from e
 
-    def iter_samples_with_index(self):
-        """Returns an iterator over the samples in the view together with
-        their integer index in the collection.
-
-        Returns:
-            an iterator that emits ``(index, sample)`` tuples, where:
-                - ``index`` is an integer index relative to the offset, where
-                  ``offset <= view_idx < offset + limit``
-                - ``sample`` is a :class:`fiftyone.core.sample.Sample`
-        """
-        offset = self._get_latest_offset()
-        iterator = self.iter_samples()
-        for idx, sample in enumerate(iterator, start=offset):
-            yield idx, sample
-
     def get_field_schema(self, ftype=None, embedded_doc_type=None):
         """Returns a schema dictionary describing the fields of the samples in
         the view.
@@ -282,10 +267,3 @@ class DatasetView(foc.SampleCollection):
         view = copy(self)
         view._stages.append(stage)
         return view
-
-    def _get_latest_offset(self):
-        for stage in self._stages[::-1]:
-            if "$skip" in stage:
-                return stage["$skip"]
-
-        return 0
