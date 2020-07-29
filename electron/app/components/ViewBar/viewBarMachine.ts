@@ -83,7 +83,12 @@ const viewBarMachine = Machine({
             if (e.stage.insertAt !== undefined) {
               const r = [
                 ...ctx.stages.slice(0, e.stage.insertAt),
-                { ...e.stage, insertAt: undefined, ref: ctx.tailStage.ref },
+                {
+                  ...e.stage,
+                  tailStage: false,
+                  insertAt: undefined,
+                  ref: ctx.tailStage.ref,
+                },
                 ...ctx.stages.slice(e.stage.insertAt),
               ];
               return r;

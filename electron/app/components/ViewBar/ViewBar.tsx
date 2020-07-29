@@ -46,7 +46,11 @@ export default () => {
 
   const tail = () =>
     stages.length ? (
-      <AddViewStage key={`insert-button-${tailStage.id}`} />
+      <AddViewStage
+        key={`insert-button-${tailStage.id}`}
+        send={send}
+        insertAt={stages.length}
+      />
     ) : (
       <ViewStage key={tailStage.id} stageRef={tailStage.ref} tailStage={true} />
     );

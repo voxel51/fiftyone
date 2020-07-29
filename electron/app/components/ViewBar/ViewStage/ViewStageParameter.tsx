@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef } from "react";
+import React, { useMemo, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 import { useService, asEffect } from "@xstate/react";
@@ -38,6 +38,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 `);
 
 export default React.memo(({ parameterRef }) => {
+  const [listeners] = useState(new Set());
   const [state, send] = useService(parameterRef);
   const inputRef = useRef(null);
 
@@ -46,7 +47,7 @@ export default React.memo(({ parameterRef }) => {
       focusInput: () => inputRef.current.select(),
       blurInput: () => inputRef.current.blur(),
     }),
-    [inputRef.current]
+    [inputRef]
   );
 
   useEffect(() => {
