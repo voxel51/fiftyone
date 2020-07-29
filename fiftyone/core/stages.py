@@ -419,6 +419,13 @@ class Mongo(ViewStage):
         """The MongoDB aggregation pipeline."""
         return self._pipeline
 
+    @property
+    def is_randomized(self):
+        """Whether the stage is randomized; i.e., it may return different
+        samples each time it is invoked.
+        """
+        return _contains_random_op(self._pipeline)
+
     def to_mongo(self):
         """Returns the MongoDB version of the
         :class:`fiftyone.core.stages.Mongo` instance.
@@ -591,3 +598,13 @@ class Take(ViewStage):
 
     def _kwargs(self):
         return {"size": self._size}
+
+
+def _contains_random_op(obj):
+    if isinstance(obj, dict):
+        return "$sample" in obj
+
+    if isinstance(obj, list):
+        return any(_contains_random_op(o) for o in obj)
+
+    return False
