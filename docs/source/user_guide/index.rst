@@ -20,14 +20,14 @@ on your data quickly and easily.
 
 .. customcalloutitem::
     :header: FiftyOne Dataset basics
-    :description: Learn the basics of the FiftyOne Dataset class.
+    :description: Get up to speed with FiftyOne datasets and familarize yourself with their design.
     :button_text: Learn more about dataset basics
     :button_link: basics.html
 
 .. customcalloutitem::
     :header: Creating FiftyOne Datasets
     :description: Load data into FiftyOne using standard formats, custom formats, or the Dataset Zoo.
-    :button_text: Learn more about creating FiftyOne datasets
+    :button_text: Learn more about creating datasets
     :button_link: dataset_creation/index.html
 
 .. customcalloutitem::
@@ -38,14 +38,14 @@ on your data quickly and easily.
 
 .. customcalloutitem::
     :header: Exporting datasets
-    :description: Export datasets to disk in any number of formats.
+    :description: Export datasets to disk in any number of common formats, or in your own custom format.
     :button_text: Learn more about exporting datasets
     :button_link: export_datasets.html
 
 .. customcalloutitem::
     :header: Drawing labels on samples
     :description: Render labels on the samples in your FiftyOne dataset with a single line of code.
-    :button_text: Learn more about drawing labels on samples
+    :button_text: Learn more about drawing labels
     :button_link: draw_labels.html
 
 .. customcalloutitem::
@@ -62,7 +62,7 @@ on your data quickly and easily.
 
 .. customcalloutitem::
     :header: Configuring FiftyOne
-    :description: Configure FiftyOne's behavior to suit your needs.
+    :description: Customize the default behavior of the FiftyOne library to suit your needs.
     :button_text: Learn how to configure FiftyOne
     :button_link: config.html
 
