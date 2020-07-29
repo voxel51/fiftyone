@@ -9,148 +9,78 @@ Each section in this guide provides an example-centric deep dive into a core
 feature of FiftyOne, with the goal of getting you up-and-running with FiftyOne
 on your data quickly and easily.
 
-:doc:`FiftyOne Dataset basics <basics>`
----------------------------------------
 
-Learn the basics of the FiftyOne |Dataset| class and its relation to |Sample|,
-|Field|, tags and |DatasetView|.
+.. Callout items --------------------------------------------------------------
 
-:doc:`>> Learn more about dataset basics! <basics>`
+.. raw:: html
 
-.. code-block:: python
-    :linenos:
+    <div class="tutorials-callout-container">
+        <div class="row">
 
-    import fiftyone as fo
+.. Add callout items below this line
 
-    dataset = fo.Dataset(name="my_dataset")
-    sample = fo.Sample(filepath="path/to/img.png")
-    dataset.add_sample(sample)
-    sample.tags += ["train"]
-    sample["custom_field"] = 51
-    view = dataset.match_tag("test").sort_by("custom_field", reverse=True).limit(1)
-    for sample in view:
-        print(sample)
+.. customcalloutitem::
+    :header: FiftyOne Dataset basics
+    :description: Get up to speed with FiftyOne datasets and familarize yourself with their design.
+    :button_text: Learn more about dataset basics
+    :button_link: basics.html
 
-:doc:`Creating FiftyOne Datasets <dataset_creation/index>`
-----------------------------------------------------------
+.. customcalloutitem::
+    :header: Creating FiftyOne Datasets
+    :description: Load data into FiftyOne using standard formats, custom formats, or the Dataset Zoo.
+    :button_text: Learn more about creating datasets
+    :button_link: dataset_creation/index.html
 
-Get your data into FiftyOne using standard formats, custom formats, or
-open-source datasets via the Dataset Zoo.
+.. customcalloutitem::
+    :header: Exploring datasets
+    :description: Take a deep dive into FiftyOne datasets and how to use them with samples and fields.
+    :button_text: Learn more about using datasets
+    :button_link: using_datasets.html
 
-:doc:`>> Learn more about creating FiftyOne datasets! <dataset_creation/index>`
+.. customcalloutitem::
+    :header: Dataset views
+    :description: See FiftyOne shine with this powerful interface that lets you search, sort, and filter your data.
+    :button_text: Learn more about using dataset views
+    :button_link: using_views.html
 
-.. code-block:: python
-   :linenos:
+.. customcalloutitem::
+    :header: Exporting datasets
+    :description: Export datasets to disk in any number of common formats, or in your own custom format.
+    :button_text: Learn more about exporting datasets
+    :button_link: export_datasets.html
 
-   dataset = fo.Dataset.from_dir(
-       dataset_dir="/path/to/dataset",
-       dataset_type=fo.types.COCODetectionDataset,
-       name="my-coco-format-dataset",
-   )
+.. customcalloutitem::
+    :header: Drawing labels on samples
+    :description: Render labels on the samples in your FiftyOne dataset with a single line of code.
+    :button_text: Learn more about drawing labels
+    :button_link: draw_labels.html
 
-:doc:`Dataset details <using_datasets>`
---------------------------------------
+.. customcalloutitem::
+    :header: Visualizing datasets in the App
+    :description: Visualize your datasets in the FiftyOne App and interactively search, sort, and filter them.
+    :button_text: Learn more about visualizing datasets
+    :button_link: app.html
 
-Get details about how to access and modify samples, fields, and labels in your 
-|Dataset|.
+.. customcalloutitem::
+    :header: The FiftyOne Brain
+    :description: Use the FiftyOne Brain to automatically get insights into your datasets.
+    :button_text: Learn more about the FiftyOne Brain
+    :button_link: brain.html
 
-:doc:`>> Learn more about datasets, samples, fields, and labels! <using_datasets>`
+.. customcalloutitem::
+    :header: Configuring FiftyOne
+    :description: Customize the default behavior of the FiftyOne library to suit your needs.
+    :button_text: Learn how to configure FiftyOne
+    :button_link: config.html
 
-.. code-block:: python
-   :linenos:
+.. End callouts ---------------------------------------------------------------
 
-   sample = dataset[sample_id]
-   sample["ground_truth"] = fo.Classification(label="alligator")
-   sample.save()
+.. raw:: html
 
+        </div>
+    </div>
 
-:doc:`Exploring datasets <using_datasets>`
---------------------------------------
-
-Take a deep dive into FiftyOne datasets and how to use them to search, sort,
-and filter your data.
-
-:doc:`>> Learn more about exploring datasets! <using_views>`
-
-.. code-block:: python
-   :linenos:
-
-   view = (
-       dataset.match_tag("test")
-       .exists("metadata")
-       .sort_by("filepath")
-       .limit(5)
-   )
-
-
-:doc:`Exporting datasets <export_datasets>`
--------------------------------------------
-
-Export datasets to disk in any number of formats.
-
-:doc:`>> Learn more about exporting datasets! <export_datasets>`
-
-.. code-block:: python
-   :linenos:
-
-   dataset.export(
-       export_dir=export_dir, dataset_type=fo.types.COCODetectionDataset
-   )
-
-:doc:`Drawing labels on samples <draw_labels>`
-----------------------------------------------
-
-Render labels on the samples in your FiftyOne dataset with a single line of
-code.
-
-:doc:`>> Learn more about drawing labels on samples! <draw_labels>`
-
-.. code-block:: python
-   :linenos:
-
-   anno_dir = "/path/for/annotated/images"
-   label_fields = ["ground_truth", "predictions"]
-
-   dataset.draw_labels(anno_dir, label_fields=label_fields)
-
-:doc:`Visualizing datasets in the App <app>`
---------------------------------------------
-
-Visualize your datasets in the FiftyOne App and interactively search, sort, and
-filter them.
-
-:doc:`>> Learn more about visualizing datasets! <app>`
-
-.. image:: ../images/dog.png
-   :alt: App
-   :align: center
-
-:doc:`The FiftyOne Brain <brain>`
----------------------------------
-
-Use the FiftyOne Brain to automatically get insights into your datasets.
-
-:doc:`>> Learn more about the FiftyOne Brain! <brain>`
-
-.. code-block:: python
-   :linenos:
-
-   import fiftyone.brain as fob
-
-   fob.compute_uniqueness(dataset)
-   rank_view = dataset.sort_by("uniqueness")
-
-:doc:`Configuring FiftyOne <config>`
-------------------------------------
-
-Configure FiftyOne's behavior to suit your needs.
-
-:doc:`>> Learn how to configure FiftyOne! <config>`
-
-.. code-block:: shell
-   :linenos:
-
-   export FIFTYONE_DEFAULT_ML_BACKEND=tensorflow
+.. End of callout items -------------------------------------------------------
 
 .. toctree::
     :maxdepth: 1

@@ -45,9 +45,9 @@ FiftyOne uses a lightweight non-relational database to store datasets, so you
 can easily scale to datasets of any size without worrying about RAM
 constraints on your machine.
 
-Datasets should be thought of as an unordered collection. When a |Sample| is
-added to a |Dataset|, it is assigned a unique ID that can be used to retrieve
-the sample from the dataset.
+Datasets are **ordered collections** of samples. When a |Sample| is added to a
+|Dataset|, it is assigned a unique ID that can be used to retrieve the sample
+from the dataset.
 
 Slicing and other batch operations on datasets are done through the use of
 :doc:`DatasetViews <using_views>`. A |DatasetView| provides an ordered
