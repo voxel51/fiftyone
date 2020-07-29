@@ -18,7 +18,7 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-from copy import copy, deepcopy
+from copy import copy
 import numbers
 
 from bson import ObjectId, json_util
@@ -79,7 +79,7 @@ class DatasetView(foc.SampleCollection):
 
     def __copy__(self):
         view = self.__class__(self._dataset)
-        view._stages = deepcopy(self._stages)
+        view._stages = copy(self._stages)
         return view
 
     @property
@@ -88,6 +88,13 @@ class DatasetView(foc.SampleCollection):
         this view's pipeline.
         """
         return self._stages
+
+    @property
+    def is_randomized(self):
+        """Whether this view is randomized; i.e., it may return different
+        samples each time it is invoked.
+        """
+        return any(s.is_randomized for s in self._stages)
 
     def summary(self):
         """Returns a string summary of the view.
@@ -107,11 +114,18 @@ class DatasetView(foc.SampleCollection):
         else:
             pipeline_str = "    ---"
 
+        if self.is_randomized:
+            num_samples = "???"
+            tags = "???"
+        else:
+            num_samples = len(self)
+            tags = self.get_tags()
+
         return "\n".join(
             [
                 "Dataset:        %s" % self._dataset.name,
-                "Num samples:    %d" % len(self),
-                "Tags:           %s" % self.get_tags(),
+                "Num samples:    %s" % num_samples,
+                "Tags:           %s" % tags,
                 "Sample fields:",
                 fields_str,
                 "Pipeline stages:",
@@ -205,9 +219,15 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterable over the aggregation result
         """
+        if self.is_randomized and any(s.used for s in self._stages):
+            raise ValueError(
+                "Cannot aggregate a randomized DatasetView multiple times"
+            )
+
         _pipeline = []
         for s in self._stages:
             _pipeline.extend(s.to_mongo())
+            s.used = True
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
