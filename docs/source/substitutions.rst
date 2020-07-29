@@ -6,6 +6,7 @@
 .. |ViewStage| replace:: :class:`ViewStage <fiftyone.core.stages.ViewStage>`
 
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
+.. |SampleView| replace:: :class:`SampleView <fiftyone.core.sample.SampleView>`
 
 .. |Field| replace:: :class:`Field <fiftyone.core.fields.Field>`
 .. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
