@@ -1062,7 +1062,7 @@ A |DatasetView| can be queried using :meth:`match()
     :linenos:
 
     # Get only samples with the tag "train"
-    train_view = view.match({"tags": "train"})
+    train_view = view.match_tag("train")
 
 Convenience functions for common queries are also available.
 
@@ -1094,7 +1094,7 @@ All of the aformentioned view stages can be chained together:
     :linenos:
 
     complex_view = (
-        dataset.match({"tags": "test"})
+        dataset.match_tag("test")
         .exists("metadata")
         .sort_by("filepath")
         .limit(5)
