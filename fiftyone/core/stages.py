@@ -539,21 +539,11 @@ class Take(ViewStage):
         if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        #
-        # Can't use this because it will return different results every time
-        # the pipeline is invoked...
-        #
+        # Returns different results every time the pipeline is invoked...
         # return [{"$sample": {"size": self._size}}]
 
         return [
-            {
-                "$addFields": {
-                    # @todo is it possible to convert `_id` to an int!?!
-                    "_hash": {"$mod": [{"$toInt": "_id"}, self._seed]}
-                }
-            },
-            {"$sort": {"_hash": 1}},
-            {"$unset": "_hash"},
+            {"$sort": {{"$mod": ["_rand", self._seed]}: 1}},
             {"$limit": self._size},
         ]
 
