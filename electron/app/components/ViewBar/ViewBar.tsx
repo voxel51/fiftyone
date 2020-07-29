@@ -36,11 +36,10 @@ const ViewBarDiv = styled.div`
   }
 );*/
 
+const machine = viewBarMachine.withContext(createBar(5151));
+
 export default () => {
-  const portValue = useRecoilValue(port);
-  const [state, send] = useMachine(
-    viewBarMachine.withContext(createBar(portValue))
-  );
+  const [state, send] = useMachine(machine);
 
   const { stages, tailStage } = state.context;
 

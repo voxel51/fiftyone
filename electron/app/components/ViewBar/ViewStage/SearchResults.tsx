@@ -37,7 +37,8 @@ const SearchResult = React.memo(
     const handleMouseLeave = () =>
       set({ backgroundColor: searchResultsBackgroundColor });
 
-    const setResult = (e) => send("COMMIT", { stage: e.target.dataset.result });
+    const setResult = (e) =>
+      send({ type: "COMMIT", stage: e.target.dataset.result });
 
     return (
       <SearchResultDiv

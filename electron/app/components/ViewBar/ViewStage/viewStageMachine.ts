@@ -157,14 +157,15 @@ const viewStageMachine = Machine(
                     );
                     return parameters.map((parameter) => ({
                       ...parameter,
-                      ref: spawn(viewStageParameterMachine).withContext(
-                        parameter
+                      ref: spawn(
+                        viewStageParameterMachine.withContext(parameter)
                       ),
                     }));
                   },
                 }),
               ],
               cond: (ctx, e) => {
+                console.log(ctx, e);
                 const result = ctx.stageInfo.filter(
                   (s) => s.name.toLowerCase() === e.stage.toLowerCase()
                 );

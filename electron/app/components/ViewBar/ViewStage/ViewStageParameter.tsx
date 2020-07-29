@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
-import { useService } from "@xstate/react";
+import { useService, asEffect } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
 import {
@@ -38,21 +38,18 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 `);
 
 export default React.memo(({ parameterRef }) => {
-  const [state, send] = useService(parameterRef);
+  const [state, send] = useService(parameterRef, {
+    actions: {
+      focusInput: asEffect(() => {
+        inputRef.current && inputRef.current.select();
+      }),
+      blurInput: asEffect(() => {
+        inputRef.current && inputRef.current.blur();
+      }),
+    },
+  });
   const inputRef = useRef(null);
   const { id, completed, parameter, stage, value, tail } = state.context;
-
-  useEffect(() => {
-    parameterRef.execute(state, {
-      focusInput() {
-        inputRef.current && inputRef.current.select();
-      },
-
-      blurInput() {
-        inputRef.current && inputRef.current.blur();
-      },
-    });
-  }, [state, parameterRef]);
 
   console.log(state.toStrings());
 

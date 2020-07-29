@@ -13,7 +13,6 @@ export default Machine({
     value: undefined,
     submitted: undefined,
     tail: undefined,
-    committed: false,
   },
   states: {
     reading: {
