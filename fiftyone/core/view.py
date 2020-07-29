@@ -96,8 +96,8 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def is_randomized(self):
-        """Whether this view is randomized; i.e., it may return different
-        samples each time it is invoked.
+        """Whether this view is randomized; i.e., it contains at least one
+        randomized view stage and thus can only be invoked once.
         """
         return any(s.is_randomized for s in self._stages)
 

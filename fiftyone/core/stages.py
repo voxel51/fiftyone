@@ -18,7 +18,6 @@ from builtins import *
 # pragma pylint: enable=unused-wildcard-import
 # pragma pylint: enable=wildcard-import
 
-import random
 import reprlib
 
 from bson import ObjectId
@@ -544,9 +543,6 @@ class Skip(ViewStage):
 
 class Take(ViewStage):
     """Randomly samples the given number of samples from the view.
-
-    Note that this stage is randomized; so it can only be invoked once within
-    a given :class:`fiftyone.core.view.DatasetView`.
 
     Args:
         size: the number of samples to return. If a non-positive number is
