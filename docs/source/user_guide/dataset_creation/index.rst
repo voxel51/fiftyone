@@ -16,15 +16,15 @@ formats.
     fields (metadata, labels, custom fields, etc.) are written to FiftyOne's
     backing database.
 
-    Note that samples only store the `filepath` to the media, not the
+    **Important!** Samples only store the `filepath` to the media, not the
     raw media itself. FiftyOne does not create duplicate copies of your data!
 
 Loading datasets
 ----------------
 
-Depending on the format of your data and labels, FiftyOne provides a fhew 
-different options for loading your |Dataset|. See the tabs below to figure 
-out which option is best for you.
+Depending on the format of your data and labels, FiftyOne provides a few 
+different options for loading your |Dataset|. Navigate the tabs below to 
+figure out which option is best for you.
 
 
 .. tabs::
@@ -48,10 +48,7 @@ out which option is best for you.
         - :ref:`FiftyOneImageLabelsDataset`          
         - :ref:`BDDDataset`                          
 
-        If none of these formats match, then click another tab to see how to
-        load a |Dataset| in a custom format.
-
-        If one of these |Dataset| types does match your data, you can load it
+        If one of these |Dataset| types matches your data, you can load it
         with the following code. 
 
         .. code-block:: python
@@ -72,13 +69,17 @@ out which option is best for you.
             dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
 
-        :doc:`>> Learn more about loading datasets by type!<datasets>`
+        If none of these formats match, then click another tab to see how to
+        load a |Dataset| in a custom format.
+
+
+        :doc:`>> Learn more about loading common-format datasets!<datasets>`
 
     .. tab:: I have data in a custom format 
 
         .. tabs::
 
-            .. tab:: My data is stored in a directory
+            .. tab:: My data is stored as media files on disk 
 
                 The recommended approach to loading a |Dataset| is
                 by iterating over your data and labels and creating 
@@ -242,7 +243,7 @@ out which option is best for you.
 
                 :doc:`>> Learn more about loading samples into a Dataset!<samples>`
 
-            .. tab:: My data is exposed as a Python iterable
+            .. tab:: My data is exposed by a Python iterable
 
                 The best way for you to load your data is by :doc:`ingesting
                 your data and adding samples to your Dataset.<samples>`
@@ -432,7 +433,7 @@ format.
 
 .. tabs::
     
-    .. tab:: I have a Python iterable for my data
+    .. tab:: My data is exposed by a Python iterable 
 
         If you already have a way to efficiently parse your data into python,
         then the recommended option is to wrap it in a FiftyOne |SampleParser|.
@@ -477,7 +478,7 @@ format.
         :ref:`>> Learn more about implementing your own custom SampleParser!<Writing a custom SampleParser>`
 
 
-    .. tab:: My data is stored on disk
+    .. tab:: My data is stored as media files on disk
 
         If you don't have a dedicated way of parsing your samples yet, then the
         recommended option is to create a custom |DatasetImporter|.
