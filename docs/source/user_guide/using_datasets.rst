@@ -278,7 +278,7 @@ By default, all |Sample| instances have the following fields:
     | `id`       | string                             | `None`      | The ID of the sample in its parent dataset, or    |
     |            |                                    |             | `None` if the sample does not belong to a dataset |
     +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `metadata` | :class:`Metadata                   |`None`       | Type-specific metadata about the source data      |
+    | `metadata` | :class:`Metadata                   | `None`      | Type-specific metadata about the source data      |
     |            | <fiftyone.core.metadata.Metadata>` |             |                                                   |
     +------------+------------------------------------+-------------+---------------------------------------------------+
     | `tags`     | list                               | `[]`        | A list of string tags for the sample              |
@@ -937,5 +937,5 @@ you to take an individual |Sample| and change how you are looking the labels in
 it. For example, a |SampleView| allows you to filter out individual
 |Detections| below a specified threshold.
 
-:ref:`>> Click here to checkout the view docs and learn how to explore your
-Dataset<using-dataset-views>`
+:doc:`>> Click here to checkout the view docs and learn how to explore your
+Dataset<using-views>`

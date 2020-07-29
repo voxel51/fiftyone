@@ -148,6 +148,7 @@ Configure FiftyOne's behavior to suit your needs.
     Dataset basics<basics>
     Creating datasets<dataset_creation/index>
     Using datasets<using_datasets>
+    Sort, slice, and search datasets<using_views>
     Exporting datasets<export_datasets>
     Drawing labels on samples<draw_labels>
     Viewing datasets in the App<app>

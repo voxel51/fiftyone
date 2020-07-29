@@ -1,21 +1,22 @@
-Using FiftyOne Views
-====================
+Sorting, Slicing, and Searching Datasets
+========================================
 
 .. include:: ../substitutions.rst
 .. default-role:: code
 
+FiftyOne provides methods that allow you to sort, slice, and search your
+|Dataset| along any information that you have added to the |Dataset|. When you
+do so, you get a view (more specifically a |DatasetView|) into your |Dataset| that will show only the
+samples and labels therein that match your criteria.
 
 
-DatasetViews
-____________
+DatasetView Summary
+___________________
 
 A |DatasetView| is returned whenever any sorting, slicing, or searching
 operation is performed on a |Dataset|. 
-
-FiftyOne provides a powerful and flexible class, |DatasetView|, for accessing
-subsets of samples.
-The default view of a |Dataset| encompasses the entire |Dataset|, with
-unpredictable sort order.
+Unless sorted, a the samples in a |DatasetView| are returned in an
+unpredictable order.
 Basic ways to explore a |DatasetView| are available:
 
 .. code-block:: python
@@ -39,7 +40,7 @@ Basic ways to explore a |DatasetView| are available:
 Chaining view stages
 --------------------
 
-All of the aformentioned view stages can be chained together:
+All view operations that are covered below can be chained together:
 
 .. code-block:: python
     :linenos:
@@ -55,6 +56,7 @@ All of the aformentioned view stages can be chained together:
 Removing a batch of samples from a dataset
 ------------------------------------------
 
+If you have a |DatasetView|, it can be used to modify the |Dataset|.
 Every |Sample| in a given |DatasetView| can be removed from a |Dataset| with a
 single command:
 
@@ -70,9 +72,10 @@ _______
 Sorting samples is the simplest operation that can be performed on a |Dataset|.
 By default, a |Dataset| is unordered, however, the 
 :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` method can be used
-to sort a |Dataset| or |DatasetView| 
-The samples in a |DatasetView| can be sorted (forward or in reverse) by any
-|Field|:
+to sort a |Dataset| or |DatasetView|. 
+Sorting a |Dataset| returns a |DatasetView|.
+The samples in the returned |DatasetView| can be sorted (forward or in reverse)
+by any |Field|:
 
 .. code-block:: python
     :linenos:
@@ -84,8 +87,8 @@ The samples in a |DatasetView| can be sorted (forward or in reverse) by any
 Slicing
 _______
 
-Multiple Samples
-----------------
+Accessing Sample ranges
+-----------------------
 
 Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first()>` to get
 the first sample in a |DatasetView| or
@@ -138,8 +141,8 @@ a |DatasetView| is iterable:
     for sample in view:
         print(sample)
 
-A single Sample
----------------
+Accessing single samples
+------------------------
 
 
 Searching
