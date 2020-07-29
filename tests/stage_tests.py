@@ -15,15 +15,13 @@ import unittest
 
 
 import fiftyone as fo
-import fiftyone.core.odm as foo
 
 
 class StageTests(unittest.TestCase):
     """Tests for all ViewStages."""
 
     def setUp(self):
-        foo.drop_database()
-        self.dataset = fo.Dataset("test")
+        self.dataset = fo.Dataset()
         self.sample1 = fo.Sample(filepath="test_one.png")
         self.sample2 = fo.Sample(filepath="test_two.png")
         self.dataset.add_sample(self.sample1)
