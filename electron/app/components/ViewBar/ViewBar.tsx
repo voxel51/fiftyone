@@ -10,7 +10,7 @@ import {
 } from "../../shared/colors";
 import { port } from "../../recoil/atoms";
 import { getSocket, useSubscribe } from "../../utils/socket";
-import ViewStage, { ViewStageButton } from "./ViewStage/ViewStage";
+import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine, { createBar } from "./viewBarMachine";
 
 const ViewBarDiv = styled.div`
@@ -20,6 +20,7 @@ const ViewBarDiv = styled.div`
   box-sizing: border-box;
   height: 54px;
   width: 100%;
+  padding: 0 0.25rem;
 `;
 
 /*const connectedViewBarMachine = viewBarMachine.withConfig(
@@ -39,13 +40,13 @@ const ViewBarDiv = styled.div`
 const machine = viewBarMachine.withContext(createBar(5151));
 
 export default () => {
-  const [state, send] = useMachine(machine);
+  const [state] = useMachine(machine);
 
   const { stages, tailStage } = state.context;
 
   const tail = () =>
     stages.length ? (
-      <ViewStageButton />
+      <AddViewStage key={`insert-button-${tailStage.id}`} />
     ) : (
       <ViewStage key={tailStage.id} stageRef={tailStage.ref} tailStage={true} />
     );
@@ -56,7 +57,11 @@ export default () => {
         ? stages.map((stage, i) => {
             return (
               <>
-                <ViewStageButton key={`insert-button-${stage.id}`} />
+                <AddViewStage
+                  key={`insert-button-${stage.id}`}
+                  send={send}
+                  insertAt={i}
+                />
                 <ViewStage key={stage.id} stageRef={stage.ref} />
               </>
             );

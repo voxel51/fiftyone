@@ -16,7 +16,7 @@ import ViewStageParameter from "./ViewStageParameter";
 const borderColor = fontColor;
 
 const ViewStageContainer = styled.div`
-  margin: 0.5rem;
+  margin: 0.5rem 0.25rem;
   display: inline-block;
 `;
 
@@ -44,7 +44,41 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 `;
 
-export const ViewStageButton = styled.button``;
+export const ViewStageButton = animated(styled.button`
+  box-sizing: border-box;
+  border: 2px dashed ${borderColor};
+  color: ${fontColor};
+  border-radius: 3px;
+  display: inline-block;
+  position: relative;
+  margin: 0.25rem;
+  line-height: 1rem;
+  padding: 0.5rem;
+  cursor: pointer;
+
+  :focus {
+    outline: none;
+  }
+`);
+
+export const AddViewStage = ({ send, insertAt }) => {
+  const props = useSpring({
+    background: backgroundColorIncomplete,
+    opacity: 1,
+    from: {
+      opacity: 0,
+    },
+  });
+
+  return (
+    <ViewStageButton
+      style={props}
+      onClick={() => send({ type: "STAGE.ADD", insertAt })}
+    >
+      +
+    </ViewStageButton>
+  );
+};
 
 export default React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
@@ -72,8 +106,8 @@ export default React.memo(({ stageRef }) => {
 
   const actionsMap = useMemo(
     () => ({
-      focusInput: () => inputRef.current.select(),
-      blurInput: () => inputRef.current.blur(),
+      focusInput: () => inputRef.current && inputRef.current.select(),
+      blurInput: () => inputRef.current && inputRef.current.blur(),
     }),
     [inputRef.current]
   );
@@ -84,7 +118,7 @@ export default React.memo(({ stageRef }) => {
         if (action.type in actionsMap) actionsMap[action.type]();
       });
     });
-  }, [actionsMap]);
+  }, [actionsMap, inputRef.current]);
 
   return (
     <ViewStageContainer>

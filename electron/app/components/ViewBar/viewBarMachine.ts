@@ -73,6 +73,9 @@ const viewBarMachine = Machine({
     },
   },
   on: {
+    "STAGE.ADD": {
+      actions: [() => alert("add")],
+    },
     "STAGE.COMMIT": {
       actions: [
         assign({

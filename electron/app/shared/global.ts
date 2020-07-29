@@ -3,7 +3,8 @@ import { color, typography } from "./styles";
 
 export const styles = css`
   body,
-  input {
+  input,
+  button {
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
     font-weight: bold;

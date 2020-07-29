@@ -14,7 +14,8 @@ export const standard = () => (
       position: "relative",
       background: "pink",
     }}
+    key={0}
   >
-    <ViewBar />
+    <ViewBar key={0} />
   </div>
 );

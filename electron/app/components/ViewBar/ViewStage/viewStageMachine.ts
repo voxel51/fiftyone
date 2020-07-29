@@ -41,7 +41,6 @@ const viewStageMachine = Machine(
     initial: "decide",
     states: {
       decide: {
-        entry: (ctx) => alert(ctx.id),
         always: [
           {
             target: "reading.submitted",
