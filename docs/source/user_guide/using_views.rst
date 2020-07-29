@@ -42,18 +42,6 @@ You can explicitly create a view that contains an entire dataset via
     Pipeline stages:
         ---
 
-Removing a batch of samples from a dataset
-------------------------------------------
-
-If you have a |DatasetView|, it can be used to modify the |Dataset|.
-Every |Sample| in a given |DatasetView| can be removed from a |Dataset| with a
-single command:
-
-.. code-block:: python
-    :linenos:
-
-    dataset.remove_samples(view)
-
 
 Adding Stages to DatasetViews
 -----------------------------
@@ -90,8 +78,8 @@ by any |Field|:
 .. code-block:: python
     :linenos:
 
-    view = dataset.view().sort_by("filepath")
-    view = dataset.view().sort_by("id", reverse=True)
+    view = dataset.sort_by("filepath")
+    view = dataset.sort_by("id", reverse=True)
 
 
 Slicing
@@ -109,10 +97,10 @@ by using array slicing:
     :linenos:
 
     # Skip the first 2 samples and take the next 3
-    range_view1 = view.skip(2).limit(3)
+    range_view1 = dataset.skip(2).limit(3)
 
     # Equivalently, using array slicing
-    range_view2 = view[2:5]
+    range_view2 = dataset[2:5]
 
 
 Accessing single samples
@@ -150,58 +138,168 @@ Querying Samples
 ----------------
 
 To query for a subset of the samples in a dataset, the core stage to work with
-is :meth:`match() <fiftyone.core.view.DatasetView.match>`. This method takes a
+is :meth:`match() <fiftyone.core.view.DatasetView.match>`.
 
-ViewFields and Expressions
---------------------------
+.. code-block:: python
+    :linenos:
 
-**TODO** WIP
+    match_view = dataset.match(<expression>)
 
-Basic Querying
---------------
+This method expects a query expression ``dict`` in
+`MongoDB query format <https://docs.mongodb.com/manual/tutorial/query-documents/>`_.
+If you don't feel like learning all of that, FiftyOne conveniently provides a
+|ViewExpression| class that allows you to use python native operators. More
+details on that can be found :ref:`here <Query Expressions>`.
 
-Convenience functions for common queries are available.
+Convenience functions for common queries are also available.
 
-A |DatasetView| can be created by matching lists of |Sample| IDs, either to
-only include given a |Sample| or to include all but the given |Sample|:
+:meth:`match_tag() <fiftyone.core.view.DatasetView.match_tag>` and
+:meth:`match_tags() <fiftyone.core.view.DatasetView.match_tags>` are
+convenience functions for matching samples that have the specified ``tag``
+or one of the specified ``tags``:
+
+.. code-block:: python
+    :linenos:
+
+    # the training split of the dataset
+    train_view = dataset.match_tag("train")
+
+    # union of the validation and test splits
+    val_test_view = dataset.match_tags(["val", "test"])
+
+:meth:`exists() <fiftyone.core.view.DatasetView.exists>` filters to only
+include samples for which a given |Field| exists and is not ``None``:
+
+.. code-block:: python
+    :linenos:
+
+    # the subset of samples where predictions have been computed
+    predictions_view = dataset.exists("my_predictions")
+
+:meth:`select() <fiftyone.core.view.DatasetView.select>` and
+:meth:`exclude() <fiftyone.core.view.DatasetView.exclude>` take a list of
+|Sample| IDs and restrict to the matching samples or exclude the matching
+samples respectively:
 
 .. code-block:: python
     :linenos:
 
     sample_ids = [sample1.id, sample2.id]
-    included = dataset.view().select(sample_ids)
-    excluded = dataset.view().exclude(sample_ids)
+    included_view = dataset.select(sample_ids)
+    excluded_view = dataset.exclude(sample_ids)
 
-A |DatasetView| can also be filtered to only include samples for which a
-given |Field| exists and is not ``None``:
 
-.. code-block:: python
-    :linenos:
-
-    metadata_view = dataset.view().exists("metadata")
-
-Advanced Querying
+Query Expressions
 -----------------
 
-**TODO** This is a WIP
+The :meth:`match() <fiftyone.core.view.DatasetView.match>` stage can accept
+arbitrarily complex queries. But you want to be spending your time digging into
+the data, not the MongoDB documentation. FiftyOne provides the |ViewField|
+and |ViewExpression| classes for this.
+
+Simply wrap the target field in a |ViewField| and then apply comparison, logic,
+arithmetic or array operations to it to create a |ViewExpression|. Just be sure
+that the final expression returns a boolean!
+
+Below are a few examples. Check the API reference for |ViewExpression| for
+a full list of supported operators.
 
 .. code-block:: python
     :linenos:
 
     from fiftyone import ViewField as F
 
+    # samples whose size is less than 1024 bytes
+    small_files_view = dataset.match(F("metadata.size_bytes") < 1024)
+
+    # samples for which `my_classification` is either confident or
+    # the label is "cat" or "dog"
+    classification_filtering_view = dataset.match(
+        (F("my_classification.confidence") >= 0.5)
+        | F("my_classification.label").is_in(["hex", "tricam"])
+    )
+
+
 Filtering Sample Contents
 -------------------------
 
-**TODO** This is a WIP
+Dataset views can not only select **what samples** but also **what content**
+for each sample.
 
-|DatasetView| instances differ from |Dataset| instances in that they return
-|SampleView| objects rather than |Sample| objects. For all intents and purposes
-these behave the same with two important exceptions:
+|DatasetView| instances return |SampleView| objects rather than |Sample|
+objects. For all intents and purposes these behave the same with two important
+exceptions:
     - sample views can exclude fields and filter elements of a field, meaning
       they don't necessarily represent all of the information for a sample.
     - sample views are not singletons and thus can not be expected to stay
       updated if the backing document is modified elsewhere
 
-To exclude fields...
+The :meth:`select_fields() <fiftyone.core.view.DatasetView.select_fields>` and
+:meth:`exclude_fields() <fiftyone.core.view.DatasetView.exclude_fields>`
+stages can sub -select or -exclude fields from the returned |SampleView|.
 
+.. code-block:: python
+    :linenos:
+
+    for sample in dataset.select_fields(["tags"]):
+        print(sample.tags)     # OKAY: this field is selected and thus accessible
+        print(sample.id)       # OKAY: the ID is always available
+        print(sample.filepath) # NameError: Field 'filepath' is not selected from this SampleView
+
+    for sample in dataset.exclude_fields(["tags"]):
+        print(sample.id)       # OKAY: the ID is always available
+        print(sample.filepath) # OKAY: filepath is not excluded
+        print(sample.tags)     # NameError: Field 'tags' is excluded from this SampleView
+    )
+
+:meth:`filter_classifications() <fiftyone.core.view.DatasetView.filter_classifications>`
+and :meth:`filter_detections() <fiftyone.core.view.DatasetView.filter_detections>`
+stages are very powerful when working with |Classifications| or |Detections|
+fields respectively. These stages filter the list of |Classification| or
+|Detection| in a field.
+
+.. code-block:: python
+    :linenos:
+
+    # filter the `my_classifications` field of each sample to only confident
+    # predictions with the label 'friend'
+    confident_friends_view = dataset.filter_classifications(
+        "my_classifications", (F("confidence") > 0.5) & (F("label") == "friend")
+    )
+
+    # filter the `my_detections` field of each sample to only large boxes
+    large_boxes_view = dataset.filter_detections(
+        "my_detections", F("bounding_box")[2] * F("bounding_box")[3] >= 0.5
+    )
+
+Tips & Tricks
+_____________
+
+Bounding Box Area
+-----------------
+
+Need to filter your detections by bounding box area?! Use this expression!
+
+.. code-block:: python
+    :linenos:
+
+    # bounding box area expression (W x H)
+    bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+    # example usage
+    medium_boxes_view = dataset.filter_detections(
+        "my_detections", (0.05 <= bbox_area) & (bbox_area < 0.5)
+    )
+
+
+Removing a batch of samples from a dataset
+------------------------------------------
+
+If you have a |DatasetView|, it can be used to modify the |Dataset|.
+Every |Sample| in a given |DatasetView| can be removed from a |Dataset| with a
+single command:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.remove_samples(view)

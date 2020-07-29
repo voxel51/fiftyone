@@ -12,6 +12,9 @@
 .. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
 
+.. |ViewExpression| replace:: :class:`ViewExpression <fiftyone.core.expressions.ViewExpression>`
+.. |ViewField| replace:: :class:`ViewField <fiftyone.core.expressions.ViewField>`
+
 .. |Label| replace:: :class:`Label <fiftyone.core.labels.Label>`
 .. |Classification| replace:: :class:`Classification <fiftyone.core.labels.Classification>`
 .. |Classifications| replace:: :class:`Classifications <fiftyone.core.labels.Classifications>`

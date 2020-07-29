@@ -216,7 +216,7 @@ instance:
     print(same_sample is sample)
     # True
 
-You can :ref:`use DatasetViews <using-dataset-views>` to perform more
+You can use :doc:`DatasetViews <using_views>` to perform more
 sophisticated operations on samples like searching, filtering, sorting, and
 slicing.
 
@@ -499,6 +499,9 @@ populated with a |Metadata| instance that stores data type-specific metadata
 about the raw data in the sample. The :doc:`FiftyOne App </user_guide/app>` and
 the :doc:`FiftyOne Brain </user_guide/brain>` will use this provided metadata
 in some workflows when it is available.
+
+To automatically compute metadata for all samples in the dataset use
+:meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`.
 
 .. tabs::
 

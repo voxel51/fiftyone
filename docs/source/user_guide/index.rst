@@ -159,7 +159,7 @@ Configure FiftyOne's behavior to suit your needs.
     Dataset basics<basics>
     Creating datasets<dataset_creation/index>
     Dataset details<using_datasets>
-    Exploring datasets<using_views>
+    Dataset views<using_views>
     Exporting datasets<export_datasets>
     Drawing labels on samples<draw_labels>
     Viewing datasets in the App<app>
