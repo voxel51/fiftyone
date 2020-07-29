@@ -1,5 +1,5 @@
-Using FiftyOne Datasets
-=======================
+FiftyOne Dataset details
+========================
 
 .. include:: ../substitutions.rst
 .. default-role:: code
@@ -179,6 +179,8 @@ time by providing a list of samples:
     print(len(dataset))
     # 4
 
+.. _accessing-samples-in-a-dataset:
+
 Accessing samples in a dataset
 ------------------------------
 
@@ -191,6 +193,16 @@ A |Dataset| is iterable allowing every |Sample| to be accessed one at a time:
 
     for sample in dataset:
         print(sample)
+
+Use :meth:`first() <fiftyone.core.dataset.Dataset.first>` and
+:meth:`last() <fiftyone.core.dataset.Dataset.last>` to retrieve the first and
+last samples in a dataset, respectively:
+
+.. code-block:: python
+    :linenos:
+
+    first_sample = dataset.first()
+    last_sample = dataset.last()
 
 A |Sample| can be accessed directly from a |Dataset| by its ID. The |Sample|
 that is returned when accessing a |Dataset| will always provide the same
@@ -345,9 +357,9 @@ To to simply view the field schema print the dataset:
     Num samples:    0
     Tags:           []
     Sample fields:
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
 The value of a |Field| for a given |Sample| can be accessed either by key or
 attribute access:
@@ -937,5 +949,5 @@ you to take an individual |Sample| and change how you are looking the labels in
 it. For example, a |SampleView| allows you to filter out individual
 |Detections| below a specified threshold.
 
-:doc:`>> Click here to checkout the view docs and learn how to explore your
+:ref:`>> Click here to checkout the view docs and learn how to explore your
 Dataset<using-views>`

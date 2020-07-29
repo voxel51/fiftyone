@@ -27,12 +27,7 @@ Learn the basics of the FiftyOne |Dataset| class and its relation to |Sample|,
     dataset.add_sample(sample)
     sample.tags += ["train"]
     sample["custom_field"] = 51
-    view = (
-        dataset.view()
-        .match_tag("test")
-        .sort_by("custom_field", reverse=True)
-        .limit(1)
-    )
+    view = dataset.match_tag("test").sort_by("custom_field", reverse=True).limit(1)
     for sample in view:
         print(sample)
 
@@ -53,24 +48,40 @@ open-source datasets via the Dataset Zoo.
        name="my-coco-format-dataset",
    )
 
-:doc:`Using datasets <using_datasets>`
+:doc:`Dataset details <using_datasets>`
+--------------------------------------
+
+Get details about how to access and modify samples, fields, and labels in your 
+|Dataset|.
+
+:doc:`>> Learn more about datasets, samples, fields, and labels! <using_datasets>`
+
+.. code-block:: python
+   :linenos:
+
+   sample = dataset[sample_id]
+   sample["ground_truth"] = fo.Classification(label="alligator")
+   sample.save()
+
+
+:doc:`Exploring datasets <using_datasets>`
 --------------------------------------
 
 Take a deep dive into FiftyOne datasets and how to use them to search, sort,
 and filter your data.
 
-:doc:`>> Learn more about using datasets! <using_datasets>`
+:doc:`>> Learn more about exploring datasets! <using_views>`
 
 .. code-block:: python
    :linenos:
 
    view = (
-       dataset.view()
-       .match({"tags": "test"})
+       dataset.match({"tags": "test"})
        .exists("metadata")
        .sort_by("filepath")
        .limit(5)
    )
+
 
 :doc:`Exporting datasets <export_datasets>`
 -------------------------------------------
@@ -127,7 +138,7 @@ Use the FiftyOne Brain to automatically get insights into your datasets.
    import fiftyone.brain as fob
 
    fob.compute_uniqueness(dataset)
-   rank_view = dataset.view().sort_by("uniqueness")
+   rank_view = dataset.sort_by("uniqueness")
 
 :doc:`Configuring FiftyOne <config>`
 ------------------------------------
@@ -147,8 +158,8 @@ Configure FiftyOne's behavior to suit your needs.
 
     Dataset basics<basics>
     Creating datasets<dataset_creation/index>
-    Using datasets<using_datasets>
-    Sort, slice, and search datasets<using_views>
+    Dataset details<using_datasets>
+    Exploring datasets<using_views>
     Exporting datasets<export_datasets>
     Drawing labels on samples<draw_labels>
     Viewing datasets in the App<app>
