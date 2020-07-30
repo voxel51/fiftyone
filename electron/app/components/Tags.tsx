@@ -4,20 +4,20 @@ import { Container } from "semantic-ui-react";
 import connect from "../utils/connect";
 
 const Tags = (props) => {
-  const { activeTags, setActiveTags, colors, start, lengths } = props;
+  const { activeTags, setActiveTags, colors, start, labelData } = props;
 
   const onClick = (t) => {
     setActiveTags({ ...activeTags, [t]: !Boolean(activeTags[t]) });
   };
 
   let content;
-  if (lengths.tags && lengths.tags.length) {
-    const { tags } = lengths;
+  if (labelData.tags && labelData.tags.length) {
+    const { tags } = labelData;
     const styles = (t, i) => {
       if (activeTags[t]) {
-        return { background: colors[lengths.mapping[t]] };
+        return { background: colors[labelData.mapping[t]] };
       }
-      return { borderColor: colors[lengths.mapping[t]] };
+      return { borderColor: colors[labelData.mapping[t]] };
     };
     content = (
       <Container>

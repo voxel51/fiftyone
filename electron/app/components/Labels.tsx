@@ -9,7 +9,7 @@ const reserved = ["_id", "metadata", "filepath"];
 
 const Labels = (props) => {
   const {
-    lengths,
+    labelData,
     port,
     activeLabels,
     setActiveLabels,
@@ -27,8 +27,8 @@ const Labels = (props) => {
   };
 
   let content;
-  if (lengths.labels && lengths.labels.length) {
-    let labels = lengths.labels.sort((a, b) =>
+  if (labelData.labels && labelData.labels.length) {
+    let labels = labelData.labels.sort((a, b) =>
       a._id.field > b._id.field ? 1 : -1
     );
     const styles = (t, i) => {

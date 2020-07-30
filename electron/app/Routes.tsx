@@ -18,7 +18,7 @@ function Routes({ port }) {
   const [activeTags, setActiveTags] = useState({});
   const [activeLabels, setActiveLabels] = useState({});
   const [activeOther, setActiveOther] = useState({});
-  const [lengths, setLengths] = useState({});
+  const [labelData, setLabelData] = useState({});
   const [needsLoad, setNeedsLoad] = useState(true);
   const [loading, setLoading] = useState(true);
   const [colorMap, setColorMap] = useState({});
@@ -31,14 +31,14 @@ function Routes({ port }) {
     setActiveOther,
     activeOther,
     colors,
-    lengths,
+    labelData,
   };
   const datasetProps = {
     activeTags,
     activeLabels,
     activeOther,
     colors,
-    lengths,
+    labelData,
   };
   const dataset = (props) => {
     return <Dataset {...props} displayProps={datasetProps} />;
@@ -46,7 +46,7 @@ function Routes({ port }) {
   const loadData = () => {
     setNeedsLoad(false);
     setLoading(true);
-    socket.emit("lengths", "", (data) => {
+    socket.emit("get_label_data", "", (data) => {
       const mapping = {};
       const sortFn = (a, b) => (a._id.field > b._id.field ? 1 : -1);
       const labelKeys = data.labels ? data.labels.sort(sortFn) : [];
@@ -58,7 +58,7 @@ function Routes({ port }) {
           mapping[data.tags[i]] = data.labels.length + i;
         }
       }
-      setLengths({
+      setLabelData({
         tags: data.tags,
         labels: data.labels,
         mapping: mapping,
