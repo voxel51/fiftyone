@@ -1,5 +1,5 @@
-FiftyOne Dataset details
-========================
+Using FiftyOne Datasets
+=======================
 
 .. include:: ../substitutions.rst
 .. default-role:: code
@@ -932,25 +932,27 @@ latter case, additional metadata such as prediction confidences can be store.
 See the `ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_
 for more details.
 
-Views
-_____
+DatasetViews
+____________
 
-Previous sections have demonstrated how to add and interact with 
-|Dataset| components like samples, fields, and labels. 
-The true power of FiftyOne lies in the ability to search, sort, filter, and
-explore everything in a |Dataset|.
+Previous sections have demonstrated how to add and interact with |Dataset|
+components like samples, fields, and labels. The true power of FiftyOne lies in
+the ability to search, sort, filter, and explore the contents of a |Dataset|.
 
-Behind this power are views. Whenever an operation like :meth:`match()
-<fiftyone.core.view.DatasetView.match>` or :meth:`sort_by()
-<fiftyone.core.view.DatasetView.sort_by>` are performed on a |Dataset|, a
-|DatasetView| is returned. Exactly what it sounds like, a |DatasetView| is a
-specific view into the data in your |Dataset| that was produced by a series of
-operations that looked at the |Dataset| in different ways.
+Behind this power is the |DatasetView|. Whenever an operation
+like :meth:`match() <fiftyone.core.view.DatasetView.match>` or
+:meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` is applied to a
+|Dataset|, a |DatasetView| is returned. As the name implies, a |DatasetView|
+is a *view* into the data in your |Dataset| that was produced by a series of
+operations that manipulated your data in different ways.
 
-A |DatasetView| is composed of individual |SampleView| objects that are allow
-you to take an individual |Sample| and change how you are looking the labels in
-it. For example, a |SampleView| allows you to filter out individual
-|Detections| below a specified threshold.
+A |DatasetView| is composed of |SampleView| objects for a subset of the samples
+in your dataset. For example, a view may contain only samples with a given tag,
+or samples whose labels meet a certain criteria. In turn, each |SampleView|
+represents a view into the content of the underlying |Sample| in the datset.
+For example, a |SampleView| may represent the contents of a sample with
+|Detections| below a specified threshold filtered out.
 
-:doc:`>> Click here to checkout the view docs and learn how to explore your
-Dataset<using_views>`
+.. custombutton::
+    :button_text: Learn more about DatasetViews!
+    :button_link: using_views.html
