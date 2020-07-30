@@ -470,6 +470,16 @@ class DatasetSampleDocument(Document, SampleDocument):
         """
         extra_updates = []
 
+        # check for illegal modifications
+        if filtered_fields:
+            for d in update_doc.values():
+                for k in d.keys():
+                    if k in filtered_fields:
+                        raise ValueError(
+                            "Attempted modifying of a filtered list field: '%s'"
+                            % k
+                        )
+
         if filtered_fields and "$set" in update_doc:
             d = update_doc["$set"]
             del_keys = []
@@ -517,13 +527,8 @@ class DatasetSampleDocument(Document, SampleDocument):
             el = el[field_name]
 
         el_fields = list_element_field.lstrip(filtered_field).split(".")
-        idx = el_fields.pop(0)
-        if not idx:
-            raise ValueError(
-                "Attempted modifying of a filtered list field: '%s'"
-                % filtered_field
-            )
-        idx = int(idx)
+        idx = int(el_fields.pop(0))
+
         el = el[idx]
         el_filter = ".".join([filtered_field, "$[element]"] + el_fields)
 
