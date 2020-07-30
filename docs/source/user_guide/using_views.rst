@@ -244,13 +244,14 @@ stages can sub -select or -exclude fields from the returned |SampleView|.
     for sample in dataset.select_fields(["tags"]):
         print(sample.tags)     # OKAY: this field is selected and thus accessible
         print(sample.id)       # OKAY: the ID is always available
-        print(sample.filepath) # NameError: Field 'filepath' is not selected from this SampleView
+        print(sample.filepath) # NameError: Field 'filepath' is not selected in this SampleView
 
     for sample in dataset.exclude_fields(["tags"]):
         print(sample.id)       # OKAY: the ID is always available
         print(sample.filepath) # OKAY: filepath is not excluded
         print(sample.tags)     # NameError: Field 'tags' is excluded from this SampleView
     )
+
 
 :meth:`filter_classifications() <fiftyone.core.view.DatasetView.filter_classifications>`
 and :meth:`filter_detections() <fiftyone.core.view.DatasetView.filter_detections>`
