@@ -495,6 +495,36 @@ class SampleView(_Sample):
 
         super().__init__()
 
+    def __str__(self):
+        return self._doc.fancy_repr(
+            type(self).__name__, self._selected_fields, self._excluded_fields
+        )
+
+    def __repr__(self):
+        return self._doc.fancy_repr(
+            type(self).__name__, self._selected_fields, self._excluded_fields
+        )
+
+    def __getattr__(self, name):
+        if not name.startswith("_"):
+            if (
+                self._selected_fields is not None
+                and name not in self._selected_fields
+            ):
+                raise NameError(
+                    "Field '%s' is not selected from this %s"
+                    % (name, type(self).__name__)
+                )
+            if (
+                self._excluded_fields is not None
+                and name in self._excluded_fields
+            ):
+                raise NameError(
+                    "Field '%s' is excluded from this %s"
+                    % (name, type(self).__name__)
+                )
+        return super().__getattr__(name)
+
     def save(self):
         """Saves any changed fields to the database and updates the in-memory
         :class:`Sample` instance if one exists.
@@ -539,33 +569,3 @@ class SampleView(_Sample):
         :class:`fiftyone.core.stages.ExcludeFields` stage.
         """
         return self._excluded_fields
-
-    def __str__(self):
-        return self._doc.fancy_repr(
-            type(self).__name__, self._selected_fields, self._excluded_fields
-        )
-
-    def __repr__(self):
-        return self._doc.fancy_repr(
-            type(self).__name__, self._selected_fields, self._excluded_fields
-        )
-
-    def __getattr__(self, name):
-        if not name.startswith("_"):
-            if (
-                self._selected_fields is not None
-                and name not in self._selected_fields
-            ):
-                raise NameError(
-                    "Field '%s' is not selected from this %s"
-                    % (name, type(self).__name__)
-                )
-            if (
-                self._excluded_fields is not None
-                and name in self._excluded_fields
-            ):
-                raise NameError(
-                    "Field '%s' is excluded from this %s"
-                    % (name, type(self).__name__)
-                )
-        return super().__getattr__(name)
