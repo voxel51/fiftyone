@@ -60,7 +60,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosectionlabel",
-    "m2r",
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
