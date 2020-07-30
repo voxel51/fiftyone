@@ -72,6 +72,7 @@ autodoc_default_options = {"members": True, "inherited-members": True}
 autodoc_inherit_docstrings = True
 autodoc_member_order = "bysource"
 autoclass_content = "class"
+autoapi_root = "api"
 autoapi_dirs = ["../../fiftyone", os.path.dirname(fob.__file__)]
 autoapi_options = [
     "members",
