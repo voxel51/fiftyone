@@ -53,27 +53,14 @@ FIFTYONE_BRAIN_DIR=$( \
 
 if [[ ${CLEAN_BUILD} = true ]]; then
     echo "**** Deleting existing build directories ****"
-    rm -rf "${THIS_DIR}/source/api"
+    rm -rf "${THIS_DIR}/source/api/_autosummary"
     rm -rf "${THIS_DIR}/build"
 fi
 
 
 echo "**** Generating documentation ****"
 
-cd "${THIS_DIR}/.."
-
-# Symlink to fiftyone-brain
-ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
-
-# Generate API docs
-# sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
-sphinx-apidoc -flTe --templatedir=docs/templates/apidoc -o docs/source/api fiftyone
-rm -vf docs/source/api/*pytransform*.rst
-
-# Remove symlink
-rm fiftyone/brain
-
-cd docs
+cd ${THIS_DIR}
 
 # Build docs
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]

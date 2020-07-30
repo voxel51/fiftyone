@@ -57,6 +57,7 @@ release = foc.VERSION
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosectionlabel",
@@ -70,6 +71,7 @@ autodoc_default_options = {"members": True, "inherited-members": True}
 autodoc_inherit_docstrings = True
 autodoc_member_order = "bysource"
 autoclass_content = "class"
+autosummary_generate = True  # Turn on sphinx.ext.autosummary
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
