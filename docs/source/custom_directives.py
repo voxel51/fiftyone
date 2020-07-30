@@ -112,11 +112,20 @@ class CustomCalloutItemDirective(Directive):
         button_text = self.options.get("button_text", "")
         button_link = self.options.get("button_link", "")
 
+        classes = "with-right-arrow" if button_link else ""
+        attributes = (
+            ""
+            if button_link
+            else 'onclick="return false;" style="pointer-events:none;cursor:default;"'
+        )
+
         callout_rst = _CUSTOM_CALLOUT_TEMPLATE.format(
             header=header,
             description=description,
             button_text=button_text,
             button_link=button_link,
+            classes=classes,
+            attributes=attributes,
         )
 
         button_list = StringList(callout_rst.split("\n"))
@@ -132,7 +141,57 @@ _CUSTOM_CALLOUT_TEMPLATE = """
         <div class="text-container">
             <h3>{header}</h3>
             <p class="body-paragraph">{description}</p>
-            <a class="btn with-right-arrow callout-button" href="{button_link}">{button_text}</a>
+            <a class="btn {classes} callout-button" href="{button_link}"{attributes}>{button_text}</a>
         </div>
+    </div>
+"""
+
+
+class CustomButtonDirective(Directive):
+    """A custom button for use on table of contents-style pages that link into
+    other pages.
+
+    The button is clickable and links to the provided link.
+
+    Example usage::
+        .. custombutton::
+            :button_text: Custom button
+            :button_link: other/page.html
+    """
+
+    option_spec = {
+        "button_text": directives.unchanged,
+        "button_link": directives.unchanged,
+    }
+
+    def run(self):
+        button_text = self.options.get("button_text", "")
+        button_link = self.options.get("button_link", "")
+
+        classes = "with-right-arrow" if button_link else ""
+        attributes = (
+            ""
+            if button_link
+            else 'onclick="return false;" style="pointer-events:none;cursor:default;"'
+        )
+
+        callout_rst = _CUSTOM_BUTTON_TEMPLATE.format(
+            button_text=button_text,
+            button_link=button_link,
+            classes=classes,
+            attributes=attributes,
+        )
+
+        button_list = StringList(callout_rst.split("\n"))
+        button = nodes.paragraph()
+        self.state.nested_parse(button_list, self.content_offset, button)
+        return [button]
+
+
+_CUSTOM_BUTTON_TEMPLATE = """
+.. raw:: html
+
+    <div class="tutorials-callout-container">
+        <a class="btn {classes} callout-button" href="{button_link}"{attributes}>{button_text}</a>
     </div>
 """
