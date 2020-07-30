@@ -80,7 +80,10 @@ Or, you can access individual samples in a view by their ID:
 .. note::
 
     Accessing samples in a |DatasetView| returns |SampleView| objects, not
-    |Sample| objects. More on that below!
+    |Sample| objects. The two classes are largely interchangable, but
+    |SampleView| provides some extra features. See
+    :ref:`filtering sample contents <filtering-sample-contents>` for more
+    details.
 
 View stages
 ___________
@@ -169,10 +172,9 @@ a |DatasetView| by its ID.
 
 .. note::
 
-    Note that accessing a sample by its integer index in a |DatasetView| is
-    not allowed. The best practice is to lookup individual samples by ID, or
-    use array slicing to extract a range of samples, and iterate over samples
-    in a view.
+    Accessing a sample by its integer index in a |DatasetView| is not allowed.
+    The best practice is to lookup individual samples by ID, or use array
+    slicing to extract a range of samples, and iterate over samples in a view.
 
     .. code-block:: python
 
@@ -270,6 +272,8 @@ attention to or exclude samples from a view by their IDs:
 
     # Exclude samples with the given IDs from the view
     excluded_view = dataset.exclude(sample_ids)
+
+.. _filtering-sample-contents:
 
 Filtering sample contents
 -------------------------

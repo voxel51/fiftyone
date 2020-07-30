@@ -31,27 +31,31 @@ import fiftyone.core.stages as fost
 class DatasetView(foc.SampleCollection):
     """A view into a :class:`fiftyone.core.dataset.Dataset`.
 
-    Dataset views represent ordered collections of windowed subsets of
-    :class:`fiftyone.core.sample.Sample` instances in a dataset.
-
-    The stages of a dataset view specify either:
-        - what subset of samples (and their order)
-        - what "parts" of the sample, which manifests in that dataset views
-            return :class:`fiftyone.core.sample.SampleView` objects, as opposed
-            to the sample instances themselves.
+    Dataset views represent ordered collections of subsets of samples in a
+    dataset.
 
     Operations on dataset views are designed to be chained together to yield
     the desired subset of the dataset, which is then iterated over to directly
-    access the sample views. Each stage in the pipeline defining a
-    :class:`DatasetView` is represented by a
-    :class:`fiftyone.core.stages.ViewStage` instance.
+    access the sample views. Each stage in the pipeline defining a dataset view
+    is represented by a :class:`fiftyone.core.stages.ViewStage` instance.
+
+    The stages of a dataset view specify:
+
+    -   what subset of samples (and their order) should be included
+    -   what "parts" (fields and their elements) of the sample should be
+        included
+
+    Samples retrieved from dataset views are returns as
+    :class:`fiftyone.core.sample.SampleView` objects, as opposed to
+    :class:`fiftyone.core.sample.Sample` objects, since they may contain a
+    subset of the sample's content.
 
     Example use::
 
-        # Print paths for 5 random samples from the test split
+        # Print paths for 5 random samples from the test split of a dataset
         view = dataset.match_tag("test").take(5)
-        for sv in view:
-            print(sv.filepath)
+        for sample in view:
+            print(sample.filepath)
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -289,9 +293,13 @@ class DatasetView(foc.SampleCollection):
         """Checks all stages to find the selected and excluded fields.
 
         Returns:
-            selected_fields, excluded_fields: the sets of selected and excluded
-                fields. One of these will always be None, meaning nothing is
-                selected/excluded.
+            a tuple of
+
+            -   selected_fields: the set of selected fields
+            -   excluded_fields: the set of excluded_fields
+
+            One of these will always be ``None``, meaning nothing is
+            selected/excluded
         """
         selected_fields = None
         excluded_fields = set()
@@ -302,6 +310,7 @@ class DatasetView(foc.SampleCollection):
                     selected_fields = set(stage.field_names)
                 else:
                     selected_fields.intersection_update(stage.field_names)
+
             if isinstance(stage, fost.ExcludeFields):
                 excluded_fields.update(stage.field_names)
 
