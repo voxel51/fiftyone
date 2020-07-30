@@ -45,15 +45,9 @@ if [[ ${STATIC_ONLY} = true ]]; then
     exit 0
 fi
 
-FIFTYONE_BRAIN_DIR=$( \
-    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))" || \
-    (echo "fiftyone-brain not installed" >&2; exit 1)
-)
-
 
 if [[ ${CLEAN_BUILD} = true ]]; then
     echo "**** Deleting existing build directories ****"
-    rm -rf "${THIS_DIR}/source/api/_autosummary"
     rm -rf "${THIS_DIR}/build"
 fi
 

@@ -20,6 +20,7 @@ from custom_directives import (
 )
 from redirects import generate_redirects
 
+import fiftyone.brain as fob
 import fiftyone.constants as foc
 
 
@@ -57,13 +58,13 @@ release = foc.VERSION
 # ones.
 extensions = [
     "sphinx.ext.autodoc",
-    # "sphinx.ext.autosummary",  # Create neat summary tables
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosectionlabel",
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
+    "autoapi.extension",
 ]
 
 # Types of class members to generate documentation for.
@@ -71,11 +72,9 @@ autodoc_default_options = {"members": True, "inherited-members": True}
 autodoc_inherit_docstrings = True
 autodoc_member_order = "bysource"
 autoclass_content = "class"
-# autosummary_generate = True  # Turn on sphinx.ext.autosummary
 
-extensions.append('autoapi.extension')
-autoapi_type = 'python'
-autoapi_dirs = ['/Users/tylerganter/source/fiftyone/fiftyone']
+autoapi_type = "python"
+autoapi_dirs = ["../../fiftyone", os.path.dirname(fob.__file__)]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
