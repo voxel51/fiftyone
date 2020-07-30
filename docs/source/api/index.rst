@@ -5,4 +5,4 @@ API Reference
    :toctree:
    :recursive:
 
-   fiftyone.core.odm
+   fiftyone
