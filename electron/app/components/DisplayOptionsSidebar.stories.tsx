@@ -11,20 +11,20 @@ export default {
 
 const data = {
   tags: [
-    { name: "Test", data: [10035], selected: true },
-    { name: "Train", data: [435], selected: false },
-    { name: "Processed", data: [10035] },
-    { name: "Reviewed", data: [435] },
+    { name: "Test", count: 10035, selected: true },
+    { name: "Train", count: 435, selected: false },
+    { name: "Processed", count: 10035 },
+    { name: "Reviewed", count: 435 },
   ],
   labels: [
-    { name: "Weather", data: [10035] },
-    { name: "Animal", data: [435] },
-    { name: "Person", data: [835] },
+    { name: "Weather", count: 10035 },
+    { name: "Animal", count: 435 },
+    { name: "Person", count: 835 },
   ],
   scalars: [
-    { name: "Mistakenness", data: [10035] },
-    { name: "Uniqueness", data: [435] },
-    { name: "Objects", data: [835] },
+    { name: "Mistakenness", count: 10035 },
+    { name: "Uniqueness", count: 435 },
+    { name: "Objects", count: 835 },
   ],
 };
 
