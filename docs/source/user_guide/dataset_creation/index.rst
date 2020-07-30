@@ -271,7 +271,7 @@ below to figure out which option is best for you.
 
         .. note::
 
-            :ref:`Learn more <zoo>` about the FiftyOne Dataset Zoo!
+            :doc:`Learn more <zoo>` about the FiftyOne Dataset Zoo!
 
 Advanced loading options
 ------------------------
