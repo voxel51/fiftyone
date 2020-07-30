@@ -343,11 +343,9 @@ Here are some examples:
     When you create a |DatasetView| that contains filtered detections or
     classifications, the other labels are not removed from the source dataset,
     even if you :meth:`save() <fiftyone.core.sample.Sample.save>` a
-    |SampleView| after modifying the filtered detections.
-
-    This is becauase each label is updated individually, and other labels in
-    the field are left unchanged. If you want to delete the other detections,
-    assign the entire field
+    |SampleView| after modifying the filtered detections. This is becauase each
+    label is updated individually, and other labels in the field are left
+    unchanged.
 
     .. code-block:: python
 
@@ -359,9 +357,6 @@ Here are some examples:
             # Modify the detections in the view
             for detection in predictions.detections:
                 detection["new_field"] = True
-
-            # Add a new detection to the sample
-            predictions.detections.append(fo.Detection(...))
 
             # Other detections in the `predictions` field of the samples that
             # did not appear in the `view` are not deleted or modified
