@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Switch, Route } from "react-router-dom";
-import { RecoilRoot } from "recoil";
+import { useRecoilState } from "recoil";
 import { Dimmer, Loader } from "semantic-ui-react";
 
 import routes from "./constants/routes.json";
@@ -11,6 +11,7 @@ import Loading from "./containers/Loading";
 import randomColor from "randomcolor";
 import { getSocket, useSubscribe } from "./utils/socket";
 import connect from "./utils/connect";
+import * as atoms from "./recoil/atoms";
 
 const colors = randomColor({ count: 100, luminosity: "dark" });
 
@@ -18,7 +19,7 @@ function Routes({ port }) {
   const [activeTags, setActiveTags] = useState({});
   const [activeLabels, setActiveLabels] = useState({});
   const [activeOther, setActiveOther] = useState({});
-  const [labelData, setLabelData] = useState({});
+  const [labelData, setLabelData] = useRecoilState(atoms.labelData);
   const [needsLoad, setNeedsLoad] = useState(true);
   const [loading, setLoading] = useState(true);
   const [colorMap, setColorMap] = useState({});
@@ -81,19 +82,17 @@ function Routes({ port }) {
     );
   }
   return (
-    <RecoilRoot>
-      <App displayProps={appProps} colors={colors}>
-        <Switch>
-          <Route path={routes.LOADING} exact component={Loading} />
-          <Route path={routes.SETUP} exact component={Setup} />
-          <Route path={routes.SAMPLES} exact render={dataset} />
-          <Route path={routes.LABELS} exact render={dataset} />
-          <Route path={routes.TAGS} exact render={dataset} />
-          <Route path={routes.SCALARS} exact render={dataset} />
-          <Route path={routes.DATASET} render={dataset} />
-        </Switch>
-      </App>
-    </RecoilRoot>
+    <App displayProps={appProps} colors={colors}>
+      <Switch>
+        <Route path={routes.LOADING} exact component={Loading} />
+        <Route path={routes.SETUP} exact component={Setup} />
+        <Route path={routes.SAMPLES} exact render={dataset} />
+        <Route path={routes.LABELS} exact render={dataset} />
+        <Route path={routes.TAGS} exact render={dataset} />
+        <Route path={routes.SCALARS} exact render={dataset} />
+        <Route path={routes.DATASET} render={dataset} />
+      </Switch>
+    </App>
   );
 }
 
