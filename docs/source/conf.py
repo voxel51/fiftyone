@@ -72,9 +72,16 @@ autodoc_default_options = {"members": True, "inherited-members": True}
 autodoc_inherit_docstrings = True
 autodoc_member_order = "bysource"
 autoclass_content = "class"
-
-autoapi_type = "python"
 autoapi_dirs = ["../../fiftyone", os.path.dirname(fob.__file__)]
+autoapi_options = [
+    "members",
+    "inherited-members",
+    "undoc-members",
+    "special-members",
+    "show-inheritance",
+    "show-module-summary",
+    "imported-members",
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
