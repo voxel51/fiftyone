@@ -148,7 +148,7 @@ class Classification(ImageLabel):
 
     @property
     def id(self):
-        """The ID of the document"""
+        """The ID of the document."""
         return str(self._id)
 
     def to_image_labels(self, name=None):
@@ -240,7 +240,7 @@ class Detection(ImageLabel):
 
     @property
     def id(self):
-        """The ID of the document"""
+        """The ID of the document."""
         return str(self._id)
 
     def has_attribute(self, name):

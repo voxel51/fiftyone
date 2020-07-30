@@ -125,11 +125,11 @@ class SampleCollection(object):
         return "\n".join(str(s) for s in self[-num_samples:])
 
     def first(self):
-        """Returns the first :class:`fiftyone.core.sample.SampleView` in the
-        collection.
+        """Returns the first sample in the collection.
 
         Returns:
-            a :class:`fiftyone.core.sample.Sample`
+            a :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView`
         """
         try:
             return next(iter(self))
@@ -137,11 +137,11 @@ class SampleCollection(object):
             raise ValueError("%s is empty" % self.__class__.__name__)
 
     def last(self):
-        """Returns the last :class:`fiftyone.core.sample.SampleView` in the
-        collection.
+        """Returns the last sample in the collection.
 
         Returns:
-            a :class:`fiftyone.core.sample.Sample`
+            a :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView`
         """
         return self[-1:].first()
 
@@ -149,7 +149,8 @@ class SampleCollection(object):
         """Returns an iterator over the samples in the collection.
 
         Returns:
-            an iterator over :class:`fiftyone.core.sample.Sample` instances
+            an iterator over :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` instances
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
@@ -224,7 +225,7 @@ class SampleCollection(object):
             field_names: a list of names of sample fields to omit
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.ExcludeFields(field_names))
 
@@ -256,7 +257,7 @@ class SampleCollection(object):
                 that returns a boolean describing the filter to apply
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.FilterClassifications(field, filter))
 
@@ -275,7 +276,7 @@ class SampleCollection(object):
                 that returns a boolean describing the filter to apply
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.FilterDetections(field, filter))
 

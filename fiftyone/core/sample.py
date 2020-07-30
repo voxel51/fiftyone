@@ -31,7 +31,7 @@ import fiftyone.core.odm as foo
 
 
 class _Sample(object):
-    """Base class with shared functionality for both Sample and SampleView."""
+    """Base class for :class:`Sample` and :class:`SampleView`."""
 
     def __init__(self):
         self._dataset = self._get_dataset()
@@ -357,7 +357,7 @@ class Sample(_Sample):
             sample_id: the ID of the sample to reload
         """
         # @todo(Tyler) it could optimize the code to instead flag the sample as
-        #   "stale", then have it reload once __getattribute__ is called.
+        #   "stale", then have it reload once __getattribute__ is called
         dataset_instances = cls._instances[dataset_name]
         sample = dataset_instances.get(sample_id, None)
         if sample:
@@ -404,13 +404,13 @@ class Sample(_Sample):
                 % (foo.DatasetSampleDocument, type(doc))
             )
 
-        # ensure the doc is saved to the database
+        # Ensure the doc is saved to the database
         if not doc.id:
             doc.save()
 
         self._doc = doc
 
-        # save weak reference
+        # Save weak reference
         dataset_instances = self._instances[doc.dataset_name]
         if self.id not in dataset_instances:
             dataset_instances[self.id] = self
@@ -452,10 +452,11 @@ class SampleView(_Sample):
     SampleViews should never be created manually, only returned by dataset
     views. Sample views differ from samples similar to how dataset views differ
     from datasets:
-        - A sample view only exposes a subset of all data for a sample.
-        - If a user attempts to modify an excluded field an error is raised.
-        - If a user attempts to modify a filtered field (the field itself,
-          not its elements) behavior is not guaranteed.
+
+    -   A sample view only exposes a subset of all data for a sample
+    -   If a user attempts to modify an excluded field an error is raised
+    -   If a user attempts to modify a filtered field (the field itself, not
+        its elements) behavior is not guaranteed
 
     Args:
         doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
@@ -513,10 +514,12 @@ class SampleView(_Sample):
             field_names = tuple(
                 fn for fn in field_names if fn in self._selected_fields
             )
+
         if self._excluded_fields is not None:
             field_names = tuple(
                 fn for fn in field_names if fn not in self._excluded_fields
             )
+
         return field_names
 
     @property
