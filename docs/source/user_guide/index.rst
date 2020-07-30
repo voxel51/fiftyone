@@ -25,9 +25,9 @@ on your data quickly and easily.
     :button_link: basics.html
 
 .. customcalloutitem::
-    :header: Creating FiftyOne Datasets
+    :header: Loading data into FiftyOne
     :description: Load data into FiftyOne using standard formats, custom formats, or the Dataset Zoo.
-    :button_text: Learn more about creating datasets
+    :button_text: Learn more about loading data
     :button_link: dataset_creation/index.html
 
 .. customcalloutitem::
