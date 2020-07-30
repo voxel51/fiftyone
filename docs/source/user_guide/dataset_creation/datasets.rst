@@ -73,48 +73,53 @@ Each supported dataset type is represented by a subclass of
 is used by the Python library and CLI to refer to the corresponding dataset
 format when reading the dataset from disk.
 
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| Dataset Type                                                       | Description                                                                        |
-+====================================================================+====================================================================================+
-| :ref:`ImageDirectory`                                              | A directory of images.                                                             |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`FiftyOneImageClassificationDataset`                          | A labeled dataset consisting of images and their associated classification labels  |
-|                                                                    | in a simple JSON format.                                                           |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`ImageClassificationDirectoryTree`                            | A directory tree whose subfolders define an image classification dataset.          |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`TFImageClassificationDataset`                                | A labeled dataset consisting of images and their associated classification labels  |
-|                                                                    | stored as TFRecords.                                                               |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`FiftyOneImageDetectionDataset`                               | A labeled dataset consisting of images and their associated object detections      |
-|                                                                    | stored in a simple JSON format.                                                    |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`COCODetectionDataset`                                        | A labeled dataset consisting of images and their associated object detections      |
-|                                                                    | saved in `COCO format <http://cocodataset.org/#home>`_.                            |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`VOCDetectionDataset`                                         | A labeled dataset consisting of images and their associated object detections      |
-|                                                                    | saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                   |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`KITTIDetectionDataset`                                       | A labeled dataset consisting of images and their associated object detections      |
-|                                                                    | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`TFObjectDetectionDataset`                                    | A labeled dataset consisting of images and their associated object detections      |
-|                                                                    | stored as TFRecords in `TF Object Detection API format \                           |
-|                                                                    | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`CVATImageDataset`                                            | A labeled dataset consisting of images and their associated object detections      |
-|                                                                    | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`FiftyOneImageLabelsDataset`                                  | A labeled dataset consisting of images and their associated multitask predictions  |
-|                                                                    | stored in `ETA ImageLabels format \                                                |
-|                                                                    | <https://voxel51.com/docs/api/#types-imagelabels>`_.                               |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`BDDDataset`                                                  | A labeled dataset consisting of images and their associated multitask predictions  |
-|                                                                    | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-| :ref:`Custom formats`                                              | Import datasets in custom formats by defining your own |DatasetType| or            |
-|                                                                    | |DatasetImporter| class.                                                           |
-+--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+.. table::
+    :widths: 40 60
+
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | Dataset Type                                                                          | Description                                                                        |
+    +=======================================================================================+====================================================================================+
+    | :ref:`ImageDirectory <ImageDirectory-import>`                                         | A directory of images.                                                             |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOneImageClassificationDataset <FiftyOneImageClassificationDataset-import>` | A labeled dataset consisting of images and their associated classification labels  |
+    |                                                                                       | in a simple JSON format.                                                           |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`ImageClassificationDirectoryTree <ImageClassificationDirectoryTree-import>`     | A directory tree whose subfolders define an image classification dataset.          |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`TFImageClassificationDataset <TFImageClassificationDataset-import>`             | A labeled dataset consisting of images and their associated classification labels  |
+    |                                                                                       | stored as TFRecords.                                                               |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOneImageDetectionDataset <FiftyOneImageDetectionDataset-import>`           | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | stored in a simple JSON format.                                                    |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`COCODetectionDataset <COCODetectionDataset-import>`                             | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | saved in `COCO format <http://cocodataset.org/#home>`_.                            |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`VOCDetectionDataset <VOCDetectionDataset-import>`                               | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                   |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`KITTIDetectionDataset <KITTIDetectionDataset-import>`                           | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-import>`                     | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | stored as TFRecords in `TF Object Detection API format \                           |
+    |                                                                                       | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`CVATImageDataset <CVATImageDataset-import>`                                     | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>`                 | A labeled dataset consisting of images and their associated multitask predictions  |
+    |                                                                                       | stored in `ETA ImageLabels format \                                                |
+    |                                                                                       | <https://voxel51.com/docs/api/#types-imagelabels>`_.                               |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`BDDDataset <BDDDataset-import>`                                                 | A labeled dataset consisting of images and their associated multitask predictions  |
+    |                                                                                       | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`Custom formats <custom-dataset-importer>`                                       | Import datasets in custom formats by defining your own |DatasetType| or            |
+    |                                                                                       | |DatasetImporter| class.                                                           |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+
+.. _ImageDirectory-import:
 
 ImageDirectory
 --------------
@@ -154,7 +159,7 @@ You can create a FiftyOne dataset from a directory of images as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -186,6 +191,8 @@ You can create a FiftyOne dataset from a directory of images as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageDirectory
+
+.. _FiftyOneImageClassificationDataset-import:
 
 FiftyOneImageClassificationDataset
 ----------------------------------
@@ -250,7 +257,7 @@ in the above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -282,6 +289,8 @@ in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageClassificationDataset
+
+.. _ImageClassificationDirectoryTree-import:
 
 ImageClassificationDirectoryTree
 --------------------------------
@@ -329,7 +338,7 @@ stored in the above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -361,6 +370,8 @@ stored in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageClassificationDirectoryTree
+
+.. _TFImageClassificationDataset-import:
 
 TFImageClassificationDataset
 ----------------------------
@@ -423,7 +434,7 @@ as a directory of TFRecords in the above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
     When the above command is executed, the images in the TFRecords will be
     written to the provided `images_dir`, which is required because FiftyOne
@@ -467,6 +478,8 @@ as a directory of TFRecords in the above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFImageClassificationDataset
 
+.. _FiftyOneImageDetectionDataset-import:
+
 FiftyOneImageDetectionDataset
 -----------------------------
 
@@ -503,6 +516,10 @@ where `labels.json` is a JSON file in the following format:
                         <top-left-x>, <top-left-y>, <width>, <height>
                     ],
                     "confidence": <optional-confidence>,
+                    "attributes": {
+                        <optional-name>: <optional-value>,
+                        ...
+                    }
                 },
                 ...
             ],
@@ -544,7 +561,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -577,6 +594,8 @@ above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageDetectionDataset
+
+.. _COCODetectionDataset-import:
 
 COCODetectionDataset
 --------------------
@@ -668,7 +687,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -700,6 +719,8 @@ above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.COCODetectionDataset
+
+.. _VOCDetectionDataset-import:
 
 VOCDetectionDataset
 -------------------
@@ -793,7 +814,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -825,6 +846,8 @@ above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.VOCDetectionDataset
+
+.. _KITTIDetectionDataset-import:
 
 KITTIDetectionDataset
 ---------------------
@@ -910,7 +933,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -943,6 +966,8 @@ above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
+
+.. _TFObjectDetectionDataset-import:
 
 TFObjectDetectionDataset
 ------------------------
@@ -1027,7 +1052,7 @@ directory of TFRecords in the above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
     When the above command is executed, the images in the TFRecords will be
     written to the provided `images_dir`, which is required because FiftyOne
@@ -1070,6 +1095,8 @@ directory of TFRecords in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.TFObjectDetectionDataset
+
+.. _CVATImageDataset-import:
 
 CVATImageDataset
 ----------------
@@ -1162,7 +1189,7 @@ format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -1194,6 +1221,8 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATImageDataset
+
+.. _FiftyOneImageLabelsDataset-import:
 
 FiftyOneImageLabelsDataset
 --------------------------
@@ -1265,7 +1294,7 @@ above format as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
@@ -1297,6 +1326,8 @@ above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.FiftyOneImageLabelsDataset
+
+.. _BDDDataset-import:
 
 BDDDataset
 ----------
@@ -1374,7 +1405,7 @@ as follows:
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 
