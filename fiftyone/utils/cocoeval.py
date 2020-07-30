@@ -39,7 +39,9 @@ def evaluate_detections(samples, pred_field, gt_field):
     stored in every Detection object.
 
     Args:
-        samples: an iterator of samples like a Dataset or DatasetView 
+        samples: an iterator of samples like a 
+            :class:`fiftyone.core.dataset.Dataset` or
+            :class:`fiftyone.core.view.DatasetView`  
         pred_field: a string indicating the field name in each sample containing
             predicted detections
         gt_field: a string indicating the field name in each sample containing
@@ -61,7 +63,7 @@ def evaluate_detections(samples, pred_field, gt_field):
                 det[pred_key] = {}
                 det[pred_key]["ious"] = {}
                 det[pred_key]["matches"] = dict(zip(IOU_THRESHOLD_STR,
-                    np.zeros(IOU_THRESHOLDS.shape)-1))
+                    np.zeros((IOU_THRESHOLDS.shape[0], 2))-1))
                 det[pred_key]["eval_id"] = eval_id
                 eval_id += 1
                 if det.label not in sample_cats:
@@ -73,7 +75,8 @@ def evaluate_detections(samples, pred_field, gt_field):
             for det in gts.detections:
                 det[gt_key] = {}
                 det[gt_key]["matches"] = dict(zip(IOU_THRESHOLD_STR,
-                    np.zeros(IOU_THRESHOLDS.shape)-1))
+                    np.zeros((IOU_THRESHOLDS.shape[0], 2))-1))
+
                 det[gt_key]["eval_id"] = eval_id
                 eval_id += 1
                 if det.label not in sample_cats:
