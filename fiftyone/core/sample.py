@@ -293,11 +293,10 @@ class Sample(_Sample):
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
-
         super().__init__()
 
     def __str__(self):
-        return self._doc.fancy_repr(type(self).__name__)
+        return repr(self)
 
     def __repr__(self):
         return self._doc.fancy_repr(type(self).__name__)
@@ -496,9 +495,7 @@ class SampleView(_Sample):
         super().__init__()
 
     def __str__(self):
-        return self._doc.fancy_repr(
-            type(self).__name__, self._selected_fields, self._excluded_fields
-        )
+        return repr(self)
 
     def __repr__(self):
         return self._doc.fancy_repr(
@@ -515,6 +512,7 @@ class SampleView(_Sample):
                     "Field '%s' is not selected from this %s"
                     % (name, type(self).__name__)
                 )
+
             if (
                 self._excluded_fields is not None
                 and name in self._excluded_fields
@@ -523,21 +521,15 @@ class SampleView(_Sample):
                     "Field '%s' is excluded from this %s"
                     % (name, type(self).__name__)
                 )
+
         return super().__getattr__(name)
-
-    def save(self):
-        """Saves any changed fields to the database and updates the in-memory
-        :class:`Sample` instance if one exists.
-        """
-        self._doc.save(filtered_fields=self._filtered_fields)
-
-        # reload the sample singleton if it exists in memory
-        Sample._reload_dataset_sample(self.dataset_name, self.id)
 
     @property
     def view_field_names(self):
-        """An ordered list of the names of the fields of this sample view,
-        which is a subset of ``field_names``.
+        """An ordered list of the names of the fields of this sample.
+
+        This may be a subset of :meth:`ViewSample.field_names` if fields have
+        been selected or excluded.
         """
         field_names = self._doc.field_names
         if self._selected_fields is not None:
@@ -554,18 +546,25 @@ class SampleView(_Sample):
 
     @property
     def selected_field_names(self):
-        """A set of the names of the fields selected in this view, or ``None``
-        if the :class:`fiftyone.core.view.DatasetView` that produced this
-        :class:`SampleView` does not contain at least one
-        :class:`fiftyone.core.stages.SelectFields` stage.
+        """The set of field names that were selected on this sample, or
+        ``None`` if no fields were explicitly selected.
         """
         return self._selected_fields
 
     @property
     def excluded_field_names(self):
-        """A set of the names of the fields excluded from this view, or
-        ``None`` if the :class:`fiftyone.core.view.DatasetView` that produced
-        this :class:`SampleView` does not contain at least one
-        :class:`fiftyone.core.stages.ExcludeFields` stage.
+        """The set of field names that were excluded on this sample, or
+        ``None`` if no fields were explicitly excluded.
         """
         return self._excluded_fields
+
+    def save(self):
+        """Saves the sample to the database.
+
+        Any modified fields are updated, and any in-memory :class:`Sample`
+        instances of this sample are updated.
+        """
+        self._doc.save(filtered_fields=self._filtered_fields)
+
+        # Reload the sample singleton if it exists in memory
+        Sample._reload_dataset_sample(self.dataset_name, self.id)
