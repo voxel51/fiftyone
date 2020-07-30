@@ -30,7 +30,7 @@ export default ({ children, icon, onClick, ...props }: Props) => {
       onClick={onClickWrapper}
       {...props}
     >
-      {icon ? <span class="icon">{icon}</span> : null}
+      {icon ? <span className="icon">{icon}</span> : null}
       {children}
     </CellHeader>
   );

@@ -11,6 +11,6 @@ export const Box = styled.div`
 export const VerticalSpacer = styled.div`
   height: ${({ height }) =>
     typeof height == "number" ? height + "px" : height};
-  background-color: ${({ fill, theme }) =>
-    fill ? theme.background : undefined};
+  background-color: ${({ opaque, theme }) =>
+    opaque ? theme.background : undefined};
 `;
