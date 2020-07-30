@@ -32,8 +32,8 @@ on your data quickly and easily.
     :button_link: dataset_creation/index.html
 
 .. customcalloutitem::
-    :header: Exploring datasets
-    :description: Take a deep dive into FiftyOne datasets and how to use them with samples and fields.
+    :header: Using datasets
+    :description: Take a deep dive into FiftyOne datasets and how to use to store your data.
     :button_text: Learn more about using datasets
     :button_link: using_datasets.html
 
@@ -88,7 +88,7 @@ on your data quickly and easily.
 
     Dataset basics<basics>
     Creating datasets<dataset_creation/index>
-    Dataset details<using_datasets>
+    Using datasets<using_datasets>
     Dataset views<using_views>
     Exporting datasets<export_datasets>
     Drawing labels on samples<draw_labels>
