@@ -450,9 +450,6 @@ class DatasetSampleDocument(Document, SampleDocument):
                 updated_existing = result.get("updatedExisting")
 
         for update, element_id in extra_updates:
-            print("element_id: ", element_id)
-            print("update: ", update)
-
             result = collection.update_one(
                 select_dict,
                 update,
