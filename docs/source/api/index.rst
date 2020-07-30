@@ -1,10 +1,8 @@
 API Reference
 =============
 
-.. rubric:: Modules
-
 .. autosummary::
-   :toctree: _autosummary
+   :toctree:
    :recursive:
 
-   fiftyone
+   fiftyone.core.odm
