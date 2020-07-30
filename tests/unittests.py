@@ -1132,6 +1132,100 @@ class ViewTest(unittest.TestCase):
         for sample in view.match({"labels.label": "label1"}):
             self.assertEqual(sample.labels.label, "label1")
 
+    @drop_datasets
+    def test_sample_view_with_filtered_fields(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample(
+            fo.Sample(
+                filepath="filepath1.jpg",
+                tags=["test"],
+                test_dets=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="friend",
+                            confidence=0.9,
+                            bounding_box=[0, 0, 0.5, 0.5],
+                        ),
+                        fo.Detection(
+                            label="friend",
+                            confidence=0.3,
+                            bounding_box=[0.25, 0, 0.5, 0.1],
+                        ),
+                        fo.Detection(
+                            label="stopper",
+                            confidence=0.1,
+                            bounding_box=[0, 0, 0.5, 0.5],
+                        ),
+                        fo.Detection(
+                            label="big bro",
+                            confidence=0.6,
+                            bounding_box=[0, 0, 0.1, 0.5],
+                        ),
+                    ]
+                ),
+            )
+        )
+
+        view = (
+            dataset.view()
+            .exclude_fields(["tags"])
+            .filter_detections("test_dets", F("confidence") > 0.5)
+        )
+
+        # modify element
+        sample_view = view.first()
+        sample_view.test_dets.detections[1].label = "MODIFIED"
+        sample_view.save()
+        # check that correct element is modified
+        detections = dataset[sample_view.id].test_dets.detections
+        self.assertEqual(detections[1].label, "friend")
+        self.assertEqual(detections[-1].label, "MODIFIED")
+
+        # complex modify
+        sample_view = view.first()
+        sample_view.test_dets.detections[0].label = "COMPLEX"
+        sample_view.test_dets.detections[1].confidence = 0.51
+        sample_view.save()
+        # check that correct elements are modified
+        detections = dataset[sample_view.id].test_dets.detections
+        self.assertEqual(detections[0].label, "COMPLEX")
+        self.assertEqual(detections[-1].confidence, 0.51)
+
+        # add element
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections.append(
+                fo.Detection(label="NEW DET")
+            )
+            sample_view.save()
+
+        # remove element
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections.pop()
+            sample_view.save()
+
+        # remove all elements
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections.pop()
+            sample_view.test_dets.detections.pop()
+            sample_view.save()
+
+        # overwrite Detections.detections
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections = []
+            sample_view.save()
+
+        # overwrite Detections
+        sample_view = view.first()
+        sample_view.test_dets = fo.Detections()
+        sample_view.save()
+        detections = dataset[sample_view.id].test_dets.detections
+        self.assertListEqual(detections, [])
+
 
 class ExpressionTest(unittest.TestCase):
     @drop_datasets
