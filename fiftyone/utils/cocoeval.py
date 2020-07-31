@@ -62,8 +62,10 @@ def evaluate_detections(samples, pred_field, gt_field):
             for det in preds.detections:
                 det[pred_key] = {}
                 det[pred_key]["ious"] = {}
-                det[pred_key]["matches"] = dict(zip(IOU_THRESHOLD_STR,
-                    np.zeros((IOU_THRESHOLDS.shape[0], 2))-1))
+                det[pred_key]["matches"] = {
+                        iou_str: {"gt_id": -1, "iou": -1} \
+                            for iou_str in IOU_THRESHOLD_STR
+                    } 
                 det[pred_key]["eval_id"] = eval_id
                 eval_id += 1
                 if det.label not in sample_cats:
@@ -74,8 +76,10 @@ def evaluate_detections(samples, pred_field, gt_field):
     
             for det in gts.detections:
                 det[gt_key] = {}
-                det[gt_key]["matches"] = dict(zip(IOU_THRESHOLD_STR,
-                    np.zeros((IOU_THRESHOLDS.shape[0], 2))-1))
+                det[gt_key]["matches"] = {
+                        iou_str: {"pred_id": -1, "iou": -1} \
+                            for iou_str in IOU_THRESHOLD_STR
+                    } 
 
                 det[gt_key]["eval_id"] = eval_id
                 eval_id += 1
@@ -124,7 +128,7 @@ def evaluate_detections(samples, pred_field, gt_field):
                 }
 
             for iou_ind, iou_thresh in enumerate(IOU_THRESHOLDS):
-                iou_thresh_str = IOU_THRESHOLD_STR[iou_ind]
+                iou_str = IOU_THRESHOLD_STR[iou_ind]
                 true_positives = 0
                 false_positives = 0
                 for cat, dets in sample_cats.items():
@@ -144,20 +148,20 @@ def evaluate_detections(samples, pred_field, gt_field):
                             for eval_id, iou in pred[pred_key]["ious"][cat]:
                                 gt = gt_by_id[eval_id]
                                 curr_gt_match = \
-                                    gt[gt_key]["matches"][iou_thresh_str]
+                                    gt[gt_key]["matches"][iou_str]["gt_id"]
 
                                 if "iscrowd" in gt.attributes:
                                     iscrowd = int(gt.attributes["iscrowd"].value)
                                 else:
                                     iscrowd = 0
     
-                                # Cannot match two preds to the same gt unless the gt
-                                # is a crowd
+                                # Cannot match two preds to the same gt unless
+                                # the gt is a crowd
                                 if curr_gt_match > -1 and not iscrowd:
                                     continue
     
-                                # Ignore gts with an IoU lower than what was already
-                                # found
+                                # Ignore gts with an IoU lower than what was 
+                                # already found
                                 if iou < best_match_iou:
                                     continue
     
@@ -165,26 +169,32 @@ def evaluate_detections(samples, pred_field, gt_field):
                                 best_match = eval_id
     
                             if best_match > -1:
-                                # If the prediction was matched, store the eval id of
-                                # the pred in the gt and of the gt in the pred
-                                gt_by_id[best_match][gt_key]["matches"][iou_thresh_str] = \
-                                    pred[pred_key]["eval_id"]
-                                pred[pred_key]["matches"][iou_thresh_str] = \
-                                    (best_match, best_match_iou)
+                                # If the prediction was matched, store the eval
+                                # id of the pred in the gt and of the gt in the
+                                # pred
+                                gt_by_id[best_match][gt_key]["matches"][iou_str] = {
+                                        "pred_id": pred[pred_key]["eval_id"],
+                                        "iou": best_match_iou
+                                    }
+                                pred[pred_key]["matches"][iou_str] = {
+                                        "gt_id": best_match, 
+                                        "iou": best_match_iou
+                                    }
                                 true_positives += 1
                             else:
                                 false_positives += 1
     
-                result_dict["true_positives"][iou_thresh_str] = \
+                result_dict["true_positives"][iou_str] = \
                     true_positives
-                result_dict["false_positives"][iou_thresh_str] = \
+                result_dict["false_positives"][iou_str] = \
                     false_positives
                 false_negatives = len( 
                         [g for g in dets["gts"] 
-                            if g[gt_key]["matches"][iou_thresh_str] == -1]
+                            if g[gt_key]["matches"][iou_str]["gt_id"] \
+                                == -1]
                     )
     
-                result_dict["false_negatives"][iou_thresh_str] = \
+                result_dict["false_negatives"][iou_str] = \
                     false_negatives
 
                 # Add the top level fields for tps, fps, and fns of the most
