@@ -509,9 +509,14 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         if etau.is_str(target):
             target = etas.load_json(target)
 
-        return fol.Detections(
-            detections=[self._parse_detection(obj, img=img) for obj in target]
+        det_list = [self._parse_detection(obj, img=img) for obj in target]
+        detections = fol.Detections(
+            detections=det_list
         )
+
+        detections["classes"] = self.classes
+
+        return detections
 
     def _parse_detection(self, obj, img=None):
         label = obj[self.label_field]
