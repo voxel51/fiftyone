@@ -177,7 +177,7 @@ class SampleDocument(SerializableDocument):
 
     @classmethod
     def _get_class_repr(cls):
-        return "SampleDocument"
+        return "Sample"
 
 
 class DatasetSampleDocument(Document, SampleDocument):

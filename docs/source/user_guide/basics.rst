@@ -36,8 +36,8 @@ include more representative samples and samples that your model found difficult
 into your training set.
 
 .. note::
-    Check out the :doc:`dataset loading guide <dataset_creation/index>` to see
-    how to load your data into FiftyOne.
+    Check out :doc:`creating FiftyOne datasets <dataset_creation/index>` for
+    more information about loading your data into FiftyOne.
 
 A |Dataset| is composed of multiple |Sample| objects which contain |Field|
 attributes, all of which can be dynamically created, modified and deleted.
@@ -45,14 +45,15 @@ FiftyOne uses a lightweight non-relational database to store datasets, so you
 can easily scale to datasets of any size without worrying about RAM
 constraints on your machine.
 
-Datasets should be thought of as an unordered collection. When a |Sample| is
-added to a |Dataset|, it is assigned a unique ID that can be used to retrieve
-the sample from the dataset.
+Datasets are **ordered collections** of samples. When a |Sample| is added to a
+|Dataset|, it is assigned a unique ID that can be used to retrieve the sample
+from the dataset.
 
 Slicing and other batch operations on datasets are done through the use of
 :ref:`DatasetViews <using-dataset-views>`. A |DatasetView| provides an ordered
-view into the |Dataset|, which can be filtered, sorted, sampled, etc. along
-various axes to obtain a desired subset of the samples.
+view into a subset of the samples in a |Dataset|, which can be filtered,
+sorted, sampled, etc. along various axes to obtain a desired subset of the
+samples.
 
 Samples
 -------
@@ -80,8 +81,10 @@ where each row is a |Sample|, each column of the table is a |Field|.
 
 All samples must have their `filepath` field populated, which points to the
 source data for the sample on disk. By default, samples are also given `id`,
-`metadata`, and `tags` fields that can store common information. See
-:ref:`using fields <using-fields>` for more information.
+`metadata`, and `tags` fields that can store common information.
+
+See :ref:`using fields <using-fields>` for more information about sample
+fields.
 
 .. code-block:: python
     :linenos:
@@ -161,16 +164,59 @@ like:
     print(sample.tags)
     # ["train", "my_favorite_samples"]
 
+Metadata
+--------
+
+:ref:`Metadata <using-metadata>` is a default |Field| provided on all |Sample|
+instances. The `metadata` attribute of a |Sample| stores data type-specific
+metadata about the raw data in the sample. For generic (non-image) data, there
+is a |Metadata| class. For images, the |ImageMetadata| subclass stores
+additional image-specific fields.
+
+See :ref:`using metadata <using-metadata>` for more details about adding
+metadata to your samples.
+
+.. code-block:: python
+    :linenos:
+
+    image_path = "/path/to/image.png"
+
+    metadata = fo.ImageMetadata.build_for(image_path)
+
+    sample = fo.Sample(filepath=image_path, metadata=metadata)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': <ImageMetadata: {
+            'size_bytes': 544559,
+            'mime_type': 'image/png',
+            'width': 698,
+            'height': 664,
+            'num_channels': 3,
+        }>,
+    }>
+
 Labels
 ------
 
 :ref:`Labels <using-labels>` store semantic information about the sample, such
-as ground annotations or model predictions. FiftyOne provides a |Label|
-subclass for common tasks:
+as ground annotations or model predictions.
 
-- |Classification|: a classification label
-- |Detections|: a list of object detections
-- |ImageLabels|: a generic collection of multitask predictions for an image
+FiftyOne provides a |Label| subclass for common tasks:
+
+- :ref:`Classification <classification>`: a classification label
+- :ref:`Classifications <multilabel-classification>`: a list of classifications (typically for multilabel tasks)
+- :ref:`Detections <object-detection>`: a list of object detections
+- :ref:`ImageLabels <multitask-predictions>`: a generic collection of multitask predictions for an image
+
+See :ref:`using labels <using-labels>` for more information about storing
+labels in your samples.
 
 .. code-block:: python
     :linenos:
@@ -228,10 +274,11 @@ manipulate subsets of your datasets to perform the analysis that you need.
     import fiftyone as fo
     import fiftyone.zoo as foz
     import fiftyone.brain as fob
+    from fiftyone import ViewField as F
 
     dataset = foz.load_zoo_dataset("cifar10", split="test")
 
-    cats = dataset.view().match({"ground_truth.label": "cat"})
+    cats = dataset.match(F("ground_truth.label") == "cat")
     fob.compute_uniqueness(cats)
 
     similar_cats = cats.sort_by("uniqueness", reverse=False)

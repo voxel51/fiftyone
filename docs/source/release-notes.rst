@@ -4,8 +4,55 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
-Future changes
+FiftyOne 0.5.0
 --------------
+*Target Release: July 30, 2020*
+
+Core
+^^^^
+- Added a powerful :mod:`fiftyone.core.expressions` module for constructing
+  complex DatasetView :meth:`match() <fiftyone.core.view.DatasetView.match>`,
+  :meth:`list_filter() <fiftyone.core.view.DatasetView.list_filter>`, and
+  :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` stages
+- Added :mod:`a utility <fiftyone.utils.XXXXX>` for evaluating object
+  detections in FiftyOne
+- Adding support for rendering annotated versions of sample data with their
+  labels overlaid via a
+  :meth:`SampleCollection.draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+  method
+
+App
+^^^
+- Refreshed App layout, including new header, display options,
+  labels tabs, and expanded sample view
+- Added a view stage search bar that allows for interactive construction of
+  DatasetViews from within the App
+
+Documentation
+^^^^^^^^^^^^^
+- Added :doc:`a tutorial </tutorials/XXXX>` demonstrating COCO evaluation
+  workflows powered by FiftyOne
+- Added :doc:`a tutorial </tutorials/XXXX>` exploring the
+  `Open Images Dataset <https://www.kaggle.com/c/open-images-object-detection-rvc-2020/overview>`_
+  with FiftyOne
+- Added :doc:`full documentation </user_guide/XXXXX>` for using expressions
+  to construct DatasetView :meth:`match() <fiftyone.core.view.DatasetView.match>`,
+  :meth:`list_filter() <fiftyone.core.view.DatasetView.list_filter>`, and
+  :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` stages
+- Added :doc:`a recipe </recipes/XXXXX>` demonstrating the use of DatasetViews
+  to explore detection datasets
+- Added :doc:`a recipe </recipes/draw_labels>` showing how to render annotated
+  versions of samples with label field(s) overlaid
+- Upgraded :doc:`dataset creation docs </user_guide/dataset_creation/index>`
+  that simplify the material and make it easier to find the creation strategy
+  of interest
+- Improved layout of :doc:`tutorials </tutorials/index>`,
+  :doc:`recipes </recipes/index>`, and :doc:`user guide </user_guide/index>`
+  landing pages
+
+FiftyOne 0.4.0
+--------------
+*Released July 21, 2020*
 
 Core
 ^^^^
@@ -28,13 +75,14 @@ App
   Python 3.6 and older
 
 Documentation
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 - Added a recipe demonstrating how to
   :doc:`convert datasets </recipes/convert_datasets>` on disk between common
   formats
 - Added recipes demonstratings how to write your own
-  :doc:`custom dataset importers </recipes/custom_importer>` and
-  :doc:`custom dataset exporters </recipes/custom_exporter>`
+  :doc:`custom dataset importers </recipes/custom_importer>`,
+  :doc:`custom dataset exporters </recipes/custom_exporter>`, and
+  :doc:`custom sample parsers </recipes/custom_parser>`
 - Added a :doc:`Configuring FiftyOne </user_guide/config>` page to the User
   Guide that explains how to customize your FiftyOne Config
 
@@ -107,7 +155,7 @@ Core
 - Added a config option to control visibility of progress bars
 - Added progress reporting to
   :meth:`Dataset.add_samples() <fiftyone.core.dataset.Dataset.add_samples>`
-- Added a :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
+- Added a :meth:`SampleCollection.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
   method to enable population of the `metadata` fields of samples
 - Improved reliability of shutting down the App and database services
 - Improved string representations of |Dataset| and |Sample| objects

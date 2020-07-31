@@ -48,21 +48,6 @@ class Label(DynamicEmbeddedDocument):
     meta = {"allow_inheritance": True}
 
 
-class ImageLabel(Label):
-    """Base class for labels associated with images."""
-
-    meta = {"allow_inheritance": True}
-
-    def to_image_labels(self):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
-
-        Returns:
-            an ``eta.core.image.ImageLabels`` instance
-        """
-        raise NotImplementedError("Subclass must implement to_image_labels()")
-
-
 class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
 
@@ -123,6 +108,24 @@ class VectorAttribute(Attribute):
     value = fof.VectorField()
 
 
+class ImageLabel(Label):
+    """Base class for labels associated with images."""
+
+    meta = {"allow_inheritance": True}
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        raise NotImplementedError("Subclass must implement to_image_labels()")
+
+
 class Classification(ImageLabel):
     """A classification label.
 
@@ -139,20 +142,20 @@ class Classification(ImageLabel):
     logits = fof.VectorField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
-    def to_image_labels(self, attr_name="label"):
+    def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
         instance.
 
         Args:
-            attr_name ("label"): the attribute name to use
+            name (None): the name of the label field
 
         Returns:
-            an ``eta.core.image.ImageLabels`` instance
+            an ``eta.core.image.ImageLabels``
         """
         image_labels = etai.ImageLabels()
         image_labels.add_attribute(
             etad.CategoricalAttribute(
-                attr_name, self.label, confidence=self.confidence
+                name, self.label, confidence=self.confidence
             )
         )
         return image_labels
@@ -171,24 +174,23 @@ class Classifications(ImageLabel):
     classifications = fof.ListField(fof.EmbeddedDocumentField(Classification))
     logits = fof.VectorField()
 
-    def to_image_labels(self, attr_name="label"):
+    def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
         instance.
 
         Args:
-            attr_name ("label"): the attribute name to use. The attributes are
-                written with names ``attr_name + "%d" % idx``
+            name (None): the name of the label field
 
         Returns:
-            an ``eta.core.image.ImageLabels`` instance
+            an ``eta.core.image.ImageLabels``
         """
         image_labels = etai.ImageLabels()
 
         # pylint: disable=not-an-iterable
-        for idx, classification in enumerate(self.classifications, 1):
+        for classification in self.classifications:
             image_labels.add_attribute(
                 etad.CategoricalAttribute(
-                    attr_name + "%d" % idx,
+                    name,
                     classification.label,
                     confidence=classification.confidence,
                 )
@@ -197,7 +199,7 @@ class Classifications(ImageLabel):
         return image_labels
 
 
-class Detection(DynamicEmbeddedDocument):
+class Detection(ImageLabel):
     """An object detection.
 
     Args:
@@ -219,24 +221,24 @@ class Detection(DynamicEmbeddedDocument):
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
-    def has_attribute(self, attr_name):
+    def has_attribute(self, name):
         """Determines whether the detection has an attribute with the given
         name.
 
         Args:
-            attr_name: the attribute name
+            name: the attribute name
 
         Returns:
             True/False
         """
         # pylint: disable=unsupported-membership-test
-        return attr_name in self.attributes
+        return name in self.attributes
 
-    def get_attribute_value(self, attr_name, default=no_default):
+    def get_attribute_value(self, name, default=no_default):
         """Gets the value of the attribute with the given name.
 
         Args:
-            attr_name: the attribute name
+            name: the attribute name
             default (no_default): the default value to return if the attribute
                 does not exist. Can be ``None``. If no default value is
                 provided, an exception is raised if the attribute does not
@@ -251,12 +253,58 @@ class Detection(DynamicEmbeddedDocument):
         """
         try:
             # pylint: disable=unsubscriptable-object
-            return self.attributes[attr_name].value
+            return self.attributes[name].value
         except KeyError:
             if default is not no_default:
                 return default
 
             raise
+
+    def to_detected_object(self, name=None):
+        """Returns an ``eta.core.objects.DetectedObject`` representation of
+        this instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.objects.DetectedObject``
+        """
+        label = self.label
+
+        # pylint: disable=unpacking-non-sequence
+        tlx, tly, w, h = self.bounding_box
+        brx = tlx + w
+        bry = tly + h
+        bounding_box = etag.BoundingBox.from_coords(tlx, tly, brx, bry)
+
+        confidence = self.confidence
+
+        attrs = etad.AttributeContainer()
+        for attr_name, attr in iteritems(self.attributes):
+            attrs.add(etad.CategoricalAttribute(attr_name, attr.value))
+
+        return etao.DetectedObject(
+            label=label,
+            bounding_box=bounding_box,
+            confidence=confidence,
+            name=name,
+            attrs=attrs,
+        )
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        image_labels = etai.ImageLabels()
+        image_labels.add_object(self.to_detected_object(name=name))
+        return image_labels
 
 
 class Detections(ImageLabel):
@@ -271,58 +319,21 @@ class Detections(ImageLabel):
 
     detections = fof.ListField(fof.EmbeddedDocumentField(Detection))
 
-    def filter(self, threshold):
-        """Filter detection confidences to be above the given ``threshold`` and
-        return a new :class:``fiftyone.core.labels.Detections`` object with the
-        thresholded detections.
-
-        Args:
-            threshold: a float between 0 and 1 used as a lower threshold when
-                deciding which detections to keep
-
-        Returns:
-            a :class:``fiftyone.core.labels.Detections`` object with only
-                detections above the given threshold
-        """
-        # pylint: disable=not-an-iterable
-        thrsh_detections = []
-        for det in self.detections:
-            if det.confidence > threshold:
-                thrsh_detections.append(det.copy())
-        return Detections(detections=thrsh_detections)
-
-    def to_image_labels(self):
+    def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
         instance.
 
+        Args:
+            name (None): the name of the label field
+
         Returns:
-            an ``eta.core.image.ImageLabels`` instance
+            an ``eta.core.image.ImageLabels``
         """
         image_labels = etai.ImageLabels()
 
         # pylint: disable=not-an-iterable
         for detection in self.detections:
-            label = detection.label
-
-            tlx, tly, w, h = detection.bounding_box
-            brx = tlx + w
-            bry = tly + h
-            bounding_box = etag.BoundingBox.from_coords(tlx, tly, brx, bry)
-
-            confidence = detection.confidence
-
-            attrs = etad.AttributeContainer()
-            for attr_name, attr in iteritems(detection.attributes):
-                attrs.add(etad.CategoricalAttribute(attr_name, attr.label))
-
-            image_labels.add_object(
-                etao.DetectedObject(
-                    label=label,
-                    bounding_box=bounding_box,
-                    confidence=confidence,
-                    attrs=attrs,
-                )
-            )
+            image_labels.add_object(detection.to_detected_object(name=name))
 
         return image_labels
 
@@ -332,19 +343,22 @@ class ImageLabels(ImageLabel):
     :class:`fiftyone.core.dataset.Dataset`.
 
     Args:
-        labels: an ``eta.core.image.ImageLabels`` instance or a serialized
-            dict representation of one
+        labels: an ``eta.core.image.ImageLabels`` or a serialized dict
+            representation of one
     """
 
     meta = {"allow_inheritance": True}
 
     labels = fof.ImageLabelsField()
 
-    def to_image_labels(self):
+    def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
         instance.
 
+        Args:
+            name (None): the name of the label field
+
         Returns:
-            an ``eta.core.image.ImageLabels`` instance
+            an ``eta.core.image.ImageLabels``
         """
         return self.labels

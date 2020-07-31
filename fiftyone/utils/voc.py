@@ -85,6 +85,7 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
             label_field=None,
             bounding_box_field=None,
             confidence_field=None,
+            attributes_field=None,
             classes=None,
             normalized=True,  # True b/c image is not required to parse label
         )

@@ -59,7 +59,7 @@ sort the |DatasetView| by ground truth labels and then select the first 10
 .. code-block:: python
     :linenos:
 
-    session.view = dataset.view().sort_by("ground_truth")[:10]
+    session.view = dataset.sort_by("ground_truth")[:10]
 
 .. image:: ../images/cifar10_sorted.png
    :alt: CIFAR-10 Sorted

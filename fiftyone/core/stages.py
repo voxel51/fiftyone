@@ -1,5 +1,5 @@
 """
-FiftyOne stage definitions.
+FiftyOne :class:`fiftyone.core.view.DatasetView` stage definitions.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -23,16 +23,29 @@ import reprlib
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
+from fiftyone.core.expressions import ViewExpression
+
 import eta.core.utils as etau
 
 
-# max number of list elements to print
-reprlib.aRepr.maxlist = 3
+class _StageRepr(reprlib.Repr):
+    def repr_ViewExpression(self, expr, level):
+        return self.repr1(expr.to_mongo(), level=level)
+
+
+_aRepr = _StageRepr()
+_aRepr.maxlevel = 2
+_aRepr.maxlist = 3
 
 
 class ViewStage(object):
     """Abstract base class for all :class:`fiftyone.core.view.DatasetView`
     stages.
+
+    :class:`ViewStage` instances represent a logical operation to apply to a
+    :class:`fiftyone.core.view.DatasetView`, which may decide what subset of
+    samples in a view should pass though the stage, and also what subset of the
+    contents of each :class:`fiftyone.core.sample.Sample` should be passed.
 
     Args:
         **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
@@ -40,36 +53,57 @@ class ViewStage(object):
     """
 
     def __str__(self):
-        kwarg_str = ", ".join(
-            ["%s=%s" % (k, reprlib.repr(v)) for k, v in self._kwargs().items()]
-        )
-
-        return "%s(%s)" % (self.__class__.__name__, kwarg_str)
+        return repr(self)
 
     def __repr__(self):
-        return str(self)
+        kwargs_str = ", ".join(
+            ["%s=%s" % (k, _aRepr.repr(v)) for k, v in self._kwargs().items()]
+        )
+
+        return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.ViewStage` instance
+        :class:`fiftyone.core.stages.ViewStage` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         raise NotImplementedError("subclasses must implement `to_mongo()`")
 
     def _serialize(self):
+        """Returns a JSON dict representation of the :class:`ViewStage`.
+
+        Returns:
+            a JSON dict
+        """
         return {
             "kwargs": self._kwargs(),
             "_cls": etau.get_class_name(self),
         }
 
     def _kwargs(self):
+        """Returns a JSON dict describing the keyword arguments that define the
+        ViewStage.
+
+        Returns:
+            a JSON dict
+        """
         raise NotImplementedError("subclasses must implement `_kwargs()`")
 
     @classmethod
     def _from_dict(cls, d):
-        return etau.get_class(d["_cls"])(**d["kwargs"])
+        """Creates a :class:`ViewStage` instance from a serialized JSON dict
+        representation of it.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            a :class:`ViewStage`
+        """
+        view_stage_cls = etau.get_class(d["_cls"])
+        return view_stage_cls(**d["kwargs"])
 
 
 class ViewStageError(Exception):
@@ -86,14 +120,19 @@ class Exclude(ViewStage):
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = sample_ids
+        self._sample_ids = list(sample_ids)
+
+    @property
+    def sample_ids(self):
+        """The list of sample IDs to exclude."""
+        return self._sample_ids
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Exclude` instance
+        :class:`fiftyone.core.stages.Exclude` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         sample_ids = [ObjectId(id) for id in self._sample_ids]
         return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
@@ -113,12 +152,17 @@ class Exists(ViewStage):
     def __init__(self, field):
         self._field = field
 
+    @property
+    def field(self):
+        """The field to check for existence."""
+        return self._field
+
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Exists` instance
+        :class:`fiftyone.core.stages.Exists` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         return Match({self._field: {"$exists": True, "$ne": None}}).to_mongo()
 
@@ -130,49 +174,138 @@ class Limit(ViewStage):
     """Limits the view to the given number of samples.
 
     Args:
-        num: the maximum number of samples to return. If a non-positive
+        limit: the maximum number of samples to return. If a non-positive
             number is provided, an empty view is returned
     """
 
     def __init__(self, limit):
         self._limit = limit
 
+    @property
+    def limit(self):
+        """The maximum number of samples to return."""
+        return self._limit
+
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Limit`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Limit` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
-        return {"$limit": self._limit}
+        if self._limit <= 0:
+            return Match({"_id": None}).to_mongo()
+
+        return [{"$limit": self._limit}]
 
     def _kwargs(self):
         return {"limit": self._limit}
+
+
+class ListFilter(ViewStage):
+    """Filters the list elements in the samples in the stage.
+
+    Args:
+        field: the field to filter, which must be a list field
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    def __init__(self, field, filter):
+        self._field = field
+        self._filter = filter
+        self._validate()
+
+    @property
+    def field(self):
+        """The list field to filter."""
+        return self._field
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Match` instance.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return [
+            {
+                "$addFields": {
+                    self._field: {
+                        "$filter": {
+                            "input": "$" + self._field,
+                            "cond": self._get_mongo_filter(),
+                        }
+                    }
+                }
+            }
+        ]
+
+    def _get_mongo_filter(self):
+        if isinstance(self._filter, ViewExpression):
+            return self._filter.to_mongo(in_list=True)
+
+        return self._filter
+
+    def _kwargs(self):
+        return {"field": self._field, "filter": self._get_mongo_filter()}
+
+    def _validate(self):
+        if not isinstance(self._filter, (ViewExpression, dict)):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB expression; "
+                "found '%s'" % self._filter
+            )
 
 
 class Match(ViewStage):
     """Filters the samples in the stage by the given filter.
 
     Args:
-        filter: a MongoDB query dict. See
-            https://docs.mongodb.com/manual/tutorial/query-documents
-            for details
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
     """
 
     def __init__(self, filter):
         self._filter = filter
+        self._validate()
+
+    @property
+    def filter(self):
+        """The filter expression."""
+        return self._filter
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Match` instance
+        :class:`fiftyone.core.stages.Match` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
-        return {"$match": self._filter}
+        return [{"$match": self._get_mongo_filter()}]
+
+    def _get_mongo_filter(self):
+        if isinstance(self._filter, ViewExpression):
+            return {"$expr": self._filter.to_mongo()}
+
+        return self._filter
 
     def _kwargs(self):
-        return {"filter": self._filter}
+        return {"filter": self._get_mongo_filter()}
+
+    def _validate(self):
+        if not isinstance(self._filter, (ViewExpression, dict)):
+            raise ValueError(
+                "Filter must be a ViewExpression or a MongoDB expression; "
+                "found '%s'" % self._filter
+            )
 
 
 class MatchTag(ViewStage):
@@ -185,12 +318,17 @@ class MatchTag(ViewStage):
     def __init__(self, tag):
         self._tag = tag
 
+    @property
+    def tag(self):
+        """The tag to match."""
+        return self._tag
+
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.MatchTag` instance
+        :class:`fiftyone.core.stages.MatchTag` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         return Match({"tags": self._tag}).to_mongo()
 
@@ -202,26 +340,62 @@ class MatchTags(ViewStage):
     """Returns a view containing the samples that have any of the given
     tags.
 
-    To match samples that contain a single, use :class:`MatchTag`
+    To match samples that contain a single, use :class:`MatchTag`.
 
     Args:
         tags: an iterable of tags
     """
 
     def __init__(self, tags):
-        self._tags = tags
+        self._tags = list(tags)
+
+    @property
+    def tags(self):
+        """The list of tags to match."""
+        return self._tags
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.MatchTags` instance
+        :class:`fiftyone.core.stages.MatchTags` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         return Match({"tags": {"$in": self._tags}}).to_mongo()
 
     def _kwargs(self):
         return {"tags": self._tags}
+
+
+class Mongo(ViewStage):
+    """View stage defined by a raw MongoDB aggregation pipeline.
+
+    See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
+    for more details.
+
+    Args:
+        pipeline: a MongoDB aggregation pipeline (list of dicts)
+    """
+
+    def __init__(self, pipeline):
+        self._pipeline = pipeline
+
+    @property
+    def pipeline(self):
+        """The MongoDB aggregation pipeline."""
+        return self._pipeline
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Mongo` instance.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return self._pipeline
+
+    def _kwargs(self):
+        return {"pipeline": self._pipeline}
 
 
 class Select(ViewStage):
@@ -232,14 +406,19 @@ class Select(ViewStage):
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = sample_ids
+        self._sample_ids = list(sample_ids)
+
+    @property
+    def sample_ids(self):
+        """The list of sample IDs to select."""
+        return self._sample_ids
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Select` instance
+        :class:`fiftyone.core.stages.Select` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         sample_ids = [ObjectId(id) for id in self._sample_ids]
         return Match({"_id": {"$in": sample_ids}}).to_mongo()
@@ -249,34 +428,63 @@ class Select(ViewStage):
 
 
 class SortBy(ViewStage):
-    """Sorts the samples in the view by the given field.
+    """Sorts the samples in the view by the given field or expression.
+
+    When sorting by an expression, ``field_or_expr`` can either be a
+    :class:`fiftyone.core.expressions.ViewExpression` or a
+    `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+    that defines the quantity to sort by.
 
     Args:
-        field: the field to sort by. Example fields::
-
-            filename
-            metadata.size_bytes
-            metadata.frame_size[0]
-
+        field_or_expr: the field or expression to sort by
         reverse (False): whether to return the results in descending order
     """
 
-    def __init__(self, field, reverse=False):
-        self._field = field
+    def __init__(self, field_or_expr, reverse=False):
+        self._field_or_expr = field_or_expr
         self._reverse = reverse
+
+    @property
+    def field_or_expr(self):
+        """The field or expression to sort by."""
+        return self._field_or_expr
+
+    @property
+    def reverse(self):
+        """Whether to return the results in descending order."""
+        return self._reverse
 
     def to_mongo(self):
         """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.SortBy` instance
+        :class:`fiftyone.core.stages.SortBy` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         order = DESCENDING if self._reverse else ASCENDING
-        return {"$sort": {self._field: order}}
+
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        if not isinstance(field_or_expr, dict):
+            return [{"$sort": {field_or_expr: order}}]
+
+        return [
+            {"$addFields": {"_sort_field": field_or_expr}},
+            {"$sort": {"_sort_field": order}},
+            {"$unset": "_sort_field"},
+        ]
+
+    def _get_mongo_field_or_expr(self):
+        if isinstance(self._field_or_expr, ViewExpression):
+            return self._field_or_expr.to_mongo()
+
+        return self._field_or_expr
 
     def _kwargs(self):
-        return {"field": self._field, "reverse": self._reverse}
+        return {
+            "field_or_expr": self._get_mongo_field_or_expr(),
+            "reverse": self._reverse,
+        }
 
 
 class Skip(ViewStage):
@@ -290,14 +498,19 @@ class Skip(ViewStage):
     def __init__(self, skip):
         self._skip = skip
 
+    @property
+    def skip(self):
+        """The number of samples to skip."""
+        return self._skip
+
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Skip`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Skip` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
-        return {"$skip": self._skip}
+        return [{"$skip": self._skip}]
 
     def _kwargs(self):
         return {"skip": self._skip}
@@ -314,19 +527,24 @@ class Take(ViewStage):
     def __init__(self, size):
         self._size = size
 
+    @property
+    def size(self):
+        """The number of samples to return."""
+        return self._size
+
     def to_mongo(self):
-        """Returns the MongoDB version of the :class:`fiftyone.core.stages.Take`
-        instance
+        """Returns the MongoDB version of the
+        :class:`fiftyone.core.stages.Take` instance.
 
         Returns:
-            a MongoDB aggregation pipeline stage dict
+            a MongoDB aggregation pipeline (list of dicts)
         """
         size = self._size
 
         if size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        return {"$sample": {"size": size}}
+        return [{"$sample": {"size": size}}]
 
     def _kwargs(self):
         return {"size": self._size}

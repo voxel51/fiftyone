@@ -25,14 +25,7 @@ from bson import json_util
 from bson.objectid import ObjectId
 import mongoengine
 
-try:
-    import pprintpp as pprint
-
-    # Monkey patch to prevent sorting keys
-    # https://stackoverflow.com/a/25688431
-    pprint._sorted = lambda x: x
-except:
-    import pprint
+import fiftyone.core.utils as fou
 
 import eta.core.serial as etas
 
@@ -44,7 +37,7 @@ class SerializableDocument(object):
         return self.__repr__()
 
     def __repr__(self):
-        s = _pformat(self._to_repr_dict())
+        s = fou.pformat(self._to_repr_dict())
         return "<%s: %s>" % (self._get_class_repr(), s)
 
     def __eq__(self, other):
@@ -311,7 +304,3 @@ def _to_front(l, val):
         pass
 
     return l
-
-
-def _pformat(doc):
-    return pprint.pformat(doc, indent=4)
