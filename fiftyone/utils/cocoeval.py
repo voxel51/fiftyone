@@ -117,7 +117,8 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                 ious = maskUtils.iou(pred_boxes, gt_boxes, iscrowd)
     
                 for pind, gt_ious in enumerate(ious):
-                    preds[pind][pred_key]["ious"][cat] = list(zip(gt_eval_ids, gt_ious))
+                    preds[pind][pred_key]["ious"][cat] = \
+                        list(zip(gt_eval_ids, gt_ious))
     
             # Starting with highest confidence prediction, match all with gts
             # Store true and false positives
@@ -137,8 +138,8 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                     gt_by_id = {g[gt_key]["eval_id"]: g for g in
                         dets["gts"]}
     
-                    # Note: predictions were sorted by confidence in the previous 
-                    # step
+                    # Note: predictions were sorted by confidence in the 
+                    # previous step
                     preds = dets["preds"]
                     
                     # Match each prediction to the highest IoU ground truth
@@ -153,7 +154,9 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                                     gt[gt_key]["matches"][iou_str]["pred_id"]
 
                                 if "iscrowd" in gt.attributes:
-                                    iscrowd = int(gt.attributes["iscrowd"].value)
+                                    iscrowd = int(
+                                        gt.attributes["iscrowd"].value
+                                    )
                                 else:
                                     iscrowd = 0
     
@@ -174,7 +177,8 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                                 # If the prediction was matched, store the eval
                                 # id of the pred in the gt and of the gt in the
                                 # pred
-                                gt_by_id[best_match][gt_key]["matches"][iou_str] = {
+                                gt_to_store =  gt_by_id[best_match][gt_key]
+                                gt_to_store["matches"][iou_str] = {
                                         "pred_id": pred[pred_key]["eval_id"],
                                         "iou": best_match_iou
                                     }
