@@ -41,7 +41,7 @@ aws s3 --no-sign-request sync s3://open-images-dataset/test [target_dir/test]
 wget https://storage.googleapis.com/openimages/2018_04/test/test-annotations-bbox.csv
 wget https://storage.googleapis.com/openimages/2018_04/test/test-annotations-human-imagelabels-boxable.csv
 # wget https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv
-# wget https://storage.googleapis.com/openimages/2018_04/class-descriptions-boxable.csv
+wget https://storage.googleapis.com/openimages/2018_04/class-descriptions-boxable.csv
 wget https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy.json
 ```
 
@@ -66,8 +66,6 @@ cd PATH/TO/models/research/object_detection
 
 ```bash
 LABELS_DIR=PATH/TO/LABELS
-# @todo(Tyler)
-LABELS_DIR=~/data/open-images-dataset/TESTING
 
 HIERARCHY_FILE=${LABELS_DIR}/bbox_labels_600_hierarchy.json
 BOUNDING_BOXES=${LABELS_DIR}/test-annotations-bbox
@@ -102,9 +100,6 @@ cd PATH/TO/open_images_error_analysis
 ```bash
 IMAGES_DIR=PATH/TO/IMAGES
 OUTPUT_DIR=PATH/TO/PREDICTIONS
-# @todo(Tyler)
-IMAGES_DIR=/Users/tylerganter/data/open-images-dataset/images/test
-OUTPUT_DIR=~/data/open-images-dataset/TESTING
 
 MODEL_HANDLE=https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1
 # MODEL_HANDLE=https://tfhub.dev/google/openimages_v4/ssd/mobilenet_v2/1
@@ -115,39 +110,42 @@ python scripts/inference.py \
     ${IMAGES_DIR} ${MODEL_HANDLE}
 ```
 
-## 4. Evaluating on a per-image granularity
+## 4. Visualizing the data
 
-### FiftyOne
+### Installing FiftyOne
+
+```bash
+# @todo(Tyler) CONTINUE HERE
+pip install fiftyone
+```
+
+### Loading the data into FiftyOne
+
+```bash
+DATASET_NAME="open-images-v4-test"
+IMAGES_DIR=PATH/TO/IMAGES
+
+# @todo(Tyler)
+DATASET_NAME="testing"
+IMAGES_DIR=~/data/open-images-dataset/TESTING/test_images/
+BOUNDING_BOXES_EXPANDED=~/data/open-images-dataset/TESTING/test-annotations-bbox_expanded.csv
+IMAGE_LABELS_EXPANDED=~/data/open-images-dataset/TESTING/test-annotations-human-imagelabels-boxable_expanded.csv
+PREDICTIONS_PATH=~/data/open-images-dataset/TESTING/faster_rcnn_preds_74061.csv
+CLASS_DESCRIPTIONS=~/data/open-images-dataset/TESTING/class-descriptions-boxable.csv
+
+python scripts/load_data.py \
+    --bounding_boxes_path ${BOUNDING_BOXES_EXPANDED} \
+    --image_labels_path ${IMAGE_LABELS_EXPANDED} \
+    --predictions_path ${PREDICTIONS_PATH} \
+    --prediction_field_name "faster_rcnn" \
+    --class_descriptions_path ${CLASS_DESCRIPTIONS} \
+    --load_images_with_preds \
+    --max_num_images 10 \
+    ${DATASET_NAME} ${IMAGES_DIR}
+```
+
+## 5. Evaluating on a per-image granularity
 
 ### Running evaluation
 
-## 5. Exploring the data
-
-## 101. Evaluate
-
-```bash
-INPUT_PREDICTIONS=/path/to/detection_predictions.csv
-OUTPUT_METRICS=/path/to/output/metrics/file
-
-python models/research/object_detection/metrics/oid_challenge_evaluation.py \
-    --input_annotations_boxes=${BOUNDING_BOXES}_expanded.csv \
-    --input_annotations_labels=${IMAGE_LABELS}_expanded.csv \
-    --input_class_labelmap=object_detection/data/oid_object_detection_challenge_500_label_map.pbtxt \
-    --input_predictions=${INPUT_PREDICTIONS} \
-    --output_metrics=${OUTPUT_METRICS}
-```
-
-```bash
-HIERARCHY_FILE=v4/bbox_labels_600_hierarchy.json
-BOUNDING_BOXES=v4/test-annotations-bbox
-IMAGE_LABELS=v4/test-annotations-human-imagelabels-boxable
-INPUT_PREDICTIONS=v4/google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions.csv
-OUTPUT_METRICS=output_metrics.csv
-
-python object_detection/metrics/oid_challenge_evaluation.py \
-    --input_annotations_boxes=${BOUNDING_BOXES}_expanded.csv \
-    --input_annotations_labels=${IMAGE_LABELS}_expanded.csv \
-    --input_class_labelmap=object_detection/data/oid_v4_label_map.pbtxt \
-    --input_predictions=${INPUT_PREDICTIONS} \
-    --output_metrics=${OUTPUT_METRICS}
-```
+## 5. Error analysis

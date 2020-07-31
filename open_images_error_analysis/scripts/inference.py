@@ -104,6 +104,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save_every",
         default=10,
+        type=int,
         help="How often to append the output to CSV",
     )
     args = parser.parse_args()

@@ -4,56 +4,60 @@ Analyze Open Images V6
 dataset = fo.load_dataset("open-images-V6-validation")
 
 """
-import fiftyone as fo
-from fiftyone.utils.open_images import (
-    load_open_images_dataset,
-    add_open_images_predictions,
-)
-from fiftyone.utils.eval.tf import evaluate_dataset
+import argparse
+from pathlib import Path
+import sys
 
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-###############################################################################
+from error_analysis.load_data import load_open_images_dataset
 
-IMAGES_DIR = "/Users/tylerganter/data/open-images-dataset/images/test"
-BOUNDING_BOXES_EXPANDED = "/Users/tylerganter/data/open-images-dataset/v4/test-annotations-bbox_expanded.csv"
-IMAGE_LABELS_EXPANDED = "/Users/tylerganter/data/open-images-dataset/v4/test-annotations-human-imagelabels-boxable_expanded.csv"
-INPUT_PREDICTIONS = "/Users/tylerganter/data/open-images-dataset/v4/predictions/google-faster_rcnn-openimages_v4-inception_resnet_v2_predictions/tf_od_api_format/small.csv"
-CLASS_DESCRIPTIONS = "/Users/tylerganter/data/open-images-dataset/v4/class-descriptions-boxable.csv"
-
-CLASS_LABELMAP = "/Users/tylerganter/data/open-images-dataset/object_detection/data/oid_v4_label_map.pbtxt"
-
-###############################################################################
 
 if __name__ == "__main__":
-    dataset = load_open_images_dataset(
-        # dataset_name="open-images-v4-test",
-        dataset_name="testinginginging",
-        images_dir=IMAGES_DIR,
-        bounding_boxes_path=BOUNDING_BOXES_EXPANDED,
-        image_labels_path=IMAGE_LABELS_EXPANDED,
-        # predictions_path=INPUT_PREDICTIONS,
-        # prediction_field_name="faster_rcnn",
-        # class_descriptions_path=CLASS_DESCRIPTIONS,
-        # load_images_with_preds=True,
-        # max_num_images=2,
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "dataset_name", help="Name of the dataset in FiftyOne.",
     )
+    parser.add_argument(
+        "images_dir",
+        help="Directory where images are stored. Images should be in"
+        " <open-images-id>.jpg format",
+    )
+    parser.add_argument(
+        "--bounding_boxes_path", default=None, help="TODO",
+    )
+    parser.add_argument(
+        "--image_labels_path", default=None, help="TODO",
+    )
+    parser.add_argument(
+        "--predictions_path", default=None, help="TODO",
+    )
+    parser.add_argument(
+        "--prediction_field_name", default="predicted_detections", help="TODO",
+    )
+    parser.add_argument(
+        "--class_descriptions_path",
+        default="predicted_detections",
+        help="TODO",
+    )
+    parser.add_argument(
+        "--load_images_with_preds",
+        action="store_true",
+        default=False,
+        help="TODO",
+    )
+    parser.add_argument(
+        "--max_num_images",
+        default=-1,
+        type=int,
+        help="Maximum number of images to load. -1 implies load all images.",
+    )
+    args = parser.parse_args()
 
+    dataset = load_open_images_dataset(**vars(args))
+
+    # @todo(Tyler)
     # dataset.persistent = True
-
-    # add_open_images_predictions(
-    #     dataset,
-    #     INPUT_PREDICTIONS,
-    #     class_descriptions_path=CLASS_DESCRIPTIONS,
-    #     prediction_field_name="asdf"
-    # )
-
-    # evaluate_dataset(
-    #     dataset,
-    #     label_map_path=CLASS_LABELMAP,
-    #     predictions_field_name="faster_rcnn",
-    # )
-
-    for sample in dataset.view()[:2]:
-        print(sample)
 
     print(dataset)
