@@ -176,6 +176,16 @@ your virtual environment:
    >>> session = fo.launch_app()
    >>> exit()
 
+**Mac users:**
+
+- You must have the
+  `XCode Command Line Tools <https://developer.apple.com/library/archive/technotes/tn2339/_index.html>`_
+  package installed on your machine. You likely already have it, but if you
+  encounter an error message like
+  `error: command 'clang' failed with exit status 1`, then you may need to
+  install it via `xcode-select --install`, or see
+  `this page <https://stackoverflow.com/q/9329243>`_ for other options.
+
 **Linux users:**
 
 - The ``psutil`` package may require Python headers to be installed on your
@@ -185,11 +195,12 @@ your virtual environment:
   not find mongod", you may need to install additional packages. See the
   `troubleshooting section <#troubleshooting>`_ for details.
 
-**Windows users:** If you encounter errors related to missing `msvcp140.dll`,
-you will need to install the 64-bit Visual Studio 2015 C++ redistributable
-library,
-`available here <https://www.microsoft.com/en-us/download/details.aspx?id=48145>`_
-(choose the x64 version).
+**Windows users:**
+
+- If you encounter errors related to missing `msvcp140.dll`, you will need to
+  install the 64-bit Visual Studio 2015 C++ redistributable library,
+  `available here <https://www.microsoft.com/en-us/download/details.aspx?id=48145>`_
+  (choose the x64 version).
 
 Installing extra packages
 -------------------------
