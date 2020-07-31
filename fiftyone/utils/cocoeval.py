@@ -33,7 +33,7 @@ IOU_THRESHOLDS = np.linspace(.5, 0.95, int(np.round((0.95 - .5) / .05)) + 1,
         endpoint=True)
 IOU_THRESHOLD_STR = [str(iou).replace('.','_') for iou in IOU_THRESHOLDS]
 
-def evaluate_detections(samples, pred_field, gt_field):
+def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
     """Iterates through each sample and matches predicted detections to ground
     truth detections. True and false positive counts for each IoU threshold are
     stored in every Detection object.
@@ -46,6 +46,8 @@ def evaluate_detections(samples, pred_field, gt_field):
             predicted detections
         gt_field: a string indicating the field name in each sample containing
             ground truth detections
+        save_iou: the IoU value used to save all true/false positives and false
+            negatives at a sample level
     """
     gt_key = "%s_eval" % pred_field
     pred_key = "%s_eval" % gt_field
@@ -197,15 +199,61 @@ def evaluate_detections(samples, pred_field, gt_field):
                 result_dict["false_negatives"][iou_str] = \
                     false_negatives
 
-                # Add the top level fields for tps, fps, and fns of the most
-                # recent evaluation for the ease of searching samples
-                if iou_thresh == 0.75:
-                    sample["tp_iou75"] = true_positives
-                    sample["fp_iou75"] = false_positives
-                    sample["fn_iou75"] = false_negatives
-
             sample[pred_field][pred_key] = result_dict
 
             # TODO: Compute sample-wise AP
 
             sample.save()
+
+    if save_iou != None:
+        iou_count(samples, pred_field, gt_field, save_iou)
+
+
+def iou_count(samples, pred_field, gt_field, iou):
+    """Iterates through samples that have been evaluated using
+    :meth:`evaluate_detections() <fiftyone.utils.cocoeval.evaluate_detections>` 
+    and stores the total number of true/false positives and false negatives
+    in a `Sample`-level field. These fields can be used to more easily search
+    and visualize these metrics.
+
+    Args:
+        samples: an iterator of samples like a 
+            :class:`fiftyone.core.dataset.Dataset` or
+            :class:`fiftyone.core.view.DatasetView`  
+        pred_field: a string indicating the field name in each sample containing
+            predicted detections that were evaluated
+        gt_field: a string indicating the field name in each sample containing
+            ground truth detections that were used for evaluation
+        iou: the IoU value used to save all true/false positives and false
+            negatives at a sample level
+
+    """
+
+    pred_key = "%s_eval" % gt_field
+    save_iou_str = str(save_iou).replace('.','_')
+
+    try:
+        iou_ind = IOU_THRESHOLDS.index(iou)
+        iou_str = IOU_THRESHOLD_STR[iou_ind]
+
+    except ValueError:
+        logger.info("IoU %f is not in the list of available IoUs thresholds %s"
+            % (iou, IOU_THRESHOLDS)
+        return
+
+    logger.info("Saving IoU counts for each sample...")
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            # Add the top level fields for tps, fps, and fns of the most
+            # recent evaluation for the ease of searching samples
+            result_dict = sample[pred_field][pred_key]
+            true_positives = result_dict["true_positives"][iou_str]
+            false_positives = result_dict["false_positives"][iou_str]
+            false_negatives = result_dict["false_negatives"][iou_str]
+
+            sample["tp_iou_%s" % save_iou_str] = true_positives
+            sample["fp_iou_%s" % save_iou_str] = false_positives
+            sample["fn_iou_%s" % save_iou_str] = false_negatives
+
+            sample.save()
+
