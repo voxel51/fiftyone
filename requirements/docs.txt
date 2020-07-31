@@ -4,6 +4,6 @@ m2r==0.2.1
 nbsphinx==0.7.1
 sphinx-autoapi>=1.4.0
 sphinx-tabs==1.1.13
-Sphinx==2.4.4
+Sphinx>=2.4.4
 sphinxcontrib-napoleon==0.7
 sphinx-copybutton==0.2.12
