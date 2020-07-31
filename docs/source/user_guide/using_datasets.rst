@@ -179,6 +179,8 @@ time by providing a list of samples:
     print(len(dataset))
     # 4
 
+.. _accessing-samples-in-a-dataset:
+
 Accessing samples in a dataset
 ------------------------------
 
@@ -192,6 +194,16 @@ A |Dataset| is iterable allowing every |Sample| to be accessed one at a time:
     for sample in dataset:
         print(sample)
 
+Use :meth:`first() <fiftyone.core.dataset.Dataset.first>` and
+:meth:`last() <fiftyone.core.dataset.Dataset.last>` to retrieve the first and
+last samples in a dataset, respectively:
+
+.. code-block:: python
+    :linenos:
+
+    first_sample = dataset.first()
+    last_sample = dataset.last()
+
 A |Sample| can be accessed directly from a |Dataset| by its ID. The |Sample|
 that is returned when accessing a |Dataset| will always provide the same
 instance:
@@ -204,7 +216,7 @@ instance:
     print(same_sample is sample)
     # True
 
-You can :ref:`use DatasetViews <using-dataset-views>` to perform more
+You can use :doc:`DatasetViews <using_views>` to perform more
 sophisticated operations on samples like searching, filtering, sorting, and
 slicing.
 
@@ -278,7 +290,7 @@ By default, all |Sample| instances have the following fields:
     | `id`       | string                             | `None`      | The ID of the sample in its parent dataset, or    |
     |            |                                    |             | `None` if the sample does not belong to a dataset |
     +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `metadata` | :class:`Metadata                   |`None`       | Type-specific metadata about the source data      |
+    | `metadata` | :class:`Metadata                   | `None`      | Type-specific metadata about the source data      |
     |            | <fiftyone.core.metadata.Metadata>` |             |                                                   |
     +------------+------------------------------------+-------------+---------------------------------------------------+
     | `tags`     | list                               | `[]`        | A list of string tags for the sample              |
@@ -487,6 +499,9 @@ populated with a |Metadata| instance that stores data type-specific metadata
 about the raw data in the sample. The :doc:`FiftyOne App </user_guide/app>` and
 the :doc:`FiftyOne Brain </user_guide/brain>` will use this provided metadata
 in some workflows when it is available.
+
+To automatically compute metadata for all samples in the dataset use
+:meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`.
 
 .. tabs::
 
@@ -917,196 +932,27 @@ latter case, additional metadata such as prediction confidences can be store.
 See the `ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_
 for more details.
 
-.. _using-dataset-views:
-
 DatasetViews
 ____________
 
-FiftyOne provides a powerful and flexible class, |DatasetView|, for accessing
-subsets of samples in a |Dataset|.
+Previous sections have demonstrated how to add and interact with |Dataset|
+components like samples, fields, and labels. The true power of FiftyOne lies in
+the ability to search, sort, filter, and explore the contents of a |Dataset|.
 
-Creating DatasetViews
----------------------
+Behind this power is the |DatasetView|. Whenever an operation
+like :meth:`match() <fiftyone.core.view.DatasetView.match>` or
+:meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` is applied to a
+|Dataset|, a |DatasetView| is returned. As the name implies, a |DatasetView|
+is a *view* into the data in your |Dataset| that was produced by a series of
+operations that manipulated your data in different ways.
 
-You can create a view that contains an entire dataset via
-:meth:`Dataset.view() <fiftyone.core.dataset.Dataset.view>`:
+A |DatasetView| is composed of |SampleView| objects for a subset of the samples
+in your dataset. For example, a view may contain only samples with a given tag,
+or samples whose labels meet a certain criteria. In turn, each |SampleView|
+represents a view into the content of the underlying |Sample| in the datset.
+For example, a |SampleView| may represent the contents of a sample with
+|Detections| below a specified threshold filtered out.
 
-.. code-block:: python
-    :linenos:
-
-    view = dataset.view()
-
-    print(len(view))
-    # 2
-
-    print(view)
-
-.. code-block:: text
-
-    Dataset:        interesting_dataset
-    Num samples:    2
-    Tags:           ['test', 'train']
-    Sample fields:
-        filepath:     fiftyone.core.fields.StringField
-        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-    Pipeline stages:
-        ---
-
-In addition, the |Dataset| class directly exposes a number of operations that
-return |DatasetView| instances defined by a |ViewStage| filter:
-
-.. code-block:: python
-    :linenos:
-
-    print(dataset.list_view_stages())
-    # ['exclude', 'exists', 'limit', ..., 'skip', 'sort_by', 'take']
-
-We'll discuss these operations in more detail later.
-
-Accessing samples in DatasetViews
----------------------------------
-
-Use :meth:`first() <fiftyone.core.view.DatasetView.first>` and
-:meth:`last() <fiftyone.core.view.DatasetView.last>` to retrieve the first and
-last samples in a view, respectively:
-
-.. code-block:: python
-    :linenos:
-
-    first_sample = view.first()
-    last_sample = view.last()
-
-You can extract a range of |Sample| instances from a |Dataset| using
-:meth:`skip() <fiftyone.core.view.DatasetView.skip>` and
-:meth:`limit() <fiftyone.core.view.DatasetView.limit>` or, equivalently,
-by using array slicing:
-
-.. code-block:: python
-    :linenos:
-
-    # Skip the first 2 samples and take the next 3
-    range_view1 = view.skip(2).limit(3)
-
-    # Equivalently, using array slicing
-    range_view2 = view[2:5]
-
-You can perform a random access lookup of a sample in a |DatasetView| via its
-sample ID:
-
-.. code-block:: python
-    :linenos:
-
-    sample = view[sample_id]
-
-and you can iterate over the samples in a |DatasetView|:
-
-.. code-block:: python
-    :linenos:
-
-    for sample in view:
-        print(sample)
-
-.. note::
-
-    Note that accessing a sample by its integer index in a |DatasetView| is
-    not allowed, as this is not an efficient operation.
-
-    The best practice is to lookup indidivual samples by ID, use array slicing
-    to extract a range of samples, and iterate over samples in a view.
-
-    .. code-block:: python
-
-        view[0]
-        # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
-
-Modifying DatasetViews
-----------------------
-
-DatasetViews encapsulate a pipeline of logical operations that determine which
-samples appear in the view (and perhaps what subset of their contents).
-
-Each view operation is captured by a |ViewStage|, and these operations are
-conveniently exposed as methods on both |Dataset|, in which case they create an
-initial |DatasetView|, and on |DatasetView|, which case they return another
-|DatasetView| with the operation appended to its internal pipeline so that
-multiple operations can be chained together.
-
-.. code-block:: python
-    :linenos:
-
-    print(view.list_view_stages())
-    # ['exclude', 'exists', 'limit', ..., 'skip', 'sort_by', 'take']
-
-The sections below discuss each view stage operation in more detail.
-
-Sorting
--------
-
-The samples in a |DatasetView| can be sorted by any |Field|:
-
-.. code-block:: python
-    :linenos:
-
-    filepath_sorted_view = view.sort_by("filepath")
-    id_sorted_view = view.sort_by("id", reverse=True)
-
-Querying
---------
-
-A |DatasetView| can be queried using :meth:`match()
-<fiftyone.core.view.DatasetView.match>`. The syntax follows
-`MongoDB queries <https://docs.mongodb.com/manual/tutorial/query-documents/>`_:
-
-.. code-block:: python
-    :linenos:
-
-    # Get only samples with the tag "train"
-    train_view = view.match_tag("train")
-
-Convenience functions for common queries are also available.
-
-A |DatasetView| can be created by matching lists of |Sample| IDs, either to
-only include given a |Sample| or to include all but the given |Sample|:
-
-.. code-block:: python
-    :linenos:
-
-    sample_ids = [sample1.id, sample2.id]
-
-    included_view = view.select(sample_ids)
-    excluded_view = view.exclude(sample_ids)
-
-A |DatasetView| can also be filtered to only include samples for which a
-given |Field| exists and is not ``None``:
-
-.. code-block:: python
-    :linenos:
-
-    metadata_view = view.exists("metadata")
-
-Chaining view stages
---------------------
-
-All of the aformentioned view stages can be chained together:
-
-.. code-block:: python
-    :linenos:
-
-    complex_view = (
-        dataset.match_tag("test")
-        .exists("metadata")
-        .sort_by("filepath")
-        .limit(5)
-    )
-
-Removing a batch of samples from a dataset
-------------------------------------------
-
-Every |Sample| in a given |DatasetView| can be removed from a |Dataset| with a
-single command:
-
-.. code-block:: python
-    :linenos:
-
-    dataset.remove_samples(view)
+.. custombutton::
+    :button_text: Learn more about DatasetViews!
+    :button_link: using_views.html

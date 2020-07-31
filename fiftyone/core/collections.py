@@ -125,23 +125,23 @@ class SampleCollection(object):
         return "\n".join(str(s) for s in self[-num_samples:])
 
     def first(self):
-        """Returns the first :class:`fiftyone.core.sample.Sample` in the
-        collection.
+        """Returns the first sample in the collection.
 
         Returns:
-            a :class:`fiftyone.core.sample.Sample`
+            a :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView`
         """
         try:
-            return next(self.iter_samples())
+            return next(iter(self))
         except StopIteration:
             raise ValueError("%s is empty" % self.__class__.__name__)
 
     def last(self):
-        """Returns the last :class:`fiftyone.core.sample.Sample` in the
-        collection.
+        """Returns the last sample in the collection.
 
         Returns:
-            a :class:`fiftyone.core.sample.Sample`
+            a :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView`
         """
         return self[-1:].first()
 
@@ -149,7 +149,8 @@ class SampleCollection(object):
         """Returns an iterator over the samples in the collection.
 
         Returns:
-            an iterator over :class:`fiftyone.core.sample.Sample` instances
+            an iterator over :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView` instances
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
@@ -216,6 +217,19 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Exclude(sample_ids))
 
     @view_stage
+    def exclude_fields(self, field_names):
+        """Excludes the fields with the given names from the returned
+        :class:`fiftyone.core.sample.SampleView` instances.
+
+        Args:
+            field_names: a list of names of sample fields to omit
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.ExcludeFields(field_names))
+
+    @view_stage
     def exists(self, field):
         """Returns a view containing the samples that have a non-``None`` value
         for the given field.
@@ -229,6 +243,44 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Exists(field))
 
     @view_stage
+    def filter_classifications(self, field, filter):
+        """Filters the classifications of the given
+        :class:`fiftyone.core.labels.Classifications` field.
+
+        Elements of ``field.classifications`` for which ``filter`` returns
+        ``False`` are omitted from the field.
+
+        Args:
+            field: the :class:`fiftyone.core.labels.Classifications` field
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.FilterClassifications(field, filter))
+
+    @view_stage
+    def filter_detections(self, field, filter):
+        """Filters the detections of the given
+        :class:`fiftyone.core.labels.Detections` field.
+
+        Elements of ``field.detections`` for which ``filter`` returns
+        ``False`` are omitted from the field.
+
+        Args:
+            field: the :class:`fiftyone.core.labels.Detections` field
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.FilterDetections(field, filter))
+
+    @view_stage
     def limit(self, limit):
         """Returns a view with at most the given number of samples.
 
@@ -240,25 +292,6 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Limit(limit))
-
-    @view_stage
-    def list_filter(self, field, filter):
-        """Filters the elements of the given list field for all samples in the
-        collection.
-
-        Elements of ``field``, which must be a list field, for which ``filter``
-        returns ``False`` are omitted from the field.
-
-        Args:
-            field: the list field
-            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that returns a boolean describing the filter to apply
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
-        """
-        return self._add_view_stage(fos.ListFilter(field, filter))
 
     @view_stage
     def match(self, filter):
@@ -330,6 +363,19 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Select(sample_ids))
+
+    @view_stage
+    def select_fields(self, field_names):
+        """Selects the fields with the given names as the only fields present
+        in the returned :class:`fiftyone.core.sample.SampleView` instances.
+
+        Args:
+            field_names: a list of names of sample fields to select
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return self._add_view_stage(fos.SelectFields(field_names))
 
     @view_stage
     def skip(self, skip):
