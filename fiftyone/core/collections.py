@@ -222,7 +222,7 @@ class SampleCollection(object):
         :class:`fiftyone.core.sample.SampleView` instances.
 
         Args:
-            field_names: a list of names of sample fields to omit
+            field_names: a field name or iterable of field names
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -370,7 +370,7 @@ class SampleCollection(object):
         in the returned :class:`fiftyone.core.sample.SampleView` instances.
 
         Args:
-            field_names: a list of names of sample fields to select
+            field_names: a field name or iterable of field names
 
         Returns:
             a :class:`DatasetView`

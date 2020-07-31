@@ -143,12 +143,13 @@ class ExcludeFields(ViewStage):
     """Excludes the fields with the given names from the samples in the view.
 
     Args:
-        field_names: an iterable of sample field names
+        field_names: a field name or iterable of field names
     """
 
     def __init__(self, field_names):
-        if isinstance(field_names, str):
+        if etau.is_str(field_names):
             field_names = [field_names]
+
         self._field_names = list(field_names)
         self._validate()
 
@@ -501,12 +502,13 @@ class SelectFields(ViewStage):
     view. All other fields are excluded.
 
     Args:
-        field_names: an iterable of field names
+        field_names: a field name or iterable of field names
     """
 
     def __init__(self, field_names):
-        if isinstance(field_names, str):
+        if etau.is_str(field_names):
             field_names = [field_names]
+
         self._field_names = list(field_names)
         self._validate()
 
