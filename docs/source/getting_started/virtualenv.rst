@@ -1,9 +1,13 @@
+
 .. _virtualenv-guide:
 
-Virtual environment setup guide
-===============================
+Virtual Environment Setup
+=========================
 
 .. default-role:: code
+
+.. toctree::
+   :hidden:
 
 This page describes how to install FiftyOne in a
 `virtual environment <https://docs.python.org/3/tutorial/venv.html>`_.

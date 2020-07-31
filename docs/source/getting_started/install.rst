@@ -3,11 +3,6 @@ FiftyOne Installation
 
 .. default-role:: code
 
-.. toctree::
-  :hidden:
-
-  virtualenv
-
 Prerequisites
 -------------
 
@@ -19,9 +14,8 @@ platforms, Python can be downloaded
 suitable Python version is installed and accessible, run `python3 --version`
 or `python --version`.
 
-We encourage installing FiftyOne in a virtual environment. For more details
-on setting up a virtual environment, see the
-:ref:`virtual environment setup guide <virtualenv-guide>`.
+We encourage installing FiftyOne in a virtual environment. See
+:doc:`setting up a virtual environment <virtualenv>` for more details.
 
 .. _installing-fiftyone:
 
