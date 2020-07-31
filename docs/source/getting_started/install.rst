@@ -41,7 +41,7 @@ virtual environment that you are using, then run:
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
-your virtual environment:
+your virtual environment by importing the `fiftyone` package:
 
 .. code-block:: text
 
@@ -97,7 +97,8 @@ packages via `pip` in your virtual environment:
   can vary depending on your system, so consult the
   `Tensorflow documentation <https://www.tensorflow.org/install>`_ for specific
   instructions.
-* `tensorflow-datasets` for examples that rely on loading TensorFlow datasets
+* `tensorflow-datasets` for examples that rely on loading
+  `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_
 * `torch` and `torchvision` for examples requiring PyTorch. The installation
   process can vary depending on your system, so consult the
   `PyTorch documentation <https://pytorch.org/get-started/locally/>`_ for
