@@ -1213,6 +1213,12 @@ class ViewTest(unittest.TestCase):
             sample_view.test_dets.detections.pop()
             sample_view.save()
 
+        # replace element
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections[1] = fo.Detection()
+            sample_view.save()
+
         # overwrite Detections.detections
         with self.assertRaises(ValueError):
             sample_view = view.first()

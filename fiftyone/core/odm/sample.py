@@ -65,6 +65,7 @@ from collections import OrderedDict
 from functools import wraps
 import json
 import numbers
+import re
 
 from bson import json_util
 from bson.binary import Binary
@@ -472,13 +473,24 @@ class DatasetSampleDocument(Document, SampleDocument):
 
         # check for illegal modifications
         if filtered_fields:
+            # match the list, or an indexed item in the list, but not a field
+            # of an indexed item of the list:
+            #   my_detections.detections          <- MATCH
+            #   my_detections.detections.1        <- MATCH
+            #   my_detections.detections.1.label  <- NO MATCH
+            patterns = [
+                r"^%s(\.[0-9]+)?$" % "\.".join(ff.split("."))
+                for ff in filtered_fields
+            ]
+
             for d in update_doc.values():
                 for k in d.keys():
-                    if k in filtered_fields:
-                        raise ValueError(
-                            "Attempted modifying of a filtered list field: '%s'"
-                            % k
-                        )
+                    for pattern in patterns:
+                        if re.match(pattern, k):
+                            raise ValueError(
+                                "Attempted modifying of a filtered list field: '%s'"
+                                % k
+                            )
 
         if filtered_fields and "$set" in update_doc:
             d = update_doc["$set"]
