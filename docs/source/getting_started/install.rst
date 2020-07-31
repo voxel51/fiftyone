@@ -3,6 +3,11 @@ FiftyOne Installation
 
 .. default-role:: code
 
+.. toctree::
+  :hidden:
+
+  virtualenv
+
 Prerequisites
 -------------
 
