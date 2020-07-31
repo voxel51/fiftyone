@@ -255,9 +255,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
         )
 
+    def first(self):
+        """Returns the first sample in the dataset.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+        """
+        return super().first()
+
     def last(self):
-        """Returns the last :class:`fiftyone.core.sample.SampleView` in the
-        collection.
+        """Returns the last sample in the dataset.
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
