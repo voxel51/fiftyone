@@ -30,35 +30,11 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 
 
-class Sample(object):
-    """A sample in a :class:`fiftyone.core.dataset.Dataset`.
+class _Sample(object):
+    """Base class for :class:`Sample` and :class:`SampleView`."""
 
-    Samples store all information associated with a particular piece of data in
-    a dataset, including basic metadata about the data, one or more sets of
-    labels (ground truth, user-provided, or FiftyOne-generated), and additional
-    features associated with subsets of the data and/or label sets.
-
-    Args:
-        filepath: the path to the data on disk
-        tags (None): a list of tags for the sample
-        metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
-        **kwargs: additional fields to dynamically set on the sample
-    """
-
-    # Instance references keyed by [dataset_name][sample_id]
-    _instances = defaultdict(weakref.WeakValueDictionary)
-
-    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.NoDatasetSampleDocument(
-            filepath=filepath, tags=tags, metadata=metadata, **kwargs
-        )
+    def __init__(self):
         self._dataset = self._get_dataset()
-
-    def __str__(self):
-        return str(self._doc)
-
-    def __repr__(self):
-        return repr(self._doc)
 
     def __getattr__(self, name):
         try:
@@ -137,7 +113,7 @@ class Sample(object):
 
     @property
     def field_names(self):
-        """An ordered list of the names of the fields of this sample."""
+        """An ordered tuple of the names of the fields of this sample."""
         return self._doc.field_names
 
     def get_field(self, field_name):
@@ -267,13 +243,71 @@ class Sample(object):
         """
         return self._doc.to_dict(extended=False)
 
+    def save(self):
+        """Saves the sample to the database."""
+        self._doc.save()
+
+    def reload(self):
+        """Reload the sample from the database."""
+        self._doc.reload()
+
+    def _delete(self):
+        """Deletes the document from the database."""
+        self._doc.delete()
+
+    @property
+    def _in_db(self):
+        """Whether the underlying :class:`fiftyone.core.odm.Document` has
+        been inserted into the database.
+        """
+        return self._doc.in_db
+
+    def _get_dataset(self):
+        if self._in_db:
+            from fiftyone.core.dataset import load_dataset
+
+            return load_dataset(self.dataset_name)
+
+        return None
+
+
+class Sample(_Sample):
+    """A sample in a :class:`fiftyone.core.dataset.Dataset`.
+
+    Samples store all information associated with a particular piece of data in
+    a dataset, including basic metadata about the data, one or more sets of
+    labels (ground truth, user-provided, or FiftyOne-generated), and additional
+    features associated with subsets of the data and/or label sets.
+
+    Args:
+        filepath: the path to the data on disk
+        tags (None): a list of tags for the sample
+        metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
+        **kwargs: additional fields to dynamically set on the sample
+    """
+
+    # Instance references keyed by [dataset_name][sample_id]
+    _instances = defaultdict(weakref.WeakValueDictionary)
+
+    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+        self._doc = foo.NoDatasetSampleDocument(
+            filepath=filepath, tags=tags, metadata=metadata, **kwargs
+        )
+        super().__init__()
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return self._doc.fancy_repr(type(self).__name__)
+
     @classmethod
     def from_doc(cls, doc):
         """Creates an instance of the :class:`Sample` class backed by the given
         document.
 
         Args:
-            document: a :class:`fiftyone.core.odm.SampleDocument`
+            doc: a :class:`fiftyone.core.odm.SampleDocument`
 
         Returns:
             a :class:`Sample`
@@ -296,14 +330,6 @@ class Sample(object):
 
         return sample
 
-    def save(self):
-        """Saves the sample to the database."""
-        self._doc.save()
-
-    def reload(self):
-        """Reload the sample from the database."""
-        self._doc.reload()
-
     @classmethod
     def _save_dataset_samples(cls, dataset_name):
         """Saves all changes to samples instances in memory belonging to the
@@ -317,6 +343,26 @@ class Sample(object):
         """
         for sample in cls._instances[dataset_name].values():
             sample.save()
+
+    @classmethod
+    def _reload_dataset_sample(cls, dataset_name, sample_id):
+        """Reloads the fields for a sample instance in memory belonging to the
+        specified dataset from the database.
+
+        If the sample does not exist in memory nothing is done.
+
+        Args:
+            dataset_name: the name of the dataset to reload.
+            sample_id: the ID of the sample to reload
+        """
+        # @todo(Tyler) it could optimize the code to instead flag the sample as
+        #   "stale", then have it reload once __getattribute__ is called
+        dataset_instances = cls._instances[dataset_name]
+        sample = dataset_instances.get(sample_id, None)
+        if sample:
+            sample.reload()
+            return True
+        return False
 
     @classmethod
     def _reload_dataset_samples(cls, dataset_name):
@@ -343,25 +389,6 @@ class Sample(object):
         for sample in cls._instances[dataset_name].values():
             sample._doc._data.pop(field_name, None)
 
-    def _delete(self):
-        """Deletes the document from the database."""
-        self._doc.delete()
-
-    @property
-    def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
-        return self._doc.in_db
-
-    def _get_dataset(self):
-        if self._in_db:
-            from fiftyone.core.dataset import load_dataset
-
-            return load_dataset(self.dataset_name)
-
-        return None
-
     def _set_backing_doc(self, doc):
         """Updates the backing doc for the sample.
 
@@ -376,13 +403,13 @@ class Sample(object):
                 % (foo.DatasetSampleDocument, type(doc))
             )
 
-        # ensure the doc is saved to the database
+        # Ensure the doc is saved to the database
         if not doc.id:
             doc.save()
 
         self._doc = doc
 
-        # save weak reference
+        # Save weak reference
         dataset_instances = self._instances[doc.dataset_name]
         if self.id not in dataset_instances:
             dataset_instances[self.id] = self
@@ -416,3 +443,128 @@ class Sample(object):
         dataset_instances = cls._instances.pop(dataset_name)
         for sample in itervalues(dataset_instances):
             sample._doc = sample.copy()._doc
+
+
+class SampleView(_Sample):
+    """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
+
+    SampleViews should never be created manually, only returned by dataset
+    views. Sample views differ from samples similar to how dataset views differ
+    from datasets:
+
+    -   A sample view only exposes a subset of all data for a sample
+    -   If a user attempts to modify an excluded field an error is raised
+    -   If a user attempts to modify a filtered field (the field itself, not
+        its elements) behavior is not guaranteed
+
+    Args:
+        doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
+        selected_fields (None): a set of field names that this sample view is
+            restricted to
+        excluded_fields (None): a set of field names that are excluded from
+            this sample view
+        filtered_fields (None): a set of field names of list fields that are
+            filtered in this view and thus need special handling when saving
+    """
+
+    def __init__(
+        self,
+        doc,
+        selected_fields=None,
+        excluded_fields=None,
+        filtered_fields=None,
+    ):
+        if not isinstance(doc, foo.DatasetSampleDocument):
+            raise TypeError(
+                "Backing doc must be an instance of %s; found %s"
+                % (foo.DatasetSampleDocument, type(doc))
+            )
+
+        if not doc.id:
+            raise ValueError("`doc` is not saved to the database.")
+
+        if selected_fields is not None and excluded_fields is not None:
+            selected_fields = selected_fields.difference(excluded_fields)
+            excluded_fields = None
+
+        self._doc = doc
+        self._selected_fields = selected_fields
+        self._excluded_fields = excluded_fields
+        self._filtered_fields = filtered_fields
+
+        super().__init__()
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return self._doc.fancy_repr(
+            type(self).__name__, self._selected_fields, self._excluded_fields
+        )
+
+    def __getattr__(self, name):
+        if not name.startswith("_"):
+            if (
+                self._selected_fields is not None
+                and name not in self._selected_fields
+            ):
+                raise NameError(
+                    "Field '%s' is not selected from this %s"
+                    % (name, type(self).__name__)
+                )
+
+            if (
+                self._excluded_fields is not None
+                and name in self._excluded_fields
+            ):
+                raise NameError(
+                    "Field '%s' is excluded from this %s"
+                    % (name, type(self).__name__)
+                )
+
+        return super().__getattr__(name)
+
+    @property
+    def view_field_names(self):
+        """An ordered list of the names of the fields of this sample.
+
+        This may be a subset of :meth:`ViewSample.field_names` if fields have
+        been selected or excluded.
+        """
+        field_names = self._doc.field_names
+        if self._selected_fields is not None:
+            field_names = tuple(
+                fn for fn in field_names if fn in self._selected_fields
+            )
+
+        if self._excluded_fields is not None:
+            field_names = tuple(
+                fn for fn in field_names if fn not in self._excluded_fields
+            )
+
+        return field_names
+
+    @property
+    def selected_field_names(self):
+        """The set of field names that were selected on this sample, or
+        ``None`` if no fields were explicitly selected.
+        """
+        return self._selected_fields
+
+    @property
+    def excluded_field_names(self):
+        """The set of field names that were excluded on this sample, or
+        ``None`` if no fields were explicitly excluded.
+        """
+        return self._excluded_fields
+
+    def save(self):
+        """Saves the sample to the database.
+
+        Any modified fields are updated, and any in-memory :class:`Sample`
+        instances of this sample are updated.
+        """
+        self._doc.save(filtered_fields=self._filtered_fields)
+
+        # Reload the sample singleton if it exists in memory
+        Sample._reload_dataset_sample(self.dataset_name, self.id)

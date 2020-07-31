@@ -50,10 +50,9 @@ Datasets are **ordered collections** of samples. When a |Sample| is added to a
 from the dataset.
 
 Slicing and other batch operations on datasets are done through the use of
-:ref:`DatasetViews <using-dataset-views>`. A |DatasetView| provides an ordered
-view into a subset of the samples in a |Dataset|, which can be filtered,
-sorted, sampled, etc. along various axes to obtain a desired subset of the
-samples.
+:doc:`DatasetViews <using_views>`. A |DatasetView| provides an ordered
+view into the |Dataset|, which can be filtered, sorted, sampled, etc. along
+various axes to obtain a desired subset of the samples.
 
 Samples
 -------
@@ -164,44 +163,6 @@ like:
     print(sample.tags)
     # ["train", "my_favorite_samples"]
 
-Metadata
---------
-
-:ref:`Metadata <using-metadata>` is a default |Field| provided on all |Sample|
-instances. The `metadata` attribute of a |Sample| stores data type-specific
-metadata about the raw data in the sample. For generic (non-image) data, there
-is a |Metadata| class. For images, the |ImageMetadata| subclass stores
-additional image-specific fields.
-
-See :ref:`using metadata <using-metadata>` for more details about adding
-metadata to your samples.
-
-.. code-block:: python
-    :linenos:
-
-    image_path = "/path/to/image.png"
-
-    metadata = fo.ImageMetadata.build_for(image_path)
-
-    sample = fo.Sample(filepath=image_path, metadata=metadata)
-
-    print(sample)
-
-.. code-block:: text
-
-    <Sample: {
-        'id': None,
-        'filepath': '/path/to/image.png',
-        'tags': [],
-        'metadata': <ImageMetadata: {
-            'size_bytes': 544559,
-            'mime_type': 'image/png',
-            'width': 698,
-            'height': 664,
-            'num_channels': 3,
-        }>,
-    }>
-
 Labels
 ------
 
@@ -264,8 +225,8 @@ labels in your samples.
 DatasetViews
 ------------
 
-:ref:`DatasetViews <using-dataset-views>` are a powerful tool for exploring
-your datasets. You can use |DatasetView| instances to search, filter, sort, and
+:doc:`DatasetViews <using_views>` are a powerful tool for exploring your
+datasets. You can use |DatasetView| instances to search, filter, sort, and
 manipulate subsets of your datasets to perform the analysis that you need.
 
 .. code-block:: python
