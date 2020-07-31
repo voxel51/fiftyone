@@ -1,3 +1,7 @@
 {
-  "ID": "UA-141773487-6"
+  "ID": "UA-141773487-6",
+  "dimensions": {
+    "dev": "dimension1",
+    "version": "dimension2"
+  }
 }

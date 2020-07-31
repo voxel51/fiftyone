@@ -36,10 +36,21 @@ function App(props: Props) {
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
   useEffect(() => {
-    console.log("GA init: " + gaConfig.ID);
+    const dev = process.env.NODE_ENV == "development";
+    ReactGA.initialize(gaConfig.ID, {
+      debug: dev,
+      gaOptions: {
+        storage: "none",
+        cookieDomain: "none",
+      },
+    });
+    ReactGA.set({
+      [gaConfig.dimensions.dev]: dev,
+      checkProtocolTask: null, // disable check, allow file:// URLs
+    });
   }, []);
   useEffect(() => {
-    console.log("GA pageview: " + window.location.hash.replace(/^#/, ""));
+    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
   }, [window.location.hash]);
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
