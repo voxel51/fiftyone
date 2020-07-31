@@ -1,17 +1,6 @@
 """
 Run inference on the Open Images and save to CSV.
 
-```bash
-python inference.py \
-    /Users/tylerganter/data/open-images-dataset/images/test \
-    https://tfhub.dev/google/openimages_v4/ssd/mobilenet_v2/1 \
-    --output_format tf_object_detection_api
-
-python inference.py \
-    /Users/tylerganter/data/open-images-dataset/images/test \
-    https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1
-```
-
 """
 import argparse
 import glob
@@ -59,7 +48,14 @@ def main(
         processed_image_ids = set()
 
     # load detector
+    print("Loading model '%s'..." % model_name)
     detector = TensorFlowHubDetector(model_handle=model_handle)
+    print("Model successfully loaded.")
+    print("Generating predictions and saving every %d samples." % save_every)
+    print(
+        "This program is resumable and will continue from where it has left"
+        "off if terminated."
+    )
 
     # generate predictions
     detections = {}
@@ -83,7 +79,8 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(*sys.argv[1:])
+    parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "images_dir",
         help="Directory where images are stored. Images should be in"
