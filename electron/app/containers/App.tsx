@@ -45,7 +45,7 @@ function App(props: Props) {
       },
     });
     ReactGA.set({
-      [gaConfig.dimensions.dev]: dev,
+      [gaConfig.dimensions.dev]: dev ? "dev" : "prod",
       checkProtocolTask: null, // disable check, allow file:// URLs
     });
   }, []);
