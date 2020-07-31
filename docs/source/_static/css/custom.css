@@ -474,5 +474,10 @@ a.with-right-arrow,
 
 /* table in convert-datasets recipe */
 
-.convert-recipes-table th td {
+.convert-recipes-table colgroup {
+  display: none;
+}
+
+.convert-recipes-table th:first-of-type {
+  width: 50%;
 }
