@@ -150,7 +150,7 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                             for eval_id, iou in pred[pred_key]["ious"][cat]:
                                 gt = gt_by_id[eval_id]
                                 curr_gt_match = \
-                                    gt[gt_key]["matches"][iou_str]["gt_id"]
+                                    gt[gt_key]["matches"][iou_str]["pred_id"]
 
                                 if "iscrowd" in gt.attributes:
                                     iscrowd = int(gt.attributes["iscrowd"].value)
@@ -192,7 +192,7 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                     false_positives
                 false_negatives = len( 
                         [g for g in dets["gts"] 
-                            if g[gt_key]["matches"][iou_str]["gt_id"] \
+                            if g[gt_key]["matches"][iou_str]["pred_id"] \
                                 == -1]
                     )
     
@@ -230,15 +230,15 @@ def iou_count(samples, pred_field, gt_field, iou):
     """
 
     pred_key = "%s_eval" % gt_field
-    save_iou_str = str(save_iou).replace('.','_')
+    save_iou_str = str(iou).replace('.','_')
 
     try:
-        iou_ind = IOU_THRESHOLDS.index(iou)
+        iou_ind = list(IOU_THRESHOLDS).index(iou)
         iou_str = IOU_THRESHOLD_STR[iou_ind]
 
     except ValueError:
-        logger.info("IoU %f is not in the list of available IoUs thresholds %s"
-            % (iou, IOU_THRESHOLDS)
+        logger.info("IoU %f is not in the list of available IoU "
+            "thresholds"  % (iou, IOU_THRESHOLDS))
         return
 
     logger.info("Saving IoU counts for each sample...")
