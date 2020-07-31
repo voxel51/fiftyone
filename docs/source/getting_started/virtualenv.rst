@@ -113,7 +113,8 @@ entirely. To upgrade, run the following command:
 
 To leave an activated virtual environment and return to using your system-wide
 Python installation, run `deactivate`. For more documentation on `venv`,
-including additional setup options, see `here <https://docs.python.org/3/library/venv.html>`_.
+including additional setup options,
+`see here <https://docs.python.org/3/library/venv.html>`_.
 
 Alternatives to `venv`
 ----------------------
