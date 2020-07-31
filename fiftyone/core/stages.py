@@ -147,6 +147,8 @@ class ExcludeFields(ViewStage):
     """
 
     def __init__(self, field_names):
+        if isinstance(field_names, str):
+            field_names = [field_names]
         self._field_names = list(field_names)
         self._validate()
 
@@ -503,6 +505,8 @@ class SelectFields(ViewStage):
     """
 
     def __init__(self, field_names):
+        if isinstance(field_names, str):
+            field_names = [field_names]
         self._field_names = list(field_names)
         self._validate()
 
