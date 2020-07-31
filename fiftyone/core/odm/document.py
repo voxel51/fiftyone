@@ -69,7 +69,6 @@ class SerializableDocument(object):
         return "<%s: %s>" % (class_name, s)
 
     def _to_repr_dict(self, select_fields=None, exclude_fields=None):
-
         d = {}
         for f in self._to_str_fields:
             if f.startswith("_") or (
