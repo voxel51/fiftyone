@@ -53,7 +53,7 @@ class SerializableDocument(object):
     def fancy_repr(
         self, class_name=None, select_fields=None, exclude_fields=None
     ):
-        """Repr, but fancier. (i.e. takes args)
+        """Fancy ``__repr__`` that takes args.
 
         Args:
             class_name: optional string name to replace the class name
