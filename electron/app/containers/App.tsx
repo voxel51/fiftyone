@@ -48,6 +48,11 @@ function App(props: Props) {
       [gaConfig.dimensions.dev]: dev ? "dev" : "prod",
       checkProtocolTask: null, // disable check, allow file:// URLs
     });
+    socket.emit("get_fiftyone_info", (info) => {
+      ReactGA.set({
+        [gaConfig.dimensions.version]: info.version,
+      });
+    });
   }, []);
   useEffect(() => {
     ReactGA.pageview(window.location.hash.replace(/^#/, ""));

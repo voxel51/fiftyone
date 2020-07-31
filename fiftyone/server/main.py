@@ -105,6 +105,12 @@ class StateController(Namespace):
         self.state = state
         emit("update", state, broadcast=True, include_self=False)
 
+    def on_get_fiftyone_info(self):
+        """Retrieves information about the FiftyOne installation."""
+        return {
+            "version": foc.VERSION,
+        }
+
     def on_get_current_state(self, _):
         """Gets the current state.
 
