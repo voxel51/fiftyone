@@ -488,8 +488,8 @@ class DatasetSampleDocument(Document, SampleDocument):
                     for pattern in patterns:
                         if re.match(pattern, k):
                             raise ValueError(
-                                "Attempted modifying of a filtered list field: '%s'"
-                                % k
+                                "Attempted modifying of a filtered list field:"
+                                " '%s'" % k
                             )
 
         if filtered_fields and "$set" in update_doc:
