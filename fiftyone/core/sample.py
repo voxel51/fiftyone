@@ -321,7 +321,7 @@ class Sample(_Sample):
             raise ValueError("`doc` is not saved to the database.")
 
         try:
-            # get instance if exists
+            # Get instance if exists
             sample = cls._instances[doc.dataset_name][str(doc.id)]
         except KeyError:
             sample = cls.__new__(cls)
