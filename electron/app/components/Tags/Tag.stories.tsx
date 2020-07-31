@@ -7,3 +7,5 @@ export default {
 };
 
 export const standard = () => <Tag name="tag"></Tag>;
+
+export const color = () => <Tag name="tag" color="red"></Tag>;

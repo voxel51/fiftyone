@@ -1,32 +1,32 @@
 import React from "react";
 import styled from "styled-components";
 
-const Tag = styled.div`
-  margin-top: 0.5rem;
-  float: right;
-  height: 2rem;
-  line-height: 2rem;
+const Outer = styled.div`
+  display: inline-block;
+  height: 2em;
+  line-height: 2em;
   position: relative;
-  font-size: 1rem;
-  margin-left: calc(5rem / 6);
-  padding: 0 calc(5rem / 6) 0 1rem;
+  margin-left: 1em;
+  padding: 0 0.5em 0 0.5em;
   color: #fff;
+  background-color: ${({ color }) => color};
   text-decoration: none;
 
   &:before {
     content: "";
-    float: left;
     position: absolute;
     top: 0;
-    left: -1rem;
+    left: -1em;
     width: 0;
     height: 0;
-    border-color: transparent #0089e0 transparent transparent;
+    border-color: transparent ${({ color }) => color} transparent transparent;
     border-style: solid;
-    border-width: 1rem 1rem 1rem 0;
+    border-width: 1em 1em 1em 0;
   }
 `;
 
-export default ({ name, color }) => {
-  return <Tag>{name}</Tag>;
+const Tag = ({ name, color = "blue", selected = false }) => {
+  return <Outer color={color}>{name}</Outer>;
 };
+
+export default Tag;
