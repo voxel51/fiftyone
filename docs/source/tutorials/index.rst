@@ -8,6 +8,8 @@ Welcome to FiftyOne tutorials!
 Each tutorial below is a curated demonstration of how FiftyOne can help refine
 your datasets and turn your good models into *great models*.
 
+.. include:: /_snippets/app-wait.rst
+
 .. Tutorial cards section -----------------------------------------------------
 
 .. raw:: html

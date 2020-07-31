@@ -15,6 +15,8 @@ The workflow when working with FiftyOne is to open interactive python
 interface that allows you to view the |Dataset| as well as any |DatasetView|
 into the |Dataset|.
 
+.. include:: /_snippets/app-wait.rst
+
 Create a session
 ----------------
 
