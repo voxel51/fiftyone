@@ -28,8 +28,8 @@ Installing FiftyOne
   welcome email contains a token that you will need to run some of the commands
   below. Replace all instances of ``YOUR_TOKEN`` below with your token.
 
-  If you haven't registered for the FiftyOne Beta, you can sign up at
-  https://voxel51.com/fiftyone/#beta
+  If you haven't registered for the FiftyOne Beta,
+  `you can sign up here! <https://share.hsforms.com/1KuTDtQYWRTyU0yHNGgBFfw2ykyk>`_
 
 To install FiftyOne in a virtual environment, ensure you have activated any
 virtual environment that you are using, then run:
