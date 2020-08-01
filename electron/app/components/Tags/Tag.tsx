@@ -1,36 +1,39 @@
 import React from "react";
 import styled from "styled-components";
 
+const HEIGHT = 24;
+const BORDER = 2;
+
 const Outer = styled.div`
   position: relative;
   display: inline-block;
-  margin-left: 1em;
-  padding-right: 0.25em;
-  height: 2em;
-  line-height: 1em;
+  margin-left: ${HEIGHT / 2}px;
+  padding-right: ${BORDER}px;
+  height: ${HEIGHT}px;
+  line-height: ${HEIGHT / 2}px;
   background-color: ${({ borderColor }) => borderColor};
 
   &:before {
     position: absolute;
     top: 0;
-    left: -1em;
+    left: -${HEIGHT / 2}px;
     width: 0;
     height: 0;
     content: "";
     border-color: transparent ${({ borderColor }) => borderColor} transparent
       transparent;
     border-style: solid;
-    border-width: 1em 1em 1em 0;
+    border-width: ${HEIGHT / 2}px ${HEIGHT / 2}px ${HEIGHT / 2}px 0;
   }
 `;
 
 const Inner = styled.div`
   position: relative;
   display: inline-block;
-  top: 0.25em;
+  top: ${BORDER}px;
   padding: 0 0.5em 0 0.5em;
-  height: 1.5em;
-  line-height: 1em;
+  height: ${HEIGHT - 2 * BORDER}px;
+  line-height: ${HEIGHT / 2}px;
   color: ${({ textColor }) => textColor};
   background-color: ${({ fillColor }) => fillColor};
   text-decoration: none;
@@ -38,14 +41,15 @@ const Inner = styled.div`
   &:before {
     position: absolute;
     top: 0;
-    left: -0.75em;
+    left: -${HEIGHT / 2 - BORDER}px;
     width: 0;
     height: 0;
     content: "";
     border-color: transparent ${({ fillColor }) => fillColor} transparent
       transparent;
     border-style: solid;
-    border-width: 0.75em 0.75em 0.75em 0;
+    border-width: ${HEIGHT / 2 - BORDER}px ${HEIGHT / 2 - BORDER}px
+      ${HEIGHT / 2 - BORDER}px 0;
   }
 `;
 
