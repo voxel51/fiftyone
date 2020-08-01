@@ -31,8 +31,9 @@ const Inner = styled.div`
   position: relative;
   display: inline-block;
   top: ${BORDER}px;
-  padding: 0 0.5em 0 0.5em;
+  padding: 0 ${BORDER * 3}px 0 ${BORDER * 3}px;
   height: ${HEIGHT - 2 * BORDER}px;
+  font-size: ${HEIGHT - 2 * BORDER}px;
   line-height: ${HEIGHT / 2}px;
   color: ${({ textColor }) => textColor};
   background-color: ${({ fillColor }) => fillColor};
