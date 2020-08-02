@@ -52,6 +52,16 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
     gt_key = "%s_eval" % pred_field
     pred_key = "%s_eval" % gt_field
     eval_id = 0
+
+    try:
+        save_iou_ind = list(IOU_THRESHOLDS).index(save_iou)
+        save_iou_str = IOU_THRESHOLD_STR[save_iou_ind]
+
+    except ValueError:
+        logger.info("IoU %f is not in the list of available IoU "
+            "thresholds"  % (save_iou, IOU_THRESHOLDS))
+        save_iou_str = None
+
     
     logger.info("Evaluating detections for each sample")
     with fou.ProgressBar() as pb:
@@ -203,14 +213,17 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                 result_dict["false_negatives"][iou_str] = \
                     false_negatives
 
+                if iou_str == save_iou_str:
+                    sample["tp_iou_%s" % save_iou_str] = true_positives
+                    sample["fp_iou_%s" % save_iou_str] = false_positives
+                    sample["fn_iou_%s" % save_iou_str] = false_negatives
+
             sample[pred_field][pred_key] = result_dict
+
 
             # TODO: Compute sample-wise AP
 
             sample.save()
-
-    if save_iou != None:
-        iou_count(samples, pred_field, gt_field, save_iou)
 
 
 def iou_count(samples, pred_field, gt_field, iou):
@@ -254,10 +267,9 @@ def iou_count(samples, pred_field, gt_field, iou):
             true_positives = result_dict["true_positives"][iou_str]
             false_positives = result_dict["false_positives"][iou_str]
             false_negatives = result_dict["false_negatives"][iou_str]
-
+            
             sample["tp_iou_%s" % save_iou_str] = true_positives
             sample["fp_iou_%s" % save_iou_str] = false_positives
             sample["fn_iou_%s" % save_iou_str] = false_negatives
 
-            sample.save()
-
+            sample.save() 
