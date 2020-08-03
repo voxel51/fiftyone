@@ -265,16 +265,20 @@ class Document(BaseDocument, mongoengine.Document):
     meta = {"abstract": True}
 
     def save(self, validate=True, clean=True, **kwargs):
-        """Save the :class:`Document` to the database. If the document already
-        exists, it will be updated, otherwise it will be created. Returns the
-        saved object instance.
+        """Save the :class:`Document` to the database.
 
-        :param validate: validates the document; set to ``False`` to skip.
-        :param clean: call the document clean method, requires `validate` to be
-            True.
+        If the document already exists, it will be updated, otherwise it will
+        be created.
+
+        Args:
+            validate (True): validates the document
+            clean (True): call the document's clean method; requires
+                ``validate`` to be True
+
+        Returns:
+            ``self``
         """
         # pylint: disable=no-member
-
         if self._meta.get("abstract"):
             raise mongoengine.InvalidDocumentError(
                 "Cannot save an abstract document."
@@ -286,7 +290,8 @@ class Document(BaseDocument, mongoengine.Document):
         doc_id = self.to_mongo(fields=[self._meta["id_field"]])
         created = "_id" not in doc_id or self._created
 
-        # it might be refreshed by the pre_save_post_validation hook, e.g., for etag generation
+        # It might be refreshed by the pre_save_post_validation hook, e.g., for
+        # etag generation
         doc = self.to_mongo()
 
         if self._meta.get("auto_create_index", True):
@@ -358,9 +363,9 @@ class Document(BaseDocument, mongoengine.Document):
         return self
 
     def _update(self, object_id, update_doc, **kwargs):
-        """Update an existing document.
+        """Updates an existing document.
 
-        Helper method, should only be used inside save().
+        Helper method; should only be used by :meth:`Document.save`.
         """
         result = (
             self._get_collection()

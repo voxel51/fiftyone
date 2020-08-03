@@ -339,7 +339,7 @@ class Sample(_Sample):
         still exists in memory.
 
         Args:
-            dataset_name: the name of the dataset to save.
+            dataset_name: the name of the dataset to save
         """
         for sample in cls._instances[dataset_name].values():
             sample.save()
@@ -352,7 +352,7 @@ class Sample(_Sample):
         If the sample does not exist in memory nothing is done.
 
         Args:
-            dataset_name: the name of the dataset to reload.
+            dataset_name: the name of the dataset to reload
             sample_id: the ID of the sample to reload
         """
         # @todo(Tyler) it could optimize the code to instead flag the sample as
@@ -362,6 +362,7 @@ class Sample(_Sample):
         if sample:
             sample.reload()
             return True
+
         return False
 
     @classmethod
@@ -373,7 +374,7 @@ class Sample(_Sample):
         will keep the dataset in sync.
 
         Args:
-            dataset_name: the name of the dataset to reload.
+            dataset_name: the name of the dataset to reload
         """
         for sample in cls._instances[dataset_name].values():
             sample.reload()
