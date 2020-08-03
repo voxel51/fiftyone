@@ -38,8 +38,9 @@ function App(props: Props) {
   const [gaInitialized, setGAInitialized] = useState(false);
   useEffect(() => {
     const dev = process.env.NODE_ENV == "development";
+    const buildType = dev ? "dev" : "prod";
     socket.emit("get_fiftyone_info", (info) => {
-      ReactGA.initialize(gaConfig.ID, {
+      ReactGA.initialize(gaConfig.app_ids[buildType], {
         debug: dev,
         gaOptions: {
           storage: "none",
@@ -50,7 +51,7 @@ function App(props: Props) {
       ReactGA.set({
         userId: info.user_id,
         checkProtocolTask: null, // disable check, allow file:// URLs
-        [gaConfig.dimensions.dev]: dev ? "dev" : "prod",
+        [gaConfig.dimensions.dev]: buildType,
         [gaConfig.dimensions.version]: info.version,
       });
       setGAInitialized(true);
