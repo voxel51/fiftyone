@@ -35,27 +35,32 @@ function App(props: Props) {
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
+  const [gaInitialized, setGAInitialized] = useState(false);
   useEffect(() => {
     const dev = process.env.NODE_ENV == "development";
-    ReactGA.initialize(gaConfig.ID, {
-      debug: dev,
-      gaOptions: {
-        storage: "none",
-        cookieDomain: "none",
-      },
-    });
-    ReactGA.set({
-      [gaConfig.dimensions.dev]: dev ? "dev" : "prod",
-      checkProtocolTask: null, // disable check, allow file:// URLs
-    });
     socket.emit("get_fiftyone_info", (info) => {
+      ReactGA.initialize(gaConfig.ID, {
+        debug: dev,
+        gaOptions: {
+          storage: "none",
+          cookieDomain: "none",
+          clientId: info.user_id,
+        },
+      });
       ReactGA.set({
+        userId: info.user_id,
+        checkProtocolTask: null, // disable check, allow file:// URLs
+        [gaConfig.dimensions.dev]: dev ? "dev" : "prod",
         [gaConfig.dimensions.version]: info.version,
       });
+      setGAInitialized(true);
+      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     });
   }, []);
   useEffect(() => {
-    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+    if (gaInitialized) {
+      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+    }
   }, [window.location.hash]);
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
