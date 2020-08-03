@@ -199,11 +199,14 @@ const viewStageMachine = Machine(
           BLUR: [
             {
               target: "reading.pending",
-              actions: sendParent((ctx) => ({
-                type: "STAGE.DELETE",
-                id: ctx.id,
-              })),
-              cond: (ctx) => ctx.insert,
+              actions: [
+                sendParent(({ id }) => ({
+                  type: "STAGE.DELETE",
+                  id,
+                })),
+                "blurInput",
+              ],
+              cond: ({ submitted }) => !submitted,
             },
             {
               target: "reading.pending",

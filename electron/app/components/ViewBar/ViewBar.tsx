@@ -50,7 +50,7 @@ export default () => {
         ? stages.map((stage, i) => {
             return (
               <>
-                {stage.stage.insertAt === undefined ? (
+                {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
                   <AddViewStage
                     key={`insert-button-${stage.id}`}
                     send={send}
@@ -62,6 +62,13 @@ export default () => {
             );
           })
         : null}
+      {stages.length && stages[stages.length - 1].submitted ? (
+        <AddViewStage
+          key={`insert-button-tail`}
+          send={send}
+          insertAt={stages.length}
+        />
+      ) : null}
     </ViewBarDiv>
   );
 };

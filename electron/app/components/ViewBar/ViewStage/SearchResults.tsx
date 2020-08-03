@@ -3,7 +3,6 @@ import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 
 const SearchResultDiv = animated(styled.div`
-  color: ${({ theme }) => theme.fontDark};
   cursor: pointer;
   margin: 0.25rem 0.25rem;
   padding: 0 0.25rem;
@@ -20,13 +19,14 @@ const SearchResult = React.memo(
     const theme = useContext(ThemeContext);
     const [props, set] = useSpring(() => ({
       backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
+      color: isActive ? theme.font : theme.fontDark,
     }));
 
     const handleMouseEnter = () =>
-      set({ backgroundColor: theme.backgroundLight });
+      set({ backgroundColor: theme.backgroundLight, color: theme.font });
 
     const handleMouseLeave = () =>
-      set({ backgroundColor: theme.backgroundDark });
+      set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
 
     const setResult = (e) =>
       send({ type: "COMMIT", stage: e.target.dataset.result });
