@@ -4,23 +4,26 @@ Viewing Datasets in the FiftyOne App
 .. include:: ../substitutions.rst
 .. default-role:: code
 
-The FiftyOne App is a light weight user interface that allows you to browse and
-interact directly with your loaded |WhatIsAFiftyOneDataset|.
+The FiftyOne App is a powerful graphical user interface that enables you to
+visualize, browse, and interact directly with your
+:ref:`FiftyOne Datasets <what-is-a-fiftyone-dataset>`.
 
 Sessions
 ________
 
-The workflow when working with FiftyOne is to open interactive python
-(`ipython`) and load a |Dataset|. The FiftyOne App is the graphical user
-interface that allows you to view the |Dataset| as well as any |DatasetView|
-into the |Dataset|.
+The basic FiftyOne workflow is to open a Python session and load a |Dataset|.
+From there you can launch the FiftyOne App and interact with it
+programmatically via a *session*.
 
-.. include:: /_snippets/app-wait.rst
+.. _creating-an-app-session:
 
 Create a session
 ----------------
 
-Sessions are the python objects that contain the instance of the app:
+You can launch an instance of the App by calling
+:func:`fo.launch_app() <fiftyone.core.session.launch_app>`. This method returns
+a :class:`session <fiftyone.core.session.Session>` instance, which you can use
+to interact programmatically with the App:
 
 .. code-block:: python
     :linenos:
@@ -28,6 +31,25 @@ Sessions are the python objects that contain the instance of the app:
     import fiftyone as fo
 
     session = fo.launch_app()
+
+.. note::
+
+    :func:`fo.launch_app() <fiftyone.core.session.launch_app>` will launch the
+    App asynchronously and return control to your Python process. The App will
+    then remain open until you close it or the process exits.
+
+    If you are using the App in a non-interactive script, you should use
+    :meth:`session.wait() <fiftyone.core.session.Session.wait>` to block
+    execution until you close it manually:
+
+    .. code-block:: python
+
+        # Launch the App
+        session = fo.launch_app(...)
+        # (Perform any additional operations here)
+
+        # Blocks execution until the App is closed
+        session.wait()
 
 .. image:: ../images/empty_app.png
    :alt: App Startup
