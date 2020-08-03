@@ -14,9 +14,9 @@ import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine, { createBar } from "./viewBarMachine";
 
 const ViewBarDiv = styled.div`
-  background-color: ${backgroundColor};
+  background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
-  border: 1px solid ${borderColor};
+  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   box-sizing: border-box;
   height: 54px;
   width: 100%;
