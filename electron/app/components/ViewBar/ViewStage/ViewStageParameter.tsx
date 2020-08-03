@@ -1,21 +1,14 @@
-import React, { useMemo, useEffect, useRef, useState } from "react";
+import React, { useContext, useMemo, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
-import styled from "styled-components";
+import styled, { ThemeContext } from "styled-components";
 import { useService, asEffect } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
-import {
-  grey46 as fontColor,
-  grey46a30 as backgroundColorIncomplete,
-  white100 as backgroundColorComplete,
-} from "../../../shared/colors";
 import SearchResults from "./SearchResults";
-
-const borderColor = fontColor;
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${borderColor};
+  border: 2px dashed ${({ theme }) => theme.brand};
   border-radius: 3px;
   display: inline-block;
   position: relative;
@@ -26,7 +19,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     background-color: transparent;
     border: none;
     margin: 0.5rem;
-    color: ${fontColor};
+    color: ${({ theme }) => theme.font};
     line-height: 1rem;
     border: none;
   }
@@ -38,6 +31,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 `);
 
 export default React.memo(({ parameterRef }) => {
+  const theme = useContext(ThemeContext);
   const [listeners] = useState(new Set());
   const [state, send] = useService(parameterRef);
   const inputRef = useRef(null);
@@ -62,8 +56,8 @@ export default React.memo(({ parameterRef }) => {
 
   const props = useSpring({
     backgroundColor: state.matches("reading.submitted")
-      ? backgroundColorComplete
-      : backgroundColorIncomplete,
+      ? theme.brandTransparent
+      : theme.brandMoreTransparent,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
     borderRightWidth: state.matches("reading.submitted") && !tail ? 1 : 2,
     borderLeftWidth: 0,

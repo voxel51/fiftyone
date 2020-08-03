@@ -1,19 +1,12 @@
-import React, { useEffect, useRef, useMemo } from "react";
-import styled from "styled-components";
+import React, { useContext, useEffect, useRef, useMemo } from "react";
+import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 
-import {
-  grey46 as fontColor,
-  grey46a30 as backgroundColorIncomplete,
-  white100 as backgroundColorComplete,
-} from "../../../shared/colors";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
-
-const borderColor = fontColor;
 
 const ViewStageContainer = styled.div`
   margin: 0.5rem 0.25rem;
@@ -22,7 +15,7 @@ const ViewStageContainer = styled.div`
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${borderColor};
+  border: 2px dashed ${({ theme }) => theme.brand};
   border-radius: 3px;
   display: inline-block;
   position: relative;
@@ -33,7 +26,7 @@ const ViewStageInput = styled(AuosizeInput)`
     background-color: transparent;
     border: none;
     margin: 0.5rem;
-    color: ${fontColor};
+    color: ${({ theme }) => theme.font};
     line-height: 1rem;
     border: none;
   }
@@ -46,8 +39,8 @@ const ViewStageInput = styled(AuosizeInput)`
 
 export const ViewStageButton = animated(styled.button`
   box-sizing: border-box;
-  border: 2px dashed ${borderColor};
-  color: ${fontColor};
+  border: 2px dashed ${({ theme }) => theme.brand};
+  color: ${({ theme }) => theme.font};
   border-radius: 3px;
   display: inline-block;
   position: relative;
@@ -62,8 +55,9 @@ export const ViewStageButton = animated(styled.button`
 `);
 
 export const AddViewStage = ({ send, insertAt }) => {
+  const theme = useContext(ThemeContext);
   const props = useSpring({
-    background: backgroundColorIncomplete,
+    background: theme.brandMoreTransparent,
     opacity: 1,
     from: {
       opacity: 0,
@@ -81,6 +75,7 @@ export const AddViewStage = ({ send, insertAt }) => {
 };
 
 export default React.memo(({ stageRef }) => {
+  const theme = useContext(ThemeContext);
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
@@ -96,8 +91,8 @@ export default React.memo(({ stageRef }) => {
     borderBottomRightRadius: isCompleted ? 0 : 3,
     borderRightWidth: isCompleted ? 1 : 2,
     backgroundColor: isCompleted
-      ? backgroundColorComplete
-      : backgroundColorIncomplete,
+      ? theme.brandTransparent
+      : theme.brandMoreTransparent,
     opacity: 1,
     from: {
       opacity: 0,
