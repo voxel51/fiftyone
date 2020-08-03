@@ -7,7 +7,7 @@ const BORDER = 2;
 const OuterRectangle = styled.div`
   position: relative;
   display: inline-block;
-  margin-left: ${HEIGHT / 2}px;
+  margin-left: ${({ hasTriangle }) => (hasTriangle ? `${HEIGHT / 2}px` : 0)};
   padding-right: ${BORDER}px;
   height: ${HEIGHT}px;
   line-height: ${HEIGHT / 2}px;
@@ -30,6 +30,8 @@ const InnerRectangle = styled.div`
   position: relative;
   display: inline-block;
   top: ${BORDER}px;
+  left: ${({ hasTriangle }) => (hasTriangle ? 0 : `${BORDER}px`)};
+  margin-right: ${({ hasTriangle }) => (hasTriangle ? 0 : `${BORDER}px`)};
   padding: 0 ${BORDER * 3}px 0 ${BORDER * 3}px;
   height: ${HEIGHT - 2 * BORDER}px;
   font-size: ${HEIGHT - 2 * BORDER}px;
@@ -52,13 +54,18 @@ const InnerTriangle = styled.div`
     ${HEIGHT / 2 - BORDER}px 0;
 `;
 
-const Tag = ({ name, color = "blue", selected = false }) => {
+const Tag = ({ name, color = "blue", selected = false, triangle = false }) => {
   const fillColor = selected ? color : "white";
   return (
-    <OuterRectangle borderColor={color}>
-      <OuterTriangle borderColor={color} />
-      <InnerTriangle fillColor={fillColor} />
+    <OuterRectangle borderColor={color} hasTriangle={triangle}>
+      {triangle ? (
+        <>
+          <OuterTriangle borderColor={color} />
+          <InnerTriangle fillColor={fillColor} />
+        </>
+      ) : null}
       <InnerRectangle
+        hasTriangle={triangle}
         fillColor={fillColor}
         textColor={selected ? "white" : color}
       >

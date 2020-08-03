@@ -7,25 +7,31 @@ export default {
   title: "Tag",
 };
 
-export const standard = () => (
-  <Tag name="tag" selected={boolean("Selected")}></Tag>
+const WrappedTag = (props) => (
+  <Tag
+    selected={boolean("Selected")}
+    triangle={boolean("Triangle")}
+    {...props}
+  />
 );
 
-export const color = () => (
-  <Tag name="tag" color="red" selected={boolean("Selected")}></Tag>
-);
+export const standard = () => <WrappedTag name="tag" />;
+
+export const triangle = () => <WrappedTag name="tag" triangle />;
+
+export const color = () => <WrappedTag name="tag" color="red" />;
 
 export const grid = () => (
   <>
     <div style={{ lineHeight: 0 }}>
-      <Tag name="tag" color="#ff0000" selected={boolean("Selected")}></Tag>
-      <Tag name="tag" color="#00ff00" selected={boolean("Selected")}></Tag>
-      <Tag name="tag" color="#0000ff" selected={boolean("Selected")}></Tag>
+      <WrappedTag name="tag" color="#ff0000" />
+      <WrappedTag name="tag" color="#00ff00" />
+      <WrappedTag name="tag" color="#0000ff" />
     </div>
     <div style={{ lineHeight: 0 }}>
-      <Tag name="tag" color="#ff0000" selected={boolean("Selected")}></Tag>
-      <Tag name="tag" color="#00ff00" selected={boolean("Selected")}></Tag>
-      <Tag name="tag" color="#0000ff" selected={boolean("Selected")}></Tag>
+      <WrappedTag name="tag" color="#ff0000" />
+      <WrappedTag name="tag" color="#00ff00" />
+      <WrappedTag name="tag" color="#0000ff" />
     </div>
   </>
 );
