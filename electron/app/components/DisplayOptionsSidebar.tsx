@@ -14,13 +14,14 @@ type Props = {
   tags: Entry[];
   labels: Entry[];
   scalars: Entry[];
+  onSelectTag: (entry: Entry) => void;
 };
 
 const Container = styled.div`
   margin-bottom: 2px;
 `;
 
-const Cell = ({ label, entries }) => {
+const Cell = ({ label, entries, onSelect }) => {
   const [expanded, setExpanded] = useState(true);
   return (
     <DropdownCell label={label} expanded={expanded} onExpand={setExpanded}>
@@ -32,6 +33,7 @@ const Cell = ({ label, entries }) => {
             selected: e.selected,
             data: [(e.count || 0).toLocaleString()],
           }))}
+          onCheck={onSelect}
         />
       ) : (
         <span>No options available</span>
@@ -40,10 +42,15 @@ const Cell = ({ label, entries }) => {
   );
 };
 
-const DisplayOptionsSidebar = ({ tags, labels, scalars }: Props) => {
+const DisplayOptionsSidebar = ({
+  tags,
+  labels,
+  scalars,
+  onSelectTag,
+}: Props) => {
   return (
     <Container>
-      <Cell label="Tags" entries={tags} />
+      <Cell label="Tags" entries={tags} onSelect={onSelectTag} />
       <Cell label="Labels" entries={labels} />
       <Cell label="Scalars" entries={scalars} />
     </Container>

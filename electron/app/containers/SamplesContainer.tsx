@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { Grid, Sticky } from "semantic-ui-react";
@@ -11,7 +11,9 @@ import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { VerticalSpacer } from "../components/utils";
 
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { wrapSetWithItemSetter } from "../utils/hooks";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
@@ -30,6 +32,9 @@ const SamplesContainer = (props) => {
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
+  const [selectedTags, setSelectedTagsItem] = wrapSetWithItemSetter(
+    useRecoilState(atoms.selectedTags)
+  );
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -65,7 +70,9 @@ const SamplesContainer = (props) => {
                 tags={tagNames.map((n) => ({
                   name: n,
                   count: tagSampleCounts[n],
+                  selected: selectedTags.has(n),
                 }))}
+                onSelectTag={(e) => setSelectedTagsItem(e.name, e.selected)}
                 labels={[]}
                 scalars={[]}
               />

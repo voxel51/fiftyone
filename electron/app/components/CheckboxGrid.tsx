@@ -28,21 +28,33 @@ export type Entry = {
 
 type Props = {
   entries: Entry[];
+  onCheck: (entry: Entry) => void;
   columnWidths: number[];
 };
 
-export default ({ entries, columnWidths = [] }: Props) => {
+export default ({ entries, onCheck, columnWidths = [] }: Props) => {
   const dataColumns = Math.max(...entries.map((e) => e.data.length));
   const dataIndices = Array.from({ length: dataColumns }).map((_, i) => i);
   const allColumnWidths = Array.from({ length: dataColumns + 1 }).map(
     (_, i) => columnWidths[i] || 1
   );
+
+  const handleCheck = (entry) => {
+    if (onCheck) {
+      onCheck({ ...entry, selected: !entry.selected });
+    }
+  };
+
   return (
     <Body columnWidths={allColumnWidths}>
       {entries.map((entry) => (
         <React.Fragment key={entry.name}>
           <label>
-            <input type="checkbox" checked={entry.selected} />
+            <input
+              type="checkbox"
+              checked={entry.selected}
+              onChange={() => handleCheck(entry)}
+            />
             <span>{entry.name}</span>
           </label>
           {dataIndices.map((i) => (
