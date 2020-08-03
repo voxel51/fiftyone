@@ -190,7 +190,7 @@ class _Sample(object):
             a :class:`Sample`
         """
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
-        return Sample(**kwargs)
+        return self.__class__(**kwargs)
 
     def to_dict(self):
         """Serializes the sample to a JSON dictionary.
@@ -560,6 +560,16 @@ class SampleView(_Sample):
         ``None`` if no fields were explicitly excluded.
         """
         return self._excluded_fields
+
+    def copy(self):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Sample`
+        """
+        kwargs = {f: deepcopy(self[f]) for f in self.field_names}
+        return Sample(**kwargs)
 
     def save(self):
         """Saves the sample to the database.
