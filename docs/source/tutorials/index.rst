@@ -74,4 +74,4 @@ your datasets and turn your good models into *great models*.
 
    Exploring image uniqueness<uniqueness.ipynb>
    Finding label mistakes<label_mistakes.ipynb>
-   Evaluating a detection model<evaluate_detections.ipynb>
+   Evaluating object detections<evaluate_detections.ipynb>
