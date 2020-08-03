@@ -71,10 +71,11 @@ extensions = [
 autodoc_default_options = {
     "members": True,
     "inherited-members": True,
+    "member-order": "bysource",
     "autosummary": True,
+    "autosummary-no-nesting": True,
 }
 autodoc_inherit_docstrings = True
-autodoc_member_order = "bysource"
 autoclass_content = "class"
 
 # Add any paths that contain templates here, relative to this directory.
