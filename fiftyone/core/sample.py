@@ -116,6 +116,13 @@ class _Sample(object):
         """An ordered tuple of the names of the fields of this sample."""
         return self._doc.field_names
 
+    @property
+    def _in_db(self):
+        """Whether the underlying :class:`fiftyone.core.odm.Document` has
+        been inserted into the database.
+        """
+        return self._doc.in_db
+
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
 
@@ -254,13 +261,6 @@ class _Sample(object):
     def _delete(self):
         """Deletes the document from the database."""
         self._doc.delete()
-
-    @property
-    def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
-        return self._doc.in_db
 
     def _get_dataset(self):
         if self._in_db:

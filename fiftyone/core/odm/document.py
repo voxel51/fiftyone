@@ -276,7 +276,7 @@ class Document(BaseDocument, mongoengine.Document):
                 ``validate`` to be True
 
         Returns:
-            ``self``
+            self
         """
         # pylint: disable=no-member
         if self._meta.get("abstract"):
@@ -300,7 +300,8 @@ class Document(BaseDocument, mongoengine.Document):
         try:
             # Save a new document or update an existing one
             if created:
-                # SAVE CREATE
+                # Save new document
+
                 # insert_one will provoke UniqueError alongside save does not
                 # therefore, it need to catch and call replace_one.
                 collection = self._get_collection()
@@ -317,7 +318,7 @@ class Document(BaseDocument, mongoengine.Document):
                 if not object_id:
                     object_id = collection.insert_one(doc).inserted_id
             else:
-                # SAVE UPDATE
+                # Update existing document
                 object_id = doc["_id"]
                 created = False
 
