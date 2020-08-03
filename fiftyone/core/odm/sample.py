@@ -176,10 +176,6 @@ class SampleDocument(SerializableDocument):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
-    @classmethod
-    def _get_class_repr(cls):
-        return "Sample"
-
 
 class DatasetSampleDocument(Document, SampleDocument):
     """Base class for sample documents backing samples in datasets.
@@ -423,10 +419,8 @@ class DatasetSampleDocument(Document, SampleDocument):
         ]
         dataset._meta.save()
 
-    def _to_repr_dict(self, *args, **kwargs):
-        d = {"dataset_name": self.dataset_name}
-        d.update(super()._to_repr_dict(*args, **kwargs))
-        return d
+    def _get_repr_fields(self):
+        return ("dataset_name",) + super()._get_repr_fields()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Update an existing document.
@@ -599,8 +593,7 @@ class NoDatasetSampleDocument(SampleDocument):
     def id(self):
         return None
 
-    @property
-    def _to_str_fields(self):
+    def _get_repr_fields(self):
         return ("id",) + self.field_names
 
     @property
