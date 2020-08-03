@@ -98,7 +98,7 @@ class SerializableDocument(object):
         """Returns a deep copy of the document.
 
         Returns:
-            a document
+            a :class:`SerializableDocument`
         """
         return deepcopy(self)
 
@@ -124,7 +124,7 @@ class SerializableDocument(object):
                 serialized extended JSON constructs
 
         Returns:
-            the document
+            a :class:`SerializableDocument`
         """
         raise NotImplementedError("Subclass must implement `from_dict()`")
 
@@ -146,7 +146,7 @@ class SerializableDocument(object):
         """Loads the document from a JSON string.
 
         Returns:
-            the document
+            a :class:`SerializableDocument`
         """
         d = json_util.loads(s)
         return cls.from_dict(d, extended=False)
@@ -229,10 +229,10 @@ class BaseDocument(MongoEngineBaseDocument):
         return self.id is not None
 
     def copy(self):
-        """Returns a copy of the document that does not have its `id` set.
+        """Returns a deep copy of the document that does not have its `id` set.
 
         Returns:
-            a :class:`Document`
+            a :class:`BaseDocument`
         """
         doc = deepcopy(self)
         if doc.id is not None:
