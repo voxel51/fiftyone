@@ -61,11 +61,14 @@ export default () => {
         ? stages.map((stage, i) => {
             return (
               <>
-                <AddViewStage
-                  key={`insert-button-${stage.id}`}
-                  send={send}
-                  insertAt={i}
-                />
+                {stage.insertAt === undefined &&
+                stages[i ? i - 1 : i].insertAt === undefined ? (
+                  <AddViewStage
+                    key={`insert-button-${stage.id}`}
+                    send={send}
+                    insertAt={i}
+                  />
+                ) : null}
                 <ViewStage key={stage.id} stageRef={stage.ref} />
               </>
             );

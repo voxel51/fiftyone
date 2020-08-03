@@ -35,6 +35,10 @@ const ViewStageInput = styled(AuosizeInput)`
     boder: none;
     outline: none;
   }
+
+  & ::placeholder {
+    color: ${({ theme }) => theme.font};
+  }
 `;
 
 export const ViewStageButton = animated(styled.button`

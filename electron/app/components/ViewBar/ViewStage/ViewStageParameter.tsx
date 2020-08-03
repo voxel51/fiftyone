@@ -25,8 +25,12 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
   }
 
   & > input:focus {
-    boder: none;
+    border: none;
     outline: none;
+  }
+
+  & ::placeholder {
+    color: ${({ theme }) => theme.font};
   }
 `);
 

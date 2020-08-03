@@ -199,6 +199,13 @@ const viewStageMachine = Machine(
           BLUR: [
             {
               target: "reading.pending",
+              actions: sendParent((ctx) => ({
+                type: "STAGE.DELETE",
+                id: ctx.id,
+              })),
+            },
+            {
+              target: "reading.pending",
               actions: [
                 assign({
                   stage: () => "",
