@@ -1,5 +1,5 @@
 import { selector } from "recoil";
-import { stateDescription } from "./atoms";
+import { stateDescription, labelData } from "./atoms";
 
 export const viewStages = selector({
   key: "viewStages",
@@ -12,5 +12,19 @@ export const numViewStages = selector({
   key: "numStages",
   get: ({ get }) => {
     return get(viewStages).length;
+  },
+});
+
+export const numSamples = selector({
+  key: "numSamples",
+  get: ({ get }) => {
+    return get(stateDescription).count;
+  },
+});
+
+export const tagNames = selector({
+  key: "tagNames",
+  get: ({ get }) => {
+    return get(labelData).tags || [];
   },
 });

@@ -205,7 +205,7 @@ class StateController(Namespace):
 
         return {"results": results, "more": more}
 
-    def on_lengths(self, _):
+    def on_get_label_data(self, _):
         state = fos.StateDescriptionWithDerivables.from_dict(self.state)
         if state.view is not None:
             view = state.view

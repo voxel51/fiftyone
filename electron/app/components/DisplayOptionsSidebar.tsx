@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 
-import CheckboxGrid, { Entry } from "./CheckboxGrid";
+import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 
-type AttributeMap = { [key: string]: number };
+export type Entry = {
+  name: string;
+  selected: boolean;
+  count: number;
+};
 
 type Props = {
   tags: Entry[];
@@ -20,13 +24,18 @@ const Cell = ({ label, entries }) => {
   const [expanded, setExpanded] = useState(true);
   return (
     <DropdownCell label={label} expanded={expanded} onExpand={setExpanded}>
-      <CheckboxGrid
-        columnWidths={[3, 2]}
-        entries={entries.map((e) => ({
-          ...e,
-          data: [e.data[0].toLocaleString()],
-        }))}
-      />
+      {entries.length ? (
+        <CheckboxGrid
+          columnWidths={[3, 2]}
+          entries={entries.map((e) => ({
+            name: e.name,
+            selected: e.selected,
+            data: [(e.count || 0).toLocaleString()],
+          }))}
+        />
+      ) : (
+        <span>No options available</span>
+      )}
     </DropdownCell>
   );
 };

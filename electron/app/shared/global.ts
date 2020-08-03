@@ -7,7 +7,7 @@ export const styles = css`
   button {
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
-    font-weight: bold;
+    color: ${({ theme }) => theme.text};
   }
 
   body,
@@ -15,6 +15,7 @@ export const styles = css`
     height: 100%;
     margin: 0 !important;
     padding: 0 !important;
+    background-color: ${({ theme }) => theme.background};
   }
 
   input {
@@ -24,7 +25,6 @@ export const styles = css`
   #root {
     height: 100%;
     position: relative;
-    overflow: hidden;
   }
 `;
 

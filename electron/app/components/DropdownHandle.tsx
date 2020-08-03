@@ -23,9 +23,15 @@ export const ArrowButton = (expanded) =>
   expanded ? <ExpandLess /> : <ExpandMore />;
 export const PlusMinusButton = (expanded) => (expanded ? <Remove /> : <Add />);
 
-export default ({ label, expanded, onClick, icon = ArrowButton }: Props) => {
+export default ({
+  label,
+  expanded,
+  onClick,
+  icon = ArrowButton,
+  ...rest
+}: Props) => {
   return (
-    <DropdownHandle icon={icon(expanded)} onClick={onClick}>
+    <DropdownHandle icon={icon(expanded)} onClick={onClick} {...rest}>
       {label}
     </DropdownHandle>
   );

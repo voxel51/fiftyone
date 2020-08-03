@@ -10,10 +10,10 @@ import {
   Segment,
 } from "semantic-ui-react";
 
+import SamplesContainer from "./SamplesContainer";
 import Distributions from "../components/Distributions";
 import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
-import Samples from "../components/Samples";
 import Search from "../components/Search";
 import routes from "../constants/routes.json";
 import connect from "../utils/connect";
@@ -109,7 +109,7 @@ function Dataset(props) {
       </Sidebar>
       <Ref innerRef={stickyRef}>
         <Container fluid={true}>
-          <Sticky context={stickyRef}>
+          {/*<Sticky context={stickyRef}>*/}
             <Container
               fluid={true}
               style={{
@@ -131,7 +131,7 @@ function Dataset(props) {
                 })}
               </Menu>
             </Container>
-          </Sticky>
+          {/*</Sticky>*/}
           <Switch>
             <Route exact path={routes.DATASET}>
               <Redirect to={routes.SAMPLES} />
@@ -139,7 +139,7 @@ function Dataset(props) {
             {hasDataset ? (
               <>
                 <Route path={routes.SAMPLES}>
-                  <Samples
+                  <SamplesContainer
                     {...props.socket}
                     setView={setView}
                     displayProps={displayProps}

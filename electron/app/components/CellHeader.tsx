@@ -6,6 +6,7 @@ import { Box } from "./utils";
 const CellHeader = styled(Box)`
   cursor: ${({ clickable }) => (clickable ? "pointer" : undefined)};
   font-weight: bold;
+  user-select: none;
 
   .icon {
     float: right;
@@ -29,7 +30,7 @@ export default ({ children, icon, onClick, ...props }: Props) => {
       onClick={onClickWrapper}
       {...props}
     >
-      {icon ? <span class="icon">{icon}</span> : null}
+      {icon ? <span className="icon">{icon}</span> : null}
       {children}
     </CellHeader>
   );

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Switch, Route } from "react-router-dom";
+import { useRecoilState } from "recoil";
 import { Dimmer, Loader } from "semantic-ui-react";
 
 import routes from "./constants/routes.json";
@@ -10,6 +11,7 @@ import Loading from "./containers/Loading";
 import randomColor from "randomcolor";
 import { getSocket, useSubscribe } from "./utils/socket";
 import connect from "./utils/connect";
+import * as atoms from "./recoil/atoms";
 
 const colors = randomColor({ count: 100, luminosity: "dark" });
 
@@ -17,7 +19,7 @@ function Routes({ port }) {
   const [activeTags, setActiveTags] = useState({});
   const [activeLabels, setActiveLabels] = useState({});
   const [activeOther, setActiveOther] = useState({});
-  const [lengths, setLengths] = useState({});
+  const [labelData, setLabelData] = useRecoilState(atoms.labelData);
   const [needsLoad, setNeedsLoad] = useState(true);
   const [loading, setLoading] = useState(true);
   const [colorMap, setColorMap] = useState({});
@@ -30,14 +32,14 @@ function Routes({ port }) {
     setActiveOther,
     activeOther,
     colors,
-    lengths,
+    labelData,
   };
   const datasetProps = {
     activeTags,
     activeLabels,
     activeOther,
     colors,
-    lengths,
+    labelData,
   };
   const dataset = (props) => {
     return <Dataset {...props} displayProps={datasetProps} />;
@@ -45,7 +47,7 @@ function Routes({ port }) {
   const loadData = () => {
     setNeedsLoad(false);
     setLoading(true);
-    socket.emit("lengths", "", (data) => {
+    socket.emit("get_label_data", "", (data) => {
       const mapping = {};
       const sortFn = (a, b) => (a._id.field > b._id.field ? 1 : -1);
       const labelKeys = data.labels ? data.labels.sort(sortFn) : [];
@@ -57,7 +59,7 @@ function Routes({ port }) {
           mapping[data.tags[i]] = data.labels.length + i;
         }
       }
-      setLengths({
+      setLabelData({
         tags: data.tags,
         labels: data.labels,
         mapping: mapping,

@@ -27,7 +27,7 @@ const Sample = ({
     activeTags,
     activeOther,
     colors,
-    lengths,
+    labelData,
   } = displayProps;
 
   const isFloat = (n) => {
@@ -68,7 +68,11 @@ const Sample = ({
           })}
         {s.tags.map((t, i) => {
           return activeTags[t] ? (
-            <Tag key={i} name={String(t)} color={colors[lengths.mapping[t]]} />
+            <Tag
+              key={i}
+              name={String(t)}
+              color={colors[labelData.mapping[t]]}
+            />
           ) : null;
         })}
         {Object.keys(s)

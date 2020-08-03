@@ -8,7 +8,7 @@ import Tags from "./Tags";
 
 const Rendering = ({ displayProps, port }) => {
   const {
-    lengths,
+    labelData,
     colors,
     activeTags,
     setActiveTags,
@@ -17,8 +17,8 @@ const Rendering = ({ displayProps, port }) => {
     setActiveOther,
     activeOther,
   } = displayProps;
-  const tStart = lengths.labels;
-  const oStart = tStart + lengths.tags;
+  const tStart = labelData.labels;
+  const oStart = tStart + labelData.tags;
   return (
     <Menu.Item as="h3">
       Display
@@ -28,7 +28,7 @@ const Rendering = ({ displayProps, port }) => {
         </Menu.Item>
       </Menu>
       <Labels
-        lengths={lengths}
+        labelData={labelData}
         colors={colors}
         activeLabels={activeLabels}
         setActiveLabels={setActiveLabels}
@@ -41,7 +41,7 @@ const Rendering = ({ displayProps, port }) => {
         </Menu.Item>
       </Menu>
       <Tags
-        lengths={lengths}
+        labelData={labelData}
         colors={colors}
         activeTags={activeTags}
         setActiveTags={setActiveTags}
@@ -53,7 +53,7 @@ const Rendering = ({ displayProps, port }) => {
         </Menu.Item>
       </Menu>
       <Labels
-        lengths={lengths}
+        labelData={labelData}
         colors={colors}
         activeLabels={activeOther}
         setActiveLabels={setActiveOther}
