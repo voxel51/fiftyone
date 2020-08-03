@@ -47,9 +47,6 @@ class SerializableDocument(object):
 
         return self.to_dict() == other.to_dict()
 
-    def __copy__(self):
-        return self.copy()
-
     def fancy_repr(
         self, class_name=None, select_fields=None, exclude_fields=None
     ):
@@ -209,6 +206,14 @@ class BaseDocument(MongoEngineBaseDocument):
 
         return super().__eq__(other)
 
+    def __deepcopy__(self, memo):
+        doc = _default_deepcopy(self, memo)
+
+        # pylint: disable=attribute-defined-outside-init
+        doc.id = None
+
+        return doc
+
     def _get_repr_fields(self):
         # pylint: disable=no-member
         return ("id",) + tuple(f for f in self._fields_ordered if f != "id")
@@ -228,34 +233,15 @@ class BaseDocument(MongoEngineBaseDocument):
         """
         return self.id is not None
 
-    def copy(self):
-        """Returns a deep copy of the document that does not have its `id` set.
-
-        Returns:
-            a :class:`BaseDocument`
-        """
-        doc = deepcopy(self)
-        if doc.id is not None:
-            # pylint: disable=attribute-defined-outside-init
-            doc.id = None
-
-        return doc
-
 
 class BaseEmbeddedDocument(MongoEngineBaseDocument):
     """Base class for documents that are embedded within other documents and
     therefore are not stored in their own collection in the database.
     """
 
-    def copy(self):
-        """Returns a deep copy of the document.
+    def __deepcopy__(self, memo):
+        doc = _default_deepcopy(self, memo)
 
-        If the document has an ``_id`` field, it is set to ``None``.
-
-        Returns:
-            a :class:`BaseEmbeddedDocument`
-        """
-        doc = deepcopy(self)
         if hasattr(doc, "_id"):
             doc._id = None
 
@@ -439,3 +425,12 @@ class DynamicEmbeddedDocument(
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.validate()
+
+
+def _default_deepcopy(obj, memo):
+    deepcopy_method = obj.__deepcopy__
+    obj.__deepcopy__ = None
+    copy = deepcopy(obj, memo)
+    obj.__deepcopy__ = deepcopy_method
+    copy.__deepcopy__ = deepcopy_method
+    return copy
