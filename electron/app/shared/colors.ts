@@ -41,7 +41,7 @@ const blue53 = "hsl(213, 100%, 53%)";
 export const lightTheme = {
   background: white100,
   border: white85,
-  text: white20,
+  font: white20,
 };
 
 export const darkTheme = {

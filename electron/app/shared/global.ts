@@ -7,7 +7,7 @@ export const styles = css`
   button {
     font-family: "Palanquin", sans-serif;
     font-size: 14px;
-    color: ${({ theme }) => theme.text};
+    color: ${({ theme }) => theme.font};
   }
 
   body,
