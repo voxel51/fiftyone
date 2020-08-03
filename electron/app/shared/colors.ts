@@ -37,13 +37,6 @@ const orange49a40 = "hsla(27, 95%, 49%, 0.4)";
 
 const blue53 = "hsl(213, 100%, 53%)";
 
-// for storybook
-export const lightTheme = {
-  background: white100,
-  border: white85,
-  font: white20,
-};
-
 export const darkTheme = {
   background: grey19,
   backgroundDark: grey15,
@@ -62,4 +55,12 @@ export const darkTheme = {
   fontDarkest: grey68,
 
   secondary: blue53,
+};
+
+// for storybook
+export const lightTheme = {
+  ...darkTheme,
+  background: white100,
+  border: white85,
+  font: white20,
 };
