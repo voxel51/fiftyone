@@ -28,3 +28,10 @@ export const tagNames = selector({
     return get(labelData).tags || [];
   },
 });
+
+export const tagSampleCounts = selector({
+  key: "tagSampleCounts",
+  get: ({ get }) => {
+    return get(stateDescription).derivables.dataset_stats.tags || {};
+  },
+});

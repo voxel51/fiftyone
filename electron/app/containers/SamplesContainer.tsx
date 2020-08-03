@@ -29,6 +29,7 @@ const SamplesContainer = (props) => {
   const [stuck, setStuck] = useState(false);
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
+  const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -61,7 +62,10 @@ const SamplesContainer = (props) => {
           <Grid.Column className="sidebar-column">
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
-                tags={tagNames.map((n) => ({ name: n }))}
+                tags={tagNames.map((n) => ({
+                  name: n,
+                  count: tagSampleCounts[n],
+                }))}
                 labels={[]}
                 scalars={[]}
               />
