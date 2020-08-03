@@ -247,7 +247,19 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     therefore are not stored in their own collection in the database.
     """
 
-    pass
+    def copy(self):
+        """Returns a deep copy of the document.
+
+        If the document has an ``_id`` field, it is set to ``None``.
+
+        Returns:
+            a :class:`BaseEmbeddedDocument`
+        """
+        doc = deepcopy(self)
+        if hasattr(doc, "_id"):
+            doc._id = None
+
+        return doc
 
 
 class Document(BaseDocument, mongoengine.Document):
