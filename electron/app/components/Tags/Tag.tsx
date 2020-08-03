@@ -4,7 +4,7 @@ import styled from "styled-components";
 const HEIGHT = 24;
 const BORDER = 2;
 
-const Outer = styled.div`
+const OuterRectangle = styled.div`
   position: relative;
   display: inline-block;
   margin-left: ${HEIGHT / 2}px;
@@ -12,22 +12,21 @@ const Outer = styled.div`
   height: ${HEIGHT}px;
   line-height: ${HEIGHT / 2}px;
   background-color: ${({ borderColor }) => borderColor};
-
-  &:before {
-    position: absolute;
-    top: 0;
-    left: -${HEIGHT / 2}px;
-    width: 0;
-    height: 0;
-    content: "";
-    border-color: transparent ${({ borderColor }) => borderColor} transparent
-      transparent;
-    border-style: solid;
-    border-width: ${HEIGHT / 2}px ${HEIGHT / 2}px ${HEIGHT / 2}px 0;
-  }
 `;
 
-const Inner = styled.div`
+const OuterTriangle = styled.div`
+  position: absolute;
+  top: 0;
+  left: -${HEIGHT / 2}px;
+  width: 0;
+  height: 0;
+  border-color: transparent ${({ borderColor }) => borderColor} transparent
+    transparent;
+  border-style: solid;
+  border-width: ${HEIGHT / 2}px ${HEIGHT / 2}px ${HEIGHT / 2}px 0;
+`;
+
+const InnerRectangle = styled.div`
   position: relative;
   display: inline-block;
   top: ${BORDER}px;
@@ -38,32 +37,34 @@ const Inner = styled.div`
   color: ${({ textColor }) => textColor};
   background-color: ${({ fillColor }) => fillColor};
   text-decoration: none;
+`;
 
-  &:before {
-    position: absolute;
-    top: 0;
-    left: -${HEIGHT / 2 - BORDER}px;
-    width: 0;
-    height: 0;
-    content: "";
-    border-color: transparent ${({ fillColor }) => fillColor} transparent
-      transparent;
-    border-style: solid;
-    border-width: ${HEIGHT / 2 - BORDER}px ${HEIGHT / 2 - BORDER}px
-      ${HEIGHT / 2 - BORDER}px 0;
-  }
+const InnerTriangle = styled.div`
+  position: absolute;
+  top: ${BORDER}px;
+  left: -${HEIGHT / 2 - BORDER}px;
+  width: 0;
+  height: 0;
+  border-color: transparent ${({ fillColor }) => fillColor} transparent
+    transparent;
+  border-style: solid;
+  border-width: ${HEIGHT / 2 - BORDER}px ${HEIGHT / 2 - BORDER}px
+    ${HEIGHT / 2 - BORDER}px 0;
 `;
 
 const Tag = ({ name, color = "blue", selected = false }) => {
+  const fillColor = selected ? color : "white";
   return (
-    <Outer borderColor={color}>
-      <Inner
-        fillColor={selected ? color : "white"}
+    <OuterRectangle borderColor={color}>
+      <OuterTriangle borderColor={color} />
+      <InnerTriangle fillColor={fillColor} />
+      <InnerRectangle
+        fillColor={fillColor}
         textColor={selected ? "white" : color}
       >
         {name}
-      </Inner>
-    </Outer>
+      </InnerRectangle>
+    </OuterRectangle>
   );
 };
 
