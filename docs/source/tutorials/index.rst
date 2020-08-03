@@ -47,6 +47,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/label_mistakes.png
     :tags: Getting-Started,Brain
 
+.. customcarditem::
+    :header: Evaluating a detection model 
+    :description: Object detections can be difficult to visualize making it hard to troubleshoot a detection model. This tutorial shows how to evaluate Faster-RCNN on MSCOCO using FiftyOne. 
+    :link: evaluate_detections.html
+    :image: ../_static/images/tutorials/eval_dets.png
+    :tags: Model-Evaluation,Detections
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -67,3 +74,4 @@ your datasets and turn your good models into *great models*.
 
    Exploring image uniqueness<uniqueness.ipynb>
    Finding label mistakes<label_mistakes.ipynb>
+   Evaluating a detection model<evaluate_detections.ipynb>
