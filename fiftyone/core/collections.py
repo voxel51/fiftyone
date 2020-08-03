@@ -222,7 +222,7 @@ class SampleCollection(object):
         :class:`fiftyone.core.sample.SampleView` instances.
 
         Args:
-            field_names: a list of names of sample fields to omit
+            field_names: a field name or iterable of field names
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -247,7 +247,7 @@ class SampleCollection(object):
         """Filters the classifications of the given
         :class:`fiftyone.core.labels.Classifications` field.
 
-        Elements of ``field.classifications`` for which ``filter`` returns
+        Elements of ``<field>.classifications`` for which ``filter`` returns
         ``False`` are omitted from the field.
 
         Args:
@@ -266,7 +266,7 @@ class SampleCollection(object):
         """Filters the detections of the given
         :class:`fiftyone.core.labels.Detections` field.
 
-        Elements of ``field.detections`` for which ``filter`` returns
+        Elements of ``<field>.detections`` for which ``filter`` returns
         ``False`` are omitted from the field.
 
         Args:
@@ -370,7 +370,7 @@ class SampleCollection(object):
         in the returned :class:`fiftyone.core.sample.SampleView` instances.
 
         Args:
-            field_names: a list of names of sample fields to select
+            field_names: a field name or iterable of field names
 
         Returns:
             a :class:`DatasetView`

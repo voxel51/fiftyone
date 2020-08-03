@@ -471,3 +471,13 @@ a.with-right-arrow,
 .btn.with-right-arrow {
   background-image: url(../images/chevron-right-orange.svg);
 }
+
+/* table in convert-datasets recipe */
+
+.convert-recipes-table colgroup {
+  display: none;
+}
+
+.convert-recipes-table th:first-of-type {
+  width: 50%;
+}

@@ -116,6 +116,13 @@ class _Sample(object):
         """An ordered tuple of the names of the fields of this sample."""
         return self._doc.field_names
 
+    @property
+    def _in_db(self):
+        """Whether the underlying :class:`fiftyone.core.odm.Document` has
+        been inserted into the database.
+        """
+        return self._doc.in_db
+
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
 
@@ -183,7 +190,7 @@ class _Sample(object):
             a :class:`Sample`
         """
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
-        return self.__class__(**kwargs)
+        return Sample(**kwargs)
 
     def to_dict(self):
         """Serializes the sample to a JSON dictionary.
@@ -197,18 +204,6 @@ class _Sample(object):
         d.pop("_id", None)
         return d
 
-    @classmethod
-    def from_dict(cls, d):
-        """Loads the sample from a JSON dictionary.
-
-        The returned sample will not belong to a dataset.
-
-        Returns:
-            a :class:`Sample`
-        """
-        doc = foo.NoDatasetSampleDocument.from_dict(d, extended=True)
-        return cls.from_doc(doc)
-
     def to_json(self, pretty_print=False):
         """Serializes the sample to a JSON string.
 
@@ -220,19 +215,6 @@ class _Sample(object):
             a JSON string
         """
         return self._doc.to_json(pretty_print=pretty_print)
-
-    @classmethod
-    def from_json(cls, s):
-        """Loads the sample from a JSON string.
-
-        Args:
-            s: the JSON string
-
-        Returns:
-            a :class:`Sample`
-        """
-        doc = foo.NoDatasetSampleDocument.from_json(s)
-        return cls.from_doc(doc)
 
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
@@ -254,13 +236,6 @@ class _Sample(object):
     def _delete(self):
         """Deletes the document from the database."""
         self._doc.delete()
-
-    @property
-    def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
-        return self._doc.in_db
 
     def _get_dataset(self):
         if self._in_db:
@@ -299,7 +274,7 @@ class Sample(_Sample):
         return repr(self)
 
     def __repr__(self):
-        return self._doc.fancy_repr(type(self).__name__)
+        return self._doc.fancy_repr(class_name=self.__class__.__name__)
 
     @classmethod
     def from_doc(cls, doc):
@@ -331,6 +306,31 @@ class Sample(_Sample):
         return sample
 
     @classmethod
+    def from_dict(cls, d):
+        """Loads the sample from a JSON dictionary.
+
+        The returned sample will not belong to a dataset.
+
+        Returns:
+            a :class:`Sample`
+        """
+        doc = foo.NoDatasetSampleDocument.from_dict(d, extended=True)
+        return cls.from_doc(doc)
+
+    @classmethod
+    def from_json(cls, s):
+        """Loads the sample from a JSON string.
+
+        Args:
+            s: the JSON string
+
+        Returns:
+            a :class:`Sample`
+        """
+        doc = foo.NoDatasetSampleDocument.from_json(s)
+        return cls.from_doc(doc)
+
+    @classmethod
     def _save_dataset_samples(cls, dataset_name):
         """Saves all changes to samples instances in memory belonging to the
         specified dataset to the database.
@@ -339,7 +339,7 @@ class Sample(_Sample):
         still exists in memory.
 
         Args:
-            dataset_name: the name of the dataset to save.
+            dataset_name: the name of the dataset to save
         """
         for sample in cls._instances[dataset_name].values():
             sample.save()
@@ -352,7 +352,7 @@ class Sample(_Sample):
         If the sample does not exist in memory nothing is done.
 
         Args:
-            dataset_name: the name of the dataset to reload.
+            dataset_name: the name of the dataset to reload
             sample_id: the ID of the sample to reload
         """
         # @todo(Tyler) it could optimize the code to instead flag the sample as
@@ -362,6 +362,7 @@ class Sample(_Sample):
         if sample:
             sample.reload()
             return True
+
         return False
 
     @classmethod
@@ -373,7 +374,7 @@ class Sample(_Sample):
         will keep the dataset in sync.
 
         Args:
-            dataset_name: the name of the dataset to reload.
+            dataset_name: the name of the dataset to reload
         """
         for sample in cls._instances[dataset_name].values():
             sample.reload()
@@ -499,7 +500,9 @@ class SampleView(_Sample):
 
     def __repr__(self):
         return self._doc.fancy_repr(
-            type(self).__name__, self._selected_fields, self._excluded_fields
+            class_name=self.__class__.__name__,
+            select_fields=self._selected_fields,
+            exclude_fields=self._excluded_fields,
         )
 
     def __getattr__(self, name):
