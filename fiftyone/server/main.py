@@ -58,6 +58,7 @@ def get_user_id():
             return None
 
     if not read():
+        os.makedirs(os.path.dirname(uid_path), exist_ok=True)
         with open(uid_path, "w") as f:
             f.write(str(uuid.uuid4()))
     return read()
