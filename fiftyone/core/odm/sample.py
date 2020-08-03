@@ -65,7 +65,6 @@ from collections import OrderedDict
 from functools import wraps
 import json
 import numbers
-import re
 
 from bson import json_util
 from bson.binary import Binary
@@ -469,24 +468,19 @@ class DatasetSampleDocument(Document, SampleDocument):
         """
         extra_updates = []
 
+        #
         # Check for illegal modifications
+        # Match the list, or an indexed item in the list, but not a field
+        # of an indexed item of the list:
+        #   my_detections.detections          <- MATCH
+        #   my_detections.detections.1        <- MATCH
+        #   my_detections.detections.1.label  <- NO MATCH
+        #
         if filtered_fields:
-            #
-            # Match the list, or an indexed item in the list, but not a field
-            # of an indexed item of the list:
-            #   my_detections.detections          <- MATCH
-            #   my_detections.detections.1        <- MATCH
-            #   my_detections.detections.1.label  <- NO MATCH
-            #
-            patterns = [
-                r"^%s(\.[0-9]+)?$" % "\.".join(ff.split("."))
-                for ff in filtered_fields
-            ]
-
             for d in update_doc.values():
                 for k in d.keys():
-                    for pattern in patterns:
-                        if re.match(pattern, k):
+                    for ff in filtered_fields:
+                        if k.startswith(ff) and not k.lstrip(ff).count("."):
                             raise ValueError(
                                 "Modifying root of filtered list field '%s' "
                                 "is not allowed" % k
