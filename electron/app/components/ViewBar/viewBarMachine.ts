@@ -1,6 +1,7 @@
 import { Machine, assign, spawn } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
+import ViewStageStories from "./ViewStage/ViewStage.stories";
 
 export const createStage = (stage, insertAt, stageInfo, focusOnInit) => {
   return {
@@ -107,6 +108,7 @@ const viewBarMachine = Machine({
           stages: (ctx, e) => ctx.stages.filter((stage) => stage.id !== e.id),
         }),
       ],
+      cond: ({ stages }) => stages.length > 1,
     },
   },
 });
