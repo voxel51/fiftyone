@@ -5,4 +5,8 @@ API Reference
    :toctree:
    :recursive:
 
-   fiftyone
+   fiftyone.brain
+   fiftyone.core
+   fiftyone.types
+   fiftyone.utils
+   fiftyone.zoo

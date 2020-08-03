@@ -18,4 +18,4 @@ dist/
 /eta/
 
 /docs/build/
-/docs/source/api/_autosummary/
+/docs/source/api/fiftyone.*.rst
