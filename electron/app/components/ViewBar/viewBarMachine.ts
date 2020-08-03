@@ -48,6 +48,7 @@ const viewBarMachine = Machine({
             stageInfo: (ctx, event) => {
               return event.data.stages;
             },
+            stages: (ctx) => (ctx.stages.length === 0 ? [""] : stages),
           }),
         },
       },
@@ -56,19 +57,16 @@ const viewBarMachine = Machine({
       entry: assign({
         stages: (ctx) => {
           return ctx.stages.map((stage) => {
-            const newStage = createStage(stage, undefined, ctx.stageInfo);
+            const newStage = createStage(
+              stage,
+              stage === "" ? 0 : undefined,
+              ctx.stageInfo
+            );
             return {
               stage: newStage,
               ref: spawn(viewStageMachine.withContext(newStage)),
             };
           });
-        },
-        tailStage: (ctx) => {
-          const tailStage = createStage("", ctx.stages.length, ctx.stageInfo);
-          return {
-            ...tailStage,
-            ref: spawn(viewStageMachine.withContext(tailStage)),
-          };
         },
       }),
     },
@@ -95,41 +93,18 @@ const viewBarMachine = Machine({
       actions: [
         assign({
           stages: (ctx, e) => {
-            if (e.stage.insertAt !== undefined) {
-              const r = [
-                ...ctx.stages.slice(0, e.stage.insertAt),
-                {
-                  ...e.stage,
-                  tailStage: false,
-                  insertAt: undefined,
-                  ref: ctx.tailStage.ref,
-                },
-                ...ctx.stages.slice(e.stage.insertAt),
-              ];
-              return r;
-            }
-            return ctx.stages.map((stage) => {
-              return stage.id === e.stage.id
-                ? { ...e.stage, ref: stage.ref }
-                : stage;
-            });
-          },
-          tailStage: (ctx, { stage }) => {
-            if (
-              stage.insertAt !== undefined &&
-              stage.insertAt === ctx.stages.length
-            ) {
-              const tailStage = createStage(
-                "",
-                ctx.stages.length + 1,
-                ctx.stageInfo
-              );
-              return {
-                ...tailStage,
-                ref: spawn(viewStageMachine.withContext(tailStage)),
-              };
-            }
-            return ctx.tailStage;
+            const newStages = [
+              ...ctx.stages.slice(0, e.stage.insertAt),
+              {
+                ...e.stage,
+                tailStage: false,
+                insertAt: undefined,
+                ref: ctx.tailStage.ref,
+              },
+              ...ctx.stages.slice(e.stage.insertAt),
+            ];
+            console.log(ctx.stages, newStages);
+            return newStages;
           },
         }),
       ],

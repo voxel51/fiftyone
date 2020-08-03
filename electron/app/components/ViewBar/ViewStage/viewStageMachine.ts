@@ -203,6 +203,7 @@ const viewStageMachine = Machine(
                 type: "STAGE.DELETE",
                 id: ctx.id,
               })),
+              cond: (ctx) => ctx.insert,
             },
             {
               target: "reading.pending",

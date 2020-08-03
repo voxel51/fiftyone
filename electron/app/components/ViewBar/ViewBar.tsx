@@ -42,18 +42,7 @@ const machine = viewBarMachine.withContext(createBar(5151));
 export default () => {
   const [state, send] = useMachine(machine);
 
-  const { stages, tailStage } = state.context;
-
-  const tail = () =>
-    stages.length ? (
-      <AddViewStage
-        key={`insert-button-${tailStage.id}`}
-        send={send}
-        insertAt={stages.length}
-      />
-    ) : (
-      <ViewStage key={tailStage.id} stageRef={tailStage.ref} tailStage={true} />
-    );
+  const { stages } = state.context;
 
   return (
     <ViewBarDiv>
@@ -61,8 +50,7 @@ export default () => {
         ? stages.map((stage, i) => {
             return (
               <>
-                {stage.insertAt === undefined &&
-                stages[i ? i - 1 : i].insertAt === undefined ? (
+                {stage.stage.insertAt === undefined ? (
                   <AddViewStage
                     key={`insert-button-${stage.id}`}
                     send={send}
@@ -74,7 +62,6 @@ export default () => {
             );
           })
         : null}
-      {state.matches("running") ? tail() : null}
     </ViewBarDiv>
   );
 };
