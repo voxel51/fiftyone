@@ -168,7 +168,7 @@ _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
 free to
-`connect with us on Slack <https://voxel51.slack.com/app_redirect?channel=C0154574MKJ>`_
+`connect with us on Slack <https://join.slack.com/t/fiftyone-group/shared_invite/zt-gfml1qxd-r0RNVtRiWjPy97OtNm~~yA>`_
 or reach out to us at support@voxel51.com.
 
 .. toctree::
