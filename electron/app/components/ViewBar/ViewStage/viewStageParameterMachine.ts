@@ -1,100 +1,113 @@
-import { Machine, actions, sendParent } from "xstate";
+import { Machine, actions, sendParent, send } from "xstate";
 import viewStageMachine from "./viewStageMachine";
-const { assign } = actions;
+const { assign, choose } = actions;
 
-export const viewStageParameterMachineConfig = {
-  id: "viewStageParameter",
-  initial: "reading",
-  context: {
-    id: undefined,
-    parameter: undefined,
-    stage: undefined,
-    type: undefined,
-    value: undefined,
-  },
-  states: {
-    reading: {
-      initial: "unknown",
-      states: {
-        unknown: {
-          on: {
-            always: [
-              {
-                target: "submitted",
-                cond: (ctx) => ctx.value.trim().length > 0,
-              }, // more checks needed
-              { target: "pending" },
+export default Machine(
+  {
+    id: "viewStageParameter",
+    initial: "decide",
+    context: {
+      id: undefined,
+      parameter: undefined,
+      stage: undefined,
+      type: undefined,
+      value: undefined,
+      submitted: undefined,
+      tail: undefined,
+      focusOnInit: undefined,
+    },
+    states: {
+      decide: {
+        always: [
+          {
+            target: "editing",
+            cond: (ctx) => ctx.focusOnInit,
+          },
+          {
+            target: "reading.submitted",
+            cond: (ctx) => ctx.submitted,
+          },
+          {
+            target: "reading.pending",
+          },
+        ],
+      },
+      reading: {
+        initial: "pending",
+        entry: "blurInput",
+        states: {
+          pending: {},
+          submitted: {},
+        },
+        on: {
+          EDIT: "editing",
+        },
+      },
+      editing: {
+        entry: [
+          assign({
+            prevValue: (ctx) => ctx.value,
+            focusOnInit: false,
+          }),
+          "focusInput",
+        ],
+        on: {
+          BLUR: [
+            {
+              target: "reading.pending",
+              cond: (ctx) => !ctx.submitted,
+            },
+            {
+              target: "reading.submitted",
+              cond: (ctx) => ctx.submitted,
+              actions: assign({
+                stage: (ctx) => ctx.prevStage,
+              }),
+            },
+          ],
+          CHANGE: {
+            actions: [
+              assign({
+                value: (ctx, e) => e.value,
+              }),
             ],
           },
-        },
-        pending: {
-          on: {
-            SUBMIT: {
-              target: "submitted",
+          COMMIT: [
+            {
+              target: "decide",
               actions: [
+                assign({
+                  submitted: true,
+                }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
                   parameter: ctx,
                 })),
               ],
+              cond: (ctx) => {
+                return ctx.value.trim().length > 0;
+              },
             },
-          },
-        },
-        submitted: {},
-        hist: {
-          type: "history",
-        },
-      },
-      on: {
-        EDIT: {
-          target: "editing",
-        },
-      },
-    },
-    editing: {
-      onEntry: [assign({ prevValue: (ctx) => ctx.value }), "focusInput"],
-      on: {
-        CHANGE: {
-          actions: assign({
-            value: (ctx, e) => e.value,
-          }),
-        },
-        COMMIT: [
-          {
-            target: "reading.hist",
+            {
+              target: "decide",
+            },
+          ],
+          CANCEL: {
+            target: "reading",
             actions: [
               assign({
-                value: (ctx) => ctx.value,
-                submitted: true,
+                value: (ctx) => ctx.prevValue,
               }),
-              sendParent((ctx) => ({
-                type: "PARAMETER.COMMIT",
-                parameter: ctx,
-              })),
             ],
-            cond: (ctx) => ctx.value.trim().length > 0,
           },
-        ],
-        BLUR: {
-          target: "reading",
-          actions: sendParent((ctx) => ({
-            type: "PARAMETER.COMMIT",
-            parameter: ctx,
-          })),
-        },
-        CANCEL: {
-          target: "reading",
-          actions: assign({ value: (ctx) => ctx.prevValue }),
         },
       },
     },
   },
-};
-
-const viewStageParameterMachine = Machine(viewStageParameterMachineConfig, {
-  actions: {
-    focusInput: () => {},
-  },
-});
-
-export default viewStageParameterMachine;
+  {
+    actions: {
+      blurInput: () => {},
+      focusInput: () => {},
+    },
+  }
+);

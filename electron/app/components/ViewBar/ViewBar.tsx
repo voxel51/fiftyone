@@ -10,16 +10,17 @@ import {
 } from "../../shared/colors";
 import { port } from "../../recoil/atoms";
 import { getSocket, useSubscribe } from "../../utils/socket";
-import ViewStage, { ViewStageButton } from "./ViewStage/ViewStage";
+import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine, { createBar } from "./viewBarMachine";
 
 const ViewBarDiv = styled.div`
-  background-color: ${backgroundColor};
+  background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
-  border: 1px solid ${borderColor};
+  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   box-sizing: border-box;
   height: 54px;
   width: 100%;
+  padding: 0 0.25rem;
 `;
 
 /*const connectedViewBarMachine = viewBarMachine.withConfig(
@@ -36,32 +37,31 @@ const ViewBarDiv = styled.div`
   }
 );*/
 
-export default () => {
-  const portValue = useRecoilValue(port);
-  const [state, send] = useMachine(
-    viewBarMachine.withContext(createBar(portValue))
-  );
+const machine = viewBarMachine.withContext(createBar(5151));
 
-  const { stages, tailStage } = state.context;
-  console.log(state.toStrings(), stages);
+export default () => {
+  const [state, send] = useMachine(machine);
+
+  const { stages } = state.context;
 
   return (
     <ViewBarDiv>
-      {state.matches("running") &&
-        stages.map((stage, i) => {
-          return (
-            <>
-              <ViewStage key={stage.id} stageRef={stage.ref} />
-              {i === stage.length - 1 && <ViewStageButton />}
-            </>
-          );
-        }) && (
-          <ViewStage
-            key={tailStage.id}
-            stageRef={tailStage.ref}
-            tailStage={true}
-          />
-        )}
+      {state.matches("running")
+        ? stages.map((stage, i) => {
+            return (
+              <>
+                {stage.stage.insertAt === undefined ? (
+                  <AddViewStage
+                    key={`insert-button-${stage.id}`}
+                    send={send}
+                    insertAt={i}
+                  />
+                ) : null}
+                <ViewStage key={stage.id} stageRef={stage.ref} />
+              </>
+            );
+          })
+        : null}
     </ViewBarDiv>
   );
 };

@@ -21,14 +21,14 @@ addDecorator((story) => (
 addDecorator((story) => <RecoilRoot>{story()}</RecoilRoot>);
 
 const themeChoices = {
-  Light: lightTheme,
   Dark: darkTheme,
+  Light: lightTheme,
 };
 const getTheme = () => {
   const raw = radios(
     "Theme",
     Object.fromEntries(Object.keys(themeChoices).map((k) => [k, k])),
-    "Light"
+    "Dark"
   );
   return themeChoices[raw];
 };

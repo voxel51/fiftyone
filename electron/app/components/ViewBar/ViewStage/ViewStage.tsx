@@ -1,23 +1,22 @@
-import React, { useEffect, useRef } from "react";
-import styled from "styled-components";
+import React, { useContext, useEffect, useRef, useMemo } from "react";
+import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 
-import { grey46 as fontColor } from "../../../shared/colors";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 
 const ViewStageContainer = styled.div`
-  margin: 0.5rem;
+  margin: 0.5rem 0.25rem;
+  display: inline-block;
 `;
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed #6c757d;
+  border: 2px dashed ${({ theme }) => theme.brand};
   border-radius: 3px;
-  background-color: rgba(108, 117, 125, 0.13);
   display: inline-block;
   position: relative;
 `);
@@ -27,7 +26,7 @@ const ViewStageInput = styled(AuosizeInput)`
     background-color: transparent;
     border: none;
     margin: 0.5rem;
-    color: ${fontColor};
+    color: ${({ theme }) => theme.font};
     line-height: 1rem;
     border: none;
   }
@@ -36,63 +35,114 @@ const ViewStageInput = styled(AuosizeInput)`
     boder: none;
     outline: none;
   }
+
+  & ::placeholder {
+    color: ${({ theme }) => theme.font};
+  }
 `;
 
-export const ViewStageButton = styled.button``;
+export const ViewStageButton = animated(styled.button`
+  box-sizing: border-box;
+  border: 2px dashed ${({ theme }) => theme.brand};
+  color: ${({ theme }) => theme.font};
+  border-radius: 3px;
+  display: inline-block;
+  position: relative;
+  margin: 0.25rem;
+  line-height: 1rem;
+  padding: 0.5rem;
+  cursor: pointer;
 
-export default React.memo(({ stageRef, tailStage }) => {
-  const [state, send] = useService(stageRef);
-  const inputRef = useRef(null);
+  :focus {
+    outline: none;
+  }
+`);
 
-  const { stage, stageInfo, parameters } = state.context;
-
+export const AddViewStage = ({ send, insertAt }) => {
+  const theme = useContext(ThemeContext);
   const props = useSpring({
-    borderStyle: state.matches("reading.selected") ? "solid" : "dashed",
-    borderTopRightRadius: state.matches("reading.selected") ? 0 : 3,
-    borderBottomRightRadius: state.matches("reading.selected") ? 0 : 3,
-    borderRightWidth: state.matches("reading.selected") ? 1 : 2,
+    background: theme.brandMoreTransparent,
     opacity: 1,
     from: {
       opacity: 0,
     },
   });
 
+  return (
+    <ViewStageButton
+      style={props}
+      onClick={() => send({ type: "STAGE.ADD", insertAt })}
+    >
+      +
+    </ViewStageButton>
+  );
+};
+
+export default React.memo(({ stageRef }) => {
+  const theme = useContext(ThemeContext);
+  const [state, send] = useService(stageRef);
+  const inputRef = useRef(null);
+
+  const { id, stage, stageInfo, parameters } = state.context;
+
+  const isCompleted = ["reading.selected", "reading.submitted"].some(
+    state.matches
+  );
+
+  const props = useSpring({
+    borderStyle: isCompleted ? "solid" : "dashed",
+    borderTopRightRadius: isCompleted ? 0 : 3,
+    borderBottomRightRadius: isCompleted ? 0 : 3,
+    borderRightWidth: isCompleted ? 1 : 2,
+    backgroundColor: isCompleted
+      ? theme.brandTransparent
+      : theme.brandMoreTransparent,
+    opacity: 1,
+    from: {
+      opacity: 0,
+    },
+  });
+
+  const actionsMap = useMemo(
+    () => ({
+      focusInput: () => inputRef.current && inputRef.current.select(),
+      blurInput: () => inputRef.current && inputRef.current.blur(),
+    }),
+    [inputRef.current]
+  );
+
   useEffect(() => {
-    stageRef.execute(state, {
-      focusInput() {
-        inputRef.current && inputRef.current.select();
-      },
+    stageRef.onTransition((state) => {
+      state.actions.forEach((action) => {
+        if (action.type in actionsMap) actionsMap[action.type]();
+      });
     });
-  }, [state, stageRef]);
+  }, [actionsMap, inputRef.current]);
 
   return (
     <ViewStageContainer>
       <ViewStageDiv style={props}>
-        {tailStage ? (
-          <ViewStageInput
-            placeholder="+ search sample"
-            value={stage}
-            onFocus={() => send("EDIT")}
-            onBlur={() =>
-              state.matches("editing.searchResults.notHovering") && send("BLUR")
+        <ViewStageInput
+          placeholder="+ search sample"
+          value={stage}
+          onFocus={() => !state.matches("editing") && send("EDIT")}
+          onBlur={() =>
+            state.matches("editing.searchResults.notHovering") && send("BLUR")
+          }
+          onChange={(e) => send({ type: "CHANGE", stage: e.target.value })}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              send({ type: "COMMIT", stage: e.target.value });
             }
-            onChange={(e) => send("CHANGE", { stage: e.target.value })}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                send("COMMIT");
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send("CANCEL");
-              }
-            }}
-            style={{ fontSize: "1rem" }}
-            ref={inputRef}
-          />
-        ) : (
-          <ViewStageButton>+</ViewStageButton>
-        )}
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              send("BLUR");
+            }
+          }}
+          style={{ fontSize: "1rem" }}
+          ref={inputRef}
+        />
         {state.matches("editing") && (
           <SearchResults
             results={stageInfo
@@ -102,7 +152,7 @@ export default React.memo(({ stageRef, tailStage }) => {
           />
         )}
       </ViewStageDiv>
-      {state.matches("reading.selected") &&
+      {isCompleted &&
         parameters.map((parameter) => (
           <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
         ))}

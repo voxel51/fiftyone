@@ -2,14 +2,15 @@ import { Machine, assign, spawn } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 
-export const createStage = (stage, insertAt, stageInfo) => {
+export const createStage = (stage, insertAt, stageInfo, focusOnInit) => {
   return {
     id: uuid(),
-    completed: false,
+    submitted: false,
     stage: stage,
     parameters: [],
     stageInfo,
-    insertAt: undefined,
+    insertAt,
+    focusOnInit,
   };
 };
 
@@ -47,6 +48,7 @@ const viewBarMachine = Machine({
             stageInfo: (ctx, event) => {
               return event.data.stages;
             },
+            stages: (ctx) => (ctx.stages.length === 0 ? [""] : stages),
           }),
         },
       },
@@ -55,63 +57,56 @@ const viewBarMachine = Machine({
       entry: assign({
         stages: (ctx) => {
           return ctx.stages.map((stage) => {
-            const newStage = createStage(stage, undefined, ctx.stageInfo);
+            const newStage = createStage(
+              stage,
+              stage === "" ? 0 : undefined,
+              ctx.stageInfo
+            );
             return {
               stage: newStage,
               ref: spawn(viewStageMachine.withContext(newStage)),
             };
           });
         },
-        tailStage: (ctx) => {
-          const tailStage = createStage("", ctx.stages.length, ctx.stageInfo);
-          return {
-            ...tailStage,
-            ref: spawn(viewStageMachine.withContext(tailStage)),
-          };
-        },
       }),
     },
   },
   on: {
-    "NEWSTAGE.CHANGE": {
-      actions: assign({
-        stage: (ctx, e) => e.value,
-      }),
-    },
-    "NEWSTAGE.COMMIT": {
+    "STAGE.ADD": {
       actions: [
         assign({
-          tailStage: (ctx) => {
-            const newTailStage = createStage("", ctx.stageInfo);
-            return {
-              ...newTailStage,
-              ref: spawn(viewStageMachine.withContext(newTailStage)),
-            };
-          },
           stages: (ctx, e) => {
-            const newStage = createStage(e.value.trim());
-            return ctx.stages.concat({
-              ...newStage,
-              ref: spawn(viewStageMachine.withContext(newStage)),
-            });
+            const newStage = createStage("", e.insertAt, ctx.stageInfo, true);
+            return [
+              ...ctx.stages.slice(0, e.insertAt),
+              {
+                ...newStage,
+                ref: spawn(viewStageMachine.withContext(newStage)),
+              },
+              ...ctx.stages.slice(e.insertAt),
+            ];
           },
         }),
-        "submit",
       ],
-      cond: (ctx, e) => e.value.trim().length,
     },
     "STAGE.COMMIT": {
       actions: [
         assign({
-          stages: (ctx, e) =>
-            ctx.stages.map((stage) => {
-              console.log(e);
-              return stage.id === e.stage.id
-                ? { ...stage, ...e.stage, ref: stage.ref }
-                : stage;
-            }),
+          stages: (ctx, e) => {
+            const newStages = [
+              ...ctx.stages.slice(0, e.stage.insertAt),
+              {
+                ...e.stage,
+                tailStage: false,
+                insertAt: undefined,
+                ref: ctx.tailStage.ref,
+              },
+              ...ctx.stages.slice(e.stage.insertAt),
+            ];
+            console.log(ctx.stages, newStages);
+            return newStages;
+          },
         }),
-        "submit",
       ],
     },
     "STAGE.DELETE": {
@@ -119,7 +114,6 @@ const viewBarMachine = Machine({
         assign({
           stages: (ctx, e) => ctx.stages.filter((stage) => stage.id !== e.id),
         }),
-        "submit",
       ],
     },
   },
