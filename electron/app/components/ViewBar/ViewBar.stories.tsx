@@ -10,8 +10,9 @@ export default {
 
 const Container = styled.div`
   background-color: ${({ theme }) => theme.background};
-  padding: 10;
-  width: calc(100% - 20);
+  padding: 10px;
+  width: calc(100% - 20px);
+  position: relative;
 `;
 
 export const standard = () => (
