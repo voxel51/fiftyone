@@ -190,7 +190,7 @@ class _Sample(object):
             a :class:`Sample`
         """
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
-        return self.__class__(**kwargs)
+        return Sample(**kwargs)
 
     def to_dict(self):
         """Serializes the sample to a JSON dictionary.
@@ -204,18 +204,6 @@ class _Sample(object):
         d.pop("_id", None)
         return d
 
-    @classmethod
-    def from_dict(cls, d):
-        """Loads the sample from a JSON dictionary.
-
-        The returned sample will not belong to a dataset.
-
-        Returns:
-            a :class:`Sample`
-        """
-        doc = foo.NoDatasetSampleDocument.from_dict(d, extended=True)
-        return cls.from_doc(doc)
-
     def to_json(self, pretty_print=False):
         """Serializes the sample to a JSON string.
 
@@ -227,19 +215,6 @@ class _Sample(object):
             a JSON string
         """
         return self._doc.to_json(pretty_print=pretty_print)
-
-    @classmethod
-    def from_json(cls, s):
-        """Loads the sample from a JSON string.
-
-        Args:
-            s: the JSON string
-
-        Returns:
-            a :class:`Sample`
-        """
-        doc = foo.NoDatasetSampleDocument.from_json(s)
-        return cls.from_doc(doc)
 
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
@@ -329,6 +304,31 @@ class Sample(_Sample):
             sample._set_backing_doc(doc)
 
         return sample
+
+    @classmethod
+    def from_dict(cls, d):
+        """Loads the sample from a JSON dictionary.
+
+        The returned sample will not belong to a dataset.
+
+        Returns:
+            a :class:`Sample`
+        """
+        doc = foo.NoDatasetSampleDocument.from_dict(d, extended=True)
+        return cls.from_doc(doc)
+
+    @classmethod
+    def from_json(cls, s):
+        """Loads the sample from a JSON string.
+
+        Args:
+            s: the JSON string
+
+        Returns:
+            a :class:`Sample`
+        """
+        doc = foo.NoDatasetSampleDocument.from_json(s)
+        return cls.from_doc(doc)
 
     @classmethod
     def _save_dataset_samples(cls, dataset_name):
