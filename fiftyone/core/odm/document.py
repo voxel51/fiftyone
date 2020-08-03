@@ -231,6 +231,7 @@ class BaseDocument(MongoEngineBaseDocument):
         """Whether the underlying :class:`fiftyone.core.odm.Document` has
         been inserted into the database.
         """
+        # pylint: disable=no-member
         return self.id is not None
 
 
@@ -240,12 +241,13 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     """
 
     def __deepcopy__(self, memo):
-        doc = _default_deepcopy(self, memo)
-
-        if hasattr(doc, "_id"):
-            doc._id = None
-
-        return doc
+        # pylint: disable=no-member
+        kwargs = {
+            f: deepcopy(self[f])
+            for f in self._fields_ordered
+            if f not in ["_cls", "_id"]
+        }
+        return self.__class__(**kwargs)
 
 
 class Document(BaseDocument, mongoengine.Document):
