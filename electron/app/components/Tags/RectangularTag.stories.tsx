@@ -1,14 +1,14 @@
 import React from "react";
-import Tag from "./Tag";
+import RectangularTag from "./RectangularTag";
 import { boolean } from "@storybook/addon-knobs";
 
 export default {
-  component: Tag,
-  title: "Tag",
+  component: RectangularTag,
+  title: "Tags/RectangularTag",
 };
 
 const WrappedTag = (props) => (
-  <Tag
+  <RectangularTag
     selected={boolean("Selected")}
     triangle={boolean("Triangle")}
     {...props}
