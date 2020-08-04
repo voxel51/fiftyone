@@ -17,12 +17,11 @@ represent your data and manipulate it through the Python library and the
 What is a FiftyOne Dataset?
 ---------------------------
 
-:ref:`FiftyOne Datasets <using-datasets>` allow you to easily
-:doc:`load <dataset_creation/index>`, :doc:`modify <using_datasets>` and
-:doc:`visualize <app>` your data along with any related labels
-(classification, detection, segmentation, etc).
-It provides a way to easily load images, annotations, and model predictions
-into a format that can be visualized in the FiftyOne App.
+FiftyOne Datasets allow you to easily :doc:`load <dataset_creation/index>`,
+:doc:`modify <using_datasets>` and :doc:`visualize <app>` your data along with
+any related labels (classification, detection, etc). It provides a way to
+easily load images, annotations, and model predictions into a format that can
+be visualized in the FiftyOne App.
 
 If you have your own collection of data, loading it as a |Dataset| will allow
 you to easily search and sort your samples. You can use FiftyOne to identify
@@ -54,6 +53,10 @@ Slicing and other batch operations on datasets are done through the use of
 view into the |Dataset|, which can be filtered, sorted, sampled, etc. along
 various axes to obtain a desired subset of the samples.
 
+.. custombutton::
+    :button_text: Learn more about using datasets
+    :button_link: using_datasets.html#using-datasets
+
 Samples
 -------
 
@@ -64,7 +67,9 @@ All |Sample| instances store the path to their source data on disk in their
 `filepath` field. Any number of fields can be dynamically added to samples to
 store additional custom information about the sample.
 
-See :ref:`using samples <using-samples>` for more information about samples.
+.. custombutton::
+    :button_text: Learn more about using samples
+    :button_link: using_datasets.html#using-samples
 
 .. code-block:: python
    :linenos:
@@ -107,8 +112,9 @@ is assigned to a |Sample| in a |Dataset|, it is automatically added to the
 dataset's schema and thus accessible on all other samples in the dataset. If
 a |Field| is unset on a particular |Sample|, its value will be `None`.
 
-See :ref:`using fields <using-fields>` for more information about sample
-fields.
+.. custombutton::
+    :button_text: Learn more about sample fields
+    :button_link: using_datasets.html#using-fields
 
 .. code-block:: python
     :linenos:
@@ -154,7 +160,9 @@ A typical use case is to tag the dataset split (`test`, `train`, `validation`)
 to which the |Sample| belongs. However, you are free to use tags however you
 like.
 
-See :ref:`using tags <using-tags>` for more information about tags.
+.. custombutton::
+    :button_text: See more information about using tags
+    :button_link: using_datasets.html#using-tags
 
 .. code-block:: python
     :linenos:
@@ -174,8 +182,9 @@ Metadata  is a default |Field| provided on all |Sample| instances. The
 `metadata` attribute of a |Sample| stores data type-specific metadata about the
 raw data in the sample.
 
-See :ref:`using metadata <using-metadata>` for more details about adding
-metadata to your samples.
+.. custombutton::
+    :button_text: Learn more about adding metadata to your samples
+    :button_link: using_datasets.html#using-metadata
 
 .. code-block:: python
     :linenos:
@@ -215,8 +224,9 @@ FiftyOne provides a |Label| subclass for common tasks:
 - :ref:`Detections <object-detection>`: a list of object detections
 - :ref:`ImageLabels <multitask-predictions>`: a generic collection of multitask predictions for an image
 
-See :ref:`using labels <using-labels>` for more information about storing
-labels in your samples.
+.. custombutton::
+    :button_text: Learn more about storing labels in your samples
+    :button_link: using_datasets.html#using-labels
 
 .. code-block:: python
     :linenos:
@@ -268,8 +278,9 @@ Dataset views are a powerful tool for exploring your datasets. You can use
 |DatasetView| instances to search, filter, sort, and manipulate subsets of your
 datasets to perform the analysis that you need.
 
-See :doc:`using DatasetViews <using_views>` for a full walkthrough of dataset
-view features.
+.. custombutton::
+    :button_text: Get a full walkthough of dataset views
+    :button_link: using_views.html#using-views
 
 .. code-block:: python
     :linenos:
