@@ -9,7 +9,6 @@ import SearchResults from "./SearchResults";
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
-  display: inline-block;
   position: relative;
 `);
 

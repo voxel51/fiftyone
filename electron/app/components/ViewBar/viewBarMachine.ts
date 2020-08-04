@@ -58,7 +58,6 @@ const viewBarMachine = Machine({
         stages: (ctx) => {
           return ctx.stages.map((stage, i) => {
             const newStage = createStage(stage, i, ctx.stageInfo, false, true);
-            console.log(newStage);
             return {
               ...newStage,
               ref: spawn(viewStageMachine.withContext(newStage)),
@@ -118,7 +117,6 @@ const viewBarMachine = Machine({
             if (stages.length === 1) {
               return [{ ...e.stage, hideDelete: true, ref: stages[0].ref }];
             } else {
-              console.log(e);
               return stages.filter((stage) => stage.id !== e.stage.id);
             }
           },

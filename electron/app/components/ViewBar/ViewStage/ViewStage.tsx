@@ -11,7 +11,8 @@ import ViewStageStories from "./ViewStage.stories";
 
 const ViewStageContainer = styled.div`
   margin: 0.5rem 0.25rem;
-  display: inline-block;
+  display: flex;
+  position: relative;
 `;
 
 const ViewStageDiv = animated(styled.div`
@@ -20,8 +21,8 @@ const ViewStageDiv = animated(styled.div`
   border-top-left-radius: 3px;
   border-bottom-left-radius: 3px;
   border-right-width: 0;
-  display: inline-block;
   position: relative;
+  display: flex;
 `);
 
 const ViewStageInput = styled(AuosizeInput)`
@@ -49,11 +50,9 @@ export const ViewStageButton = animated(styled.button`
   border: 2px dashed ${({ theme }) => theme.brand};
   color: ${({ theme }) => theme.font};
   border-radius: 3px;
-  display: inline-block;
   position: relative;
-  margin: 0.25rem;
+  margin: 0.5rem;
   line-height: 1rem;
-  padding: 0.5rem;
   cursor: pointer;
 
   :focus {
@@ -86,7 +85,6 @@ export const AddViewStage = React.memo(({ send, index }) => {
 const ViewStageDeleteDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
-  display: inline-block;
   position: relative;
   border-top-right-radius: 3px;
   border-bottom-right-radius: 3px;
@@ -177,7 +175,6 @@ const ViewStage = React.memo(({ stageRef }) => {
     stageRef.onTransition(listener);
     return () => stageRef.listeners.delete(listener);
   }, []);
-  console.log(hideDelete, submitted);
 
   return (
     <ViewStageContainer>

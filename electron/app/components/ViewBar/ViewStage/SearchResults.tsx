@@ -51,12 +51,9 @@ const SearchResultsDiv = animated(styled.div`
   border-radius: 2px;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   box-sizing: border-box;
-  left: 0;
-  margin-top: 0.5rem;
-  position: absolute;
-  top: 100%;
+  margin-top: 2.5rem;
+  position: fixed;
   width: auto;
-  z-index: 1000;
 `);
 
 interface SearchResultsProps {

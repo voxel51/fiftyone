@@ -16,6 +16,18 @@ const ViewBarDiv = styled.div`
   height: 54px;
   width: 100%;
   padding: 0 0.25rem;
+  overflow: auto;
+  display: flex;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
 `;
 
 /*const connectedViewBarMachine = viewBarMachine.withConfig(
