@@ -50,20 +50,21 @@ Datasets are **ordered collections** of samples. When a |Sample| is added to a
 from the dataset.
 
 Slicing and other batch operations on datasets are done through the use of
-:ref:`DatasetViews <using-dataset-views>`. A |DatasetView| provides an ordered
-view into a subset of the samples in a |Dataset|, which can be filtered,
-sorted, sampled, etc. along various axes to obtain a desired subset of the
-samples.
+:doc:`DatasetViews <using_views>`. A |DatasetView| provides an ordered
+view into the |Dataset|, which can be filtered, sorted, sampled, etc. along
+various axes to obtain a desired subset of the samples.
 
 Samples
 -------
 
-:ref:`Samples <using-samples>` are the atomic elements of a |Dataset| that
-store all the information related to a given piece of data (e.g., an image).
+Samples are the atomic elements of a |Dataset| that store all the information
+related to a given piece of data (e.g., an image).
 
 All |Sample| instances store the path to their source data on disk in their
 `filepath` field. Any number of fields can be dynamically added to samples to
 store additional custom information about the sample.
+
+See :ref:`using samples <using-samples>` for more information about samples.
 
 .. code-block:: python
    :linenos:
@@ -75,16 +76,13 @@ store additional custom information about the sample.
 Fields
 ------
 
-:ref:`Fields <using-fields>` are attributes of |Sample| instances that store
-customizable information about the samples. Thinking of a |Dataset| as a table
-where each row is a |Sample|, each column of the table is a |Field|.
+Fields are attributes of |Sample| instances that store customizable information
+about the samples. Thinking of a |Dataset| as a table where each row is a
+|Sample|, each column of the table is a |Field|.
 
 All samples must have their `filepath` field populated, which points to the
 source data for the sample on disk. By default, samples are also given `id`,
 `metadata`, and `tags` fields that can store common information.
-
-See :ref:`using fields <using-fields>` for more information about sample
-fields.
 
 .. code-block:: python
     :linenos:
@@ -108,6 +106,9 @@ Fields can be dynamically created, modified, and deleted. When a new |Field|
 is assigned to a |Sample| in a |Dataset|, it is automatically added to the
 dataset's schema and thus accessible on all other samples in the dataset. If
 a |Field| is unset on a particular |Sample|, its value will be `None`.
+
+See :ref:`using fields <using-fields>` for more information about sample
+fields.
 
 .. code-block:: python
     :linenos:
@@ -145,13 +146,15 @@ a |Field| is unset on a particular |Sample|, its value will be `None`.
 Tags
 ----
 
-:ref:`Tags <using-tags>` are a default |Field| provided on all |Sample|
-instances. The `tags` attribute of a |Sample| stores a list of strings that can
-be used flexibly to store information about a sample.
+Tags are a default |Field| provided on all |Sample| instances. The `tags`
+attribute of a |Sample| stores a list of strings that can be used flexibly to
+store information about a sample.
 
 A typical use case is to tag the dataset split (`test`, `train`, `validation`)
 to which the |Sample| belongs. However, you are free to use tags however you
-like:
+like.
+
+See :ref:`using tags <using-tags>` for more information about tags.
 
 .. code-block:: python
     :linenos:
@@ -167,11 +170,9 @@ like:
 Metadata
 --------
 
-:ref:`Metadata <using-metadata>` is a default |Field| provided on all |Sample|
-instances. The `metadata` attribute of a |Sample| stores data type-specific
-metadata about the raw data in the sample. For generic (non-image) data, there
-is a |Metadata| class. For images, the |ImageMetadata| subclass stores
-additional image-specific fields.
+Metadata  is a default |Field| provided on all |Sample| instances. The
+`metadata` attribute of a |Sample| stores data type-specific metadata about the
+raw data in the sample.
 
 See :ref:`using metadata <using-metadata>` for more details about adding
 metadata to your samples.
@@ -184,7 +185,6 @@ metadata to your samples.
     metadata = fo.ImageMetadata.build_for(image_path)
 
     sample = fo.Sample(filepath=image_path, metadata=metadata)
-
     print(sample)
 
 .. code-block:: text
@@ -205,8 +205,8 @@ metadata to your samples.
 Labels
 ------
 
-:ref:`Labels <using-labels>` store semantic information about the sample, such
-as ground annotations or model predictions.
+Labels store semantic information about the sample, such as ground annotations
+or model predictions.
 
 FiftyOne provides a |Label| subclass for common tasks:
 
@@ -264,9 +264,12 @@ labels in your samples.
 DatasetViews
 ------------
 
-:ref:`DatasetViews <using-dataset-views>` are a powerful tool for exploring
-your datasets. You can use |DatasetView| instances to search, filter, sort, and
-manipulate subsets of your datasets to perform the analysis that you need.
+Dataset views are a powerful tool for exploring your datasets. You can use
+|DatasetView| instances to search, filter, sort, and manipulate subsets of your
+datasets to perform the analysis that you need.
+
+See :doc:`using DatasetViews <using_views>` for a full walkthrough of dataset
+view features.
 
 .. code-block:: python
     :linenos:

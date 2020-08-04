@@ -1,5 +1,5 @@
 """
-FiftyOne :class:`fiftyone.core.view.DatasetView` stage definitions.
+View stages.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -24,6 +24,7 @@ from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 from fiftyone.core.expressions import ViewExpression
+from fiftyone.core.odm.sample import default_sample_fields
 
 import eta.core.utils as etau
 
@@ -63,8 +64,7 @@ class ViewStage(object):
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.ViewStage` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -128,8 +128,7 @@ class Exclude(ViewStage):
         return self._sample_ids
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Exclude` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -139,6 +138,46 @@ class Exclude(ViewStage):
 
     def _kwargs(self):
         return {"sample_ids": self._sample_ids}
+
+
+class ExcludeFields(ViewStage):
+    """Excludes the fields with the given names from the samples in the view.
+
+    Note: Default fields cannot be excluded.
+
+    Args:
+        field_names: a field name or iterable of field names to exclude
+    """
+
+    def __init__(self, field_names):
+        if etau.is_str(field_names):
+            field_names = [field_names]
+
+        self._field_names = list(field_names)
+        self._validate()
+
+    @property
+    def field_names(self):
+        """The list of field names to exclude."""
+        return self._field_names
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return [{"$unset": self._field_names}]
+
+    def _kwargs(self):
+        return {"field_names": self._field_names}
+
+    def _validate(self):
+        invalid_fields = set(self._field_names) & set(default_sample_fields())
+        if invalid_fields:
+            raise ValueError(
+                "Cannot exclude default fields: %s" % list(invalid_fields)
+            )
 
 
 class Exists(ViewStage):
@@ -154,12 +193,11 @@ class Exists(ViewStage):
 
     @property
     def field(self):
-        """The field to check for existence."""
+        """The field to check if exists."""
         return self._field
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Exists` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -170,43 +208,16 @@ class Exists(ViewStage):
         return {"field": self._field}
 
 
-class Limit(ViewStage):
-    """Limits the view to the given number of samples.
+class _FilterList(ViewStage):
+    """Base class for stages that filter elements of a list field of a
+    document.
+
+    The actual document field to filter is exposed via the
+    :meth:`_FilterList.list_field` property, which may be computed from the
+    provided ``field``.
 
     Args:
-        limit: the maximum number of samples to return. If a non-positive
-            number is provided, an empty view is returned
-    """
-
-    def __init__(self, limit):
-        self._limit = limit
-
-    @property
-    def limit(self):
-        """The maximum number of samples to return."""
-        return self._limit
-
-    def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Limit` instance.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
-        if self._limit <= 0:
-            return Match({"_id": None}).to_mongo()
-
-        return [{"$limit": self._limit}]
-
-    def _kwargs(self):
-        return {"limit": self._limit}
-
-
-class ListFilter(ViewStage):
-    """Filters the list elements in the samples in the stage.
-
-    Args:
-        field: the field to filter, which must be a list field
+        field: the field to filter
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
@@ -219,7 +230,7 @@ class ListFilter(ViewStage):
 
     @property
     def field(self):
-        """The list field to filter."""
+        """The field to filter."""
         return self._field
 
     @property
@@ -227,9 +238,15 @@ class ListFilter(ViewStage):
         """The filter expression."""
         return self._filter
 
+    @property
+    def list_field(self):
+        """The *actual* list field to filter, which may be computed from
+        `self.field`.
+        """
+        return self.field
+
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Match` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -237,9 +254,9 @@ class ListFilter(ViewStage):
         return [
             {
                 "$addFields": {
-                    self._field: {
+                    self.list_field: {
                         "$filter": {
-                            "input": "$" + self._field,
+                            "input": "$" + self.list_field,
                             "cond": self._get_mongo_filter(),
                         }
                     }
@@ -264,6 +281,70 @@ class ListFilter(ViewStage):
             )
 
 
+class FilterClassifications(_FilterList):
+    """Filters the :class:`fiftyone.core.labels.Classification` elements in the
+    specified :class:`fiftyone.core.labels.Classifications` field of the
+    samples in a view.
+
+    Args:
+        field: the field to filter, which must be a
+            :class:`fiftyone.core.labels.Classifications`
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    @property
+    def list_field(self):
+        return self.field + ".classifications"
+
+
+class FilterDetections(_FilterList):
+    """Filters the :class:`fiftyone.core.labels.Detection` elements in the
+    specified :class:`fiftyone.core.labels.Detections` field of the samples in
+    the stage.
+
+    Args:
+        field: the field to filter, which must be a
+            :class:`fiftyone.core.labels.Detections`
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    @property
+    def list_field(self):
+        return self.field + ".detections"
+
+
+class Limit(ViewStage):
+    """Limits the view to the given number of samples.
+
+    Args:
+        num: the maximum number of samples to return. If a non-positive
+            number is provided, an empty view is returned
+    """
+
+    def __init__(self, limit):
+        self._limit = limit
+
+    @property
+    def limit(self):
+        """The maximum number of samples to return."""
+        return self._limit
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return [{"$limit": self._limit}]
+
+    def _kwargs(self):
+        return {"limit": self._limit}
+
+
 class Match(ViewStage):
     """Filters the samples in the stage by the given filter.
 
@@ -283,8 +364,7 @@ class Match(ViewStage):
         return self._filter
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Match` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -324,8 +404,7 @@ class MatchTag(ViewStage):
         return self._tag
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.MatchTag` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -355,8 +434,7 @@ class MatchTags(ViewStage):
         return self._tags
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.MatchTags` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -386,8 +464,7 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Mongo` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -414,8 +491,7 @@ class Select(ViewStage):
         return self._sample_ids
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Select` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -425,6 +501,46 @@ class Select(ViewStage):
 
     def _kwargs(self):
         return {"sample_ids": self._sample_ids}
+
+
+class SelectFields(ViewStage):
+    """Selects *only* the fields with the given names from the samples in the
+    view. All other fields are excluded.
+
+    Note: Default sample fields are always selected and will be added if not
+    included in ``field_names``.
+
+    Args:
+        field_names (None): a field name or iterable of field names to select.
+            If not specified, just the default fields will be selected
+    """
+
+    def __init__(self, field_names=None):
+        default_fields = default_sample_fields()
+
+        if field_names:
+            if etau.is_str(field_names):
+                field_names = [field_names]
+
+            self._field_names = list(set(field_names) | set(default_fields))
+        else:
+            self._field_names = list(default_fields)
+
+    @property
+    def field_names(self):
+        """The list of field names to select."""
+        return self._field_names
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return [{"$project": {fn: True for fn in self.field_names}}]
+
+    def _kwargs(self):
+        return {"field_names": self._field_names}
 
 
 class SortBy(ViewStage):
@@ -455,8 +571,7 @@ class SortBy(ViewStage):
         return self._reverse
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.SortBy` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -504,8 +619,7 @@ class Skip(ViewStage):
         return self._skip
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Skip` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -533,8 +647,7 @@ class Take(ViewStage):
         return self._size
 
     def to_mongo(self):
-        """Returns the MongoDB version of the
-        :class:`fiftyone.core.stages.Take` instance.
+        """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
