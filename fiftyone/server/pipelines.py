@@ -5,10 +5,10 @@ FiftyOne App pipeline definiutions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 LABELS = "labels"
 SCALARS = "scalars"
 TAGS = "tags"
-
 
 DISTRIBUTION_PIPELINES = {
     LABELS: [

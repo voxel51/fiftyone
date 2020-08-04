@@ -5,7 +5,10 @@ codebase.
 
 We currently follow all of the practices established in
 [ETA](https://github.com/voxel51/eta) for the Python code in this repository,
-so this guide is mostly pointers to the relevant resources there!
+so this guide is mostly pointers to the relevant resources there.
+
+> Happy exception: FiftyOne is strictly Python 3 code, so we do not follow the
+> Python 2 compability instructions in ETA!
 
 ## Coding style
 
@@ -17,8 +20,8 @@ so this guide is mostly pointers to the relevant resources there!
 ## Documentation
 
 `docs/generate_docs.bash` is the script used to build the documentation. You
-will need fiftyone and fiftyone-brain installed in your environment for it to
-work. A few flags are supported:
+will need `fiftyone` and `fiftyone-brain` installed in your environment for it
+to work. A few flags are supported:
 
 -   `-c` performs a clean build by removing the docs/build folder beforehand.
     This is sometimes necessary to force updates, e.g. if you have edited a
