@@ -144,7 +144,7 @@ def evaluate_detections(
                 preds = [preds[i] for i in inds]
                 sample_cats[cat]["preds"] = preds
 
-                gt_eval_ids = [g[gt_key]["gt_id"] for g in gts]
+                gt_ids = [g[gt_key]["gt_id"] for g in gts]
 
                 gt_boxes = [list(g.bounding_box) for g in gts]
                 pred_boxes = [list(p.bounding_box) for p in preds]
