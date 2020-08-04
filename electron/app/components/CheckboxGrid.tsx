@@ -1,44 +1,40 @@
 import React from "react";
 import styled from "styled-components";
+import { Checkbox, FormControlLabel } from "@material-ui/core";
 
 const Body = styled.div`
-  display: grid;
-  grid-template-columns: ${({ columnWidths }) =>
-    columnWidths.map((c) => c + "fr").join(" ")};
   vertical-align: middle;
 
-  > label,
-  > span {
-    line-height: 1.5em;
-  }
+  label {
+    width: 100%;
+    margin-right: 0;
 
-  input {
-    vertical-align: middle;
-    margin-top: 0;
-    margin-bottom: 3px;
-    margin-right: 6px;
+    .MuiTypography-body1 {
+      font-size: unset;
+    }
+
+    .MuiFormControlLabel-label {
+      width: 100%;
+
+      span.data {
+        float: right;
+      }
+    }
   }
 `;
 
 export type Entry = {
   name: string;
   selected: boolean;
-  data: Array;
+  data: Any;
 };
 
 type Props = {
   entries: Entry[];
   onCheck: (entry: Entry) => void;
-  columnWidths: number[];
 };
 
-export default ({ entries, onCheck, columnWidths = [] }: Props) => {
-  const dataColumns = Math.max(...entries.map((e) => e.data.length));
-  const dataIndices = Array.from({ length: dataColumns }).map((_, i) => i);
-  const allColumnWidths = Array.from({ length: dataColumns + 1 }).map(
-    (_, i) => columnWidths[i] || 1
-  );
-
+const CheckboxGrid = ({ entries, onCheck }: Props) => {
   const handleCheck = (entry) => {
     if (onCheck) {
       onCheck({ ...entry, selected: !entry.selected });
@@ -46,22 +42,27 @@ export default ({ entries, onCheck, columnWidths = [] }: Props) => {
   };
 
   return (
-    <Body columnWidths={allColumnWidths}>
+    <Body>
       {entries.map((entry) => (
-        <React.Fragment key={entry.name}>
-          <label>
-            <input
-              type="checkbox"
-              checked={entry.selected}
-              onChange={() => handleCheck(entry)}
-            />
-            <span>{entry.name}</span>
-          </label>
-          {dataIndices.map((i) => (
-            <span key={i}>{entry.data[i]}</span>
-          ))}
-        </React.Fragment>
+        <div>
+          <FormControlLabel
+            label={
+              <>
+                <span className="name">{entry.name}</span>
+                <span className="data">{entry.data}</span>
+              </>
+            }
+            control={
+              <Checkbox
+                checked={entry.selected}
+                onChange={() => handleCheck(entry)}
+              />
+            }
+          />
+        </div>
       ))}
     </Body>
   );
 };
+
+export default CheckboxGrid;

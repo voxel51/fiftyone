@@ -19,6 +19,10 @@ type Props = {
 
 const Container = styled.div`
   margin-bottom: 2px;
+
+  .MuiCheckbox-root {
+    padding: 4px 8px 4px 4px;
+  }
 `;
 
 const Cell = ({ label, entries, onSelect }) => {
