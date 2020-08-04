@@ -244,7 +244,8 @@ manipulate subsets of your datasets to perform the analysis that you need.
 
     similar_cats = cats.sort_by("uniqueness", reverse=False)
 
-    fo.launch_app(view=similar_cats)
+    session = fo.launch_app(view=similar_cats)
+    session.wait()
 
 .. image:: ../images/cats-similiar.png
    :alt: App
