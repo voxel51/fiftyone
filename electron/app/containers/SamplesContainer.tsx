@@ -76,7 +76,7 @@ const SamplesContainer = (props) => {
                 tags={tagNames.map((n) => ({
                   name: n,
                   count: tagSampleCounts[n],
-                  selected: activeTags[n],
+                  selected: Boolean(activeTags[n]),
                 }))}
                 onSelectTag={(e) =>
                   setActiveTags({ ...activeTags, [e.name]: e.selected })

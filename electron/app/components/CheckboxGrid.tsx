@@ -44,7 +44,7 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
   return (
     <Body>
       {entries.map((entry) => (
-        <div>
+        <div key={entry.name}>
           <FormControlLabel
             label={
               <>
