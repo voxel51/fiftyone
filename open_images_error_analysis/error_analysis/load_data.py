@@ -119,25 +119,23 @@ def load_open_images_dataset(
 
             # parse ground truth image labels
             if all_label_annotations is not None:
-                cur_lab_anns = all_label_annotations.loc[
-                    all_label_annotations["ImageID"] == image_id
-                ]
+                cur_lab_anns = all_label_annotations.query(
+                    "ImageID == '%s'" % image_id
+                )
                 if not cur_lab_anns.empty:
                     kwargs[GT_IMAGE_LABELS] = df2classifications(cur_lab_anns)
 
             # parse ground truth bounding boxes
             if all_location_annotations is not None:
-                cur_loc_anns = all_location_annotations.loc[
-                    all_location_annotations["ImageID"] == image_id
-                ]
+                cur_loc_anns = all_location_annotations.query(
+                    "ImageID == '%s'" % image_id
+                )
                 if not cur_loc_anns.empty:
                     kwargs[GT_DETECTIONS] = df2detections(cur_loc_anns)
 
             # parse prediction bounding boxes
             if all_predictions is not None:
-                cur_preds = all_predictions.loc[
-                    all_predictions["ImageID"] == image_id
-                ]
+                cur_preds = all_predictions.query("ImageID == '%s'" % image_id)
                 if not cur_preds.empty:
                     kwargs[prediction_field_name] = df2detections(cur_preds)
 
@@ -209,7 +207,7 @@ def df2classifications(df):
             fol.Classification(
                 label=row.LabelName,
                 confidence=row.Confidence,
-                **dict(row[supplemental_columns]),
+                **{sc: row[sc] for sc in supplemental_columns},
             )
             for _, row in df.iterrows()
         ]
@@ -254,7 +252,7 @@ def df2detections(df):
                     row.XMax - row.XMin,
                     row.YMax - row.YMin,
                 ],
-                **dict(row[supplemental_columns]),
+                **{sc: row[sc] for sc in supplemental_columns},
             )
             for _, row in df.iterrows()
         ]
