@@ -393,5 +393,5 @@ your custom format.
    :hidden:
 
    Loading datasets <datasets>
-   Loading samples <samples>
+   Adding samples <samples>
    Zoo datasets <zoo>

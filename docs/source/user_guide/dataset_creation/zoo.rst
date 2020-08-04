@@ -1,5 +1,5 @@
-Loading Zoo Datasets
-====================
+The Dataset Zoo
+===============
 
 .. default-role:: code
 
