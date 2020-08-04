@@ -60,7 +60,7 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
                     checked={entry.selected}
                     onChange={() => handleCheck(entry)}
                     style={{
-                      color: entry.selected ? entry.color : theme.fontDarkest,
+                      color: entry.selected ? entry.color : theme.fontDark,
                     }}
                   />
                 )}

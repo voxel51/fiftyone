@@ -51,8 +51,8 @@ export const darkTheme = {
   brandMoreTransparent: orange49a10,
 
   font: white100,
-  fontDark: grey60,
-  fontDarkest: grey68,
+  fontDark: grey68,
+  fontDarkest: grey60,
 
   secondary: blue53,
 };
