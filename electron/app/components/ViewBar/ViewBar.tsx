@@ -44,7 +44,7 @@ const ViewBar = () => {
       {state.matches("running")
         ? stages.map((stage, i) => {
             return (
-              <>
+              <React.Fragment key={stage.id}>
                 {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
                   <AddViewStage
                     key={`insert-button-${stage.id}`}
@@ -53,7 +53,7 @@ const ViewBar = () => {
                   />
                 ) : null}
                 <ViewStage key={stage.id} stageRef={stage.ref} />
-              </>
+              </React.Fragment>
             );
           })
         : null}
