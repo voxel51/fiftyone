@@ -38,6 +38,9 @@ function Routes({ port }) {
     activeTags,
     activeLabels,
     activeOther,
+    setActiveTags,
+    setActiveLabels,
+    setActiveOther,
     colors,
     labelData,
   };

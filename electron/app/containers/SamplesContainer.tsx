@@ -27,14 +27,20 @@ const Root = styled.div`
 `;
 
 const SamplesContainer = (props) => {
+  const {
+    activeTags,
+    activeLabels,
+    activeOther,
+    setActiveTags,
+    setActiveLabels,
+    setActiveOther,
+  } = props.displayProps;
+
   const [showSidebar, setShowSidebar] = useState(false);
   const [stuck, setStuck] = useState(false);
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
-  const [selectedTags, setSelectedTagsItem] = wrapSetWithItemSetter(
-    useRecoilState(atoms.selectedTags)
-  );
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -70,9 +76,11 @@ const SamplesContainer = (props) => {
                 tags={tagNames.map((n) => ({
                   name: n,
                   count: tagSampleCounts[n],
-                  selected: selectedTags.has(n),
+                  selected: activeTags[n],
                 }))}
-                onSelectTag={(e) => setSelectedTagsItem(e.name, e.selected)}
+                onSelectTag={(e) =>
+                  setActiveTags({ ...activeTags, [e.name]: e.selected })
+                }
                 labels={[]}
                 scalars={[]}
               />

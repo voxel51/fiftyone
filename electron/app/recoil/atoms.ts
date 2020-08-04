@@ -19,8 +19,3 @@ export const labelData = atom({
   key: "labelData",
   default: {},
 });
-
-export const selectedTags = atom({
-  key: "selectedTags",
-  default: new Set(),
-});
