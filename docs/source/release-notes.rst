@@ -15,8 +15,9 @@ Core
   :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
   :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`, and
   :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stages
-- Added :mod:`a utility <fiftyone.utils.XXXXX>` for evaluating object
-  detections in FiftyOne
+- Added an
+  :meth:`evaluate_detections() <fiftyone.utils.eval.coco.evaluate_detections>`
+  utility for evaluating object detections in FiftyOne datasets
 - Adding support for rendering annotated versions of sample data with their
   labels overlaid via a
   :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
@@ -24,10 +25,11 @@ Core
 
 Documentation
 ^^^^^^^^^^^^^
-- Added :doc:`a tutorial </tutorials/XXXXX>` demonstrating COCO evaluation
-  workflows powered by FiftyOne
-- Added :doc:`full documentation </user_guide/views>` for using expressions
-  to construct DatasetView :meth:`match() <fiftyone.core.collections.SampleCollection.match>`,
+- Added :doc:`a tutorial </tutorials/evaluate_detections>` demonstrating
+  object detection evaluation workflows powered by FiftyOne
+- Added :doc:`full documentation </user_guide/using_views>` for using
+  expressions to construct DatasetView
+  :meth:`match() <fiftyone.core.collections.SampleCollection.match>`,
   :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
   :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`, and
   :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stages
