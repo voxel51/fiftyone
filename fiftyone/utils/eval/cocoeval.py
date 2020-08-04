@@ -43,6 +43,12 @@ def evaluate_detections(
 
         [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
 
+    It should be noted that if a :class:`fiftyone.core.labels.Detection` in the
+    ground truth field has a boolean attribute called `iscrowd`, then this
+    detection will be matched to multiple predictions and result in them all
+    being true positives. This follows evaluation performed in using the COCO
+    dataset in pycocotools.
+
     Dictionaries are added to each predicted/ground truth
     :class:`fiftyone.core.labels.Detections` instance in the fields listed
     below; these fields tabulate the true positive (TP), false positive (FP),
@@ -110,11 +116,11 @@ def evaluate_detections(
                     iou_str: {"gt_id": -1, "iou": -1}
                     for iou_str in _IOU_THRESHOLD_STRS
                 }
-                det[pred_key]["eval_id"] = eval_id
+                det[pred_key]["pred_id"] = eval_id
                 eval_id += 1
                 if det.label not in sample_cats:
                     sample_cats[det.label] = {}
-                    sample_cats[det.label]["preds"] = [det]
+                    sample_cats[det.label]["preds"] = []
                     sample_cats[det.label]["gts"] = []
                 sample_cats[det.label]["preds"].append(det)
 
@@ -125,12 +131,12 @@ def evaluate_detections(
                     for iou_str in _IOU_THRESHOLD_STRS
                 }
 
-                det[gt_key]["eval_id"] = eval_id
+                det[gt_key]["gt_id"] = eval_id
                 eval_id += 1
                 if det.label not in sample_cats:
                     sample_cats[det.label] = {}
                     sample_cats[det.label]["preds"] = []
-                    sample_cats[det.label]["gts"] = [det]
+                    sample_cats[det.label]["gts"] = []
                 sample_cats[det.label]["gts"].append(det)
 
             # Compute IoU for every detection and gt
@@ -139,20 +145,20 @@ def evaluate_detections(
                 preds = dets["preds"]
 
                 inds = np.argsort(
-                    [-p["confidence"] for p in preds], kind="mergesort"
+                    [-(p.confidence or 0.0) for p in preds], kind="mergesort"
                 )
                 preds = [preds[i] for i in inds]
                 sample_cats[cat]["preds"] = preds
 
-                gt_eval_ids = [g[gt_key]["eval_id"] for g in gts]
+                gt_ids = [g[gt_key]["gt_id"] for g in gts]
 
                 gt_boxes = [list(g.bounding_box) for g in gts]
                 pred_boxes = [list(p.bounding_box) for p in preds]
 
-                iscrowd = [0] * len(gt_boxes)
+                iscrowd = [False] * len(gt_boxes)
                 for gind, g in enumerate(gts):
                     if "iscrowd" in g.attributes:
-                        iscrowd[gind] = g.attributes["iscrowd"].value
+                        iscrowd[gind] = bool(g.attributes["iscrowd"].value)
 
                 # Get the IoU of every prediction with every ground truth
                 # shape = [num_preds, num_gts]
@@ -160,7 +166,7 @@ def evaluate_detections(
 
                 for pind, gt_ious in enumerate(ious):
                     preds[pind][pred_key]["ious"][cat] = list(
-                        zip(gt_eval_ids, gt_ious)
+                        zip(gt_ids, gt_ious)
                     )
 
             #
@@ -181,7 +187,7 @@ def evaluate_detections(
                 true_positives = 0
                 false_positives = 0
                 for cat, dets in sample_cats.items():
-                    gt_by_id = {g[gt_key]["eval_id"]: g for g in dets["gts"]}
+                    gt_by_id = {g[gt_key]["gt_id"]: g for g in dets["gts"]}
 
                     # Note: predictions were sorted by confidence in the
                     # previous step
@@ -193,18 +199,18 @@ def evaluate_detections(
                         if cat in pred[pred_key]["ious"]:
                             best_match = -1
                             best_match_iou = min([iou_thresh, 1 - 1e-10])
-                            for eval_id, iou in pred[pred_key]["ious"][cat]:
-                                gt = gt_by_id[eval_id]
+                            for gt_id, iou in pred[pred_key]["ious"][cat]:
+                                gt = gt_by_id[gt_id]
                                 curr_gt_match = gt[gt_key]["matches"][iou_str][
                                     "pred_id"
                                 ]
 
                                 if "iscrowd" in gt.attributes:
-                                    iscrowd = int(
+                                    iscrowd = bool(
                                         gt.attributes["iscrowd"].value
                                     )
                                 else:
-                                    iscrowd = 0
+                                    iscrowd = False
 
                                 # Cannot match two preds to the same gt unless
                                 # the gt is a crowd
@@ -217,7 +223,7 @@ def evaluate_detections(
                                     continue
 
                                 best_match_iou = iou
-                                best_match = eval_id
+                                best_match = gt_id
 
                             if best_match > -1:
                                 # If the prediction was matched, store the eval
@@ -225,7 +231,7 @@ def evaluate_detections(
                                 # pred
                                 gt_to_store = gt_by_id[best_match][gt_key]
                                 gt_to_store["matches"][iou_str] = {
-                                    "pred_id": pred[pred_key]["eval_id"],
+                                    "pred_id": pred[pred_key]["pred_id"],
                                     "iou": best_match_iou,
                                 }
                                 pred[pred_key]["matches"][iou_str] = {
@@ -235,6 +241,9 @@ def evaluate_detections(
                                 true_positives += 1
                             else:
                                 false_positives += 1
+
+                        elif pred.label == cat:
+                            false_positives += 1
 
                 result_dict["true_positives"][iou_str] = true_positives
                 result_dict["false_positives"][iou_str] = false_positives
@@ -260,7 +269,7 @@ def evaluate_detections(
             sample.save()
 
 
-def iou_count(samples, pred_field, gt_field, iou):
+def save_tp_fp_fn_counts(samples, pred_field, gt_field, iou):
     """Saves the true positive (TP), false positive (FP), and false negative
     (FN) counts at the given IoU level in top-level fields of each sample.
 
