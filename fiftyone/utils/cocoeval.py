@@ -297,7 +297,7 @@ def iou_count(samples, pred_field, gt_field, iou):
         )
         return
 
-    logger.info("Saving TP/FP/FN counts @IoU %f...", iou)
+    logger.info("Saving TP/FP/FN counts for IoU %f...", iou)
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
             result_dict = sample[pred_field][pred_key]
