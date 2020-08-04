@@ -84,6 +84,15 @@ from .document import (
 )
 
 
+def default_sample_fields():
+    """The default fields present on a :class:`SampleDocument` object.
+
+    Returns:
+        an ordered tuple of string field names
+    """
+    return DatasetSampleDocument._fields_ordered
+
+
 def no_delete_default_field(func):
     """Wrapper for :func:`SampleDocument.delete_field` that prevents deleting
     default fields of :class:`SampleDocument`.
@@ -95,7 +104,7 @@ def no_delete_default_field(func):
     @wraps(func)
     def wrapper(cls_or_self, field_name, *args, **kwargs):
         # pylint: disable=no-member
-        if field_name in DatasetSampleDocument._fields_ordered:
+        if field_name in default_sample_fields():
             raise ValueError("Cannot delete default field '%s'" % field_name)
 
         return func(cls_or_self, field_name, *args, **kwargs)
@@ -547,7 +556,7 @@ class NoDatasetSampleDocument(SampleDocument):
 
     # pylint: disable=no-member
     default_fields = DatasetSampleDocument._fields
-    default_fields_ordered = DatasetSampleDocument._fields_ordered
+    default_fields_ordered = default_sample_fields()
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()

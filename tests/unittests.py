@@ -1194,12 +1194,13 @@ class ViewTest(unittest.TestCase):
                         ),
                     ]
                 ),
+                another_field=51,
             )
         )
 
         view = (
             dataset.view()
-            .exclude_fields(["tags"])
+            .exclude_fields(["another_field"])
             .filter_detections("test_dets", F("confidence") > 0.5)
         )
 
