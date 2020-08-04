@@ -459,6 +459,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dicts = [sample.to_mongo_dict() for sample in samples]
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
+
         self._collection.insert_many(dicts)  # adds "_id" to `d`
 
         for sample, d in zip(samples, dicts):
