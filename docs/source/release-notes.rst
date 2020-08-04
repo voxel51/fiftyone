@@ -27,12 +27,8 @@ Documentation
 ^^^^^^^^^^^^^
 - Added :doc:`a tutorial </tutorials/evaluate_detections>` demonstrating
   object detection evaluation workflows powered by FiftyOne
-- Added :doc:`full documentation </user_guide/using_views>` for using
-  expressions to construct DatasetView
-  :meth:`match() <fiftyone.core.collections.SampleCollection.match>`,
-  :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
-  :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`, and
-  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stages
+- Added :doc:`full documentation </user_guide/using_views>` for constructing
+  DatasetViews with powerful matching, filtering, and sorting operations
 - Added :doc:`a recipe </recipes/draw_labels>` showing how to render annotated
   versions of samples with label field(s) overlaid
 - Upgraded :doc:`dataset creation docs </user_guide/dataset_creation/index>`
