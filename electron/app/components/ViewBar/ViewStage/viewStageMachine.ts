@@ -11,7 +11,8 @@ export const createParameter = (
   type,
   value,
   submitted,
-  focusOnInit
+  focusOnInit,
+  hideDelete
 ) => ({
   id: uuid(),
   parameter: parameter,
@@ -21,6 +22,7 @@ export const createParameter = (
   submitted,
   focusOnInit,
   inputRef: {},
+  hideDelete,
 });
 
 const viewStageMachine = Machine(
@@ -34,6 +36,7 @@ const viewStageMachine = Machine(
       stageInfo: undefined,
       index: undefined,
       focusOnInit: undefined,
+      hideDelete: undefined,
     },
     initial: "decide",
     states: {
@@ -235,6 +238,11 @@ const viewStageMachine = Machine(
       },
     },
     on: {
+      "STAGE.SET_HIDE_DELETE": {
+        actions: assign({
+          index: (ctx, { index }) => index,
+        }),
+      },
       "STAGE.DELETE": "deleted",
       "PARAMETER.COMMIT": {
         target: "decide",

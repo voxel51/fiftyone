@@ -100,26 +100,6 @@ export default Machine(
         },
         on: {
           EDIT: "editing",
-          BLUR: [
-            {
-              target: ".pending",
-              cond: (ctx) => !ctx.submitted && ctx.prevValue !== "",
-              actions: [
-                assign({
-                  value: ({ prevValue }) => prevValue,
-                }),
-              ],
-            },
-            {
-              target: ".pending",
-              cond: (ctx) => !ctx.submitted && ctx.prevValue === "",
-              actions: sendParent("STAGE.DELETE"),
-            },
-            {
-              target: ".submitted",
-              cond: (ctx) => ctx.submitted,
-            },
-          ],
         },
       },
       editing: {
@@ -178,6 +158,28 @@ export default Machine(
           },
         },
       },
+    },
+    on: {
+      BLUR: [
+        {
+          target: "reading.pending",
+          cond: (ctx) => !ctx.submitted && ctx.prevValue !== "",
+          actions: [
+            assign({
+              value: ({ prevValue }) => prevValue,
+            }),
+          ],
+        },
+        {
+          target: "reading.pending",
+          cond: (ctx) => !ctx.submitted && ctx.prevValue === "",
+          actions: sendParent("STAGE.DELETE"),
+        },
+        {
+          target: ".reading.submitted",
+          cond: (ctx) => ctx.submitted,
+        },
+      ],
     },
   },
   {

@@ -90,6 +90,7 @@ const ViewStageDeleteDiv = animated(styled.div`
   position: relative;
   border-top-right-radius: 3px;
   border-bottom-left-radius: 3px;
+  border-left-width: 0;
   cursor: pointer;
 `);
 
@@ -121,7 +122,14 @@ const ViewStage = React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { id, stage, stageInfo, parameters } = state.context;
+  const {
+    id,
+    stage,
+    submitted,
+    hideDelete,
+    stageInfo,
+    parameters,
+  } = state.context;
 
   const isCompleted = ["reading.selected", "reading.submitted"].some(
     state.matches
@@ -133,13 +141,22 @@ const ViewStage = React.memo(({ stageRef }) => {
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
+    opacity: 1,
+    from: {
+      opacity: 0,
+    },
   });
+
+  console.log(submitted, hideDelete);
 
   const props = useSpring({
     borderStyle: isCompleted ? "solid" : "dashed",
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
+    borderRightWidth: isCompleted ? 1 : 2,
+    borderTopRightRadius: hideDelete && !submitted ? 3 : 0,
+    borderBottomRightRadius: hideDelete && !submitted ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -201,7 +218,9 @@ const ViewStage = React.memo(({ stageRef }) => {
         parameters.map((parameter) => (
           <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
         ))}
-      <ViewStageDelete spring={deleteProps} send={send} />
+      {!hideDelete || submitted ? (
+        <ViewStageDelete spring={deleteProps} send={send} />
+      ) : null}
     </ViewStageContainer>
   );
 });

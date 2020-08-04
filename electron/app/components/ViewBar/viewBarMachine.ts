@@ -1,9 +1,15 @@
-import { Machine, assign, spawn } from "xstate";
+import { Machine, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 import ViewStageStories from "./ViewStage/ViewStage.stories";
 
-export const createStage = (stage, index, stageInfo, focusOnInit) => ({
+export const createStage = (
+  stage,
+  index,
+  stageInfo,
+  focusOnInit,
+  hideDelete
+) => ({
   id: uuid(),
   submitted: false,
   stage: stage,
@@ -11,6 +17,7 @@ export const createStage = (stage, index, stageInfo, focusOnInit) => ({
   stageInfo,
   index,
   focusOnInit,
+  hideDelete,
 });
 
 export const createBar = (port) => ({
@@ -50,7 +57,8 @@ const viewBarMachine = Machine({
       entry: assign({
         stages: (ctx) => {
           return ctx.stages.map((stage, i) => {
-            const newStage = createStage(stage, i, ctx.stageInfo);
+            const newStage = createStage(stage, i, ctx.stageInfo, false, true);
+            console.log(newStage);
             return {
               ...newStage,
               ref: spawn(viewStageMachine.withContext(newStage)),
@@ -65,7 +73,13 @@ const viewBarMachine = Machine({
       actions: [
         assign({
           stages: (ctx, e) => {
-            const newStage = createStage("", e.index, ctx.stageInfo, true);
+            const newStage = createStage(
+              "",
+              e.index,
+              ctx.stageInfo,
+              true,
+              true
+            );
             return [
               ...ctx.stages.slice(0, e.index),
               {
@@ -76,6 +90,11 @@ const viewBarMachine = Machine({
             ];
           },
         }),
+        send(({ stages }) => ({
+          type: "STAGE.SET_HIDE_DELETE",
+          hideDelete: false,
+          to: stages[0].ref,
+        })),
       ],
     },
     "STAGE.COMMIT": {
@@ -97,12 +116,17 @@ const viewBarMachine = Machine({
         assign({
           stages: ({ stages }, e) => {
             if (stages.length === 1) {
-              return [{ ...e.stage, ref: stages[0].ref }];
+              return [{ ...e.stage, hideDelete: true, ref: stages[0].ref }];
             } else {
               return stages.filter((stage) => stage.id !== e.stage.id);
             }
           },
         }),
+        send(({ stages }) => ({
+          type: "STAGE.SET_HIDE_DELETE",
+          hideDelete: stages.length === 1,
+          to: stages[0].ref,
+        })),
       ],
     },
   },
