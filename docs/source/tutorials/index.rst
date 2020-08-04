@@ -34,8 +34,8 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
-    :header: Evaluating object detections 
-    :description: Object detections can be difficult to visualize making it hard to troubleshoot a detection model. This tutorial shows how to evaluate Faster-RCNN on MSCOCO using FiftyOne. 
+    :header: Evaluating object detections
+    :description: Object detections are difficult to visualize. This tutorial shows how FiftyOne makes it easy to execute powerful evaluation workflows on your data.
     :link: evaluate_detections.html
     :image: ../_static/images/tutorials/eval_dets.png
     :tags: Model-Evaluation,Detections
