@@ -5,4 +5,4 @@ Evaluation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .cocoeval import *
+from .coco import *

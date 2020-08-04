@@ -1,5 +1,5 @@
 """
-Detection evaluation using
+COCO-style detection evaluation using
 `pycocotools <https://github.com/cocodataset/cocoapi/tree/master/PythonAPI/pycocotools>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
