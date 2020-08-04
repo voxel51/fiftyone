@@ -58,7 +58,7 @@ export const ViewStageButton = animated(styled.button`
   }
 `);
 
-export const AddViewStage = ({ send, insertAt }) => {
+export const AddViewStage = React.memo(({ send, insertAt }) => {
   const theme = useContext(ThemeContext);
   const props = useSpring({
     background: theme.brandMoreTransparent,
@@ -76,6 +76,16 @@ export const AddViewStage = ({ send, insertAt }) => {
       +
     </ViewStageButton>
   );
+});
+
+const DeleteViewStageButton = animated(styled.div`
+  display: inline-block;
+  box-sizing: border-box;
+  border: 2px solid ${({ theme }) => theme.brand};
+`);
+
+const DeleteViewStage = ({ spring }) => {
+  return <DeleteViewStageButton style={spring}>x</DeleteViewStageButton>;
 };
 
 export default React.memo(({ stageRef }) => {
@@ -103,24 +113,33 @@ export default React.memo(({ stageRef }) => {
     },
   });
 
+  const [deleteProps, setDeleteProps] = useSpring(() => ({
+    display: "none",
+  }));
+
   const actionsMap = useMemo(
     () => ({
       focusInput: () => inputRef.current && inputRef.current.select(),
       blurInput: () => inputRef.current && inputRef.current.blur(),
     }),
-    [inputRef.current]
+    []
   );
 
   useEffect(() => {
-    stageRef.onTransition((state) => {
+    const listener = (state) => {
       state.actions.forEach((action) => {
         if (action.type in actionsMap) actionsMap[action.type]();
       });
-    });
-  }, [actionsMap, inputRef.current]);
+    };
+    stageRef.onTransition(listener);
+    return () => stageRef.listeners.delete(listener);
+  }, []);
 
   return (
-    <ViewStageContainer>
+    <ViewStageContainer
+      onMouseEnter={() => setDeleteProps({ display: "block" })}
+      onMouseLeave={() => setDeleteProps({ display: "none" })}
+    >
       <ViewStageDiv style={props}>
         <ViewStageInput
           placeholder="+ search sample"

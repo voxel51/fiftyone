@@ -45,16 +45,19 @@ export default React.memo(({ parameterRef }) => {
       focusInput: () => inputRef.current && inputRef.current.select(),
       blurInput: () => inputRef.current && inputRef.current.blur(),
     }),
-    [inputRef.current]
+    []
   );
 
   useEffect(() => {
-    parameterRef.onTransition((state) => {
+    const listener = (state) => {
       state.actions.forEach((action) => {
         if (action.type in actionsMap) actionsMap[action.type]();
       });
-    });
-  }, [actionsMap]);
+    };
+    parameterRef.onTransition(listener);
+
+    return () => parameterRef.listeners.delete(listener);
+  }, []);
 
   const { id, completed, parameter, stage, value, tail } = state.context;
 

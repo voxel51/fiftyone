@@ -4,11 +4,6 @@ import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
 import { useRecoilValue } from "recoil";
 
-import {
-  white96 as backgroundColor,
-  white85 as borderColor,
-} from "../../shared/colors";
-import { port } from "../../recoil/atoms";
 import { getSocket, useSubscribe } from "../../utils/socket";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine, { createBar } from "./viewBarMachine";
@@ -62,7 +57,7 @@ export default () => {
             );
           })
         : null}
-      {stages.length && stages[stages.length - 1].submitted ? (
+      {state.matches("running") && stages[stages.length - 1].submitted ? (
         <AddViewStage
           key={`insert-button-tail`}
           send={send}
