@@ -9,6 +9,7 @@ const Body = styled.div`
     width: 100%;
     margin-top: 3px;
     margin-bottom: 3px;
+    margin-left: 0;
     margin-right: 0;
 
     .MuiTypography-body1 {
@@ -22,6 +23,7 @@ const Body = styled.div`
     .MuiFormControlLabel-label {
       width: 100%;
       font-weight: bold;
+      padding-right: 6px;
 
       span.data {
         float: right;

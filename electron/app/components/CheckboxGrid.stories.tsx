@@ -40,9 +40,10 @@ export const contained = () => (
 export const colors = () => (
   <Box style={{ width: 300 }}>
     <StatefulCheckboxGrid
-      entries={["Red", "Yellow", "Green", "Blue"].map((c) => ({
+      entries={["Red", "Yellow", "Green", "Blue"].map((c, i) => ({
         name: c,
         color: c.toLowerCase(),
+        data: i,
       }))}
     />
   </Box>
