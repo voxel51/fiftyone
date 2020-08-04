@@ -78,7 +78,7 @@ const viewBarMachine = Machine({
               e.index,
               ctx.stageInfo,
               true,
-              true
+              false
             );
             return [
               ...ctx.stages.slice(0, e.index),
@@ -118,6 +118,7 @@ const viewBarMachine = Machine({
             if (stages.length === 1) {
               return [{ ...e.stage, hideDelete: true, ref: stages[0].ref }];
             } else {
+              console.log(e);
               return stages.filter((stage) => stage.id !== e.stage.id);
             }
           },

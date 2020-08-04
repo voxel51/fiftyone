@@ -196,9 +196,9 @@ const viewStageMachine = Machine(
             {
               target: "reading.pending",
               actions: [
-                sendParent(({ id }) => ({
+                sendParent((ctx) => ({
                   type: "STAGE.DELETE",
-                  id,
+                  stage: ctx,
                 })),
                 "blurInput",
               ],

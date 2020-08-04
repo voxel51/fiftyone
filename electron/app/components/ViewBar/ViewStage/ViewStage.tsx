@@ -89,7 +89,7 @@ const ViewStageDeleteDiv = animated(styled.div`
   display: inline-block;
   position: relative;
   border-top-right-radius: 3px;
-  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
   border-left-width: 0;
   cursor: pointer;
 `);
@@ -137,7 +137,6 @@ const ViewStage = React.memo(({ stageRef }) => {
 
   const deleteProps = useSpring({
     borderStyle: isCompleted ? "solid" : "dashed",
-    borderBottomRightRadius: isCompleted ? 0 : 3,
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
@@ -147,16 +146,14 @@ const ViewStage = React.memo(({ stageRef }) => {
     },
   });
 
-  console.log(submitted, hideDelete);
-
   const props = useSpring({
     borderStyle: isCompleted ? "solid" : "dashed",
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
-    borderRightWidth: isCompleted ? 1 : 2,
-    borderTopRightRadius: hideDelete && !submitted ? 3 : 0,
-    borderBottomRightRadius: hideDelete && !submitted ? 3 : 0,
+    borderRightWidth: isCompleted ? 0 : 2,
+    borderTopRightRadius: hideDelete && !isCompleted ? 3 : 0,
+    borderBottomRightRadius: hideDelete && !isCompleted ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -180,6 +177,7 @@ const ViewStage = React.memo(({ stageRef }) => {
     stageRef.onTransition(listener);
     return () => stageRef.listeners.delete(listener);
   }, []);
+  console.log(hideDelete, submitted);
 
   return (
     <ViewStageContainer>

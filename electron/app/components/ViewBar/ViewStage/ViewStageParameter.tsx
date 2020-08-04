@@ -64,7 +64,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
-    borderRightWidth: state.matches("reading.submitted") ? 1 : 2,
+    borderRightWidth: 2,
     opacity: 1,
     from: {
       opacity: 0,

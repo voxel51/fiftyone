@@ -105,7 +105,7 @@ export default Machine(
       editing: {
         entry: [
           assign({
-            prevValue: (ctx) => ctx.value,
+            prevValue: ({ value }) => value,
             focusOnInit: false,
           }),
           "focusInput",
@@ -114,7 +114,7 @@ export default Machine(
           CHANGE: {
             actions: [
               assign({
-                value: (ctx, e) => e.value,
+                value: (_, { value }) => value,
               }),
             ],
           },
@@ -152,7 +152,7 @@ export default Machine(
             target: "reading",
             actions: [
               assign({
-                value: (ctx) => ctx.prevValue,
+                value: ({ prevValue }) => prevValue,
               }),
             ],
           },
@@ -163,7 +163,7 @@ export default Machine(
       BLUR: [
         {
           target: "reading.pending",
-          cond: (ctx) => !ctx.submitted && ctx.prevValue !== "",
+          cond: ({ submitted, prevValue }) => !submitted && prevValue !== "",
           actions: [
             assign({
               value: ({ prevValue }) => prevValue,
@@ -172,12 +172,12 @@ export default Machine(
         },
         {
           target: "reading.pending",
-          cond: (ctx) => !ctx.submitted && ctx.prevValue === "",
+          cond: ({ submitted, prevValue }) => !submitted && prevValue === "",
           actions: sendParent("STAGE.DELETE"),
         },
         {
-          target: ".reading.submitted",
-          cond: (ctx) => ctx.submitted,
+          target: "reading.submitted",
+          cond: ({ submitted }) => submitted,
         },
       ],
     },
