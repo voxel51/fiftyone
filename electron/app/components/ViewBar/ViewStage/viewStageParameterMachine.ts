@@ -2,21 +2,36 @@ import { Machine, actions, sendParent, send } from "xstate";
 import viewStageMachine from "./viewStageMachine";
 const { assign, choose } = actions;
 
+/**
+ * See https://stackoverflow.com/questions/175739/built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
+ * for details about numbers and javascript
+ */
 const PARSER = {
   bool: {
     parse: (value) =>
       value.toLowerCase().charAt(0).toUpperCase() +
       value.toLowerCase().slice(1),
-    validate: (value) => ["true", "false"].indexOf(value.toLowerCase()),
+    validate: (value) => ["true", "false"].indexOf(value.toLowerCase()) >= 0,
   },
   float: {
-    parse: (value) => value,
-    validate: (value) => true,
+    parse: (value) => {
+      const stripped = value.replace(/[\s]/g, "");
+      const [integer, fractional] = stripped.split(".");
+      return integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + fractional;
+    },
+    validate: (value) => {
+      const stripped = value.replace(/[\s]/g, "");
+      return stripped !== "" && !isNaN(+stripped);
+    },
   },
   int: {
     parse: (value) =>
       value.replace(/[,\s]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","),
     validate: (value) => /^\d+$/.test(value.replace(/[,\s]/g, "")),
+  },
+  list: {
+    parse: (value) => value,
+    validate: (value) => true,
   },
   str: {
     parse: (value) => value,
@@ -111,14 +126,16 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
-                  value: PARSER[type].parse(value),
+                  value: ({ type, value }) =>
+                    PARSER[Array.isArray(type) ? type[0] : type].parse(value),
                 }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
                   parameter: ctx,
                 })),
               ],
-              cond: ({ type, value }) => PARSER[type].validate(value),
+              cond: ({ type, value }) =>
+                PARSER[Array.isArray(type) ? type[0] : type].validate(value),
             },
             {
               target: "decide",

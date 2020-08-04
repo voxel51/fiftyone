@@ -59,7 +59,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { id, completed, parameter, stage, value, tail } = state.context;
+  const { id, completed, parameter, stage, value, tail, type } = state.context;
 
   const props = useSpring({
     backgroundColor: state.matches("reading.submitted")
