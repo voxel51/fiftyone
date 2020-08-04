@@ -46,7 +46,7 @@ Dataset objects are singletons. Cool!
     _dataset2 = fo.load_dataset("my_second_dataset")
     _dataset2 is dataset2  # True
 
-If you try to *load* a dataset via `Dataset(...)` or *create* a new dataset via
+If you try to *load a dataset* via `Dataset(...)` or *create a new dataset* via
 :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to
 have a bad time:
 
@@ -54,7 +54,8 @@ have a bad time:
     :linenos:
 
     _dataset2 = fo.Dataset(name="my_second_dataset")
-    # Dataset 'my_second_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
+    # Dataset 'my_second_dataset' already exists; use `fiftyone.load_dataset()`
+    # to load an existing dataset
 
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
     # DoesNotExistError: Dataset 'my_fourth_dataset' not found
@@ -134,7 +135,7 @@ corresponding data on disk.
 .. note::
 
     Creating a new |Sample| does not load the source data into memory. Source
-    is read only as needed by the App.
+    data is read only as needed by the App.
 
 Adding samples to a dataset
 ---------------------------
@@ -962,5 +963,5 @@ For example, a |SampleView| may represent the contents of a sample with
 |Detections| below a specified threshold filtered out.
 
 .. custombutton::
-    :button_text: Learn more about DatasetViews!
+    :button_text: Learn more about DatasetViews
     :button_link: using_views.html
