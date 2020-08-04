@@ -32,16 +32,7 @@ Subpackages
 {%- if submodules %}
 Submodules
 ----------
-{% if separatemodules %}
 {{ toctree(submodules) }}
-{%- else %}
-{%- for submodule in submodules %}
-{% if show_headings %}
-{{- submodule | e | heading(2) }}
-{% endif %}
-{{ automodule(submodule, automodule_options) }}
-{% endfor %}
-{%- endif %}
 {% endif %}
 
 {%- if not modulefirst and not is_namespace %}
