@@ -32,9 +32,15 @@ on your data quickly and easily.
 
 .. customcalloutitem::
     :header: Using datasets
-    :description: Take a deep dive into FiftyOne datasets and how to use them to search, sort, and filter your data.
+    :description: Take a deep dive into FiftyOne datasets and how to use to store your data.
     :button_text: Learn more about using datasets
     :button_link: using_datasets.html
+
+.. customcalloutitem::
+    :header: Dataset views
+    :description: See FiftyOne shine with this powerful interface that lets you search, sort, and filter your data.
+    :button_text: Learn more about using dataset views
+    :button_link: using_views.html
 
 .. customcalloutitem::
     :header: Exporting datasets
@@ -88,6 +94,7 @@ on your data quickly and easily.
     Dataset basics<basics>
     Loading datasets<dataset_creation/index>
     Using datasets<using_datasets>
+    Dataset views<using_views>
     Exporting datasets<export_datasets>
     Drawing labels on samples<draw_labels>
     Viewing datasets in the App<app>

@@ -24,23 +24,35 @@ import numbers
 from bson import ObjectId, json_util
 
 import fiftyone.core.collections as foc
+import fiftyone.core.sample as fos
+import fiftyone.core.stages as fost
 
 
 class DatasetView(foc.SampleCollection):
     """A view into a :class:`fiftyone.core.dataset.Dataset`.
 
-    Dataset views represent oredered collections of subsets of
-    :class:`fiftyone.core.sample.Sample` instances in a dataset.
+    Dataset views represent ordered collections of subsets of samples in a
+    dataset.
 
     Operations on dataset views are designed to be chained together to yield
     the desired subset of the dataset, which is then iterated over to directly
-    access the samples. Each stage in the pipeline definining a
-    :class:`DatasetView` is represented by a
-    :class:`fiftyone.core.stages.ViewStage` instance.
+    access the sample views. Each stage in the pipeline defining a dataset view
+    is represented by a :class:`fiftyone.core.stages.ViewStage` instance.
+
+    The stages of a dataset view specify:
+
+    -   what subset of samples (and their order) should be included
+    -   what "parts" (fields and their elements) of the sample should be
+        included
+
+    Samples retrieved from dataset views are returns as
+    :class:`fiftyone.core.sample.SampleView` objects, as opposed to
+    :class:`fiftyone.core.sample.Sample` objects, since they may contain a
+    subset of the sample's content.
 
     Example use::
 
-        # Print paths for 5 random samples from the test split
+        # Print paths for 5 random samples from the test split of a dataset
         view = dataset.match_tag("test").take(5)
         for sample in view:
             print(sample.filepath)
@@ -125,11 +137,20 @@ class DatasetView(foc.SampleCollection):
         """Returns an iterator over the samples in the view.
 
         Returns:
-            an iterator over :class:`fiftyone.core.sample.Sample` instances
+            an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
+        selected_fields, excluded_fields = self._get_selected_excluded_fields()
+        filtered_fields = self._get_filtered_fields()
+
         for d in self.aggregate():
             try:
-                yield self._dataset._load_sample_from_dict(d)
+                doc = self._dataset._sample_dict_to_doc(d)
+                yield fos.SampleView(
+                    doc,
+                    selected_fields=selected_fields,
+                    excluded_fields=excluded_fields,
+                    filtered_fields=filtered_fields,
+                )
             except Exception as e:
                 raise ValueError(
                     "Failed to load sample from the database. This is likely "
@@ -267,3 +288,43 @@ class DatasetView(foc.SampleCollection):
         view = copy(self)
         view._stages.append(stage)
         return view
+
+    def _get_selected_excluded_fields(self):
+        """Checks all stages to find the selected and excluded fields.
+
+        Returns:
+            a tuple of
+
+            -   selected_fields: the set of selected fields
+            -   excluded_fields: the set of excluded_fields
+
+            One of these will always be ``None``, meaning nothing is
+            selected/excluded
+        """
+        selected_fields = None
+        excluded_fields = set()
+
+        for stage in self._stages:
+            if isinstance(stage, fost.SelectFields):
+                if selected_fields is None:
+                    selected_fields = set(stage.field_names)
+                else:
+                    selected_fields.intersection_update(stage.field_names)
+
+            if isinstance(stage, fost.ExcludeFields):
+                excluded_fields.update(stage.field_names)
+
+        if selected_fields is not None:
+            selected_fields.difference_update(excluded_fields)
+            excluded_fields = None
+
+        return selected_fields, excluded_fields
+
+    def _get_filtered_fields(self):
+        filtered_fields = set()
+
+        for stage in self._stages:
+            if isinstance(stage, fost._FilterList):
+                filtered_fields.add(stage.list_field)
+
+        return filtered_fields
