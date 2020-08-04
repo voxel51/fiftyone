@@ -1,5 +1,5 @@
-The Dataset Zoo
-===============
+FiftyOne Dataset Zoo
+====================
 
 .. default-role:: code
 
