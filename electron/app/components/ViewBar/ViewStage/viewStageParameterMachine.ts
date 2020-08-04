@@ -30,16 +30,24 @@ const PARSER = {
     validate: (value) => /^\d+$/.test(value.replace(/[,\s]/g, "")),
   },
   list: {
-    parse: (value) => value,
-    validate: (value) => true,
+    parse: (value, next) => {
+      const array = JSON.parse(value);
+      return JSON.stringify(array.map((e) => PARSER[next].parse(e)));
+    },
+    validate: (value, next) => {
+      const array = JSON.parse(value);
+      return (
+        Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
+      );
+    },
   },
   str: {
     parse: (value) => value,
     validate: (value) => true,
   },
-  any: {
+  dict: {
     parse: (value) => value,
-    validate: (value) => true,
+    validate: (value) => JSON.parse(value) instanceof Object,
   },
 };
 
@@ -127,7 +135,10 @@ export default Machine(
                 assign({
                   submitted: true,
                   value: ({ type, value }) =>
-                    PARSER[Array.isArray(type) ? type[0] : type].parse(value),
+                    PARSER[Array.isArray(type) ? type[0] : type].parse(
+                      value,
+                      type[1]
+                    ),
                 }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
@@ -135,7 +146,10 @@ export default Machine(
                 })),
               ],
               cond: ({ type, value }) =>
-                PARSER[Array.isArray(type) ? type[0] : type].validate(value),
+                PARSER[Array.isArray(type) ? type[0] : type].validate(
+                  value,
+                  type[1]
+                ),
             },
             {
               target: "decide",
