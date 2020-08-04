@@ -31,7 +31,7 @@ Installing FiftyOne
 
   **FiftyOne is currently in private beta.** If you haven't registered for the
   beta, `please sign up here <https://share.hsforms.com/1KuTDtQYWRTyU0yHNGgBFfw2ykyk>`_
-  so we can stay in touch with you about new features as they come out!
+  so we can keep you posted on new features as they come out!
 
 To install FiftyOne in a virtual environment, ensure you have activated any
 virtual environment that you are using, then run:
