@@ -34,6 +34,7 @@ const SamplesContainer = (props) => {
     setActiveTags,
     setActiveLabels,
     setActiveOther,
+    labelData,
   } = props.displayProps;
 
   const [showSidebar, setShowSidebar] = useState(false);

@@ -68,11 +68,7 @@ const Sample = ({
           })}
         {s.tags.map((t, i) => {
           return activeTags[t] ? (
-            <Tag
-              key={i}
-              name={String(t)}
-              color={colors[labelData.colorMapping[t]]}
-            />
+            <Tag key={i} name={String(t)} color={labelData.colorMapping[t]} />
           ) : null;
         })}
         {Object.keys(s)

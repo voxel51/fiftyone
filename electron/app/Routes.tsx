@@ -51,21 +51,26 @@ function Routes({ port }) {
     setNeedsLoad(false);
     setLoading(true);
     socket.emit("get_label_data", "", (data) => {
-      const colorMapping = {};
+      const mapping = {};
       const sortFn = (a, b) => (a._id.field > b._id.field ? 1 : -1);
       const labelKeys = data.labels ? data.labels.sort(sortFn) : [];
       for (const i in labelKeys) {
-        colorMapping[labelKeys[i]._id.field] = Number(i);
+        mapping[labelKeys[i]._id.field] = Number(i);
       }
       if (data.tags) {
         for (const i in data.tags.sort()) {
-          colorMapping[data.tags[i]] = data.labels.length + Number(i);
+          mapping[data.tags[i]] = data.labels.length + Number(i);
         }
+      }
+      const colorMapping = {};
+      for (const [k, v] of Object.entries(mapping)) {
+        colorMapping[k] = colors[v];
       }
       setLabelData({
         tags: data.tags,
         labels: data.labels,
-        colorMapping: colorMapping,
+        mapping,
+        colorMapping,
       });
       setLoading(false);
     });
