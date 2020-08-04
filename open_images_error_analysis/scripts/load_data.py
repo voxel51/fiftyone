@@ -57,7 +57,6 @@ if __name__ == "__main__":
 
     dataset = load_open_images_dataset(**vars(args))
 
-    # @todo(Tyler)
-    # dataset.persistent = True
+    dataset.persistent = True
 
     print(dataset)

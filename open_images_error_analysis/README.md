@@ -114,8 +114,10 @@ python scripts/inference.py \
 
 ### Installing FiftyOne
 
+We are going to use the [fiftyone](https://github.com/voxel51/fiftyone) package
+for visualizing the data.
+
 ```bash
-# @todo(Tyler) CONTINUE HERE
 pip install fiftyone
 ```
 
@@ -124,9 +126,13 @@ pip install fiftyone
 ```bash
 DATASET_NAME="open-images-v4-test"
 IMAGES_DIR=PATH/TO/IMAGES
+BOUNDING_BOXES_EXPANDED=/PATH/TO/test-annotations-bbox_expanded.csv
+IMAGE_LABELS_EXPANDED=/PATH/TO/test-annotations-human-imagelabels-boxable_expanded.csv
+PREDICTIONS_PATH=/PATH/TO/PREDICTIONS.csv
+CLASS_DESCRIPTIONS=/PATH/TO/class-descriptions-boxable.csv
 
 # @todo(Tyler)
-DATASET_NAME="testing"
+DATASET_NAME="open-images-v4-test"
 IMAGES_DIR=~/data/open-images-dataset/TESTING/test_images/
 BOUNDING_BOXES_EXPANDED=~/data/open-images-dataset/TESTING/test-annotations-bbox_expanded.csv
 IMAGE_LABELS_EXPANDED=~/data/open-images-dataset/TESTING/test-annotations-human-imagelabels-boxable_expanded.csv
@@ -140,8 +146,21 @@ python scripts/load_data.py \
     --prediction_field_name "faster_rcnn" \
     --class_descriptions_path ${CLASS_DESCRIPTIONS} \
     --load_images_with_preds \
-    --max_num_images 10 \
+    --max_num_images 100 \
     ${DATASET_NAME} ${IMAGES_DIR}
+```
+
+### (optional) Visualizing the data
+
+We can optionally visualize the data before evaluating. Open up a `python` or
+`ipython` terminal and run the following:
+
+```python
+import fiftyone as fo
+
+dataset = fo.load_dataset("open-images-v4-test")
+
+session = fo.launch_app(dataset=dataset)
 ```
 
 ## 5. Evaluating on a per-image granularity
