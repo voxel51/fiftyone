@@ -47,20 +47,6 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import OrderedDict
 from functools import wraps
 import json
@@ -70,6 +56,7 @@ from bson import json_util
 from bson.binary import Binary
 from mongoengine.errors import InvalidQueryError
 import numpy as np
+import six
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
