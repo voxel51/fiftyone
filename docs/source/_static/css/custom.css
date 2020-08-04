@@ -3,6 +3,11 @@ body {
     sans-serif;
 }
 
+a.reference.external:after {
+  font-family: "FontAwesome";
+  content: " \f08e";
+}
+
 .ui.tabular.menu .item {
   /* stop breaking tabs */
   width: unset;
@@ -387,6 +392,10 @@ article.pytorch-article .reference.download.internal {
 }
 
 /* tutorials cards */
+
+#tutorial-cards-container {
+  margin-bottom: 2rem;
+}
 
 #tutorial-cards-container .card.tutorials-card .tutorials-image img {
   height: 100%;
