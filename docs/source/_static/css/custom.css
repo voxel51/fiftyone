@@ -196,8 +196,6 @@ a:link,
 a:visited,
 p a:link,
 p a:visited,
-.pytorch-left-menu li.toctree-l1.current > a,
-.pytorch-left-menu li.toctree-l1.current > a:before,
 ul.pytorch-breadcrumbs a {
   color: var(--color-primary);
 }
@@ -375,7 +373,8 @@ article.pytorch-article .reference.download.internal {
   margin-left: 1rem;
 }
 
-.pytorch-left-menu li.toctree-l2.current > a {
+.pytorch-left-menu li.current > a,
+.pytorch-left-menu li.toctree-l1.current > a {
   color: var(--color-primary);
 }
 
