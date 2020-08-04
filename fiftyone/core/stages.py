@@ -5,25 +5,13 @@ View stages.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import reprlib
 
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 from fiftyone.core.expressions import ViewExpression
+from fiftyone.core.odm.sample import default_sample_fields
 
 import eta.core.utils as etau
 
@@ -142,8 +130,10 @@ class Exclude(ViewStage):
 class ExcludeFields(ViewStage):
     """Excludes the fields with the given names from the samples in the view.
 
+    Note: Default fields cannot be excluded.
+
     Args:
-        field_names: a field name or iterable of field names
+        field_names: a field name or iterable of field names to exclude
     """
 
     def __init__(self, field_names):
@@ -170,8 +160,11 @@ class ExcludeFields(ViewStage):
         return {"field_names": self._field_names}
 
     def _validate(self):
-        if "id" in self._field_names or "_id" in self._field_names:
-            raise ValueError("Cannot exclude the sample ID from a view")
+        invalid_fields = set(self._field_names) & set(default_sample_fields())
+        if invalid_fields:
+            raise ValueError(
+                "Cannot exclude default fields: %s" % list(invalid_fields)
+            )
 
 
 class Exists(ViewStage):
@@ -501,16 +494,24 @@ class SelectFields(ViewStage):
     """Selects *only* the fields with the given names from the samples in the
     view. All other fields are excluded.
 
+    Note: Default sample fields are always selected and will be added if not
+    included in ``field_names``.
+
     Args:
-        field_names: a field name or iterable of field names
+        field_names (None): a field name or iterable of field names to select.
+            If not specified, just the default fields will be selected
     """
 
-    def __init__(self, field_names):
-        if etau.is_str(field_names):
-            field_names = [field_names]
+    def __init__(self, field_names=None):
+        default_fields = default_sample_fields()
 
-        self._field_names = list(field_names)
-        self._validate()
+        if field_names:
+            if etau.is_str(field_names):
+                field_names = [field_names]
+
+            self._field_names = list(set(field_names) | set(default_fields))
+        else:
+            self._field_names = list(default_fields)
 
     @property
     def field_names(self):
@@ -523,22 +524,10 @@ class SelectFields(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        if not self.field_names:
-            return [{"$project": {"_id": True}}]
-
         return [{"$project": {fn: True for fn in self.field_names}}]
 
     def _kwargs(self):
         return {"field_names": self._field_names}
-
-    def _validate(self):
-        _field_names_clean = [
-            f for f in self._field_names if f not in ("id", "_id")
-        ]
-        if len(_field_names_clean) != len(self._field_names):
-            raise Warning("Sample IDs are always implicitly selected")
-
-        self._field_names = _field_names_clean
 
 
 class SortBy(ViewStage):

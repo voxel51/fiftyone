@@ -5,19 +5,6 @@ Session class for interacting with the FiftyOne App.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 
 import fiftyone.core.client as foc
@@ -229,7 +216,10 @@ class Session(foc.HasClient):
         self._update_state()
 
     def wait(self):
-        """Waits for the session to be closed by the user."""
+        """Waits for the FiftyOne App to be closed by the user.
+
+        This requires a local (not remote) session.
+        """
         if self._remote:
             raise ValueError("Cannot `wait()` for remote sessions to close")
 

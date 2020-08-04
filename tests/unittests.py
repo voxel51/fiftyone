@@ -1095,6 +1095,36 @@ class LabelsTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             fo.Classification(label=100)
 
+    @drop_datasets
+    def test_copy(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample(
+            fo.Sample(
+                filepath="filepath1.jpg",
+                test_dets=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="friend",
+                            confidence=0.9,
+                            bounding_box=[0, 0, 0.5, 0.5],
+                        )
+                    ]
+                ),
+            )
+        )
+
+        sample = dataset.first()
+        sample2 = sample.copy()
+
+        self.assertIsNot(sample2, sample)
+        self.assertNotEqual(sample2.id, sample.id)
+        self.assertIsNot(sample2.test_dets, sample.test_dets)
+        det = sample.test_dets.detections[0]
+        det2 = sample2.test_dets.detections[0]
+        self.assertIsNot(det2, det)
+        self.assertNotEqual(det2.id, det.id)
+
 
 class ViewTest(unittest.TestCase):
     @drop_datasets
@@ -1164,12 +1194,13 @@ class ViewTest(unittest.TestCase):
                         ),
                     ]
                 ),
+                another_field=51,
             )
         )
 
         view = (
             dataset.view()
-            .exclude_fields(["tags"])
+            .exclude_fields(["another_field"])
             .filter_detections("test_dets", F("confidence") > 0.5)
         )
 

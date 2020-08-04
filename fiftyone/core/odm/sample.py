@@ -47,30 +47,16 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-import six
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import OrderedDict
 from functools import wraps
 import json
 import numbers
-import re
 
 from bson import json_util
 from bson.binary import Binary
 from mongoengine.errors import InvalidQueryError
 import numpy as np
+import six
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
@@ -85,6 +71,15 @@ from .document import (
 )
 
 
+def default_sample_fields():
+    """The default fields present on all :class:`SampleDocument` objects.
+
+    Returns:
+        a tuple of field names
+    """
+    return DatasetSampleDocument._fields_ordered
+
+
 def no_delete_default_field(func):
     """Wrapper for :func:`SampleDocument.delete_field` that prevents deleting
     default fields of :class:`SampleDocument`.
@@ -96,7 +91,7 @@ def no_delete_default_field(func):
     @wraps(func)
     def wrapper(cls_or_self, field_name, *args, **kwargs):
         # pylint: disable=no-member
-        if field_name in DatasetSampleDocument._fields_ordered:
+        if field_name in default_sample_fields():
             raise ValueError("Cannot delete default field '%s'" % field_name)
 
         return func(cls_or_self, field_name, *args, **kwargs)
@@ -469,24 +464,19 @@ class DatasetSampleDocument(Document, SampleDocument):
         """
         extra_updates = []
 
+        #
         # Check for illegal modifications
+        # Match the list, or an indexed item in the list, but not a field
+        # of an indexed item of the list:
+        #   my_detections.detections          <- MATCH
+        #   my_detections.detections.1        <- MATCH
+        #   my_detections.detections.1.label  <- NO MATCH
+        #
         if filtered_fields:
-            #
-            # Match the list, or an indexed item in the list, but not a field
-            # of an indexed item of the list:
-            #   my_detections.detections          <- MATCH
-            #   my_detections.detections.1        <- MATCH
-            #   my_detections.detections.1.label  <- NO MATCH
-            #
-            patterns = [
-                r"^%s(\.[0-9]+)?$" % "\.".join(ff.split("."))
-                for ff in filtered_fields
-            ]
-
             for d in update_doc.values():
                 for k in d.keys():
-                    for pattern in patterns:
-                        if re.match(pattern, k):
+                    for ff in filtered_fields:
+                        if k.startswith(ff) and not k.lstrip(ff).count("."):
                             raise ValueError(
                                 "Modifying root of filtered list field '%s' "
                                 "is not allowed" % k
@@ -553,7 +543,7 @@ class NoDatasetSampleDocument(SampleDocument):
 
     # pylint: disable=no-member
     default_fields = DatasetSampleDocument._fields
-    default_fields_ordered = DatasetSampleDocument._fields_ordered
+    default_fields_ordered = default_sample_fields()
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()

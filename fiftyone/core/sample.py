@@ -5,20 +5,6 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from copy import deepcopy
 import os
@@ -190,7 +176,7 @@ class _Sample(object):
             a :class:`Sample`
         """
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
-        return Sample(**kwargs)
+        return self.__class__(**kwargs)
 
     def to_dict(self):
         """Serializes the sample to a JSON dictionary.
@@ -339,7 +325,7 @@ class Sample(_Sample):
         still exists in memory.
 
         Args:
-            dataset_name: the name of the dataset to save
+            dataset_name: the name of the dataset
         """
         for sample in cls._instances[dataset_name].values():
             sample.save()
@@ -352,8 +338,11 @@ class Sample(_Sample):
         If the sample does not exist in memory nothing is done.
 
         Args:
-            dataset_name: the name of the dataset to reload
-            sample_id: the ID of the sample to reload
+            dataset_name: the name of the dataset
+            sample_id: the ID of the sample
+
+        Returns:
+            True/False whether the sample was reloaded
         """
         # @todo(Tyler) it could optimize the code to instead flag the sample as
         #   "stale", then have it reload once __getattribute__ is called
@@ -374,7 +363,7 @@ class Sample(_Sample):
         will keep the dataset in sync.
 
         Args:
-            dataset_name: the name of the dataset to reload
+            dataset_name: the name of the dataset
         """
         for sample in cls._instances[dataset_name].values():
             sample.reload()
@@ -384,8 +373,8 @@ class Sample(_Sample):
         """Remove any field values from samples that exist in memory.
 
         Args:
-            dataset_name: the name of the dataset to reload.
-            field_name: the name of the field to purge.
+            dataset_name: the name of the dataset
+            field_name: the name of the field to purge
         """
         for sample in cls._instances[dataset_name].values():
             sample._doc._data.pop(field_name, None)
@@ -419,10 +408,14 @@ class Sample(_Sample):
 
     @classmethod
     def _reset_backing_docs(cls, dataset_name, sample_ids):
-        """Resets the sample's backing document to a
-        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance.
+        """Resets the samples' backing documents to
+        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instances.
 
         For use **only** when removing samples from a dataset.
+
+        Args:
+            dataset_name: the name of the dataset
+            sample_ids: a list of sample IDs
         """
         dataset_instances = cls._instances[dataset_name]
         for sample_id in sample_ids:
@@ -437,12 +430,15 @@ class Sample(_Sample):
         samples in a dataset.
 
         For use **only** when clearing a dataset.
+
+        Args:
+            dataset_name: the name of the dataset
         """
         if dataset_name not in cls._instances:
             return
 
         dataset_instances = cls._instances.pop(dataset_name)
-        for sample in itervalues(dataset_instances):
+        for sample in dataset_instances.values():
             sample._doc = sample.copy()._doc
 
 
@@ -560,6 +556,16 @@ class SampleView(_Sample):
         ``None`` if no fields were explicitly excluded.
         """
         return self._excluded_fields
+
+    def copy(self):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Sample`
+        """
+        kwargs = {f: deepcopy(self[f]) for f in self.field_names}
+        return Sample(**kwargs)
 
     def save(self):
         """Saves the sample to the database.
