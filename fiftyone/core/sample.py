@@ -251,6 +251,8 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+        filepath = os.path.abspath(os.path.expanduser(filepath))
+
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
