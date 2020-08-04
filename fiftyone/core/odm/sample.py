@@ -12,11 +12,11 @@ Class hierarchy::
 
 Design invariants:
 
--   a :class:`fiftyone.core.sample.Sample` always has a backing
+-   A :class:`fiftyone.core.sample.Sample` always has a backing
     ``sample._doc``, which is an instance of a subclass of
     :class:`SampleDocument`
 
--   a :class:`fiftyone.core.dataset.Dataset` always has a backing
+-   A :class:`fiftyone.core.dataset.Dataset` always has a backing
     ``dataset._sample_doc_cls`` which is a subclass of
     :class:`DatasetSampleDocument``.
 
@@ -65,7 +65,6 @@ from collections import OrderedDict
 from functools import wraps
 import json
 import numbers
-import re
 
 from bson import json_util
 from bson.binary import Binary
@@ -85,6 +84,15 @@ from .document import (
 )
 
 
+def default_sample_fields():
+    """The default fields present on all :class:`SampleDocument` objects.
+
+    Returns:
+        a tuple of field names
+    """
+    return DatasetSampleDocument._fields_ordered
+
+
 def no_delete_default_field(func):
     """Wrapper for :func:`SampleDocument.delete_field` that prevents deleting
     default fields of :class:`SampleDocument`.
@@ -96,7 +104,7 @@ def no_delete_default_field(func):
     @wraps(func)
     def wrapper(cls_or_self, field_name, *args, **kwargs):
         # pylint: disable=no-member
-        if field_name in DatasetSampleDocument._fields_ordered:
+        if field_name in default_sample_fields():
             raise ValueError("Cannot delete default field '%s'" % field_name)
 
         return func(cls_or_self, field_name, *args, **kwargs)
@@ -176,10 +184,6 @@ class SampleDocument(SerializableDocument):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
-    @classmethod
-    def _get_class_repr(cls):
-        return "Sample"
-
 
 class DatasetSampleDocument(Document, SampleDocument):
     """Base class for sample documents backing samples in datasets.
@@ -220,6 +224,9 @@ class DatasetSampleDocument(Document, SampleDocument):
 
     @property
     def dataset_name(self):
+        """The name of the dataset to which this sample belongs, or ``None`` if
+        it has not been added to a dataset.
+        """
         return self.__class__.__name__
 
     @property
@@ -423,15 +430,14 @@ class DatasetSampleDocument(Document, SampleDocument):
         ]
         dataset._meta.save()
 
-    def _to_repr_dict(self, *args, **kwargs):
-        d = {"dataset_name": self.dataset_name}
-        d.update(super()._to_repr_dict(*args, **kwargs))
-        return d
+    def _get_repr_fields(self):
+        return ("dataset_name",) + super()._get_repr_fields()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
-        """Update an existing document.
+        """Updates an existing document.
 
-        Helper method, should only be used inside save().
+        Helper method; should only be used inside
+        :meth:`DatasetSampleDocument.save`.
         """
         updated_existing = True
 
@@ -466,30 +472,27 @@ class DatasetSampleDocument(Document, SampleDocument):
         return updated_existing
 
     def _extract_extra_updates(self, update_doc, filtered_fields):
-        """Extract updates for filtered list fields that need to be updated
+        """Extracts updates for filtered list fields that need to be updated
         by ID, not relative position (index).
         """
         extra_updates = []
 
-        # check for illegal modifications
+        #
+        # Check for illegal modifications
+        # Match the list, or an indexed item in the list, but not a field
+        # of an indexed item of the list:
+        #   my_detections.detections          <- MATCH
+        #   my_detections.detections.1        <- MATCH
+        #   my_detections.detections.1.label  <- NO MATCH
+        #
         if filtered_fields:
-            # match the list, or an indexed item in the list, but not a field
-            # of an indexed item of the list:
-            #   my_detections.detections          <- MATCH
-            #   my_detections.detections.1        <- MATCH
-            #   my_detections.detections.1.label  <- NO MATCH
-            patterns = [
-                r"^%s(\.[0-9]+)?$" % "\.".join(ff.split("."))
-                for ff in filtered_fields
-            ]
-
             for d in update_doc.values():
                 for k in d.keys():
-                    for pattern in patterns:
-                        if re.match(pattern, k):
+                    for ff in filtered_fields:
+                        if k.startswith(ff) and not k.lstrip(ff).count("."):
                             raise ValueError(
-                                "Attempted modifying of a filtered list field:"
-                                " '%s'" % k
+                                "Modifying root of filtered list field '%s' "
+                                "is not allowed" % k
                             )
 
         if filtered_fields and "$set" in update_doc:
@@ -522,17 +525,18 @@ class DatasetSampleDocument(Document, SampleDocument):
         return extra_updates
 
     def _parse_id_and_array_filter(self, list_element_field, filtered_field):
-        """Convert the `list_element_field` and `filtered_field` to an element
-        object ID and array filter.
+        """Converts the ``list_element_field`` and ``filtered_field`` to an
+        element object ID and array filter.
 
-        Example:
+        Example::
+
             Input:
-                list_element_field='test_dets.detections.1.label'
-                filtered_field='test_dets.detections'
-            Output:
-                ObjectID('5f2062bf27c024654f5286a0')
-                'test_dets.detections.$[element].label'
+                list_element_field = "test_dets.detections.1.label"
+                filtered_field = "test_dets.detections"
 
+            Output:
+                ObjectID("5f2062bf27c024654f5286a0")
+                "test_dets.detections.$[element].label"
         """
         el = self
         for field_name in filtered_field.split("."):
@@ -552,7 +556,7 @@ class NoDatasetSampleDocument(SampleDocument):
 
     # pylint: disable=no-member
     default_fields = DatasetSampleDocument._fields
-    default_fields_ordered = DatasetSampleDocument._fields_ordered
+    default_fields_ordered = default_sample_fields()
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()
@@ -599,8 +603,7 @@ class NoDatasetSampleDocument(SampleDocument):
     def id(self):
         return None
 
-    @property
-    def _to_str_fields(self):
+    def _get_repr_fields(self):
         return ("id",) + self.field_names
 
     @property
@@ -627,13 +630,13 @@ class NoDatasetSampleDocument(SampleDocument):
 
             return value
 
-        raise ValueError("Field has no default")
+        raise ValueError("Field '%s' has no default" % field)
 
     def has_field(self, field_name):
         try:
             return field_name in self._data
         except AttributeError:
-            # if `_data` is not initialized
+            # If `_data` is not initialized
             return False
 
     def get_field(self, field_name):

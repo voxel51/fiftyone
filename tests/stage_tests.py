@@ -15,6 +15,7 @@ import unittest
 
 
 import fiftyone as fo
+from fiftyone.core.odm.sample import default_sample_fields
 from fiftyone import ViewField as F
 
 
@@ -34,12 +35,17 @@ class StageTests(unittest.TestCase):
         self.assertEqual(result[0].id, self.sample2.id)
 
     def test_exclude_fields(self):
-        for sv in self.dataset.exclude_fields(["tags"]):
+        self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
+        self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
+
+        for sv in self.dataset.exclude_fields(["exclude_fields_field1"]):
             self.assertIsNone(sv.selected_field_names)
-            self.assertSetEqual(sv.excluded_field_names, {"tags"})
+            self.assertSetEqual(
+                sv.excluded_field_names, {"exclude_fields_field1"}
+            )
             with self.assertRaises(NameError):
-                sv.tags
-            self.assertIsInstance(sv.filepath, str)
+                sv.exclude_fields_field1
+            self.assertIsNone(sv.exclude_fields_field2)
 
     def test_exists(self):
         self.sample1["exists"] = True
@@ -168,14 +174,18 @@ class StageTests(unittest.TestCase):
         self.assertEqual(result[0].id, self.sample1.id)
 
     def test_select_fields(self):
-        for sv in self.dataset.select_fields(["tags"]):
-            self.assertSetEqual(sv.selected_field_names, {"tags"})
+        self.dataset.add_sample_field("select_fields_field", fo.IntField)
+
+        for sv in self.dataset.select_fields():
+            self.assertSetEqual(
+                sv.selected_field_names, set(default_sample_fields())
+            )
             self.assertIsNone(sv.excluded_field_names)
+            sv.filepath
+            sv.metadata
+            sv.tags
             with self.assertRaises(NameError):
-                sv.filepath
-            with self.assertRaises(NameError):
-                sv.metadata
-            self.assertListEqual(sv.tags, [])
+                sv.select_fields_field
 
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))

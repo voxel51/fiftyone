@@ -1,0 +1,38 @@
+{%- macro automodule(modname, options) -%}
+.. automodule:: {{ modname }}
+{%- for option in options %}
+   :{{ option }}:
+{%- endfor %}
+{%- endmacro %}
+
+{%- macro toctree(docnames) -%}
+.. toctree::
+{% for docname in docnames %}
+   {{ docname }}
+{%- endfor %}
+{%- endmacro %}
+
+{%- if is_namespace %}
+{{- [pkgname, "namespace"] | join(" ") | e | heading }}
+{% else %}
+{{- pkgname | e | heading }}
+{% endif %}
+
+{%- if modulefirst and not is_namespace %}
+{{ automodule(pkgname, automodule_options) }}
+{% endif %}
+
+{%- if subpackages %}
+{{ toctree(subpackages) }}
+{% endif %}
+
+{%- if submodules %}
+{{ toctree(submodules) }}
+{% endif %}
+
+{%- if not modulefirst and not is_namespace %}
+Module contents
+---------------
+
+{{ automodule(pkgname, automodule_options) }}
+{% endif %}

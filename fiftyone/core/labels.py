@@ -169,8 +169,7 @@ class Classification(ImageLabel):
         )
         return image_labels
 
-    @property
-    def _to_str_fields(self):
+    def _get_repr_fields(self):
         # pylint: disable=no-member
         return ("id",) + self._fields_ordered
 
@@ -328,8 +327,7 @@ class Detection(ImageLabel):
         image_labels.add_object(self.to_detected_object(name=name))
         return image_labels
 
-    @property
-    def _to_str_fields(self):
+    def _get_repr_fields(self):
         # pylint: disable=no-member
         return ("id",) + self._fields_ordered
 
