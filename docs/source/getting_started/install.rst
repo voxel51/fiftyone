@@ -29,12 +29,9 @@ Installing FiftyOne
 
 .. note::
 
-  **FiftyOne is currently in private beta!** If you have registered, your
-  welcome email contains a token that you will need to run some of the commands
-  below. Replace all instances of ``YOUR_TOKEN`` below with your token.
-
-  If you haven't registered for the FiftyOne Beta,
-  `you can sign up here! <https://share.hsforms.com/1KuTDtQYWRTyU0yHNGgBFfw2ykyk>`_
+  **FiftyOne is currently in private beta.** If you haven't registered for the
+  beta, `please sign up here <https://share.hsforms.com/1KuTDtQYWRTyU0yHNGgBFfw2ykyk>`_
+  so we can keep you posted on new features as they come out!
 
 To install FiftyOne in a virtual environment, ensure you have activated any
 virtual environment that you are using, then run:
@@ -42,7 +39,7 @@ virtual environment that you are using, then run:
 .. code-block:: shell
 
    pip install --upgrade pip setuptools wheel
-   pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone
+   pip install --index https://pypi.voxel51.com fiftyone
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
@@ -120,7 +117,7 @@ upgrade an existing FiftyOne installation:
 
 .. code-block:: shell
 
-   pip install --index https://YOUR_TOKEN@pypi.voxel51.com --upgrade fiftyone
+   pip install --index https://pypi.voxel51.com --upgrade fiftyone
 
 Uninstalling FiftyOne
 ---------------------
@@ -157,13 +154,13 @@ these packages must be installed *after* the `fiftyone` package; if you install
 
     .. code-block:: shell
 
-      pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone-db-ubuntu1604
+      pip install --index https://pypi.voxel51.com fiftyone-db-ubuntu1604
 
   .. tab:: Debian 9
 
     .. code-block:: shell
 
-      pip install --index https://YOUR_TOKEN@pypi.voxel51.com fiftyone-db-debian9
+      pip install --index https://pypi.voxel51.com fiftyone-db-debian9
 
 Manual installation
 ~~~~~~~~~~~~~~~~~~~
