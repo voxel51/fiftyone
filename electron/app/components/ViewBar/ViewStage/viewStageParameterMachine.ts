@@ -2,12 +2,30 @@ import { Machine, actions, sendParent, send } from "xstate";
 import viewStageMachine from "./viewStageMachine";
 const { assign, choose } = actions;
 
-const VALIDATE = {
-  bool: (value) => true,
-  float: (value) => true,
-  int: (value) => true,
-  str: (value) => true,
-  any: (value) => true,
+const PARSER = {
+  bool: {
+    parse: (value) =>
+      value.toLowerCase().charAt(0).toUpperCase() +
+      value.toLowerCase().slice(1),
+    validate: (value) => ["true", "false"].indexOf(value.toLowerCase()),
+  },
+  float: {
+    parse: (value) => value,
+    validate: (value) => true,
+  },
+  int: {
+    parse: (value) =>
+      value.replace(/[,\s]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","),
+    validate: (value) => /^\d+$/.test(value.replace(/[,\s]/g, "")),
+  },
+  str: {
+    parse: (value) => value,
+    validate: (value) => true,
+  },
+  any: {
+    parse: (value) => value,
+    validate: (value) => true,
+  },
 };
 
 export default Machine(
@@ -93,13 +111,14 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
+                  value: PARSER[type].parse(value),
                 }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
                   parameter: ctx,
                 })),
               ],
-              cond: ({ type, value }) => VALIDATE[type](value),
+              cond: ({ type, value }) => PARSER[type].validate(value),
             },
             {
               target: "decide",
