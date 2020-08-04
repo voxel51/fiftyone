@@ -43,6 +43,12 @@ def evaluate_detections(
 
         [0.50, 0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
 
+    It should be noted that if a :class:`fiftyone.core.labels.Detection` in the
+    ground truth field has a boolean attribute called `iscrowd`, then this
+    detection will be matched to multiple predictions and result in them all
+    being true positives. This follows evaluation performed in using the COCO
+    dataset in pycocotools.
+
     Dictionaries are added to each predicted/ground truth
     :class:`fiftyone.core.labels.Detections` instance in the fields listed
     below; these fields tabulate the true positive (TP), false positive (FP),
@@ -149,10 +155,10 @@ def evaluate_detections(
                 gt_boxes = [list(g.bounding_box) for g in gts]
                 pred_boxes = [list(p.bounding_box) for p in preds]
 
-                iscrowd = [0] * len(gt_boxes)
+                iscrowd = [False] * len(gt_boxes)
                 for gind, g in enumerate(gts):
                     if "iscrowd" in g.attributes:
-                        iscrowd[gind] = g.attributes["iscrowd"].value
+                        iscrowd[gind] = bool(g.attributes["iscrowd"].value)
 
                 # Get the IoU of every prediction with every ground truth
                 # shape = [num_preds, num_gts]
@@ -200,11 +206,11 @@ def evaluate_detections(
                                 ]
 
                                 if "iscrowd" in gt.attributes:
-                                    iscrowd = int(
+                                    iscrowd = bool(
                                         gt.attributes["iscrowd"].value
                                     )
                                 else:
-                                    iscrowd = 0
+                                    iscrowd = False
 
                                 # Cannot match two preds to the same gt unless
                                 # the gt is a crowd
