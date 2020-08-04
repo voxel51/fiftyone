@@ -16,7 +16,7 @@ FiftyOne |Dataset|.
 Datasets
 ________
 
-Instantiating a |Dataset| creates a **new** dataset.
+Instantiating a |Dataset| object creates a **new** dataset.
 
 .. code-block:: python
     :linenos:
@@ -25,7 +25,7 @@ Instantiating a |Dataset| creates a **new** dataset.
 
     dataset1 = fo.Dataset(name="my_first_dataset")
     dataset2 = fo.Dataset(name="my_second_dataset")
-    dataset3 = fo.Dataset(name="my_third_dataset")
+    dataset3 = fo.Dataset()  # generates a default unique name
 
 Check to see what datasets exist at any time via :meth:`list_dataset_names()
 <fiftyone.core.dataset.list_dataset_names>`.
@@ -34,35 +34,36 @@ Check to see what datasets exist at any time via :meth:`list_dataset_names()
     :linenos:
 
     print(fo.list_dataset_names())
-    # ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
+    # ['my_first_dataset', 'my_second_dataset', '2020.08.04.12.36.29']
 
-Load a dataset using :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`.
+Load a dataset using
+:meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`.
 Dataset objects are singletons. Cool!
 
 .. code-block:: python
     :linenos:
 
-    dataset2_reference = fo.load_dataset("my_second_dataset")
-    dataset2_reference is dataset2  # True
+    _dataset2 = fo.load_dataset("my_second_dataset")
+    _dataset2 is dataset2  # True
 
-If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
+If you try to *load* a dataset via `Dataset(...)` or *create* a new dataset via
 :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to
-have a bad time.
+have a bad time:
 
 .. code-block:: python
     :linenos:
 
-    dataset3_reference = fo.Dataset(name="my_third_dataset")
-    # Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
+    _dataset2 = fo.Dataset(name="my_second_dataset")
+    # Dataset 'my_second_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
 
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
-    # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
+    # DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
 Dataset persistence
 -------------------
 
 By default, datasets are non-persistent. Non-persistent datasets are wiped
-from FiftyOne on exit of the python process. This means any data in the
+from FiftyOne on exit of the Python process. This means any data in the
 FiftyOne backing database is deleted, however files on disk are untouched.
 
 To make a dataset persistent, set the attribute to `True`.
@@ -70,10 +71,12 @@ To make a dataset persistent, set the attribute to `True`.
 .. code-block:: python
     :linenos:
 
+    # Make the dataset persistent
     dataset1.persistent = True
+
     quit()
 
-Start a new python session:
+Start a new Python session:
 
 .. code-block:: python
     :linenos:
@@ -83,8 +86,8 @@ Start a new python session:
     print(fo.list_dataset_names())
     # ['my_first_dataset']
 
-Note that `my_second_dataset` and `my_third_dataset` have been wiped because
-they were not persistent.
+Note that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have been
+wiped because they were not persistent.
 
 Deleting a dataset
 ------------------
@@ -95,7 +98,7 @@ is deleted, any existing reference in memory will be in a volatile state.
 :class:`Dataset.name <fiftyone.core.dataset.Dataset>` and
 :class:`Dataset.deleted <fiftyone.core.dataset.Dataset>` will still be valid
 attributes, but calling any other attribute or method will raise a
-`DoesNotExistError`.
+:class:`DoesNotExistError <fiftyone.core.dataset.DoesNotExistError>`.
 
 .. code-block:: python
     :linenos:
@@ -113,20 +116,25 @@ attributes, but calling any other attribute or method will raise a
     # True
 
     print(dataset.persistent)
-    # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_first_dataset' is deleted
+    # DoesNotExistError: Dataset 'my_first_dataset' is deleted
 
 .. _using-samples:
 
 Samples
 _______
 
-An individual |Sample| is always initialized with a file path to the
-corresponding image on disk. The image is not read at this point:
+An individual |Sample| is always initialized with a `filepath` to the
+corresponding data on disk.
 
 .. code-block:: python
     :linenos:
 
     sample = fo.Sample(filepath="path/to/image.png")
+
+.. note::
+
+    Creating a new |Sample| does not load the source data into memory. Source
+    is read only as needed by the App.
 
 Adding samples to a dataset
 ---------------------------
@@ -139,8 +147,8 @@ A |Sample| can easily be added to an existing |Dataset|:
     dataset = fo.Dataset(name="example_dataset")
     dataset.add_sample(sample)
 
-When a |Sample| is added to a |Dataset|, the related attributes of the |Sample|
-are automatically updated:
+When a |Sample| is added to a |Dataset|, the relevant attributes of the
+|Sample| are automatically updated:
 
 .. code-block:: python
     :linenos:
@@ -159,8 +167,8 @@ Every |Sample| in a |Dataset| is given a unique ID when it is added:
     print(sample.id)
     # 5ee0ebd72ceafe13e7741c42
 
-A batch of multiple |Sample| objects can be added to a |Dataset| at the same
-time by providing a list of samples:
+A batch of |Sample| objects can be added to a |Dataset| at the same time by
+providing a list of samples:
 
 .. code-block:: python
     :linenos:
@@ -186,7 +194,7 @@ Accessing samples in a dataset
 
 FiftyOne provides multiple ways to access a |Sample| in a |Dataset|.
 
-A |Dataset| is iterable allowing every |Sample| to be accessed one at a time:
+A |Dataset| is iterable allowing every |Sample| to be accessed sequentially:
 
 .. code-block:: python
     :linenos:
