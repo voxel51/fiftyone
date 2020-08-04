@@ -2,6 +2,14 @@ import { Machine, actions, sendParent, send } from "xstate";
 import viewStageMachine from "./viewStageMachine";
 const { assign, choose } = actions;
 
+const VALIDATE = {
+  bool: (value) => true,
+  float: (value) => true,
+  int: (value) => true,
+  str: (value) => true,
+  any: (value) => true,
+};
+
 export default Machine(
   {
     id: "viewStageParameter",
@@ -91,12 +99,13 @@ export default Machine(
                   parameter: ctx,
                 })),
               ],
-              cond: (ctx) => {
-                return ctx.value.trim().length > 0;
-              },
+              cond: ({ type, value }) => VALIDATE[type](value),
             },
             {
               target: "decide",
+              actions: assign({
+                value: ({ prevValue }) => prevValue,
+              }),
             },
           ],
           CANCEL: {
