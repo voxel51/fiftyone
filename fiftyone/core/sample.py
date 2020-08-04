@@ -339,7 +339,7 @@ class Sample(_Sample):
         still exists in memory.
 
         Args:
-            dataset_name: the name of the dataset to save
+            dataset_name: the name of the dataset
         """
         for sample in cls._instances[dataset_name].values():
             sample.save()
@@ -352,8 +352,11 @@ class Sample(_Sample):
         If the sample does not exist in memory nothing is done.
 
         Args:
-            dataset_name: the name of the dataset to reload
-            sample_id: the ID of the sample to reload
+            dataset_name: the name of the dataset
+            sample_id: the ID of the sample
+
+        Returns:
+            True/False whether the sample was reloaded
         """
         # @todo(Tyler) it could optimize the code to instead flag the sample as
         #   "stale", then have it reload once __getattribute__ is called
@@ -374,7 +377,7 @@ class Sample(_Sample):
         will keep the dataset in sync.
 
         Args:
-            dataset_name: the name of the dataset to reload
+            dataset_name: the name of the dataset
         """
         for sample in cls._instances[dataset_name].values():
             sample.reload()
@@ -384,8 +387,8 @@ class Sample(_Sample):
         """Remove any field values from samples that exist in memory.
 
         Args:
-            dataset_name: the name of the dataset to reload.
-            field_name: the name of the field to purge.
+            dataset_name: the name of the dataset
+            field_name: the name of the field to purge
         """
         for sample in cls._instances[dataset_name].values():
             sample._doc._data.pop(field_name, None)
@@ -419,10 +422,14 @@ class Sample(_Sample):
 
     @classmethod
     def _reset_backing_docs(cls, dataset_name, sample_ids):
-        """Resets the sample's backing document to a
-        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance.
+        """Resets the samples' backing documents to
+        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instances.
 
         For use **only** when removing samples from a dataset.
+
+        Args:
+            dataset_name: the name of the dataset
+            sample_ids: a list of sample IDs
         """
         dataset_instances = cls._instances[dataset_name]
         for sample_id in sample_ids:

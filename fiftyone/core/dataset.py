@@ -398,7 +398,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         d = sample.to_mongo_dict()
         d.pop("_id", None)  # remove the ID if in DB
-        self._collection.insert_one(d)  # adds "_id" to `d`
+        self._collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample._in_db:
             doc = self._sample_doc_cls.from_dict(d, extended=False)
@@ -460,7 +460,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
 
-        self._collection.insert_many(dicts)  # adds "_id" to `d`
+        self._collection.insert_many(dicts)  # adds `_id` to each dict
 
         for sample, d in zip(samples, dicts):
             if not sample._in_db:
@@ -575,7 +575,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
         """
         self._sample_doc_cls.drop_collection()
-        fos.Sample._reset_all_backing_docs(dataset_name=self.name)
+        fos.Sample._reset_all_backing_docs(self.name)
 
     def delete(self):
         """Deletes the dataset.
