@@ -154,6 +154,15 @@ class MongoEngineBaseDocument(SerializableDocument):
     implements the :class:`SerializableDocument` interface.
     """
 
+    def __deepcopy__(self, memo):
+        # pylint: disable=no-member, unsubscriptable-object
+        kwargs = {
+            f: deepcopy(self[f], memo)
+            for f in self._fields_ordered
+            if f not in ("_cls", "_id", "id")
+        }
+        return self.__class__(**kwargs)
+
     def _get_repr_fields(self):
         # pylint: disable=no-member
         return self._fields_ordered
@@ -206,14 +215,6 @@ class BaseDocument(MongoEngineBaseDocument):
 
         return super().__eq__(other)
 
-    def __deepcopy__(self, memo):
-        doc = _default_deepcopy(self, memo)
-
-        # pylint: disable=attribute-defined-outside-init
-        doc.id = None
-
-        return doc
-
     def _get_repr_fields(self):
         # pylint: disable=no-member
         return ("id",) + tuple(f for f in self._fields_ordered if f != "id")
@@ -240,14 +241,7 @@ class BaseEmbeddedDocument(MongoEngineBaseDocument):
     therefore are not stored in their own collection in the database.
     """
 
-    def __deepcopy__(self, memo):
-        # pylint: disable=no-member
-        kwargs = {
-            f: deepcopy(self[f])
-            for f in self._fields_ordered
-            if f not in ["_cls", "_id"]
-        }
-        return self.__class__(**kwargs)
+    pass
 
 
 class Document(BaseDocument, mongoengine.Document):
@@ -427,12 +421,3 @@ class DynamicEmbeddedDocument(
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.validate()
-
-
-def _default_deepcopy(obj, memo):
-    deepcopy_method = obj.__deepcopy__
-    obj.__deepcopy__ = None
-    copy = deepcopy(obj, memo)
-    obj.__deepcopy__ = deepcopy_method
-    copy.__deepcopy__ = deepcopy_method
-    return copy
