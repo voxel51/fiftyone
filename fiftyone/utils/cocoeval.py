@@ -56,8 +56,8 @@ def evaluate_detections(
     below; these fields tabulate the IDs of the matching ground
     truth/prediction for the detection at each IoU::
 
-        Ground truth:   detections.<pred_field>_eval
-        Predictions:    detections.<gt_field>_eval
+        Ground truth:   detection.<pred_field>_eval
+        Predictions:    detection.<gt_field>_eval
 
     In addition, true positive (TP), false positive (FP), and false negative
     (FN) counts at the specified ``save_iou`` are saved in the following
