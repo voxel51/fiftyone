@@ -18,10 +18,22 @@
 {{- pkgname | e | heading }}
 {% endif %}
 
+{%- if modulefirst and not is_namespace %}
+{{ automodule(pkgname, automodule_options) }}
+{% endif %}
+
 {%- if subpackages %}
 {{ toctree(subpackages) }}
 {% endif %}
 
 {%- if submodules %}
 {{ toctree(submodules) }}
+   :titlesonly:
+{% endif %}
+
+{%- if not modulefirst and not is_namespace %}
+Module contents
+---------------
+
+{{ automodule(pkgname, automodule_options) }}
 {% endif %}
