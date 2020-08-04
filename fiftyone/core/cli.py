@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -175,7 +174,7 @@ class ConstantsCommand(Command):
         _print_constants_table(
             {
                 k: v
-                for k, v in iteritems(vars(foc))
+                for k, v in vars(foc).items()
                 if not k.startswith("_") and k == k.upper()
             }
         )
@@ -183,7 +182,7 @@ class ConstantsCommand(Command):
 
 def _print_constants_table(d):
     contents = sorted(
-        ((k, _render_constant_value(v)) for k, v in iteritems(d)),
+        ((k, _render_constant_value(v)) for k, v in d.items()),
         key=lambda kv: kv[0],
     )
     table_str = tabulate(
@@ -943,8 +942,8 @@ class ZooListCommand(Command):
 
 def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
     available_datasets = defaultdict(dict)
-    for source, datasets in iteritems(all_datasets):
-        for name, zoo_dataset_cls in iteritems(datasets):
+    for source, datasets in all_datasets.items():
+        for name, zoo_dataset_cls in datasets.items():
             available_datasets[name][source] = zoo_dataset_cls()
 
     records = []
@@ -961,7 +960,7 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
 
         # Get available splits across all sources
         splits = set()
-        for zoo_dataset in itervalues(dataset_sources):
+        for zoo_dataset in dataset_sources.values():
             if zoo_dataset.has_splits:
                 splits.update(zoo_dataset.supported_splits)
             else:
@@ -1186,7 +1185,7 @@ def _print_dict_as_json(d):
 
 
 def _print_dict_as_table(d):
-    records = [(k, v) for k, v in iteritems(d)]
+    records = [(k, v) for k, v in d.items()]
     table_str = tabulate(
         records, headers=["key", "value"], tablefmt=_TABLE_FORMAT
     )
@@ -1204,7 +1203,7 @@ def _has_subparsers(parser):
 def _iter_subparsers(parser):
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
-            for subparser in itervalues(action.choices):
+            for subparser in action.choices.values():
                 yield subparser
 
 

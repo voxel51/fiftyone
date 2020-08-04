@@ -16,7 +16,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems, itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -47,7 +46,8 @@ def list_zoo_datasets():
         a list of dataset names
     """
     datasets = set()
-    for d in itervalues(_get_zoo_datasets()):
+    all_datasets = _get_zoo_datasets()
+    for d in all_datasets.values():
         datasets |= d.keys()
 
     return sorted(datasets)
@@ -484,7 +484,7 @@ class ZooDatasetInfo(etas.Serializable):
         if downloaded_splits is not None:
             downloaded_splits = {
                 k: ZooDatasetSplitInfo.from_dict(v)
-                for k, v in iteritems(downloaded_splits)
+                for k, v in downloaded_splits.items()
             }
 
         return cls(
@@ -676,7 +676,7 @@ class ZooDataset(object):
                     split, num_samples
                 )
                 info.num_samples = sum(
-                    si.num_samples for si in itervalues(info.downloaded_splits)
+                    si.num_samples for si in info.downloaded_splits.values()
                 )
 
                 write_info = True

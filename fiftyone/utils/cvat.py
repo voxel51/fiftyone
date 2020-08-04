@@ -14,7 +14,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -511,7 +510,7 @@ class CVATBox(object):
             )
 
             attributes = []
-            for name, attr in iteritems(detection.attributes):
+            for name, attr in detection.attributes.items():
                 if isinstance(attr, supported_attrs):
                     attributes.append(CVATAttribute(name, attr.value))
         else:
@@ -539,9 +538,7 @@ class CVATBox(object):
         xbr = int(d.pop("@xbr"))
         ybr = int(d.pop("@ybr"))
 
-        attributes = [
-            CVATAttribute(name, value) for name, value in iteritems(d)
-        ]
+        attributes = [CVATAttribute(name, value) for name, value in d.items()]
 
         return cls(label, xtl, ytl, xbr, ybr, attributes=attributes)
 

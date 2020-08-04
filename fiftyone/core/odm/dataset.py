@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import itervalues
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -68,9 +67,7 @@ class SampleFieldDocument(EmbeddedDocument):
              a list of :class:`SampleFieldDocument` objects
         """
         return [
-            cls.from_field(field)
-            for field in itervalues(d)
-            if field.name != "id"
+            cls.from_field(field) for field in d.values() if field.name != "id"
         ]
 
     def matches_field(self, field):

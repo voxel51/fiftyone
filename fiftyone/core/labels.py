@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from builtins import *
-from future.utils import iteritems
 
 # pragma pylint: enable=redefined-builtin
 # pragma pylint: enable=unused-wildcard-import
@@ -301,8 +300,9 @@ class Detection(ImageLabel):
 
         confidence = self.confidence
 
+        # pylint: disable=no-member
         attrs = etad.AttributeContainer()
-        for attr_name, attr in iteritems(self.attributes):
+        for attr_name, attr in self.attributes.items():
             attrs.add(etad.CategoricalAttribute(attr_name, attr.value))
 
         return etao.DetectedObject(
