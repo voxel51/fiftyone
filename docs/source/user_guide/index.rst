@@ -25,9 +25,9 @@ on your data quickly and easily.
     :button_link: basics.html
 
 .. customcalloutitem::
-    :header: Creating FiftyOne Datasets
+    :header: Loading data into FiftyOne
     :description: Load data into FiftyOne using standard formats, custom formats, or the Dataset Zoo.
-    :button_text: Learn more about creating datasets
+    :button_text: Learn more about loading data
     :button_link: dataset_creation/index.html
 
 .. customcalloutitem::
@@ -61,6 +61,12 @@ on your data quickly and easily.
     :button_link: brain.html
 
 .. customcalloutitem::
+    :header: The Dataset Zoo
+    :description: A collection of popular datasets that you can load into FiftyOne with a single command.
+    :button_text: Check out the Dataset Zoo
+    :button_link: dataset_creation/zoo.html
+
+.. customcalloutitem::
     :header: Configuring FiftyOne
     :description: Customize the default behavior of the FiftyOne library to suit your needs.
     :button_text: Learn how to configure FiftyOne
@@ -80,7 +86,7 @@ on your data quickly and easily.
     :hidden:
 
     Dataset basics<basics>
-    Creating datasets<dataset_creation/index>
+    Loading datasets<dataset_creation/index>
     Using datasets<using_datasets>
     Exporting datasets<export_datasets>
     Drawing labels on samples<draw_labels>

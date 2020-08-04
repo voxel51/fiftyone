@@ -27,60 +27,64 @@ _________________
 FiftyOne provides advanced capabilities that will turbocharge your machine
 learning workflows.
 
-**Finding annotation mistakes**
+.. Callout items --------------------------------------------------------------
 
-Annotations mistakes create an artificial ceiling on the performance of your
-models. However, finding these mistakes by hand is at least as arduous as the
-original annotation work! FiftyOne provides a `mistakenness` tool that can
-automatically identify possible label mistakes in your datasets.
+.. raw:: html
 
-:doc:`>> Try it now! <tutorials/label_mistakes>`
+    <div class="tutorials-callout-container">
+        <div class="row">
 
-**Removing redundant images**
+.. Add callout items below this line
 
-During the training loop for a model, the best results will be seen when
-training on unique data. For example, finding and removing similar samples in
-your dataset can avoid accidental concept imbalance that can bias the learning
-of your model. FiftyOne provides a `uniqueness` tool that can automatically
-identify duplicate or near-duplicate images in your datasets.
+.. customcalloutitem::
+    :header: Finding annotation mistakes
+    :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
+    :button_text: Check out the label mistakes tutorial
+    :button_link: tutorials/label_mistakes.html
 
-:doc:`>> Try it now! <tutorials/uniqueness>`
+.. customcalloutitem::
+    :header: Removing redundant images
+    :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
+    :button_text: Try the image uniqueness tutorial
+    :button_link: tutorials/uniqueness.html
 
-**Bootstrapping training datasets from raw images**
+.. customcalloutitem::
+    :header: Bootstrapping datasets from raw images
+    :description: "What data should I select to annotate?" Use FiftyOne to automatically recommend unlabeled samples from your dataset to send for annotation, enabling you to bootsrap a training dataset that leads to demonstrably better model performance.
+    :button_text: Tutorial coming soon
+    :button_link:
 
-In the early stages of a machine learning workflow, ML engineers inevitably ask
-themselves: *what data should I select to annotate?* This is a critical
-question, as acquiring high quality ground truth annotations is an expensive
-and time consuming process. FiftyOne provides methods that can automatically
-recommend unlabeled samples from your dataset to send for annotation, enabling
-you to bootsrap a training dataset that leads to demonstrably better model
-performance.
+.. customcalloutitem::
+    :header: Adding optimal samples to your dataset
+    :description: "What new samples should I add to my training dataset to see the largest improvement in my model?" FiftyOne provides methods for mining hard samples from your datasets, a tried and true measure of mature machine learning processes.
+    :button_text: Tutorial coming soon
+    :button_link:
 
-.. note::
+.. End callouts ---------------------------------------------------------------
 
-    Tutorial coming soon!
+.. raw:: html
 
-**Adding optimal samples to your dataset**
+        </div>
+    </div>
 
-While training, ML models understand attributes of certain samples faster than
-others. The natural question arises: *what new samples should I add to my
-training dataset to provide the largest incremental improvement to the
-performance of my model?* FiftyOne provides methods for mining hard samples
-from your datasets, a tried and true measure of mature machine
-learning processes.
-
-.. note::
-
-    Tutorial coming soon!
+.. End of callout items -------------------------------------------------------
 
 Core Concepts
 _____________
 
-:doc:`The FiftyOne Core Library <user_guide/basics>`
+The FiftyOne tool has three components: the core library, the App, and the
+Brain.
+
+:doc:`FiftyOne Core Library <user_guide/basics>`
+------------------------------------------------
 
 FiftyOne's core library provides a structured yet dynamic representation to
 explore your datasets. You can efficiently query and manipulate your dataset by
 adding custom tags, model predictions and more.
+
+.. custombutton::
+    :button_text: Explore the Core Library
+    :button_link: user_guide/basics.html
 
 .. code-block:: python
     :linenos:
@@ -110,23 +114,33 @@ adding custom tags, model predictions and more.
     Check out :doc:`loading datasets <user_guide/dataset_creation/index>` to see
     how to load your data into FiftyOne!
 
-:doc:`The FiftyOne App <user_guide/app>`
+:doc:`FiftyOne App <user_guide/app>`
+------------------------------------
 
 The FiftyOne App is a graphical user interface (GUI) that makes it easy to
 rapidly gain intuition into your datasets. You can visualize labels, bounding
 boxes and segmentations overlayed on the samples; sort, query and slice your
 dataset into any aspect you need; and more.
 
+.. custombutton::
+    :button_text: See more of the App
+    :button_link: user_guide/app.html
+
 .. image:: images/dog.png
    :alt: App
    :align: center
 
-:doc:`The FiftyOne Brain <user_guide/brain>`
+:doc:`FiftyOne Brain <user_guide/brain>`
+----------------------------------------
 
 The FiftyOne Brain is a library of powerful machine learning-powered
 :ref:`capabilities <Core Capabilities>` that provide insights into your
 datasets and recommend ways to modify your datasets that will lead to
 measurably better performance of your models.
+
+.. custombutton::
+    :button_text: Learn more about the Brain
+    :button_link: user_guide/brain.html
 
 .. code-block:: python
    :linenos:
@@ -154,7 +168,7 @@ _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
 free to
-`connect with us on Slack <https://voxel51.slack.com/app_redirect?channel=C0154574MKJ>`_
+`connect with us on Slack <https://join.slack.com/t/fiftyone-group/shared_invite/zt-gfml1qxd-r0RNVtRiWjPy97OtNm~~yA>`_
 or reach out to us at support@voxel51.com.
 
 .. toctree::
