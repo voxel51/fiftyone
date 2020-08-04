@@ -7,6 +7,7 @@ import AuosizeInput from "react-input-autosize";
 
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
+import ViewStageStories from "./ViewStage.stories";
 
 const ViewStageContainer = styled.div`
   margin: 0.5rem 0.25rem;
@@ -16,7 +17,9 @@ const ViewStageContainer = styled.div`
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
-  border-radius: 3px;
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+  border-right-width: 0;
   display: inline-block;
   position: relative;
 `);
@@ -82,13 +85,21 @@ export const AddViewStage = React.memo(({ send, insertAt }) => {
 
 const DeleteViewStageButton = animated(styled.div`
   display: inline-block;
+  position: relative;
   box-sizing: border-box;
-  border: 2px solid ${({ theme }) => theme.brand};
+  border-left: 2px solid ${({ theme }) => theme.brand};
+  border-color: ${({ theme }) => theme.brand};
+  border-bottom-right-radius: 3px;
+  border-top-right-radius: 3px;
 `);
 
-const DeleteViewStage = ({ spring }) => {
-  return <DeleteViewStageButton style={spring}>x</DeleteViewStageButton>;
-};
+const DeleteViewStage = React.memo(({ send, spring }) => {
+  return (
+    <DeleteViewStageButton style={spring} onClick={() => send("STAGE.DELETE")}>
+      x
+    </DeleteViewStageButton>
+  );
+});
 
 const ViewStage = React.memo(({ stageRef }) => {
   const theme = useContext(ThemeContext);
@@ -101,11 +112,16 @@ const ViewStage = React.memo(({ stageRef }) => {
     state.matches
   );
 
+  const deleteProps = useSpring({
+    borderStyle: isCompleted ? "solid" : "dashed",
+    borderBottomRightRadius: isCompleted ? 0 : 3,
+    backgroundColor: isCompleted
+      ? theme.brandTransparent
+      : theme.brandMoreTransparent,
+  });
+
   const props = useSpring({
     borderStyle: isCompleted ? "solid" : "dashed",
-    borderTopRightRadius: isCompleted ? 0 : 3,
-    borderBottomRightRadius: isCompleted ? 0 : 3,
-    borderRightWidth: isCompleted ? 1 : 2,
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
@@ -114,10 +130,6 @@ const ViewStage = React.memo(({ stageRef }) => {
       opacity: 0,
     },
   });
-
-  const [deleteProps, setDeleteProps] = useSpring(() => ({
-    display: "none",
-  }));
 
   const actionsMap = useMemo(
     () => ({
@@ -138,10 +150,7 @@ const ViewStage = React.memo(({ stageRef }) => {
   }, []);
 
   return (
-    <ViewStageContainer
-      onMouseEnter={() => setDeleteProps({ display: "block" })}
-      onMouseLeave={() => setDeleteProps({ display: "none" })}
-    >
+    <ViewStageContainer>
       <ViewStageDiv style={props}>
         <ViewStageInput
           placeholder="+ search sample"
@@ -177,6 +186,7 @@ const ViewStage = React.memo(({ stageRef }) => {
         parameters.map((parameter) => (
           <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
         ))}
+      <DeleteViewStage spring={deleteProps} send={send} />
     </ViewStageContainer>
   );
 });

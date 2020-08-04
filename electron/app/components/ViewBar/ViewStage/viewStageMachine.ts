@@ -234,8 +234,9 @@ const viewStageMachine = Machine(
         onEntry: [
           assign({
             stage: "",
+            submitted: false,
           }),
-          sendParent((ctx) => ({ type: "STAGE.DELETE", id: ctx.id })),
+          sendParent((ctx) => ({ type: "STAGE.DELETE", stage: ctx })),
         ],
         always: "reading.pending",
       },

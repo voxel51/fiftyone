@@ -105,10 +105,15 @@ const viewBarMachine = Machine({
     "STAGE.DELETE": {
       actions: [
         assign({
-          stages: (ctx, e) => ctx.stages.filter((stage) => stage.id !== e.id),
+          stages: ({ stages }, e) => {
+            if (stages.length === 1) {
+              return [{ ...e.stage, ref: stages[0].ref }];
+            } else {
+              return ctx.stages.filter((stage) => stage.id !== e.id);
+            }
+          },
         }),
       ],
-      cond: ({ stages }) => stages.length > 1,
     },
   },
 });

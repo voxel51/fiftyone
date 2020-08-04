@@ -35,19 +35,29 @@ const PARSER = {
       return JSON.stringify(array.map((e) => PARSER[next].parse(e)));
     },
     validate: (value, next) => {
-      const array = JSON.parse(value);
-      return (
-        Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
-      );
+      try {
+        const array = JSON.parse(value);
+        return (
+          Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
+        );
+      } catch {
+        return false;
+      }
     },
   },
   str: {
     parse: (value) => value,
-    validate: (value) => true,
+    validate: () => true,
   },
   dict: {
     parse: (value) => value,
-    validate: (value) => JSON.parse(value) instanceof Object,
+    validate: (value) => {
+      try {
+        return JSON.parse(value) instanceof Object;
+      } catch {
+        return false;
+      }
+    },
   },
 };
 

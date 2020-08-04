@@ -9,7 +9,6 @@ import SearchResults from "./SearchResults";
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
-  border-radius: 3px;
   display: inline-block;
   position: relative;
 `);
@@ -36,7 +35,6 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 
 const ViewStageParameter = React.memo(({ parameterRef }) => {
   const theme = useContext(ThemeContext);
-  const [listeners] = useState(new Set());
   const [state, send] = useService(parameterRef);
   const inputRef = useRef(null);
 
@@ -59,19 +57,14 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { id, completed, parameter, stage, value, tail, type } = state.context;
+  const { parameter, value } = state.context;
 
   const props = useSpring({
     backgroundColor: state.matches("reading.submitted")
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
-    borderRightWidth: state.matches("reading.submitted") && !tail ? 1 : 2,
-    borderLeftWidth: 0,
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
-    borderTopRightRadius: tail ? 3 : 0,
-    borderBottomRightRadius: tail ? 3 : 0,
+    borderRightWidth: state.matches("reading.submitted") ? 1 : 2,
     opacity: 1,
     from: {
       opacity: 0,
