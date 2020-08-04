@@ -48,7 +48,7 @@ const Cell = ({ label, entries, onSelect, colorMapping }) => {
 };
 
 const DisplayOptionsSidebar = ({
-  colorMapping,
+  colorMapping = {},
   tags,
   labels,
   scalars,

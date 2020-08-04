@@ -7,14 +7,21 @@ const Body = styled.div`
 
   label {
     width: 100%;
+    margin-top: 3px;
+    margin-bottom: 3px;
     margin-right: 0;
 
     .MuiTypography-body1 {
       font-size: unset;
     }
 
+    .MuiCheckbox-root {
+      padding: 3px;
+    }
+
     .MuiFormControlLabel-label {
       width: 100%;
+      font-weight: bold;
 
       span.data {
         float: right;
@@ -43,19 +50,25 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
   };
 
   return (
-    <Body>
-      {entries.map((entry) => (
-        <div key={entry.name}>
-          <FormControlLabel
-            label={
-              <>
-                <span className="name">{entry.name}</span>
-                <span className="data">{entry.data}</span>
-              </>
-            }
-            control={
-              <ThemeConsumer>
-                {(theme) => (
+    <ThemeConsumer>
+      {(theme) => (
+        <Body>
+          {entries.map((entry) => (
+            <div key={entry.name}>
+              <FormControlLabel
+                label={
+                  <>
+                    <span className="name">{entry.name}</span>
+                    <span className="data">{entry.data}</span>
+                  </>
+                }
+                style={{
+                  backgroundColor: entry.selected
+                    ? theme.backgroundLight
+                    : undefined,
+                  color: entry.selected ? theme.font : theme.fontDark,
+                }}
+                control={
                   <Checkbox
                     checked={entry.selected}
                     onChange={() => handleCheck(entry)}
@@ -63,13 +76,13 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
                       color: entry.selected ? entry.color : theme.fontDark,
                     }}
                   />
-                )}
-              </ThemeConsumer>
-            }
-          />
-        </div>
-      ))}
-    </Body>
+                }
+              />
+            </div>
+          ))}
+        </Body>
+      )}
+    </ThemeConsumer>
   );
 };
 
