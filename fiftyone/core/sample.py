@@ -5,20 +5,6 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 from copy import deepcopy
 import os
@@ -444,12 +430,15 @@ class Sample(_Sample):
         samples in a dataset.
 
         For use **only** when clearing a dataset.
+
+        Args:
+            dataset_name: the name of the dataset
         """
         if dataset_name not in cls._instances:
             return
 
         dataset_instances = cls._instances.pop(dataset_name)
-        for sample in itervalues(dataset_instances):
+        for sample in dataset_instances.values():
             sample._doc = sample.copy()._doc
 
 
