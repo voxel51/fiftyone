@@ -237,6 +237,7 @@ const viewStageMachine = Machine(
           }),
           sendParent((ctx) => ({ type: "STAGE.DELETE", id: ctx.id })),
         ],
+        always: "reading.pending",
       },
     },
     on: {
