@@ -28,6 +28,7 @@ from pymongo.errors import DuplicateKeyError
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+import fiftyone.core.sample as fos
 from fiftyone import ViewField as F
 
 
@@ -75,8 +76,8 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset.add_sample(sample3)
         self.assertIsNot(sample3, sample)
 
-        sample4 = dataset.match({"filepath": filepath}).first()
-        self.assertIs(sample4, sample)
+        sv4 = dataset.match({"filepath": filepath}).first()
+        self.assertIsNot(sv4, sample)
 
     @drop_datasets
     def test_dataset_add_delete_field(self):
@@ -1094,6 +1095,36 @@ class LabelsTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             fo.Classification(label=100)
 
+    @drop_datasets
+    def test_copy(self):
+        dataset = fo.Dataset()
+
+        dataset.add_sample(
+            fo.Sample(
+                filepath="filepath1.jpg",
+                test_dets=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="friend",
+                            confidence=0.9,
+                            bounding_box=[0, 0, 0.5, 0.5],
+                        )
+                    ]
+                ),
+            )
+        )
+
+        sample = dataset.first()
+        sample2 = sample.copy()
+
+        self.assertIsNot(sample2, sample)
+        self.assertNotEqual(sample2.id, sample.id)
+        self.assertIsNot(sample2.test_dets, sample.test_dets)
+        det = sample.test_dets.detections[0]
+        det2 = sample2.test_dets.detections[0]
+        self.assertIsNot(det2, det)
+        self.assertNotEqual(det2.id, det.id)
+
 
 class ViewTest(unittest.TestCase):
     @drop_datasets
@@ -1119,7 +1150,7 @@ class ViewTest(unittest.TestCase):
         view = dataset.view()
 
         self.assertEqual(len(view), len(dataset))
-        self.assertIsInstance(view.first(), fo.Sample)
+        self.assertIsInstance(view.first(), fos.SampleView)
 
         # tags
         for sample in view.match({"tags": "train"}):
@@ -1132,24 +1163,105 @@ class ViewTest(unittest.TestCase):
             self.assertEqual(sample.labels.label, "label1")
 
     @drop_datasets
-    def test_stages(self):
-        dataset_name = self.test_stages.__name__
-        dataset = fo.Dataset(dataset_name)
+    def test_sample_view_with_filtered_fields(self):
+        dataset = fo.Dataset()
 
-        dataset.add_samples(
-            [
-                fo.Sample(filepath="filepath1.jpg", my_int=5),
-                fo.Sample(filepath="filepath2.jpg", my_int=7),
-                fo.Sample(filepath="filepath3.jpg", my_int=1),
-                fo.Sample(filepath="filepath4.jpg", my_int=9),
-            ]
+        dataset.add_sample(
+            fo.Sample(
+                filepath="filepath1.jpg",
+                tags=["test"],
+                test_dets=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="friend",
+                            confidence=0.9,
+                            bounding_box=[0, 0, 0.5, 0.5],
+                        ),
+                        fo.Detection(
+                            label="friend",
+                            confidence=0.3,
+                            bounding_box=[0.25, 0, 0.5, 0.1],
+                        ),
+                        fo.Detection(
+                            label="stopper",
+                            confidence=0.1,
+                            bounding_box=[0, 0, 0.5, 0.5],
+                        ),
+                        fo.Detection(
+                            label="big bro",
+                            confidence=0.6,
+                            bounding_box=[0, 0, 0.1, 0.5],
+                        ),
+                    ]
+                ),
+                another_field=51,
+            )
         )
 
-        # test `sort_by`
-        sorted_values = sorted([s.my_int for s in dataset])
-        view = dataset.sort_by("my_int")
-        view_values = [s.my_int for s in view]
-        self.assertListEqual(view_values, sorted_values)
+        view = (
+            dataset.view()
+            .exclude_fields(["another_field"])
+            .filter_detections("test_dets", F("confidence") > 0.5)
+        )
+
+        # modify element
+        sample_view = view.first()
+        sample_view.test_dets.detections[1].label = "MODIFIED"
+        sample_view.save()
+        # check that correct element is modified
+        detections = dataset[sample_view.id].test_dets.detections
+        self.assertEqual(detections[1].label, "friend")
+        self.assertEqual(detections[-1].label, "MODIFIED")
+
+        # complex modify
+        sample_view = view.first()
+        sample_view.test_dets.detections[0].label = "COMPLEX"
+        sample_view.test_dets.detections[1].confidence = 0.51
+        sample_view.save()
+        # check that correct elements are modified
+        detections = dataset[sample_view.id].test_dets.detections
+        self.assertEqual(detections[0].label, "COMPLEX")
+        self.assertEqual(detections[-1].confidence, 0.51)
+
+        # add element
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections.append(
+                fo.Detection(label="NEW DET")
+            )
+            sample_view.save()
+
+        # remove element
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections.pop()
+            sample_view.save()
+
+        # remove all elements
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections.pop()
+            sample_view.test_dets.detections.pop()
+            sample_view.save()
+
+        # replace element
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections[1] = fo.Detection()
+            sample_view.save()
+
+        # overwrite Detections.detections
+        with self.assertRaises(ValueError):
+            sample_view = view.first()
+            sample_view.test_dets.detections = []
+            sample_view.save()
+
+        # overwrite Detections
+        sample_view = view.first()
+        sample_view.test_dets = fo.Detections()
+        sample_view.save()
+        detections = dataset[sample_view.id].test_dets.detections
+        self.assertListEqual(detections, [])
 
 
 class ExpressionTest(unittest.TestCase):
@@ -1565,7 +1677,12 @@ class SerializationTest(unittest.TestCase):
         label1 = fo.Classification(label="cat", logits=np.arange(4))
 
         label2 = fo.Classification(label="cat", logits=np.arange(4))
-        self.assertEqual(label2, label1)
+
+        d1 = label1.to_dict()
+        d2 = label2.to_dict()
+        d1.pop("_id")
+        d2.pop("_id")
+        self.assertDictEqual(d1, d2)
 
         d = label1.to_dict()
         self.assertEqual(fo.Classification.from_dict(d), label1)
@@ -1577,10 +1694,12 @@ class SerializationTest(unittest.TestCase):
         self.assertEqual(fo.Classification.from_json(s), label1)
 
     def test_sample_no_dataset(self):
+        """This test only works if the samples do not have Classification or
+        Detection fields because of the autogenerated ObjectIDs.
+        """
         sample1 = fo.Sample(
             filepath="~/Desktop/test.png",
             tags=["test"],
-            ground_truth=fo.Classification(label="cat", logits=np.arange(4)),
             vector=np.arange(5),
             array=np.ones((2, 3)),
             float=5.1,
@@ -1591,7 +1710,6 @@ class SerializationTest(unittest.TestCase):
         sample2 = fo.Sample(
             filepath="~/Desktop/test.png",
             tags=["test"],
-            ground_truth=fo.Classification(label="cat", logits=np.arange(4)),
             vector=np.arange(5),
             array=np.ones((2, 3)),
             float=5.1,
@@ -1604,6 +1722,9 @@ class SerializationTest(unittest.TestCase):
 
     @drop_datasets
     def test_sample_in_dataset(self):
+        """This test only works if the samples do not have Classification or
+        Detection fields because of the autogenerated ObjectIDs.
+        """
         dataset_name = self.test_sample_in_dataset.__name__
         dataset1 = fo.Dataset(dataset_name + "1")
         dataset2 = fo.Dataset(dataset_name + "2")
@@ -1611,7 +1732,6 @@ class SerializationTest(unittest.TestCase):
         sample1 = fo.Sample(
             filepath="~/Desktop/test.png",
             tags=["test"],
-            ground_truth=fo.Classification(label="cat", logits=np.arange(4)),
             vector=np.arange(5),
             array=np.ones((2, 3)),
             float=5.1,
@@ -1622,7 +1742,6 @@ class SerializationTest(unittest.TestCase):
         sample2 = fo.Sample(
             filepath="~/Desktop/test.png",
             tags=["test"],
-            ground_truth=fo.Classification(label="cat", logits=np.arange(4)),
             vector=np.arange(5),
             array=np.ones((2, 3)),
             float=5.1,
@@ -1644,6 +1763,17 @@ class SerializationTest(unittest.TestCase):
         self.assertNotEqual(s1, sample1)
 
         self.assertEqual(s1, s2)
+
+
+class SampleCollectionTest(unittest.TestCase):
+    def test_first_last(self):
+        dataset = fo.Dataset()
+        dataset.add_samples([fo.Sample("test_%d.png" % i) for i in range(3)])
+
+        self.assertIsInstance(dataset.first(), fo.Sample)
+        self.assertIsInstance(dataset.last(), fo.Sample)
+        self.assertIsInstance(dataset.view().first(), fos.SampleView)
+        self.assertIsInstance(dataset.view().last(), fos.SampleView)
 
 
 class AggregationTest(unittest.TestCase):
