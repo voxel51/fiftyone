@@ -85,10 +85,10 @@ from .document import (
 
 
 def default_sample_fields():
-    """The default fields present on a :class:`SampleDocument` object.
+    """The default fields present on all :class:`SampleDocument` objects.
 
     Returns:
-        an ordered tuple of string field names
+        a tuple of field names
     """
     return DatasetSampleDocument._fields_ordered
 

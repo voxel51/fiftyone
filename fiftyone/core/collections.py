@@ -224,7 +224,7 @@ class SampleCollection(object):
         Note: Default fields cannot be excluded.
 
         Args:
-            field_names: a field name or iterable of field names
+            field_names: a field name or iterable of field names to exclude
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -368,7 +368,7 @@ class SampleCollection(object):
 
     @view_stage
     def select_fields(self, field_names=None):
-        """Selects *only* the fields with the given names as the only fields
+        """Selects the fields with the given names as the *only* fields
         present in the returned :class:`fiftyone.core.sample.SampleView`
         instances. All other fields are excluded.
 
@@ -376,8 +376,9 @@ class SampleCollection(object):
         not included in ``field_names``.
 
         Args:
-            field_names (None): a field name or iterable of field names. If not
-                specified, just the default fields will be selected.
+            field_names (None): a field name or iterable of field names to
+                select. If not specified, just the default fields will be
+                selected
 
         Returns:
             a :class:`DatasetView`

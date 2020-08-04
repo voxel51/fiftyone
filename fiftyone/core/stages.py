@@ -146,7 +146,7 @@ class ExcludeFields(ViewStage):
     Note: Default fields cannot be excluded.
 
     Args:
-        field_names: a field name or iterable of field names
+        field_names: a field name or iterable of field names to exclude
     """
 
     def __init__(self, field_names):
@@ -173,11 +173,11 @@ class ExcludeFields(ViewStage):
         return {"field_names": self._field_names}
 
     def _validate(self):
-        for f in self._field_names:
-            if f in default_sample_fields():
-                raise ValueError(
-                    "Cannot exclude default field '%s' from a view" % f
-                )
+        invalid_fields = set(self._field_names) & set(default_sample_fields())
+        if invalid_fields:
+            raise ValueError(
+                "Cannot exclude default fields: %s" % list(invalid_fields)
+            )
 
 
 class Exists(ViewStage):
@@ -511,20 +511,20 @@ class SelectFields(ViewStage):
     included in ``field_names``.
 
     Args:
-        field_names (None): a field name or iterable of field names. If not
-            specified, just the default fields will be selected.
+        field_names (None): a field name or iterable of field names to select.
+            If not specified, just the default fields will be selected
     """
 
     def __init__(self, field_names=None):
+        default_fields = default_sample_fields()
+
         if field_names:
             if etau.is_str(field_names):
                 field_names = [field_names]
 
-            self._field_names = list(
-                set(field_names).union(default_sample_fields())
-            )
+            self._field_names = list(set(field_names) | set(default_fields))
         else:
-            self._field_names = default_sample_fields()
+            self._field_names = list(default_fields)
 
     @property
     def field_names(self):
