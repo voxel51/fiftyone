@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled, { ThemeConsumer } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 
 const Body = styled.div`
@@ -54,11 +54,17 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
               </>
             }
             control={
-              <Checkbox
-                checked={entry.selected}
-                onChange={() => handleCheck(entry)}
-                style={{ color: entry.color }}
-              />
+              <ThemeConsumer>
+                {(theme) => (
+                  <Checkbox
+                    checked={entry.selected}
+                    onChange={() => handleCheck(entry)}
+                    style={{
+                      color: entry.selected ? entry.color : theme.fontDarkest,
+                    }}
+                  />
+                )}
+              </ThemeConsumer>
             }
           />
         </div>
