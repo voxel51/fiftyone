@@ -22,9 +22,12 @@ from builtins import *
 import logging
 
 import numpy as np
-import pycocotools.mask as maskUtils
 
 import fiftyone.core.utils as fou
+
+mask_utils = fou.lazy_import(
+    "pycocotools.mask", callback=fou.ensure_pycocotools
+)
 
 
 logger = logging.getLogger(__name__)
@@ -162,7 +165,7 @@ def evaluate_detections(
 
                 # Get the IoU of every prediction with every ground truth
                 # shape = [num_preds, num_gts]
-                ious = maskUtils.iou(pred_boxes, gt_boxes, iscrowd)
+                ious = mask_utils.iou(pred_boxes, gt_boxes, iscrowd)
 
                 for pind, gt_ious in enumerate(ious):
                     preds[pind][pred_key]["ious"][cat] = list(
