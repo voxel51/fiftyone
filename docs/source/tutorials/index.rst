@@ -35,9 +35,9 @@ your datasets and turn your good models into *great models*.
 
 .. customcarditem::
     :header: Evaluating object detections
-    :description: Object detections are difficult to visualize. This tutorial shows how FiftyOne makes it easy to execute powerful evaluation workflows on your data.
+    :description: Object detections are difficult to visualize. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your data.
     :link: evaluate_detections.html
-    :image: ../_static/images/tutorials/eval_dets.png
+    :image: ../_static/images/tutorials/evaluate_detections.png
     :tags: Model-Evaluation,Detections
 
 .. customcarditem::
