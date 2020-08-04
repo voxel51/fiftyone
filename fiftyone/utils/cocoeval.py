@@ -39,9 +39,9 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
     stored in every Detection object.
 
     Args:
-        samples: an iterator of samples like a 
+        samples: an iterator of samples like a
             :class:`fiftyone.core.dataset.Dataset` or
-            :class:`fiftyone.core.view.DatasetView`  
+            :class:`fiftyone.core.view.DatasetView`
         pred_field: a string indicating the field name in each sample containing
             predicted detections
         gt_field: a string indicating the field name in each sample containing
@@ -62,14 +62,14 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
             "thresholds"  % (save_iou, IOU_THRESHOLDS))
         save_iou_str = None
 
-    
+
     logger.info("Evaluating detections for each sample")
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
             preds = sample[pred_field]
             gts = sample[gt_field]
-    
-            # sort preds and gt detections by category label 
+
+            # sort preds and gt detections by category label
             sample_cats = {}
             for det in preds.detections:
                 det[pred_key] = {}
@@ -77,59 +77,59 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                 det[pred_key]["matches"] = {
                         iou_str: {"gt_id": -1, "iou": -1} \
                             for iou_str in IOU_THRESHOLD_STR
-                    } 
-                det[pred_key]["eval_id"] = eval_id
+                    }
+                det[pred_key]["pred_id"] = eval_id
                 eval_id += 1
                 if det.label not in sample_cats:
                     sample_cats[det.label] = {}
-                    sample_cats[det.label]["preds"] = [det]
+                    sample_cats[det.label]["preds"] = []
                     sample_cats[det.label]["gts"] = []
                 sample_cats[det.label]["preds"].append(det)
-    
+
             for det in gts.detections:
                 det[gt_key] = {}
                 det[gt_key]["matches"] = {
                         iou_str: {"pred_id": -1, "iou": -1} \
                             for iou_str in IOU_THRESHOLD_STR
-                    } 
+                    }
 
-                det[gt_key]["eval_id"] = eval_id
+                det[gt_key]["gt_id"] = eval_id
                 eval_id += 1
                 if det.label not in sample_cats:
                     sample_cats[det.label] = {}
                     sample_cats[det.label]["preds"] = []
-                    sample_cats[det.label]["gts"] = [det]
+                    sample_cats[det.label]["gts"] = []
                 sample_cats[det.label]["gts"].append(det)
-    
+
             # Compute IoU for every detection and gt
             for cat, dets in sample_cats.items():
                 gts = dets["gts"]
                 preds = dets["preds"]
-    
-                inds = np.argsort([-p["confidence"] for p in preds],
+
+                inds = np.argsort([-(p.confidence or 0.0) for p in preds],
                     kind='mergesort')
                 preds = [preds[i] for i in inds]
                 sample_cats[cat]["preds"] = preds
-    
-                gt_eval_ids = [g[gt_key]["eval_id"] for g in gts]
 
-    
+                gt_ids = [g[gt_key]["gt_id"] for g in gts]
+
+
                 gt_boxes = [list(g.bounding_box) for g in gts]
                 pred_boxes = [list(p.bounding_box) for p in preds]
-                
+
                 iscrowd = [0]*len(gt_boxes)
                 for gind, g in enumerate(gts):
                     if "iscrowd" in g.attributes:
                         iscrowd[gind] = g.attributes["iscrowd"].value
-    
+
                 # Get the iou of every prediction with every ground truth
                 # Shape = [num_preds, num_gts]
                 ious = maskUtils.iou(pred_boxes, gt_boxes, iscrowd)
-    
+
                 for pind, gt_ious in enumerate(ious):
                     preds[pind][pred_key]["ious"][cat] = \
-                        list(zip(gt_eval_ids, gt_ious))
-    
+                        list(zip(gt_ids, gt_ious))
+
             # Starting with highest confidence prediction, match all with gts
             # Store true and false positives
             # This follows:
@@ -145,21 +145,21 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                 true_positives = 0
                 false_positives = 0
                 for cat, dets in sample_cats.items():
-                    gt_by_id = {g[gt_key]["eval_id"]: g for g in
+                    gt_by_id = {g[gt_key]["gt_id"]: g for g in
                         dets["gts"]}
-    
-                    # Note: predictions were sorted by confidence in the 
+
+                    # Note: predictions were sorted by confidence in the
                     # previous step
                     preds = dets["preds"]
-                    
+
                     # Match each prediction to the highest IoU ground truth
                     # available
                     for pred in preds:
                         if cat in pred[pred_key]["ious"]:
                             best_match = -1
                             best_match_iou = min([iou_thresh, 1-1e-10])
-                            for eval_id, iou in pred[pred_key]["ious"][cat]:
-                                gt = gt_by_id[eval_id]
+                            for gt_id, iou in pred[pred_key]["ious"][cat]:
+                                gt = gt_by_id[gt_id]
                                 curr_gt_match = \
                                     gt[gt_key]["matches"][iou_str]["pred_id"]
 
@@ -169,47 +169,50 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
                                     )
                                 else:
                                     iscrowd = 0
-    
+
                                 # Cannot match two preds to the same gt unless
                                 # the gt is a crowd
                                 if curr_gt_match > -1 and not iscrowd:
                                     continue
-    
-                                # Ignore gts with an IoU lower than what was 
+
+                                # Ignore gts with an IoU lower than what was
                                 # already found
                                 if iou < best_match_iou:
                                     continue
-    
+
                                 best_match_iou = iou
-                                best_match = eval_id
-    
+                                best_match = gt_id
+
                             if best_match > -1:
                                 # If the prediction was matched, store the eval
                                 # id of the pred in the gt and of the gt in the
                                 # pred
                                 gt_to_store =  gt_by_id[best_match][gt_key]
                                 gt_to_store["matches"][iou_str] = {
-                                        "pred_id": pred[pred_key]["eval_id"],
+                                        "pred_id": pred[pred_key]["pred_id"],
                                         "iou": best_match_iou
                                     }
                                 pred[pred_key]["matches"][iou_str] = {
-                                        "gt_id": best_match, 
+                                        "gt_id": best_match,
                                         "iou": best_match_iou
                                     }
                                 true_positives += 1
                             else:
                                 false_positives += 1
-    
+
+                        elif pred.label == cat:
+                            false_positives += 1
+
                 result_dict["true_positives"][iou_str] = \
                     true_positives
                 result_dict["false_positives"][iou_str] = \
                     false_positives
-                false_negatives = len( 
-                        [g for g in dets["gts"] 
+                false_negatives = len(
+                        [g for g in dets["gts"]
                             if g[gt_key]["matches"][iou_str]["pred_id"] \
                                 == -1]
                     )
-    
+
                 result_dict["false_negatives"][iou_str] = \
                     false_negatives
 
@@ -226,17 +229,17 @@ def evaluate_detections(samples, pred_field, gt_field, save_iou=0.75):
             sample.save()
 
 
-def iou_count(samples, pred_field, gt_field, iou):
+def save_tp_fp_fn_counts(samples, pred_field, gt_field, iou):
     """Iterates through samples that have been evaluated using
-    :meth:`evaluate_detections() <fiftyone.utils.cocoeval.evaluate_detections>` 
+    :meth:`evaluate_detections() <fiftyone.utils.cocoeval.evaluate_detections>`
     and stores the total number of true/false positives and false negatives
     in a `Sample`-level field. These fields can be used to more easily search
     and visualize these metrics.
 
     Args:
-        samples: an iterator of samples like a 
+        samples: an iterator of samples like a
             :class:`fiftyone.core.dataset.Dataset` or
-            :class:`fiftyone.core.view.DatasetView`  
+            :class:`fiftyone.core.view.DatasetView`
         pred_field: a string indicating the field name in each sample containing
             predicted detections that were evaluated
         gt_field: a string indicating the field name in each sample containing
@@ -267,9 +270,9 @@ def iou_count(samples, pred_field, gt_field, iou):
             true_positives = result_dict["true_positives"][iou_str]
             false_positives = result_dict["false_positives"][iou_str]
             false_negatives = result_dict["false_negatives"][iou_str]
-            
+
             sample["tp_iou_%s" % save_iou_str] = true_positives
             sample["fp_iou_%s" % save_iou_str] = false_positives
             sample["fn_iou_%s" % save_iou_str] = false_negatives
 
-            sample.save() 
+            sample.save()
