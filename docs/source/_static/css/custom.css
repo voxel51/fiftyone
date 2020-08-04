@@ -373,6 +373,15 @@ article.pytorch-article .reference.download.internal {
   margin-left: 1rem;
 }
 
+.pytorch-left-menu li.toctree-l1 ul li {
+  font-size: 1em;
+}
+
+.pytorch-left-menu li.toctree-l2.current li.toctree-l3 > a,
+.pytorch-left-menu li.toctree-l3.current li.toctree-l4 > a {
+  display: inline-block;
+}
+
 .pytorch-left-menu li.current > a,
 .pytorch-left-menu li.toctree-l1.current > a {
   color: var(--color-primary);
