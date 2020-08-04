@@ -220,7 +220,7 @@ for a full list of supported operations.
     # Samples whose size is less than 1024 bytes
     small_files_view = dataset.match(F("metadata.size_bytes") < 1024)
 
-    # samples for which `my_classification` is either confident or
+    # Samples for which `my_classification` is either confident or
     # the label is "cat" or "dog"
     classification_filtering_view = dataset.match(
         (F("my_classification.confidence") >= 0.5)
@@ -255,7 +255,7 @@ samples for which a given |Field| exists and is not ``None``:
 .. code-block:: python
     :linenos:
 
-    # the subset of samples where predictions have been computed
+    # The subset of samples where predictions have been computed
     predictions_view = dataset.exists("my_predictions")
 
 Use :meth:`select() <fiftyone.core.view.DatasetView.select>` and
