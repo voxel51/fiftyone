@@ -188,7 +188,7 @@ class Match(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "filter", "type": "any"}]
+        return [{"name": "filter", "type": "dict"}]
 
 
 class MatchTag(ViewStage):
