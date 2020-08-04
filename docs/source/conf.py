@@ -61,16 +61,21 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosectionlabel",
-    "m2r",
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
+    "autodocsumm",
 ]
 
 # Types of class members to generate documentation for.
-autodoc_default_options = {"members": True, "inherited-members": True}
+autodoc_default_options = {
+    "members": True,
+    "inherited-members": True,
+    "member-order": "bysource",
+    "autosummary": True,
+    "autosummary-no-nesting": True,
+}
 autodoc_inherit_docstrings = True
-autodoc_member_order = "bysource"
 autoclass_content = "class"
 
 # Add any paths that contain templates here, relative to this directory.
