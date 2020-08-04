@@ -27,6 +27,7 @@ export type Entry = {
   name: string;
   selected: boolean;
   data: Any;
+  color: string;
 };
 
 type Props = {
@@ -56,6 +57,7 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
               <Checkbox
                 checked={entry.selected}
                 onChange={() => handleCheck(entry)}
+                style={{ color: entry.color }}
               />
             }
           />

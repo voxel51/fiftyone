@@ -74,6 +74,7 @@ const SamplesContainer = (props) => {
           <Grid.Column className="sidebar-column">
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
+                colorMapping={labelData.colorMapping}
                 tags={tagNames.map((n) => ({
                   name: n,
                   count: tagSampleCounts[n],

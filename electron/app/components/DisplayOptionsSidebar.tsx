@@ -25,7 +25,7 @@ const Container = styled.div`
   }
 `;
 
-const Cell = ({ label, entries, onSelect }) => {
+const Cell = ({ label, entries, onSelect, colorMapping }) => {
   const [expanded, setExpanded] = useState(true);
   return (
     <DropdownCell label={label} expanded={expanded} onExpand={setExpanded}>
@@ -36,6 +36,7 @@ const Cell = ({ label, entries, onSelect }) => {
             name: e.name,
             selected: e.selected,
             data: [(e.count || 0).toLocaleString()],
+            color: colorMapping[e.name],
           }))}
           onCheck={onSelect}
         />
@@ -47,6 +48,7 @@ const Cell = ({ label, entries, onSelect }) => {
 };
 
 const DisplayOptionsSidebar = ({
+  colorMapping,
   tags,
   labels,
   scalars,
@@ -54,9 +56,14 @@ const DisplayOptionsSidebar = ({
 }: Props) => {
   return (
     <Container>
-      <Cell label="Tags" entries={tags} onSelect={onSelectTag} />
-      <Cell label="Labels" entries={labels} />
-      <Cell label="Scalars" entries={scalars} />
+      <Cell
+        colorMapping={colorMapping}
+        label="Tags"
+        entries={tags}
+        onSelect={onSelectTag}
+      />
+      <Cell colorMapping={colorMapping} label="Labels" entries={labels} />
+      <Cell colorMapping={colorMapping} label="Scalars" entries={scalars} />
     </Container>
   );
 };
