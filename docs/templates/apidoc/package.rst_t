@@ -28,7 +28,6 @@
 
 {%- if submodules %}
 {{ toctree(submodules) }}
-   :titlesonly:
 {% endif %}
 
 {%- if not modulefirst and not is_namespace %}
