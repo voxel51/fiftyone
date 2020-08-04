@@ -98,11 +98,11 @@ cd PATH/TO/open_images_error_analysis
 ```
 
 ```bash
-IMAGES_DIR=PATH/TO/IMAGES
-OUTPUT_DIR=PATH/TO/PREDICTIONS
+IMAGES_DIR="/PATH/TO/IMAGES"
+OUTPUT_DIR="/PATH/TO/PREDICTIONS"
 
-MODEL_HANDLE=https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1
-# MODEL_HANDLE=https://tfhub.dev/google/openimages_v4/ssd/mobilenet_v2/1
+MODEL_HANDLE="https://tfhub.dev/google/faster_rcnn/openimages_v4/inception_resnet_v2/1"
+# MODEL_HANDLE="https://tfhub.dev/google/openimages_v4/ssd/mobilenet_v2/1"
 
 python scripts/inference.py \
     --output_dir ${OUTPUT_DIR} \
@@ -125,19 +125,20 @@ pip install fiftyone
 
 ```bash
 DATASET_NAME="open-images-v4-test"
-IMAGES_DIR=PATH/TO/IMAGES
-BOUNDING_BOXES_EXPANDED=/PATH/TO/test-annotations-bbox_expanded.csv
-IMAGE_LABELS_EXPANDED=/PATH/TO/test-annotations-human-imagelabels-boxable_expanded.csv
-PREDICTIONS_PATH=/PATH/TO/PREDICTIONS.csv
-CLASS_DESCRIPTIONS=/PATH/TO/class-descriptions-boxable.csv
+IMAGES_DIR="/PATH/TO/IMAGES"
+BOUNDING_BOXES_EXPANDED="/PATH/TO/test-annotations-bbox_expanded.csv"
+IMAGE_LABELS_EXPANDED="/PATH/TO/test-annotations-human-imagelabels-boxable_expanded.csv"
+PREDICTIONS_PATH="/PATH/TO/PREDICTIONS.csv"
+CLASS_DESCRIPTIONS="/PATH/TO/class-descriptions-boxable.csv"
 
 # @todo(Tyler)
 DATASET_NAME="open-images-v4-test"
-IMAGES_DIR=~/data/open-images-dataset/TESTING/test_images/
-BOUNDING_BOXES_EXPANDED=~/data/open-images-dataset/TESTING/test-annotations-bbox_expanded.csv
-IMAGE_LABELS_EXPANDED=~/data/open-images-dataset/TESTING/test-annotations-human-imagelabels-boxable_expanded.csv
-PREDICTIONS_PATH=~/data/open-images-dataset/TESTING/faster_rcnn_preds_74061.csv
-CLASS_DESCRIPTIONS=~/data/open-images-dataset/TESTING/class-descriptions-boxable.csv
+IMAGES_DIR="~/data/open-images-dataset/TESTING/test_images"
+BOUNDING_BOXES_EXPANDED="~/data/open-images-dataset/TESTING/test-annotations-bbox_expanded.csv"
+IMAGE_LABELS_EXPANDED="~/data/open-images-dataset/TESTING/test-annotations-human-imagelabels-boxable_expanded.csv"
+PREDICTIONS_PATH="~/data/open-images-dataset/TESTING/faster_rcnn_preds_3081.csv"
+#PREDICTIONS_PATH="~/data/open-images-dataset/TESTING/faster_rcnn_preds_74061.csv"
+CLASS_DESCRIPTIONS="~/data/open-images-dataset/TESTING/class-descriptions-boxable.csv"
 
 python scripts/load_data.py \
     --bounding_boxes_path ${BOUNDING_BOXES_EXPANDED} \
@@ -146,7 +147,7 @@ python scripts/load_data.py \
     --prediction_field_name "faster_rcnn" \
     --class_descriptions_path ${CLASS_DESCRIPTIONS} \
     --load_images_with_preds \
-    --max_num_images 100 \
+    --max_num_images 1000 \
     ${DATASET_NAME} ${IMAGES_DIR}
 ```
 
@@ -157,14 +158,46 @@ We can optionally visualize the data before evaluating. Open up a `python` or
 
 ```python
 import fiftyone as fo
+from fiftyone import ViewField as F
 
 dataset = fo.load_dataset("open-images-v4-test")
 
 session = fo.launch_app(dataset=dataset)
+
+# Filter the visible detections by confidence
+session.view = dataset.filter_detections("faster_rcnn", F("confidence") > 0.4)
 ```
 
 ## 5. Evaluating on a per-image granularity
 
 ### Running evaluation
 
-## 5. Error analysis
+```bash
+export TF_MODELS_RESEARCH="/Users/tylerganter/data/open-images-dataset"
+CLASS_LABEL_MAP=${TF_MODELS_RESEARCH}/object_detection/data/oid_v4_label_map.pbtxt
+
+python scripts/evaluate_model.py \
+    --prediction_field_name "faster_rcnn" \
+    --iou_threshold 0.5 \
+    ${DATASET_NAME} ${CLASS_LABEL_MAP}
+```
+
+## 6. Error analysis
+
+We can now visualize
+
+```python
+import fiftyone as fo
+from fiftyone import ViewField as F
+
+dataset = fo.load_dataset("open-images-v4-test")
+
+session = fo.launch_app(dataset=dataset)
+
+# Filter the visible detections by confidence
+session.view = (
+    dataset
+    .filter_detections("faster_rcnn_TP", F("confidence") > 0.4)
+    .filter_detections("faster_rcnn_FP", F("confidence") > 0.4)
+)
+```

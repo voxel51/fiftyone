@@ -1,23 +1,23 @@
 """
 @todo(Tyler)
 """
+import os
+import sys
+
 from google.protobuf import text_format
 import numpy as np
 import pandas as pd
 
-import fiftyone as fo
-import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
-from fiftyone.utils.open_images import detections2df, classifications2df
 
-import sys
+from .load_data import detections2df, classifications2df
 
-sys.path.insert(0, fo.config.tf_object_detection_dir)
-# pylint: disable=import-error
-
-object_detection = fou.lazy_import(
-    "object_detection", callback=fou.ensure_object_detection
-)
+TF_MODELS_RESEARCH = os.getenv("TF_MODELS_RESEARCH")
+if not TF_MODELS_RESEARCH:
+    raise OSError(
+        "This module requires an environment variable TF_MODELS_RESEARCH that points to the .../models/research directory"
+    )
+sys.path.insert(0, TF_MODELS_RESEARCH)
 
 from object_detection.metrics import oid_challenge_evaluation_utils as utils
 from object_detection.protos import string_int_label_map_pb2
@@ -198,7 +198,7 @@ def evaluate_dataset(
     label_map_path,
     groundtruth_loc_field_name="groundtruth_detections",
     groundtruth_img_labels_field_name="groundtruth_image_labels",
-    predictions_field_name="predicted_detections",
+    prediction_field_name="predicted_detections",
     iou_threshold=0.5,
 ):
     _, categories = TensorflowObjectDetectionAPIEvaluator.load_labelmap(
@@ -230,7 +230,7 @@ def evaluate_dataset(
             # convert predictions to dataframe
             predictions = detections2df(
                 sample.open_images_id,
-                sample[predictions_field_name],
+                sample[prediction_field_name],
                 display2name_map=display2name_map,
             )
 
@@ -253,16 +253,12 @@ def evaluate_dataset(
 
             # store false positives
             for idx in result["false_positive_indexes"]:
-                det = sample[predictions_field_name].detections[idx]
-                det.attributes["eval"] = fol.CategoricalAttribute(
-                    value="false_positive"
-                )
+                det = sample[prediction_field_name].detections[idx]
+                det["eval"] = "false_positive"
 
             # store true positives
             for idx in result["true_positive_indexes"]:
-                det = sample[predictions_field_name].detections[idx]
-                det.attributes["eval"] = fol.CategoricalAttribute(
-                    value="true_positive"
-                )
+                det = sample[prediction_field_name].detections[idx]
+                det["eval"] = "true_positive"
 
             sample.save()

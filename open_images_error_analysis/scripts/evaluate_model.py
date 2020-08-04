@@ -1,53 +1,83 @@
 """
+Analyze Open Images V6
+
+dataset = fo.load_dataset("open-images-V6-validation")
 
 """
-from fiftyone.utils.tfodeval import evaluate_dataset
-
-import fiftyone as fo
-
-###############################################################################
-
-CLASS_LABELMAP = "/Users/tylerganter/data/open-images-dataset/object_detection/data/oid_v4_label_map.pbtxt"
-
-###############################################################################
-
-dataset = fo.load_dataset("open-images-v4-test")
-
-evaluate_dataset(dataset, CLASS_LABELMAP, predictions_field_name="faster_rcnn")
-
-for sample in dataset:
-    sample["faster_rcnn_TP"] = fo.Detections(
-        detections=[
-            det
-            for det in sample["faster_rcnn"].detections
-            if (
-                "eval" in det.attributes
-                and det.attributes["eval"].value == "true_positive"
-            )
-        ]
-    )
-
-    sample["faster_rcnn_FP"] = fo.Detections(
-        detections=[
-            det
-            for det in sample["faster_rcnn"].detections
-            if (
-                "eval" in det.attributes
-                and det.attributes["eval"].value == "false_positive"
-            )
-        ]
-    )
-
-    sample.save()
-
-###############################################################################
-
+import argparse
+from pathlib import Path
 import sys
 
-sys.exit()
-
 import fiftyone as fo
+from fiftyone import ViewField as F
 
-dataset = fo.load_dataset("open-images-v4-test")
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-s = fo.launch_app(dataset=dataset)
+from error_analysis.evaluation import evaluate_dataset
+
+
+def main(
+    dataset_name,
+    label_map_path,
+    groundtruth_loc_field_name,
+    groundtruth_img_labels_field_name,
+    prediction_field_name,
+    iou_threshold,
+):
+    dataset = fo.load_dataset(dataset_name)
+
+    evaluate_dataset(
+        dataset=dataset,
+        label_map_path=label_map_path,
+        groundtruth_loc_field_name=groundtruth_loc_field_name,
+        groundtruth_img_labels_field_name=groundtruth_img_labels_field_name,
+        prediction_field_name=prediction_field_name,
+        iou_threshold=iou_threshold,
+    )
+
+    print("Cloning True Positives to a new field...")
+    tp_view = dataset.filter_detections(
+        "faster_rcnn", F("eval") == "true_positive"
+    )
+    dataset.clone_field(
+        prediction_field_name, prediction_field_name + "_TP", tp_view
+    )
+
+    print("Cloning False Positives to a new field...")
+    fp_view = dataset.filter_detections(
+        "faster_rcnn", F("eval") == "false_positive"
+    )
+    dataset.clone_field(
+        prediction_field_name, prediction_field_name + "_FP", fp_view
+    )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "dataset_name", help="Name of the dataset in FiftyOne.",
+    )
+    parser.add_argument(
+        "label_map_path", help="Path to the label map .pbtxt file.",
+    )
+
+    parser.add_argument(
+        "--groundtruth_loc_field_name",
+        default="groundtruth_detections",
+        help="TODO",
+    )
+    parser.add_argument(
+        "--groundtruth_img_labels_field_name",
+        default="groundtruth_image_labels",
+        help="TODO",
+    )
+    parser.add_argument(
+        "--prediction_field_name", default="predicted_detections", help="TODO",
+    )
+    parser.add_argument(
+        "--iou_threshold", type=float, default=0.5, help="IOU threhold",
+    )
+    args = parser.parse_args()
+
+    main(**vars(args))

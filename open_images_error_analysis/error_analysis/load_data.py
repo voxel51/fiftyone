@@ -110,6 +110,7 @@ def load_open_images_dataset(
     if max_num_images != -1:
         img_paths = img_paths[:max_num_images]
 
+    print("Parsing CSV labels...")
     _samples = []
     with fou.ProgressBar(img_paths) as pb:
         for image_path in pb(img_paths):
@@ -141,6 +142,7 @@ def load_open_images_dataset(
 
             _samples.append(fos.Sample(**kwargs))
 
+    print("Creating FiftyOne Dataset...")
     dataset = fod.Dataset(dataset_name)
     dataset.add_samples(_samples)
 
