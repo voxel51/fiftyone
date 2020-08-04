@@ -85,19 +85,19 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
       <ViewStageParameterInput
         placeholder={parameter}
         value={value}
-        onFocus={() => !isEditing && send("EDIT")}
-        onBlur={() => isEditing && send("BLUR")}
+        onFocus={() => !isEditing && send({ type: "EDIT" })}
+        onBlur={() => isEditing && send({ type: "BLUR" })}
         onChange={(e) => {
           send({ type: "CHANGE", value: e.target.value });
         }}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
-            isEditing && send("COMMIT");
+            isEditing && send({ type: "COMMIT" });
           }
         }}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
-            send("CANCEL");
+            send({ type: "CANCEL" });
           }
         }}
         ref={inputRef}

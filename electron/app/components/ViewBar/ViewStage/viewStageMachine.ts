@@ -231,10 +231,16 @@ const viewStageMachine = Machine(
         },
       },
       deleted: {
-        onEntry: sendParent((ctx) => ({ type: "STAGE.DELETE", id: ctx.id })),
+        onEntry: [
+          assign({
+            stage: "",
+          }),
+          sendParent((ctx) => ({ type: "STAGE.DELETE", id: ctx.id })),
+        ],
       },
     },
     on: {
+      "STAGE.DELETE": "deleted",
       "PARAMETER.COMMIT": {
         target: "decide",
         actions: [

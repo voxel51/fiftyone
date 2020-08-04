@@ -60,17 +60,19 @@ export const ViewStageButton = animated(styled.button`
 
 export const AddViewStage = React.memo(({ send, insertAt }) => {
   const theme = useContext(ThemeContext);
-  const props = useSpring({
+  const [props, set] = useSpring(() => ({
     background: theme.brandMoreTransparent,
     opacity: 1,
     from: {
       opacity: 0,
     },
-  });
+  }));
 
   return (
     <ViewStageButton
       style={props}
+      onMouseEnter={() => set({ background: theme.brandTransparent })}
+      onMouseLeave={() => set({ background: theme.brandMoreTransparent })}
       onClick={() => send({ type: "STAGE.ADD", insertAt })}
     >
       +
