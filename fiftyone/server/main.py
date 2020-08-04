@@ -22,6 +22,7 @@ import argparse
 import json
 import logging
 import os
+import uuid
 
 from bson import json_util
 from flask import Flask, jsonify, request, send_file
@@ -44,6 +45,23 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "fiftyone"
 
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+
+
+def get_user_id():
+    uid_path = os.path.join(foc.FIFTYONE_CONFIG_DIR, "var", "uid")
+
+    def read():
+        try:
+            with open(uid_path) as f:
+                return next(f).strip()
+        except (IOError, StopIteration):
+            return None
+
+    if not read():
+        os.makedirs(os.path.dirname(uid_path), exist_ok=True)
+        with open(uid_path, "w") as f:
+            f.write(str(uuid.uuid4()))
+    return read()
 
 
 @app.route("/")
@@ -104,6 +122,13 @@ class StateController(Namespace):
         """
         self.state = state
         emit("update", state, broadcast=True, include_self=False)
+
+    def on_get_fiftyone_info(self):
+        """Retrieves information about the FiftyOne installation."""
+        return {
+            "version": foc.VERSION,
+            "user_id": get_user_id(),
+        }
 
     def on_get_current_state(self, _):
         """Gets the current state.

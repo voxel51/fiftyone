@@ -61,6 +61,12 @@ on your data quickly and easily.
     :button_link: brain.html
 
 .. customcalloutitem::
+    :header: The Dataset Zoo
+    :description: A collection of popular datasets that you can load into FiftyOne with a single command.
+    :button_text: Check out the Dataset Zoo
+    :button_link: dataset_creation/zoo.html
+
+.. customcalloutitem::
     :header: Configuring FiftyOne
     :description: Customize the default behavior of the FiftyOne library to suit your needs.
     :button_text: Learn how to configure FiftyOne
