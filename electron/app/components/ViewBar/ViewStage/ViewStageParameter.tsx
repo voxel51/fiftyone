@@ -34,7 +34,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
   }
 `);
 
-export default React.memo(({ parameterRef }) => {
+const ViewStageParameter = React.memo(({ parameterRef }) => {
   const theme = useContext(ThemeContext);
   const [listeners] = useState(new Set());
   const [state, send] = useService(parameterRef);
@@ -105,3 +105,5 @@ export default React.memo(({ parameterRef }) => {
     </ViewStageParameterDiv>
   );
 });
+
+export default ViewStageParameter;

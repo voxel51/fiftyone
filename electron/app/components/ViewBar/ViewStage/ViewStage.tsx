@@ -88,7 +88,7 @@ const DeleteViewStage = ({ spring }) => {
   return <DeleteViewStageButton style={spring}>x</DeleteViewStageButton>;
 };
 
-export default React.memo(({ stageRef }) => {
+const ViewStage = React.memo(({ stageRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
@@ -178,3 +178,5 @@ export default React.memo(({ stageRef }) => {
     </ViewStageContainer>
   );
 });
+
+export default ViewStage;

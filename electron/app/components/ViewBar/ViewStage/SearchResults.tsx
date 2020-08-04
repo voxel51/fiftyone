@@ -64,7 +64,7 @@ interface SearchResultsProps {
   send: any;
 }
 
-export default React.memo(({ results, send }) => {
+const SearchResults = React.memo(({ results, send }) => {
   if (!results.length) return null;
   return (
     <SearchResultsDiv
@@ -82,3 +82,5 @@ export default React.memo(({ results, send }) => {
     </SearchResultsDiv>
   );
 });
+
+export default SearchResults;

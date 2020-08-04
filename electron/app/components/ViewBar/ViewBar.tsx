@@ -34,7 +34,7 @@ const ViewBarDiv = styled.div`
 
 const machine = viewBarMachine.withContext(createBar(5151));
 
-export default () => {
+const ViewBar = () => {
   const [state, send] = useMachine(machine);
 
   const { stages } = state.context;
@@ -67,3 +67,5 @@ export default () => {
     </ViewBarDiv>
   );
 };
+
+export default ViewBar;
