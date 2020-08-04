@@ -15,9 +15,9 @@ const Tags = (props) => {
     const { tags } = labelData;
     const styles = (t, i) => {
       if (activeTags[t]) {
-        return { background: colors[labelData.mapping[t]] };
+        return { background: colors[labelData.colorMapping[t]] };
       }
-      return { borderColor: colors[labelData.mapping[t]] };
+      return { borderColor: colors[labelData.colorMapping[t]] };
     };
     content = (
       <Container>
