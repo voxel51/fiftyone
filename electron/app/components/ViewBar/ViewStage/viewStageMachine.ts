@@ -11,21 +11,17 @@ export const createParameter = (
   type,
   value,
   submitted,
-  tail,
   focusOnInit
-) => {
-  return {
-    id: uuid(),
-    parameter: parameter,
-    type: type,
-    stage: stage,
-    value: value ? value : "",
-    submitted,
-    tail,
-    focusOnInit,
-    inputRef: {},
-  };
-};
+) => ({
+  id: uuid(),
+  parameter: parameter,
+  type: type,
+  stage: stage,
+  value: value ? value : "",
+  submitted,
+  focusOnInit,
+  inputRef: {},
+});
 
 const viewStageMachine = Machine(
   {
@@ -36,7 +32,8 @@ const viewStageMachine = Machine(
       parameters: [],
       prevStage: "",
       stageInfo: undefined,
-      insertAt: undefined,
+      index: undefined,
+      focusOnInit: undefined,
     },
     initial: "decide",
     states: {
@@ -85,11 +82,7 @@ const viewStageMachine = Machine(
         states: {
           pending: {},
           selected: {},
-          submitted: {
-            exit: assign({
-              insertAt: undefined,
-            }),
-          },
+          submitted: {},
         },
         on: {
           EDIT: {

@@ -49,7 +49,7 @@ const ViewBar = () => {
                   <AddViewStage
                     key={`insert-button-${stage.id}`}
                     send={send}
-                    insertAt={i}
+                    index={i}
                   />
                 ) : null}
                 <ViewStage key={stage.id} stageRef={stage.ref} />
@@ -61,7 +61,7 @@ const ViewBar = () => {
         <AddViewStage
           key={`insert-button-tail`}
           send={send}
-          insertAt={stages.length}
+          index={stages.length}
         />
       ) : null}
     </ViewBarDiv>

@@ -3,25 +3,21 @@ import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 import ViewStageStories from "./ViewStage/ViewStage.stories";
 
-export const createStage = (stage, insertAt, stageInfo, focusOnInit) => {
-  return {
-    id: uuid(),
-    submitted: false,
-    stage: stage,
-    parameters: [],
-    stageInfo,
-    insertAt,
-    focusOnInit,
-  };
-};
+export const createStage = (stage, index, stageInfo, focusOnInit) => ({
+  id: uuid(),
+  submitted: false,
+  stage: stage,
+  parameters: [],
+  stageInfo,
+  index,
+  focusOnInit,
+});
 
-export const createBar = (port) => {
-  return {
-    port: port,
-    stages: [],
-    stageInfo: undefined,
-  };
-};
+export const createBar = (port) => ({
+  port: port,
+  stages: [],
+  stageInfo: undefined,
+});
 
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
@@ -44,9 +40,7 @@ const viewBarMachine = Machine({
         onDone: {
           target: "running",
           actions: assign({
-            stageInfo: (ctx, event) => {
-              return event.data.stages;
-            },
+            stageInfo: (ctx, event) => event.data.stages,
             stages: (ctx) => (ctx.stages.length === 0 ? [""] : stages),
           }),
         },
@@ -55,12 +49,8 @@ const viewBarMachine = Machine({
     running: {
       entry: assign({
         stages: (ctx) => {
-          return ctx.stages.map((stage) => {
-            const newStage = createStage(
-              stage,
-              stage === "" ? 0 : undefined,
-              ctx.stageInfo
-            );
+          return ctx.stages.map((stage, i) => {
+            const newStage = createStage(stage, i, ctx.stageInfo);
             return {
               ...newStage,
               ref: spawn(viewStageMachine.withContext(newStage)),
@@ -75,14 +65,14 @@ const viewBarMachine = Machine({
       actions: [
         assign({
           stages: (ctx, e) => {
-            const newStage = createStage("", e.insertAt, ctx.stageInfo, true);
+            const newStage = createStage("", e.index, ctx.stageInfo, true);
             return [
-              ...ctx.stages.slice(0, e.insertAt),
+              ...ctx.stages.slice(0, e.index),
               {
                 ...newStage,
                 ref: spawn(viewStageMachine.withContext(newStage)),
               },
-              ...ctx.stages.slice(e.insertAt),
+              ...ctx.stages.slice(e.index),
             ];
           },
         }),
@@ -93,9 +83,9 @@ const viewBarMachine = Machine({
         assign({
           stages: (ctx, e) => {
             const newStages = [...ctx.stages];
-            newStages[e.stage.insertAt] = {
+            newStages[e.stage.index] = {
               ...e.stage,
-              ref: newStages[e.stage.insertAt].ref,
+              ref: newStages[e.stage.index].ref,
             };
             return newStages;
           },
@@ -109,7 +99,7 @@ const viewBarMachine = Machine({
             if (stages.length === 1) {
               return [{ ...e.stage, ref: stages[0].ref }];
             } else {
-              return ctx.stages.filter((stage) => stage.id !== e.id);
+              return stages.filter((stage) => stage.id !== e.stage.id);
             }
           },
         }),

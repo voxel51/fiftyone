@@ -61,7 +61,7 @@ export const ViewStageButton = animated(styled.button`
   }
 `);
 
-export const AddViewStage = React.memo(({ send, insertAt }) => {
+export const AddViewStage = React.memo(({ send, index }) => {
   const theme = useContext(ThemeContext);
   const [props, set] = useSpring(() => ({
     background: theme.brandMoreTransparent,
@@ -76,28 +76,43 @@ export const AddViewStage = React.memo(({ send, insertAt }) => {
       style={props}
       onMouseEnter={() => set({ background: theme.brandTransparent })}
       onMouseLeave={() => set({ background: theme.brandMoreTransparent })}
-      onClick={() => send({ type: "STAGE.ADD", insertAt })}
+      onClick={() => send({ type: "STAGE.ADD", index })}
     >
       +
     </ViewStageButton>
   );
 });
 
-const DeleteViewStageButton = animated(styled.div`
+const ViewStageDeleteDiv = animated(styled.div`
+  box-sizing: border-box;
+  border: 2px dashed ${({ theme }) => theme.brand};
   display: inline-block;
   position: relative;
-  box-sizing: border-box;
-  border-left: 2px solid ${({ theme }) => theme.brand};
-  border-color: ${({ theme }) => theme.brand};
-  border-bottom-right-radius: 3px;
   border-top-right-radius: 3px;
+  border-bottom-left-radius: 3px;
+  cursor: pointer;
 `);
 
-const DeleteViewStage = React.memo(({ send, spring }) => {
+const ViewStageDeleteButton = animated(styled.button`
+  background-color: transparent;
+  border: none;
+  margin: 0.5rem;
+  color: ${({ theme }) => theme.font};
+  line-height: 1rem;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+
+  :focus {
+    outline: none;
+  }
+`);
+
+const ViewStageDelete = React.memo(({ send, spring }) => {
   return (
-    <DeleteViewStageButton style={spring} onClick={() => send("STAGE.DELETE")}>
-      x
-    </DeleteViewStageButton>
+    <ViewStageDeleteDiv style={spring} onClick={() => send("STAGE.DELETE")}>
+      <ViewStageDeleteButton>x</ViewStageDeleteButton>
+    </ViewStageDeleteDiv>
   );
 });
 
@@ -153,7 +168,7 @@ const ViewStage = React.memo(({ stageRef }) => {
     <ViewStageContainer>
       <ViewStageDiv style={props}>
         <ViewStageInput
-          placeholder="+ search sample"
+          placeholder="+ add stage"
           value={stage}
           onFocus={() => !state.matches("editing") && send("EDIT")}
           onBlur={() =>
@@ -186,7 +201,7 @@ const ViewStage = React.memo(({ stageRef }) => {
         parameters.map((parameter) => (
           <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
         ))}
-      <DeleteViewStage spring={deleteProps} send={send} />
+      <ViewStageDelete spring={deleteProps} send={send} />
     </ViewStageContainer>
   );
 });
