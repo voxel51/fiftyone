@@ -4,43 +4,33 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
-FiftyOne 0.5.0
+FiftyOne 0.4.1
 --------------
-*Target Release: July 30, 2020*
+*Released August 4, 2020*
 
 Core
 ^^^^
 - Added a powerful :mod:`fiftyone.core.expressions` module for constructing
-  complex DatasetView :meth:`match() <fiftyone.core.view.DatasetView.match>`,
-  :meth:`list_filter() <fiftyone.core.view.DatasetView.list_filter>`, and
-  :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` stages
+  complex DatasetView :meth:`match() <fiftyone.core.collections.SampleCollection.match>`,
+  :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
+  :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`, and
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stages
 - Added :mod:`a utility <fiftyone.utils.XXXXX>` for evaluating object
   detections in FiftyOne
 - Adding support for rendering annotated versions of sample data with their
   labels overlaid via a
-  :meth:`SampleCollection.draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+  :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
   method
-
-App
-^^^
-- Refreshed App layout, including new header, display options,
-  labels tabs, and expanded sample view
-- Added a view stage search bar that allows for interactive construction of
-  DatasetViews from within the App
 
 Documentation
 ^^^^^^^^^^^^^
-- Added :doc:`a tutorial </tutorials/XXXX>` demonstrating COCO evaluation
+- Added :doc:`a tutorial </tutorials/XXXXX>` demonstrating COCO evaluation
   workflows powered by FiftyOne
-- Added :doc:`a tutorial </tutorials/XXXX>` exploring the
-  `Open Images Dataset <https://www.kaggle.com/c/open-images-object-detection-rvc-2020/overview>`_
-  with FiftyOne
-- Added :doc:`full documentation </user_guide/XXXXX>` for using expressions
-  to construct DatasetView :meth:`match() <fiftyone.core.view.DatasetView.match>`,
-  :meth:`list_filter() <fiftyone.core.view.DatasetView.list_filter>`, and
-  :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` stages
-- Added :doc:`a recipe </recipes/XXXXX>` demonstrating the use of DatasetViews
-  to explore detection datasets
+- Added :doc:`full documentation </user_guide/views>` for using expressions
+  to construct DatasetView :meth:`match() <fiftyone.core.collections.SampleCollection.match>`,
+  :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
+  :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`, and
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stages
 - Added :doc:`a recipe </recipes/draw_labels>` showing how to render annotated
   versions of samples with label field(s) overlaid
 - Upgraded :doc:`dataset creation docs </user_guide/dataset_creation/index>`
