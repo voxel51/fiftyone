@@ -13,8 +13,6 @@ const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
   display: grid;
   grid-template-columns: auto auto;
-  border-top: 1px solid ${({ theme }) => theme.border};
-  border-bottom: 1px solid ${({ theme }) => theme.border};
   padding-top: 5px;
   padding-bottom: 5px;
 
@@ -29,10 +27,6 @@ const Wrapper = styled.div`
 
   > div > div {
     display: inline-block;
-  }
-
-  div.tags {
-    margin-left: 1em;
   }
 `;
 
@@ -51,7 +45,6 @@ const ImageContainerHeader = ({
             onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
           />
         </div>
-        <div className="tags">Tags</div>
       </div>
       <div>
         <div className="total">
