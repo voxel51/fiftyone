@@ -31,6 +31,12 @@ const StatefulCheckboxGrid = (props) => {
 
 export const standard = () => <StatefulCheckboxGrid entries={entries} />;
 
+export const disabled = () => (
+  <StatefulCheckboxGrid
+    entries={entries.map((e, i) => ({ ...e, disabled: Boolean(i % 2) }))}
+  />
+);
+
 export const contained = () => (
   <Box style={{ width: 300 }}>
     <StatefulCheckboxGrid entries={entries} />

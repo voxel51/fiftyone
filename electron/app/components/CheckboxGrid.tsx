@@ -29,6 +29,14 @@ const Body = styled.div`
         float: right;
       }
     }
+
+    .MuiFormControlLabel-label {
+      color: unset;
+    }
+  }
+
+  && .Mui-disabled {
+    cursor: not-allowed;
   }
 `;
 
@@ -37,6 +45,7 @@ export type Entry = {
   selected: boolean;
   data: Any;
   color: string;
+  disabled: boolean;
 };
 
 type Props = {
@@ -58,6 +67,7 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
       {entries.map((entry) => (
         <div key={entry.name}>
           <FormControlLabel
+            disabled={entry.disabled}
             label={
               <>
                 <span className="name">{entry.name}</span>
@@ -68,14 +78,22 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
               backgroundColor: entry.selected
                 ? theme.backgroundLight
                 : undefined,
-              color: entry.selected ? theme.font : theme.fontDark,
+              color: entry.selected
+                ? theme.font
+                : entry.disabled
+                ? theme.fontDarkest
+                : theme.fontDark,
             }}
             control={
               <Checkbox
                 checked={entry.selected}
                 onChange={() => handleCheck(entry)}
                 style={{
-                  color: entry.selected ? entry.color : theme.fontDark,
+                  color: entry.selected
+                    ? entry.color
+                    : entry.disabled
+                    ? theme.fontDarkest
+                    : theme.fontDark,
                 }}
               />
             }
