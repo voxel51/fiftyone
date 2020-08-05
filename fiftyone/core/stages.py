@@ -79,6 +79,16 @@ class ViewStage(object):
         raise NotImplementedError("subclasses must implement `_kwargs()`")
 
     @classmethod
+    def _params(self):
+        """Returns a list of JSON dicts describing the parameters that define the
+        ViewStage.
+
+        Returns:
+            a list of JSON dicts
+        """
+        raise NotImplementedError("subclasses must implement `_params()`")
+
+    @classmethod
     def _from_dict(cls, d):
         """Creates a :class:`ViewStage` instance from a serialized JSON dict
         representation of it.
@@ -162,6 +172,10 @@ class ExcludeFields(ViewStage):
 
     def _kwargs(self):
         return {"field_names": self._field_names}
+
+    @classmethod
+    def _params(self):
+        return [{"name": "field_names", "type": ["list", "str"]}]
 
     def _validate(self):
         invalid_fields = set(self._field_names) & set(default_sample_fields())
@@ -267,6 +281,13 @@ class _FilterList(ViewStage):
 
     def _kwargs(self):
         return {"field": self._field, "filter": self._get_mongo_filter()}
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "str"},
+            {"name": "filter", "type": "dict"},
+        ]
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -485,6 +506,10 @@ class Mongo(ViewStage):
     def _kwargs(self):
         return {"pipeline": self._pipeline}
 
+    @classmethod
+    def _params(self):
+        return [{"name": "pipeline", "type": "dict"}]
+
 
 class Select(ViewStage):
     """Selects the samples with the given IDs from the view.
@@ -557,6 +582,10 @@ class SelectFields(ViewStage):
     def _kwargs(self):
         return {"field_names": self._field_names}
 
+    @classmethod
+    def _params(self):
+        return [{"name": "field_names", "type": ["list", "str"]}]
+
 
 class SortBy(ViewStage):
     """Sorts the samples in the view by the given field or expression.
@@ -619,7 +648,7 @@ class SortBy(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "str"},
+            {"name": "field_or_expr", "type": "str|dict"},
             {"name": "reverse", "type": "bool"},
         ]
 
@@ -696,12 +725,17 @@ class Take(ViewStage):
 # simple registry for the server to grab available view stages
 _STAGES = [
     Exclude,
+    ExcludeFields,
     Exists,
+    FilterClassifications,
+    FilterDetections,
     Limit,
     Match,
     MatchTag,
     MatchTags,
+    Mongo,
     Select,
+    SelectFields,
     SortBy,
     Skip,
     Take,
