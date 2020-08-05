@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { Grid, Sticky } from "semantic-ui-react";
@@ -11,12 +11,15 @@ import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { VerticalSpacer } from "../components/utils";
 
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { wrapSetWithItemSetter } from "../utils/hooks";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
-    flex: 0 0 15rem;
+    flex: 0 0 17rem;
     z-index: 400;
+    margin-right: -0.5em;
   }
 
   .ui.grid > .content-column {
@@ -25,10 +28,21 @@ const Root = styled.div`
 `;
 
 const SamplesContainer = (props) => {
+  const {
+    activeTags,
+    activeLabels,
+    activeOther,
+    setActiveTags,
+    setActiveLabels,
+    setActiveOther,
+    labelData,
+  } = props.displayProps;
+
   const [showSidebar, setShowSidebar] = useState(false);
   const [stuck, setStuck] = useState(false);
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
+  const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -61,7 +75,15 @@ const SamplesContainer = (props) => {
           <Grid.Column className="sidebar-column">
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
-                tags={tagNames.map((n) => ({ name: n }))}
+                colorMapping={labelData.colorMapping}
+                tags={tagNames.map((n) => ({
+                  name: n,
+                  count: tagSampleCounts[n],
+                  selected: Boolean(activeTags[n]),
+                }))}
+                onSelectTag={(e) =>
+                  setActiveTags({ ...activeTags, [e.name]: e.selected })
+                }
                 labels={[]}
                 scalars={[]}
               />

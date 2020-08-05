@@ -14,13 +14,18 @@ type Props = {
   tags: Entry[];
   labels: Entry[];
   scalars: Entry[];
+  onSelectTag: (entry: Entry) => void;
 };
 
 const Container = styled.div`
   margin-bottom: 2px;
+
+  .MuiCheckbox-root {
+    padding: 4px 8px 4px 4px;
+  }
 `;
 
-const Cell = ({ label, entries }) => {
+const Cell = ({ label, entries, onSelect, colorMapping }) => {
   const [expanded, setExpanded] = useState(true);
   return (
     <DropdownCell label={label} expanded={expanded} onExpand={setExpanded}>
@@ -31,7 +36,9 @@ const Cell = ({ label, entries }) => {
             name: e.name,
             selected: e.selected,
             data: [(e.count || 0).toLocaleString()],
+            color: colorMapping[e.name],
           }))}
+          onCheck={onSelect}
         />
       ) : (
         <span>No options available</span>
@@ -40,12 +47,23 @@ const Cell = ({ label, entries }) => {
   );
 };
 
-const DisplayOptionsSidebar = ({ tags, labels, scalars }: Props) => {
+const DisplayOptionsSidebar = ({
+  colorMapping = {},
+  tags,
+  labels,
+  scalars,
+  onSelectTag,
+}: Props) => {
   return (
     <Container>
-      <Cell label="Tags" entries={tags} />
-      <Cell label="Labels" entries={labels} />
-      <Cell label="Scalars" entries={scalars} />
+      <Cell
+        colorMapping={colorMapping}
+        label="Tags"
+        entries={tags}
+        onSelect={onSelectTag}
+      />
+      <Cell colorMapping={colorMapping} label="Labels" entries={labels} />
+      <Cell colorMapping={colorMapping} label="Scalars" entries={scalars} />
     </Container>
   );
 };

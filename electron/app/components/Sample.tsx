@@ -6,7 +6,7 @@ import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
-import Tag from "./Tag";
+import Tag from "./Tags/Tag";
 
 const Sample = ({
   displayProps,
@@ -68,11 +68,7 @@ const Sample = ({
           })}
         {s.tags.map((t, i) => {
           return activeTags[t] ? (
-            <Tag
-              key={i}
-              name={String(t)}
-              color={colors[labelData.mapping[t]]}
-            />
+            <Tag key={i} name={String(t)} color={labelData.colorMapping[t]} />
           ) : null;
         })}
         {Object.keys(s)

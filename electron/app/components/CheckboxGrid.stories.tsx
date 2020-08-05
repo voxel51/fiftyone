@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import CheckboxGrid from "./CheckboxGrid";
 import { Box } from "./utils";
 import { withKnobs, boolean } from "@storybook/addon-knobs";
@@ -10,16 +10,41 @@ export default {
 };
 
 const entries = [
-  { name: "Test", data: [100] },
-  { name: "Train", data: [300] },
-  { name: "Processed", data: [200] },
-  { name: "Reviewed", data: [150] },
+  { name: "Test", data: 100 },
+  { name: "Train", data: 300 },
+  { name: "Processed", data: 200 },
+  { name: "Reviewed", data: 150 },
 ];
 
-export const standard = () => <CheckboxGrid entries={entries} />;
+const StatefulCheckboxGrid = (props) => {
+  const [selected, setSelected] = useState({});
+  return (
+    <CheckboxGrid
+      entries={props.entries.map((e) => ({
+        ...e,
+        selected: Boolean(selected[e.name]),
+      }))}
+      onCheck={(e) => setSelected({ ...selected, [e.name]: !selected[e.name] })}
+    />
+  );
+};
+
+export const standard = () => <StatefulCheckboxGrid entries={entries} />;
 
 export const contained = () => (
   <Box style={{ width: 300 }}>
-    <CheckboxGrid entries={entries} />
+    <StatefulCheckboxGrid entries={entries} />
+  </Box>
+);
+
+export const colors = () => (
+  <Box style={{ width: 300 }}>
+    <StatefulCheckboxGrid
+      entries={["Red", "Yellow", "Green", "Blue"].map((c, i) => ({
+        name: c,
+        color: c.toLowerCase(),
+        data: i,
+      }))}
+    />
   </Box>
 );

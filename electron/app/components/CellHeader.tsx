@@ -7,6 +7,7 @@ const CellHeader = styled(Box)`
   cursor: ${({ clickable }) => (clickable ? "pointer" : undefined)};
   font-weight: bold;
   user-select: none;
+  border-radius: 3px;
 
   .icon {
     float: right;

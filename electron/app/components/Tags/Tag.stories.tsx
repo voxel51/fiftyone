@@ -1,37 +1,19 @@
 import React from "react";
 import Tag from "./Tag";
-import { boolean } from "@storybook/addon-knobs";
 
 export default {
   component: Tag,
-  title: "Tag",
+  title: "Tags/Tag",
 };
 
-const WrappedTag = (props) => (
-  <Tag
-    selected={boolean("Selected")}
-    triangle={boolean("Triangle")}
-    {...props}
-  />
-);
+export const standard = () => <Tag name="tag" />;
 
-export const standard = () => <WrappedTag name="tag" />;
+export const red = () => <Tag name="tag" color="red" />;
 
-export const triangle = () => <WrappedTag name="tag" triangle />;
-
-export const color = () => <WrappedTag name="tag" color="red" />;
-
-export const grid = () => (
-  <>
-    <div style={{ lineHeight: 0 }}>
-      <WrappedTag name="tag" color="#ff0000" />
-      <WrappedTag name="tag" color="#00ff00" />
-      <WrappedTag name="tag" color="#0000ff" />
-    </div>
-    <div style={{ lineHeight: 0 }}>
-      <WrappedTag name="tag" color="#ff0000" />
-      <WrappedTag name="tag" color="#00ff00" />
-      <WrappedTag name="tag" color="#0000ff" />
-    </div>
-  </>
+export const row = () => (
+  <div>
+    <Tag name="sunny" color="#499cef" />
+    <Tag name="dog" color="#6d04ff" />
+    <Tag name="outside" color="#3dbe04" />
+  </div>
 );
