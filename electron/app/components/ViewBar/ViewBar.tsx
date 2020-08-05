@@ -52,7 +52,7 @@ export const viewBarKeyMap = {
   VIEW_BAR_PREVIOUS: "left",
   VIEW_BAR_NEXT_STAGE: "shift+right",
   VIEW_BAR_PREVIOUS_STAGE: "shift+left",
-  VIEW_BAR_DELETE_STAGE: ["del", "backspace"],
+  VIEW_BAR_DELETE_STAGE: ["del", "shift+backspace"],
   VIEW_BAR_NEXT_RESULT: "down",
   VIEW_BAR_PREVIOUS_RESULT: "up",
 };
