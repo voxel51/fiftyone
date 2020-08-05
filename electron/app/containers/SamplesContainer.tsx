@@ -1,12 +1,11 @@
 import React, { useState, useRef } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { Grid, Sticky } from "semantic-ui-react";
 
 import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
 import ImageContainerHeader from "../components/ImageContainerHeader";
-import SidebarContainer from "../components/SidebarContainer";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { VerticalSpacer } from "../components/utils";

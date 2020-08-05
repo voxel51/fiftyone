@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Switch, Route } from "react-router-dom";
 import { useRecoilValue } from "recoil";
-import { Dimmer, Loader } from "semantic-ui-react";
 
 import routes from "./constants/routes.json";
 import App from "./containers/App";
 import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
-import { getSocket, useSubscribe } from "./utils/socket";
 import connect from "./utils/connect";
 import * as atoms from "./recoil/atoms";
 
@@ -17,8 +15,6 @@ function Routes({ port }) {
   const [activeLabels, setActiveLabels] = useState({});
   const [activeOther, setActiveOther] = useState({});
   const colors = useRecoilValue(atoms.colors);
-  const [colorMap, setColorMap] = useState({});
-  const socket = getSocket(port, "state");
   const appProps = {
     activeTags,
     setActiveTags,

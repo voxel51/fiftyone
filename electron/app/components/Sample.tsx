@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useRecoilValue } from "recoil";
-import { Menu } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
