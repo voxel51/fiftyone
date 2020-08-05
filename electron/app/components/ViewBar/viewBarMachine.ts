@@ -116,7 +116,7 @@ const viewBarMachine = Machine(
             stages: ({ stages }, e) =>
               stages
                 .filter(
-                  (stage) => stage.id !== e.stage.id && stages.length !== 1
+                  (stage) => stage.id !== e.stage.id || stages.length === 1
                 )
                 .map((stage, index) => {
                   const newStage = stage.id === e.stage.id ? e.stage : stage;
@@ -124,6 +124,7 @@ const viewBarMachine = Machine(
                     ...newStage,
                     index,
                     length: Math.max(stages.length - 1, 1),
+                    ref: stage.ref,
                   };
                 }),
           }),

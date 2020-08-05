@@ -162,7 +162,6 @@ const viewStageMachine = Machine(
                             parameter.type,
                             "",
                             false,
-                            i === result.length - 1,
                             i === 0
                           )
                         );
