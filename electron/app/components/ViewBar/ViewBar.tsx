@@ -3,17 +3,11 @@ import styled from "styled-components";
 import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
 import { useRecoilState } from "recoil";
-import { HotKeys } from "react-hotkeys";
+import { GlobalHotKeys } from "react-hotkeys";
 
 import { stateDescription } from "../../recoil/atoms";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine, { createBar } from "./viewBarMachine";
-
-const StyledHotKeys = styled(HotKeys)`
-  &:focus {
-    outline: none;
-  }
-`;
 
 const ViewBarDiv = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
@@ -56,7 +50,7 @@ const ViewBarDiv = styled.div`
 );*/
 
 export const viewBarKeyMap = {
-  VIEW_BAR_FOCUS: "?",
+  VIEW_BAR_FOCUS: "alt+v",
   VIEW_BAR_BLUR: "esc",
   VIEW_BAR_NEXT: "right",
   VIEW_BAR_PREVIOUS: "left",
@@ -74,7 +68,6 @@ const ViewBar = () => {
     stateDescription
   );
   const [state, send] = useMachine(machine);
-  console.log(stateDescriptionValue);
 
   const { stages } = state.context;
 
@@ -91,12 +84,12 @@ const ViewBar = () => {
   };
 
   return (
-    <StyledHotKeys
-      handlers={handlers}
-      onBlur={handlers.VIEW_BAR_BLUR}
-      onFocus={handlers.VIEW_BAR_FOCUS}
-    >
-      <ViewBarDiv>
+    <React.Fragment>
+      <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
+      <ViewBarDiv
+        onBlur={handlers.VIEW_BAR_BLUR}
+        onFocus={handlers.VIEW_BAR_FOCUS}
+      >
         {state.matches("running")
           ? stages.map((stage, i) => {
               return (
@@ -121,7 +114,7 @@ const ViewBar = () => {
           />
         ) : null}
       </ViewBarDiv>
-    </StyledHotKeys>
+    </React.Fragment>
   );
 };
 
