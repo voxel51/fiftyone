@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 
+import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 
@@ -23,6 +24,11 @@ const Container = styled.div`
 
   .MuiCheckbox-root {
     padding: 4px 8px 4px 4px;
+  }
+
+  ${CellHeader.Body} {
+    color: ${({ theme }) => theme.fontDark};
+    text-transform: uppercase;
   }
 `;
 
