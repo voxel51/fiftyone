@@ -124,22 +124,30 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
-                  value: ({ type, value }) =>
-                    PARSER[Array.isArray(type) ? type[0] : type].parse(
-                      value,
-                      type[1]
-                    ),
+                  value: ({ types, value }) =>
+                    types.split("|").reduce((acc, val) => {
+                      const parser =
+                        PARSER[Array.isArray(type) ? type[0] : type];
+                      const next = Array.isArray(type) ? type[1] : undefined;
+                      return parser.validate(val, next)
+                        ? parser.parse(val, next)
+                        : acc;
+                    }),
                 }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
                   parameter: ctx,
                 })),
               ],
-              cond: ({ type, value }) =>
-                PARSER[Array.isArray(type) ? type[0] : type].validate(
-                  value,
-                  type[1]
-                ),
+              cond: ({ types, value }) =>
+                types
+                  .split("|")
+                  .any((type) =>
+                    PARSER[Array.isArray(type) ? type[0] : type].validate(
+                      value,
+                      Array.isArray(type) ? type[1] : undefined
+                    )
+                  ),
             },
             {
               target: "decide",

@@ -648,7 +648,7 @@ class SortBy(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field_or_expr", "type": "str|dict"},
+            {"name": "field_or_expr", "type": "dict|str"},
             {"name": "reverse", "type": "bool"},
         ]
 
