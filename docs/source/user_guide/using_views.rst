@@ -429,3 +429,53 @@ dataset as follows:
     :linenos:
 
     dataset.remove_samples(view)
+
+Efficiently iterating samples
+-----------------------------
+
+If you have a dataset with larger fields, such as |Classifications| or
+|Detections|, it can be slow to construct the |SampleView| objects for each
+database entry. If, for a particular use case, you are only interested in a
+subset of fields, you can use
+:class:`Dataset.select_fields() <fiftyone.core.dataset.Dataset.select_fields>`
+to select only the fields of interest.
+
+Let's say you have a dataset that looks like this:
+
+.. code-block:: bash
+
+    Name:           open-images-v4-test
+    Persistent:     True
+    Num samples:    1000
+    Tags:           []
+    Sample fields:
+        filepath:                 StringField
+        tags:                     ListField(StringField)
+        metadata:                 EmbeddedDocumentField(Metadata)
+        open_images_id:           StringField
+        groundtruth_image_labels: EmbeddedDocumentField(Classifications)
+        groundtruth_detections:   EmbeddedDocumentField(Detections)
+        faster_rcnn:              EmbeddedDocumentField(Detections)
+        mAP:                      FloatField
+        AP_per_class:             DictField
+
+and we want to get a list of ``open_images_id``'s for all samples in the
+dataset. Loading ``groundtruth_image_labels``, ``groundtruth_detections``,
+and ``faster_rcnn`` is going to be slow, but using
+:class:`Dataset.select_fields() <fiftyone.core.dataset.Dataset.select_fields>`
+can speed up this list comprehension by ~200X!!!
+
+.. code-block:: python
+    :linenos:
+
+    import time
+
+    start = time.time()
+    oiids = [s.open_images_id for s in dataset]
+    print(time.time() - start)
+    # 38.212332010269165
+
+    start = time.time()
+    oiids = [s.open_images_id for s in dataset.select_fields("open_images_id")]
+    print(time.time() - start)
+    # 0.20824909210205078
