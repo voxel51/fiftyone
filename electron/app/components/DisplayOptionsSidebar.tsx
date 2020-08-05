@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 
+import { BarChart, Help, Label, PhotoLibrary } from "@material-ui/icons";
+
 import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
@@ -30,12 +32,28 @@ const Container = styled.div`
     color: ${({ theme }) => theme.fontDark};
     text-transform: uppercase;
   }
+
+  .left-icon {
+    margin-right: 4px;
+    svg {
+      vertical-align: bottom;
+    }
+  }
 `;
 
-const Cell = ({ label, entries, onSelect, colorMapping }) => {
+const Cell = ({ label, icon, entries, onSelect, colorMapping }) => {
   const [expanded, setExpanded] = useState(true);
   return (
-    <DropdownCell label={label} expanded={expanded} onExpand={setExpanded}>
+    <DropdownCell
+      label={
+        <>
+          {icon ? <span className="left-icon">{icon}</span> : null}
+          {label}
+        </>
+      }
+      expanded={expanded}
+      onExpand={setExpanded}
+    >
       {entries.length ? (
         <CheckboxGrid
           columnWidths={[3, 2]}
@@ -68,14 +86,26 @@ const DisplayOptionsSidebar = ({
       <Cell
         colorMapping={colorMapping}
         label="Tags"
+        icon={<PhotoLibrary />}
         entries={tags}
         onSelect={onSelectTag}
       />
-      <Cell colorMapping={colorMapping} label="Labels" entries={labels} />
-      <Cell colorMapping={colorMapping} label="Scalars" entries={scalars} />
+      <Cell
+        colorMapping={colorMapping}
+        label="Labels"
+        icon={<Label style={{ transform: "rotate(180deg)" }} />}
+        entries={labels}
+      />
+      <Cell
+        colorMapping={colorMapping}
+        label="Scalars"
+        icon={<BarChart />}
+        entries={scalars}
+      />
       {unsupported.length ? (
         <Cell
           label="Unsupported"
+          icon={<Help />}
           colorMapping={{}}
           entries={unsupported.map((entry) => ({
             ...entry,

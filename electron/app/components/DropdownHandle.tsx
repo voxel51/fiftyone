@@ -4,7 +4,7 @@ import { Add, ExpandLess, ExpandMore, Remove } from "@material-ui/icons";
 
 import CellHeader from "./CellHeader";
 
-const DropdownHandle = styled(CellHeader)`
+const Body = styled(CellHeader)`
   width: 15rem;
 
   svg {
@@ -23,7 +23,7 @@ export const ArrowButton = (expanded) =>
   expanded ? <ExpandLess /> : <ExpandMore />;
 export const PlusMinusButton = (expanded) => (expanded ? <Remove /> : <Add />);
 
-export default ({
+const DropdownHandle = ({
   label,
   expanded,
   onClick,
@@ -31,8 +31,10 @@ export default ({
   ...rest
 }: Props) => {
   return (
-    <DropdownHandle icon={icon(expanded)} onClick={onClick} {...rest}>
+    <Body icon={icon(expanded)} onClick={onClick} {...rest}>
       {label}
-    </DropdownHandle>
+    </Body>
   );
 };
+
+export default DropdownHandle;
