@@ -79,7 +79,7 @@ const viewBarMachine = Machine({
               true,
               false
             );
-            return [
+            const stages = [
               ...ctx.stages.slice(0, e.index),
               {
                 ...newStage,
@@ -87,25 +87,33 @@ const viewBarMachine = Machine({
               },
               ...ctx.stages.slice(e.index),
             ];
+            return stages.map((stage, index) => ({
+              ...stage,
+              index,
+              hideDelete: index === 0 && ctx.stages.length === 1,
+            }));
           },
         }),
-        send(({ stages }) => ({
-          type: "STAGE.SET_HIDE_DELETE",
-          hideDelete: false,
-          to: stages[0].ref,
-        })),
+        (ctx) =>
+          ctx.stages.forEach((stage) =>
+            stage.ref.send({
+              type: "STAGE.UPDATE",
+              index: stage.index,
+              hideDelete: stage.hideDelete,
+              to: stage.ref,
+            })
+          ),
       ],
     },
     "STAGE.COMMIT": {
       actions: [
         assign({
-          stages: (ctx, e) => {
-            const newStages = [...ctx.stages];
-            newStages[e.stage.index] = {
+          stages: ({ stages }, e) => {
+            stages[e.stage.index] = {
               ...e.stage,
-              ref: newStages[e.stage.index].ref,
+              ref: stages[e.stage.index].ref,
             };
-            return newStages;
+            return stages;
           },
         }),
       ],
@@ -115,17 +123,29 @@ const viewBarMachine = Machine({
         assign({
           stages: ({ stages }, e) => {
             if (stages.length === 1) {
-              return [{ ...e.stage, hideDelete: true, ref: stages[0].ref }];
+              return [
+                { ...e.stage, index: 0, hideDelete: true, ref: stages[0].ref },
+              ];
             } else {
-              return stages.filter((stage) => stage.id !== e.stage.id);
+              return stages
+                .filter((stage) => stage.id !== e.stage.id)
+                .map((stage, index) => ({
+                  ...stage,
+                  index,
+                  hideDelete: index === 0 && stages.length - 1 === 1,
+                }));
             }
           },
         }),
-        send(({ stages }) => ({
-          type: "STAGE.SET_HIDE_DELETE",
-          hideDelete: stages.length === 1,
-          to: stages[0].ref,
-        })),
+        (ctx) =>
+          ctx.stages.forEach((stage) =>
+            stage.ref.send({
+              type: "STAGE.UPDATE",
+              index: stage.index,
+              hideDelete: stage.hideDelete,
+              to: stage.ref,
+            })
+          ),
       ],
     },
   },

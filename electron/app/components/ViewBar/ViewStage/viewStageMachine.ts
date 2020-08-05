@@ -238,10 +238,13 @@ const viewStageMachine = Machine(
       },
     },
     on: {
-      "STAGE.SET_HIDE_DELETE": {
-        actions: assign({
-          index: (ctx, { index }) => index,
-        }),
+      "STAGE.UPDATE": {
+        actions: [
+          assign({
+            index: (_, { index }) => index,
+            hideDelete: (_, { hideDelete }) => hideDelete,
+          }),
+        ],
       },
       "STAGE.DELETE": "deleted",
       "PARAMETER.COMMIT": {

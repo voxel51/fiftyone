@@ -120,14 +120,7 @@ const ViewStage = React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const {
-    id,
-    stage,
-    submitted,
-    hideDelete,
-    stageInfo,
-    parameters,
-  } = state.context;
+  const { stage, submitted, hideDelete, stageInfo, parameters } = state.context;
 
   const isCompleted = ["reading.selected", "reading.submitted"].some(
     state.matches
@@ -213,7 +206,7 @@ const ViewStage = React.memo(({ stageRef }) => {
         parameters.map((parameter) => (
           <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
         ))}
-      {!hideDelete || submitted ? (
+      {!hideDelete || isCompleted ? (
         <ViewStageDelete spring={deleteProps} send={send} />
       ) : null}
     </ViewStageContainer>
