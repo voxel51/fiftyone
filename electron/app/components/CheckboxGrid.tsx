@@ -18,6 +18,25 @@ const Body = styled.div`
 
     .MuiCheckbox-root {
       padding: 3px;
+
+      .MuiIconButton-label {
+        position: relative;
+        svg {
+          z-index: 1;
+        }
+      }
+
+      &.Mui-checked .MuiIconButton-label::after {
+          content: "";
+          position: absolute;
+          background: ${({ theme }) => theme.font};
+          top: 0.2em;
+          left: 0.2em;
+          width: 0.6em;
+          height: 0.6em;
+          z-index: 0;
+        }
+      }
     }
 
     .MuiFormControlLabel-label {
