@@ -51,6 +51,7 @@ from collections import OrderedDict
 from functools import wraps
 import json
 import numbers
+import os
 
 from bson import json_util
 from bson.binary import Binary
@@ -549,11 +550,12 @@ class NoDatasetSampleDocument(SampleDocument):
         self._data = OrderedDict()
 
         for field_name in self.default_fields_ordered:
-
             value = kwargs.pop(field_name, None)
 
             if value is None:
                 value = self._get_default(self.default_fields[field_name])
+            elif field_name == "filepath":
+                value = os.path.abspath(os.path.expanduser(value))
 
             self._data[field_name] = value
 
