@@ -82,7 +82,10 @@ const SamplesContainer = (props) => {
                   selected: Boolean(activeTags[n]),
                 }))}
                 onSelectTag={(e) =>
-                  setActiveTags({ ...activeTags, [e.name]: e.selected })
+                  setActiveTags((activeTags) => ({
+                    ...activeTags,
+                    [e.name]: e.selected,
+                  }))
                 }
                 labels={[]}
                 scalars={[]}

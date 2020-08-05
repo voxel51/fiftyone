@@ -6,6 +6,7 @@ import { BarChart, Help, Label, PhotoLibrary } from "@material-ui/icons";
 import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
+import SelectionTag from "./Tags/SelectionTag";
 
 export type Entry = {
   name: string;
@@ -30,7 +31,14 @@ const Container = styled.div`
 
   ${CellHeader.Body} {
     color: ${({ theme }) => theme.fontDark};
-    text-transform: uppercase;
+
+    .label {
+      text-transform: uppercase;
+    }
+
+    ${SelectionTag.Body} {
+      float: right;
+    }
   }
 
   .left-icon {
@@ -43,12 +51,28 @@ const Container = styled.div`
 
 const Cell = ({ label, icon, entries, onSelect, colorMapping }) => {
   const [expanded, setExpanded] = useState(true);
+  const numSelected = entries.filter((e) => e.selected).length;
+  const handleClear = (e) => {
+    if (!onSelect) {
+      return;
+    }
+    e.stopPropagation();
+    for (const entry of entries) {
+      if (entry.selected) {
+        onSelect({ ...entry, selected: false });
+      }
+    }
+  };
+
   return (
     <DropdownCell
       label={
         <>
           {icon ? <span className="left-icon">{icon}</span> : null}
-          {label}
+          <span class="label">{label}</span>
+          {numSelected ? (
+            <SelectionTag count={numSelected} onClear={handleClear} />
+          ) : null}
         </>
       }
       expanded={expanded}
