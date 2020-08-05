@@ -45,7 +45,7 @@ const ViewBarDiv = styled.div`
   }
 );*/
 
-export const viewBarHotKeys = {
+export const viewBarKeyMap = {
   VIEW_BAR_FOCUS: "alt+v",
   VIEW_BAR_BLUR: "esc",
   VIEW_BAR_NEXT: "right",
