@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 
-const Container = styled.div`
+const Body = styled.div`
   display: inline-block;
   background-color: ${({ fillColor }) => fillColor};
   box-sizing: content-box;
@@ -17,7 +17,9 @@ const Container = styled.div`
 `;
 
 const Tag = ({ name, color = "blue" }) => {
-  return <Container fillColor={color}>{name}</Container>;
+  return <Body fillColor={color}>{name}</Body>;
 };
+
+Tag.Body = Body;
 
 export default Tag;
