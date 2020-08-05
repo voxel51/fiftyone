@@ -71,12 +71,11 @@ class DatasetView(foc.SampleCollection):
         if isinstance(sample_id, slice):
             return self._slice(sample_id)
 
-        # Ensure `sample_id` is in the view
         view = self.match({"_id": ObjectId(sample_id)})
-        if not view:
+        try:
+            return view.first()
+        except ValueError:
             raise KeyError("No sample found with ID '%s'" % sample_id)
-
-        return self._dataset[sample_id]
 
     def __copy__(self):
         view = self.__class__(self._dataset)
