@@ -34,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: Evaluating object detections
+    :description: Object detections are difficult to visualize. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your data.
+    :link: evaluate_detections.html
+    :image: ../_static/images/tutorials/evaluate_detections.png
+    :tags: Getting-Started,Model-Evaluation
+
+.. customcarditem::
     :header: Exploring image uniqueness
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
@@ -65,5 +72,6 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   Evaluating object detections<evaluate_detections.ipynb>
    Exploring image uniqueness<uniqueness.ipynb>
    Finding label mistakes<label_mistakes.ipynb>

@@ -1,4 +1,4 @@
-Loading Zoo Datasets
+FiftyOne Dataset Zoo
 ====================
 
 .. default-role:: code
