@@ -16,6 +16,7 @@ unittest.TextTestRunner().run(singletest)
 import datetime
 from functools import wraps
 import math
+import os
 import unittest
 
 from mongoengine.errors import (
@@ -76,8 +77,10 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset.add_sample(sample3)
         self.assertIsNot(sample3, sample)
 
-        sv4 = dataset.match({"filepath": filepath}).first()
-        self.assertIsNot(sv4, sample)
+        sample4 = dataset.match(
+            {"filepath": os.path.abspath(filepath)}
+        ).first()
+        self.assertIsNot(sample4, sample)
 
     @drop_datasets
     def test_dataset_add_delete_field(self):
@@ -736,13 +739,14 @@ class SampleTest(unittest.TestCase):
     @drop_datasets
     def test_get_field(self):
         filepath = "path/to/file.jpg"
+        abs_filepath = os.path.abspath(filepath)
 
         sample = fo.Sample(filepath=filepath)
 
         # get valid
-        self.assertEqual(sample.get_field("filepath"), filepath)
-        self.assertEqual(sample["filepath"], filepath)
-        self.assertEqual(sample.filepath, filepath)
+        self.assertEqual(sample.get_field("filepath"), abs_filepath)
+        self.assertEqual(sample["filepath"], abs_filepath)
+        self.assertEqual(sample.filepath, abs_filepath)
 
         # get missing
         with self.assertRaises(AttributeError):
@@ -815,7 +819,7 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset_name = self.test_invalid_sample.__name__
         dataset = fo.Dataset(dataset_name)
 
-        sample = fo.Sample(filepath=51)
+        sample = fo.Sample(filepath="test.jpg", tags=51)
 
         with self.assertRaises(ValidationError):
             dataset.add_sample(sample)
