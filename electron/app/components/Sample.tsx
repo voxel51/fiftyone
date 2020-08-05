@@ -42,6 +42,11 @@ const Sample = ({
       dispatch(updateState(data));
     });
   };
+  const eventHandlers = {
+    onClick: () => handleClick(),
+    onDoubleClick: () => setView({ visible: true, sample }),
+  };
+
   return (
     <div className="sample">
       <Player51
@@ -53,12 +58,11 @@ const Sample = ({
         }}
         colors={colors}
         sample={sample}
-        onClick={() => handleClick()}
-        onDoubleClick={() => setView({ visible: true, sample })}
         thumbnail={true}
         activeLabels={activeLabels}
+        {...eventHandlers}
       />
-      <div className="sample-info">
+      <div className="sample-info" {...eventHandlers}>
         {Object.keys(s)
           .sort()
           .map((l, i) => {
