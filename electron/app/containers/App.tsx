@@ -1,5 +1,6 @@
 import { remote, ipcRenderer } from "electron";
-import React, { ReactNode, useState, useRef } from "react";
+import React, { ReactNode, useState, useEffect, useRef } from "react";
+import ReactGA from "react-ga";
 import { Button, Modal, Label } from "semantic-ui-react";
 import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
@@ -19,6 +20,7 @@ import {
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 import { stateDescription } from "../recoil/atoms";
+import gaConfig from "../constants/ga.json";
 
 type Props = {
   children: ReactNode;
@@ -46,6 +48,34 @@ function App(props: Props) {
     dispatch(updateState(data));
   };
 
+  const [gaInitialized, setGAInitialized] = useState(false);
+  useEffect(() => {
+    const dev = process.env.NODE_ENV == "development";
+    const buildType = dev ? "dev" : "prod";
+    socket.emit("get_fiftyone_info", (info) => {
+      ReactGA.initialize(gaConfig.app_ids[buildType], {
+        debug: dev,
+        gaOptions: {
+          storage: "none",
+          cookieDomain: "none",
+          clientId: info.user_id,
+        },
+      });
+      ReactGA.set({
+        userId: info.user_id,
+        checkProtocolTask: null, // disable check, allow file:// URLs
+        [gaConfig.dimensions.dev]: buildType,
+        [gaConfig.dimensions.version]: info.version,
+      });
+      setGAInitialized(true);
+      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+    });
+  }, []);
+  useEffect(() => {
+    if (gaInitialized) {
+      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+    }
+  }, [window.location.hash]);
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
     if (loading) {

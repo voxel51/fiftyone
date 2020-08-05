@@ -1,13 +1,11 @@
 """
-ServerService tests
+ServerService tests.
 
-To run a single test, modify the main code to:
+To run a single test, modify the main code to::
 
-```
-singletest = unittest.TestSuite()
-singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
-unittest.TextTestRunner().run(singletest)
-```
+    singletest = unittest.TestSuite()
+    singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
+    unittest.TextTestRunner().run(singletest)
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -101,7 +99,7 @@ class ServerServiceTests(unittest.TestCase):
         self.assertEqual(session, client)
 
     def step_get_current_state(self):
-        self.session.view = self.dataset.view().limit(1)
+        self.session.view = self.dataset.limit(1)
         self.wait_for_response()
         session = _serialize(self.session.state)
         self.client.emit(
@@ -134,8 +132,7 @@ class ServerServiceTests(unittest.TestCase):
     def step_lengths(self):
         self.session.dataset = self.dataset
         self.wait_for_response()
-        labels = self.dataset.view().get_label_fields()
-        tags = self.dataset.view().get_tags()
+        tags = self.dataset.get_tags()
 
         self.client.emit("lengths", "", callback=self.client_callback)
         client = self.wait_for_response()
@@ -143,7 +140,6 @@ class ServerServiceTests(unittest.TestCase):
         def sort(l):
             return sorted(l, key=lambda f: f["_id"]["field"])
 
-        self.assertEqual(sort(client["labels"]), sort(labels))
         self.assertEqual(client["tags"], tags)
 
     def step_get_distributions(self):

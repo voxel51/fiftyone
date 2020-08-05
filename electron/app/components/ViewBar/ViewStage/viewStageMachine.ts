@@ -11,21 +11,17 @@ export const createParameter = (
   type,
   value,
   submitted,
-  tail,
   focusOnInit
-) => {
-  return {
-    id: uuid(),
-    parameter: parameter,
-    type: type,
-    stage: stage,
-    value: value ? value : "",
-    submitted,
-    tail,
-    focusOnInit,
-    inputRef: {},
-  };
-};
+) => ({
+  id: uuid(),
+  parameter: parameter,
+  type: type,
+  stage: stage,
+  value: value ? value : "",
+  submitted,
+  focusOnInit,
+  inputRef: {},
+});
 
 const viewStageMachine = Machine(
   {
@@ -36,207 +32,264 @@ const viewStageMachine = Machine(
       parameters: [],
       prevStage: "",
       stageInfo: undefined,
-      insertAt: undefined,
+      index: undefined,
+      focusOnInit: undefined,
+      length: undefined,
     },
-    initial: "decide",
+    type: "parallel",
     states: {
-      decide: {
-        always: [
-          {
-            target: "editing",
-            cond: (ctx) => {
-              return ctx.focusOnInit;
-            },
-          },
-          {
-            target: "reading.submitted",
-            cond: (ctx) => ctx.submitted,
-            actions: [
-              sendParent((ctx) => ({
-                type: "STAGE.COMMIT",
-                stage: ctx,
-              })),
+      input: {
+        initial: "decide",
+        states: {
+          decide: {
+            always: [
+              {
+                target: "editing",
+                cond: (ctx) => {
+                  return ctx.focusOnInit;
+                },
+              },
+              {
+                target: "reading.submitted",
+                cond: (ctx) => ctx.submitted,
+                actions: [
+                  sendParent((ctx) => ({
+                    type: "STAGE.COMMIT",
+                    stage: ctx,
+                  })),
+                ],
+              },
+              {
+                target: "reading.selected",
+                cond: (ctx) => ctx.stage !== "",
+              },
+              {
+                target: "reading.pending",
+              },
             ],
           },
-          {
-            target: "reading.selected",
-            cond: (ctx) => ctx.stage !== "",
-          },
-          {
-            target: "reading.pending",
-          },
-        ],
-      },
-      initializing: {
-        entry: assign({
-          parameters: (ctx) => {
-            return ctx.parameters.map((parameter) => ({
-              ...parameter,
-              ref: spawn(
-                viewStageParameterMachine.withContext(parameter),
-                parameter.id
-              ),
-            }));
-          },
-        }),
-        always: "decide",
-      },
-      reading: {
-        states: {
-          pending: {},
-          selected: {},
-          submitted: {
-            exit: assign({
-              insertAt: undefined,
-            }),
-          },
-        },
-        on: {
-          EDIT: {
-            target: "editing",
-          },
-          DELETE: {
-            target: "deleted",
-          },
-        },
-      },
-      editing: {
-        onEntry: [
-          assign({
-            prevStage: (ctx) => ctx.stage,
-            prevSubmitted: (ctx) => ctx.submitted,
-            focusOnInit: false,
-          }),
-          "focusInput",
-        ],
-        type: "parallel",
-        states: {
-          input: {
-            initial: "focused",
-            states: {
-              focused: {
-                on: {
-                  UNFOCUS_INPUT: "unfocused",
-                },
+          initializing: {
+            entry: assign({
+              parameters: (ctx) => {
+                return ctx.parameters.map((parameter) => ({
+                  ...parameter,
+                  ref: spawn(
+                    viewStageParameterMachine.withContext(parameter),
+                    parameter.id
+                  ),
+                }));
               },
-              unfocused: {
-                on: {
-                  FOCUS_INPUT: "focused",
-                },
+            }),
+            always: "decide",
+          },
+          reading: {
+            states: {
+              pending: {},
+              selected: {},
+              submitted: {},
+            },
+            on: {
+              EDIT: {
+                target: "editing",
+              },
+              DELETE: {
+                target: "deleted",
               },
             },
           },
-          searchResults: {
-            initial: "notHovering",
+          editing: {
+            onEntry: [
+              assign({
+                prevStage: (ctx) => ctx.stage,
+                prevSubmitted: (ctx) => ctx.submitted,
+                focusOnInit: false,
+              }),
+              "focusInput",
+            ],
+            type: "parallel",
             states: {
-              hovering: {
-                on: {
-                  MOUSELEAVE_RESULTS: "notHovering",
-                },
-              },
-              notHovering: {
-                on: {
-                  MOUSEENTER_RESULTS: "hovering",
-                },
-              },
-            },
-          },
-        },
-        on: {
-          CHANGE: {
-            actions: assign({
-              stage: (ctx, e) => e.stage,
-            }),
-          },
-          COMMIT: [
-            {
-              target: "reading.selected",
-              actions: [
-                assign({
-                  stage: (ctx, { stage }) => stage,
-                  parameters: (ctx, { stage }) => {
-                    const result = ctx.stageInfo.filter((s) =>
-                      s.name.toLowerCase().includes(stage.toLowerCase())
-                    )[0].params;
-                    const parameters = result.map((parameter, i) =>
-                      createParameter(
-                        stage,
-                        parameter.name,
-                        parameter.type,
-                        "",
-                        false,
-                        i === result.length - 1,
-                        i === 0
-                      )
-                    );
-                    return parameters.map((parameter) => ({
-                      ...parameter,
-                      ref: spawn(
-                        viewStageParameterMachine.withContext(parameter)
-                      ),
-                    }));
+              input: {
+                initial: "focused",
+                states: {
+                  focused: {
+                    on: {
+                      UNFOCUS_INPUT: "unfocused",
+                    },
                   },
-                }),
-              ],
-              cond: (ctx, e) => {
-                const result = ctx.stageInfo.filter(
-                  (s) => s.name.toLowerCase() === e.stage.toLowerCase()
-                );
-                return result.length === 1;
+                  unfocused: {
+                    on: {
+                      FOCUS_INPUT: "focused",
+                    },
+                  },
+                },
+              },
+              searchResults: {
+                initial: "notHovering",
+                states: {
+                  hovering: {
+                    on: {
+                      MOUSELEAVE_RESULTS: "notHovering",
+                    },
+                  },
+                  notHovering: {
+                    on: {
+                      MOUSEENTER_RESULTS: "hovering",
+                    },
+                  },
+                },
               },
             },
-            {
-              target: "reading.pending",
-              actions: [
-                assign({
-                  stage: () => "",
-                  submitted: () => false,
+            on: {
+              CHANGE: {
+                actions: assign({
+                  stage: (ctx, e) => e.stage,
                 }),
-                "blurInput",
+              },
+              COMMIT: [
+                {
+                  target: "reading.selected",
+                  actions: [
+                    assign({
+                      stage: (ctx, { stage }) => stage,
+                      parameters: (ctx, { stage }) => {
+                        const result = ctx.stageInfo.filter((s) =>
+                          s.name.toLowerCase().includes(stage.toLowerCase())
+                        )[0].params;
+                        const parameters = result.map((parameter, i) =>
+                          createParameter(
+                            stage,
+                            parameter.name,
+                            parameter.type,
+                            "",
+                            false,
+                            i === result.length - 1,
+                            i === 0
+                          )
+                        );
+                        return parameters.map((parameter) => ({
+                          ...parameter,
+                          ref: spawn(
+                            viewStageParameterMachine.withContext(parameter)
+                          ),
+                        }));
+                      },
+                    }),
+                    send("UPDATE_DELIBLE"),
+                  ],
+                  cond: (ctx, e) => {
+                    const result = ctx.stageInfo.filter(
+                      (s) => s.name.toLowerCase() === e.stage.toLowerCase()
+                    );
+                    return result.length === 1;
+                  },
+                },
+                {
+                  target: "reading.pending",
+                  actions: [
+                    assign({
+                      stage: () => "",
+                      submitted: () => false,
+                    }),
+                    "blurInput",
+                  ],
+                },
+              ],
+              BLUR: [
+                {
+                  target: "reading.pending",
+                  actions: [
+                    sendParent((ctx) => ({
+                      type: "STAGE.DELETE",
+                      stage: ctx,
+                    })),
+                    "blurInput",
+                  ],
+                  cond: ({ submitted }) => !submitted,
+                },
+                {
+                  target: "reading.pending",
+                  actions: [
+                    assign({
+                      stage: () => "",
+                    }),
+                    "blurInput",
+                  ],
+                  cond: (ctx) => !ctx.submitted,
+                },
+                {
+                  target: "reading.submitted",
+                  actions: [
+                    assign({
+                      stage: (ctx) => ctx.prevStage,
+                    }),
+                  ],
+                  cond: (ctx) => ctx.submitted,
+                },
               ],
             },
-          ],
-          BLUR: [
-            {
-              target: "reading.pending",
-              actions: [
-                sendParent(({ id }) => ({
-                  type: "STAGE.DELETE",
-                  id,
-                })),
-                "blurInput",
-              ],
-              cond: ({ submitted }) => !submitted,
-            },
-            {
-              target: "reading.pending",
-              actions: [
-                assign({
-                  stage: () => "",
-                }),
-                "blurInput",
-              ],
-              cond: (ctx) => !ctx.submitted,
-            },
-            {
-              target: "reading.submitted",
-              actions: [
-                assign({
-                  stage: (ctx) => ctx.prevStage,
-                }),
-              ],
-              cond: (ctx) => ctx.submitted,
-            },
-          ],
+          },
+          deleted: {
+            onEntry: [
+              assign({
+                stage: "",
+                submitted: false,
+              }),
+              sendParent((ctx) => ({ type: "STAGE.DELETE", stage: ctx })),
+            ],
+            always: "reading.pending",
+          },
         },
       },
-      deleted: {
-        onEntry: sendParent((ctx) => ({ type: "STAGE.DELETE", id: ctx.id })),
+      delible: {
+        initial: "decide",
+        states: {
+          decide: {
+            always: [
+              {
+                target: "yes",
+                cond: (ctx) =>
+                  ctx.length > 1 || ctx.submitted || ctx.stage !== "",
+              },
+              { target: "no" },
+            ],
+          },
+          yes: {},
+          no: {},
+        },
+      },
+      draggable: {
+        initial: "decide",
+        states: {
+          decide: {
+            always: [
+              {
+                target: "yes",
+                cond: (ctx) => ctx.length === 1,
+              },
+              {
+                target: "no",
+              },
+            ],
+          },
+          yes: {},
+          no: {},
+        },
       },
     },
     on: {
+      UPDATE_DELIBLE: "delible",
+      "STAGE.UPDATE": {
+        target: ["draggable", "delible"],
+        actions: [
+          assign({
+            index: (_, { index }) => index,
+            length: (_, { length }) => length,
+          }),
+        ],
+      },
+      "STAGE.DELETE": "input.deleted",
       "PARAMETER.COMMIT": {
-        target: "decide",
+        target: "input",
         actions: [
           assign({
             parameters: (ctx, e) => {

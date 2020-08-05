@@ -1,4 +1,4 @@
-Loading Zoo Datasets
+FiftyOne Dataset Zoo
 ====================
 
 .. default-role:: code
@@ -461,7 +461,7 @@ Loading zoo datasets
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: CLI
 

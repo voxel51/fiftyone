@@ -6,10 +6,14 @@
 .. |ViewStage| replace:: :class:`ViewStage <fiftyone.core.stages.ViewStage>`
 
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
+.. |SampleView| replace:: :class:`SampleView <fiftyone.core.sample.SampleView>`
 
 .. |Field| replace:: :class:`Field <fiftyone.core.fields.Field>`
 .. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
+
+.. |ViewExpression| replace:: :class:`ViewExpression <fiftyone.core.expressions.ViewExpression>`
+.. |ViewField| replace:: :class:`ViewField <fiftyone.core.expressions.ViewField>`
 
 .. |Label| replace:: :class:`Label <fiftyone.core.labels.Label>`
 .. |Classification| replace:: :class:`Classification <fiftyone.core.labels.Classification>`
@@ -44,3 +48,5 @@
 
 .. |Metadata| replace:: :class:`Metadata <fiftyone.core.metadata.Metadata>`
 .. |ImageMetadata| replace:: :class:`ImageMetadata <fiftyone.core.metadata.ImageMetadata>`
+
+.. |AnnotationConfig| replace:: :class:`AnnotationConfig <fiftyone.utils.annotations.AnnotationConfig>`

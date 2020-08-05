@@ -5,19 +5,6 @@ Dataset sample fields.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
@@ -33,6 +20,18 @@ class Field(mongoengine.fields.BaseField):
 
     def __str__(self):
         return etau.get_class_name(self)
+
+
+class ObjectIdField(mongoengine.ObjectIdField, Field):
+    """An Object ID field."""
+
+    pass
+
+
+class UUIDField(mongoengine.UUIDField, Field):
+    """A UUID field."""
+
+    pass
 
 
 class BooleanField(mongoengine.BooleanField, Field):

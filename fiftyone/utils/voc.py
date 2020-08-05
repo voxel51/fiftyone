@@ -6,19 +6,6 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import logging
 import os
 
@@ -85,6 +72,7 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
             label_field=None,
             bounding_box_field=None,
             confidence_field=None,
+            attributes_field=None,
             classes=None,
             normalized=True,  # True b/c image is not required to parse label
         )
