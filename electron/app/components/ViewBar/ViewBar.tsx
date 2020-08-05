@@ -2,10 +2,10 @@ import React, { useCallback } from "react";
 import styled from "styled-components";
 import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import { HotKeys } from "react-hotkeys";
 
-import { getSocket, useSubscribe } from "../../utils/socket";
+import { stateDescription } from "../../recoil/atoms";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine, { createBar } from "./viewBarMachine";
 
@@ -56,7 +56,7 @@ const ViewBarDiv = styled.div`
 );*/
 
 export const viewBarKeyMap = {
-  VIEW_BAR_FOCUS: "alt+v",
+  VIEW_BAR_FOCUS: "?",
   VIEW_BAR_BLUR: "esc",
   VIEW_BAR_NEXT: "right",
   VIEW_BAR_PREVIOUS: "left",
@@ -70,12 +70,16 @@ export const viewBarKeyMap = {
 const machine = viewBarMachine.withContext(createBar(5151));
 
 const ViewBar = () => {
+  const [stateDescriptionValue, setStateDescription] = useRecoilState(
+    stateDescription
+  );
   const [state, send] = useMachine(machine);
+  console.log(stateDescriptionValue);
 
   const { stages } = state.context;
 
   const handlers = {
-    VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), []),
+    VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), [send]),
     VIEW_BAR_BLUR: useCallback(() => send("BLUR"), []),
     VIEW_BAR_NEXT: useCallback(() => send("NEXT"), []),
     VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
@@ -87,7 +91,11 @@ const ViewBar = () => {
   };
 
   return (
-    <StyledHotKeys handlers={handlers}>
+    <StyledHotKeys
+      handlers={handlers}
+      onBlur={handlers.VIEW_BAR_BLUR}
+      onFocus={handlers.VIEW_BAR_FOCUS}
+    >
       <ViewBarDiv>
         {state.matches("running")
           ? stages.map((stage, i) => {

@@ -8,7 +8,7 @@ import { HotKeys } from "react-hotkeys";
 
 import { Store } from "../reducers/types";
 import Routes from "../Routes";
-import { viewBarKeyMap } from "../components/ViewBar./ViewBar";
+import { viewBarKeyMap } from "../components/ViewBar/ViewBar";
 
 type Props = {
   store: Store;

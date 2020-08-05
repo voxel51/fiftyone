@@ -107,6 +107,7 @@ const viewStageMachine = Machine(
                 focusOnInit: false,
               }),
               "focusInput",
+              sendParent({ type: "FOCUS" }),
             ],
             type: "parallel",
             states: {
@@ -277,8 +278,19 @@ const viewStageMachine = Machine(
           no: {},
         },
       },
+      focusedViewBar: {
+        initial: "no",
+        states: {
+          yes: {},
+          no: {},
+        },
+      },
     },
     on: {
+      BAR_FOCUS: {
+        target: "focusedViewBar.yes",
+      },
+      BAR_BLUR: "focusedViewBar.no",
       UPDATE_DELIBLE: "delible",
       "STAGE.UPDATE": {
         target: ["draggable", "delible"],

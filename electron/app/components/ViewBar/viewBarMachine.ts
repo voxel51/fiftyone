@@ -3,7 +3,14 @@ import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 import ViewStageStories from "./ViewStage/ViewStage.stories";
 
-export const createStage = (stage, index, stageInfo, focusOnInit, length) => ({
+export const createStage = (
+  stage,
+  index,
+  stageInfo,
+  focusOnInit,
+  length,
+  active
+) => ({
   id: uuid(),
   submitted: false,
   stage: stage,
@@ -12,6 +19,7 @@ export const createStage = (stage, index, stageInfo, focusOnInit, length) => ({
   index,
   focusOnInit,
   length,
+  active,
 });
 
 export const createBar = (port) => ({
@@ -59,7 +67,8 @@ const viewBarMachine = Machine(
                 i,
                 ctx.stageInfo,
                 false,
-                ctx.stages.length
+                ctx.stages.length,
+                i === ctx.activeStage
               );
               return {
                 ...newStage,
@@ -70,8 +79,20 @@ const viewBarMachine = Machine(
         }),
         states: {
           focused: {
+            entry: ({ stages }) =>
+              stages.forEach((stage) => stage.ref.send({ type: "BAR_FOCUS" })),
+            exit: ({ stages }) =>
+              stages.forEach((stage) => stage.ref.send({ type: "BAR_BLUR" })),
             on: {
               BLUR: "blurred",
+              SET: {
+                actions: [
+                  assign({
+                    activeStage: (_, e) => e.index,
+                  }),
+                  "sendStageUpdates",
+                ],
+              },
               NEXT: {
                 actions: [
                   send(({ stages, activeStage }) => ({
@@ -144,7 +165,8 @@ const viewBarMachine = Machine(
                 e.index,
                 ctx.stageInfo,
                 true,
-                ctx.stages.length + 1
+                ctx.stages.length + 1,
+                false
               );
               return [
                 ...ctx.stages.slice(0, e.index),
@@ -156,6 +178,7 @@ const viewBarMachine = Machine(
               ].map((stage, index) => ({
                 ...stage,
                 index,
+                active: index === ctx.activeStage,
                 length: ctx.stages.length + 1,
               }));
             },

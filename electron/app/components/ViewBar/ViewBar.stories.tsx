@@ -1,7 +1,8 @@
 import React from "react";
-import ViewBar from "./ViewBar";
-
 import styled from "styled-components";
+import { HotKeys } from "react-hotkeys";
+
+import ViewBar, { viewBarKeyMap } from "./ViewBar";
 
 export default {
   component: ViewBar,
@@ -16,7 +17,9 @@ const Container = styled.div`
 `;
 
 export const standard = () => (
-  <Container>
-    <ViewBar />
-  </Container>
+  <HotKeys keyMap={viewBarKeyMap}>
+    <Container>
+      <ViewBar />
+    </Container>
+  </HotKeys>
 );
