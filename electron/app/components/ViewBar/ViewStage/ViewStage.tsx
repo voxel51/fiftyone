@@ -120,11 +120,12 @@ const ViewStage = React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage, submitted, hideDelete, stageInfo, parameters } = state.context;
+  const { stage, stageInfo, parameters } = state.context;
 
-  const isCompleted = ["reading.selected", "reading.submitted"].some(
-    state.matches
-  );
+  const isCompleted = [
+    "input.reading.selected",
+    "input.reading.submitted",
+  ].some(state.matches);
 
   const deleteProps = useSpring({
     borderStyle: isCompleted ? "solid" : "dashed",
@@ -143,8 +144,8 @@ const ViewStage = React.memo(({ stageRef }) => {
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
     borderRightWidth: isCompleted ? 0 : 2,
-    borderTopRightRadius: hideDelete && !isCompleted ? 3 : 0,
-    borderBottomRightRadius: hideDelete && !isCompleted ? 3 : 0,
+    borderTopRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
+    borderBottomRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -175,9 +176,10 @@ const ViewStage = React.memo(({ stageRef }) => {
         <ViewStageInput
           placeholder="+ add stage"
           value={stage}
-          onFocus={() => !state.matches("editing") && send("EDIT")}
+          onFocus={() => !state.matches("input.editing") && send("EDIT")}
           onBlur={() =>
-            state.matches("editing.searchResults.notHovering") && send("BLUR")
+            state.matches("input.editing.searchResults.notHovering") &&
+            send("BLUR")
           }
           onChange={(e) => send({ type: "CHANGE", stage: e.target.value })}
           onKeyPress={(e) => {
@@ -193,7 +195,7 @@ const ViewStage = React.memo(({ stageRef }) => {
           style={{ fontSize: "1rem" }}
           ref={inputRef}
         />
-        {state.matches("editing") && (
+        {state.matches("input.editing") && (
           <SearchResults
             results={stageInfo
               .map((s) => s.name)
@@ -206,7 +208,7 @@ const ViewStage = React.memo(({ stageRef }) => {
         parameters.map((parameter) => (
           <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
         ))}
-      {!hideDelete || isCompleted ? (
+      {state.matches("delible.yes") ? (
         <ViewStageDelete spring={deleteProps} send={send} />
       ) : null}
     </ViewStageContainer>

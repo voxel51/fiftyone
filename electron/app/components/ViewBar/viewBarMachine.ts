@@ -3,13 +3,7 @@ import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 import ViewStageStories from "./ViewStage/ViewStage.stories";
 
-export const createStage = (
-  stage,
-  index,
-  stageInfo,
-  focusOnInit,
-  hideDelete
-) => ({
+export const createStage = (stage, index, stageInfo, focusOnInit, length) => ({
   id: uuid(),
   submitted: false,
   stage: stage,
@@ -17,7 +11,7 @@ export const createStage = (
   stageInfo,
   index,
   focusOnInit,
-  hideDelete,
+  length,
 });
 
 export const createBar = (port) => ({
@@ -32,123 +26,124 @@ function getStageInfo(context) {
   );
 }
 
-const viewBarMachine = Machine({
-  id: "stages",
-  context: {
-    port: undefined,
-    stages: [],
-    stageInfo: undefined,
-  },
-  initial: "initializing",
-  states: {
-    initializing: {
-      invoke: {
-        src: getStageInfo,
-        onDone: {
-          target: "running",
-          actions: assign({
-            stageInfo: (ctx, event) => event.data.stages,
-            stages: (ctx) => (ctx.stages.length === 0 ? [""] : stages),
-          }),
+const viewBarMachine = Machine(
+  {
+    id: "stages",
+    context: {
+      port: undefined,
+      stages: [],
+      stageInfo: undefined,
+    },
+    initial: "initializing",
+    states: {
+      initializing: {
+        invoke: {
+          src: getStageInfo,
+          onDone: {
+            target: "running",
+            actions: assign({
+              stageInfo: (ctx, event) => event.data.stages,
+              stages: (ctx) => (ctx.stages.length === 0 ? [""] : stages),
+            }),
+          },
         },
       },
-    },
-    running: {
-      entry: assign({
-        stages: (ctx) => {
-          return ctx.stages.map((stage, i) => {
-            const newStage = createStage(stage, i, ctx.stageInfo, false, true);
-            return {
-              ...newStage,
-              ref: spawn(viewStageMachine.withContext(newStage)),
-            };
-          });
-        },
-      }),
-    },
-  },
-  on: {
-    "STAGE.ADD": {
-      actions: [
-        assign({
-          stages: (ctx, e) => {
-            const newStage = createStage(
-              "",
-              e.index,
-              ctx.stageInfo,
-              true,
-              false
-            );
-            const stages = [
-              ...ctx.stages.slice(0, e.index),
-              {
+      running: {
+        entry: assign({
+          stages: (ctx) => {
+            return ctx.stages.map((stage, i) => {
+              const newStage = createStage(
+                stage,
+                i,
+                ctx.stageInfo,
+                false,
+                ctx.stages.length
+              );
+              return {
                 ...newStage,
                 ref: spawn(viewStageMachine.withContext(newStage)),
-              },
-              ...ctx.stages.slice(e.index),
-            ];
-            return stages.map((stage, index) => ({
-              ...stage,
-              index,
-              hideDelete: index === 0 && ctx.stages.length === 1,
-            }));
+              };
+            });
           },
         }),
-        (ctx) =>
-          ctx.stages.forEach((stage) =>
-            stage.ref.send({
-              type: "STAGE.UPDATE",
-              index: stage.index,
-              hideDelete: stage.hideDelete,
-              to: stage.ref,
-            })
-          ),
-      ],
+      },
     },
-    "STAGE.COMMIT": {
-      actions: [
-        assign({
-          stages: ({ stages }, e) => {
-            stages[e.stage.index] = {
-              ...e.stage,
-              ref: stages[e.stage.index].ref,
-            };
-            return stages;
-          },
-        }),
-      ],
-    },
-    "STAGE.DELETE": {
-      actions: [
-        assign({
-          stages: ({ stages }, e) => {
-            if (stages.length === 1) {
+    on: {
+      "STAGE.ADD": {
+        actions: [
+          assign({
+            stages: (ctx, e) => {
+              const newStage = createStage(
+                "",
+                e.index,
+                ctx.stageInfo,
+                true,
+                ctx.stages.length + 1
+              );
               return [
-                { ...e.stage, index: 0, hideDelete: true, ref: stages[0].ref },
-              ];
-            } else {
-              return stages
-                .filter((stage) => stage.id !== e.stage.id)
-                .map((stage, index) => ({
-                  ...stage,
-                  index,
-                  hideDelete: index === 0 && stages.length - 1 === 1,
-                }));
-            }
-          },
-        }),
-        (ctx) =>
-          ctx.stages.forEach((stage) =>
-            stage.ref.send({
-              type: "STAGE.UPDATE",
-              index: stage.index,
-              hideDelete: stage.hideDelete,
-              to: stage.ref,
-            })
-          ),
-      ],
+                ...ctx.stages.slice(0, e.index),
+                {
+                  ...newStage,
+                  ref: spawn(viewStageMachine.withContext(newStage)),
+                },
+                ...ctx.stages.slice(e.index),
+              ].map((stage, index) => ({
+                ...stage,
+                index,
+                length: ctx.stages.length + 1,
+              }));
+            },
+          }),
+          "sendStagesUpdate",
+        ],
+      },
+      "STAGE.COMMIT": {
+        actions: [
+          assign({
+            stages: ({ stages }, e) => {
+              stages[e.stage.index] = {
+                ...e.stage,
+                ref: stages[e.stage.index].ref,
+              };
+              return stages;
+            },
+          }),
+        ],
+      },
+      "STAGE.DELETE": {
+        actions: [
+          assign({
+            stages: ({ stages }, e) =>
+              stages
+                .filter(
+                  (stage) => stage.id !== e.stage.id && stages.length !== 1
+                )
+                .map((stage, index) => {
+                  const newStage = stage.id === e.stage.id ? e.stage : stage;
+                  return {
+                    ...newStage,
+                    index,
+                    length: Math.max(stages.length - 1, 1),
+                  };
+                }),
+          }),
+          "sendStagesUpdate",
+        ],
+      },
     },
   },
-});
+  {
+    actions: {
+      sendStagesUpdate: (ctx) =>
+        ctx.stages.forEach((stage) =>
+          stage.ref.send({
+            type: "STAGE.UPDATE",
+            index: stage.index,
+            length: ctx.stages.length,
+          })
+        ),
+    },
+  }
+);
 
 export default viewBarMachine;
