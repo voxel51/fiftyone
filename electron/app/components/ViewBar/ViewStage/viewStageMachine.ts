@@ -11,7 +11,8 @@ export const createParameter = (
   type,
   value,
   submitted,
-  focusOnInit
+  focusOnInit,
+  tail
 ) => ({
   id: uuid(),
   parameter: parameter,
@@ -21,6 +22,7 @@ export const createParameter = (
   submitted,
   focusOnInit,
   inputRef: {},
+  tail,
 });
 
 const viewStageMachine = Machine(
@@ -105,6 +107,7 @@ const viewStageMachine = Machine(
                 focusOnInit: false,
               }),
               "focusInput",
+              sendParent({ type: "FOCUS" }),
             ],
             type: "parallel",
             states: {
@@ -162,8 +165,8 @@ const viewStageMachine = Machine(
                             parameter.type,
                             "",
                             false,
-                            i === result.length - 1,
-                            i === 0
+                            i === 0,
+                            i === result.length - 1
                           )
                         );
                         return parameters.map((parameter) => ({
@@ -275,8 +278,19 @@ const viewStageMachine = Machine(
           no: {},
         },
       },
+      focusedViewBar: {
+        initial: "no",
+        states: {
+          yes: {},
+          no: {},
+        },
+      },
     },
     on: {
+      BAR_FOCUS: {
+        target: "focusedViewBar.yes",
+      },
+      BAR_BLUR: "focusedViewBar.no",
       UPDATE_DELIBLE: "delible",
       "STAGE.UPDATE": {
         target: ["draggable", "delible"],

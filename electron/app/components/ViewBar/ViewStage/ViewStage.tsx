@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useMemo } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring, config } from "react-spring";
 import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
@@ -9,11 +9,11 @@ import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 import ViewStageStories from "./ViewStage.stories";
 
-const ViewStageContainer = styled.div`
+const ViewStageContainer = animated(styled.div`
   margin: 0.5rem 0.25rem;
   display: flex;
   position: relative;
-`;
+`);
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
@@ -26,22 +26,25 @@ const ViewStageDiv = animated(styled.div`
 `);
 
 const ViewStageInput = styled(AuosizeInput)`
-  & > input {
+  & input {
     background-color: transparent;
     border: none;
     margin: 0.5rem;
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     border: none;
+    font-weight: bold;
   }
 
-  & > input:focus {
-    boder: none;
+  & input:focus {
+    border: none;
     outline: none;
+    font-weight: bold;
   }
 
   & ::placeholder {
     color: ${({ theme }) => theme.font};
+    font-weight: bold;
   }
 `;
 
@@ -54,6 +57,7 @@ export const ViewStageButton = animated(styled.button`
   margin: 0.5rem;
   line-height: 1rem;
   cursor: pointer;
+  font-weight: bold;
 
   :focus {
     outline: none;
@@ -101,6 +105,7 @@ const ViewStageDeleteButton = animated(styled.button`
   border: none;
   padding: 0;
   cursor: pointer;
+  font-weight: bold;
 
   :focus {
     outline: none;
@@ -170,8 +175,13 @@ const ViewStage = React.memo(({ stageRef }) => {
     return () => stageRef.listeners.delete(listener);
   }, []);
 
+  const pp = useSpring({
+    top: state.matches("focusedViewBar.yes") && state.context.active ? -3 : 0,
+    config: config.stiff,
+  });
+
   return (
-    <ViewStageContainer>
+    <ViewStageContainer style={pp}>
       <ViewStageDiv style={props}>
         <ViewStageInput
           placeholder="+ add stage"

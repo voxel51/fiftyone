@@ -3,7 +3,14 @@ import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
 import ViewStageStories from "./ViewStage/ViewStage.stories";
 
-export const createStage = (stage, index, stageInfo, focusOnInit, length) => ({
+export const createStage = (
+  stage,
+  index,
+  stageInfo,
+  focusOnInit,
+  length,
+  active
+) => ({
   id: uuid(),
   submitted: false,
   stage: stage,
@@ -12,12 +19,14 @@ export const createStage = (stage, index, stageInfo, focusOnInit, length) => ({
   index,
   focusOnInit,
   length,
+  active,
 });
 
 export const createBar = (port) => ({
   port: port,
   stages: [],
   stageInfo: undefined,
+  activeStage: 0,
 });
 
 function getStageInfo(context) {
@@ -49,6 +58,7 @@ const viewBarMachine = Machine(
         },
       },
       running: {
+        initial: "blurred",
         entry: assign({
           stages: (ctx) => {
             return ctx.stages.map((stage, i) => {
@@ -57,7 +67,8 @@ const viewBarMachine = Machine(
                 i,
                 ctx.stageInfo,
                 false,
-                ctx.stages.length
+                ctx.stages.length,
+                i === ctx.activeStage
               );
               return {
                 ...newStage,
@@ -66,6 +77,82 @@ const viewBarMachine = Machine(
             });
           },
         }),
+        states: {
+          focused: {
+            entry: ({ stages }) =>
+              stages.forEach((stage) => stage.ref.send({ type: "BAR_FOCUS" })),
+            exit: ({ stages }) =>
+              stages.forEach((stage) => stage.ref.send({ type: "BAR_BLUR" })),
+            on: {
+              BLUR: "blurred",
+              SET: {
+                actions: [
+                  assign({
+                    activeStage: (_, e) => e.index,
+                  }),
+                  "sendStageUpdates",
+                ],
+              },
+              NEXT: {
+                actions: [
+                  send(({ stages, activeStage }) => ({
+                    type: "NEXT",
+                    to: stages[activeStage].ref,
+                  })),
+                ],
+              },
+              PREV: {
+                actions: [
+                  send(({ stages, activeStage }) => ({
+                    type: "PREV",
+                    to: stages[activeStage].ref,
+                  })),
+                ],
+              },
+              NEXT_STAGE: {
+                actions: [
+                  assign({
+                    activeStage: ({ stages, activeStage }) =>
+                      Math.min(activeStage + 1, stages.length - 1),
+                  }),
+                  "sendStagesUpdate",
+                ],
+              },
+              PREV_STAGE: {
+                actions: [
+                  assign({
+                    activeStage: ({ stages, activeStage }) =>
+                      Math.max(activeStage - 1, 0),
+                  }),
+                  "sendStagesUpdate",
+                ],
+              },
+              DELETE_STAGE: {
+                actions: send((ctx) => ({
+                  type: "STAGE.DELETE",
+                  stage: ctx.stages.filter(stage.index === ctx.activeStage)[0],
+                })),
+              },
+              NEXT_RESULT: {
+                actions: send(({ stages, activeStage }) => ({
+                  type: "NEXT_RESULT",
+                  to: stages[activeStage].ref,
+                })),
+              },
+              PREVIOUS_RESULT: {
+                actions: send(({ stages, activeStage }) => ({
+                  type: "PREVIOUS_RESULT",
+                  to: stages[activeStage].ref,
+                })),
+              },
+            },
+          },
+          blurred: {
+            on: {
+              FOCUS: "focused",
+            },
+          },
+        },
       },
     },
     on: {
@@ -78,7 +165,8 @@ const viewBarMachine = Machine(
                 e.index,
                 ctx.stageInfo,
                 true,
-                ctx.stages.length + 1
+                ctx.stages.length + 1,
+                false
               );
               return [
                 ...ctx.stages.slice(0, e.index),
@@ -90,6 +178,7 @@ const viewBarMachine = Machine(
               ].map((stage, index) => ({
                 ...stage,
                 index,
+                active: index === ctx.activeStage,
                 length: ctx.stages.length + 1,
               }));
             },
@@ -116,7 +205,7 @@ const viewBarMachine = Machine(
             stages: ({ stages }, e) =>
               stages
                 .filter(
-                  (stage) => stage.id !== e.stage.id && stages.length !== 1
+                  (stage) => stage.id !== e.stage.id || stages.length === 1
                 )
                 .map((stage, index) => {
                   const newStage = stage.id === e.stage.id ? e.stage : stage;
@@ -124,6 +213,7 @@ const viewBarMachine = Machine(
                     ...newStage,
                     index,
                     length: Math.max(stages.length - 1, 1),
+                    ref: stage.ref,
                   };
                 }),
           }),
@@ -140,6 +230,7 @@ const viewBarMachine = Machine(
             type: "STAGE.UPDATE",
             index: stage.index,
             length: ctx.stages.length,
+            active: stage.index === ctx.activeStage,
           })
         ),
     },

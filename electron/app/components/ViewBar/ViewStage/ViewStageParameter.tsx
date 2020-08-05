@@ -4,8 +4,6 @@ import styled, { ThemeContext } from "styled-components";
 import { useService, asEffect } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
-import SearchResults from "./SearchResults";
-
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
@@ -20,6 +18,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     border: none;
+    font-weight: bold;
   }
 
   & > input:focus {
@@ -56,14 +55,14 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { parameter, value } = state.context;
+  const { parameter, value, tail } = state.context;
 
   const props = useSpring({
     backgroundColor: state.matches("reading.submitted")
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
-    borderRightWidth: 2,
+    borderRightWidth: tail ? 2 : 0,
     opacity: 1,
     from: {
       opacity: 0,

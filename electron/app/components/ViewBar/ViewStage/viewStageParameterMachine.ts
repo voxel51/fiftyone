@@ -8,9 +8,12 @@ const { assign, choose } = actions;
  */
 const PARSER = {
   bool: {
-    parse: (value) =>
-      value.toLowerCase().charAt(0).toUpperCase() +
-      value.toLowerCase().slice(1),
+    parse: (value) => {
+      return (
+        value.toLowerCase().charAt(0).toUpperCase() +
+        value.toLowerCase().slice(1)
+      );
+    },
     validate: (value) => ["true", "false"].indexOf(value.toLowerCase()) >= 0,
   },
   float: {
@@ -125,10 +128,13 @@ export default Machine(
                 assign({
                   submitted: true,
                   value: ({ type, value }) =>
-                    PARSER[Array.isArray(type) ? type[0] : type].parse(
-                      value,
-                      type[1]
-                    ),
+                    type.split("|").reduce((acc, t) => {
+                      const parser = PARSER[Array.isArray(t) ? t[0] : t];
+                      const next = Array.isArray(t) ? t[1] : undefined;
+                      return parser.validate(value, next)
+                        ? parser.parse(value, next)
+                        : acc;
+                    }, undefined),
                 }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
@@ -136,10 +142,14 @@ export default Machine(
                 })),
               ],
               cond: ({ type, value }) =>
-                PARSER[Array.isArray(type) ? type[0] : type].validate(
-                  value,
-                  type[1]
-                ),
+                type
+                  .split("|")
+                  .some((t) =>
+                    PARSER[Array.isArray(t) ? t[0] : t].validate(
+                      value,
+                      Array.isArray(t) ? t[1] : undefined
+                    )
+                  ),
             },
             {
               target: "decide",
