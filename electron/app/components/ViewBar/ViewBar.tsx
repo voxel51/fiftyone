@@ -9,6 +9,12 @@ import { getSocket, useSubscribe } from "../../utils/socket";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine, { createBar } from "./viewBarMachine";
 
+const StyledHotKeys = styled(HotKeys)`
+  &:focus {
+    outline: none;
+  }
+`;
+
 const ViewBarDiv = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
@@ -28,6 +34,10 @@ const ViewBarDiv = styled.div`
   &::-webkit-scrollbar-thumb {
     width: 0px;
     display: none;
+  }
+
+  &:focus {
+    outline: none;
   }
 `;
 
@@ -77,7 +87,7 @@ const ViewBar = () => {
   };
 
   return (
-    <HotKeys handlers={handlers}>
+    <StyledHotKeys handlers={handlers}>
       <ViewBarDiv>
         {state.matches("running")
           ? stages.map((stage, i) => {
@@ -103,7 +113,7 @@ const ViewBar = () => {
           />
         ) : null}
       </ViewBarDiv>
-    </HotKeys>
+    </StyledHotKeys>
   );
 };
 

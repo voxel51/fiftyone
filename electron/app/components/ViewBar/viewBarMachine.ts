@@ -73,10 +73,20 @@ const viewBarMachine = Machine(
             on: {
               BLUR: "blurred",
               NEXT: {
-                actions: [],
+                actions: [
+                  send(({ stages, activeStage }) => ({
+                    type: "NEXT",
+                    to: stages[activeStage].ref,
+                  })),
+                ],
               },
               PREV: {
-                actions: [],
+                actions: [
+                  send(({ stages, activeStage }) => ({
+                    type: "PREV",
+                    to: stages[activeStage].ref,
+                  })),
+                ],
               },
               NEXT_STAGE: {
                 actions: [
@@ -100,6 +110,18 @@ const viewBarMachine = Machine(
                 actions: send((ctx) => ({
                   type: "STAGE.DELETE",
                   stage: ctx.stages.filter(stage.index === ctx.activeStage)[0],
+                })),
+              },
+              NEXT_RESULT: {
+                actions: send(({ stages, activeStage }) => ({
+                  type: "NEXT_RESULT",
+                  to: stages[activeStage].ref,
+                })),
+              },
+              PREVIOUS_RESULT: {
+                actions: send(({ stages, activeStage }) => ({
+                  type: "PREVIOUS_RESULT",
+                  to: stages[activeStage].ref,
                 })),
               },
             },
