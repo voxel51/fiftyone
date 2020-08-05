@@ -25,6 +25,7 @@ const Sample = ({
   const s = sample;
   const { activeLabels, activeTags, activeOther, colors } = displayProps;
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
+  const tagNames = useRecoilValue(selectors.tagNames);
 
   const isFloat = (n) => {
     return Number(n) === n && n % 1 !== 0;
@@ -66,9 +67,9 @@ const Sample = ({
               <Tag key={i} name={String(s[l].label)} color={colors[i]} />
             ) : null;
           })}
-        {s.tags.map((t, i) => {
+        {tagNames.map((t) => {
           return activeTags[t] ? (
-            <Tag key={i} name={String(t)} color={colorMapping[t]} />
+            <Tag key={t} name={String(t)} color={colorMapping[t]} />
           ) : null;
         })}
         {Object.keys(s)
