@@ -6,7 +6,7 @@ import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
-import Tag from "./Tag";
+import Tag from "./Tags/Tag";
 
 const Sample = ({
   displayProps,
