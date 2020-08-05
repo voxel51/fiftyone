@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
 import { Grid, Sticky } from "semantic-ui-react";
@@ -37,7 +37,7 @@ const SamplesContainer = (props) => {
     labelData,
   } = props.displayProps;
 
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const [stuck, setStuck] = useState(false);
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);

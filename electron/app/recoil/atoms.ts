@@ -20,3 +20,8 @@ export const colors = atom({
   key: "colors",
   default: randomColor({ count: 100, luminosity: "dark" }),
 });
+
+export const sidebarVisible = atom({
+  key: "sidebarVisible",
+  default: false,
+});
