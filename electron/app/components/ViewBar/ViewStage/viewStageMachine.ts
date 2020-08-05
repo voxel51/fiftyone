@@ -11,7 +11,8 @@ export const createParameter = (
   type,
   value,
   submitted,
-  focusOnInit
+  focusOnInit,
+  tail
 ) => ({
   id: uuid(),
   parameter: parameter,
@@ -21,6 +22,7 @@ export const createParameter = (
   submitted,
   focusOnInit,
   inputRef: {},
+  tail,
 });
 
 const viewStageMachine = Machine(
@@ -162,7 +164,8 @@ const viewStageMachine = Machine(
                             parameter.type,
                             "",
                             false,
-                            i === 0
+                            i === 0,
+                            i === result.length - 1
                           )
                         );
                         return parameters.map((parameter) => ({

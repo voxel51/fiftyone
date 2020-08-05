@@ -124,13 +124,12 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
-                  value: ({ types, value }) =>
-                    types.split("|").reduce((acc, val) => {
-                      const parser =
-                        PARSER[Array.isArray(type) ? type[0] : type];
-                      const next = Array.isArray(type) ? type[1] : undefined;
-                      return parser.validate(val, next)
-                        ? parser.parse(val, next)
+                  value: ({ type, value }) =>
+                    type.split("|").reduce((acc, t) => {
+                      const parser = PARSER[Array.isArray(t) ? t[0] : t];
+                      const next = Array.isArray(t) ? t[1] : undefined;
+                      return parser.validate(value, next)
+                        ? parser.parse(value, next)
                         : acc;
                     }),
                 }),
@@ -139,15 +138,16 @@ export default Machine(
                   parameter: ctx,
                 })),
               ],
-              cond: ({ types, value }) =>
-                types
+              cond: ({ type, value }) => {
+                return type
                   .split("|")
-                  .any((type) =>
-                    PARSER[Array.isArray(type) ? type[0] : type].validate(
+                  .some((t) =>
+                    PARSER[Array.isArray(t) ? t[0] : t].validate(
                       value,
-                      Array.isArray(type) ? type[1] : undefined
+                      Array.isArray(t) ? t[1] : undefined
                     )
-                  ),
+                  );
+              },
             },
             {
               target: "decide",
