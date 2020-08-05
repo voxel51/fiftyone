@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useRecoilValue } from "recoil";
 import { Menu } from "semantic-ui-react";
 
 import { updateState } from "../actions/update";
@@ -7,6 +8,7 @@ import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
+import * as selectors from "../recoil/selectors";
 
 const Sample = ({
   displayProps,
@@ -22,13 +24,8 @@ const Sample = ({
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
   const s = sample;
-  const {
-    activeLabels,
-    activeTags,
-    activeOther,
-    colors,
-    labelData,
-  } = displayProps;
+  const { activeLabels, activeTags, activeOther, colors } = displayProps;
+  const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const isFloat = (n) => {
     return Number(n) === n && n % 1 !== 0;
@@ -72,7 +69,7 @@ const Sample = ({
           })}
         {s.tags.map((t, i) => {
           return activeTags[t] ? (
-            <Tag key={i} name={String(t)} color={labelData.colorMapping[t]} />
+            <Tag key={i} name={String(t)} color={colorMapping[t]} />
           ) : null;
         })}
         {Object.keys(s)

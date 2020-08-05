@@ -217,17 +217,6 @@ class StateController(Namespace):
 
         return {"results": results, "more": more}
 
-    def on_get_label_data(self, _):
-        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.view()
-        else:
-            return []
-
-        return {"labels": _get_label_fields(view), "tags": view.get_tags()}
-
     def on_get_distributions(self, group):
         """Gets the distributions for the current state with respect to a
         group.
@@ -288,15 +277,6 @@ def _numeric_bounds(view, numerics):
         ]
 
     return list(view.aggregate(bounds_pipeline))[0] if len(numerics) else {}
-
-
-def _get_label_fields(view):
-    pipeline = [
-        {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-        {"$unwind": "$field"},
-        {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
-    ]
-    return [f for f in view.aggregate(pipeline)]
 
 
 def _numeric_distribution_pipelines(view, pipeline, buckets=50):
