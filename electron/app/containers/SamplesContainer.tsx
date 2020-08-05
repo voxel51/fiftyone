@@ -17,8 +17,9 @@ import { wrapSetWithItemSetter } from "../utils/hooks";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
-    flex: 0 0 15rem;
+    flex: 0 0 17rem;
     z-index: 400;
+    margin-right: -0.5em;
   }
 
   .ui.grid > .content-column {
