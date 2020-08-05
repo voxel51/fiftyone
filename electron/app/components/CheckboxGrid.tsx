@@ -1,5 +1,5 @@
-import React from "react";
-import styled, { ThemeConsumer } from "styled-components";
+import React, { useContext } from "react";
+import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 
 const Body = styled.div`
@@ -45,6 +45,8 @@ type Props = {
 };
 
 const CheckboxGrid = ({ entries, onCheck }: Props) => {
+  const theme = useContext(ThemeContext);
+
   const handleCheck = (entry) => {
     if (onCheck) {
       onCheck({ ...entry, selected: !entry.selected });
@@ -52,39 +54,35 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
   };
 
   return (
-    <ThemeConsumer>
-      {(theme) => (
-        <Body>
-          {entries.map((entry) => (
-            <div key={entry.name}>
-              <FormControlLabel
-                label={
-                  <>
-                    <span className="name">{entry.name}</span>
-                    <span className="data">{entry.data}</span>
-                  </>
-                }
+    <Body>
+      {entries.map((entry) => (
+        <div key={entry.name}>
+          <FormControlLabel
+            label={
+              <>
+                <span className="name">{entry.name}</span>
+                <span className="data">{entry.data}</span>
+              </>
+            }
+            style={{
+              backgroundColor: entry.selected
+                ? theme.backgroundLight
+                : undefined,
+              color: entry.selected ? theme.font : theme.fontDark,
+            }}
+            control={
+              <Checkbox
+                checked={entry.selected}
+                onChange={() => handleCheck(entry)}
                 style={{
-                  backgroundColor: entry.selected
-                    ? theme.backgroundLight
-                    : undefined,
-                  color: entry.selected ? theme.font : theme.fontDark,
+                  color: entry.selected ? entry.color : theme.fontDark,
                 }}
-                control={
-                  <Checkbox
-                    checked={entry.selected}
-                    onChange={() => handleCheck(entry)}
-                    style={{
-                      color: entry.selected ? entry.color : theme.fontDark,
-                    }}
-                  />
-                }
               />
-            </div>
-          ))}
-        </Body>
-      )}
-    </ThemeConsumer>
+            }
+          />
+        </div>
+      ))}
+    </Body>
   );
 };
 
