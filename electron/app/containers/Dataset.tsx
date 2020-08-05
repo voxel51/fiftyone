@@ -33,6 +33,7 @@ function Dataset(props) {
   const stickyRef = createRef();
   const tabs = [routes.SAMPLES, routes.LABELS, routes.TAGS, routes.SCALARS];
   const [view, setView] = useState({ visible: false, sample: null });
+
   let src = null;
   let s = null;
   if (view.sample) {
@@ -110,27 +111,26 @@ function Dataset(props) {
       <Ref innerRef={stickyRef}>
         <Container fluid={true}>
           {/*<Sticky context={stickyRef}>*/}
-            <Container
-              fluid={true}
-              style={{
-                background: "hsl(210, 20%, 15%)",
-                paddingTop: "2rem",
-                zIndex: 1000000,
-              }}
-            >
-              <Menu pointing secondary>
-                {tabs.map((v, i) => {
-                  return (
-                    <Link key={i} to={v}>
-                      <Menu.Item
-                        name={v.slice(1)}
-                        active={v === props.location.pathname}
-                      />
-                    </Link>
-                  );
-                })}
-              </Menu>
-            </Container>
+          <Container
+            fluid={true}
+            style={{
+              paddingTop: "2rem",
+              zIndex: 1000000,
+            }}
+          >
+            <Menu pointing secondary>
+              {tabs.map((v, i) => {
+                return (
+                  <Link key={i} to={v}>
+                    <Menu.Item
+                      name={v.slice(1)}
+                      active={v === props.location.pathname}
+                    />
+                  </Link>
+                );
+              })}
+            </Menu>
+          </Container>
           {/*</Sticky>*/}
           <Switch>
             <Route exact path={routes.DATASET}>
