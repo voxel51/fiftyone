@@ -57,7 +57,7 @@ manually.
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: Classification
 
@@ -96,7 +96,7 @@ manually.
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: Detection
 
@@ -148,7 +148,7 @@ manually.
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
   .. group-tab:: Multitask prediction
 
@@ -216,7 +216,7 @@ manually.
         print(dataset)
 
         # Print the first few samples in the dataset
-        print(dataset.view().head())
+        print(dataset.head())
 
 Adding samples to datasets
 --------------------------

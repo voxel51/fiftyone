@@ -4,6 +4,40 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
+FiftyOne 0.4.1
+--------------
+*Released August 4, 2020*
+
+Core
+^^^^
+- Added a powerful :mod:`fiftyone.core.expressions` module for constructing
+  complex DatasetView :meth:`match() <fiftyone.core.collections.SampleCollection.match>`,
+  :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
+  :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`, and
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stages
+- Added an
+  :meth:`evaluate_detections() <fiftyone.utils.eval.coco.evaluate_detections>`
+  utility for evaluating object detections in FiftyOne datasets
+- Adding support for rendering annotated versions of sample data with their
+  labels overlaid via a
+  :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+  method
+
+Documentation
+^^^^^^^^^^^^^
+- Added :doc:`a tutorial </tutorials/evaluate_detections>` demonstrating
+  object detection evaluation workflows powered by FiftyOne
+- Added :doc:`full documentation </user_guide/using_views>` for constructing
+  DatasetViews with powerful matching, filtering, and sorting operations
+- Added :doc:`a recipe </recipes/draw_labels>` showing how to render annotated
+  versions of samples with label field(s) overlaid
+- Upgraded :doc:`dataset creation docs </user_guide/dataset_creation/index>`
+  that simplify the material and make it easier to find the creation strategy
+  of interest
+- Improved layout of :doc:`tutorials </tutorials/index>`,
+  :doc:`recipes </recipes/index>`, and :doc:`user guide </user_guide/index>`
+  landing pages
+
 FiftyOne 0.4.0
 --------------
 *Released July 21, 2020*

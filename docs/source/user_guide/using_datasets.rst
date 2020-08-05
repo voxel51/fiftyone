@@ -16,7 +16,7 @@ FiftyOne |Dataset|.
 Datasets
 ________
 
-Instantiating a |Dataset| creates a **new** dataset.
+Instantiating a |Dataset| object creates a **new** dataset.
 
 .. code-block:: python
     :linenos:
@@ -25,7 +25,7 @@ Instantiating a |Dataset| creates a **new** dataset.
 
     dataset1 = fo.Dataset(name="my_first_dataset")
     dataset2 = fo.Dataset(name="my_second_dataset")
-    dataset3 = fo.Dataset(name="my_third_dataset")
+    dataset3 = fo.Dataset()  # generates a default unique name
 
 Check to see what datasets exist at any time via :meth:`list_dataset_names()
 <fiftyone.core.dataset.list_dataset_names>`.
@@ -34,35 +34,37 @@ Check to see what datasets exist at any time via :meth:`list_dataset_names()
     :linenos:
 
     print(fo.list_dataset_names())
-    # ['my_first_dataset', 'my_second_dataset', 'my_third_dataset']
+    # ['my_first_dataset', 'my_second_dataset', '2020.08.04.12.36.29']
 
-Load a dataset using :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`.
+Load a dataset using
+:meth:`load_dataset() <fiftyone.core.dataset.load_dataset>`.
 Dataset objects are singletons. Cool!
 
 .. code-block:: python
     :linenos:
 
-    dataset2_reference = fo.load_dataset("my_second_dataset")
-    dataset2_reference is dataset2  # True
+    _dataset2 = fo.load_dataset("my_second_dataset")
+    _dataset2 is dataset2  # True
 
-If you try to *load* a dataset via `Dataset(...)` or *create* a dataset via
+If you try to *load a dataset* via `Dataset(...)` or *create a new dataset* via
 :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to
-have a bad time.
+have a bad time:
 
 .. code-block:: python
     :linenos:
 
-    dataset3_reference = fo.Dataset(name="my_third_dataset")
-    # Dataset 'my_third_dataset' already exists; use `fiftyone.load_dataset()` to load an existing dataset
+    _dataset2 = fo.Dataset(name="my_second_dataset")
+    # Dataset 'my_second_dataset' already exists; use `fiftyone.load_dataset()`
+    # to load an existing dataset
 
     dataset4 = fo.load_dataset(name="my_fourth_dataset")
-    # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_fourth_dataset' not found
+    # DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
 Dataset persistence
 -------------------
 
 By default, datasets are non-persistent. Non-persistent datasets are wiped
-from FiftyOne on exit of the python process. This means any data in the
+from FiftyOne on exit of the Python process. This means any data in the
 FiftyOne backing database is deleted, however files on disk are untouched.
 
 To make a dataset persistent, set the attribute to `True`.
@@ -70,10 +72,12 @@ To make a dataset persistent, set the attribute to `True`.
 .. code-block:: python
     :linenos:
 
+    # Make the dataset persistent
     dataset1.persistent = True
+
     quit()
 
-Start a new python session:
+Start a new Python session:
 
 .. code-block:: python
     :linenos:
@@ -83,8 +87,8 @@ Start a new python session:
     print(fo.list_dataset_names())
     # ['my_first_dataset']
 
-Note that `my_second_dataset` and `my_third_dataset` have been wiped because
-they were not persistent.
+Note that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have been
+wiped because they were not persistent.
 
 Deleting a dataset
 ------------------
@@ -95,7 +99,7 @@ is deleted, any existing reference in memory will be in a volatile state.
 :class:`Dataset.name <fiftyone.core.dataset.Dataset>` and
 :class:`Dataset.deleted <fiftyone.core.dataset.Dataset>` will still be valid
 attributes, but calling any other attribute or method will raise a
-`DoesNotExistError`.
+:class:`DoesNotExistError <fiftyone.core.dataset.DoesNotExistError>`.
 
 .. code-block:: python
     :linenos:
@@ -113,20 +117,25 @@ attributes, but calling any other attribute or method will raise a
     # True
 
     print(dataset.persistent)
-    # fiftyone.core.dataset.DoesNotExistError: Dataset 'my_first_dataset' is deleted
+    # DoesNotExistError: Dataset 'my_first_dataset' is deleted
 
 .. _using-samples:
 
 Samples
 _______
 
-An individual |Sample| is always initialized with a file path to the
-corresponding image on disk. The image is not read at this point:
+An individual |Sample| is always initialized with a `filepath` to the
+corresponding data on disk.
 
 .. code-block:: python
     :linenos:
 
     sample = fo.Sample(filepath="path/to/image.png")
+
+.. note::
+
+    Creating a new |Sample| does not load the source data into memory. Source
+    data is read only as needed by the App.
 
 Adding samples to a dataset
 ---------------------------
@@ -139,8 +148,8 @@ A |Sample| can easily be added to an existing |Dataset|:
     dataset = fo.Dataset(name="example_dataset")
     dataset.add_sample(sample)
 
-When a |Sample| is added to a |Dataset|, the related attributes of the |Sample|
-are automatically updated:
+When a |Sample| is added to a |Dataset|, the relevant attributes of the
+|Sample| are automatically updated:
 
 .. code-block:: python
     :linenos:
@@ -159,8 +168,8 @@ Every |Sample| in a |Dataset| is given a unique ID when it is added:
     print(sample.id)
     # 5ee0ebd72ceafe13e7741c42
 
-A batch of multiple |Sample| objects can be added to a |Dataset| at the same
-time by providing a list of samples:
+A batch of |Sample| objects can be added to a |Dataset| at the same time by
+providing a list of samples:
 
 .. code-block:: python
     :linenos:
@@ -179,18 +188,30 @@ time by providing a list of samples:
     print(len(dataset))
     # 4
 
+.. _accessing-samples-in-a-dataset:
+
 Accessing samples in a dataset
 ------------------------------
 
 FiftyOne provides multiple ways to access a |Sample| in a |Dataset|.
 
-A |Dataset| is iterable allowing every |Sample| to be accessed one at a time:
+A |Dataset| is iterable allowing every |Sample| to be accessed sequentially:
 
 .. code-block:: python
     :linenos:
 
     for sample in dataset:
         print(sample)
+
+Use :meth:`first() <fiftyone.core.dataset.Dataset.first>` and
+:meth:`last() <fiftyone.core.dataset.Dataset.last>` to retrieve the first and
+last samples in a dataset, respectively:
+
+.. code-block:: python
+    :linenos:
+
+    first_sample = dataset.first()
+    last_sample = dataset.last()
 
 A |Sample| can be accessed directly from a |Dataset| by its ID. The |Sample|
 that is returned when accessing a |Dataset| will always provide the same
@@ -204,7 +225,7 @@ instance:
     print(same_sample is sample)
     # True
 
-You can :ref:`use DatasetViews <using-dataset-views>` to perform more
+You can use :doc:`DatasetViews <using_views>` to perform more
 sophisticated operations on samples like searching, filtering, sorting, and
 slicing.
 
@@ -278,7 +299,7 @@ By default, all |Sample| instances have the following fields:
     | `id`       | string                             | `None`      | The ID of the sample in its parent dataset, or    |
     |            |                                    |             | `None` if the sample does not belong to a dataset |
     +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `metadata` | :class:`Metadata                   |`None`       | Type-specific metadata about the source data      |
+    | `metadata` | :class:`Metadata                   | `None`      | Type-specific metadata about the source data      |
     |            | <fiftyone.core.metadata.Metadata>` |             |                                                   |
     +------------+------------------------------------+-------------+---------------------------------------------------+
     | `tags`     | list                               | `[]`        | A list of string tags for the sample              |
@@ -345,9 +366,9 @@ To to simply view the field schema print the dataset:
     Num samples:    0
     Tags:           []
     Sample fields:
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        filepath:     fiftyone.core.fields.StringField
+        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
 The value of a |Field| for a given |Sample| can be accessed either by key or
 attribute access:
@@ -487,6 +508,9 @@ populated with a |Metadata| instance that stores data type-specific metadata
 about the raw data in the sample. The :doc:`FiftyOne App </user_guide/app>` and
 the :doc:`FiftyOne Brain </user_guide/brain>` will use this provided metadata
 in some workflows when it is available.
+
+To automatically compute metadata for all samples in the dataset use
+:meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`.
 
 .. tabs::
 
@@ -917,157 +941,27 @@ latter case, additional metadata such as prediction confidences can be store.
 See the `ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_
 for more details.
 
-.. _using-dataset-views:
-
 DatasetViews
 ____________
 
-FiftyOne provides a powerful and flexible class, |DatasetView|, for accessing
-subsets of samples.
-The default view of a |Dataset| encompasses the entire |Dataset|, with
-unpredictable sort order.
-Basic ways to explore a |DatasetView| are available:
+Previous sections have demonstrated how to add and interact with |Dataset|
+components like samples, fields, and labels. The true power of FiftyOne lies in
+the ability to search, sort, filter, and explore the contents of a |Dataset|.
 
-.. code-block:: python
-    :linenos:
+Behind this power is the |DatasetView|. Whenever an operation
+like :meth:`match() <fiftyone.core.view.DatasetView.match>` or
+:meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` is applied to a
+|Dataset|, a |DatasetView| is returned. As the name implies, a |DatasetView|
+is a *view* into the data in your |Dataset| that was produced by a series of
+operations that manipulated your data in different ways.
 
-    print(len(dataset.view()))
-    # 2
+A |DatasetView| is composed of |SampleView| objects for a subset of the samples
+in your dataset. For example, a view may contain only samples with a given tag,
+or samples whose labels meet a certain criteria. In turn, each |SampleView|
+represents a view into the content of the underlying |Sample| in the datset.
+For example, a |SampleView| may represent the contents of a sample with
+|Detections| below a specified threshold filtered out.
 
-    print(dataset.view())
-
-.. code-block:: text
-
-    Dataset:        interesting_dataset
-    Num samples:    2
-    Tags:           ['test', 'train']
-    Sample fields:
-        filepath: fiftyone.core.fields.StringField
-        tags:     fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-
-Accessing samples in dataset views
-----------------------------------
-
-Use :meth:`DatasetView.first() <fiftyone.core.view.DatasetView.first()>` to get
-the first sample in a |DatasetView| or
-:meth:`DatasetView.take(x) <fiftyone.core.view.DatasetView.take>` to get a new
-|DatasetView| containing `x` random |Sample| objects:
-
-.. code-block:: python
-    :linenos:
-
-    first_sample = dataset.view().first()
-
-    new_view = dataset.view().take(2)
-
-    print(len(new_view))
-    # 2
-
-Ranges of |Sample| objects can be accessed using
-:meth:`skip() <fiftyone.core.view.DatasetView.skip>` and
-:meth:`limit() <fiftyone.core.view.DatasetView.limit>` or equivalently through
-array slicing:
-
-.. code-block:: python
-    :linenos:
-
-    # Skip the first 2 samples and take the next 3
-    view = dataset.view()
-
-    view.skip(2).limit(3)
-
-    # Equivalently
-    view[2:5]
-
-Note that accessing an individual sample by its integer index in the view is
-not supported (this is not an efficient operation with FiftyOne datasets):
-
-.. code-block:: python
-    :linenos:
-
-    view[0]
-    # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
-
-As with a |Dataset|, a |Sample| in a |DatasetView| can be accessed by ID and
-a |DatasetView| is iterable:
-
-.. code-block:: python
-    :linenos:
-
-    sample = view[sample.id]
-
-    for sample in view:
-        print(sample)
-
-Sorting
--------
-
-The samples in a |DatasetView| can be sorted (forward or in reverse) by any
-|Field|:
-
-.. code-block:: python
-    :linenos:
-
-    view = dataset.view().sort_by("filepath")
-    view = dataset.view().sort_by("id", reverse=True)
-
-Querying
---------
-
-A |DatasetView| can be queried using :meth:`match()
-<fiftyone.core.view.DatasetView.match>`. The syntax follows
-`MongoDB queries <https://docs.mongodb.com/manual/tutorial/query-documents/>`_:
-
-.. code-block:: python
-    :linenos:
-
-    # Get only samples with the tag "train"
-    view = dataset.view().match({"tags": "train"})
-
-Convenience functions for common queries are also available.
-
-A |DatasetView| can be created by matching lists of |Sample| IDs, either to
-only include given a |Sample| or to include all but the given |Sample|:
-
-.. code-block:: python
-    :linenos:
-
-    sample_ids = [sample1.id, sample2.id]
-    included = dataset.view().select(sample_ids)
-    excluded = dataset.view().exclude(sample_ids)
-
-A |DatasetView| can also be filtered to only include samples for which a
-given |Field| exists and is not ``None``:
-
-.. code-block:: python
-    :linenos:
-
-    metadata_view = dataset.view().exists("metadata")
-
-Chaining view stages
---------------------
-
-All of the aformentioned view stages can be chained together:
-
-.. code-block:: python
-    :linenos:
-
-    complex_view = (
-        dataset.view()
-        .match({"tags": "test"})
-        .exists("metadata")
-        .sort_by("filepath")
-        .limit(5)
-    )
-
-Removing a batch of samples from a dataset
-------------------------------------------
-
-Every |Sample| in a given |DatasetView| can be removed from a |Dataset| with a
-single command:
-
-.. code-block:: python
-    :linenos:
-
-    dataset.remove_samples(view)
+.. custombutton::
+    :button_text: Learn more about DatasetViews
+    :button_link: using_views.html

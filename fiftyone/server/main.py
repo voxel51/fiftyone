@@ -5,23 +5,11 @@ FiftyOne Flask server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import argparse
 import json
 import logging
 import os
+import uuid
 
 from bson import json_util
 from flask import Flask, jsonify, request, send_file
@@ -47,6 +35,23 @@ CORS(app)
 app.config["SECRET_KEY"] = "fiftyone"
 
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+
+
+def get_user_id():
+    uid_path = os.path.join(foc.FIFTYONE_CONFIG_DIR, "var", "uid")
+
+    def read():
+        try:
+            with open(uid_path) as f:
+                return next(f).strip()
+        except (IOError, StopIteration):
+            return None
+
+    if not read():
+        os.makedirs(os.path.dirname(uid_path), exist_ok=True)
+        with open(uid_path, "w") as f:
+            f.write(str(uuid.uuid4()))
+    return read()
 
 
 @app.route("/")
@@ -122,6 +127,13 @@ class StateController(Namespace):
             state_dict
         ).serialize()
         emit("update", self.state, broadcast=True, include_self=False)
+
+    def on_get_fiftyone_info(self):
+        """Retrieves information about the FiftyOne installation."""
+        return {
+            "version": foc.VERSION,
+            "user_id": get_user_id(),
+        }
 
     def on_get_current_state(self, _):
         """Gets the current state.
@@ -213,7 +225,8 @@ class StateController(Namespace):
             view = state.dataset.view()
         else:
             return []
-        return {"labels": view.get_label_fields(), "tags": view.get_tags()}
+
+        return {"labels": _get_label_fields(view), "tags": view.get_tags()}
 
     def on_get_distributions(self, group):
         """Gets the distributions for the current state with respect to a
@@ -275,6 +288,15 @@ def _numeric_bounds(view, numerics):
         ]
 
     return list(view.aggregate(bounds_pipeline))[0] if len(numerics) else {}
+
+
+def _get_label_fields(view):
+    pipeline = [
+        {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+        {"$unwind": "$field"},
+        {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
+    ]
+    return [f for f in view.aggregate(pipeline)]
 
 
 def _numeric_distribution_pipelines(view, pipeline, buckets=50):

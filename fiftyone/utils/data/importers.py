@@ -5,20 +5,6 @@ Dataset importers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import os
 
 import eta.core.datasets as etads
@@ -286,7 +272,7 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         self._num_samples = None
 
     def __iter__(self):
-        self._iter_labels = iter(iteritems(self._labels))
+        self._iter_labels = iter(self._labels.items())
         return self
 
     def __len__(self):
@@ -418,7 +404,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         self._has_labels = False
 
     def __iter__(self):
-        self._iter_labels = iter(iteritems(self._labels))
+        self._iter_labels = iter(self._labels.items())
         return self
 
     def __len__(self):

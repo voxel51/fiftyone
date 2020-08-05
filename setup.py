@@ -13,20 +13,18 @@ from wheel.bdist_wheel import bdist_wheel
 class BdistWheelCustom(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
-        # pure Python, so build a wheel for any Python version
-        self.universal = True
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.1.5",
-            "fiftyone-gui>=0.2.2",
+            "fiftyone-brain>=0.1.6",
+            "fiftyone-gui>=0.2.3",
             "fiftyone-db>=0.1.1",
         ]
 
 
 setup(
     name="fiftyone",
-    version="0.4.0",
+    version="0.4.1",
     description=(
         "FiftyOne: a powerful package for dataset curation, analysis, and "
         "visualization"
@@ -56,10 +54,8 @@ setup(
         "pprintpp",
         "psutil",
         "pymongo",
-        "python-engineio[client]<3.12;python_version<'3'",
-        "python-engineio[client];python_version>='3'",
-        "python-socketio[client]<4.5;python_version<'3'",
-        "python-socketio[client];python_version>='3'",
+        "python-engineio[client]",
+        "python-socketio[client]",
         "retrying",
         "setuptools",
         "tabulate",

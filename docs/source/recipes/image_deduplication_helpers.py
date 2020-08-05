@@ -25,7 +25,9 @@ import random
 import eta.core.image as etai
 import eta.core.utils as etau
 
-etau.ensure_tf()
+import fiftyone.core.utils as fou
+
+fou.ensure_tf()
 from tensorflow.keras.datasets import cifar100
 
 
