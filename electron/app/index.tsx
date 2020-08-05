@@ -4,7 +4,6 @@ import { AppContainer as ReactHotAppContainer } from "react-hot-loader";
 import Root from "./containers/Root";
 import { configureStore, history } from "./store/configureStore";
 import "./app.global.css";
-import "semantic-ui-less/semantic.less";
 
 const store = configureStore();
 
