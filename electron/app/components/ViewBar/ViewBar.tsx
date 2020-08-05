@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useCallback } from "react";
 import styled from "styled-components";
 import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
 import { useRecoilValue } from "recoil";
+import { HotKeys } from "react-hotkeys";
 
 import { getSocket, useSubscribe } from "../../utils/socket";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
@@ -44,6 +45,18 @@ const ViewBarDiv = styled.div`
   }
 );*/
 
+export const viewBarHotKeys = {
+  VIEW_BAR_FOCUS: "alt+v",
+  VIEW_BAR_BLUR: "esc",
+  VIEW_BAR_NEXT: "right",
+  VIEW_BAR_PREVIOUS: "left",
+  VIEW_BAR_NEXT_STAGE: "shift+right",
+  VIEW_BAR_PREVIOUS_STAGE: "shift+left",
+  VIEW_BAR_DELETE_STAGE: ["del", "backspace"],
+  VIEW_BAR_NEXT_RESULT: "down",
+  VIEW_BAR_PREVIOUS_RESULT: "up",
+};
+
 const machine = viewBarMachine.withContext(createBar(5151));
 
 const ViewBar = () => {
@@ -51,32 +64,46 @@ const ViewBar = () => {
 
   const { stages } = state.context;
 
+  const handlers = {
+    VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), []),
+    VIEW_BAR_BLUR: useCallback(() => send("BLUR"), []),
+    VIEW_BAR_NEXT: useCallback(() => send("NEXT"), []),
+    VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
+    VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),
+    VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
+    VIEW_BAR_DELETE_STAGE: useCallback(() => send("DELETE_STAGE"), []),
+    VIEW_BAR_NEXT_RESULT: useCallback(() => send("NEXT_RESULT"), []),
+    VIEW_BAR_PREVIOUS_RESULT: useCallback(() => send("PREVIOUS_RESULT"), []),
+  };
+
   return (
-    <ViewBarDiv>
-      {state.matches("running")
-        ? stages.map((stage, i) => {
-            return (
-              <React.Fragment key={stage.id}>
-                {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
-                  <AddViewStage
-                    key={`insert-button-${stage.id}`}
-                    send={send}
-                    index={i}
-                  />
-                ) : null}
-                <ViewStage key={stage.id} stageRef={stage.ref} />
-              </React.Fragment>
-            );
-          })
-        : null}
-      {state.matches("running") && stages[stages.length - 1].submitted ? (
-        <AddViewStage
-          key={`insert-button-tail`}
-          send={send}
-          index={stages.length}
-        />
-      ) : null}
-    </ViewBarDiv>
+    <HotKeys handlers={handlers}>
+      <ViewBarDiv>
+        {state.matches("running")
+          ? stages.map((stage, i) => {
+              return (
+                <React.Fragment key={stage.id}>
+                  {stage.submitted && (i === 0 || stages[i - 1].submitted) ? (
+                    <AddViewStage
+                      key={`insert-button-${stage.id}`}
+                      send={send}
+                      index={i}
+                    />
+                  ) : null}
+                  <ViewStage key={stage.id} stageRef={stage.ref} />
+                </React.Fragment>
+              );
+            })
+          : null}
+        {state.matches("running") && stages[stages.length - 1].submitted ? (
+          <AddViewStage
+            key={`insert-button-tail`}
+            send={send}
+            index={stages.length}
+          />
+        ) : null}
+      </ViewBarDiv>
+    </HotKeys>
   );
 };
 
