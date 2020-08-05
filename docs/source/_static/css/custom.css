@@ -3,6 +3,11 @@ body {
     sans-serif;
 }
 
+a.reference.external:after {
+  font-family: "FontAwesome";
+  content: " \f08e";
+}
+
 .ui.tabular.menu .item {
   /* stop breaking tabs */
   width: unset;
@@ -27,6 +32,10 @@ article.pytorch-article .wy-table-responsive table thead th {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   padding-bottom: 0rem;
+}
+
+.wy-table-responsive table colgroup col:first-of-type {
+  width: 70% !important;
 }
 
 .pytorch-page-level-bar {
@@ -187,8 +196,6 @@ a:link,
 a:visited,
 p a:link,
 p a:visited,
-.pytorch-left-menu li.toctree-l1.current > a,
-.pytorch-left-menu li.toctree-l1.current > a:before,
 ul.pytorch-breadcrumbs a {
   color: var(--color-primary);
 }
@@ -366,7 +373,17 @@ article.pytorch-article .reference.download.internal {
   margin-left: 1rem;
 }
 
-.pytorch-left-menu li.toctree-l2.current > a {
+.pytorch-left-menu li.toctree-l1 ul li {
+  font-size: 1em;
+}
+
+.pytorch-left-menu li.toctree-l2.current li.toctree-l3 > a,
+.pytorch-left-menu li.toctree-l3.current li.toctree-l4 > a {
+  display: inline-block;
+}
+
+.pytorch-left-menu li.current > a,
+.pytorch-left-menu li.toctree-l1.current > a {
   color: var(--color-primary);
 }
 
@@ -384,4 +401,104 @@ article.pytorch-article .reference.download.internal {
   li.current-section
   > a.reference.internal.not-expanded:before {
   margin-left: -3px;
+}
+
+/* tutorials cards */
+
+#tutorial-cards-container {
+  margin-bottom: 2rem;
+}
+
+#tutorial-cards-container .card.tutorials-card .tutorials-image img {
+  height: 100%;
+  width: 100%;
+  margin: 0%;
+}
+
+#tutorial-cards-container .card.tutorials-card:hover:after {
+  background-color: var(--color-primary);
+}
+
+#tutorial-cards-container .card.tutorials-card {
+  background-color: var(--bg-light-secondary);
+}
+
+#tutorial-cards-container .filter-btn {
+  color: var(--gray-neutral);
+  border: 1px solid var(--gray-neutral);
+}
+
+#tutorial-cards-container .filter-btn:hover {
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+#tutorial-cards-container .all-tag-selected,
+#tutorial-cards-container .filter-btn.selected {
+  color: #ffffff;
+  background-color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+#tutorial-cards-container .all-tag-selected:hover,
+#tutorial-cards-container .filter-btn.selected:hover {
+  color: #ffffff;
+  border: 1px solid #ffffff;
+}
+
+#tutorial-cards-container .pagination .active .page {
+  background-color: var(--bg-light-secondary);
+}
+
+#tutorial-cards-container .pagination .page {
+  border: 1px solid var(--bg-light-secondary);
+}
+
+/* callout cards/button */
+
+article.pytorch-article .tutorials-callout-container {
+  padding-bottom: 0px;
+}
+
+article.pytorch-article
+  .tutorials-callout-container
+  .text-container
+  .body-paragraph {
+  margin-top: -0.5rem;
+  color: var(--text-secondary-on-light);
+  line-height: 1.375rem;
+}
+
+article.pytorch-article
+  .tutorials-callout-container
+  .text-container
+  .body-paragraph {
+  font-size: 1rem;
+}
+
+article.pytorch-article .tutorials-callout-container .btn.callout-button {
+  font-size: 1rem;
+}
+
+article.pytorch-article
+  .tutorials-callout-container
+  .btn.callout-button:hover:after {
+  background-color: var(--color-primary);
+}
+
+/* image is located in docs/theme/images */
+/* @todo replace with version that uses Voxel51 orange, not PyTorch orange */
+a.with-right-arrow,
+.btn.with-right-arrow {
+  background-image: url(../images/chevron-right-orange.svg);
+}
+
+/* table in convert-datasets recipe */
+
+.convert-recipes-table colgroup {
+  display: none;
+}
+
+.convert-recipes-table th:first-of-type {
+  width: 50%;
 }

@@ -5,19 +5,6 @@ Dataset exporters.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from collections import defaultdict
 import inspect
 import os
@@ -752,6 +739,11 @@ def _parse_detections(detections, labels_map_rev=None):
         }
         if detection.confidence is not None:
             _detection["confidence"] = detection.confidence
+
+        if detection.attributes:
+            _detection["attributes"] = {
+                name: attr.value for name, attr in detection.attributes.items()
+            }
 
         _detections.append(_detection)
 

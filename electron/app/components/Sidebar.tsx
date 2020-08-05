@@ -72,7 +72,7 @@ const _Sidebar = (props) => {
           onClick={(e) => {
             e.preventDefault();
             electron.shell.openExternal(
-              "https://voxel51.slack.com/app_redirect?channel=C0154574MKJ"
+              "https://join.slack.com/t/fiftyone-group/shared_invite/zt-gfml1qxd-r0RNVtRiWjPy97OtNm~~yA"
             );
           }}
         >

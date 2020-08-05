@@ -5,20 +5,6 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 from mongoengine import (
     BooleanField,
     StringField,
@@ -51,8 +37,8 @@ class SampleFieldDocument(EmbeddedDocument):
         return cls(
             name=field.name,
             ftype=etau.get_class_name(field),
-            subfield=cls._get_class_repr(field, "field"),
-            embedded_doc_type=cls._get_class_repr(field, "document_type"),
+            subfield=cls._get_attr_repr(field, "field"),
+            embedded_doc_type=cls._get_attr_repr(field, "document_type"),
         )
 
     @classmethod
@@ -68,9 +54,7 @@ class SampleFieldDocument(EmbeddedDocument):
              a list of :class:`SampleFieldDocument` objects
         """
         return [
-            cls.from_field(field)
-            for field in itervalues(d)
-            if field.name != "id"
+            cls.from_field(field) for field in d.values() if field.name != "id"
         ]
 
     def matches_field(self, field):
@@ -101,7 +85,7 @@ class SampleFieldDocument(EmbeddedDocument):
         return True
 
     @staticmethod
-    def _get_class_repr(field, attr_name):
+    def _get_attr_repr(field, attr_name):
         attr = getattr(field, attr_name, None)
         return etau.get_class_name(attr) if attr else None
 

@@ -5,20 +5,6 @@ Definition of the `fiftyone` command-line interface (CLI).
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# pragma pylint: disable=redefined-builtin
-# pragma pylint: disable=unused-wildcard-import
-# pragma pylint: disable=wildcard-import
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-from builtins import *
-from future.utils import iteritems, itervalues
-
-# pragma pylint: enable=redefined-builtin
-# pragma pylint: enable=unused-wildcard-import
-# pragma pylint: enable=wildcard-import
-
 import argparse
 from collections import defaultdict
 import io
@@ -175,7 +161,7 @@ class ConstantsCommand(Command):
         _print_constants_table(
             {
                 k: v
-                for k, v in iteritems(vars(foc))
+                for k, v in vars(foc).items()
                 if not k.startswith("_") and k == k.upper()
             }
         )
@@ -183,7 +169,7 @@ class ConstantsCommand(Command):
 
 def _print_constants_table(d):
     contents = sorted(
-        ((k, _render_constant_value(v)) for k, v in iteritems(d)),
+        ((k, _render_constant_value(v)) for k, v in d.items()),
         key=lambda kv: kv[0],
     )
     table_str = tabulate(
@@ -275,6 +261,7 @@ class DatasetsCommand(Command):
         _register_command(subparsers, "tail", DatasetsTailCommand)
         _register_command(subparsers, "stream", DatasetsStreamCommand)
         _register_command(subparsers, "export", DatasetsExportCommand)
+        _register_command(subparsers, "draw", DatasetsDrawCommand)
         _register_command(subparsers, "delete", DatasetsDeleteCommand)
 
     @staticmethod
@@ -419,7 +406,7 @@ class DatasetsHeadCommand(Command):
         num_samples = args.num_samples
 
         dataset = fod.load_dataset(name)
-        print(dataset.view().head(num_samples=num_samples))
+        print(dataset.head(num_samples=num_samples))
 
 
 class DatasetsTailCommand(Command):
@@ -454,7 +441,7 @@ class DatasetsTailCommand(Command):
         num_samples = args.num_samples
 
         dataset = fod.load_dataset(name)
-        print(dataset.view().tail(num_samples=num_samples))
+        print(dataset.tail(num_samples=num_samples))
 
 
 class DatasetsStreamCommand(Command):
@@ -561,6 +548,50 @@ class DatasetsExportCommand(Command):
             raise ValueError(
                 "Either `export_dir` or `json_path` must be provided"
             )
+
+
+class DatasetsDrawCommand(Command):
+    """Writes annotated versions of samples in FiftyOne datasets to disk.
+
+    Examples::
+
+        # Write annotated versions of the samples in the dataset with the
+        # specified labels overlaid to disk
+        fiftyone datasets draw <name> \\
+            --anno-dir <anno-dir> --label-fields <label-fields>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset to annotate",
+        )
+        parser.add_argument(
+            "-d",
+            "--anno-dir",
+            metavar="ANNO_DIR",
+            help="the directory in which to write the annotated data",
+        )
+        parser.add_argument(
+            "-f",
+            "--label-fields",
+            metavar="LABEL_FIELDs",
+            help="a comma-separated list of label fields to export",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        anno_dir = args.anno_dir
+        label_fields = args.label_fields
+
+        dataset = fod.load_dataset(name)
+
+        if label_fields is not None:
+            label_fields = [f.strip() for f in label_fields.split(",")]
+
+        dataset.draw_labels(anno_dir, label_fields=label_fields)
+        print("Annotations written to '%s'" % anno_dir)
 
 
 class DatasetsDeleteCommand(Command):
@@ -898,8 +929,8 @@ class ZooListCommand(Command):
 
 def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
     available_datasets = defaultdict(dict)
-    for source, datasets in iteritems(all_datasets):
-        for name, zoo_dataset_cls in iteritems(datasets):
+    for source, datasets in all_datasets.items():
+        for name, zoo_dataset_cls in datasets.items():
             available_datasets[name][source] = zoo_dataset_cls()
 
     records = []
@@ -916,7 +947,7 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
 
         # Get available splits across all sources
         splits = set()
-        for zoo_dataset in itervalues(dataset_sources):
+        for zoo_dataset in dataset_sources.values():
             if zoo_dataset.has_splits:
                 splits.update(zoo_dataset.supported_splits)
             else:
@@ -1141,7 +1172,7 @@ def _print_dict_as_json(d):
 
 
 def _print_dict_as_table(d):
-    records = [(k, v) for k, v in iteritems(d)]
+    records = [(k, v) for k, v in d.items()]
     table_str = tabulate(
         records, headers=["key", "value"], tablefmt=_TABLE_FORMAT
     )
@@ -1159,7 +1190,7 @@ def _has_subparsers(parser):
 def _iter_subparsers(parser):
     for action in parser._actions:
         if isinstance(action, argparse._SubParsersAction):
-            for subparser in itervalues(action.choices):
+            for subparser in action.choices.values():
                 yield subparser
 
 

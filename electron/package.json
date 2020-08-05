@@ -302,6 +302,7 @@
     "raw-loader": "^4.0.1",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
+    "react-ga": "^3.1.2",
     "react-grid-gallery": "^0.5.5",
     "react-highlight": "^0.12.0",
     "react-highlight.js": "^1.0.7",

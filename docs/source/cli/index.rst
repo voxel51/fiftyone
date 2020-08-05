@@ -217,6 +217,7 @@ Tools for working with FiftyOne datasets.
         tail                Prints the last few samples in a FiftyOne dataset.
         stream              Streams the samples in a FiftyOne dataset.
         export              Export FiftyOne datasets to disk in supported formats.
+        draw                Writes annotated versions of samples in FiftyOne datasets to disk.
         delete              Delete FiftyOne datasets.
 
 List datasets
@@ -434,6 +435,38 @@ Export FiftyOne datasets to disk in supported formats.
 
     # Export the dataset to disk in JSON format
     fiftyone datasets export <name> --json-path <json-path>
+
+Drawing labels on samples
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Writes annotated versions of samples in FiftyOne datasets to disk.
+
+.. code-block:: text
+
+    fiftyone datasets draw [-h] [-d ANNO_DIR] [-f LABEL_FIELDs] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the dataset to annotate
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d ANNO_DIR, --anno-dir ANNO_DIR
+                            the directory in which to write the annotated data
+      -f LABEL_FIELDs, --label-fields LABEL_FIELDs
+                            a comma-separated list of label fields to export
+
+**Examples**
+
+.. code-block:: shell
+
+    # Write annotated versions of the samples in the dataset with the
+    # specified labels overlaid to disk
+    fiftyone datasets draw <name> \
+        --anno-dir <anno-dir> --label-fields <label-fields>
 
 Delete datasets
 ~~~~~~~~~~~~~~~
