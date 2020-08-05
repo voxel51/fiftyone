@@ -91,6 +91,9 @@ class SampleCollection(object):
         """Returns a string representation of the first few samples in the
         collection.
 
+        If fewer than ``num_samples`` samples are in the collection, only
+        the available samples are returned.
+
         Args:
             num_samples (3): the number of samples
 
@@ -102,6 +105,9 @@ class SampleCollection(object):
     def tail(self, num_samples=3):
         """Returns a string representation of the last few samples in the
         collection.
+
+        If fewer than ``num_samples`` samples are in the collection, only
+        the available samples are returned.
 
         Args:
             num_samples (3): the number of samples
@@ -117,6 +123,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
+
+        Raises:
+            ValueError: if the collection is empty
         """
         try:
             return next(iter(self))
@@ -129,6 +138,9 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.sample.Sample` or
             :class:`fiftyone.core.sample.SampleView`
+
+        Raises:
+            ValueError: if the collection is empty
         """
         return self[-1:].first()
 

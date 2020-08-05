@@ -247,6 +247,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
+
+        Raises:
+            ValueError: if the dataset is empty
         """
         return super().first()
 
@@ -255,8 +258,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
+
+        Raises:
+            ValueError: if the dataset is empty
         """
-        sample_view = self[-1:].first()
+        try:
+            sample_view = self[-1:].first()
+        except ValueError:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
         return fos.Sample.from_doc(sample_view._doc)
 
     def view(self):
