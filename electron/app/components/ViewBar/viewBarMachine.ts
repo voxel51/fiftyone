@@ -84,7 +84,6 @@ const viewBarMachine = Machine(
             states: {
               focused: {
                 entry: [
-                  "focusBar",
                   ({ stages }) =>
                     stages.forEach((stage) =>
                       stage.ref.send({ type: "BAR_FOCUS" })
@@ -281,8 +280,6 @@ const viewBarMachine = Machine(
             active: stage.index === ctx.activeStage,
           })
         ),
-      focusBar: () => {},
-      blurBar: () => {},
     },
   }
 );

@@ -198,7 +198,6 @@ const ViewStage = React.memo(({ stageRef }) => {
           value={stage}
           onFocus={() => !state.matches("input.editing") && send("EDIT")}
           onBlur={(e) => {
-            e.stopPropagation();
             state.matches("input.editing.searchResults.notHovering") &&
               send("BLUR");
           }}

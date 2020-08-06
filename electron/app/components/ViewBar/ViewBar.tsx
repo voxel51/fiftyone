@@ -9,6 +9,21 @@ import { stateDescription } from "../../recoil/atoms";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine, { createBar } from "./viewBarMachine";
 
+function useOutsideClick(ref, callback) {
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (ref.current && !ref.current.contains(event.target)) {
+        callback();
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [ref, callback]);
+}
+
 const ViewBarDiv = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
@@ -28,10 +43,6 @@ const ViewBarDiv = styled.div`
   &::-webkit-scrollbar-thumb {
     width: 0px;
     display: none;
-  }
-
-  &:focus {
-    outline: none;
   }
 `;
 
@@ -73,23 +84,6 @@ const ViewBar = () => {
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
 
-  const actionsMap = useMemo(
-    () => ({
-      focusBar: () =>
-        barRef.current &&
-        !barRef.current.contains(document.activeElement) &&
-        barRef.current.focus(),
-      blurBar: () => barRef.current && barRef.current.blur(),
-    }),
-    [barRef.current]
-  );
-
-  useEffect(() => {
-    state.actions.forEach((action) => {
-      if (action.type in actionsMap) actionsMap[action.type]();
-    });
-  }, [state.actions]);
-
   const handlers = {
     VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), []),
     VIEW_BAR_BLUR: useCallback(() => send("BLUR"), []),
@@ -103,23 +97,12 @@ const ViewBar = () => {
     VIEW_BAR_ADD_STAGE: useCallback(() => send("STAGE.ADD"), []),
   };
 
+  useOutsideClick(barRef, () => send("BLUR"));
+
   return (
     <React.Fragment>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
-      <ViewBarDiv
-        tabIndex="-1"
-        onBlur={(e) => {
-          !barRef.current &&
-          !barRef.current.contains(document.activeElement) &&
-          send("BLUR")
-            ? null
-            : e.preventDefault();
-        }}
-        onFocus={() => send("FOCUS")}
-        onMouseEnter={() => send("MOUSEENTER")}
-        onMouseLeave={() => send("MOUSELEAVE")}
-        ref={barRef}
-      >
+      <ViewBarDiv onClick={() => send("FOCUS")} ref={barRef}>
         {state.matches("running")
           ? stages.map((stage, i) => {
               return (

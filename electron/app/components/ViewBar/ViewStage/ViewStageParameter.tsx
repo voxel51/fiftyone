@@ -82,7 +82,6 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
           send({ type: "CHANGE", value: e.target.value });
         }}
         onKeyPress={(e) => {
-          e.stopPropagation();
           if (e.key === "Enter") {
             isEditing && send({ type: "COMMIT" });
           }
