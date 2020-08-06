@@ -102,6 +102,7 @@ const DisplayOptionsSidebar = ({
   unsupported = [],
   onSelectTag,
   onSelectLabel,
+  onSelectScalar,
 }: Props) => {
   return (
     <Container>
@@ -124,6 +125,7 @@ const DisplayOptionsSidebar = ({
         label="Scalars"
         icon={<BarChart />}
         entries={scalars}
+        onSelect={onSelectScalar}
       />
       {unsupported.length ? (
         <Cell

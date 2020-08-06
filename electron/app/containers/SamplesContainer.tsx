@@ -12,7 +12,7 @@ import { VerticalSpacer } from "../components/utils";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { wrapSetWithItemSetter } from "../utils/hooks";
+import { VALID_LABEL_TYPES, VALID_SCALAR_TYPES } from "../utils/labels";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
@@ -44,11 +44,28 @@ const SamplesContainer = (props) => {
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
   const labelNames = useRecoilValue(selectors.labelNames);
+  const labelTypes = useRecoilValue(selectors.labelTypes);
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
+
+  const labelNameGroups = {
+    labels: [],
+    scalars: [],
+    unsupported: [],
+  };
+  for (const name of labelNames) {
+    const type = labelTypes[name];
+    if (VALID_LABEL_TYPES.includes(type)) {
+      labelNameGroups.labels.push(name);
+    } else if (VALID_SCALAR_TYPES.includes(type)) {
+      labelNameGroups.scalars.push(name);
+    } else {
+      labelNameGroups.unsupported.push(name);
+    }
+  }
 
   const getDisplayOptions = (names, counts, selected) => {
     return names.map((name) => ({
@@ -96,7 +113,7 @@ const SamplesContainer = (props) => {
                 colorMapping={colorMapping}
                 tags={getDisplayOptions(tagNames, tagSampleCounts, activeTags)}
                 labels={getDisplayOptions(
-                  labelNames,
+                  labelNameGroups.labels,
                   labelSampleCounts,
                   activeLabels
                 )}
@@ -105,7 +122,20 @@ const SamplesContainer = (props) => {
                   activeLabels,
                   setActiveLabels
                 )}
-                scalars={[]}
+                scalars={getDisplayOptions(
+                  labelNameGroups.scalars,
+                  labelSampleCounts,
+                  activeLabels
+                )}
+                onSelectScalar={handleSetDisplayOption(
+                  activeLabels,
+                  setActiveLabels
+                )}
+                unsupported={getDisplayOptions(
+                  labelNameGroups.unsupported,
+                  labelSampleCounts,
+                  activeLabels
+                )}
               />
             </Sticky>
           </Grid.Column>
