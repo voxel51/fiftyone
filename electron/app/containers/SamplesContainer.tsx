@@ -43,6 +43,8 @@ const SamplesContainer = (props) => {
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
+  const labelNames = useRecoilValue(selectors.labelNames);
+  const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const containerRef = useRef();
@@ -78,10 +80,10 @@ const SamplesContainer = (props) => {
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
                 colorMapping={colorMapping}
-                tags={tagNames.map((n) => ({
-                  name: n,
-                  count: tagSampleCounts[n],
-                  selected: Boolean(activeTags[n]),
+                tags={tagNames.map((name) => ({
+                  name,
+                  count: tagSampleCounts[name],
+                  selected: Boolean(activeTags[name]),
                 }))}
                 onSelectTag={(e) =>
                   setActiveTags((activeTags) => ({
@@ -89,7 +91,17 @@ const SamplesContainer = (props) => {
                     [e.name]: e.selected,
                   }))
                 }
-                labels={[]}
+                labels={labelNames.map((name) => ({
+                  name,
+                  count: labelSampleCounts[name],
+                  selected: Boolean(activeLabels[name]),
+                }))}
+                onSelectLabel={(e) =>
+                  setActiveLabels((activeLabels) => ({
+                    ...activeLabels,
+                    [e.name]: e.selected,
+                  }))
+                }
                 scalars={[]}
               />
             </Sticky>

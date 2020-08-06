@@ -66,7 +66,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping }) => {
       label={
         <>
           {icon ? <span className="left-icon">{icon}</span> : null}
-          <span class="label">{label}</span>
+          <span className="label">{label}</span>
           {numSelected ? (
             <SelectionTag count={numSelected} onClear={handleClear} />
           ) : null}
@@ -101,6 +101,7 @@ const DisplayOptionsSidebar = ({
   scalars = [],
   unsupported = [],
   onSelectTag,
+  onSelectLabel,
 }: Props) => {
   return (
     <Container>
@@ -116,6 +117,7 @@ const DisplayOptionsSidebar = ({
         label="Labels"
         icon={<Label style={{ transform: "rotate(180deg)" }} />}
         entries={labels}
+        onSelect={onSelectLabel}
       />
       <Cell
         colorMapping={colorMapping}

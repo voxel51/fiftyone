@@ -62,9 +62,15 @@ const Sample = ({
       <div className="sample-info" {...eventHandlers}>
         {Object.keys(s)
           .sort()
-          .map((l, i) => {
-            return activeLabels[l] && s[l] && s[l]._cls === "Classification" ? (
-              <Tag key={i} name={String(s[l].label)} color={colors[i]} />
+          .map((label) => {
+            return activeLabels[label] &&
+              s[label] &&
+              s[label]._cls === "Classification" ? (
+              <Tag
+                key={label}
+                name={String(s[label].label)}
+                color={colorMapping[label]}
+              />
             ) : null;
           })}
         {tagNames.map((t) => {

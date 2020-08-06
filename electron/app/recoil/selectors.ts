@@ -60,3 +60,27 @@ export const tagSampleCounts = selector({
     return get(atoms.stateDescription).derivables.dataset_stats.tags || {};
   },
 });
+
+export const labelNames = selector({
+  key: "labelNames",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.derivables.labels
+      .filter((label) => true /* todo: check for types */)
+      .map((label) => label._id.field)
+      .filter((name) =>
+        stateDescription.derivables.dataset_stats.custom_fields.hasOwnProperty(
+          name
+        )
+      );
+  },
+});
+
+export const labelSampleCounts = selector({
+  key: "labelSampleCounts",
+  get: ({ get }) => {
+    return (
+      get(atoms.stateDescription).derivables.dataset_stats.custom_fields || {}
+    );
+  },
+});
