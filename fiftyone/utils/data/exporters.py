@@ -330,7 +330,7 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         samples = ...  # Dataset, DatasetView, etc
 
-        exporter = UnlabeledImageDatasetExporter(dataset_dir, ...)
+        exporter = UnlabeledImageDatasetExporter(export_dir, ...)
         with exporter:
             for sample in samples:
                 image_path = sample.filepath
@@ -376,7 +376,7 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         samples = ...  # Dataset, DatasetView, etc
         label_field = ...
 
-        exporter = LabeledImageDatasetExporter(dataset_dir, ...)
+        exporter = LabeledImageDatasetExporter(export_dir, ...)
         with exporter:
             for sample in samples:
                 image_path = sample.filepath
