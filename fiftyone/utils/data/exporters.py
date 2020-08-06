@@ -281,6 +281,34 @@ class ExportsImages(object):
         return out_image_path
 
 
+class GenericSampleDatasetExporter(DatasetExporter):
+    """Interface for exporting datasets of arbitrary
+    :class:`fiftyone.core.sample.Sample` instances.
+
+    Example Usage::
+
+        import fiftyone as fo
+
+        samples = ...  # Dataset, DatasetView, etc
+
+        exporter = GenericSampleDatasetExporter(export_dir, ...)
+        with exporter:
+            for sample in samples:
+                exporter.export_sample(sample)
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def export_sample(self, sample):
+        """Exports the given sample to the dataset.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
 class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of unlabeled image samples.
 
@@ -379,6 +407,46 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
                 :meth:`requires_image_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
+
+
+class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
+    """Exporter that writes a FiftyOne dataset to disk along with its source
+    data in a serialized JSON format.
+
+    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
+    details.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        export_dir = os.path.abspath(os.path.expanduser(export_dir))
+        super().__init__(export_dir)
+        self._data_dir = None
+        self._samples_path = None
+        self._samples = None
+        self._filename_maker = None
+
+    def export_sample(self, sample):
+        out_filepath = self._filename_maker.get_output_path(sample.filepath)
+        etau.copy_file(sample.filepath, out_filepath)
+
+        d = sample.to_dict()
+        d["filepath"] = os.path.relpath(out_filepath, self.export_dir)
+        self._samples.append(d)
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._samples_path = os.path.join(self.export_dir, "samples.json")
+        self._samples = []
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir
+        )
+
+    def close(self, *args):
+        samples = {"samples": self._samples}
+        etas.write_json(samples, self._samples_path)
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
