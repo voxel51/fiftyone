@@ -86,14 +86,6 @@ const viewBarMachine = Machine(
               stages.forEach((stage) => stage.ref.send({ type: "BAR_BLUR" })),
             on: {
               BLUR: "blurred",
-              SET: {
-                actions: [
-                  assign({
-                    activeStage: (_, e) => e.index,
-                  }),
-                  "sendStageUpdates",
-                ],
-              },
               NEXT: {
                 actions: [
                   send(({ stages, activeStage }) => ({
@@ -157,6 +149,14 @@ const viewBarMachine = Machine(
       },
     },
     on: {
+      SET: {
+        actions: [
+          assign({
+            activeStage: (_, e) => e.index,
+          }),
+          "sendStagesUpdate",
+        ],
+      },
       "STAGE.ADD": {
         actions: [
           assign({

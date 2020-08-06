@@ -113,13 +113,16 @@ const viewStageMachine = Machine(
             },
           },
           editing: {
-            onEntry: [
+            entry: [
               assign({
                 prevStage: (ctx) => ctx.stage,
                 prevSubmitted: (ctx) => ctx.submitted,
               }),
               "focusInput",
-              sendParent({ type: "FOCUS" }),
+              sendParent((ctx) => ({
+                type: "SET",
+                index: ctx.index,
+              })),
             ],
             type: "parallel",
             states: {
