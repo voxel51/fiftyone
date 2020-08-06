@@ -430,11 +430,14 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
     """
 
-    def __init__(self, export_dir):
+    def __init__(self, export_dir, pretty_print=False):
         export_dir = os.path.abspath(os.path.expanduser(export_dir))
         super().__init__(export_dir)
+        self.pretty_print = pretty_print
         self._data_dir = None
         self._samples_path = None
         self._samples = None
@@ -458,7 +461,9 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def close(self, *args):
         samples = {"samples": self._samples}
-        etas.write_json(samples, self._samples_path)
+        etas.write_json(
+            samples, self._samples_path, pretty_print=self.pretty_print
+        )
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
@@ -518,15 +523,20 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
     """
 
-    def __init__(self, export_dir, classes=None, image_format=None):
+    def __init__(
+        self, export_dir, classes=None, image_format=None, pretty_print=False
+    ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
         self.classes = classes
         self.image_format = image_format
+        self.pretty_print = pretty_print
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
@@ -565,7 +575,9 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
             "classes": self.classes,
             "labels": self._labels_dict,
         }
-        etas.write_json(labels, self._labels_path)
+        etas.write_json(
+            labels, self._labels_path, pretty_print=self.pretty_print
+        )
 
 
 class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
@@ -661,15 +673,20 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
     """
 
-    def __init__(self, export_dir, classes=None, image_format=None):
+    def __init__(
+        self, export_dir, classes=None, image_format=None, pretty_print=False
+    ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
         self.classes = classes
         self.image_format = image_format
+        self.pretty_print = pretty_print
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
@@ -708,7 +725,9 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
             "classes": self.classes,
             "labels": self._labels_dict,
         }
-        etas.write_json(labels, self._labels_path)
+        etas.write_json(
+            labels, self._labels_path, pretty_print=self.pretty_print
+        )
 
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
@@ -728,14 +747,17 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
     """
 
-    def __init__(self, export_dir, image_format=None):
+    def __init__(self, export_dir, image_format=None, pretty_print=False):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
         self.image_format = image_format
+        self.pretty_print = pretty_print
         self._labeled_dataset = None
         self._data_dir = None
         self._labels_dir = None
@@ -781,7 +803,9 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             image_labels_path = os.path.join(
                 self._labels_dir, new_labels_filename
             )
-            _image_labels.write_json(image_labels_path)
+            _image_labels.write_json(
+                image_labels_path, pretty_print=self.pretty_print
+            )
 
             self._labeled_dataset.add_file(
                 image_path,
