@@ -103,8 +103,6 @@ const ViewBar = () => {
     VIEW_BAR_ADD_STAGE: useCallback(() => send("STAGE.ADD"), []),
   };
 
-  console.log(state.toStrings());
-
   return (
     <React.Fragment>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
@@ -129,6 +127,10 @@ const ViewBar = () => {
                       key={`insert-button-${stage.id}`}
                       send={send}
                       index={i}
+                      active={
+                        activeStage === i - 0.5 &&
+                        state.matches("running.focus.focused")
+                      }
                     />
                   ) : null}
                   <ViewStage key={stage.id} stageRef={stage.ref} />

@@ -76,6 +76,10 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     config: config.stiff,
   }));
 
+  useEffect(() => {
+    set({ top: active ? -3 : 0 });
+  }, [active]);
+
   return (
     <ViewStageButton
       style={props}

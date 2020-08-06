@@ -113,12 +113,14 @@ const viewBarMachine = Machine(
                       "sendStagesUpdate",
                     ],
                   },
-                  PREV: {
+                  PREVIOUS: {
                     actions: [
-                      send(({ stages, activeStage }) => ({
-                        type: "PREV",
-                        to: stages[activeStage].ref,
-                      })),
+                      assign({
+                        activeStage: ({ stages, activeStage }) => {
+                          return Math.max(-0.5, activeStage - 0.5);
+                        },
+                      }),
+                      "sendStagesUpdate",
                     ],
                   },
                   NEXT_STAGE: {
