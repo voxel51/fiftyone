@@ -12,7 +12,9 @@ export type Props = {
   currentPath: string;
 };
 
-const Body = styled.div``;
+const Body = styled.div`
+  margin-bottom: 5px;
+`;
 
 const Item = styled(Link)`
   display: inline-block;
@@ -22,6 +24,7 @@ const Item = styled(Link)`
   background-color: ${({ theme }) => theme.backgroundLight};
   text-decoration: none;
   font-weight: bold;
+  text-transform: capitalize;
 
   &.active {
     background-color: ${({ theme }) => theme.secondary};

@@ -12,6 +12,7 @@ import {
 
 import SamplesContainer from "./SamplesContainer";
 import Distributions from "../components/Distributions";
+import HorizontalNav from "../components/HorizontalNav";
 import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
 import Search from "../components/Search";
@@ -110,28 +111,10 @@ function Dataset(props) {
       </Sidebar>
       <Ref innerRef={stickyRef}>
         <Container fluid={true}>
-          {/*<Sticky context={stickyRef}>*/}
-          <Container
-            fluid={true}
-            style={{
-              paddingTop: "2rem",
-              zIndex: 1000000,
-            }}
-          >
-            <Menu pointing secondary>
-              {tabs.map((v, i) => {
-                return (
-                  <Link key={i} to={v}>
-                    <Menu.Item
-                      name={v.slice(1)}
-                      active={v === props.location.pathname}
-                    />
-                  </Link>
-                );
-              })}
-            </Menu>
-          </Container>
-          {/*</Sticky>*/}
+          <HorizontalNav
+            currentPath={props.location.pathname}
+            entries={tabs.map((path) => ({ path, name: path.slice(1) }))}
+          />
           <Switch>
             <Route exact path={routes.DATASET}>
               <Redirect to={routes.SAMPLES} />
