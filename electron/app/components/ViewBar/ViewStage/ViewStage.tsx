@@ -71,6 +71,10 @@ export const ViewStageButton = animated(styled.button`
   }
 `);
 
+const addViewStageKeyMap = {
+  ADD_VIEW_STAGE: ["enter"],
+};
+
 export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
   const [props, set] = useSpring(() => ({
@@ -82,20 +86,30 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     },
     config: config.stiff,
   }));
+  console.log(active);
+
+  const handlers = active
+    ? {
+        ADD_VIEW_STAGE: () => alert("e") && send({ type: "STAGE.ADD", index }),
+      }
+    : {};
 
   useEffect(() => {
     set({ top: active ? -3 : 0 });
   }, [active]);
 
   return (
-    <ViewStageButton
-      style={props}
-      onMouseEnter={() => set({ background: theme.brandTransparent })}
-      onMouseLeave={() => set({ background: theme.brandMoreTransparent })}
-      onClick={() => send({ type: "STAGE.ADD", index })}
-    >
-      +
-    </ViewStageButton>
+    <>
+      <GlobalHotKeys handlers={handlers} keyMap={addViewStageKeyMap} />
+      <ViewStageButton
+        style={props}
+        onMouseEnter={() => set({ background: theme.brandTransparent })}
+        onMouseLeave={() => set({ background: theme.brandMoreTransparent })}
+        onClick={() => send({ type: "STAGE.ADD", index })}
+      >
+        +
+      </ViewStageButton>
+    </>
   );
 });
 
@@ -147,15 +161,20 @@ const ViewStage = React.memo(({ stageRef }) => {
   const { stage, stageInfo, parameters, active } = state.context;
 
   const handlers = {
-    VIEW_STAGE_DELETE: useCallback(() => active && send("STAGE.DELETE"), [
-      active,
-    ]),
-    VIEW_STAGE_NEXT_RESULT: useCallback(() => active && send("NEXT_RESULT"), [
-      active,
-    ]),
-    VIEW_STAGE_PREVIOUS_RESULT: useCallback(
-      () => active && send("NEXT_RESULT"),
+    VIEW_STAGE_DELETE: useCallback(
+      () =>
+        state.matches("focusedViewBar.yes") && active && send("STAGE.DELETE"),
       [active]
+    ),
+    VIEW_STAGE_NEXT_RESULT: useCallback(
+      () =>
+        state.matches("focusedViewBar.yes") && active && send("NEXT_RESULT"),
+      [active, state.matches("focusedViewBar.yes")]
+    ),
+    VIEW_STAGE_PREVIOUS_RESULT: useCallback(
+      () =>
+        state.matches("focusedViewBar.yes") && active && send("NEXT_RESULT"),
+      [active, state.matches("focusedViewBar.yes")]
     ),
   };
 

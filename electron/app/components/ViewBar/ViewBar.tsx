@@ -24,6 +24,13 @@ function useOutsideClick(ref, callback) {
   }, [ref, callback]);
 }
 
+const ViewBarContainer = styled.div`
+  position: relative;
+  width: 100%;
+  padding: 1rem 0 0 0;
+  background-color: ${({ theme }) => theme.background};
+`;
+
 const ViewBarDiv = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
   border-radius: 3px;
@@ -60,14 +67,13 @@ const ViewBarDiv = styled.div`
   }
 );*/
 
-export const viewBarKeyMap = {
+const viewBarKeyMap = {
   VIEW_BAR_FOCUS: "alt+v",
   VIEW_BAR_BLUR: "esc",
   VIEW_BAR_NEXT: "right",
   VIEW_BAR_PREVIOUS: "left",
   VIEW_BAR_NEXT_STAGE: "shift+right",
   VIEW_BAR_PREVIOUS_STAGE: "shift+left",
-  VIEW_BAR_ADD_STAGE: "enter",
 };
 
 const machine = viewBarMachine.withContext(createBar(5151));
@@ -88,13 +94,12 @@ const ViewBar = () => {
     VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
     VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),
     VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
-    VIEW_BAR_ADD_STAGE: useCallback(() => send("STAGE.ADD"), []),
   };
 
   useOutsideClick(barRef, () => send("BLUR"));
 
   return (
-    <React.Fragment>
+    <ViewBarContainer>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
       <ViewBarDiv onClick={() => send("FOCUS")} ref={barRef}>
         {state.matches("running")
@@ -129,7 +134,7 @@ const ViewBar = () => {
           />
         ) : null}
       </ViewBarDiv>
-    </React.Fragment>
+    </ViewBarContainer>
   );
 };
 

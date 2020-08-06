@@ -203,27 +203,27 @@ const viewBarMachine = Machine(
       "STAGE.ADD": {
         actions: [
           assign({
-            activeStage: (_, { index }) => Math.ceil(index),
-            stages: (ctx, e) => {
+            activeStage: (_, { index }) => index,
+            stages: (ctx, { index }) => {
               const newStage = createStage(
                 "",
-                e.index ? e.index : Math.ceil(ctx.activeStage),
+                index,
                 ctx.stageInfo,
                 true,
                 ctx.stages.length + 1,
                 true
               );
               return [
-                ...ctx.stages.slice(0, e.index),
+                ...ctx.stages.slice(0, index),
                 {
                   ...newStage,
                   ref: spawn(viewStageMachine.withContext(newStage)),
                 },
-                ...ctx.stages.slice(e.index),
+                ...ctx.stages.slice(index),
               ].map((stage, index) => ({
                 ...stage,
                 index,
-                active: index === e.index,
+                active: index === index,
                 length: ctx.stages.length + 1,
               }));
             },
