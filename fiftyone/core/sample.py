@@ -524,13 +524,14 @@ class SampleView(_Sample):
         return super().__getattr__(name)
 
     @property
-    def view_field_names(self):
-        """An ordered list of the names of the fields of this sample.
+    def field_names(self):
+        """An ordered tuple of field names of this sample.
 
-        This may be a subset of :meth:`ViewSample.field_names` if fields have
-        been selected or excluded.
+        This may be a subset of all fields of the dataset if fields have been
+        selected or excluded.
         """
         field_names = self._doc.field_names
+
         if self._selected_fields is not None:
             field_names = tuple(
                 fn for fn in field_names if fn in self._selected_fields
