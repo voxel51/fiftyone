@@ -29,6 +29,11 @@ const Wrapper = styled.div`
   > div > div {
     display: inline-block;
   }
+
+  ${DropdownHandle.Body} {
+    padding-top: 0.75em;
+    padding-bottom: 0.75em;
+  }
 `;
 
 const ImageContainerHeader = ({

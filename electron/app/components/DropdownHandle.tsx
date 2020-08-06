@@ -38,4 +38,6 @@ const DropdownHandle = ({
   );
 };
 
+DropdownHandle.Body = Body;
+
 export default DropdownHandle;
