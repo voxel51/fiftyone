@@ -147,7 +147,7 @@ const viewBarMachine = Machine(
                     actions: send((ctx) => ({
                       type: "STAGE.DELETE",
                       stage: ctx.stages.filter(
-                        stage.index === ctx.activeStage
+                        (stage) => stage.index === ctx.activeStage
                       )[0],
                     })),
                   },
@@ -207,7 +207,7 @@ const viewBarMachine = Machine(
             stages: (ctx, e) => {
               const newStage = createStage(
                 "",
-                e.index ? e.index : activeStage,
+                e.index ? e.index : Math.ceil(ctx.activeStage),
                 ctx.stageInfo,
                 true,
                 ctx.stages.length + 1,
@@ -248,7 +248,7 @@ const viewBarMachine = Machine(
       "STAGE.DELETE": {
         actions: [
           assign({
-            activeStage: ({ activeStage, stages }) => {},
+            activeStage: ({ activeStage, stages }) => activeStage,
             stages: ({ stages }, e) =>
               stages
                 .filter(
@@ -259,6 +259,7 @@ const viewBarMachine = Machine(
                   return {
                     ...newStage,
                     index,
+                    stage: e.stage.id === newStage.id ? "" : newStage.stage,
                     length: Math.max(stages.length - 1, 1),
                     ref: stage.ref,
                   };
@@ -278,6 +279,7 @@ const viewBarMachine = Machine(
             index: stage.index,
             length: ctx.stages.length,
             active: stage.index === ctx.activeStage,
+            stage: stage.stage,
           })
         ),
     },

@@ -67,9 +67,6 @@ export const viewBarKeyMap = {
   VIEW_BAR_PREVIOUS: "left",
   VIEW_BAR_NEXT_STAGE: "shift+right",
   VIEW_BAR_PREVIOUS_STAGE: "shift+left",
-  VIEW_BAR_DELETE_STAGE: ["del", "shift+backspace"],
-  VIEW_BAR_NEXT_RESULT: "down",
-  VIEW_BAR_PREVIOUS_RESULT: "up",
   VIEW_BAR_ADD_STAGE: "enter",
 };
 
@@ -91,9 +88,6 @@ const ViewBar = () => {
     VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
     VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),
     VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
-    VIEW_BAR_DELETE_STAGE: useCallback(() => send("DELETE_STAGE"), []),
-    VIEW_BAR_NEXT_RESULT: useCallback(() => send("NEXT_RESULT"), []),
-    VIEW_BAR_PREVIOUS_RESULT: useCallback(() => send("PREVIOUS_RESULT"), []),
     VIEW_BAR_ADD_STAGE: useCallback(() => send("STAGE.ADD"), []),
   };
 

@@ -1,9 +1,16 @@
-import React, { useContext, useEffect, useRef, useMemo } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useMemo,
+} from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
 import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
+import { GlobalHotKeys } from "react-hotkeys";
 
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
@@ -126,12 +133,31 @@ const ViewStageDelete = React.memo(({ send, spring }) => {
   );
 });
 
+const viewStageKeyMap = {
+  VIEW_STAGE_DELETE: ["del", "shift+backspace"],
+  VIEW_STAGE_NEXT_RESULT: "down",
+  VIEW_STAGE_PREVIOUS_RESULT: "up",
+};
+
 const ViewStage = React.memo(({ stageRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage, stageInfo, parameters } = state.context;
+  const { stage, stageInfo, parameters, active } = state.context;
+
+  const handlers = {
+    VIEW_STAGE_DELETE: useCallback(() => active && send("STAGE.DELETE"), [
+      active,
+    ]),
+    VIEW_STAGE_NEXT_RESULT: useCallback(() => active && send("NEXT_RESULT"), [
+      active,
+    ]),
+    VIEW_STAGE_PREVIOUS_RESULT: useCallback(
+      () => active && send("NEXT_RESULT"),
+      [active]
+    ),
+  };
 
   const isCompleted = [
     "input.reading.selected",
@@ -191,47 +217,53 @@ const ViewStage = React.memo(({ stageRef }) => {
   }, [inputRef.current]);
 
   return (
-    <ViewStageContainer style={containerProps}>
-      <ViewStageDiv style={props}>
-        <ViewStageInput
-          placeholder="+ add stage"
-          value={stage}
-          onFocus={() => !state.matches("input.editing") && send("EDIT")}
-          onBlur={(e) => {
-            state.matches("input.editing.searchResults.notHovering") &&
-              send("BLUR");
-          }}
-          onChange={(e) => send({ type: "CHANGE", stage: e.target.value })}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              send({ type: "COMMIT", stage: e.target.value });
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              send("BLUR");
-            }
-          }}
-          style={{ fontSize: "1rem" }}
-          ref={inputRef}
-        />
-        {state.matches("input.editing") && (
-          <SearchResults
-            results={stageInfo
-              .map((s) => s.name)
-              .filter((n) => n.toLowerCase().includes(stage.toLowerCase()))}
-            send={send}
+    <>
+      <GlobalHotKeys handlers={handlers} keyMap={viewStageKeyMap} />
+      <ViewStageContainer style={containerProps}>
+        <ViewStageDiv style={props}>
+          <ViewStageInput
+            placeholder="+ add stage"
+            value={stage}
+            onFocus={() => !state.matches("input.editing") && send("EDIT")}
+            onBlur={(e) => {
+              state.matches("input.editing.searchResults.notHovering") &&
+                send("BLUR");
+            }}
+            onChange={(e) => send({ type: "CHANGE", stage: e.target.value })}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                send({ type: "COMMIT", stage: e.target.value });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                send("BLUR");
+              }
+            }}
+            style={{ fontSize: "1rem" }}
+            ref={inputRef}
           />
-        )}
-      </ViewStageDiv>
-      {isCompleted &&
-        parameters.map((parameter) => (
-          <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
-        ))}
-      {state.matches("delible.yes") ? (
-        <ViewStageDelete spring={deleteProps} send={send} />
-      ) : null}
-    </ViewStageContainer>
+          {state.matches("input.editing") && (
+            <SearchResults
+              results={stageInfo
+                .map((s) => s.name)
+                .filter((n) => n.toLowerCase().includes(stage.toLowerCase()))}
+              send={send}
+            />
+          )}
+        </ViewStageDiv>
+        {isCompleted &&
+          parameters.map((parameter) => (
+            <ViewStageParameter
+              key={parameter.id}
+              parameterRef={parameter.ref}
+            />
+          ))}
+        {state.matches("delible.yes") ? (
+          <ViewStageDelete spring={deleteProps} send={send} />
+        ) : null}
+      </ViewStageContainer>
+    </>
   );
 });
 
