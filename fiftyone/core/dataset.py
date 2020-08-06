@@ -270,10 +270,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fos.Sample.from_doc(sample_view._doc)
 
     def head(self, num_samples=3):
-        """Returns a list of the first few samples in the collection.
+        """Returns a list of the first few samples in the dataset.
 
-        If fewer than ``num_samples`` samples are in the collection, only
-        the available samples are returned.
+        If fewer than ``num_samples`` samples are in the dataset, only the
+        available samples are returned.
 
         Args:
             num_samples (3): the number of samples
@@ -284,10 +284,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [fos.Sample.from_doc(sv._doc) for sv in self[:num_samples]]
 
     def tail(self, num_samples=3):
-        """Returns a list of the last few samples in the collection.
+        """Returns a list of the last few samples in the dataset.
 
-        If fewer than ``num_samples`` samples are in the collection, only
-        the available samples are returned.
+        If fewer than ``num_samples`` samples are in the dataset, only the
+        available samples are returned.
 
         Args:
             num_samples (3): the number of samples
