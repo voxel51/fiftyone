@@ -162,11 +162,9 @@ class StageTests(unittest.TestCase):
         self.assertEqual(result[0].id, self.sample1.id)
 
     def test_mongo(self):
-        result = list(
-            self.dataset.mongo([{"$match": {"filepath": "test_two.png"}}])
-        )
+        result = list(self.dataset.mongo([{"$limit": 1}]))
         self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample2.id)
+        self.assertEqual(result[0].id, self.sample1.id)
 
     def test_select(self):
         result = list(self.dataset.select([self.sample1.id]))
