@@ -71,7 +71,7 @@ const Sample = ({
       <Tag
         key={"label-" + name}
         title={name}
-        name={value}
+        name={String(value)}
         color={colorMapping[name]}
       />
     );
