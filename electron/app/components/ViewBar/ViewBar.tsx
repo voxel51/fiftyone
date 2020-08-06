@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useEffect, useCallback, useMemo, useRef } from "react";
 import styled from "styled-components";
 import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
@@ -59,6 +59,7 @@ export const viewBarKeyMap = {
   VIEW_BAR_DELETE_STAGE: ["del", "shift+backspace"],
   VIEW_BAR_NEXT_RESULT: "down",
   VIEW_BAR_PREVIOUS_RESULT: "up",
+  VIEW_BAR_ADD_STAGE: "enter",
 };
 
 const machine = viewBarMachine.withContext(createBar(5151));
@@ -69,10 +70,29 @@ const ViewBar = () => {
   );
   const [state, send] = useMachine(machine);
 
-  const { stages } = state.context;
+  const { stages, activeStage } = state.context;
+  const barRef = useRef(null);
+  console.log(state);
+
+  const actionsMap = useMemo(
+    () => ({
+      focusBar: () =>
+        barRef.current &&
+        !barRef.current.contains(document.activeElement) &&
+        barRef.current.focus(),
+      blurBar: () => barRef.current && barRef.current.blur(),
+    }),
+    [barRef.current]
+  );
+
+  useEffect(() => {
+    state.actions.forEach((action) => {
+      if (action.type in actionsMap) actionsMap[action.type]();
+    });
+  }, [state.actions]);
 
   const handlers = {
-    VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), [send]),
+    VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), []),
     VIEW_BAR_BLUR: useCallback(() => send("BLUR"), []),
     VIEW_BAR_NEXT: useCallback(() => send("NEXT"), []),
     VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
@@ -81,15 +101,21 @@ const ViewBar = () => {
     VIEW_BAR_DELETE_STAGE: useCallback(() => send("DELETE_STAGE"), []),
     VIEW_BAR_NEXT_RESULT: useCallback(() => send("NEXT_RESULT"), []),
     VIEW_BAR_PREVIOUS_RESULT: useCallback(() => send("PREVIOUS_RESULT"), []),
+    VIEW_BAR_ADD_STAGE: useCallback(() => send("STAGE.ADD"), []),
   };
+
+  console.log(state.value);
 
   return (
     <React.Fragment>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
       <ViewBarDiv
         tabIndex="-1"
-        onBlur={handlers.VIEW_BAR_BLUR}
-        onFocus={handlers.VIEW_BAR_FOCUS}
+        onBlur={() => send("BLUR")}
+        onFocus={() => send("FOCUS")}
+        onMouseEnter={() => send("MOUSEENTER")}
+        onMouseLeave={() => send("MOUSELEAVE")}
+        ref={barRef}
       >
         {state.matches("running")
           ? stages.map((stage, i) => {
@@ -112,6 +138,10 @@ const ViewBar = () => {
             key={`insert-button-tail`}
             send={send}
             index={stages.length}
+            active={
+              activeStage === stages.length - 0.5 &&
+              state.matches("running.focus.focused")
+            }
           />
         ) : null}
       </ViewBarDiv>

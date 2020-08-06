@@ -64,14 +64,16 @@ export const ViewStageButton = animated(styled.button`
   }
 `);
 
-export const AddViewStage = React.memo(({ send, index }) => {
+export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
   const [props, set] = useSpring(() => ({
     background: theme.brandMoreTransparent,
+    top: active ? -3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
     },
+    config: config.stiff,
   }));
 
   return (
@@ -191,10 +193,11 @@ const ViewStage = React.memo(({ stageRef }) => {
           placeholder="+ add stage"
           value={stage}
           onFocus={() => !state.matches("input.editing") && send("EDIT")}
-          onBlur={() =>
+          onBlur={(e) => {
+            e.stopPropagation();
             state.matches("input.editing.searchResults.notHovering") &&
-            send("BLUR")
-          }
+              send("BLUR");
+          }}
           onChange={(e) => send({ type: "CHANGE", stage: e.target.value })}
           onKeyPress={(e) => {
             if (e.key === "Enter") {

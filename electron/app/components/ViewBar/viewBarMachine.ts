@@ -59,7 +59,6 @@ const viewBarMachine = Machine(
         },
       },
       running: {
-        initial: "blurred",
         entry: assign({
           stages: (ctx) => {
             return ctx.stages.map((stage, i) => {
@@ -78,71 +77,109 @@ const viewBarMachine = Machine(
             });
           },
         }),
+        type: "parallel",
         states: {
-          focused: {
-            entry: ({ stages }) =>
-              stages.forEach((stage) => stage.ref.send({ type: "BAR_FOCUS" })),
-            exit: ({ stages }) =>
-              stages.forEach((stage) => stage.ref.send({ type: "BAR_BLUR" })),
+          focus: {
+            initial: "blurred",
+            states: {
+              focused: {
+                entry: [
+                  "focusBar",
+                  ({ stages }) =>
+                    stages.forEach((stage) =>
+                      stage.ref.send({ type: "BAR_FOCUS" })
+                    ),
+                ],
+                exit: ({ stages }) =>
+                  stages.forEach((stage) =>
+                    stage.ref.send({ type: "BAR_BLUR" })
+                  ),
+                on: {
+                  BLUR: {
+                    target: "blurred",
+                  },
+                  NEXT: {
+                    actions: [
+                      assign({
+                        activeStage: ({ stages, activeStage }) => {
+                          return Math.min(
+                            stages.length - 0.5,
+                            activeStage + 0.5
+                          );
+                        },
+                      }),
+                      "sendStagesUpdate",
+                    ],
+                  },
+                  PREV: {
+                    actions: [
+                      send(({ stages, activeStage }) => ({
+                        type: "PREV",
+                        to: stages[activeStage].ref,
+                      })),
+                    ],
+                  },
+                  NEXT_STAGE: {
+                    actions: [
+                      assign({
+                        activeStage: ({ stages, activeStage }) =>
+                          Math.min(activeStage + 1, stages.length - 1),
+                      }),
+                      "sendStagesUpdate",
+                    ],
+                  },
+                  PREV_STAGE: {
+                    actions: [
+                      assign({
+                        activeStage: ({ stages, activeStage }) =>
+                          Math.max(activeStage - 1, 0),
+                      }),
+                      "sendStagesUpdate",
+                    ],
+                  },
+                  DELETE_STAGE: {
+                    actions: send((ctx) => ({
+                      type: "STAGE.DELETE",
+                      stage: ctx.stages.filter(
+                        stage.index === ctx.activeStage
+                      )[0],
+                    })),
+                  },
+                  NEXT_RESULT: {
+                    actions: send(({ stages, activeStage }) => ({
+                      type: "NEXT_RESULT",
+                      to: stages[activeStage].ref,
+                    })),
+                  },
+                  PREVIOUS_RESULT: {
+                    actions: send(({ stages, activeStage }) => ({
+                      type: "PREVIOUS_RESULT",
+                      to: stages[activeStage].ref,
+                    })),
+                  },
+                },
+              },
+              blurred: {},
+            },
             on: {
-              BLUR: "blurred",
-              NEXT: {
-                actions: [
-                  send(({ stages, activeStage }) => ({
-                    type: "NEXT",
-                    to: stages[activeStage].ref,
-                  })),
-                ],
-              },
-              PREV: {
-                actions: [
-                  send(({ stages, activeStage }) => ({
-                    type: "PREV",
-                    to: stages[activeStage].ref,
-                  })),
-                ],
-              },
-              NEXT_STAGE: {
-                actions: [
-                  assign({
-                    activeStage: ({ stages, activeStage }) =>
-                      Math.min(activeStage + 1, stages.length - 1),
-                  }),
-                  "sendStagesUpdate",
-                ],
-              },
-              PREV_STAGE: {
-                actions: [
-                  assign({
-                    activeStage: ({ stages, activeStage }) =>
-                      Math.max(activeStage - 1, 0),
-                  }),
-                  "sendStagesUpdate",
-                ],
-              },
-              DELETE_STAGE: {
-                actions: send((ctx) => ({
-                  type: "STAGE.DELETE",
-                  stage: ctx.stages.filter(stage.index === ctx.activeStage)[0],
-                })),
-              },
-              NEXT_RESULT: {
-                actions: send(({ stages, activeStage }) => ({
-                  type: "NEXT_RESULT",
-                  to: stages[activeStage].ref,
-                })),
-              },
-              PREVIOUS_RESULT: {
-                actions: send(({ stages, activeStage }) => ({
-                  type: "PREVIOUS_RESULT",
-                  to: stages[activeStage].ref,
-                })),
+              FOCUS: {
+                target: "focus.focused",
               },
             },
           },
-          blurred: {
-            on: {
-              FOCUS: "focused",
+          hovering: {
+            initial: "no",
+            states: {
+              yes: {
+                on: {
+                  MOUSELEAVE: "no",
+                },
+              },
+              no: {
+                on: {
+                  MOUSEENTER: "yes",
+                },
+              },
             },
           },
         },
@@ -160,11 +197,11 @@ const viewBarMachine = Machine(
       "STAGE.ADD": {
         actions: [
           assign({
-            activeStage: (_, { index }) => index,
+            activeStage: (_, { index }) => Math.ceil(index),
             stages: (ctx, e) => {
               const newStage = createStage(
                 "",
-                e.index,
+                e.index ? e.index : activeStage,
                 ctx.stageInfo,
                 true,
                 ctx.stages.length + 1,
@@ -199,11 +236,13 @@ const viewBarMachine = Machine(
               return stages;
             },
           }),
+          send("FOCUS"),
         ],
       },
       "STAGE.DELETE": {
         actions: [
           assign({
+            activeStage: ({ activeStage, stages }) => {},
             stages: ({ stages }, e) =>
               stages
                 .filter(
@@ -235,6 +274,8 @@ const viewBarMachine = Machine(
             active: stage.index === ctx.activeStage,
           })
         ),
+      focusBar: () => {},
+      blurBar: () => {},
     },
   }
 );
