@@ -50,6 +50,20 @@ const SamplesContainer = (props) => {
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
 
+  const getDisplayOptions = (names, counts, selected) => {
+    return names.map((name) => ({
+      name,
+      count: counts[name],
+      selected: Boolean(selected[name]),
+    }));
+  };
+  const handleSetDisplayOption = (selected, setSelected) => (entry) => {
+    setSelected((selected) => ({
+      ...selected,
+      [entry.name]: entry.selected,
+    }));
+  };
+
   let headerHeight = 0;
   if (stickyHeaderRef.current && stickyHeaderRef.current.stickyRect) {
     headerHeight = stickyHeaderRef.current.stickyRect.height;
@@ -80,28 +94,17 @@ const SamplesContainer = (props) => {
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
                 colorMapping={colorMapping}
-                tags={tagNames.map((name) => ({
-                  name,
-                  count: tagSampleCounts[name],
-                  selected: Boolean(activeTags[name]),
-                }))}
-                onSelectTag={(e) =>
-                  setActiveTags((activeTags) => ({
-                    ...activeTags,
-                    [e.name]: e.selected,
-                  }))
-                }
-                labels={labelNames.map((name) => ({
-                  name,
-                  count: labelSampleCounts[name],
-                  selected: Boolean(activeLabels[name]),
-                }))}
-                onSelectLabel={(e) =>
-                  setActiveLabels((activeLabels) => ({
-                    ...activeLabels,
-                    [e.name]: e.selected,
-                  }))
-                }
+                tags={getDisplayOptions(tagNames, tagSampleCounts, activeTags)}
+                labels={getDisplayOptions(
+                  labelNames,
+                  labelSampleCounts,
+                  activeLabels
+                )}
+                onSelectTag={handleSetDisplayOption(activeTags, setActiveTags)}
+                onSelectLabel={handleSetDisplayOption(
+                  activeLabels,
+                  setActiveLabels
+                )}
                 scalars={[]}
               />
             </Sticky>
