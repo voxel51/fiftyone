@@ -242,6 +242,33 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
         )
 
+    def first(self):
+        """Returns the first sample in the dataset.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+
+        Raises:
+            ValueError: if the dataset is empty
+        """
+        return super().first()
+
+    def last(self):
+        """Returns the last sample in the dataset.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+
+        Raises:
+            ValueError: if the dataset is empty
+        """
+        try:
+            sample_view = self[-1:].first()
+        except ValueError:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
+        return fos.Sample.from_doc(sample_view._doc)
+
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the collection.
 
@@ -269,33 +296,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
         return [fos.Sample.from_doc(sv._doc) for sv in self[-num_samples:]]
-
-    def first(self):
-        """Returns the first sample in the dataset.
-
-        Returns:
-            a :class:`fiftyone.core.sample.Sample`
-
-        Raises:
-            ValueError: if the dataset is empty
-        """
-        return super().first()
-
-    def last(self):
-        """Returns the last sample in the dataset.
-
-        Returns:
-            a :class:`fiftyone.core.sample.Sample`
-
-        Raises:
-            ValueError: if the dataset is empty
-        """
-        try:
-            sample_view = self[-1:].first()
-        except ValueError:
-            raise ValueError("%s is empty" % self.__class__.__name__)
-
-        return fos.Sample.from_doc(sample_view._doc)
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the

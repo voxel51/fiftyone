@@ -87,6 +87,33 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement summary()")
 
+    def first(self):
+        """Returns the first sample in the collection.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView`
+
+        Raises:
+            ValueError: if the collection is empty
+        """
+        try:
+            return next(iter(self))
+        except StopIteration:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
+    def last(self):
+        """Returns the last sample in the collection.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample` or
+            :class:`fiftyone.core.sample.SampleView`
+
+        Raises:
+            ValueError: if the collection is empty
+        """
+        return self[-1:].first()
+
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the collection.
 
@@ -114,33 +141,6 @@ class SampleCollection(object):
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
         return [s for s in self[-num_samples:]]
-
-    def first(self):
-        """Returns the first sample in the collection.
-
-        Returns:
-            a :class:`fiftyone.core.sample.Sample` or
-            :class:`fiftyone.core.sample.SampleView`
-
-        Raises:
-            ValueError: if the collection is empty
-        """
-        try:
-            return next(iter(self))
-        except StopIteration:
-            raise ValueError("%s is empty" % self.__class__.__name__)
-
-    def last(self):
-        """Returns the last sample in the collection.
-
-        Returns:
-            a :class:`fiftyone.core.sample.Sample` or
-            :class:`fiftyone.core.sample.SampleView`
-
-        Raises:
-            ValueError: if the collection is empty
-        """
-        return self[-1:].first()
 
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.
