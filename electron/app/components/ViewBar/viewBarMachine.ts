@@ -23,17 +23,26 @@ export const createStage = (
   inputRef: {},
 });
 
-export const createBar = (port) => ({
+export const createBar = (port, setStateDescription) => ({
   port: port,
   stages: [],
   stageInfo: undefined,
   activeStage: 0,
+  setStateDescription,
+  stateDescriptionValue,
 });
 
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
     response.json()
   );
+}
+
+function serializeView(stages) {
+  return stages.map((stage) => ({
+    kwargs: stages.parameters.map((param) => param.value),
+    _cls: stage.stage,
+  }));
 }
 
 const viewBarMachine = Machine(
@@ -43,6 +52,9 @@ const viewBarMachine = Machine(
       port: undefined,
       stages: [],
       stageInfo: undefined,
+      activeStage: undefined,
+      setStateDescription: undefined,
+      stateDescriptionValue: undefined,
     },
     initial: "initializing",
     states: {
@@ -243,6 +255,7 @@ const viewBarMachine = Machine(
             },
           }),
           send("FOCUS"),
+          "submit",
         ],
       },
       "STAGE.DELETE": {
@@ -268,6 +281,15 @@ const viewBarMachine = Machine(
           "sendStagesUpdate",
         ],
       },
+      SET_STATE: {
+        actions: assign({
+          setStateDescription: (_, e) => e.setStateDescription,
+          stateDescriptionValue: (_, e) => e.stateDescriptionValue,
+        }),
+      },
+      UPDATE: {
+        actions: [assign({})],
+      },
     },
   },
   {
@@ -282,6 +304,19 @@ const viewBarMachine = Machine(
             stage: stage.stage,
           })
         ),
+      submit: ({ stateDescriptionValue, setStateDescription, stages }) => {
+        const result = serializeView(stages);
+        const {
+          view: { dataset },
+        } = stateDescriptionValue;
+        setStateDescription({
+          ...stateDescriptionValue,
+          view: {
+            dataset,
+            view: result,
+          },
+        });
+      },
     },
   }
 );

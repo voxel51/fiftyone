@@ -82,6 +82,11 @@ const ViewBar = () => {
   const [stateDescriptionValue, setStateDescription] = useRecoilState(
     stateDescription
   );
+
+  useEffect(() => {
+    send({ type: "SET_STATE", stateDescriptionValue, setStateDescription });
+  }, [stateDescriptionValue, setStateDescription]);
+
   const [state, send] = useMachine(machine);
 
   const { stages, activeStage } = state.context;

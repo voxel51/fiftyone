@@ -66,7 +66,7 @@ class ViewStage(object):
         """
         return {
             "kwargs": self._kwargs(),
-            "_cls": etau.get_class_name(self),
+            "_cls": self.__class__.__name__,
         }
 
     def _kwargs(self):
