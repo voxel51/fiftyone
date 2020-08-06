@@ -23,6 +23,7 @@ if this PR is part of a larger change.)
 -   [ ] `Build`: Build and test infrastructure changes
 -   [ ] `Core`: Core `fiftyone` python library changes
 -   [ ] `Documentation`: FiftyOne documentation changes
+-   [ ] `Other`
 
 ### Should this PR be mentioned in the release notes? If so, please choose on category:
 
