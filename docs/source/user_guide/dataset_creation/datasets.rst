@@ -613,8 +613,8 @@ Datasets of this type are read in the following format:
 
     <dataset_dir>/
         data/
-            <filename0>
-            <filename1>
+            <filename0>.<ext>
+            <filename1>.<ext>
             ...
         labels.json
 
@@ -645,7 +645,7 @@ where ``labels.json`` is a JSON file in the following format:
             {
                 "id": 0,
                 "license": null,
-                "file_name": "<filename0>",
+                "file_name": "<filename0>.<ext>",
                 "height": 480,
                 "width": 640,
                 "date_captured": null
@@ -1346,8 +1346,8 @@ Datasets of this type are read in the following format:
 
     <dataset_dir>/
         data/
-            <filename0>
-            <filename1>
+            <filename0>.<ext>
+            <filename1>.<ext>
             ...
         labels.json
 
@@ -1381,7 +1381,7 @@ where `labels.json` is a JSON file in the following format:
                     "manualShape": true
                 },
             ],
-            "name": "<filename0>",
+            "name": "<filename0>.<ext>",
         },
         ...
     ]
@@ -1481,9 +1481,7 @@ follows:
         dataset_dir = "/path/to/fiftyone-dataset"
 
         # Create the dataset
-        dataset = fo.Dataset.from_dir(
-            dataset_dir, fo.types.FiftyOneDataset, name=name
-        )
+        dataset = fo.Dataset.from_dir(dataset_dir, fo.types.FiftyOneDataset, name=name)
 
         # View summary info about the dataset
         print(dataset)

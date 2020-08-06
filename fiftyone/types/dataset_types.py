@@ -350,8 +350,8 @@ class COCODetectionDataset(ImageDetectionDataset):
 
         <dataset_dir>/
             data/
-                <filename0>
-                <filename1>
+                <filename0>.<ext>
+                <filename1>.<ext>
                 ...
             labels.json
 
@@ -380,7 +380,7 @@ class COCODetectionDataset(ImageDetectionDataset):
                 {
                     "id": 0,
                     "license": null,
-                    "file_name": <filename0>,
+                    "file_name": "<filename0>.<ext>",
                     "height": 480,
                     "width": 640,
                     "date_captured": null
@@ -751,8 +751,8 @@ class BDDDataset(ImageLabelsDataset):
 
         <dataset_dir>/
             data/
-                <filename0>
-                <filename1>
+                <filename0>.<ext>
+                <filename1>.<ext>
                 ...
             labels.json
 
@@ -785,7 +785,7 @@ class BDDDataset(ImageLabelsDataset):
                     },
                     ...
                 ],
-                "name": <filename0>,
+                "name": "<filename0>.<ext>",
                 ...
             },
             ...

@@ -518,8 +518,8 @@ Datasets of this type are exported in the following format:
 
     <dataset_dir>/
         data/
-            <filename0>
-            <filename1>
+            <filename0>.<ext>
+            <filename1>.<ext>
             ...
         labels.json
 
@@ -550,7 +550,7 @@ where `labels.json` is a JSON file in the following format:
             {
                 "id": 0,
                 "license": null,
-                "file_name": "<filename0>",
+                "file_name": "<filename0>.<ext>",
                 "height": 480,
                 "width": 640,
                 "date_captured": null
@@ -1131,8 +1131,8 @@ Datasets of this type are exported in the following format:
 
     <dataset_dir>/
         data/
-            <filename0>
-            <filename1>
+            <filename0>.<ext>
+            <filename1>.<ext>
             ...
         labels.json
 
@@ -1167,7 +1167,7 @@ where `labels.json` is a JSON file in the following format:
                 },
                 ...
             ],
-            "name": "<filename0>",
+            "name": "<filename0>.<ext>",
         },
         ...
     ]
