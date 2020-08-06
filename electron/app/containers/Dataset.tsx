@@ -32,7 +32,7 @@ function Dataset(props) {
   const { connected, loading, port, state, displayProps } = props;
   const hasDataset = Boolean(state && state.dataset);
   const stickyRef = createRef();
-  const tabs = [routes.SAMPLES, routes.LABELS, routes.TAGS, routes.SCALARS];
+  const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [view, setView] = useState({ visible: false, sample: null });
 
   let src = null;
