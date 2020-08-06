@@ -30,7 +30,13 @@ const Container = styled.div`
   }
 
   ${CellHeader.Body} {
+    display: flex;
+    align-items: center;
     color: ${({ theme }) => theme.fontDark};
+
+    * {
+      display: flex;
+    }
 
     .label {
       text-transform: uppercase;
@@ -38,6 +44,13 @@ const Container = styled.div`
 
     ${SelectionTag.Body} {
       float: right;
+    }
+
+    .push {
+      margin-left: auto;
+    }
+    .icon {
+      margin-left: 2px;
     }
   }
 
@@ -67,6 +80,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
         <>
           {icon ? <span className="left-icon">{icon}</span> : null}
           <span className="label">{label}</span>
+          <span className="push" />
           {numSelected ? (
             <SelectionTag count={numSelected} onClear={handleClear} />
           ) : null}
