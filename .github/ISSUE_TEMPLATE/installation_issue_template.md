@@ -9,13 +9,26 @@ title: "[SETUP-BUG]"
 **Please fill in this installation issue template to ensure a timely and
 thorough response.**
 
+### Instructions
+
+-   Place an "x" between the brackets of an item if it applies.
+-   Please delete this section before submitting the issue
+
 ### System information
 
 -   **OS Platform and Distribution (e.g., Linux Ubuntu 16.04)**:
 -   **FiftyOne installed from (source or pip)**:
 -   **FiftyOne version (run `fiftyone --version`)**:
 -   **Python version**:
--   **Exact command to reproduce**:
+
+### Commands to reproduce
+
+As thoroughly as possible, please provide Python and/or shell commands used to
+encounter the issue.
+
+```
+# commands here
+```
 
 ### Describe the problem
 

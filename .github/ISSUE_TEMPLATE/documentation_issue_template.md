@@ -1,16 +1,22 @@
 ---
-name: Documentation Fix
-about: Use this template for proposing documentation fixes/improvements.
-labels: "doc-fix"
-title: "[DOC-FIX]"
+name: Documentation Issue
+about: Use this template for proposing documentation issues.
+labels: "documentation"
+title: "[DOCUMENTATION]"
 ---
 
 **Please fill in this documentation issue template to ensure a timely and
 thorough response.**
 
+### Instructions
+
+-   Place an "x" between the brackets of an item if it applies.
+-   Feel free to add more labels to the issue when applicable
+-   Please delete this section before submitting the issue
+
 ### Willingness to contribute
 
-The FiftyOne Community encourages documentation fix contributions. Would you or
+The FiftyOne Community encourages documentation contributions. Would you or
 another member of your organization be willing to contribute a fix for this
 documentation issue to the FiftyOne code base?
 

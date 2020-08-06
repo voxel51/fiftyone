@@ -8,6 +8,12 @@ title: "[FR]"
 **Please fill in this feature request template to ensure a timely and thorough
 response.**
 
+### Instructions
+
+-   Place an "x" between the brackets of an item if it applies.
+-   Feel free to add more labels to the issue when applicable
+-   Please delete this section before submitting the issue
+
 ## Willingness to contribute
 
 The FiftyOne Community encourages new feature contributions. Would you or

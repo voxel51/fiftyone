@@ -8,6 +8,12 @@ title: "[BUG]"
 **Please fill in this bug report template to ensure a timely and thorough
 response.**
 
+### Instructions
+
+-   Place an "x" between the brackets of an item if it applies.
+-   Feel free to add more labels to the issue when applicable
+-   Please delete this section before submitting the issue
+
 ### Willingness to contribute
 
 The FiftyOne Community encourages bug fix contributions. Would you or another
@@ -25,7 +31,15 @@ FiftyOne code base?
 -   **FiftyOne installed from (source or pip)**:
 -   **FiftyOne version (run `fiftyone --version`)**:
 -   **Python version**:
--   **Exact command to reproduce**:
+
+### Commands to reproduce
+
+As thoroughly as possible, please provide Python and/or shell commands used to
+encounter the issue.
+
+```
+# commands here
+```
 
 ### Describe the problem
 
