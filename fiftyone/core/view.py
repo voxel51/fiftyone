@@ -85,7 +85,12 @@ class DatasetView(foc.SampleCollection):
     @property
     def name(self):
         """The name of the view."""
-        return self._dataset.name + "-view"
+        return self.dataset_name + "-view"
+
+    @property
+    def dataset_name(self):
+        """The name of the underlying dataset."""
+        return self._dataset.name
 
     @property
     def stages(self):
@@ -115,7 +120,7 @@ class DatasetView(foc.SampleCollection):
 
         return "\n".join(
             [
-                "Dataset:        %s" % self._dataset.name,
+                "Dataset:        %s" % self.dataset_name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
