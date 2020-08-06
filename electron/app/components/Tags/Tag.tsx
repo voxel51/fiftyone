@@ -16,8 +16,12 @@ const Body = styled.div`
   text-align: center;
 `;
 
-const Tag = ({ name, color = "blue" }) => {
-  return <Body fillColor={color}>{name}</Body>;
+const Tag = ({ name, title, color = "blue" }) => {
+  return (
+    <Body title={title} fillColor={color}>
+      {name}
+    </Body>
+  );
 };
 
 Tag.Body = Body;

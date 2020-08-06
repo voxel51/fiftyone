@@ -46,7 +46,7 @@ const Container = styled.div`
   }
 `;
 
-const Cell = ({ label, icon, entries, onSelect, colorMapping }) => {
+const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
@@ -72,6 +72,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping }) => {
           ) : null}
         </>
       }
+      title={title}
       expanded={expanded}
       onExpand={setExpanded}
     >
@@ -130,6 +131,7 @@ const DisplayOptionsSidebar = ({
       {unsupported.length ? (
         <Cell
           label="Unsupported"
+          title="These fields cannot currently be displayed in the app"
           icon={<Help />}
           colorMapping={{}}
           entries={unsupported.map((entry) => ({

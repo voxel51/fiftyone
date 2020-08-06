@@ -10,6 +10,8 @@ export const standard = () => <Tag name="tag" />;
 
 export const red = () => <Tag name="tag" color="red" />;
 
+export const tooltip = () => <Tag name="hover over me" title="hi" />;
+
 export const row = () => (
   <div>
     <Tag name="sunny" color="#499cef" />

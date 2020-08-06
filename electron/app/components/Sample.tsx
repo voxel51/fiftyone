@@ -68,7 +68,12 @@ const Sample = ({
       value = Number(value.toFixed(3));
     }
     return (
-      <Tag key={"label-" + name} name={value} color={colorMapping[name]} />
+      <Tag
+        key={"label-" + name}
+        title={name}
+        name={value}
+        color={colorMapping[name]}
+      />
     );
   };
 
