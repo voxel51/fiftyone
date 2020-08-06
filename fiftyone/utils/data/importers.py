@@ -98,6 +98,8 @@ class GenericSampleDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
+    Example Usage::
+
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
