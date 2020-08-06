@@ -235,6 +235,51 @@ def test_image_labels_datasets(basedir, img):
     dataset.export(export_dir, dataset_type=dataset_type)
     dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
 
+    # JSON
+    json_path = os.path.join(basedir, "dataset.json")
+    dataset.write_json(json_path, pretty_print=True)
+    dataset2 = fod.Dataset.from_json(
+        json_path, name=fod.get_default_dataset_name()
+    )
+
+
+def test_generic_sample_dataset(basedir, img):
+    #
+    # Classification dataset
+    #
+
+    images_dir = os.path.join(basedir, "source-images1")
+    dataset = make_classification_dataset(img, images_dir)
+
+    export_dir = os.path.join(basedir, "fo-dataset1")
+    dataset_type = fo.types.FiftyOneDataset
+    dataset.export(export_dir, dataset_type=dataset_type)
+    dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
+
+    #
+    # Detection dataset
+    #
+
+    images_dir = os.path.join(basedir, "source-images2")
+    dataset = make_detection_dataset(img, images_dir)
+
+    export_dir = os.path.join(basedir, "fo-dataset2")
+    dataset_type = fo.types.FiftyOneDataset
+    dataset.export(export_dir, dataset_type=dataset_type)
+    dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
+
+    #
+    # ImageLabels dataset
+    #
+
+    images_dir = os.path.join(basedir, "source-images3")
+    dataset = make_image_labels_dataset(img, images_dir)
+
+    export_dir = os.path.join(basedir, "fo-dataset3")
+    dataset_type = fo.types.FiftyOneDataset
+    dataset.export(export_dir, dataset_type=dataset_type)
+    dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
