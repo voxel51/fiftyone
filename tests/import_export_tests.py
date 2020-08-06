@@ -33,7 +33,7 @@ def img():
     return np.random.randint(255, size=(32, 32, 3), dtype=np.uint8)
 
 
-def make_classification_dataset(name, img, images_dir, num_samples=4):
+def make_classification_dataset(img, images_dir, num_samples=4):
     exts = [".jpg", ".png"]
 
     samples = []
@@ -46,17 +46,17 @@ def make_classification_dataset(name, img, images_dir, num_samples=4):
         label = random.choice(["sun", "rain", "snow"])
         samples.append(
             fo.Sample(
-                filepath=filepath, ground_truth=fo.Classification(label=label),
+                filepath=filepath, ground_truth=fo.Classification(label=label)
             )
         )
 
-    dataset = fo.Dataset(name)
+    dataset = fo.Dataset()
     dataset.add_samples(samples)
     return dataset
 
 
 def make_detection_dataset(
-    name, img, images_dir, num_samples=4, num_objects_per_sample=3
+    img, images_dir, num_samples=4, num_objects_per_sample=3
 ):
     exts = [".jpg", ".png"]
 
@@ -77,7 +77,7 @@ def make_detection_dataset(
                 0.2,
             ]
             detections.append(
-                fo.Detection(label=label, bounding_box=bounding_box,)
+                fo.Detection(label=label, bounding_box=bounding_box)
             )
 
         samples.append(
@@ -87,13 +87,13 @@ def make_detection_dataset(
             )
         )
 
-    dataset = fo.Dataset(name)
+    dataset = fo.Dataset()
     dataset.add_samples(samples)
     return dataset
 
 
 def make_image_labels_dataset(
-    name, img, images_dir, num_samples=4, num_objects_per_sample=3
+    img, images_dir, num_samples=4, num_objects_per_sample=3
 ):
     exts = [".jpg", ".png"]
 
@@ -117,7 +117,7 @@ def make_image_labels_dataset(
                 _xtl, _ytl, _xtl + 0.2, _ytl + 0.2
             )
             image_labels.add_object(
-                etao.DetectedObject(label=_label, bounding_box=_bounding_box,)
+                etao.DetectedObject(label=_label, bounding_box=_bounding_box)
             )
 
         samples.append(
@@ -127,7 +127,7 @@ def make_image_labels_dataset(
             )
         )
 
-    dataset = fo.Dataset(name)
+    dataset = fo.Dataset()
     dataset.add_samples(samples)
     return dataset
 
@@ -135,9 +135,7 @@ def make_image_labels_dataset(
 def test_classification_datasets(basedir, img):
     # Create a classification dataset
     images_dir = os.path.join(basedir, "source-images")
-    dataset = make_classification_dataset(
-        "test-classification", img, images_dir
-    )
+    dataset = make_classification_dataset(img, images_dir)
 
     # FiftyOneImageClassificationDataset
     export_dir = os.path.join(basedir, "fiftyone-image-classification")
@@ -171,7 +169,7 @@ def test_classification_datasets(basedir, img):
 def test_detection_datasets(basedir, img):
     # Create a detection dataset
     images_dir = os.path.join(basedir, "source-images")
-    dataset = make_detection_dataset("test-detection", img, images_dir)
+    dataset = make_detection_dataset(img, images_dir)
 
     # FiftyOneImageDetectionDataset
     export_dir = os.path.join(basedir, "fiftyone-image-detection")
@@ -223,7 +221,7 @@ def test_detection_datasets(basedir, img):
 def test_image_labels_datasets(basedir, img):
     # Create an image labels dataset
     images_dir = os.path.join(basedir, "source-images")
-    dataset = make_image_labels_dataset("test-image-labels", img, images_dir)
+    dataset = make_image_labels_dataset(img, images_dir)
 
     # FiftyOneImageLabelsDataset
     export_dir = os.path.join(basedir, "fiftyone-image-labels")
