@@ -120,7 +120,10 @@ class StateDescriptionWithDerivables(StateDescription):
             a dictionary with key, value pairs for each piece of derivable
                 information.
         """
-        return {"dataset_stats": self._get_dataset_stats()}
+        return {
+            "dataset_stats": self._get_dataset_stats(),
+            **self._get_label_info(),
+        }
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -132,6 +135,27 @@ class StateDescriptionWithDerivables(StateDescription):
             return {}
 
         return get_dataset_stats(self.dataset)
+
+    def _get_label_info(self):
+        if self.view is not None:
+            view = self.view
+        elif self.dataset is not None:
+            view = self.dataset.view()
+        else:
+            return {}
+
+        return {
+            "labels": self._get_label_fields(view),
+            "tags": list(sorted(view.get_tags())),
+        }
+
+    def _get_label_fields(self, view):
+        pipeline = [
+            {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
+            {"$unwind": "$field"},
+            {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
+        ]
+        return [f for f in view.aggregate(pipeline)]
 
 
 def get_dataset_stats(dataset):

@@ -3175,10 +3175,13 @@
     text-table "^0.2.0"
     webpack-log "^1.1.2"
 
-"@xstate/react@^0.8.1":
-  version "0.8.1"
-  resolved "https://registry.yarnpkg.com/@xstate/react/-/react-0.8.1.tgz#df200547cca24c909572b7aef1ddab8bca3a0603"
-  integrity sha512-8voZm4GX3x70lNQVvoGedoObPYapkQIbgMhE+xOQEsm8Ait4Zto6R01SZ6WJD4qvLl8JPV6uq96OcFRdEsVESg==
+"@xstate/react@1.0.0-rc.6":
+  version "1.0.0-rc.6"
+  resolved "https://registry.yarnpkg.com/@xstate/react/-/react-1.0.0-rc.6.tgz#46a384aea4290357ce42c389fb3ca7d5ba2053e7"
+  integrity sha512-H4VMWaF60thHEZEMHBXWFUwOr0ppPFg65Q8effrG0EgBA+hIFDkJF6OzNVQReeD4HmYrGw7hRuuHTR8elanfnQ==
+  dependencies:
+    use-isomorphic-layout-effect "^1.0.0"
+    use-subscription "^1.3.0"
 
 "@xtuc/ieee754@^1.2.0":
   version "1.2.0"
@@ -15643,7 +15646,7 @@ react-hot-loader@^4.12.19:
     shallowequal "^1.1.0"
     source-map "^0.7.3"
 
-react-hotkeys@2.0.0:
+react-hotkeys@2.0.0, react-hotkeys@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/react-hotkeys/-/react-hotkeys-2.0.0.tgz#a7719c7340cbba888b0e9184f806a9ec0ac2c53f"
   integrity sha512-3n3OU8vLX/pfcJrR3xJ1zlww6KS1kEJt0Whxc4FiGV+MJrQ1mYSYI3qS/11d2MJDFm8IhOXMTFQirfu6AVOF6Q==
@@ -17603,6 +17606,13 @@ store2@^2.7.1:
   resolved "https://registry.yarnpkg.com/store2/-/store2-2.11.2.tgz#a298e5e97b21b3ce7419b732540bc7c79cb007db"
   integrity sha512-TQMKs+C6n9idtzLpxluikmDCYiDJrTbbIGn9LFxMg0BVTu+8JZKSlXTWYRpOFKlfKD5HlDWLVpJJyNGZ2e9l1A==
 
+storybook-react-router@^1.0.8:
+  version "1.0.8"
+  resolved "https://registry.yarnpkg.com/storybook-react-router/-/storybook-react-router-1.0.8.tgz#8d174eba1c38fff2c7e459c3d0c2463bc0cd9c6a"
+  integrity sha512-3PvuTu6cJHtF72WC3aKdIrUY1eUYsdVYEmW74nZiJoLCn0C/6iDx73w94jgI6lXq75aEJsri+lEDyhcokfP6YA==
+  dependencies:
+    prop-types "^15.7.2"
+
 stream-browserify@^2.0.1:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/stream-browserify/-/stream-browserify-2.0.2.tgz#87521d38a44aa7ee91ce1cd2a47df0cb49dd660b"
@@ -19239,6 +19249,11 @@ use-callback-ref@^1.2.1:
   resolved "https://registry.yarnpkg.com/use-callback-ref/-/use-callback-ref-1.2.4.tgz#d86d1577bfd0b955b6e04aaf5971025f406bea3c"
   integrity sha512-rXpsyvOnqdScyied4Uglsp14qzag1JIemLeTWGKbwpotWht57hbP78aNT+Q4wdFKQfQibbUX4fb6Qb4y11aVOQ==
 
+use-isomorphic-layout-effect@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/use-isomorphic-layout-effect/-/use-isomorphic-layout-effect-1.0.0.tgz#f56b4ed633e1c21cd9fc76fe249002a1c28989fb"
+  integrity sha512-JMwJ7Vd86NwAt1jH7q+OIozZSIxA4ND0fx6AsOe2q1H8ooBUp5aN6DvVCqZiIaYU6JaMRJGyR0FO7EBCIsb/Rg==
+
 use-sidecar@^1.0.1:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/use-sidecar/-/use-sidecar-1.0.2.tgz#e72f582a75842f7de4ef8becd6235a4720ad8af6"
@@ -19246,6 +19261,13 @@ use-sidecar@^1.0.1:
   dependencies:
     detect-node "^2.0.4"
     tslib "^1.9.3"
+
+use-subscription@^1.3.0:
+  version "1.4.1"
+  resolved "https://registry.yarnpkg.com/use-subscription/-/use-subscription-1.4.1.tgz#edcbcc220f1adb2dd4fa0b2f61b6cc308e620069"
+  integrity sha512-7+IIwDG/4JICrWHL/Q/ZPK5yozEnvRm6vHImu0LKwQlmWGKeiF7mbAenLlK/cTNXrTtXHU/SFASQHzB6+oSJMQ==
+  dependencies:
+    object-assign "^4.1.1"
 
 use@^3.1.0:
   version "3.1.1"
@@ -19303,6 +19325,11 @@ utils-merge@1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/utils-merge/-/utils-merge-1.0.1.tgz#9f95710f50a267947b2ccc124741c1028427e713"
   integrity sha1-n5VxD1CiZ5R7LMwSR0HBAoQn5xM=
+
+uuid-v4@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/uuid-v4/-/uuid-v4-0.1.0.tgz#62d7b310406f6cecfea1528c69f1e8e0bcec5a3a"
+  integrity sha1-YtezEEBvbOz+oVKMafHo4LzsWjo=
 
 uuid@^3.0.0, uuid@^3.1.0, uuid@^3.3.2, uuid@^3.4.0:
   version "3.4.0"

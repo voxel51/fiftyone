@@ -79,6 +79,16 @@ class ViewStage(object):
         raise NotImplementedError("subclasses must implement `_kwargs()`")
 
     @classmethod
+    def _params(self):
+        """Returns a list of JSON dicts describing the parameters that define the
+        ViewStage.
+
+        Returns:
+            a list of JSON dicts
+        """
+        raise NotImplementedError("subclasses must implement `_params()`")
+
+    @classmethod
     def _from_dict(cls, d):
         """Creates a :class:`ViewStage` instance from a serialized JSON dict
         representation of it.
@@ -126,6 +136,10 @@ class Exclude(ViewStage):
     def _kwargs(self):
         return {"sample_ids": self._sample_ids}
 
+    @classmethod
+    def _params(cls):
+        return [{"name": "sample_ids", "type": ["list", "str"]}]
+
 
 class ExcludeFields(ViewStage):
     """Excludes the fields with the given names from the samples in the view.
@@ -158,6 +172,10 @@ class ExcludeFields(ViewStage):
 
     def _kwargs(self):
         return {"field_names": self._field_names}
+
+    @classmethod
+    def _params(self):
+        return [{"name": "field_names", "type": ["list", "str"]}]
 
     def _validate(self):
         invalid_fields = set(self._field_names) & set(default_sample_fields())
@@ -193,6 +211,10 @@ class Exists(ViewStage):
 
     def _kwargs(self):
         return {"field": self._field}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "field", "type": "str"}]
 
 
 class _FilterList(ViewStage):
@@ -259,6 +281,13 @@ class _FilterList(ViewStage):
 
     def _kwargs(self):
         return {"field": self._field, "filter": self._get_mongo_filter()}
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "str"},
+            {"name": "filter", "type": "dict"},
+        ]
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -331,6 +360,10 @@ class Limit(ViewStage):
     def _kwargs(self):
         return {"limit": self._limit}
 
+    @classmethod
+    def _params(cls):
+        return [{"name": "limit", "type": "int"}]
+
 
 class Match(ViewStage):
     """Filters the samples in the stage by the given filter.
@@ -374,6 +407,10 @@ class Match(ViewStage):
                 "found '%s'" % self._filter
             )
 
+    @classmethod
+    def _params(cls):
+        return [{"name": "filter", "type": "dict"}]
+
 
 class MatchTag(ViewStage):
     """Returns a view containing the samples that have the given tag.
@@ -400,6 +437,10 @@ class MatchTag(ViewStage):
 
     def _kwargs(self):
         return {"tag": self._tag}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "tag", "type": "str"}]
 
 
 class MatchTags(ViewStage):
@@ -431,6 +472,10 @@ class MatchTags(ViewStage):
     def _kwargs(self):
         return {"tags": self._tags}
 
+    @classmethod
+    def _params(cls):
+        return [{"name": "tags", "type": ["list", "str"]}]
+
 
 class Mongo(ViewStage):
     """View stage defined by a raw MongoDB aggregation pipeline.
@@ -461,6 +506,10 @@ class Mongo(ViewStage):
     def _kwargs(self):
         return {"pipeline": self._pipeline}
 
+    @classmethod
+    def _params(self):
+        return [{"name": "pipeline", "type": "dict"}]
+
 
 class Select(ViewStage):
     """Selects the samples with the given IDs from the view.
@@ -488,6 +537,10 @@ class Select(ViewStage):
 
     def _kwargs(self):
         return {"sample_ids": self._sample_ids}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "sample_ids", "type": ["list", "str"]}]
 
 
 class SelectFields(ViewStage):
@@ -528,6 +581,10 @@ class SelectFields(ViewStage):
 
     def _kwargs(self):
         return {"field_names": self._field_names}
+
+    @classmethod
+    def _params(self):
+        return [{"name": "field_names", "type": ["list", "str"]}]
 
 
 class SortBy(ViewStage):
@@ -588,6 +645,13 @@ class SortBy(ViewStage):
             "reverse": self._reverse,
         }
 
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field_or_expr", "type": "dict|str"},
+            {"name": "reverse", "type": "bool"},
+        ]
+
 
 class Skip(ViewStage):
     """Omits the given number of samples from the head of the view.
@@ -615,6 +679,10 @@ class Skip(ViewStage):
 
     def _kwargs(self):
         return {"skip": self._skip}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "skip", "type": "int"}]
 
 
 class Take(ViewStage):
@@ -648,3 +716,27 @@ class Take(ViewStage):
 
     def _kwargs(self):
         return {"size": self._size}
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "size", "type": "int"}]
+
+
+# simple registry for the server to grab available view stages
+_STAGES = [
+    Exclude,
+    ExcludeFields,
+    Exists,
+    FilterClassifications,
+    FilterDetections,
+    Limit,
+    Match,
+    MatchTag,
+    MatchTags,
+    Mongo,
+    Select,
+    SelectFields,
+    SortBy,
+    Skip,
+    Take,
+]

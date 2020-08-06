@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Menu } from "semantic-ui-react";
+import React from "react";
+import { useRecoilValue } from "recoil";
 
 import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
-import Tag from "./Tag";
+import Tag from "./Tags/Tag";
+import * as selectors from "../recoil/selectors";
+import { VALID_LABEL_TYPES, VALID_SCALAR_TYPES } from "../utils/labels";
 
 const Sample = ({
   displayProps,
@@ -22,17 +24,10 @@ const Sample = ({
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
   const s = sample;
-  const {
-    activeLabels,
-    activeTags,
-    activeOther,
-    colors,
-    lengths,
-  } = displayProps;
+  const { activeLabels, activeTags, activeOther, colors } = displayProps;
+  const colorMapping = useRecoilValue(selectors.labelColorMapping);
+  const tagNames = useRecoilValue(selectors.tagNames);
 
-  const isFloat = (n) => {
-    return Number(n) === n && n % 1 !== 0;
-  };
   const handleClick = () => {
     const newSelected = { ...selected };
     const event = newSelected[id] ? "remove_selection" : "add_selection";
@@ -42,6 +37,46 @@ const Sample = ({
       dispatch(updateState(data));
     });
   };
+  const eventHandlers = {
+    onClick: () => handleClick(),
+    onDoubleClick: () => setView({ visible: true, sample }),
+  };
+  const renderLabel = (name) => {
+    const label = sample[name];
+    if (
+      !activeLabels[name] ||
+      !label ||
+      !label._cls ||
+      !(
+        VALID_LABEL_TYPES.includes(label._cls) ||
+        VALID_SCALAR_TYPES.includes(label._cls)
+      )
+    ) {
+      return null;
+    }
+    let value = undefined;
+    for (const prop of ["label", "value"]) {
+      if (label.hasOwnProperty(prop)) {
+        value = label[prop];
+        break;
+      }
+    }
+    if (value === undefined) {
+      return null;
+    }
+    if (typeof value == "number") {
+      value = Number(value.toFixed(3));
+    }
+    return (
+      <Tag
+        key={"label-" + name}
+        title={name}
+        name={String(value)}
+        color={colorMapping[name]}
+      />
+    );
+  };
+
   return (
     <div className="sample">
       <Player51
@@ -53,35 +88,17 @@ const Sample = ({
         }}
         colors={colors}
         sample={sample}
-        onClick={() => handleClick()}
-        onDoubleClick={() => setView({ visible: true, sample })}
         thumbnail={true}
         activeLabels={activeLabels}
+        {...eventHandlers}
       />
-      <div className="sample-info">
-        {Object.keys(s)
-          .sort()
-          .map((l, i) => {
-            return activeLabels[l] && s[l] && s[l]._cls === "Classification" ? (
-              <Tag key={i} name={String(s[l].label)} color={colors[i]} />
-            ) : null;
-          })}
-        {s.tags.map((t, i) => {
+      <div className="sample-info" {...eventHandlers}>
+        {Object.keys(sample).sort().map(renderLabel)}
+        {tagNames.map((t) => {
           return activeTags[t] ? (
-            <Tag key={i} name={String(t)} color={colors[lengths.mapping[t]]} />
+            <Tag key={t} name={String(t)} color={colorMapping[t]} />
           ) : null;
         })}
-        {Object.keys(s)
-          .sort()
-          .map((l, i) => {
-            return activeOther[l] && (s[l] || typeof s[l] === "boolean") ? (
-              <Tag
-                key={i}
-                name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
-                color={colors[i]}
-              />
-            ) : null;
-          })}
       </div>
       {selected[id] ? (
         <div

@@ -3,20 +3,25 @@ import styled from "styled-components";
 
 import { Box } from "./utils";
 
-const CellHeader = styled(Box)`
+const Body = styled(Box)`
   cursor: ${({ clickable }) => (clickable ? "pointer" : undefined)};
   font-weight: bold;
+  user-select: none;
+  border-radius: 3px;
 
   .icon {
     float: right;
+    order: 1;
   }
 `;
 
 type Props = {
   onClick: () => void;
+  icon: ReactNode;
+  children: ReactNode;
 };
 
-export default ({ children, icon, onClick, ...props }: Props) => {
+const CellHeader = ({ children, icon, onClick, ...props }: Props) => {
   const onClickWrapper = () => {
     if (onClick) {
       return onClick();
@@ -24,13 +29,13 @@ export default ({ children, icon, onClick, ...props }: Props) => {
   };
 
   return (
-    <CellHeader
-      clickable={Boolean(onClick)}
-      onClick={onClickWrapper}
-      {...props}
-    >
-      {icon ? <span class="icon">{icon}</span> : null}
+    <Body clickable={Boolean(onClick)} onClick={onClickWrapper} {...props}>
+      {icon ? <span className="icon">{icon}</span> : null}
       {children}
-    </CellHeader>
+    </Body>
   );
 };
+
+CellHeader.Body = Body;
+
+export default CellHeader;

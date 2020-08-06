@@ -10,10 +10,11 @@ import {
   Segment,
 } from "semantic-ui-react";
 
+import SamplesContainer from "./SamplesContainer";
 import Distributions from "../components/Distributions";
+import HorizontalNav from "../components/HorizontalNav";
 import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
-import Samples from "../components/Samples";
 import Search from "../components/Search";
 import routes from "../constants/routes.json";
 import connect from "../utils/connect";
@@ -31,8 +32,9 @@ function Dataset(props) {
   const { connected, loading, port, state, displayProps } = props;
   const hasDataset = Boolean(state && state.dataset);
   const stickyRef = createRef();
-  const tabs = [routes.SAMPLES, routes.LABELS, routes.TAGS, routes.SCALARS];
+  const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [view, setView] = useState({ visible: false, sample: null });
+
   let src = null;
   let s = null;
   if (view.sample) {
@@ -109,29 +111,10 @@ function Dataset(props) {
       </Sidebar>
       <Ref innerRef={stickyRef}>
         <Container fluid={true}>
-          <Sticky context={stickyRef}>
-            <Container
-              fluid={true}
-              style={{
-                background: "hsl(210, 20%, 15%)",
-                paddingTop: "2rem",
-                zIndex: 1000000,
-              }}
-            >
-              <Menu pointing secondary>
-                {tabs.map((v, i) => {
-                  return (
-                    <Link key={i} to={v}>
-                      <Menu.Item
-                        name={v.slice(1)}
-                        active={v === props.location.pathname}
-                      />
-                    </Link>
-                  );
-                })}
-              </Menu>
-            </Container>
-          </Sticky>
+          <HorizontalNav
+            currentPath={props.location.pathname}
+            entries={tabs.map((path) => ({ path, name: path.slice(1) }))}
+          />
           <Switch>
             <Route exact path={routes.DATASET}>
               <Redirect to={routes.SAMPLES} />
@@ -139,7 +122,7 @@ function Dataset(props) {
             {hasDataset ? (
               <>
                 <Route path={routes.SAMPLES}>
-                  <Samples
+                  <SamplesContainer
                     {...props.socket}
                     setView={setView}
                     displayProps={displayProps}

@@ -3,9 +3,14 @@ import React, { ReactNode, useState, useEffect, useRef } from "react";
 import ReactGA from "react-ga";
 import { Button, Modal, Label } from "semantic-ui-react";
 import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
+import { useSetRecoilState } from "recoil";
+import { ThemeProvider } from "styled-components";
 
+import { GlobalStyle } from "../shared/global";
+import { darkTheme } from "../shared/colors";
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
+
 import {
   updateState,
   updateConnected,
@@ -14,6 +19,7 @@ import {
 } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
+import { stateDescription } from "../recoil/atoms";
 import gaConfig from "../constants/ga.json";
 
 type Props = {
@@ -35,6 +41,13 @@ function App(props: Props) {
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
+  const setStateDescription = useSetRecoilState(stateDescription);
+
+  const handleStateUpdate = (data) => {
+    setStateDescription(data);
+    dispatch(updateState(data));
+  };
+
   const [gaInitialized, setGAInitialized] = useState(false);
   useEffect(() => {
     const dev = process.env.NODE_ENV == "development";
@@ -67,7 +80,7 @@ function App(props: Props) {
     dispatch(updateConnected(true));
     if (loading) {
       socket.emit("get_current_state", "", (data) => {
-        dispatch(updateState(data));
+        handleStateUpdate(data);
         dispatch(updateLoading(false));
       });
     }
@@ -76,7 +89,7 @@ function App(props: Props) {
     dispatch(updateConnected(true));
     dispatch(updateLoading(true));
     socket.emit("get_current_state", "", (data) => {
-      dispatch(updateState(data));
+      handleStateUpdate(data);
       dispatch(updateLoading(false));
     });
   }
@@ -92,7 +105,7 @@ function App(props: Props) {
     if (data.close) {
       remote.getCurrentWindow().close();
     }
-    dispatch(updateState(data));
+    handleStateUpdate(data);
   });
 
   ipcRenderer.on("update-session-config", (event, message) => {
@@ -100,12 +113,12 @@ function App(props: Props) {
   });
   const bodyStyle = {
     height: "100%",
-    marginLeft: 260,
     padding: "0 2rem 2rem 2rem",
   };
 
   return (
-    <>
+    <ThemeProvider theme={darkTheme}>
+      <GlobalStyle />
       <Modal
         trigger={
           <Button
@@ -131,11 +144,10 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
-      <Sidebar displayProps={displayProps} />
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
         {children}
       </div>
-    </>
+    </ThemeProvider>
   );
 }
 
