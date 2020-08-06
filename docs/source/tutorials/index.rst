@@ -45,14 +45,14 @@ your datasets and turn your good models into *great models*.
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
     :image: ../_static/images/tutorials/uniqueness.png
-    :tags: Getting-Started,Brain
+    :tags: Getting-Started,Dataset-Evaluation
 
 .. customcarditem::
     :header: Finding label mistakes
     :description: Better models start with better data. This tutorial shows how FiftyOne can automatically find possible label mistakes in your datasets.
     :link: label_mistakes.html
     :image: ../_static/images/tutorials/label_mistakes.png
-    :tags: Getting-Started,Brain
+    :tags: Getting-Started,Dataset-Evaluation
 
 .. End of tutorial cards
 

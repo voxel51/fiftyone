@@ -16,6 +16,7 @@ unittest.TextTestRunner().run(singletest)
 import datetime
 from functools import wraps
 import math
+import os
 import unittest
 
 from mongoengine.errors import (
@@ -76,8 +77,10 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         dataset.add_sample(sample3)
         self.assertIsNot(sample3, sample)
 
-        sv4 = dataset.match({"filepath": filepath}).first()
-        self.assertIsNot(sv4, sample)
+        sample4 = dataset.match(
+            {"filepath": os.path.abspath(filepath)}
+        ).first()
+        self.assertIsNot(sample4, sample)
 
     @drop_datasets
     def test_dataset_add_delete_field(self):
@@ -476,7 +479,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
 
         def create_dataset():
             dataset = fo.Dataset(dataset_name)
-            sample = fo.Sample(filepath="path/to/file.jpg")
+            sample = fo.Sample(filepath="/path/to/file.jpg")
             return dataset.add_sample(sample)
 
         sample_id = create_dataset()
@@ -730,12 +733,20 @@ class DatasetTest(unittest.TestCase):
 class SampleTest(unittest.TestCase):
     @drop_datasets
     def test_backing_doc_type(self):
-        sample = fo.Sample(filepath="path/to/file.jpg")
+        sample = fo.Sample(filepath="/path/to/file.jpg")
         self.assertIsInstance(sample._doc, foo.NoDatasetSampleDocument)
 
     @drop_datasets
+    def test_abs_filepath(self):
+        filepath = "relative/file.jpg"
+        abs_filepath = os.path.abspath(filepath)
+
+        sample = fo.Sample(filepath=filepath)
+        self.assertEqual(sample.filepath, abs_filepath)
+
+    @drop_datasets
     def test_get_field(self):
-        filepath = "path/to/file.jpg"
+        filepath = "/path/to/file.jpg"
 
         sample = fo.Sample(filepath=filepath)
 
@@ -754,7 +765,7 @@ class SampleTest(unittest.TestCase):
 
     @drop_datasets
     def test_set_field(self):
-        sample = fo.Sample(filepath="path/to/file.jpg")
+        sample = fo.Sample(filepath="/path/to/file.jpg")
 
         value = 51
 
@@ -791,7 +802,7 @@ class SampleTest(unittest.TestCase):
 
     @drop_datasets
     def test_change_value(self):
-        sample = fo.Sample(filepath="path/to/file.jpg")
+        sample = fo.Sample(filepath="/path/to/file.jpg")
 
         # init
         value = 51
@@ -815,7 +826,7 @@ class SampleInDatasetTest(unittest.TestCase):
         dataset_name = self.test_invalid_sample.__name__
         dataset = fo.Dataset(dataset_name)
 
-        sample = fo.Sample(filepath=51)
+        sample = fo.Sample(filepath="test.jpg", tags=51)
 
         with self.assertRaises(ValidationError):
             dataset.add_sample(sample)
@@ -897,7 +908,7 @@ class SampleInDatasetTest(unittest.TestCase):
     def test_autopopulated_fields(self):
         dataset_name = self.test_autopopulated_fields.__name__
         dataset = fo.Dataset(dataset_name)
-        sample = fo.Sample(filepath="path/to/file.jpg")
+        sample = fo.Sample(filepath="/path/to/file.jpg")
 
         self.assertIsNone(sample.id)
         self.assertIsNone(sample.ingest_time)
@@ -916,7 +927,7 @@ class SampleInDatasetTest(unittest.TestCase):
     def test_new_fields(self):
         dataset_name = self.test_new_fields.__name__
         dataset = fo.Dataset(dataset_name)
-        sample = fo.Sample(filepath="path/to/file.jpg")
+        sample = fo.Sample(filepath="/path/to/file.jpg")
 
         field_name = "field1"
         value = 51
@@ -939,7 +950,7 @@ class SampleInDatasetTest(unittest.TestCase):
     def test_new_fields_multi(self):
         dataset_name = self.test_new_fields_multi.__name__
         dataset = fo.Dataset(dataset_name)
-        sample = fo.Sample(filepath="path/to/file.jpg")
+        sample = fo.Sample(filepath="/path/to/file.jpg")
 
         field_name = "field1"
         value = 51
