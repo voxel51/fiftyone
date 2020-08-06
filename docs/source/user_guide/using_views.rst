@@ -434,11 +434,11 @@ Efficiently iterating samples
 -----------------------------
 
 If you have a dataset with larger fields, such as |Classifications| or
-|Detections|, it can be slow to construct the |SampleView| objects for each
-database entry. If, for a particular use case, you are only interested in a
+|Detections|, it can be expensive to load entire samples into memory. If, for a
+particular use case, you are only interested in a
 subset of fields, you can use
 :class:`Dataset.select_fields() <fiftyone.core.dataset.Dataset.select_fields>`
-to select only the fields of interest.
+to load only the fields of interest.
 
 Let's say you have a dataset that looks like this:
 
@@ -459,11 +459,11 @@ Let's say you have a dataset that looks like this:
         mAP:                      FloatField
         AP_per_class:             DictField
 
-and we want to get a list of ``open_images_id``'s for all samples in the
-dataset. Loading ``groundtruth_image_labels``, ``groundtruth_detections``,
-and ``faster_rcnn`` is going to be slow, but using
+and you want to get a list of ``open_images_id``'s for all samples in the
+dataset. Loading other fields is unnecessary; in fact, using
 :class:`Dataset.select_fields() <fiftyone.core.dataset.Dataset.select_fields>`
-can speed up this list comprehension by ~200X!!!
+to load only the ``open_images_id`` field speeds up the operation below by
+~200X!
 
 .. code-block:: python
     :linenos:
