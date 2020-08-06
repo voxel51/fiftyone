@@ -9,6 +9,7 @@ from mongoengine import (
     BooleanField,
     StringField,
     EmbeddedDocumentListField,
+    DictField,
 )
 
 import eta.core.utils as etau
@@ -98,3 +99,4 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
+    data = DictField(default={})

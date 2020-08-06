@@ -221,6 +221,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._meta.save()
 
     @property
+    def data(self):
+        return self._meta.data
+
+    @data.setter
+    def data(self, key, value):
+        self._meta.data[key] = value
+        self._meta.save()
+
+    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
