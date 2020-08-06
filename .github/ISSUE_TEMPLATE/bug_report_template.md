@@ -22,7 +22,8 @@ FiftyOne code base?
 ### System information
 
 -   **OS Platform and Distribution (e.g., Linux Ubuntu 16.04)**:
--   **FiftyOne version (run `mlflow --version`)**:
+-   **FiftyOne installed from (source or pip)**:
+-   **FiftyOne version (run `fiftyone --version`)**:
 -   **Python version**:
 -   **Exact command to reproduce**:
 
