@@ -195,7 +195,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.remove_sample(sample_id)
 
     def __getattribute__(self, name):
-        if name in ["name", "deleted", "_name", "_deleted"]:
+        if name.startswith("__") or name in [
+            "name",
+            "deleted",
+            "_name",
+            "_deleted",
+        ]:
             return super().__getattribute__(name)
 
         if getattr(self, "_deleted", False):
