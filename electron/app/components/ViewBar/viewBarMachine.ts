@@ -127,16 +127,19 @@ const viewBarMachine = Machine(
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) =>
-                          Math.min(activeStage + 1, stages.length - 1),
+                          Math.min(
+                            Math.floor(activeStage + 1),
+                            stages.length - 1
+                          ),
                       }),
                       "sendStagesUpdate",
                     ],
                   },
-                  PREV_STAGE: {
+                  PREVIOUS_STAGE: {
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) =>
-                          Math.max(activeStage - 1, 0),
+                          Math.max(Math.ceil(activeStage - 1), 0),
                       }),
                       "sendStagesUpdate",
                     ],

@@ -103,16 +103,20 @@ const ViewBar = () => {
     VIEW_BAR_ADD_STAGE: useCallback(() => send("STAGE.ADD"), []),
   };
 
+  console.log(state.context.activeStage);
+
   return (
     <React.Fragment>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
       <ViewBarDiv
         tabIndex="-1"
-        onBlur={() =>
+        onBlur={(e) => {
           !barRef.current &&
           !barRef.current.contains(document.activeElement) &&
           send("BLUR")
-        }
+            ? null
+            : e.preventDefault();
+        }}
         onFocus={() => send("FOCUS")}
         onMouseEnter={() => send("MOUSEENTER")}
         onMouseLeave={() => send("MOUSELEAVE")}
