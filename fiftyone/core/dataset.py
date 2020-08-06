@@ -660,7 +660,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        if isinstance(dataset_importer, foud.UnlabeledImageDatasetImporter):
+        if isinstance(dataset_importer, foud.GenericSampleDatasetImporter):
+
+            def parse_sample(sample):
+                if tags:
+                    sample.tags.extend(tags)
+
+                return sample
+
+        elif isinstance(dataset_importer, foud.UnlabeledImageDatasetImporter):
 
             def parse_sample(sample):
                 image_path, image_metadata = sample
