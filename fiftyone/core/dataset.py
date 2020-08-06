@@ -220,13 +220,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._meta.persistent = value
         self._meta.save()
 
+    class DataDict(dict):
+        def __init__(self, dataset, d={}):
+            self.dataset = dataset
+            self.update(d)
+
+        def __setitem__(self, key, value):
+            super().__setitem__(key, value)
+            self.dataset._meta.data = self
+            self.dataset._meta.save()
+
+        def update(self, d):
+            super().update(d)
+            self.dataset._meta.data = self
+            self.dataset._meta.save()
+
     @property
     def data(self):
-        return self._meta.data
+        return self.DataDict(self, self._meta.data)
 
     @data.setter
-    def data(self, key, value):
-        self._meta.data[key] = value
+    def data(self, d):
+        self._meta.data = d
         self._meta.save()
 
     @property
