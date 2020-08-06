@@ -1,0 +1,50 @@
+---
+name: Bug Report
+about: Use this template for reporting bugs encountered while using MLflow.
+labels: "bug"
+title: "[BUG]"
+---
+
+**Please fill in this bug report template to ensure a timely and thorough
+response.**
+
+### Willingness to contribute
+
+The FiftyOne Community encourages bug fix contributions. Would you or another
+member of your organization be willing to contribute a fix for this bug to the
+FiftyOne code base?
+
+-   [ ] Yes. I can contribute a fix for this bug independently.
+-   [ ] Yes. I would be willing to contribute a fix for this bug with guidance
+        from the FiftyOne community.
+-   [ ] No. I cannot contribute a bug fix at this time.
+
+### System information
+
+-   **OS Platform and Distribution (e.g., Linux Ubuntu 16.04)**:
+-   **FiftyOne version (run `mlflow --version`)**:
+-   **Python version**:
+-   **Exact command to reproduce**:
+
+### Describe the problem
+
+Describe the problem clearly here. Include descriptions of the expected
+behavior and the actual behavior.
+
+### Code to reproduce issue
+
+Provide a reproducible test case that is the bare minimum necessary to generate
+the problem.
+
+### Other info / logs
+
+Include any logs or source code that would be helpful to diagnose the problem.
+If including tracebacks, please include the full traceback. Large logs and
+files should be attached.
+
+### What areas of FiftyOne does this bug affect?
+
+-   [ ] `App`:
+-   [ ] `Build`: Build and test infrastructure changes
+-   [ ] `Core`: Core `fiftyone` python library changes
+-   [ ] `Documentation`: FiftyOne documentation changes
