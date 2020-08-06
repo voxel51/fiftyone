@@ -34,19 +34,19 @@ below to figure out which option is best for you.
         disk. You can automatically load your data if it is stored in one of
         the following formats:
 
-        - :ref:`ImageDirectory`
-        - :ref:`FiftyOneImageClassificationDataset`
-        - :ref:`ImageClassificationDirectoryTree`
-        - :ref:`TFImageClassificationDataset`
-        - :ref:`FiftyOneImageDetectionDataset`
-        - :ref:`COCODetectionDataset`
-        - :ref:`VOCDetectionDataset`
-        - :ref:`KITTIDetectionDataset`
-        - :ref:`TFObjectDetectionDataset`
-        - :ref:`CVATImageDataset`
-        - :ref:`FiftyOneImageLabelsDataset`
-        - :ref:`BDDDataset`
-        - :ref:`FiftyOneDataset`
+        - :ref:`ImageDirectory-import`
+        - :ref:`FiftyOneImageClassificationDataset-import`
+        - :ref:`ImageClassificationDirectoryTree-import`
+        - :ref:`TFImageClassificationDataset-import`
+        - :ref:`FiftyOneImageDetectionDataset-import`
+        - :ref:`COCODetectionDataset-import`
+        - :ref:`VOCDetectionDataset-import`
+        - :ref:`KITTIDetectionDataset-import`
+        - :ref:`TFObjectDetectionDataset-import`
+        - :ref:`CVATImageDataset-import`
+        - :ref:`FiftyOneImageLabelsDataset-import`
+        - :ref:`BDDDataset-import`
+        - :ref:`FiftyOneDataset-import`
 
         If one of these formats matches your data, you can load it with the
         following code:
