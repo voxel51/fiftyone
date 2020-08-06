@@ -11,11 +11,14 @@ const Body = styled(Box)`
 
   .icon {
     float: right;
+    order: 1;
   }
 `;
 
 type Props = {
   onClick: () => void;
+  icon: ReactNode;
+  children: ReactNode;
 };
 
 const CellHeader = ({ children, icon, onClick, ...props }: Props) => {

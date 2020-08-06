@@ -56,6 +56,7 @@ const Body = styled.div`
 
   && .Mui-disabled {
     cursor: not-allowed;
+    color: ${({ theme }) => theme.fontDarkest};
   }
 `;
 

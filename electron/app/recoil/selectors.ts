@@ -15,6 +15,23 @@ export const numViewStages = selector({
   },
 });
 
+export const datasetName = selector({
+  key: "datasetName",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).dataset.name;
+  },
+});
+
+export const datasetStats = selector({
+  key: "datasetStats",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.derivables
+      ? stateDescription.derivables.dataset_stats
+      : {};
+  },
+});
+
 export const numSamples = selector({
   key: "numSamples",
   get: ({ get }) => {
@@ -51,5 +68,38 @@ export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
     return get(atoms.stateDescription).derivables.dataset_stats.tags || {};
+  },
+});
+
+export const labelNames = selector({
+  key: "labelNames",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    const stats = get(datasetStats);
+    return stateDescription.derivables.labels
+      .map((label) => label._id.field)
+      .filter((name) => stats.custom_fields.hasOwnProperty(name));
+  },
+});
+
+export const labelTypes = selector({
+  key: "labelTypes",
+  get: ({ get }) => {
+    const { labels } = get(atoms.stateDescription).derivables || {};
+    const names = get(labelNames);
+    const types = {};
+    for (const label of labels) {
+      if (names.includes(label._id.field)) {
+        types[label._id.field] = label._id.cls;
+      }
+    }
+    return types;
+  },
+});
+
+export const labelSampleCounts = selector({
+  key: "labelSampleCounts",
+  get: ({ get }) => {
+    return get(datasetStats).custom_fields || {};
   },
 });

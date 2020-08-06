@@ -30,7 +30,13 @@ const Container = styled.div`
   }
 
   ${CellHeader.Body} {
+    display: flex;
+    align-items: center;
     color: ${({ theme }) => theme.fontDark};
+
+    * {
+      display: flex;
+    }
 
     .label {
       text-transform: uppercase;
@@ -39,17 +45,21 @@ const Container = styled.div`
     ${SelectionTag.Body} {
       float: right;
     }
+
+    .push {
+      margin-left: auto;
+    }
+    .icon {
+      margin-left: 2px;
+    }
   }
 
   .left-icon {
     margin-right: 4px;
-    svg {
-      vertical-align: bottom;
-    }
   }
 `;
 
-const Cell = ({ label, icon, entries, onSelect, colorMapping }) => {
+const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
@@ -69,12 +79,14 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping }) => {
       label={
         <>
           {icon ? <span className="left-icon">{icon}</span> : null}
-          <span class="label">{label}</span>
+          <span className="label">{label}</span>
+          <span className="push" />
           {numSelected ? (
             <SelectionTag count={numSelected} onClear={handleClear} />
           ) : null}
         </>
       }
+      title={title}
       expanded={expanded}
       onExpand={setExpanded}
     >
@@ -104,6 +116,8 @@ const DisplayOptionsSidebar = ({
   scalars = [],
   unsupported = [],
   onSelectTag,
+  onSelectLabel,
+  onSelectScalar,
 }: Props) => {
   return (
     <Container>
@@ -119,16 +133,19 @@ const DisplayOptionsSidebar = ({
         label="Labels"
         icon={<Label style={{ transform: "rotate(180deg)" }} />}
         entries={labels}
+        onSelect={onSelectLabel}
       />
       <Cell
         colorMapping={colorMapping}
         label="Scalars"
         icon={<BarChart />}
         entries={scalars}
+        onSelect={onSelectScalar}
       />
       {unsupported.length ? (
         <Cell
           label="Unsupported"
+          title="These fields cannot currently be displayed in the app"
           icon={<Help />}
           colorMapping={{}}
           entries={unsupported.map((entry) => ({

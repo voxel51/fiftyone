@@ -12,7 +12,7 @@ import { VerticalSpacer } from "../components/utils";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { wrapSetWithItemSetter } from "../utils/hooks";
+import { VALID_LABEL_TYPES, VALID_SCALAR_TYPES } from "../utils/labels";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
@@ -39,13 +39,47 @@ const SamplesContainer = (props) => {
 
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const [stuck, setStuck] = useState(false);
+  const datasetName = useRecoilValue(selectors.datasetName);
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
+  const labelNames = useRecoilValue(selectors.labelNames);
+  const labelTypes = useRecoilValue(selectors.labelTypes);
+  const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
+
+  const labelNameGroups = {
+    labels: [],
+    scalars: [],
+    unsupported: [],
+  };
+  for (const name of labelNames) {
+    const type = labelTypes[name];
+    if (VALID_LABEL_TYPES.includes(type)) {
+      labelNameGroups.labels.push(name);
+    } else if (VALID_SCALAR_TYPES.includes(type)) {
+      labelNameGroups.scalars.push(name);
+    } else {
+      labelNameGroups.unsupported.push(name);
+    }
+  }
+
+  const getDisplayOptions = (names, counts, selected) => {
+    return [...names].sort().map((name) => ({
+      name,
+      count: counts[name],
+      selected: Boolean(selected[name]),
+    }));
+  };
+  const handleSetDisplayOption = (selected, setSelected) => (entry) => {
+    setSelected((selected) => ({
+      ...selected,
+      [entry.name]: entry.selected,
+    }));
+  };
 
   let headerHeight = 0;
   if (stickyHeaderRef.current && stickyHeaderRef.current.stickyRect) {
@@ -64,6 +98,7 @@ const SamplesContainer = (props) => {
         <ViewBar />
         <VerticalSpacer opaque height={5} />
         <ImageContainerHeader
+          datasetName={datasetName}
           total={numSamples}
           showSidebar={showSidebar}
           onShowSidebar={setShowSidebar}
@@ -76,19 +111,31 @@ const SamplesContainer = (props) => {
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
                 colorMapping={colorMapping}
-                tags={tagNames.map((n) => ({
-                  name: n,
-                  count: tagSampleCounts[n],
-                  selected: Boolean(activeTags[n]),
-                }))}
-                onSelectTag={(e) =>
-                  setActiveTags((activeTags) => ({
-                    ...activeTags,
-                    [e.name]: e.selected,
-                  }))
-                }
-                labels={[]}
-                scalars={[]}
+                tags={getDisplayOptions(tagNames, tagSampleCounts, activeTags)}
+                labels={getDisplayOptions(
+                  labelNameGroups.labels,
+                  labelSampleCounts,
+                  activeLabels
+                )}
+                onSelectTag={handleSetDisplayOption(activeTags, setActiveTags)}
+                onSelectLabel={handleSetDisplayOption(
+                  activeLabels,
+                  setActiveLabels
+                )}
+                scalars={getDisplayOptions(
+                  labelNameGroups.scalars,
+                  labelSampleCounts,
+                  activeLabels
+                )}
+                onSelectScalar={handleSetDisplayOption(
+                  activeLabels,
+                  setActiveLabels
+                )}
+                unsupported={getDisplayOptions(
+                  labelNameGroups.unsupported,
+                  labelSampleCounts,
+                  activeLabels
+                )}
               />
             </Sticky>
           </Grid.Column>

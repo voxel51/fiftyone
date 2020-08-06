@@ -11,13 +11,17 @@ const Body = styled.div`
   color: white;
   font-size: 14px;
   line-height: 12px;
-  border-radius: 9px;
+  border-radius: 10px;
   font-weight: bold;
   text-align: center;
 `;
 
-const Tag = ({ name, color = "blue" }) => {
-  return <Body fillColor={color}>{name}</Body>;
+const Tag = ({ name, title, color = "blue" }) => {
+  return (
+    <Body title={title} fillColor={color}>
+      {name}
+    </Body>
+  );
 };
 
 Tag.Body = Body;

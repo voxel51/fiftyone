@@ -4,6 +4,7 @@ import styled from "styled-components";
 import DropdownHandle from "./DropdownHandle";
 
 type Props = {
+  datasetName: string;
   total: number;
   showSidebar: boolean;
   onShowSidebar: (show: boolean) => void;
@@ -12,7 +13,7 @@ type Props = {
 const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: 17rem auto auto;
   padding-top: 5px;
   padding-bottom: 5px;
 
@@ -31,6 +32,7 @@ const Wrapper = styled.div`
 `;
 
 const ImageContainerHeader = ({
+  datasetName,
   total = 0,
   showSidebar,
   onShowSidebar,
@@ -38,13 +40,18 @@ const ImageContainerHeader = ({
   return (
     <Wrapper>
       <div>
-        <div>
-          <DropdownHandle
-            label="Display Options"
-            expanded={showSidebar}
-            onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
-          />
-        </div>
+        <DropdownHandle
+          label="Display Options"
+          expanded={showSidebar}
+          onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
+        />
+      </div>
+      <div>
+        {datasetName ? (
+          <div>
+            Dataset: <strong>{datasetName}</strong>
+          </div>
+        ) : null}
       </div>
       <div>
         <div className="total">

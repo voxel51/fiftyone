@@ -33,6 +33,7 @@ const BoxedBody = styled(Box)`
 
 type Props = {
   label: string;
+  title: string;
   expanded: boolean;
   onExpand: (expanded: boolean) => void;
   boxed: boolean;
@@ -41,6 +42,7 @@ type Props = {
 const DropdownCell = ({
   children,
   label,
+  title,
   expanded,
   onExpand,
   boxed = false,
@@ -55,6 +57,7 @@ const DropdownCell = ({
     <Wrapper>
       <Header
         label={label}
+        title={title}
         expanded={expanded}
         onClick={onExpandWrapper}
         icon={PlusMinusButton}

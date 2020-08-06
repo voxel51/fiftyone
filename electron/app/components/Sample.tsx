@@ -8,6 +8,7 @@ import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as selectors from "../recoil/selectors";
+import { VALID_LABEL_TYPES, VALID_SCALAR_TYPES } from "../utils/labels";
 
 const Sample = ({
   displayProps,
@@ -27,9 +28,6 @@ const Sample = ({
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
   const tagNames = useRecoilValue(selectors.tagNames);
 
-  const isFloat = (n) => {
-    return Number(n) === n && n % 1 !== 0;
-  };
   const handleClick = () => {
     const newSelected = { ...selected };
     const event = newSelected[id] ? "remove_selection" : "add_selection";
@@ -42,6 +40,41 @@ const Sample = ({
   const eventHandlers = {
     onClick: () => handleClick(),
     onDoubleClick: () => setView({ visible: true, sample }),
+  };
+  const renderLabel = (name) => {
+    const label = sample[name];
+    if (
+      !activeLabels[name] ||
+      !label ||
+      !label._cls ||
+      !(
+        VALID_LABEL_TYPES.includes(label._cls) ||
+        VALID_SCALAR_TYPES.includes(label._cls)
+      )
+    ) {
+      return null;
+    }
+    let value = undefined;
+    for (const prop of ["label", "value"]) {
+      if (label.hasOwnProperty(prop)) {
+        value = label[prop];
+        break;
+      }
+    }
+    if (value === undefined) {
+      return null;
+    }
+    if (typeof value == "number") {
+      value = Number(value.toFixed(3));
+    }
+    return (
+      <Tag
+        key={"label-" + name}
+        title={name}
+        name={String(value)}
+        color={colorMapping[name]}
+      />
+    );
   };
 
   return (
@@ -60,29 +93,12 @@ const Sample = ({
         {...eventHandlers}
       />
       <div className="sample-info" {...eventHandlers}>
-        {Object.keys(s)
-          .sort()
-          .map((l, i) => {
-            return activeLabels[l] && s[l] && s[l]._cls === "Classification" ? (
-              <Tag key={i} name={String(s[l].label)} color={colors[i]} />
-            ) : null;
-          })}
+        {Object.keys(sample).sort().map(renderLabel)}
         {tagNames.map((t) => {
           return activeTags[t] ? (
             <Tag key={t} name={String(t)} color={colorMapping[t]} />
           ) : null;
         })}
-        {Object.keys(s)
-          .sort()
-          .map((l, i) => {
-            return activeOther[l] && (s[l] || typeof s[l] === "boolean") ? (
-              <Tag
-                key={i}
-                name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
-                color={colors[i]}
-              />
-            ) : null;
-          })}
       </div>
       {selected[id] ? (
         <div
