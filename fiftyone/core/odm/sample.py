@@ -549,7 +549,6 @@ class NoDatasetSampleDocument(SampleDocument):
         self._data = OrderedDict()
 
         for field_name in self.default_fields_ordered:
-
             value = kwargs.pop(field_name, None)
 
             if value is None:
