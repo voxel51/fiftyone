@@ -68,7 +68,7 @@ const SamplesContainer = (props) => {
   }
 
   const getDisplayOptions = (names, counts, selected) => {
-    return names.map((name) => ({
+    return [...names].sort().map((name) => ({
       name,
       count: counts[name],
       selected: Boolean(selected[name]),
