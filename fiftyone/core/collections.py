@@ -87,36 +87,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement summary()")
 
-    def head(self, num_samples=3):
-        """Returns a string representation of the first few samples in the
-        collection.
-
-        If fewer than ``num_samples`` samples are in the collection, only
-        the available samples are returned.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return "\n".join(str(s) for s in self[:num_samples])
-
-    def tail(self, num_samples=3):
-        """Returns a string representation of the last few samples in the
-        collection.
-
-        If fewer than ``num_samples`` samples are in the collection, only
-        the available samples are returned.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return "\n".join(str(s) for s in self[-num_samples:])
-
     def first(self):
         """Returns the first sample in the collection.
 
@@ -143,6 +113,34 @@ class SampleCollection(object):
             ValueError: if the collection is empty
         """
         return self[-1:].first()
+
+    def head(self, num_samples=3):
+        """Returns a list of the first few samples in the collection.
+
+        If fewer than ``num_samples`` samples are in the collection, only
+        the available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        return [s for s in self[:num_samples]]
+
+    def tail(self, num_samples=3):
+        """Returns a list of the last few samples in the collection.
+
+        If fewer than ``num_samples`` samples are in the collection, only
+        the available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        return [s for s in self[-num_samples:]]
 
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.

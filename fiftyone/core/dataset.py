@@ -269,6 +269,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return fos.Sample.from_doc(sample_view._doc)
 
+    def head(self, num_samples=3):
+        """Returns a list of the first few samples in the dataset.
+
+        If fewer than ``num_samples`` samples are in the dataset, only the
+        available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        return [fos.Sample.from_doc(sv._doc) for sv in self[:num_samples]]
+
+    def tail(self, num_samples=3):
+        """Returns a list of the last few samples in the dataset.
+
+        If fewer than ``num_samples`` samples are in the dataset, only the
+        available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        return [fos.Sample.from_doc(sv._doc) for sv in self[-num_samples:]]
+
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
         entire dataset.
