@@ -160,6 +160,7 @@ const viewBarMachine = Machine(
       "STAGE.ADD": {
         actions: [
           assign({
+            activeStage: (_, { index }) => index,
             stages: (ctx, e) => {
               const newStage = createStage(
                 "",
@@ -167,7 +168,7 @@ const viewBarMachine = Machine(
                 ctx.stageInfo,
                 true,
                 ctx.stages.length + 1,
-                false
+                true
               );
               return [
                 ...ctx.stages.slice(0, e.index),
@@ -179,7 +180,7 @@ const viewBarMachine = Machine(
               ].map((stage, index) => ({
                 ...stage,
                 index,
-                active: index === ctx.activeStage,
+                active: index === e.index,
                 length: ctx.stages.length + 1,
               }));
             },

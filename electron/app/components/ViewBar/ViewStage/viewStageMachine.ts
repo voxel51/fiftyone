@@ -90,7 +90,7 @@ const viewStageMachine = Machine(
           waiting: {
             on: {
               FOCUS: {
-                target: "editing",
+                target: "decide",
                 actions: assign({
                   inputRef: (_, { inputRef }) => inputRef,
                 }),
@@ -291,17 +291,21 @@ const viewStageMachine = Machine(
         },
       },
       focusedViewBar: {
-        initial: "no",
+        initial: "decide",
         states: {
+          decide: {
+            always: [
+              { target: "yes", cond: (ctx) => ctx.focusOnInit },
+              { target: "no" },
+            ],
+          },
           yes: {},
           no: {},
         },
       },
     },
     on: {
-      BAR_FOCUS: {
-        target: "focusedViewBar.yes",
-      },
+      BAR_FOCUS: "focusedViewBar.yes",
       BAR_BLUR: "focusedViewBar.no",
       UPDATE_DELIBLE: "delible",
       "STAGE.UPDATE": {
@@ -310,6 +314,7 @@ const viewStageMachine = Machine(
           assign({
             index: (_, { index }) => index,
             length: (_, { length }) => length,
+            active: (_, { active }) => active,
           }),
         ],
       },
@@ -362,7 +367,8 @@ const viewStageMachine = Machine(
                   0
                 ) === 0,
               actions: assign({
-                submitted: () => true,
+                submitted: true,
+                focusOnInit: false,
               }),
             },
           ]),

@@ -156,7 +156,6 @@ const ViewStage = React.memo(({ stageRef }) => {
       opacity: 0,
     },
   });
-  console.log(stageRef);
 
   const actionsMap = useMemo(
     () => ({
@@ -168,7 +167,6 @@ const ViewStage = React.memo(({ stageRef }) => {
 
   useEffect(() => {
     const listener = (state) => {
-      console.log(state.actions);
       state.actions.forEach((action) => {
         if (action.type in actionsMap) actionsMap[action.type]();
       });

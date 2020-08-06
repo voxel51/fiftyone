@@ -128,13 +128,16 @@ export default Machine(
                 assign({
                   submitted: true,
                   value: ({ type, value }) =>
-                    type.split("|").reduce((acc, t) => {
-                      const parser = PARSER[Array.isArray(t) ? t[0] : t];
-                      const next = Array.isArray(t) ? t[1] : undefined;
-                      return parser.validate(value, next)
-                        ? parser.parse(value, next)
-                        : acc;
-                    }, undefined),
+                    (Array.isArray(type) ? [type[0]] : type.split("|")).reduce(
+                      (acc, t) => {
+                        const parser = PARSER[t];
+                        const next = Array.isArray(type) ? type[1] : undefined;
+                        return parser.validate(value, next)
+                          ? parser.parse(value, next)
+                          : acc;
+                      },
+                      undefined
+                    ),
                 }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
@@ -142,14 +145,12 @@ export default Machine(
                 })),
               ],
               cond: ({ type, value }) =>
-                type
-                  .split("|")
-                  .some((t) =>
-                    PARSER[Array.isArray(t) ? t[0] : t].validate(
-                      value,
-                      Array.isArray(t) ? t[1] : undefined
-                    )
-                  ),
+                (Array.isArray(type) ? [type[0]] : type.split("|")).some((t) =>
+                  PARSER[t].validate(
+                    value,
+                    Array.isArray(type) ? type[1] : undefined
+                  )
+                ),
             },
             {
               target: "decide",
