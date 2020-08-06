@@ -19,9 +19,9 @@ if this PR is part of a larger change.)
 
 ### What areas of FiftyOne does this PR affect?
 
--   [ ] `App`:
+-   [ ] `App`: FiftyOne application changes
 -   [ ] `Build`: Build and test infrastructure changes
--   [ ] `Core`: Core `fiftyone` python library changes
+-   [ ] `Core`: Core `fiftyone` Python library changes
 -   [ ] `Documentation`: FiftyOne documentation changes
 -   [ ] `Other`
 
