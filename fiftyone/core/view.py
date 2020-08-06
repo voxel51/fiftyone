@@ -83,6 +83,11 @@ class DatasetView(foc.SampleCollection):
         return view
 
     @property
+    def name(self):
+        """The name of the underlying dataset."""
+        return self._dataset.name
+
+    @property
     def stages(self):
         """The list of :class:`fiftyone.core.stages.ViewStage` instances in
         this view's pipeline.
@@ -95,7 +100,8 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        fields_str = self._dataset._get_fields_str()
+        field_schema = self.get_field_schema()
+        fields_str = self._dataset._to_fields_str(field_schema)
 
         if self._stages:
             pipeline_str = "    " + "\n    ".join(
@@ -109,7 +115,7 @@ class DatasetView(foc.SampleCollection):
 
         return "\n".join(
             [
-                "Dataset:        %s" % self._dataset.name,
+                "Dataset:        %s" % self.name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
@@ -158,9 +164,26 @@ class DatasetView(foc.SampleCollection):
         Returns:
              a dictionary mapping field names to field types
         """
-        return self._dataset.get_field_schema(
+        field_schema = self._dataset.get_field_schema(
             ftype=ftype, embedded_doc_type=embedded_doc_type
         )
+
+        selected_fields, excluded_fields = self._get_selected_excluded_fields()
+        if selected_fields is not None:
+            field_schema = {
+                fn: f
+                for fn, f in field_schema.items()
+                if fn in selected_fields
+            }
+
+        if excluded_fields is not None:
+            field_schema = {
+                fn: f
+                for fn, f in field_schema.items()
+                if fn not in excluded_fields
+            }
+
+        return field_schema
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the view.
@@ -218,22 +241,6 @@ class DatasetView(foc.SampleCollection):
             "dataset": self._dataset.serialize(),
             "view": json_util.dumps([s._serialize() for s in self._stages]),
         }
-
-    def to_dict(self):
-        """Returns a JSON dictionary representation of the view.
-
-        Returns:
-            a JSON dict
-        """
-        d = {
-            "name": self._dataset.name,
-            "num_samples": len(self),
-            "tags": self.get_tags(),
-            "sample_fields": self._dataset._get_fields_dict(),
-            "pipeline_stages": [str(d) for d in self._stages],
-        }
-        d.update(super().to_dict())
-        return d
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:
