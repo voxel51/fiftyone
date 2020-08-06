@@ -11,7 +11,7 @@ const Body = styled.div`
   color: white;
   font-size: 14px;
   line-height: 12px;
-  border-radius: 9px;
+  border-radius: 10px;
   font-weight: bold;
   text-align: center;
 `;

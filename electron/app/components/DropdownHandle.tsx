@@ -9,6 +9,7 @@ const Body = styled(CellHeader)`
 
   svg {
     font-size: 1.25em;
+    vertical-align: middle;
   }
 `;
 

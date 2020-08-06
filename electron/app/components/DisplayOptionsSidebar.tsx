@@ -43,9 +43,6 @@ const Container = styled.div`
 
   .left-icon {
     margin-right: 4px;
-    svg {
-      vertical-align: bottom;
-    }
   }
 `;
 
