@@ -243,8 +243,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def head(self, num_samples=3):
-        """Returns a string representation of the first few samples in the
-        collection.
+        """Returns a list of the first few samples in the collection.
 
         If fewer than ``num_samples`` samples are in the collection, only
         the available samples are returned.
@@ -253,14 +252,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             num_samples (3): the number of samples
 
         Returns:
-            a string representation of the samples
+            a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        samples = [fos.Sample.from_doc(sv._doc) for sv in self[:num_samples]]
-        return "\n".join(str(s) for s in samples)
+        return [fos.Sample.from_doc(sv._doc) for sv in self[:num_samples]]
 
     def tail(self, num_samples=3):
-        """Returns a string representation of the last few samples in the
-        collection.
+        """Returns a list of the last few samples in the collection.
 
         If fewer than ``num_samples`` samples are in the collection, only
         the available samples are returned.
@@ -269,10 +266,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             num_samples (3): the number of samples
 
         Returns:
-            a string representation of the samples
+            a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        samples = [fos.Sample.from_doc(sv._doc) for sv in self[-num_samples:]]
-        return "\n".join(str(s) for s in samples)
+        return [fos.Sample.from_doc(sv._doc) for sv in self[-num_samples:]]
 
     def first(self):
         """Returns the first sample in the dataset.

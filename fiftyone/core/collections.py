@@ -88,8 +88,7 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement summary()")
 
     def head(self, num_samples=3):
-        """Returns a string representation of the first few samples in the
-        collection.
+        """Returns a list of the first few samples in the collection.
 
         If fewer than ``num_samples`` samples are in the collection, only
         the available samples are returned.
@@ -98,13 +97,12 @@ class SampleCollection(object):
             num_samples (3): the number of samples
 
         Returns:
-            a string representation of the samples
+            a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return "\n".join(str(s) for s in self[:num_samples])
+        return [s for s in self[:num_samples]]
 
     def tail(self, num_samples=3):
-        """Returns a string representation of the last few samples in the
-        collection.
+        """Returns a list of the last few samples in the collection.
 
         If fewer than ``num_samples`` samples are in the collection, only
         the available samples are returned.
@@ -113,9 +111,9 @@ class SampleCollection(object):
             num_samples (3): the number of samples
 
         Returns:
-            a string representation of the samples
+            a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return "\n".join(str(s) for s in self[-num_samples:])
+        return [s for s in self[-num_samples:]]
 
     def first(self):
         """Returns the first sample in the collection.
