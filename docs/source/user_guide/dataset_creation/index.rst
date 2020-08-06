@@ -46,6 +46,7 @@ below to figure out which option is best for you.
         - :ref:`CVATImageDataset`
         - :ref:`FiftyOneImageLabelsDataset`
         - :ref:`BDDDataset`
+        - :ref:`FiftyOneDataset`
 
         If one of these formats matches your data, you can load it with the
         following code:
