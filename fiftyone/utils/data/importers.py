@@ -13,6 +13,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
+import fiftyone.core.sample as fos
 import fiftyone.core.metadata as fom
 
 from .parsers import (
@@ -88,6 +89,38 @@ class DatasetImporter(object):
             *args: the arguments to :func:`DatasetImporter.__exit__`
         """
         pass
+
+
+class GenericSampleDatasetImporter(DatasetImporter):
+    """Interface for importing datasets that contain arbitrary
+    :class:`fiftyone.core.sample.Sample` instances.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset(...)
+
+        importer = GenericSampleDatasetImporter(dataset_dir, ...)
+        with importer:
+            for sample in importer:
+                dataset.add_sample(sample)
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    def __next__(self):
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample` instance
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
 
 
 class UnlabeledImageDatasetImporter(DatasetImporter):
@@ -197,6 +230,49 @@ class LabeledImageDatasetImporter(DatasetImporter):
         importer.
         """
         raise NotImplementedError("subclass must implement label_cls")
+
+
+class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
+    """Importer for FiftyOne datasets stored on disk in serialized format.
+
+    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
+    details.
+
+    Args:
+        dataset_dir: the dataset directory
+    """
+
+    def __init__(self, dataset_dir):
+        super().__init__(dataset_dir)
+        self._samples = None
+        self._iter_samples = None
+
+    def __iter__(self):
+        self._iter_samples = iter(self._samples)
+        return self
+
+    def __len__(self):
+        return len(self._samples)
+
+    def __next__(self):
+        """Returns the next sample in the dataset.
+
+        Returns:
+            a :class:`fiftyone.core.sample.Sample`
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        d = next(self._iter_samples)
+
+        # Convert filepath to absolute path
+        d["filepath"] = os.path.join(self.dataset_dir, d["filepath"])
+
+        return fos.Sample.from_dict(d)
+
+    def setup(self):
+        samples_path = os.path.join(self.dataset_dir, "samples.json")
+        self._samples = etas.load_json(samples_path).get("samples", [])
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
