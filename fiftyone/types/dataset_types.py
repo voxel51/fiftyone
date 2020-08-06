@@ -804,10 +804,9 @@ class BDDDataset(ImageLabelsDataset):
 
 
 class FiftyOneDataset(Dataset):
-    """A disk representation of a :class:`fiftyone.core.dataset.Dataset` that
-    consists of raw data samples and their associated
-    :class:`fiftyone.core.sample.Sample` instances stored in a serialized JSON
-    format.
+    """A disk representation of a :class:`fiftyone.core.dataset.Dataset`,
+    including its :class:`fiftyone.core.sample.Sample` instances stored in a
+    serialized JSON format, and the associated source data.
 
     Datasets of this type are read/written in the following format::
 
