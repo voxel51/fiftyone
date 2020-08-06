@@ -560,7 +560,7 @@ class SampleCollection(object):
                 ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
-                then absolute, paths to the data within that directory
+                than absolute, paths to the data within that directory
 
         Returns:
             a JSON dict
@@ -607,7 +607,7 @@ class SampleCollection(object):
                 ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
-                then absolute, paths to the data within that directory
+                than absolute, paths to the data within that directory
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
 
@@ -629,7 +629,7 @@ class SampleCollection(object):
                 ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
-                then absolute, paths to the data within that directory
+                than absolute, paths to the data within that directory
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
         """
