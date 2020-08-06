@@ -251,6 +251,7 @@ def test_generic_sample_dataset(basedir, img):
     images_dir = os.path.join(basedir, "source-images1")
     dataset = make_classification_dataset(img, images_dir)
 
+    # FiftyOneDataset
     export_dir = os.path.join(basedir, "fo-dataset1")
     dataset_type = fo.types.FiftyOneDataset
     dataset.export(export_dir, dataset_type=dataset_type)
@@ -263,6 +264,7 @@ def test_generic_sample_dataset(basedir, img):
     images_dir = os.path.join(basedir, "source-images2")
     dataset = make_detection_dataset(img, images_dir)
 
+    # FiftyOneDataset
     export_dir = os.path.join(basedir, "fo-dataset2")
     dataset_type = fo.types.FiftyOneDataset
     dataset.export(export_dir, dataset_type=dataset_type)
@@ -275,11 +277,34 @@ def test_generic_sample_dataset(basedir, img):
     images_dir = os.path.join(basedir, "source-images3")
     dataset = make_image_labels_dataset(img, images_dir)
 
+    # FiftyOneDataset
     export_dir = os.path.join(basedir, "fo-dataset3")
     dataset_type = fo.types.FiftyOneDataset
     dataset.export(export_dir, dataset_type=dataset_type)
     dataset2 = fod.Dataset.from_dir(export_dir, dataset_type)
 
 
+def test_rel_filepaths(basedir, img):
+    # Create a classification dataset
+    images_dir = os.path.join(basedir, "source-images")
+    dataset = make_classification_dataset(img, images_dir)
+
+    # Test `Dataset.to_dict` with and without relative paths
+    rel_dir = basedir
+    d_abs = dataset.to_dict()
+    d_rel = dataset.to_dict(rel_dir=rel_dir)
+    for sd_abs, sd_rel in zip(d_abs["samples"], d_rel["samples"]):
+        assert sd_abs["filepath"] == os.path.join(rel_dir, sd_rel["filepath"])
+
+    # Test `Dataset.from_dict` with and without relative paths
+    dataset1 = fo.Dataset.from_dict(d_abs, name=fod.get_default_dataset_name())
+    dataset2 = fo.Dataset.from_dict(
+        d_rel, name=fod.get_default_dataset_name(), rel_dir=rel_dir
+    )
+    for s_abs, s_rel in zip(dataset1, dataset2):
+        assert s_abs.filepath == s_rel.filepath
+
+
 if __name__ == "__main__":
+    fo.config.show_progress_bars = False
     pytest.main([__file__])
