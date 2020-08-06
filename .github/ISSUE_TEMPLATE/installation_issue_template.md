@@ -23,8 +23,8 @@ thorough response.**
 
 ### Commands to reproduce
 
-As thoroughly as possible, please provide Python and/or shell commands used to
-encounter the issue.
+As thoroughly as possible, please provide the Python and/or shell commands used
+to encounter the issue.
 
 ```
 # commands here
