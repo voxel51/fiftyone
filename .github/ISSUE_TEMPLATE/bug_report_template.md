@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Use this template for reporting bugs encountered while using MLflow.
+about: Use this template for reporting bugs encountered while using FiftyOne.
 labels: "bug"
 title: "[BUG]"
 ---
@@ -44,7 +44,5 @@ files should be attached.
 
 ### What areas of FiftyOne does this bug affect?
 
--   [ ] `App`:
--   [ ] `Build`: Build and test infrastructure changes
--   [ ] `Core`: Core `fiftyone` python library changes
--   [ ] `Documentation`: FiftyOne documentation changes
+-   [ ] `App`: FiftyOne application issue
+-   [ ] `Core`: Core `fiftyone` python library issue
