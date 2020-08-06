@@ -231,6 +231,27 @@ class DatasetView(foc.SampleCollection):
 
         return self._dataset.aggregate(_pipeline)
 
+    def to_dict(self, rel_dir=None):
+        """Returns a JSON dictionary representation of the view.
+
+        Args:
+            rel_dir (None): a relative directory to remove from the
+                ``filepath`` of each sample, if possible. The path is converted
+                to an absolute path (if necessary) via
+                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
+                than absolute, paths to the data within that directory
+
+        Returns:
+            a JSON dict
+        """
+        d = super().to_dict(rel_dir=rel_dir)
+        samples = d.pop("samples")  # hack so that `samples` is last in JSON
+        d["stages"] = [s._serialize() for s in self._stages]
+        d["samples"] = samples
+        return d
+
     def serialize(self):
         """Serializes the view.
 
