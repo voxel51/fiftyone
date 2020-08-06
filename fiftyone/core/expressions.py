@@ -463,6 +463,45 @@ class ViewExpression(object):
             {"$filter": {"input": self, "cond": expr.to_mongo(in_list=True)}}
         )
 
+    # String expression operators #############################################
+
+    def re_match(self, regex, options=None):
+        """Performs a regular expression pattern match on the expression, which
+        must resolve to a string.
+
+        The output of the expression will be ``True`` if the pattern matches
+        and ``False`` otherwise.
+
+        Examples::
+
+            # Match fields that end in ".jpg"
+            expr.re_match("\.jpg$")
+
+            # Match PNG images in "/my/dir"
+            expr.re_match("/my/dir/.*\.png")
+
+        Args:
+            regex: the regular expression to apply. Must be a Perl Compatible
+                Regular Expression (PCRE). See
+                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-regex>`_
+                for  details
+            options (None): an optional string of regex options to apply. See
+                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-options>`_
+                for the available options
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {
+                "$regexMatch": {
+                    "input": self,
+                    "regex": regex,
+                    "options": options,
+                }
+            }
+        )
+
     # Private methods #########################################################
 
     @staticmethod

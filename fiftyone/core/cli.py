@@ -406,7 +406,8 @@ class DatasetsHeadCommand(Command):
         num_samples = args.num_samples
 
         dataset = fod.load_dataset(name)
-        print(dataset.head(num_samples=num_samples))
+        for sample in dataset.head(num_samples=num_samples):
+            print(sample)
 
 
 class DatasetsTailCommand(Command):
@@ -441,7 +442,8 @@ class DatasetsTailCommand(Command):
         num_samples = args.num_samples
 
         dataset = fod.load_dataset(name)
-        print(dataset.tail(num_samples=num_samples))
+        for sample in dataset.tail(num_samples=num_samples):
+            print(sample)
 
 
 class DatasetsStreamCommand(Command):

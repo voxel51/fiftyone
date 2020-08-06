@@ -77,7 +77,11 @@ def write_dataset(
         except:
             pass
 
-    if isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
+    raw_samples = False
+    labeled_images = False
+    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+        raw_samples = True
+    elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
         labeled_images = False
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
         labeled_images = True
@@ -89,6 +93,12 @@ def write_dataset(
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
             for sample in pb(samples):
+                # GenericSampleDatasetExporter
+                if raw_samples:
+                    dataset_exporter.export_sample(sample)
+                    continue
+
+                # UnlabeledImageDatasetExporter and LabeledImageDatasetExporter
                 sample_parser.with_sample(sample)
 
                 if sample_parser.has_image_path:
@@ -170,7 +180,9 @@ def export_samples(
         dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
         dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
 
-    if isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
+    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+        sample_parser = None
+    elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
         sample_parser = FiftyOneUnlabeledImageSampleParser(
             compute_metadata=True
         )
@@ -281,6 +293,34 @@ class ExportsImages(object):
         return out_image_path
 
 
+class GenericSampleDatasetExporter(DatasetExporter):
+    """Interface for exporting datasets of arbitrary
+    :class:`fiftyone.core.sample.Sample` instances.
+
+    Example Usage::
+
+        import fiftyone as fo
+
+        samples = ...  # Dataset, DatasetView, etc
+
+        exporter = GenericSampleDatasetExporter(export_dir, ...)
+        with exporter:
+            for sample in samples:
+                exporter.export_sample(sample)
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def export_sample(self, sample):
+        """Exports the given sample to the dataset.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
 class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of unlabeled image samples.
 
@@ -290,7 +330,7 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         samples = ...  # Dataset, DatasetView, etc
 
-        exporter = UnlabeledImageDatasetExporter(dataset_dir, ...)
+        exporter = UnlabeledImageDatasetExporter(export_dir, ...)
         with exporter:
             for sample in samples:
                 image_path = sample.filepath
@@ -336,7 +376,7 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         samples = ...  # Dataset, DatasetView, etc
         label_field = ...
 
-        exporter = LabeledImageDatasetExporter(dataset_dir, ...)
+        exporter = LabeledImageDatasetExporter(export_dir, ...)
         with exporter:
             for sample in samples:
                 image_path = sample.filepath
@@ -379,6 +419,51 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
                 :meth:`requires_image_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
+
+
+class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
+    """Exporter that writes a FiftyOne dataset to disk along with its source
+    data in a serialized JSON format.
+
+    See :class:`fiftyone.types.dataset_types.FiftyOneDataset` for format
+    details.
+
+    Args:
+        export_dir: the directory to write the export
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
+    """
+
+    def __init__(self, export_dir, pretty_print=False):
+        export_dir = os.path.abspath(os.path.expanduser(export_dir))
+        super().__init__(export_dir)
+        self.pretty_print = pretty_print
+        self._data_dir = None
+        self._samples_path = None
+        self._samples = None
+        self._filename_maker = None
+
+    def export_sample(self, sample):
+        out_filepath = self._filename_maker.get_output_path(sample.filepath)
+        etau.copy_file(sample.filepath, out_filepath)
+
+        d = sample.to_dict()
+        d["filepath"] = os.path.relpath(out_filepath, self.export_dir)
+        self._samples.append(d)
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._samples_path = os.path.join(self.export_dir, "samples.json")
+        self._samples = []
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir
+        )
+
+    def close(self, *args):
+        samples = {"samples": self._samples}
+        etas.write_json(
+            samples, self._samples_path, pretty_print=self.pretty_print
+        )
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
@@ -438,15 +523,20 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
     """
 
-    def __init__(self, export_dir, classes=None, image_format=None):
+    def __init__(
+        self, export_dir, classes=None, image_format=None, pretty_print=False
+    ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
         self.classes = classes
         self.image_format = image_format
+        self.pretty_print = pretty_print
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
@@ -485,7 +575,9 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
             "classes": self.classes,
             "labels": self._labels_dict,
         }
-        etas.write_json(labels, self._labels_path)
+        etas.write_json(
+            labels, self._labels_path, pretty_print=self.pretty_print
+        )
 
 
 class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
@@ -581,15 +673,20 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
     """
 
-    def __init__(self, export_dir, classes=None, image_format=None):
+    def __init__(
+        self, export_dir, classes=None, image_format=None, pretty_print=False
+    ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
         self.classes = classes
         self.image_format = image_format
+        self.pretty_print = pretty_print
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
@@ -628,7 +725,9 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
             "classes": self.classes,
             "labels": self._labels_dict,
         }
-        etas.write_json(labels, self._labels_path)
+        etas.write_json(
+            labels, self._labels_path, pretty_print=self.pretty_print
+        )
 
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
@@ -648,14 +747,17 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
     """
 
-    def __init__(self, export_dir, image_format=None):
+    def __init__(self, export_dir, image_format=None, pretty_print=False):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
         self.image_format = image_format
+        self.pretty_print = pretty_print
         self._labeled_dataset = None
         self._data_dir = None
         self._labels_dir = None
@@ -701,7 +803,9 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             image_labels_path = os.path.join(
                 self._labels_dir, new_labels_filename
             )
-            _image_labels.write_json(image_labels_path)
+            _image_labels.write_json(
+                image_labels_path, pretty_print=self.pretty_print
+            )
 
             self._labeled_dataset.add_file(
                 image_path,
