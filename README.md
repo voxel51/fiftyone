@@ -1,8 +1,6 @@
 # FiftyOne
 
-Project FiftyOne.
-
-<img src="https://user-images.githubusercontent.com/3719547/74191434-8fe4f500-4c21-11ea-8d73-555edfce0854.png" alt="voxel51-logo.png" width="40%"/>
+<img src="https://user-images.githubusercontent.com/25985824/89583450-5b38ab80-d808-11ea-909e-4fa8bc366d7f.png" alt="FiftyOne"/>
 
 ## Installation
 
