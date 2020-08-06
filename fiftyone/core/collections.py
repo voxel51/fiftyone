@@ -674,9 +674,6 @@ def _get_default_dataset_type(sample_collection, label_field):
 
 
 def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
-    if isinstance(dataset_exporter, foud.UnlabeledImageDatasetExporter):
-        return None
-
     if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
         label_cls = dataset_exporter.label_cls
         label_fields = sample_collection.get_field_schema(
@@ -690,4 +687,4 @@ def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
             "No compatible label field of type %s found" % label_cls
         )
 
-    raise ValueError("Unsupported dataset exporter type %s" % dataset_exporter)
+    return None
