@@ -1,29 +1,20 @@
 import React, { useState } from "react";
 import { Switch, Route } from "react-router-dom";
-import { useRecoilState } from "recoil";
-import { Dimmer, Loader } from "semantic-ui-react";
+import { useRecoilValue } from "recoil";
 
 import routes from "./constants/routes.json";
 import App from "./containers/App";
 import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
-import randomColor from "randomcolor";
-import { getSocket, useSubscribe } from "./utils/socket";
 import connect from "./utils/connect";
 import * as atoms from "./recoil/atoms";
-
-const colors = randomColor({ count: 100, luminosity: "dark" });
 
 function Routes({ port }) {
   const [activeTags, setActiveTags] = useState({});
   const [activeLabels, setActiveLabels] = useState({});
   const [activeOther, setActiveOther] = useState({});
-  const [labelData, setLabelData] = useRecoilState(atoms.labelData);
-  const [needsLoad, setNeedsLoad] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [colorMap, setColorMap] = useState({});
-  const socket = getSocket(port, "state");
+  const colors = useRecoilValue(atoms.colors);
   const appProps = {
     activeTags,
     setActiveTags,
@@ -32,7 +23,6 @@ function Routes({ port }) {
     setActiveOther,
     activeOther,
     colors,
-    labelData,
   };
   const datasetProps = {
     activeTags,
@@ -42,53 +32,11 @@ function Routes({ port }) {
     setActiveLabels,
     setActiveOther,
     colors,
-    labelData,
   };
   const dataset = (props) => {
     return <Dataset {...props} displayProps={datasetProps} />;
   };
-  const loadData = () => {
-    setNeedsLoad(false);
-    setLoading(true);
-    socket.emit("get_label_data", "", (data) => {
-      const mapping = {};
-      const sortFn = (a, b) => (a._id.field > b._id.field ? 1 : -1);
-      const labelKeys = data.labels ? data.labels.sort(sortFn) : [];
-      for (const i in labelKeys) {
-        mapping[labelKeys[i]._id.field] = Number(i);
-      }
-      if (data.tags) {
-        for (const i in data.tags.sort()) {
-          mapping[data.tags[i]] = data.labels.length + Number(i);
-        }
-      }
-      const colorMapping = {};
-      for (const [k, v] of Object.entries(mapping)) {
-        colorMapping[k] = colors[v];
-      }
-      setLabelData({
-        tags: data.tags,
-        labels: data.labels,
-        mapping,
-        colorMapping,
-      });
-      setLoading(false);
-    });
-  };
 
-  useSubscribe(socket, "update", () => {
-    setLoading(true);
-    loadData();
-  });
-
-  if (needsLoad) {
-    loadData();
-    return (
-      <Dimmer active>
-        <Loader>Loading</Loader>
-      </Dimmer>
-    );
-  }
   return (
     <App displayProps={appProps} colors={colors}>
       <Switch>

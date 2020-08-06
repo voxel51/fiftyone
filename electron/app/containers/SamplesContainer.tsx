@@ -6,7 +6,6 @@ import { Grid, Sticky } from "semantic-ui-react";
 
 import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
 import ImageContainerHeader from "../components/ImageContainerHeader";
-import SidebarContainer from "../components/SidebarContainer";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { VerticalSpacer } from "../components/utils";
@@ -38,11 +37,12 @@ const SamplesContainer = (props) => {
     labelData,
   } = props.displayProps;
 
-  const [showSidebar, setShowSidebar] = useState(false);
+  const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const [stuck, setStuck] = useState(false);
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
+  const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -75,14 +75,17 @@ const SamplesContainer = (props) => {
           <Grid.Column className="sidebar-column">
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
-                colorMapping={labelData.colorMapping}
+                colorMapping={colorMapping}
                 tags={tagNames.map((n) => ({
                   name: n,
                   count: tagSampleCounts[n],
                   selected: Boolean(activeTags[n]),
                 }))}
                 onSelectTag={(e) =>
-                  setActiveTags({ ...activeTags, [e.name]: e.selected })
+                  setActiveTags((activeTags) => ({
+                    ...activeTags,
+                    [e.name]: e.selected,
+                  }))
                 }
                 labels={[]}
                 scalars={[]}

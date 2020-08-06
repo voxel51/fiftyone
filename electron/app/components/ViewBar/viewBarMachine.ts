@@ -20,6 +20,7 @@ export const createStage = (
   focusOnInit,
   length,
   active,
+  inputRef: {},
 });
 
 export const createBar = (port) => ({

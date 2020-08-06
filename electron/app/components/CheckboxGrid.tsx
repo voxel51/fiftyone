@@ -18,6 +18,25 @@ const Body = styled.div`
 
     .MuiCheckbox-root {
       padding: 3px;
+
+      .MuiIconButton-label {
+        position: relative;
+        svg {
+          z-index: 1;
+        }
+      }
+
+      &.Mui-checked .MuiIconButton-label::after {
+          content: "";
+          position: absolute;
+          background: ${({ theme }) => theme.font};
+          top: 0.2em;
+          left: 0.2em;
+          width: 0.6em;
+          height: 0.6em;
+          z-index: 0;
+        }
+      }
     }
 
     .MuiFormControlLabel-label {
@@ -29,6 +48,14 @@ const Body = styled.div`
         float: right;
       }
     }
+
+    .MuiFormControlLabel-label {
+      color: unset;
+    }
+  }
+
+  && .Mui-disabled {
+    cursor: not-allowed;
   }
 `;
 
@@ -37,6 +64,7 @@ export type Entry = {
   selected: boolean;
   data: Any;
   color: string;
+  disabled: boolean;
 };
 
 type Props = {
@@ -58,6 +86,7 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
       {entries.map((entry) => (
         <div key={entry.name}>
           <FormControlLabel
+            disabled={entry.disabled}
             label={
               <>
                 <span className="name">{entry.name}</span>
@@ -68,14 +97,22 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
               backgroundColor: entry.selected
                 ? theme.backgroundLight
                 : undefined,
-              color: entry.selected ? theme.font : theme.fontDark,
+              color: entry.selected
+                ? theme.font
+                : entry.disabled
+                ? theme.fontDarkest
+                : theme.fontDark,
             }}
             control={
               <Checkbox
                 checked={entry.selected}
                 onChange={() => handleCheck(entry)}
                 style={{
-                  color: entry.selected ? entry.color : theme.fontDark,
+                  color: entry.selected
+                    ? entry.color
+                    : entry.disabled
+                    ? theme.fontDarkest
+                    : theme.fontDark,
                 }}
               />
             }

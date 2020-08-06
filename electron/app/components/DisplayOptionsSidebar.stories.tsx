@@ -33,3 +33,13 @@ export const standard = () => <DisplayOptionsSidebar {...data} />;
 export const empty = () => (
   <DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />
 );
+
+export const unsupported = () => (
+  <DisplayOptionsSidebar
+    {...data}
+    unsupported={[
+      { name: "Array thing", count: 20 },
+      { name: "Dict thing", count: 3000 },
+    ]}
+  />
+);

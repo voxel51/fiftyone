@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Menu } from "semantic-ui-react";
+import React from "react";
+import { useRecoilValue } from "recoil";
 
 import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
@@ -7,6 +7,7 @@ import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
+import * as selectors from "../recoil/selectors";
 
 const Sample = ({
   displayProps,
@@ -22,13 +23,9 @@ const Sample = ({
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
   const s = sample;
-  const {
-    activeLabels,
-    activeTags,
-    activeOther,
-    colors,
-    labelData,
-  } = displayProps;
+  const { activeLabels, activeTags, activeOther, colors } = displayProps;
+  const colorMapping = useRecoilValue(selectors.labelColorMapping);
+  const tagNames = useRecoilValue(selectors.tagNames);
 
   const isFloat = (n) => {
     return Number(n) === n && n % 1 !== 0;
@@ -42,6 +39,11 @@ const Sample = ({
       dispatch(updateState(data));
     });
   };
+  const eventHandlers = {
+    onClick: () => handleClick(),
+    onDoubleClick: () => setView({ visible: true, sample }),
+  };
+
   return (
     <div className="sample">
       <Player51
@@ -53,12 +55,11 @@ const Sample = ({
         }}
         colors={colors}
         sample={sample}
-        onClick={() => handleClick()}
-        onDoubleClick={() => setView({ visible: true, sample })}
         thumbnail={true}
         activeLabels={activeLabels}
+        {...eventHandlers}
       />
-      <div className="sample-info">
+      <div className="sample-info" {...eventHandlers}>
         {Object.keys(s)
           .sort()
           .map((l, i) => {
@@ -66,9 +67,9 @@ const Sample = ({
               <Tag key={i} name={String(s[l].label)} color={colors[i]} />
             ) : null;
           })}
-        {s.tags.map((t, i) => {
+        {tagNames.map((t) => {
           return activeTags[t] ? (
-            <Tag key={i} name={String(t)} color={labelData.colorMapping[t]} />
+            <Tag key={t} name={String(t)} color={colorMapping[t]} />
           ) : null;
         })}
         {Object.keys(s)

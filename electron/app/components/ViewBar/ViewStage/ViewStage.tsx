@@ -156,17 +156,19 @@ const ViewStage = React.memo(({ stageRef }) => {
       opacity: 0,
     },
   });
+  console.log(stageRef);
 
   const actionsMap = useMemo(
     () => ({
       focusInput: () => inputRef.current && inputRef.current.select(),
       blurInput: () => inputRef.current && inputRef.current.blur(),
     }),
-    []
+    [inputRef.current]
   );
 
   useEffect(() => {
     const listener = (state) => {
+      console.log(state.actions);
       state.actions.forEach((action) => {
         if (action.type in actionsMap) actionsMap[action.type]();
       });
@@ -175,13 +177,17 @@ const ViewStage = React.memo(({ stageRef }) => {
     return () => stageRef.listeners.delete(listener);
   }, []);
 
-  const pp = useSpring({
+  const containerProps = useSpring({
     top: state.matches("focusedViewBar.yes") && state.context.active ? -3 : 0,
     config: config.stiff,
   });
 
+  useEffect(() => {
+    inputRef.current && send({ type: "FOCUS", inputRef: inputRef });
+  }, [inputRef.current]);
+
   return (
-    <ViewStageContainer style={pp}>
+    <ViewStageContainer style={containerProps}>
       <ViewStageDiv style={props}>
         <ViewStageInput
           placeholder="+ add stage"
