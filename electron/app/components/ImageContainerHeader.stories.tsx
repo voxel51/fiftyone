@@ -8,4 +8,4 @@ export default {
   decorators: [withKnobs],
 };
 
-export const standard = () => <ImageContainerHeader />;
+export const standard = () => <ImageContainerHeader datasetName="example" />;

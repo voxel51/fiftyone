@@ -15,6 +15,13 @@ export const numViewStages = selector({
   },
 });
 
+export const datasetName = selector({
+  key: "datasetName",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).dataset.name;
+  },
+});
+
 export const numSamples = selector({
   key: "numSamples",
   get: ({ get }) => {

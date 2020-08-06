@@ -39,6 +39,7 @@ const SamplesContainer = (props) => {
 
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const [stuck, setStuck] = useState(false);
+  const datasetName = useRecoilValue(selectors.datasetName);
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
@@ -64,6 +65,7 @@ const SamplesContainer = (props) => {
         <ViewBar />
         <VerticalSpacer opaque height={5} />
         <ImageContainerHeader
+          datasetName={datasetName}
           total={numSamples}
           showSidebar={showSidebar}
           onShowSidebar={setShowSidebar}
