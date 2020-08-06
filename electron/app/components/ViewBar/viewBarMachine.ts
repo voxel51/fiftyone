@@ -90,10 +90,12 @@ const viewBarMachine = Machine(
                       stage.ref.send({ type: "BAR_FOCUS" })
                     ),
                 ],
-                exit: ({ stages }) =>
-                  stages.forEach((stage) =>
-                    stage.ref.send({ type: "BAR_BLUR" })
-                  ),
+                exit: [
+                  ({ stages }) =>
+                    stages.forEach((stage) =>
+                      stage.ref.send({ type: "BAR_BLUR" })
+                    ),
+                ],
                 on: {
                   BLUR: {
                     target: "blurred",

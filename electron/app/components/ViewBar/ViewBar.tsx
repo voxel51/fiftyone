@@ -72,7 +72,6 @@ const ViewBar = () => {
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
-  console.log(state);
 
   const actionsMap = useMemo(
     () => ({
@@ -104,14 +103,18 @@ const ViewBar = () => {
     VIEW_BAR_ADD_STAGE: useCallback(() => send("STAGE.ADD"), []),
   };
 
-  console.log(state.value);
+  console.log(state.toStrings());
 
   return (
     <React.Fragment>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
       <ViewBarDiv
         tabIndex="-1"
-        onBlur={() => send("BLUR")}
+        onBlur={() =>
+          !barRef.current &&
+          !barRef.current.contains(document.activeElement) &&
+          send("BLUR")
+        }
         onFocus={() => send("FOCUS")}
         onMouseEnter={() => send("MOUSEENTER")}
         onMouseLeave={() => send("MOUSELEAVE")}
