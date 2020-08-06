@@ -77,7 +77,11 @@ def write_dataset(
         except:
             pass
 
-    if isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
+    raw_samples = False
+    labeled_images = False
+    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+        raw_samples = True
+    elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
         labeled_images = False
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
         labeled_images = True
@@ -89,6 +93,12 @@ def write_dataset(
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
             for sample in pb(samples):
+                # GenericSampleDatasetExporter
+                if raw_samples:
+                    dataset_exporter.export_sample(sample)
+                    continue
+
+                # UnlabeledImageDatasetExporter and LabeledImageDatasetExporter
                 sample_parser.with_sample(sample)
 
                 if sample_parser.has_image_path:
@@ -170,7 +180,9 @@ def export_samples(
         dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
         dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
 
-    if isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
+    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+        sample_parser = None
+    elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
         sample_parser = FiftyOneUnlabeledImageSampleParser(
             compute_metadata=True
         )
