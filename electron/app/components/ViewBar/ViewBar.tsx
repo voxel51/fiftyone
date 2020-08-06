@@ -87,6 +87,7 @@ const ViewBar = () => {
     <React.Fragment>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
       <ViewBarDiv
+        tabIndex="-1"
         onBlur={handlers.VIEW_BAR_BLUR}
         onFocus={handlers.VIEW_BAR_FOCUS}
       >

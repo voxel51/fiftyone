@@ -37,6 +37,7 @@ const viewStageMachine = Machine(
       index: undefined,
       focusOnInit: undefined,
       length: undefined,
+      inputRef: {},
     },
     type: "parallel",
     states: {
@@ -47,9 +48,11 @@ const viewStageMachine = Machine(
             always: [
               {
                 target: "editing",
-                cond: (ctx) => {
-                  return ctx.focusOnInit;
-                },
+                cond: (ctx) => ctx.focusOnInit && ctx.inputRef.current,
+              },
+              {
+                target: "waiting",
+                cond: (ctx) => ctx.focusOnInit && !ctx.inputRef.current,
               },
               {
                 target: "reading.submitted",
@@ -84,6 +87,16 @@ const viewStageMachine = Machine(
             }),
             always: "decide",
           },
+          waiting: {
+            on: {
+              FOCUS: {
+                target: "editing",
+                actions: assign({
+                  inputRef: (_, { inputRef }) => inputRef,
+                }),
+              },
+            },
+          },
           reading: {
             states: {
               pending: {},
@@ -104,7 +117,6 @@ const viewStageMachine = Machine(
               assign({
                 prevStage: (ctx) => ctx.stage,
                 prevSubmitted: (ctx) => ctx.submitted,
-                focusOnInit: false,
               }),
               "focusInput",
               sendParent({ type: "FOCUS" }),
