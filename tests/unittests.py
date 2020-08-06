@@ -738,7 +738,7 @@ class SampleTest(unittest.TestCase):
 
     @drop_datasets
     def test_abs_filepath(self):
-        filepath = "a/relative/file.jpg"
+        filepath = "relative/file.jpg"
         abs_filepath = os.path.abspath(filepath)
 
         sample = fo.Sample(filepath=filepath)
