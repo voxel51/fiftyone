@@ -1,6 +1,7 @@
 import { Machine, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
+import { stateDescription } from "../../recoil/atoms";
 
 export const createStage = (
   stage,
@@ -30,7 +31,7 @@ function getStageInfo(context) {
 
 function serializeView(stages) {
   return stages.map((stage) => ({
-    kwargs: stages.parameters.map((param) => param.value),
+    kwargs: stage.parameters.map((param) => param.value),
     _cls: stage.stage,
   }));
 }
@@ -40,7 +41,7 @@ const viewBarMachine = Machine(
     id: "stages",
     context: {
       port: undefined,
-      stages: [],
+      stages: undefined,
       stageInfo: undefined,
       activeStage: 0,
       setStateDescription: undefined,
@@ -55,7 +56,7 @@ const viewBarMachine = Machine(
             cond: (ctx) => ctx.stageInfo,
           },
           {
-            target: "initializing",
+            target: "loading",
           },
         ],
       },
@@ -66,8 +67,41 @@ const viewBarMachine = Machine(
           onDone: {
             target: "running",
             actions: assign({
-              stageInfo: (ctx, event) => event.data.stages,
-              stages: (ctx) => (ctx.stages.length === 0 ? [""] : stages),
+              stageInfo: (ctx, e) => e.data.stages,
+              stages: (ctx, e) => {
+                const view = JSON.parse(ctx.stateDescription.view.view);
+                console.log(view);
+                if (view.length === 0) {
+                  const stage = createStage(
+                    "",
+                    0,
+                    e.data.stages,
+                    false,
+                    0,
+                    true
+                  );
+                  return [
+                    {
+                      ...stage,
+                      ref: spawn(viewStageMachine.withContext(stage)),
+                    },
+                  ];
+                }
+                view.map((s, i) => {
+                  const stage = createStage(
+                    s._cls,
+                    i,
+                    e.data.stages,
+                    false,
+                    view.length,
+                    i === 0
+                  );
+                  return {
+                    ...stage,
+                    ref: spawn(viewStageMachine.withContext(stage)),
+                  };
+                });
+              },
             }),
           },
         },
@@ -75,6 +109,22 @@ const viewBarMachine = Machine(
       running: {
         entry: assign({
           stages: (ctx) => {
+            console.log(
+              ctx.stages.map((stage, i) => {
+                const newStage = createStage(
+                  stage,
+                  i,
+                  ctx.stageInfo,
+                  false,
+                  ctx.stages.length,
+                  i === ctx.activeStage
+                );
+                return {
+                  ...newStage,
+                  ref: spawn(viewStageMachine.withContext(newStage)),
+                };
+              })
+            );
             return ctx.stages.map((stage, i) => {
               const newStage = createStage(
                 stage,

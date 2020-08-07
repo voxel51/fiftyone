@@ -95,6 +95,7 @@ const ViewBar = () => {
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
+  console.log(state.toStrings(), stages);
 
   const handlers = {
     VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), []),
