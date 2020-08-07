@@ -1,5 +1,6 @@
 Contributing to FiftyOne
-======================
+========================
+
 We welcome community contributions to FiftyOne. This page provides useful information about
 contributing to FifyOne.
 
@@ -9,6 +10,7 @@ contributing to FifyOne.
 
 Contribution process
 ####################
+
 The FiftyOne contribution process starts with filing a GitHub issue. FiftyOne defines four
 categories of issues: feature requests, bug reports, documentation fixes, and installation issues.
 Details about each issue type and the issue lifecycle are discussed in the `FiftyOne Issue Policy
@@ -31,6 +33,7 @@ will be automatically included in the next FiftyOne release. Congratulations, yo
 
 Contribution guidelines
 #######################
+
 In this section, we provide guidelines to consider as you develop new features and patches for
 FiftyOne.
 
@@ -52,8 +55,9 @@ proposed implementation:
 
 - Makes changes to critical internal abstractions
 
-Make changes backwards compatibile
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Make changes backwards compatible
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 FiftyOne's users rely on specific App and Core behaviors in their daily workflows. As new versions
 of FiftyOne's are developed and released, it is important to ensure that users' workflows continue to
 operate as expected. Accordingly, please take care to consider backwards compatibility when introducing
@@ -61,7 +65,8 @@ changes to the FiftyOne code base. If you are unsure of the backwards compatibil
 a particular change, feel free to ask an FiftyOne committer or community member for input.
 
 Developing changes to FiftyOne
-########################################
+##############################
+
 The majority of the FiftyOne codebase is developed in Python and TypeScript.
 
 Prerequisites
@@ -71,10 +76,12 @@ changes across all languages and APIs. The `Core README.md <README.md>`_ provide
 
 Core development and best practices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-...
+
+TODO
 
 App development and best practices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 We follow the `Component-Driven Development <https://blog.hichroma.com/component-driven-development-ce1109d56c8e>`_ (CDD) methodology for FiftyOne App development. This approach begins with `React <https://reactjs.org/>`_ and `Storybook <https://storybook.js.org/>`_.
 
 This document will continue to evolve as we learn more about what works best. It should be noted that this App was began as this `boilerplate <https://github.com/electron-react-boilerplate/electron-react-boilerplate>`_.
