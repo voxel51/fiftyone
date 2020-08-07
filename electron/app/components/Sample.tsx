@@ -60,7 +60,11 @@ const Sample = ({
     );
   };
   const renderScalar = (name) => {
-    if (!activeOther[name] || sample[name] === undefined) {
+    if (
+      !activeOther[name] ||
+      sample[name] === undefined ||
+      sample[name] === null
+    ) {
       return null;
     }
     return (

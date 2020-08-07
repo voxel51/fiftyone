@@ -1,6 +1,7 @@
 export const VALID_LABEL_TYPES = ["Classification", "Detections"];
 
 export const VALID_SCALAR_TYPES = [
+  "fiftyone.core.fields.BooleanField",
   "fiftyone.core.fields.FloatField",
   "fiftyone.core.fields.IntField",
   "fiftyone.core.fields.StringField",
