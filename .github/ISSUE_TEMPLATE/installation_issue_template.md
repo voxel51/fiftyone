@@ -7,7 +7,7 @@ title: "[SETUP-BUG]"
 ---
 
 Thank you for submitting an issue. Please refer to our
-[issue policy](https://www.github.com/mlflow/mlflow/blob/master/ISSUE_POLICY.md)
+[issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md)
 for information on what types of issues we address.
 
 **Please fill in this installation issue template to ensure a timely and
