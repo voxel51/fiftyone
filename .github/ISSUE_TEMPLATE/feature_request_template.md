@@ -14,23 +14,12 @@ response.**
 -   Feel free to add more labels to the issue when applicable
 -   Please delete this section before submitting the issue
 
-## Willingness to contribute
-
-The FiftyOne Community encourages new feature contributions. Would you or
-another member of your organization be willing to contribute an implementation
-of this feature?
-
--   [ ] Yes. I can contribute this feature independently.
--   [ ] Yes. I would be willing to contribute this feature with guidance from
-        the FiftyOne community.
--   [ ] No. I cannot contribute this feature at this time.
-
-## Proposal Summary
+### Proposal Summary
 
 (In a few sentences, provide a clear, high-level description of the feature
 request)
 
-## Motivation
+### Motivation
 
 -   What is the use case for this feature?
 -   Why is this use case valuable to support for FiftyOne users in general?
@@ -45,7 +34,18 @@ request)
 -   [ ] `App`: FiftyOne application issue
 -   [ ] `Core`: Core `fiftyone` python library issue
 
-## Details
+### Details
 
 (Use this section to include any additional information about the feature. If
 you have a proposal for how to implement this feature, please include it here.)
+
+### Willingness to contribute
+
+The FiftyOne Community encourages new feature contributions. Would you or
+another member of your organization be willing to contribute an implementation
+of this feature?
+
+-   [ ] Yes. I can contribute this feature independently.
+-   [ ] Yes. I would be willing to contribute this feature with guidance from
+        the FiftyOne community.
+-   [ ] No. I cannot contribute this feature at this time.

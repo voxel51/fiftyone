@@ -14,17 +14,6 @@ response.**
 -   Feel free to add more labels to the issue when applicable
 -   Please delete this section before submitting the issue
 
-### Willingness to contribute
-
-The FiftyOne Community encourages bug fix contributions. Would you or another
-member of your organization be willing to contribute a fix for this bug to the
-FiftyOne code base?
-
--   [ ] Yes. I can contribute a fix for this bug independently.
--   [ ] Yes. I would be willing to contribute a fix for this bug with guidance
-        from the FiftyOne community.
--   [ ] No. I cannot contribute a bug fix at this time.
-
 ### System information
 
 -   **OS Platform and Distribution (e.g., Linux Ubuntu 16.04)**:
@@ -61,3 +50,14 @@ files should be attached.
 
 -   [ ] `App`: FiftyOne application issue
 -   [ ] `Core`: Core `fiftyone` python library issue
+
+### Willingness to contribute
+
+The FiftyOne Community encourages bug fix contributions. Would you or another
+member of your organization be willing to contribute a fix for this bug to the
+FiftyOne code base?
+
+-   [ ] Yes. I can contribute a fix for this bug independently.
+-   [ ] Yes. I would be willing to contribute a fix for this bug with guidance
+        from the FiftyOne community.
+-   [ ] No. I cannot contribute a bug fix at this time.
