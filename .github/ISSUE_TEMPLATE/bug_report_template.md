@@ -49,7 +49,7 @@ files should be attached.
 ### What areas of FiftyOne does this bug affect?
 
 -   [ ] `App`: FiftyOne application issue
--   [ ] `Core`: Core `fiftyone` python library issue
+-   [ ] `Core`: Core `fiftyone` Python library issue
 
 ### Willingness to contribute
 

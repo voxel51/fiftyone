@@ -32,7 +32,7 @@ request)
 ### What areas of FiftyOne does this feature affect?
 
 -   [ ] `App`: FiftyOne application issue
--   [ ] `Core`: Core `fiftyone` python library issue
+-   [ ] `Core`: Core `fiftyone` Python library issue
 
 ### Details
 
