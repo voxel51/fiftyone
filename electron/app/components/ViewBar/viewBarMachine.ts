@@ -3,7 +3,9 @@ import uuid from "uuid-v4";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
-import viewStageParameterMachine from "./ViewStage/viewStageParameterMachine";
+import viewStageParameterMachine, {
+  PARSER as PARAM_PARSER,
+} from "./ViewStage/viewStageParameterMachine";
 
 export const createStage = (
   stage,
@@ -12,10 +14,11 @@ export const createStage = (
   focusOnInit,
   length,
   active,
-  parameters
+  parameters,
+  submitted,
+  loaded
 ) => ({
   id: uuid(),
-  submitted: false,
   stage: stage,
   parameters,
   stageInfo,
@@ -24,6 +27,8 @@ export const createStage = (
   length,
   active,
   inputRef: {},
+  submitted,
+  loaded,
 });
 
 import { getSocket } from "../../utils/socket";
@@ -34,22 +39,26 @@ function getStageInfo(context) {
   );
 }
 
-function serializeStage(stage) {
+function serializeStage(stage, stageMap) {
   return {
-    kwargs: stage.parameters.map((param) => [param.parameter, param.value]),
+    kwargs: stage.parameters.map((param, i) => [
+      param.parameter,
+      PARAM_PARSER[stageMap[stage.stage][i].type].cast(param.value),
+    ]),
     _cls: `fiftyone.core.stages.${stage.stage}`,
   };
 }
 
-function serializeView(stages) {
+function serializeView(stages, stageMap) {
   if (stages.length === 1 && stages[0].stage === "") return [];
-  return stages.map((stage) => serializeStage(stage));
+  return stages.map((stage) => serializeStage(stage, stageMap));
 }
 
 function setStages(ctx, stageInfo) {
   const viewStr = ctx.stateDescription.view.view;
   const view = JSON.parse(viewStr);
-  if (viewStr === JSON.stringify(serializeView(ctx.stages))) {
+  const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
+  if (viewStr === JSON.stringify(serializeView(ctx.stages, stageMap))) {
     return ctx.stages;
   } else {
     return view.map((stage, i) => {
@@ -79,7 +88,9 @@ function setStages(ctx, stageInfo) {
             ...param,
             ref: spawn(viewStageParameterMachine.withContext(param)),
           };
-        })
+        }),
+        true,
+        true
       );
       return {
         ...newStage,
@@ -142,7 +153,8 @@ const viewBarMachine = Machine(
                     false,
                     0,
                     true,
-                    []
+                    [],
+                    false
                   );
                   return [
                     {
@@ -293,7 +305,8 @@ const viewBarMachine = Machine(
                 true,
                 ctx.stages.length + 1,
                 true,
-                []
+                [],
+                false
               );
               return [
                 ...ctx.stages.slice(0, index),
@@ -377,8 +390,11 @@ const viewBarMachine = Machine(
             stage: stage.stage,
           })
         ),
-      submit: ({ socket, stateDescription, stages }) => {
-        const result = serializeView(stages);
+      submit: ({ socket, stateDescription, stages, stageInfo }) => {
+        const stageMap = Object.fromEntries(
+          stageInfo.map((s) => [s.name, s.params])
+        );
+        const result = serializeView(stages, stageMap);
         const {
           view: { dataset },
         } = stateDescription;
