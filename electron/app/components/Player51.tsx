@@ -1,4 +1,3 @@
-import _ from "lodash";
 import React, { useState, useEffect } from "react";
 import uuid from "react-uuid";
 
@@ -34,36 +33,36 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colors) => {
+const loadOverlay = (sample, colorMapping) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
-  const colorMap = {};
-  const sampleKeys = Object.keys(sample).sort();
-  for (const i in sampleKeys) {
-    const e = sampleKeys[i];
-    if (_.indexOf(["metadata", "_id", "tags", "filepath"], e) >= 0) {
+  const playerColorMap = {};
+  const sampleFields = Object.keys(sample).sort();
+  for (const sampleField of sampleFields) {
+    if (["metadata", "_id", "tags", "filepath"].includes(sampleField)) {
       continue;
     }
-    const field = sample[e];
+    const field = sample[sampleField];
     if (!field) continue;
     if (field._cls === "Detections") {
       for (const j in field.detections) {
         const detection = field.detections[j];
         const [key, fn] = PARSERS[detection._cls];
-        imgLabels[key][key].push(fn(e, detection));
-        colorMap[`${e}:${detection.label}`] = colors[i];
+        imgLabels[key][key].push(fn(sampleField, detection));
+        playerColorMap[`${sampleField}:${detection.label}`] =
+          colorMapping[sampleField];
       }
       continue;
     }
     if (field._cls === "Classification") {
       const [key, fn] = PARSERS[field._cls];
-      imgLabels[key][key].push(fn(e, field));
+      imgLabels[key][key].push(fn(sampleField, field));
     }
   }
-  return [imgLabels, colorMap];
+  return [imgLabels, playerColorMap];
 };
 
 export default ({
-  colors,
+  colorMapping,
   thumbnail,
   sample,
   src,
@@ -72,7 +71,7 @@ export default ({
   onDoubleClick,
   activeLabels,
 }) => {
-  const [overlay, colorMap] = loadOverlay(sample, colors);
+  const [overlay, playerColorMap] = loadOverlay(sample, colorMapping);
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
@@ -83,7 +82,7 @@ export default ({
         type: "image/jpg",
       },
       overlay: overlay,
-      colorMap: colorMap,
+      colorMap: playerColorMap,
     })
   );
   const props = thumbnail

@@ -1,5 +1,6 @@
 import React, { createRef, useState } from "react";
 import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
+import { useRecoilValue } from "recoil";
 import {
   Sidebar,
   Container,
@@ -17,6 +18,7 @@ import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
 import Search from "../components/Search";
 import routes from "../constants/routes.json";
+import * as selectors from "../recoil/selectors";
 import connect from "../utils/connect";
 
 function NoDataset() {
@@ -34,6 +36,7 @@ function Dataset(props) {
   const stickyRef = createRef();
   const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [view, setView] = useState({ visible: false, sample: null });
+  const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   let src = null;
   let s = null;
@@ -73,7 +76,7 @@ function Dataset(props) {
                 position: "relative",
               }}
               sample={view.sample}
-              colors={displayProps.colors}
+              colorMapping={colorMapping}
               activeLabels={displayProps.activeLabels}
             />
             <InfoItem k="id" v={s._id.$oid} />

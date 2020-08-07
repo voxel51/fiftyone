@@ -122,6 +122,7 @@ class StateDescriptionWithDerivables(StateDescription):
         """
         return {
             "dataset_stats": self._get_dataset_stats(),
+            "field_schema": self._get_field_schema(),
             **self._get_label_info(),
         }
 
@@ -135,6 +136,15 @@ class StateDescriptionWithDerivables(StateDescription):
             return {}
 
         return get_dataset_stats(self.dataset)
+
+    def _get_field_schema(self):
+        if self.dataset is None:
+            return {}
+
+        return {
+            name: str(field)
+            for name, field in self.dataset.get_field_schema().items()
+        }
 
     def _get_label_info(self):
         if self.view is not None:
