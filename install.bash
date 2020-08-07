@@ -51,14 +51,16 @@ cd ..
 
 
 echo "***** INSTALLING PLAYER51 *****"
-git submodule update --init
+git submodule update --init --recursive
 
 echo "***** INSTALLING MONGODB *****"
 mkdir -p ~/.fiftyone/bin
 cd ~/.fiftyone
 mkdir -p var/log/mongodb
 mkdir -p var/lib/mongo
-if [ "${OS}" == "Darwin" ]; then
+if [ -x bin/mongod ]; then
+    echo "MongoDB already installed"
+elif [ "${OS}" == "Darwin" ]; then
     curl https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz --output mongodb.tgz
     tar -zxvf mongodb.tgz
     mv mongodb-macos-x86_64-4.2.6/bin/* ./bin/

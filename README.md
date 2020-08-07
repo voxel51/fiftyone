@@ -20,8 +20,7 @@ to make adjustments.
 You will need:
 
 -   [Python](https://www.python.org/) (3.5 or newer)
--   [ETA](https://github.com/voxel51/eta) - this is installed by `install.bash`
-    below, but its
+-   ETA - this is installed by `install.bash` below, but its
     [system requirements](https://github.com/voxel51/eta#local-installation)
     apply to FiftyOne as well.
 -   [Node.js](https://nodejs.org/) - on Linux, we recommend using
@@ -35,7 +34,7 @@ You will need:
 
     ```shell
     # Ubuntu 18.04
-    sudo apt-get install libcurl4 openssl
+    sudo apt install libcurl4 openssl
     # Fedora 32
     sudo dnf install libcurl openssl
     ```
@@ -59,6 +58,13 @@ to maintain a clean workspace.
     bash install.bash
     ```
 
+If you want to use the `fiftyone-brain` package, you will need to install it
+separately after installing FiftyOne:
+
+```shell
+pip install --index https://pypi.voxel51.com fiftyone-brain
+```
+
 These steps will perform a lite ETA installation, which should be sufficient
 for most users. If you want a full ETA installation, or want to customize your
 ETA installation, see the instructions in the
@@ -75,7 +81,7 @@ the install script:
 bash install.bash -d
 ```
 
-You should also checkout the
+You should also check out the
 [Developer's Guide](https://github.com/voxel51/fiftyone/blob/develop/docs/dev_guide.md)
 to get started.
 
