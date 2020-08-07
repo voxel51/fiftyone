@@ -8,7 +8,7 @@ import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as selectors from "../recoil/selectors";
-import { getLabelText } from "../utils/labels";
+import { getLabelText, stringify } from "../utils/labels";
 
 const Sample = ({
   displayProps,
@@ -54,7 +54,20 @@ const Sample = ({
       <Tag
         key={"label-" + name}
         title={name}
-        name={String(value)}
+        name={value}
+        color={colorMapping[name]}
+      />
+    );
+  };
+  const renderScalar = (name) => {
+    if (!activeOther[name] || sample[name] === undefined) {
+      return null;
+    }
+    return (
+      <Tag
+        key={"scalar-" + name}
+        title={name}
+        name={stringify(sample[name])}
         color={colorMapping[name]}
       />
     );
@@ -82,6 +95,7 @@ const Sample = ({
             <Tag key={t} name={String(t)} color={colorMapping[t]} />
           ) : null;
         })}
+        {Object.keys(sample).sort().map(renderScalar)}
       </div>
       {selected[id] ? (
         <div

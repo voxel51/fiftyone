@@ -71,6 +71,14 @@ export const tagSampleCounts = selector({
   },
 });
 
+export const fieldSchema = selector({
+  key: "fieldSchema",
+  get: ({ get }) => {
+    const derivables = get(atoms.stateDescription).derivables || {};
+    return derivables.field_schema || {};
+  },
+});
+
 export const labelNames = selector({
   key: "labelNames",
   get: ({ get }) => {

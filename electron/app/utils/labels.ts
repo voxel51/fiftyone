@@ -1,11 +1,17 @@
-export const VALID_LABEL_TYPES = [
-  "Classification",
-  "BooleanAttribute",
-  "CategoricalAttribute",
-  "Detection",
+export const VALID_LABEL_TYPES = ["Classification", "Detections"];
+
+export const VALID_SCALAR_TYPES = [
+  "fiftyone.core.fields.FloatField",
+  "fiftyone.core.fields.IntField",
+  "fiftyone.core.fields.StringField",
 ];
 
-export const VALID_SCALAR_TYPES = ["NumericAttribute"];
+export const stringify = (value) => {
+  if (typeof value == "number") {
+    value = Number(value.toFixed(3));
+  }
+  return String(value);
+};
 
 export const getLabelText = (label) => {
   if (
@@ -27,8 +33,5 @@ export const getLabelText = (label) => {
   if (value === undefined) {
     return undefined;
   }
-  if (typeof value == "number") {
-    value = Number(value.toFixed(3));
-  }
-  return String(value);
+  return stringify(value);
 };

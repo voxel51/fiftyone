@@ -43,6 +43,7 @@ const SamplesContainer = (props) => {
   const numSamples = useRecoilValue(selectors.numSamples);
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
+  const fieldSchema = useRecoilValue(selectors.fieldSchema);
   const labelNames = useRecoilValue(selectors.labelNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
@@ -57,10 +58,9 @@ const SamplesContainer = (props) => {
     unsupported: [],
   };
   for (const name of labelNames) {
-    const type = labelTypes[name];
-    if (VALID_LABEL_TYPES.includes(type)) {
+    if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
       labelNameGroups.labels.push(name);
-    } else if (VALID_SCALAR_TYPES.includes(type)) {
+    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name])) {
       labelNameGroups.scalars.push(name);
     } else {
       labelNameGroups.unsupported.push(name);
@@ -125,11 +125,11 @@ const SamplesContainer = (props) => {
                 scalars={getDisplayOptions(
                   labelNameGroups.scalars,
                   labelSampleCounts,
-                  activeLabels
+                  activeOther
                 )}
                 onSelectScalar={handleSetDisplayOption(
-                  activeLabels,
-                  setActiveLabels
+                  activeOther,
+                  setActiveOther
                 )}
                 unsupported={getDisplayOptions(
                   labelNameGroups.unsupported,
