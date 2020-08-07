@@ -43,7 +43,8 @@ export const labelColorMapping = selector({
   key: "labelColorMapping",
   get: ({ get }) => {
     const colors = get(atoms.colors);
-    const { labels, tags } = get(atoms.stateDescription).derivables;
+    const { labels = [], tags = [] } =
+      get(atoms.stateDescription).derivables || {};
 
     const colorMapping = {};
     let i = 0;
@@ -68,6 +69,14 @@ export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
     return get(atoms.stateDescription).derivables.dataset_stats.tags || {};
+  },
+});
+
+export const fieldSchema = selector({
+  key: "fieldSchema",
+  get: ({ get }) => {
+    const derivables = get(atoms.stateDescription).derivables || {};
+    return derivables.field_schema || {};
   },
 });
 

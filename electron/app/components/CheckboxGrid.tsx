@@ -57,6 +57,10 @@ const Body = styled.div`
   && .Mui-disabled {
     cursor: not-allowed;
     color: ${({ theme }) => theme.fontDarkest};
+
+    svg, input[type=checkbox] {
+      display: none;
+    }
   }
 `;
 
