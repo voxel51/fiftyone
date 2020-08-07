@@ -100,7 +100,7 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        return view_stage_cls(**d["kwargs"])
+        return view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
 
 
 class ViewStageError(Exception):

@@ -43,6 +43,42 @@ function serializeView(stages) {
   return stages.map((stage) => serializeStage(stage));
 }
 
+function setStages(ctx, stageInfo) {
+  const viewStr = JSON.parse(ctx.stateDescription.view.view);
+  if (viewStr === JSON.stringify(serializeView(ctx.stages))) {
+    return ctx.stages;
+  } else {
+    const view = JSON.parse(viewStr);
+    return view.map((stage, i) => {
+      let stageName = stage._cls.split(".");
+      stageName = stageName[stageName.length - 1];
+      const newStage = createStage(
+        stageName,
+        i,
+        stageInfo,
+        false,
+        ctx.stages.length,
+        i === Math.min(view.length - 1, ctx.activeStage),
+        stage.kwargs.map((p, j) => {
+          const param = createParameter(
+            stageName,
+            p[0],
+            ctx.stageInfo[p[0]].type,
+            p[1],
+            true,
+            false,
+            j === ctx.stageInfo[p[0]].length - 1
+          );
+          return {
+            ...param,
+            ref: spawn(viewStageParameterMachine.withContext(param)),
+          };
+        })
+      );
+    });
+  }
+}
+
 const viewBarMachine = Machine(
   {
     id: "stages",
@@ -65,51 +101,10 @@ const viewBarMachine = Machine(
               assign({
                 activeStage: (ctx) =>
                   Math.min(
-                    ctx.stateDescription.view.view.length - 1,
+                    Math.max(ctx.stateDescription.view.view.length - 1, 0),
                     ctx.activeStage
                   ),
-                stages: (ctx) => {
-                  if (
-                    JSON.stringify(ctx.stateDescription.view.view) ===
-                    JSON.stringify(serializeView(ctx.stages))
-                  ) {
-                    return ctx.stages;
-                  } else {
-                    return stateDescription.view.view.map((stage, i) => {
-                      let stageName = stage._cls.split(".");
-                      stageName = stageName[stageName.length - 1];
-                      const newStage = createStage(
-                        stageName,
-                        i,
-                        ctx.stageInfo,
-                        false,
-                        ctx.stages.length,
-                        i ===
-                          Math.min(
-                            ctx.stateDescription.view.view.length - 1,
-                            ctx.activeStage
-                          ),
-                        stage.kwargs.map((p, j) => {
-                          const param = createParameter(
-                            stageName,
-                            p[0],
-                            ctx.stageInfo[p[0]].type,
-                            p[1],
-                            true,
-                            false,
-                            j === ctx.stageInfo[p[0]].length - 1
-                          );
-                          return {
-                            ...param,
-                            ref: spawn(
-                              viewStageParameterMachine.withContext(param)
-                            ),
-                          };
-                        })
-                      );
-                    });
-                  }
-                },
+                stages: (ctx) => setStages(ctx, ctx.stageInfo),
               }),
             ],
           },
@@ -145,21 +140,7 @@ const viewBarMachine = Machine(
                     },
                   ];
                 }
-                view.map((s, i) => {
-                  const stage = createStage(
-                    s._cls,
-                    i,
-                    e.data.stages,
-                    false,
-                    view.length,
-                    i === 0,
-                    []
-                  );
-                  return {
-                    ...stage,
-                    ref: spawn(viewStageMachine.withContext(stage)),
-                  };
-                });
+                return setStages(ctx, e.data.stages);
               },
             }),
           },
@@ -389,11 +370,18 @@ const viewBarMachine = Machine(
         const {
           view: { dataset },
         } = stateDescription;
-        setStateDescription({
+        console.log("state", {
           ...stateDescription,
           view: {
             dataset,
             view: result,
+          },
+        });
+        setStateDescription({
+          ...stateDescription,
+          view: {
+            dataset,
+            view: JSON.stringify(result),
           },
         });
       },

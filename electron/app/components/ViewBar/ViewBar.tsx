@@ -92,11 +92,8 @@ const ViewBar = () => {
     });
   }, [portValue, stateDescriptionValue, setStateDescription]);
 
-  console.log(stateDescriptionValue);
-
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
-  console.log(state.toStrings(), stages);
 
   const handlers = {
     VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), []),
@@ -108,6 +105,7 @@ const ViewBar = () => {
   };
 
   useOutsideClick(barRef, () => send("BLUR"));
+  console.log(state.toStrings(), state.context.stateDescription, stages);
 
   return (
     <ViewBarContainer>
