@@ -92,6 +92,8 @@ const ViewBar = () => {
     });
   }, [portValue, stateDescriptionValue, setStateDescription]);
 
+  console.log(stateDescriptionValue);
+
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
   console.log(state.toStrings(), stages);

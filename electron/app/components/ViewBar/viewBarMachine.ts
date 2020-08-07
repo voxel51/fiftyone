@@ -35,7 +35,7 @@ function getStageInfo(context) {
 function serializeStage(stage) {
   return {
     kwargs: stage.parameters.map((param) => param.value),
-    _cls: stage.stage,
+    _cls: `fiftyone.core.stages.${stage.stage}`,
   };
 }
 
@@ -76,8 +76,10 @@ const viewBarMachine = Machine(
                     return ctx.stages;
                   } else {
                     return stateDescription.view.view.map((stage, i) => {
+                      let stageName = stage._cls.split(".");
+                      stageName = stageName[stageName.length - 1];
                       const newStage = createStage(
-                        stage._cls,
+                        stageName,
                         i,
                         ctx.stageInfo,
                         false,
@@ -89,7 +91,7 @@ const viewBarMachine = Machine(
                           ),
                         stage.kwargs.map((p, j) => {
                           const param = createParameter(
-                            stage._cls,
+                            stageName,
                             p[0],
                             ctx.stageInfo[p[0]].type,
                             p[1],
@@ -105,10 +107,6 @@ const viewBarMachine = Machine(
                           };
                         })
                       );
-                      return {
-                        ...newStage,
-                        ref: spawn(viewStageMachine.withContext(newStage)),
-                      };
                     });
                   }
                 },
