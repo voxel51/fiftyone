@@ -50,6 +50,6 @@ needed to help route issues and PRs to appropriate contributors.
 
 Areas
 """"""""
-- ``App``: Artifact stores and artifact logging
-- ``Core``: Build and test infrastructure for MLflow
-- ``Server``: MLflow documentation pages
+- ``App``: FiftyOne application
+- ``Core``: Core ``fiftyone`` Python library
+- ``Server``: FiftyOne server
