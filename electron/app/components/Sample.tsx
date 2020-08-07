@@ -8,7 +8,7 @@ import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as selectors from "../recoil/selectors";
-import { VALID_LABEL_TYPES, VALID_SCALAR_TYPES } from "../utils/labels";
+import { getLabelText } from "../utils/labels";
 
 const Sample = ({
   displayProps,
@@ -43,29 +43,12 @@ const Sample = ({
   };
   const renderLabel = (name) => {
     const label = sample[name];
-    if (
-      !activeLabels[name] ||
-      !label ||
-      !label._cls ||
-      !(
-        VALID_LABEL_TYPES.includes(label._cls) ||
-        VALID_SCALAR_TYPES.includes(label._cls)
-      )
-    ) {
+    if (!activeLabels[name] || !label) {
       return null;
     }
-    let value = undefined;
-    for (const prop of ["label", "value"]) {
-      if (label.hasOwnProperty(prop)) {
-        value = label[prop];
-        break;
-      }
-    }
+    let value = getLabelText(label);
     if (value === undefined) {
       return null;
-    }
-    if (typeof value == "number") {
-      value = Number(value.toFixed(3));
     }
     return (
       <Tag
