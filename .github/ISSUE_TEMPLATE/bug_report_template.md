@@ -5,6 +5,10 @@ labels: "bug"
 title: "[BUG]"
 ---
 
+Thank you for submitting an issue. Please refer to our
+[issue policy](https://www.github.com/mlflow/mlflow/blob/master/ISSUE_POLICY.md)
+for information on what types of issues we address.
+
 **Please fill in this bug report template to ensure a timely and thorough
 response.**
 
@@ -50,6 +54,7 @@ files should be attached.
 
 -   [ ] `App`: FiftyOne application issue
 -   [ ] `Core`: Core `fiftyone` Python library issue
+-   [ ] `Server`: Fiftyone server issue
 
 ### Willingness to contribute
 
