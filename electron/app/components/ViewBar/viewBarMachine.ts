@@ -44,11 +44,12 @@ function serializeView(stages) {
 }
 
 function setStages(ctx, stageInfo) {
-  const viewStr = JSON.parse(ctx.stateDescription.view.view);
+  const viewStr = ctx.stateDescription.view.view;
+  console.log(viewStr);
+  const view = JSON.parse(viewStr);
   if (viewStr === JSON.stringify(serializeView(ctx.stages))) {
     return ctx.stages;
   } else {
-    const view = JSON.parse(viewStr);
     return view.map((stage, i) => {
       let stageName = stage._cls.split(".");
       stageName = stageName[stageName.length - 1];
@@ -60,14 +61,18 @@ function setStages(ctx, stageInfo) {
         ctx.stages.length,
         i === Math.min(view.length - 1, ctx.activeStage),
         stage.kwargs.map((p, j) => {
+          console.log(p, stageInfo);
+          const stageInfoResult = stageInfo.filter(
+            (s) => s.name === stageName
+          )[0];
           const param = createParameter(
             stageName,
             p[0],
-            ctx.stageInfo[p[0]].type,
+            stageInfoResult.params[j].type,
             p[1],
             true,
             false,
-            j === ctx.stageInfo[p[0]].length - 1
+            j === stageInfoResult.params[j].length - 1
           );
           return {
             ...param,
@@ -75,6 +80,10 @@ function setStages(ctx, stageInfo) {
           };
         })
       );
+      return {
+        ...newStage,
+        ref: spawn(viewStageMachine.withContext(newStage)),
+      };
     });
   }
 }
@@ -84,7 +93,7 @@ const viewBarMachine = Machine(
     id: "stages",
     context: {
       port: undefined,
-      stages: undefined,
+      stages: [],
       stageInfo: undefined,
       activeStage: 0,
       setStateDescription: undefined,
