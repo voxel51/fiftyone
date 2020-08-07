@@ -90,7 +90,7 @@ const Sample = ({
       />
       <div className="sample-info" {...eventHandlers}>
         {Object.keys(sample).sort().map(renderLabel)}
-        {tagNames.map((t) => {
+        {sample.tags.sort().map((t) => {
           return activeTags[t] ? (
             <Tag key={t} name={String(t)} color={colorMapping[t]} />
           ) : null;
