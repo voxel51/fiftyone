@@ -1,7 +1,9 @@
 import { Machine, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
-import viewStageMachine from "./ViewStage/viewStageMachine";
-import { stateDescription } from "../../recoil/atoms";
+import viewStageMachine, {
+  createParameter,
+} from "./ViewStage/viewStageMachine";
+import viewStageParameterMachine from "./ViewStage/viewStageParameterMachine";
 
 export const createStage = (
   stage,
@@ -9,12 +11,13 @@ export const createStage = (
   stageInfo,
   focusOnInit,
   length,
-  active
+  active,
+  parameters
 ) => ({
   id: uuid(),
   submitted: false,
   stage: stage,
-  parameters: [],
+  parameters,
   stageInfo,
   index,
   focusOnInit,
@@ -29,11 +32,15 @@ function getStageInfo(context) {
   );
 }
 
-function serializeView(stages) {
-  return stages.map((stage) => ({
+function serializeStage(stage) {
+  return {
     kwargs: stage.parameters.map((param) => param.value),
     _cls: stage.stage,
-  }));
+  };
+}
+
+function serializeView(stages) {
+  return stages.map((stage) => serializeStage(stage));
 }
 
 const viewBarMachine = Machine(
@@ -54,6 +61,59 @@ const viewBarMachine = Machine(
           {
             target: "running",
             cond: (ctx) => ctx.stageInfo,
+            actions: [
+              assign({
+                activeStage: (ctx) =>
+                  Math.min(
+                    ctx.stateDescription.view.view.length - 1,
+                    ctx.activeStage
+                  ),
+                stages: (ctx) => {
+                  if (
+                    JSON.stringify(ctx.stateDescription.view.view) ===
+                    JSON.stringify(serializeView(ctx.stages))
+                  ) {
+                    return ctx.stages;
+                  } else {
+                    return stateDescription.view.view.map((stage, i) => {
+                      const newStage = createStage(
+                        stage._cls,
+                        i,
+                        ctx.stageInfo,
+                        false,
+                        ctx.stages.length,
+                        i ===
+                          Math.min(
+                            ctx.stateDescription.view.view.length - 1,
+                            ctx.activeStage
+                          ),
+                        stage.kwargs.map((p, j) => {
+                          const param = createParameter(
+                            stage._cls,
+                            p[0],
+                            ctx.stageInfo[p[0]].type,
+                            p[1],
+                            true,
+                            false,
+                            j === ctx.stageInfo[p[0]].length - 1
+                          );
+                          return {
+                            ...param,
+                            ref: spawn(
+                              viewStageParameterMachine.withContext(param)
+                            ),
+                          };
+                        })
+                      );
+                      return {
+                        ...newStage,
+                        ref: spawn(viewStageMachine.withContext(newStage)),
+                      };
+                    });
+                  }
+                },
+              }),
+            ],
           },
           {
             target: "loading",
@@ -70,7 +130,6 @@ const viewBarMachine = Machine(
               stageInfo: (ctx, e) => e.data.stages,
               stages: (ctx, e) => {
                 const view = JSON.parse(ctx.stateDescription.view.view);
-                console.log(view);
                 if (view.length === 0) {
                   const stage = createStage(
                     "",
@@ -78,7 +137,8 @@ const viewBarMachine = Machine(
                     e.data.stages,
                     false,
                     0,
-                    true
+                    true,
+                    []
                   );
                   return [
                     {
@@ -94,7 +154,8 @@ const viewBarMachine = Machine(
                     e.data.stages,
                     false,
                     view.length,
-                    i === 0
+                    i === 0,
+                    []
                   );
                   return {
                     ...stage,
@@ -107,40 +168,6 @@ const viewBarMachine = Machine(
         },
       },
       running: {
-        entry: assign({
-          stages: (ctx) => {
-            console.log(
-              ctx.stages.map((stage, i) => {
-                const newStage = createStage(
-                  stage,
-                  i,
-                  ctx.stageInfo,
-                  false,
-                  ctx.stages.length,
-                  i === ctx.activeStage
-                );
-                return {
-                  ...newStage,
-                  ref: spawn(viewStageMachine.withContext(newStage)),
-                };
-              })
-            );
-            return ctx.stages.map((stage, i) => {
-              const newStage = createStage(
-                stage,
-                i,
-                ctx.stageInfo,
-                false,
-                ctx.stages.length,
-                i === ctx.activeStage
-              );
-              return {
-                ...newStage,
-                ref: spawn(viewStageMachine.withContext(newStage)),
-              };
-            });
-          },
-        }),
         type: "parallel",
         states: {
           focus: {
@@ -275,7 +302,8 @@ const viewBarMachine = Machine(
                 ctx.stageInfo,
                 true,
                 ctx.stages.length + 1,
-                true
+                true,
+                []
               );
               return [
                 ...ctx.stages.slice(0, index),
@@ -331,6 +359,7 @@ const viewBarMachine = Machine(
                 }),
           }),
           "sendStagesUpdate",
+          "submit",
         ],
       },
       UPDATE: {

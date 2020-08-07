@@ -77,6 +77,7 @@ const viewBarKeyMap = {
 };
 
 const ViewBar = () => {
+  const [state, send] = useMachine(viewBarMachine);
   const [stateDescriptionValue, setStateDescription] = useRecoilState(
     stateDescription
   );
@@ -90,8 +91,6 @@ const ViewBar = () => {
       setStateDescription,
     });
   }, [portValue, stateDescriptionValue, setStateDescription]);
-
-  const [state, send] = useMachine(viewBarMachine);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
