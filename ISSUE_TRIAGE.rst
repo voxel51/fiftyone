@@ -36,13 +36,11 @@ labels.
   | may need multiple releases to complete. Also used for things we know are on a 
   | contributor's roadmap in the next few months. 
 - | ``backlog``: We believe it is useful but don’t see it being prioritized in the 
-  | next few months. Use this for issues that are lower priority than ``priority/important-longterm``. 
-  | We welcome community members to pick up a ``priority/backlog`` issue, but there may be some 
-  | delay in getting support through design review or pull request feedback. 
+  | next few months. Use this for issues that are lower priority than ``priority/important-longterm``.
 - | ``awaiting-more-evidence``: Lowest priority. Possibly useful, but not yet enough
   | support to actually get it done. This is a good place to put issues that could be useful but 
   | require more evidence to demonstrate broad value. Don’t use it as a way to say no. 
-  | If we think it doesn’t fit in MLflow, we should just say that and why.
+  | If we think it doesn’t fit in FiftyOne, we should just say that and why.
 
 Label relevant areas
 #######

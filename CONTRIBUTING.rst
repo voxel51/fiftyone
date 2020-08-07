@@ -1,7 +1,7 @@
 Contributing to FiftyOne
 ======================
 We welcome community contributions to FiftyOne. This page provides useful information about
-contributing to MLflow.
+contributing to FifyOne.
 
 .. contents:: **Table of Contents**
   :local:
@@ -81,9 +81,7 @@ This document will continue to evolve as we learn more about what works best. It
 
 Our best practices are largely informed by Storybook's `Design System for Developers <https://www.learnstorybook.com/design-systems-for-developers/react>`_ guide. Reading it all the way through is the best way to get started, and will help you understand where we are headed.
 
-.. raw:: html
-        <b>Best practices</b>
-
+Best practices:
 * All React components should be function-based, not class-based
 * We recommend writing fully typed TypeScript, although we are still transitioning
 * Each TSX file should have at least one story, exceptions may apply
@@ -92,28 +90,19 @@ Our best practices are largely informed by Storybook's `Design System for Develo
 * Storybook's Docs addon should be used for component documentation. Inline comments and documentation may be added as needed
 * `Prettier <https://prettier.io/>`_ is used for autoformatting CSS, TypeScript, YAML, Markdown, etc. Installing FiftyOne with the development flag (``-d``) should have installed this step as a pre-commit hook
 
-.. raw:: html
-        <b>Getting started</b>
 
 After installing the App development environment (see the App `README.md <README.md>`_ you can run ``yarn storybook``.
 
-.. raw:: html
-        <b>Chromatic homepage</b>
-
+Chromatic homepage:
 Our Chromatic homepage can be found `here <https://www.chromatic.com/builds?appId=5f1875aa9080b80022532573`_
 
-.. raw:: html
-        <b>TODOS</b>
-
+TODOS
 - ESLint configuration
 - Webpack cleanup
 - Unit tests - see `here <https://www.learnstorybook.com/design-systems-for-developers/react/en/test/>`_
 - Recoil best practices
 - TSDoc documentation for non-component code?
 - Add custom introduction page to Storybook
-
-.. raw:: html
-        <b>Copyright</b>
 
 Copyright 2017-2020, Voxel51, Inc.
 voxel51.com
