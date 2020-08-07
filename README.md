@@ -4,24 +4,66 @@ Project FiftyOne.
 
 <img src="https://user-images.githubusercontent.com/3719547/74191434-8fe4f500-4c21-11ea-8d73-555edfce0854.png" alt="voxel51-logo.png" width="40%"/>
 
-## Installation
+## Installing FiftyOne from source
 
-Clone the repository:
+This section explains how to install the development version of FiftyOne from
+GitHub. This is necessary if you want to contribute to FiftyOne or use the
+latest unreleased changes. If you simply want to install FiftyOne, see the
+[FiftyOne documentation](https://voxel51.com/docs/fiftyone/getting_started/install.html)
+instead.
 
-```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
-```
+This process currently targets macOS and Linux systems. Windows users may need
+to make adjustments.
 
-and install it:
+### Prerequisites
 
-```shell
-bash install.bash
-```
+You will need:
+
+-   [Python](https://www.python.org/) (3.5 or newer)
+-   [ETA](https://github.com/voxel51/eta) - this is installed by `install.bash`
+    below, but its
+    [system requirements](https://github.com/voxel51/eta#local-installation)
+    apply to FiftyOne as well.
+-   [Node.js](https://nodejs.org/) - on Linux, we recommend using
+    [nvm](https://github.com/nvm-sh/nvm) to obtain an up-to-date version.
+-   [Yarn](https://yarnpkg.com/) - once Node.js is installed, install this with
+    `npm install -g yarn`
+-   On Linux, you will need at least the `openssl` and `libcurl` packages. On
+    Debian-based distributions, you will need to install `libcurl4` or
+    `libcurl3` instead of `libcurl`, depending on the age of your distribution.
+    For example:
+
+    ```shell
+    # Ubuntu 18.04
+    sudo apt-get install libcurl4 openssl
+    # Fedora 32
+    sudo dnf install libcurl openssl
+    ```
+
+### Installation
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://virtualenv.pypa.io/en/stable) to maintain a clean
-workspace.
+[virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
+to maintain a clean workspace.
+
+1. Clone the repository:
+
+    ```shell
+    git clone --recursive https://github.com/voxel51/fiftyone
+    cd fiftyone
+    ```
+
+2. Run the installation script:
+
+    ```shell
+    bash install.bash
+    ```
+
+These steps will perform a lite ETA installation, which should be sufficient
+for most users. If you want a full ETA installation, or want to customize your
+ETA installation, see the instructions in the
+[ETA readme](https://github.com/voxel51/eta/blob/develop/README.md). Note that
+you will need to enter the `eta` folder before running its installation script.
 
 ### Developer installation
 
