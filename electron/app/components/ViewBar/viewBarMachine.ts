@@ -26,7 +26,7 @@ export const createStage = (
   inputRef: {},
 });
 
-import { getSocket } from "../utils/socket";
+import { getSocket } from "../../utils/socket";
 
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
@@ -36,12 +36,13 @@ function getStageInfo(context) {
 
 function serializeStage(stage) {
   return {
-    kwargs: stage.parameters.map((param) => param.value),
+    kwargs: stage.parameters.map((param) => [param.parameter, param.value]),
     _cls: `fiftyone.core.stages.${stage.stage}`,
   };
 }
 
 function serializeView(stages) {
+  if (stages.length === 1 && stages[0].stage === "") return [];
   return stages.map((stage) => serializeStage(stage));
 }
 
@@ -98,6 +99,7 @@ const viewBarMachine = Machine(
       activeStage: 0,
       setStateDescription: undefined,
       stateDescription: undefined,
+      port: undefined,
     },
     initial: "initializing",
     states: {
@@ -354,7 +356,8 @@ const viewBarMachine = Machine(
         target: "decide",
         actions: [
           assign({
-            socket: (_, { port }) => getSocket(port, "port"),
+            port: (_, { port }) => port,
+            socket: (_, { port }) => getSocket(port, "state"),
             stateDescription: (_, ctx) => ctx.stateDescription,
             setStateDescription: (_, ctx) => ctx.setStateDescription,
           }),
@@ -374,7 +377,7 @@ const viewBarMachine = Machine(
             stage: stage.stage,
           })
         ),
-      submit: ({ stateDescription, stages }) => {
+      submit: ({ socket, stateDescription, stages }) => {
         const result = serializeView(stages);
         const {
           view: { dataset },
@@ -386,7 +389,7 @@ const viewBarMachine = Machine(
             view: JSON.stringify(result),
           },
         };
-        ctx.socket.emit("update", newState, false);
+        socket.emit("update", { data: newState, include_self: true });
       },
     },
   }
