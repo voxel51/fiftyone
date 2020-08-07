@@ -1,7 +1,6 @@
 import { Machine, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine from "./ViewStage/viewStageMachine";
-import ViewStageStories from "./ViewStage/ViewStage.stories";
 
 export const createStage = (
   stage,
@@ -21,15 +20,6 @@ export const createStage = (
   length,
   active,
   inputRef: {},
-});
-
-export const createBar = (port, setStateDescription) => ({
-  port: port,
-  stages: [],
-  stageInfo: undefined,
-  activeStage: 0,
-  setStateDescription,
-  stateDescriptionValue,
 });
 
 function getStageInfo(context) {
@@ -52,13 +42,25 @@ const viewBarMachine = Machine(
       port: undefined,
       stages: [],
       stageInfo: undefined,
-      activeStage: undefined,
+      activeStage: 0,
       setStateDescription: undefined,
-      stateDescriptionValue: undefined,
+      stateDescription: undefined,
     },
     initial: "initializing",
     states: {
-      initializing: {
+      decide: {
+        always: [
+          {
+            target: "running",
+            cond: (ctx) => ctx.stageInfo,
+          },
+          {
+            target: "initializing",
+          },
+        ],
+      },
+      initializing: {},
+      loading: {
         invoke: {
           src: getStageInfo,
           onDone: {
@@ -281,14 +283,15 @@ const viewBarMachine = Machine(
           "sendStagesUpdate",
         ],
       },
-      SET_STATE: {
-        actions: assign({
-          setStateDescription: (_, e) => e.setStateDescription,
-          stateDescriptionValue: (_, e) => e.stateDescriptionValue,
-        }),
-      },
       UPDATE: {
-        actions: [assign({})],
+        target: "decide",
+        actions: [
+          assign({
+            port: (_, { port }) => port,
+            stateDescription: (_, ctx) => ctx.stateDescription,
+            setStateDescription: (_, ctx) => ctx.setStateDescription,
+          }),
+        ],
       },
     },
   },
@@ -304,13 +307,13 @@ const viewBarMachine = Machine(
             stage: stage.stage,
           })
         ),
-      submit: ({ stateDescriptionValue, setStateDescription, stages }) => {
+      submit: ({ stateDescription, setStateDescription, stages }) => {
         const result = serializeView(stages);
         const {
           view: { dataset },
-        } = stateDescriptionValue;
+        } = stateDescription;
         setStateDescription({
-          ...stateDescriptionValue,
+          ...stateDescription,
           view: {
             dataset,
             view: result,

@@ -2,12 +2,12 @@ import React, { useEffect, useCallback, useMemo, useRef } from "react";
 import styled from "styled-components";
 import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 
-import { stateDescription } from "../../recoil/atoms";
+import { port, stateDescription } from "../../recoil/atoms";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
-import viewBarMachine, { createBar } from "./viewBarMachine";
+import viewBarMachine from "./viewBarMachine";
 
 function useOutsideClick(ref, callback) {
   useEffect(() => {
@@ -76,18 +76,22 @@ const viewBarKeyMap = {
   VIEW_BAR_PREVIOUS_STAGE: "shift+left",
 };
 
-const machine = viewBarMachine.withContext(createBar(5151));
-
 const ViewBar = () => {
   const [stateDescriptionValue, setStateDescription] = useRecoilState(
     stateDescription
   );
+  const portValue = useRecoilValue(port);
 
   useEffect(() => {
-    send({ type: "SET_STATE", stateDescriptionValue, setStateDescription });
-  }, [stateDescriptionValue, setStateDescription]);
+    send({
+      type: "UPDATE",
+      port: portValue,
+      stateDescription: stateDescriptionValue,
+      setStateDescription,
+    });
+  }, [portValue, stateDescriptionValue, setStateDescription]);
 
-  const [state, send] = useMachine(machine);
+  const [state, send] = useMachine(viewBarMachine);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);
