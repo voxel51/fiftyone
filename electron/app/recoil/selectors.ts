@@ -43,7 +43,8 @@ export const labelColorMapping = selector({
   key: "labelColorMapping",
   get: ({ get }) => {
     const colors = get(atoms.colors);
-    const { labels, tags } = get(atoms.stateDescription).derivables;
+    const { labels = [], tags = [] } =
+      get(atoms.stateDescription).derivables || {};
 
     const colorMapping = {};
     let i = 0;

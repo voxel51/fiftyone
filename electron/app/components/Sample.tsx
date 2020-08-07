@@ -24,7 +24,7 @@ const Sample = ({
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
   const s = sample;
-  const { activeLabels, activeTags, activeOther, colors } = displayProps;
+  const { activeLabels, activeTags, activeOther } = displayProps;
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
   const tagNames = useRecoilValue(selectors.tagNames);
 
@@ -82,7 +82,7 @@ const Sample = ({
           width: "100%",
           position: "relative",
         }}
-        colors={colors}
+        colorMapping={colorMapping}
         sample={sample}
         thumbnail={true}
         activeLabels={activeLabels}
