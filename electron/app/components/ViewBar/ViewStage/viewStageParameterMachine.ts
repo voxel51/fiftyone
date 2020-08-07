@@ -6,8 +6,9 @@ const { assign, choose } = actions;
  * See https://stackoverflow.com/questions/175739/built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
  * for details about numbers and javascript
  */
-const PARSER = {
+export const PARSER = {
   bool: {
+    cast: (value) => ["true", "false"].indexOf(value.toLowerCase()) === 0,
     parse: (value) => {
       return (
         value.toLowerCase().charAt(0).toUpperCase() +
@@ -17,6 +18,7 @@ const PARSER = {
     validate: (value) => ["true", "false"].indexOf(value.toLowerCase()) >= 0,
   },
   float: {
+    cast: (value) => +value,
     parse: (value) => {
       const stripped = value.replace(/[\s]/g, "");
       const [integer, fractional] = stripped.split(".");
@@ -28,11 +30,13 @@ const PARSER = {
     },
   },
   int: {
+    cast: (value) => +value,
     parse: (value) =>
       value.replace(/[,\s]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","),
     validate: (value) => /^\d+$/.test(value.replace(/[,\s]/g, "")),
   },
   list: {
+    cast: (value, next) => JSON.parse(value).map((e) => PARSER[next].cast(e)),
     parse: (value, next) => {
       const array = JSON.parse(value);
       return JSON.stringify(array.map((e) => PARSER[next].parse(e)));
@@ -49,10 +53,12 @@ const PARSER = {
     },
   },
   str: {
+    cast: (value) => value,
     parse: (value) => value,
     validate: () => true,
   },
   dict: {
+    cast: (value) => JSON.parse(value),
     parse: (value) => value,
     validate: (value) => {
       try {
