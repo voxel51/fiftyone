@@ -26,6 +26,8 @@ export const createStage = (
   inputRef: {},
 });
 
+import { getSocket } from "../utils/socket";
+
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
     response.json()
@@ -45,7 +47,6 @@ function serializeView(stages) {
 
 function setStages(ctx, stageInfo) {
   const viewStr = ctx.stateDescription.view.view;
-  console.log(viewStr);
   const view = JSON.parse(viewStr);
   if (viewStr === JSON.stringify(serializeView(ctx.stages))) {
     return ctx.stages;
@@ -61,7 +62,6 @@ function setStages(ctx, stageInfo) {
         ctx.stages.length,
         i === Math.min(view.length - 1, ctx.activeStage),
         stage.kwargs.map((p, j) => {
-          console.log(p, stageInfo);
           const stageInfoResult = stageInfo.filter(
             (s) => s.name === stageName
           )[0];
@@ -72,7 +72,7 @@ function setStages(ctx, stageInfo) {
             p[1],
             true,
             false,
-            j === stageInfoResult.params[j].length - 1
+            j === stageInfoResult.params.length - 1
           );
           return {
             ...param,
@@ -92,7 +92,7 @@ const viewBarMachine = Machine(
   {
     id: "stages",
     context: {
-      port: undefined,
+      socket: undefined,
       stages: [],
       stageInfo: undefined,
       activeStage: 0,
@@ -354,7 +354,7 @@ const viewBarMachine = Machine(
         target: "decide",
         actions: [
           assign({
-            port: (_, { port }) => port,
+            socket: (_, { port }) => getSocket(port, "port"),
             stateDescription: (_, ctx) => ctx.stateDescription,
             setStateDescription: (_, ctx) => ctx.setStateDescription,
           }),
@@ -374,25 +374,19 @@ const viewBarMachine = Machine(
             stage: stage.stage,
           })
         ),
-      submit: ({ stateDescription, setStateDescription, stages }) => {
+      submit: ({ stateDescription, stages }) => {
         const result = serializeView(stages);
         const {
           view: { dataset },
         } = stateDescription;
-        console.log("state", {
-          ...stateDescription,
-          view: {
-            dataset,
-            view: result,
-          },
-        });
-        setStateDescription({
+        const newState = {
           ...stateDescription,
           view: {
             dataset,
             view: JSON.stringify(result),
           },
-        });
+        };
+        ctx.socket.emit("update", newState, false);
       },
     },
   }

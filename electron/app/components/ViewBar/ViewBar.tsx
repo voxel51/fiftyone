@@ -105,7 +105,6 @@ const ViewBar = () => {
   };
 
   useOutsideClick(barRef, () => send("BLUR"));
-  console.log(state.toStrings(), state.context.stateDescription, stages);
 
   return (
     <ViewBarContainer>

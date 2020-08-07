@@ -116,7 +116,7 @@ class StateController(Namespace):
         """Handles disconnection from the server."""
         pass
 
-    def on_update(self, state_dict):
+    def on_update(self, state_dict, include_self):
         """Updates the state.
 
         Args:
@@ -126,7 +126,7 @@ class StateController(Namespace):
         self.state = fos.StateDescriptionWithDerivables.from_dict(
             state_dict
         ).serialize()
-        emit("update", self.state, broadcast=True, include_self=False)
+        emit("update", self.state, broadcast=True, include_self=include_self)
 
     def on_get_fiftyone_info(self):
         """Retrieves information about the FiftyOne installation."""
