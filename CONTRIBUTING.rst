@@ -110,6 +110,24 @@ To enable ``pre-commit`` simply run:
 See the ``.pre-commit-config.yaml`` configuration file for more information
 on how it works.
 
+Documentation
+-------------
+
+FiftyOne's API Reference Documentation is automatically generated using
+`sphinx-apidoc <https://www.sphinx-doc.org/en/master/man/sphinx-apidoc.html>`_.
+Docstrings follow
+`Google docstrings <https://google.github.io/styleguide/pyguide.html#381-docstrings>`_
+format.
+
+When adding a new feature to FiftyOne, or changing core functionality, be sure
+to update both the docstrings in source code and the corresponding
+documentation in all relevant locations.
+
+Unit Tests
+----------
+
+TODO(Tyler)
+
 App development and best practices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
