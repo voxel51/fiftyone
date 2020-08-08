@@ -532,12 +532,18 @@ class SelectFields(ViewStage):
 
 
 class Shuffle(ViewStage):
-    def __init__(self, seed):
+    """Randomly shuffles the samples in the view using a provided seed.
+
+    Args:
+        seed (51): an integer seed used to randomly shuffle samples
+    """
+
+    def __init__(self, seed=51):
         self._seed = seed
 
     @property
     def seed(self):
-        """The number of samples to skip."""
+        """The seed to shuffle by."""
         return self._seed
 
     def to_mongo(self):
