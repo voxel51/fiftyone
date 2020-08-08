@@ -5,6 +5,7 @@ View stages.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import random
 import reprlib
 
 from bson import ObjectId
@@ -528,6 +529,32 @@ class SelectFields(ViewStage):
 
     def _kwargs(self):
         return {"field_names": self._field_names}
+
+
+class Shuffle(ViewStage):
+    def __init__(self, seed):
+        self._seed = seed
+
+    @property
+    def seed(self):
+        """The number of samples to skip."""
+        return self._seed
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        random.seed(self._seed)
+        random_int = random.randint(10000000, 1000000000)
+        return [
+            {"$set": {"_rand": {"$mod": [random_int, "$_rand"]}}},
+            {"$sort": {"_rand": ASCENDING}},
+        ]
+
+    def _kwargs(self):
+        return {"seed": self._seed}
 
 
 class SortBy(ViewStage):

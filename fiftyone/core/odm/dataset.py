@@ -5,6 +5,8 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import random
+
 from mongoengine import (
     BooleanField,
     StringField,
@@ -14,6 +16,8 @@ from mongoengine import (
 import eta.core.utils as etau
 
 from .document import Document, EmbeddedDocument
+
+random.seed(51)
 
 
 class SampleFieldDocument(EmbeddedDocument):

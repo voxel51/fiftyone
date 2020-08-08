@@ -190,6 +190,8 @@ class DatasetSampleDocument(Document, SampleDocument):
     # Metadata about the sample media
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
+    _rand = fof.FloatField(default=0)
+
     def __setattr__(self, name, value):
         # pylint: disable=no-member
         has_field = self.has_field(name)

@@ -389,6 +389,15 @@ class SampleCollection(object):
         return self._add_view_stage(fos.SelectFields(field_names))
 
     @view_stage
+    def shuffle(self, seed=51):
+        """Shuffles samples by sorting them by their _rand field 
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.Shuffle(seed))
+
+    @view_stage
     def skip(self, skip):
         """Omits the given number of samples from the head of the collection.
 

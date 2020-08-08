@@ -11,6 +11,7 @@ import inspect
 import logging
 import numbers
 import os
+import random
 
 from bson import ObjectId
 from mongoengine.errors import DoesNotExist, FieldDoesNotExist
@@ -433,6 +434,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if not sample._in_db:
             doc = self._sample_doc_cls.from_dict(d, extended=False)
             sample._set_backing_doc(doc)
+            random.setstate(self._random_state)
+            sample._doc._rand = random.random() * 0.01 + 0.99
+            sample.save()
+            self._random_state = random.getstate()
 
         return str(d["_id"])
 
@@ -496,6 +501,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if not sample._in_db:
                 doc = self._sample_doc_cls.from_dict(d, extended=False)
                 sample._set_backing_doc(doc)
+                random.setstate(self._random_state)
+                sample._doc._rand = random.random() * 0.01 + 0.99
+                sample.save()
+                self._random_state = random.getstate()
 
         return [str(d["_id"]) for d in dicts]
 
