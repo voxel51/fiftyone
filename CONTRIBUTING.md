@@ -108,9 +108,29 @@ When adding a new feature to FiftyOne, or changing core functionality, be sure
 to update both the docstrings in source code and the corresponding
 documentation in all relevant locations.
 
-#### Unit Tests
+#### Tests
 
-TODO(Tyler)
+FiftyOne has a sweet of tests in the `fiftyone/tests` subdirectory. These tests
+are run automatically on code in outstanding PRs. When making a PR to FiftyOne
+be sure that all tests are passing. To run these tests locally either run each
+test individually:
+
+```bash
+python tests/db_conn_test.py
+python tests/unittests.py
+python tests/stage_tests.py
+...
+```
+
+Or alternatively use [pytest](https://github.com/pytest-dev/pytest) to run the
+entire test suite:
+
+```bash
+cd tests
+pytest
+```
+
+If adding a new feature be sure to write one or more tests for the feature.
 
 ### App development and best practices
 
