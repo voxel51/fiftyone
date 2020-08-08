@@ -47,8 +47,8 @@ Write designs for significant changes
 For significant changes to FiftyOne, we recommend outlining a design for the
 feature or patch and discussing it with an FiftyOne committer before investing
 heavily in implementation. During issue triage, we try to proactively
-identify issues require design by labeling them with ``needs design``. This is
-particularly important if your proposed implementation:
+identify issues that require design by labeling them with ``needs design``.
+This is particularly important if your proposed implementation:
 
 - Introduces new user-facing FiftyOne APIs
 
@@ -85,7 +85,30 @@ changes across all languages and APIs. The `Core README.md <README.md>`_ provide
 Core development and best practices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-TODO
+Python 2 and 3 compatibility
+----------------------------
+
+FiftyOne exclusively supports Python 3.
+
+Style Guide
+-----------
+
+FiftyOne's codebase is formatted with `black <https://github.com/python/black>`_
+and `pylint <https://github.com/PyCQA/pylint>`_, as well as other formatting
+tools.
+
+It is recommended that you install `pre-commit <https://pre-commit.com/>`_ into
+your git hooks, to automatically check and fix any formatting issue before
+creating a git commit.
+
+To enable ``pre-commit`` simply run:
+
+.. code-block:: console
+
+    $ pre-commit install
+
+See the ``.pre-commit-config.yaml`` configuration file for more information
+on how it works.
 
 App development and best practices
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
