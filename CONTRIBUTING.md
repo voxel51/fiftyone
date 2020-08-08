@@ -15,14 +15,14 @@ FiftyOne committers actively [triage](ISSUE_TRIAGE.md) and respond to GitHub
 issues. In general, we recommend waiting for feebdack from an FiftyOne
 committer or community member before proceeding to implement a feature or
 patch. This is particularly important for
-[significant changes](https://github.com/voxel51/fiftyone/blob/master/CONTRIBUTING.md#write-designs-for-significant-changes),
+[significant changes](CONTRIBUTING.md#write-designs-for-significant-changes),
 and will typically be labeled during triage with `needs design`.
 
 After you have agreed upon an implementation strategy for your feature or patch
 with an FiftyOne committer, the next step is to introduce your changes (see
-[developing changes](CONTRIBUTING.md#developing-and-testing-changes-to-fiftyone))
-as a pull request against the FiftyOne Repository. FiftyOne committers actively
-review pull requests.
+[developing changes](CONTRIBUTING.md#developing-changes-to-fiftyone)) as a pull
+request against the FiftyOne Repository. FiftyOne committers actively review
+pull requests.
 
 Once your pull request against the FiftyOne Repository has been merged, your
 corresponding changes will be automatically included in the next FiftyOne
