@@ -8,12 +8,16 @@ Dataset samples.
 from collections import defaultdict
 from copy import deepcopy
 import os
+import random
 import weakref
 
 import eta.core.utils as etau
 
 import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
+
+
+random.seed(51)
 
 
 class _Sample(object):
@@ -254,8 +258,13 @@ class Sample(_Sample):
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         filepath = os.path.abspath(os.path.expanduser(filepath))
+        rand_value = random.random() * 0.001 + 0.999
         self._doc = foo.NoDatasetSampleDocument(
-            filepath=filepath, tags=tags, metadata=metadata, **kwargs
+            filepath=filepath,
+            tags=tags,
+            metadata=metadata,
+            _rand=rand_value,
+            **kwargs
         )
         super().__init__()
 
