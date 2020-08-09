@@ -68,6 +68,7 @@ function Dataset(props) {
             colorMapping={colorMapping}
             sample={modal.sample}
             sampleUrl={src}
+            onClose={handleHideModal}
           />
         </ModalWrapper>
       ) : null}

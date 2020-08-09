@@ -1,6 +1,8 @@
 import React from "react";
 import styled from "styled-components";
 
+import { Close } from "@material-ui/icons";
+
 import Player51 from "./Player51";
 
 type Props = {
@@ -10,10 +12,15 @@ type Props = {
 
 const Container = styled.div`
   display: grid;
-  grid-template-columns: auto 15rem;
+  grid-template-columns: auto 280px;
   width: 90vw;
   height: 80vh;
   background-color: ${({ theme }) => theme.background};
+
+  h2 svg {
+    float: right;
+    cursor: pointer;
+  }
 
   .player {
     overflow: hidden;
@@ -48,6 +55,7 @@ const SampleModal = ({
   sampleUrl,
   activeLabels,
   colorMapping,
+  onClose,
 }: Props) => {
   return (
     <Container>
@@ -55,7 +63,7 @@ const SampleModal = ({
         <Player51
           src={sampleUrl}
           style={{
-            height: "100%",
+            maxHeight: "100%",
             position: "relative",
           }}
           sample={sample}
@@ -64,7 +72,9 @@ const SampleModal = ({
         />
       </div>
       <div className="sidebar">
-        <h2>Metadata</h2>
+        <h2>
+          Metadata <Close onClick={onClose} />
+        </h2>
         <Row name="ID" value={sample._id.$oid} />
         <Row name="Source" value={sample.filepath} />
         <Row name="Tags" value={JSON.stringify(sample.tags)} />
