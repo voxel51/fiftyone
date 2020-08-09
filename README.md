@@ -7,12 +7,19 @@ FiftyOne is a machine learning tool that helps you get closer to your data. Rapi
 
 ## Table of Contents
 
+- [Core Features](#core-features)
 - [Getting Started](#getting-started)
 - [Community](#community)
-- [Core Features](#core-features)
 - [Install from source](#installing-fiftyone-from-source)
 - [Uninstall](#uninstallation)
 
+
+## Core Features
+* Find annotation mistakes
+* Remove redundant images for a unique, diverse dataset
+* Bootstrap a dataset from raw images
+* Identify optimal samples to add to your training dataset
+* Hands on evaluation of your model 
 
 
 ## Getting Started
@@ -42,14 +49,6 @@ Check out our [Voxel51 Blog](https://medium.com/voxel51) for regular posts on co
 
 <a href="http://www.twitter.com/voxel51" rel="twitter"><img src="https://github.com/voxel51/fiftyone/blob/readme/docs/source/_static/images/icons/logo-twitter-dark.svg" width="20" height="20" /></a>
 <a href="http://www.facebook.com/voxel51" rel="facebook"><img src="https://github.com/voxel51/fiftyone/blob/readme/docs/source/_static/images/icons/logo-facebook-dark.svg" width="20" height="20" /></a>
-
-
-## Core Features
-* Find annotation mistakes
-* Remove redundant images for a unique, diverse dataset
-* Bootstrap a dataset from raw images
-* Identify optimal samples to add to your training dataset
-* Hands on evaluation of your model 
 
 
 ## Installing FiftyOne from source
