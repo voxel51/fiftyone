@@ -26,10 +26,35 @@ const Container = styled.div`
   }
 
   .player {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+  }
+
+  .nav-button {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    width: 2em;
+    height: 5em;
+    margin-top: -2.5em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: ${({ theme }) => theme.overlay};
+    cursor: pointer;
+    font-size: 150%;
+    font-weight: bold;
+    user-select: none;
+
+    &.left {
+      left: 0;
+    }
+    &.right {
+      right: 0;
+    }
   }
 
   .sidebar {
@@ -49,7 +74,7 @@ const Container = styled.div`
 `;
 
 const Row = ({ name, value }) => (
-  <div class="row">
+  <div className="row">
     <label>{name}</label>
     <span>{value}</span>
   </div>
@@ -61,6 +86,8 @@ const SampleModal = ({
   activeLabels,
   colorMapping,
   onClose,
+  onPrevious,
+  onNext,
 }: Props) => {
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
@@ -126,6 +153,16 @@ const SampleModal = ({
           colorMapping={colorMapping}
           activeLabels={activeLabels}
         />
+        {onPrevious ? (
+          <div className="nav-button left" onClick={onPrevious}>
+            &lt;
+          </div>
+        ) : null}
+        {onNext ? (
+          <div className="nav-button right" onClick={onNext}>
+            &gt;
+          </div>
+        ) : null}
       </div>
       <div className="sidebar">
         <h2>

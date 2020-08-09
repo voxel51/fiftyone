@@ -69,6 +69,8 @@ function Dataset(props) {
             sample={modal.sample}
             sampleUrl={src}
             onClose={handleHideModal}
+            onPrevious={() => {}}
+            onNext={() => {}}
           />
         </ModalWrapper>
       ) : null}

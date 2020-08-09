@@ -1,4 +1,5 @@
 import React from "react";
+import { boolean } from "@storybook/addon-knobs";
 import SampleModal from "./SampleModal";
 
 export default {
@@ -81,5 +82,11 @@ const sample = {
 };
 
 export const standard = () => (
-  <SampleModal sample={sample} colorMapping={{}} activeLabels={[]} />
+  <SampleModal
+    sample={sample}
+    colorMapping={{}}
+    activeLabels={[]}
+    onPrevious={boolean("has previous") ? () => {} : null}
+    onNext={boolean("has next") ? () => {} : null}
+  />
 );
