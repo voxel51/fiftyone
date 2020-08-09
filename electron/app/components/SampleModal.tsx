@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { Close } from "@material-ui/icons";
 
 import Player51 from "./Player51";
+import Tag from "./Tags/Tag";
 
 type Props = {
   sample: object;
@@ -33,12 +34,11 @@ const Container = styled.div`
   }
 
   .row {
-    display: flex;
     > label {
       font-weight: bold;
     }
     > span {
-      margin-left: auto;
+      float: right;
     }
   }
 `;
@@ -77,7 +77,12 @@ const SampleModal = ({
         </h2>
         <Row name="ID" value={sample._id.$oid} />
         <Row name="Source" value={sample.filepath} />
-        <Row name="Tags" value={JSON.stringify(sample.tags)} />
+        <Row
+          name="Tags"
+          value={sample.tags.map((tag) => (
+            <Tag key={tag} name={tag} color={colorMapping[tag]} />
+          ))}
+        />
         {Object.keys(sample).map((k) => {
           if (sample[k] && sample[k]._cls === "Classification") {
             return <Row key={k} name={k} value={sample[k].label} />;
