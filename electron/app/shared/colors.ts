@@ -45,6 +45,7 @@ export const darkTheme = {
   backgroundDarkBorder: grey24,
   border: grey37,
   borderLight: grey24,
+  overlay: grey46a30,
 
   brand: orange49,
   brandTransparent: orange49a40,
