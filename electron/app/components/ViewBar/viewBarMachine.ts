@@ -43,7 +43,7 @@ function serializeStage(stage, stageMap) {
   return {
     kwargs: stage.parameters.map((param, i) => [
       param.parameter,
-      PARAM_PARSER[stageMap[stage.stage][i].type].cast(param.value),
+      PARAM_PARSER[stageMap[stage.stage][i].type].castTo(param.value),
     ]),
     _cls: `fiftyone.core.stages.${stage.stage}`,
   };
@@ -79,7 +79,7 @@ function setStages(ctx, stageInfo) {
             stageName,
             p[0],
             stageInfoResult.params[j].type,
-            p[1],
+            PARAM_PARSER[stageInfoResult.params[j].type].castFrom(p[1]),
             true,
             false,
             j === stageInfoResult.params.length - 1
