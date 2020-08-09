@@ -40,7 +40,7 @@ priority labels.
 -   `backlog`: We believe it is useful but don’t see it being prioritized in
     the next few months. Use this for issues that are lower priority than
     `priority/important-longterm`.
--   `awaiting-more-evidence``: Lowest priority. Possibly useful, but not yet
+-   `awaiting-more-evidence`: Lowest priority. Possibly useful, but not yet
     enough support to actually get it done. This is a good place to put issues
     that could be useful but require more evidence to demonstrate broad value.
     Don’t use it as a way to say no. If we think it doesn’t fit in FiftyOne, we
