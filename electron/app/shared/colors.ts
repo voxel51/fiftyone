@@ -17,6 +17,7 @@ export const grey10 = "hsl(216, 10%, 10%)";
 
 export const grey46a13 = "hsla(208, 7%, 46%, 0.13)";
 export const grey46a30 = "hsla(208, 7%, 46%, 0.3)";
+export const grey46a70 = "hsla(208, 7%, 46%, 0.7)";
 
 export const blue90 = "hsl(210, 20%, 90%)";
 export const blue50 = "hsl(210, 20%, 50%)";
@@ -45,7 +46,7 @@ export const darkTheme = {
   backgroundDarkBorder: grey24,
   border: grey37,
   borderLight: grey24,
-  overlay: grey46a30,
+  overlay: grey46a70,
 
   brand: orange49,
   brandTransparent: orange49a40,
