@@ -110,7 +110,7 @@ documentation in all relevant locations.
 
 #### Tests
 
-FiftyOne has a sweet of tests in the `fiftyone/tests` subdirectory. These tests
+FiftyOne has a suite of tests in the `fiftyone/tests` subdirectory. These tests
 are run automatically on code in outstanding PRs. When making a PR to FiftyOne
 be sure that all tests are passing. To run these tests locally either run each
 test individually:
