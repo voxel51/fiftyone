@@ -100,7 +100,7 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        return view_stage_cls(**d["kwargs"])
+        return view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
 
 
 class ViewStageError(Exception):
@@ -134,7 +134,7 @@ class Exclude(ViewStage):
         return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
 
     def _kwargs(self):
-        return {"sample_ids": self._sample_ids}
+        return [["sample_ids", self._sample_ids]]
 
     @classmethod
     def _params(cls):
@@ -171,7 +171,7 @@ class ExcludeFields(ViewStage):
         return [{"$unset": self._field_names}]
 
     def _kwargs(self):
-        return {"field_names": self._field_names}
+        return [["field_names", self._field_names]]
 
     @classmethod
     def _params(self):
@@ -210,7 +210,7 @@ class Exists(ViewStage):
         return Match({self._field: {"$exists": True, "$ne": None}}).to_mongo()
 
     def _kwargs(self):
-        return {"field": self._field}
+        return [["field", self._field]]
 
     @classmethod
     def _params(cls):
@@ -280,7 +280,7 @@ class _FilterList(ViewStage):
         return self._filter
 
     def _kwargs(self):
-        return {"field": self._field, "filter": self._get_mongo_filter()}
+        return [["field", self._field], ["filter", self._get_mongo_filter()]]
 
     @classmethod
     def _params(self):
@@ -358,7 +358,7 @@ class Limit(ViewStage):
         return [{"$limit": self._limit}]
 
     def _kwargs(self):
-        return {"limit": self._limit}
+        return [["limit", self._limit]]
 
     @classmethod
     def _params(cls):
@@ -398,7 +398,7 @@ class Match(ViewStage):
         return self._filter
 
     def _kwargs(self):
-        return {"filter": self._get_mongo_filter()}
+        return [["filter", self._get_mongo_filter()]]
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -436,7 +436,7 @@ class MatchTag(ViewStage):
         return Match({"tags": self._tag}).to_mongo()
 
     def _kwargs(self):
-        return {"tag": self._tag}
+        return [["tag", self._tag]]
 
     @classmethod
     def _params(cls):
@@ -470,7 +470,7 @@ class MatchTags(ViewStage):
         return Match({"tags": {"$in": self._tags}}).to_mongo()
 
     def _kwargs(self):
-        return {"tags": self._tags}
+        return [["tags", self._tags]]
 
     @classmethod
     def _params(cls):
@@ -504,7 +504,7 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def _kwargs(self):
-        return {"pipeline": self._pipeline}
+        return [["pipeline", self._pipeline]]
 
     @classmethod
     def _params(self):
@@ -536,7 +536,7 @@ class Select(ViewStage):
         return Match({"_id": {"$in": sample_ids}}).to_mongo()
 
     def _kwargs(self):
-        return {"sample_ids": self._sample_ids}
+        return [["sample_ids", self._sample_ids]]
 
     @classmethod
     def _params(cls):
@@ -580,7 +580,7 @@ class SelectFields(ViewStage):
         return [{"$project": {fn: True for fn in self.field_names}}]
 
     def _kwargs(self):
-        return {"field_names": self._field_names}
+        return [["field_names", self._field_names]]
 
     @classmethod
     def _params(self):
@@ -640,10 +640,10 @@ class SortBy(ViewStage):
         return self._field_or_expr
 
     def _kwargs(self):
-        return {
-            "field_or_expr": self._get_mongo_field_or_expr(),
-            "reverse": self._reverse,
-        }
+        return [
+            ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["reverse", self._reverse],
+        ]
 
     @classmethod
     def _params(cls):
@@ -678,7 +678,7 @@ class Skip(ViewStage):
         return [{"$skip": self._skip}]
 
     def _kwargs(self):
-        return {"skip": self._skip}
+        return [["skip", self._skip]]
 
     @classmethod
     def _params(cls):
@@ -715,7 +715,7 @@ class Take(ViewStage):
         return [{"$sample": {"size": size}}]
 
     def _kwargs(self):
-        return {"size": self._size}
+        return [["size", self._size]]
 
     @classmethod
     def _params(cls):

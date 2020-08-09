@@ -56,13 +56,20 @@ const viewStageMachine = Machine(
               },
               {
                 target: "reading.submitted",
-                cond: (ctx) => ctx.submitted,
+                cond: (ctx) => ctx.submitted && !ctx.loaded,
                 actions: [
                   sendParent((ctx) => ({
                     type: "STAGE.COMMIT",
                     stage: ctx,
                   })),
                 ],
+              },
+              {
+                target: "reading.submitted",
+                cond: (ctx) => ctx.submitted && ctx.loaded,
+                actions: assign({
+                  loaded: false,
+                }),
               },
               {
                 target: "reading.selected",
