@@ -18,7 +18,8 @@ export const numViewStages = selector({
 export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
-    return get(atoms.stateDescription).dataset.name;
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });
 
