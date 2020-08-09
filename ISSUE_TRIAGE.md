@@ -8,7 +8,7 @@ faster responses.
 Issue and pull request triage has three steps:
 
 1. assign one or more process labels (e.g. `needs design` or `help wanted`),
-2. mark a priority, and
+2. mark a priority
 3. label one or more relevant areas, (e.g. `app`, `core`, or `backend`).
 
 The remainder of the document describes the labels used in each of these steps
