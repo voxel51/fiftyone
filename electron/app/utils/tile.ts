@@ -28,6 +28,7 @@ export default function tile(data, newHasMore, state, host) {
   let remainder = [];
   const newRemainder = Boolean(newHasMore) ? currentRow : [];
   if (!Boolean(newHasMore) && currentRow.length) newRows.push(currentRow);
+  else remainder = currentRow;
 
   for (const i in newRows) {
     const row = newRows[i];
