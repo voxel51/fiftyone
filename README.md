@@ -2,24 +2,72 @@
 
 <img src="https://user-images.githubusercontent.com/25985824/89583450-5b38ab80-d808-11ea-909e-4fa8bc366d7f.png" alt="FiftyOne"/>
 
-## Installation
+## Installing FiftyOne from source
 
-Clone the repository:
+This section explains how to install the development version of FiftyOne from
+GitHub. This is necessary if you want to contribute to FiftyOne or use the
+latest unreleased changes. If you simply want to install FiftyOne, see the
+[FiftyOne documentation](https://voxel51.com/docs/fiftyone/getting_started/install.html)
+instead.
 
-```shell
-git clone https://github.com/voxel51/fiftyone
-cd fiftyone
-```
+This process currently targets macOS and Linux systems. Windows users may need
+to make adjustments.
 
-and install it:
+### Prerequisites
 
-```shell
-bash install.bash
-```
+You will need:
+
+-   [Python](https://www.python.org/) (3.5 or newer)
+-   ETA - this is installed by `install.bash` below, but its
+    [system requirements](https://github.com/voxel51/eta#local-installation)
+    apply to FiftyOne as well.
+-   [Node.js](https://nodejs.org/) - on Linux, we recommend using
+    [nvm](https://github.com/nvm-sh/nvm) to obtain an up-to-date version.
+-   [Yarn](https://yarnpkg.com/) - once Node.js is installed, install this with
+    `npm install -g yarn`
+-   On Linux, you will need at least the `openssl` and `libcurl` packages. On
+    Debian-based distributions, you will need to install `libcurl4` or
+    `libcurl3` instead of `libcurl`, depending on the age of your distribution.
+    For example:
+
+    ```shell
+    # Ubuntu 18.04
+    sudo apt install libcurl4 openssl
+    # Fedora 32
+    sudo dnf install libcurl openssl
+    ```
+
+### Installation
 
 We strongly recommend that you install FiftyOne in a
-[virtual environment](https://virtualenv.pypa.io/en/stable) to maintain a clean
-workspace.
+[virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
+to maintain a clean workspace.
+
+1. Clone the repository:
+
+    ```shell
+    git clone --recursive https://github.com/voxel51/fiftyone
+    cd fiftyone
+    ```
+
+2. Run the installation script:
+
+    ```shell
+    bash install.bash
+    ```
+
+If you want to use the `fiftyone-brain` package, you will need to install it
+separately after installing FiftyOne:
+
+```shell
+pip install --index https://pypi.voxel51.com fiftyone-brain
+```
+
+These steps will perform a lite ETA installation, which should be sufficient
+for most users. If you want a full ETA installation, or want to customize your
+ETA installation, see the instructions in the
+[ETA readme](https://github.com/voxel51/eta/blob/develop/README.md). Note that
+you will need to enter the `eta` folder before running its installation script.
 
 ### Developer installation
 
@@ -31,7 +79,7 @@ the install script:
 bash install.bash -d
 ```
 
-You should also checkout the
+You should also check out the
 [Developer's Guide](https://github.com/voxel51/fiftyone/blob/develop/docs/dev_guide.md)
 to get started.
 
