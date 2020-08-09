@@ -69,6 +69,7 @@ export default ({
   style,
   onClick,
   onDoubleClick,
+  onLoad = () => {},
   activeLabels,
 }) => {
   const [overlay, playerColorMap] = loadOverlay(sample, colorMapping);
@@ -95,6 +96,7 @@ export default ({
       }
       player.render(id, activeLabels);
       setInitLoad(true);
+      onLoad();
     } else {
       player.renderer.processFrame(activeLabels);
     }

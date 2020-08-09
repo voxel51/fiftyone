@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState, useRef } from "react";
 import styled from "styled-components";
 
 import { Close } from "@material-ui/icons";
 
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
+
+import { useResizeHandler } from "../utils/hooks";
 
 type Props = {
   sample: object;
@@ -24,6 +26,9 @@ const Container = styled.div`
   }
 
   .player {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
   }
 
@@ -57,6 +62,34 @@ const SampleModal = ({
   colorMapping,
   onClose,
 }: Props) => {
+  const playerContainerRef = useRef();
+  const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
+
+  const handleResize = () => {
+    if (!playerContainerRef.current) {
+      return;
+    }
+    const container = playerContainerRef.current;
+    const image = playerContainerRef.current.querySelector(
+      "img.p51-contained-image"
+    );
+    const containerRatio = container.clientWidth / container.clientHeight;
+    const imageRatio = image.clientWidth / image.clientHeight;
+    if (containerRatio < imageRatio) {
+      setPlayerStyle({
+        width: container.clientWidth,
+        height: container.clientWidth / imageRatio,
+      });
+    } else {
+      setPlayerStyle({
+        height: container.clientHeight,
+        width: container.clientHeight * imageRatio,
+      });
+    }
+  };
+
+  useResizeHandler(handleResize);
+
   const classifications = Object.keys(sample)
     .filter((k) => sample[k] && sample[k]._cls == "Classification")
     .map((k) => (
@@ -81,12 +114,13 @@ const SampleModal = ({
 
   return (
     <Container>
-      <div className="player">
+      <div className="player" ref={playerContainerRef}>
         <Player51
           src={sampleUrl}
+          onLoad={handleResize}
           style={{
-            maxHeight: "100%",
             position: "relative",
+            ...playerStyle,
           }}
           sample={sample}
           colorMapping={colorMapping}
