@@ -25,9 +25,7 @@ Assign at least one process label to every issue you triage.
 
 ## Assign priority
 
-You should assign a priority to each issue you triage. We use
-[kubernetes-style](https://github.com/kubernetes/community/blob/master/contributors/guide/issue-triage.md#define-priority)
-priority labels.
+You should assign a priority to each issue you triage.
 
 -   `critical`: This is the highest priority and should be worked on by
     somebody right now. This should typically be reserved for things like
