@@ -167,26 +167,20 @@ Best practices:
     flag (`-d`) should have installed this step as a pre-commit hook
 
 After installing the App development environment (see the App
-[README.md](README.md) you can run `yarn storybook`.
+[README.md](README.md)) you can run `yarn storybook`.
 
 Chromatic homepage: Our Chromatic homepage can be found
 [here](https://www.chromatic.com/builds?appId=5f1875aa9080b80022532573)
 
-[//]: # (TODOS)
-
-
-[//]: # (-   ESLint configuration)
-
-[//]: # (-   Webpack cleanup)
-
-[//]: # (-   Unit tests - see here)
-
-[//]: # (https://www.learnstorybook.com/design-systems-for-developers/react/en/test/)
-
-[//]: # (-   Recoil best practices)
-
-[//]: # (-   TSDoc documentation for non-component code?)
-
-[//]: # (-   Add custom introduction page to Storybook)
+[//]: # "TODOS"
+[//]: # "-   ESLint configuration"
+[//]: # "-   Webpack cleanup"
+[//]: # "-   Unit tests - see here"
+[//]:
+    #
+    "https://www.learnstorybook.com/design-systems-for-developers/react/en/test/"
+[//]: # "-   Recoil best practices"
+[//]: # "-   TSDoc documentation for non-component code?"
+[//]: # "-   Add custom introduction page to Storybook"
 
 Copyright 2017-2020, Voxel51, Inc. voxel51.com
