@@ -220,30 +220,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._meta.persistent = value
         self._meta.save()
 
-    class DataDict(dict):
-        def __init__(self, dataset, d={}):
-            self.dataset = dataset
-            self.update(d)
-
-        def __setitem__(self, key, value):
-            super().__setitem__(key, value)
-            self.dataset._meta.data = self
-            self.dataset._meta.save()
-
-        def update(self, d):
-            super().update(d)
-            self.dataset._meta.data = self
-            self.dataset._meta.save()
-
-    @property
-    def data(self):
-        return self.DataDict(self, self._meta.data)
-
-    @data.setter
-    def data(self, d):
-        self._meta.data = d
-        self._meta.save()
-
     @property
     def deleted(self):
         """Whether the dataset is deleted."""
@@ -580,10 +556,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def save(self):
         """Saves all modified in-memory samples in the dataset to the database.
+        Also saves dataset-level data like ``persistent`` and ``info`` to the
+        database.
 
         Only samples with non-persisted changes will be processed.
         """
         fos.Sample._save_dataset_samples(self.name)
+        self._meta.save()
 
     def reload(self):
         """Reloads all in-memory samples in the dataset from the database."""

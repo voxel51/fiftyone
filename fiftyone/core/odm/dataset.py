@@ -99,4 +99,4 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
-    data = DictField(default=dict)
+    info = DictField(default=dict)
