@@ -57,6 +57,28 @@ const SampleModal = ({
   colorMapping,
   onClose,
 }: Props) => {
+  const classifications = Object.keys(sample)
+    .filter((k) => sample[k] && sample[k]._cls == "Classification")
+    .map((k) => (
+      <Row
+        key={k}
+        name={<Tag name={k} color={colorMapping[k]} />}
+        value={sample[k].label}
+      />
+    ));
+  const detections = Object.keys(sample)
+    .filter((k) => sample[k] && sample[k]._cls == "Detections")
+    .map((k) => {
+      const len = sample[k].detections.length;
+      return (
+        <Row
+          key={k}
+          name={<Tag name={k} color={colorMapping[k]} />}
+          value={`${len} detection${len == 1 ? "" : "s"}`}
+        />
+      );
+    });
+
   return (
     <Container>
       <div className="player">
@@ -83,20 +105,18 @@ const SampleModal = ({
             <Tag key={tag} name={tag} color={colorMapping[tag]} />
           ))}
         />
-        {Object.keys(sample).map((k) => {
-          if (sample[k] && sample[k]._cls === "Classification") {
-            return <Row key={k} name={k} value={sample[k].label} />;
-          } else if (sample[k] && sample[k]._cls === "Detections") {
-            const l = sample[k].detections.length;
-            return (
-              <Row
-                key={k}
-                name={k}
-                value={`${l} detection${l === 1 ? "" : "s"}`}
-              />
-            );
-          }
-        })}
+        {classifications.length ? (
+          <>
+            <h2>Classification</h2>
+            {classifications}
+          </>
+        ) : null}
+        {detections.length ? (
+          <>
+            <h2>Object Detection</h2>
+            {detections}
+          </>
+        ) : null}
       </div>
     </Container>
   );
