@@ -55,7 +55,7 @@ FiftyOne's users rely on specific App and Core behaviors in their daily
 workflows. As new versions of FiftyOne's are developed and released, it is
 important to ensure that users' workflows continue to operate as expected.
 Accordingly, please take care to consider backwards compatibility when
-introducing changes to the FiftyOne code base. If you are unsure of the
+introducing changes to the FiftyOne codebase. If you are unsure of the
 backwards compatibility implications of a particular change, feel free to ask
 an FiftyOne committer or community member for input.
 

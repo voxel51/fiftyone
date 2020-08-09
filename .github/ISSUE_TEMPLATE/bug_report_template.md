@@ -60,7 +60,7 @@ files should be attached.
 
 The FiftyOne Community encourages bug fix contributions. Would you or another
 member of your organization be willing to contribute a fix for this bug to the
-FiftyOne code base?
+FiftyOne codebase?
 
 -   [ ] Yes. I can contribute a fix for this bug independently.
 -   [ ] Yes. I would be willing to contribute a fix for this bug with guidance

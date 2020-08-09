@@ -30,7 +30,7 @@ Provide a clear description. Why is the proposed documentation better?
 
 The FiftyOne Community encourages documentation contributions. Would you or
 another member of your organization be willing to contribute a fix for this
-documentation issue to the FiftyOne code base?
+documentation issue to the FiftyOne codebase?
 
 -   [ ] Yes. I can contribute a documentation fix independently.
 -   [ ] Yes. I would be willing to contribute a document fix with guidance from
