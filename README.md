@@ -166,3 +166,6 @@ pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
 ## Copyright
 
 Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
+
+<a href="http://www.twitter.com/voxel51" rel="twitter"><img src="https://github.com/voxel51/fiftyone/blob/readme/docs/source/_static/images/icons/logo-twitter-dark.svg" width="20" height="20" /></a>
+<a href="http://www.facebook.com/voxel51" rel="facebook"><img src="https://github.com/voxel51/fiftyone/blob/readme/docs/source/_static/images/icons/logo-facebook-dark.svg" width="20" height="20" /></a>
