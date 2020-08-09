@@ -41,9 +41,9 @@ Feature requests typically go through the following lifecycle:
 1. A feature request GitHub Issue is submitted, which contains a high-level
    description of the proposal and its motivation. We encourage requesters to
    provide an overview of the feature's implementation as well, if possible.
-2. The [issue is triaged](ISSUE_TRIAGE.rst) to identify whether more
-   information is needed from the author, give an indication of priority, and
-   route feature requests to appropriate committers.
+2. The [issue is triaged](ISSUE_TRIAGE.md) to identify whether more information
+   is needed from the author, give an indication of priority, and route feature
+   requests to appropriate committers.
 3. The feature request is discussed with a committer. The committer will
    provide input on the implementation overview or ask for a more detailed
    design, if applicable.
@@ -59,7 +59,7 @@ Bug reports typically go through the following lifecycle:
 
 1. A bug report GitHub Issue is submitted, which contains a high-level
    description of the bug and information required to reproduce it.
-2. The [bug report is triaged](ISSUE_TRIAGE.rst) to identify whether more
+2. The [bug report is triaged](ISSUE_TRIAGE.md) to identify whether more
    information is needed from the author, give an indication of priority, and
    route to request appropriate committers.
 3. An FiftyOne committer reproduces the bug and provides feedback about how to
@@ -76,9 +76,9 @@ Documentation issues typically go through the following lifecycle:
 
 1. A documentation GitHub Issue is submitted, which contains a description of
    the issue and its location(s) in the FiftyOne documentation.
-2. The [issue is triaged](ISSUE_TRIAGE.rst) to identify whether more
-   information is needed from the author, give an indication of priority, and
-   route the request to appropriate committers.
+2. The [issue is triaged](ISSUE_TRIAGE.md) to identify whether more information
+   is needed from the author, give an indication of priority, and route the
+   request to appropriate committers.
 3. An FiftyOne committer confirms the documentation issue and provides feedback
    about how to implement a fix.
 4. After an approach has been agreed upon, an owner for the fix is identified.
@@ -93,9 +93,9 @@ Installation issues typically go through the following lifecycle:
 
 1. An installation GitHub Issue is submitted, which contains a description of
    the issue and the platforms its affects.
-2. The [issue is triaged](ISSUE_TRIAGE.rst) to identify whether more
-   information is needed from the author, give an indication of priority, and
-   route the issue to appropriate committers.
+2. The [issue is triaged](ISSUE_TRIAGE.md) to identify whether more information
+   is needed from the author, give an indication of priority, and route the
+   issue to appropriate committers.
 3. An FiftyOne committer confirms the installation issue and provides feedback
    about how to implement a fix.
 4. After an approach has been agreed upon, an owner for the fix is identified.
