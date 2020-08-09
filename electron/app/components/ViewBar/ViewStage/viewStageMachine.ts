@@ -47,6 +47,10 @@ const viewStageMachine = Machine(
           decide: {
             always: [
               {
+                target: "initializing",
+                cond: (ctx) => ctx.parameters.length && !ctx.parameters[0].ref,
+              },
+              {
                 target: "editing",
                 cond: (ctx) => ctx.focusOnInit && ctx.inputRef.current,
               },
@@ -85,10 +89,7 @@ const viewStageMachine = Machine(
               parameters: (ctx) => {
                 return ctx.parameters.map((parameter) => ({
                   ...parameter,
-                  ref: spawn(
-                    viewStageParameterMachine.withContext(parameter),
-                    parameter.id
-                  ),
+                  ref: spawn(viewStageParameterMachine.withContext(parameter)),
                 }));
               },
             }),

@@ -40,6 +40,7 @@ function getStageInfo(context) {
 }
 
 function serializeStage(stage, stageMap) {
+  console.log(stage.stage, stageMap);
   return {
     kwargs: stage.parameters.map((param, i) => [
       param.parameter,
@@ -75,7 +76,7 @@ function setStages(ctx, stageInfo) {
           const stageInfoResult = stageInfo.filter(
             (s) => s.name === stageName
           )[0];
-          const param = createParameter(
+          return createParameter(
             stageName,
             p[0],
             stageInfoResult.params[j].type,
@@ -84,10 +85,6 @@ function setStages(ctx, stageInfo) {
             false,
             j === stageInfoResult.params.length - 1
           );
-          return {
-            ...param,
-            ref: spawn(viewStageParameterMachine.withContext(param)),
-          };
         }),
         true,
         true
