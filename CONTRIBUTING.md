@@ -79,9 +79,9 @@ FiftyOne exclusively supports Python 3.
 
 #### Style Guide
 
-FiftyOne's codebase is formatted with [black](https://github.com/python/black)
-and [pylint](https://github.com/PyCQA/pylint), as well as other formatting
-tools.
+FiftyOne's Python codebase is formatted with
+[black](https://github.com/python/black) and
+[pylint](https://github.com/PyCQA/pylint), as well as other formatting tools.
 
 It is recommended that you install [pre-commit](https://pre-commit.com/) into
 your git hooks, to automatically check and fix any formatting issue before
