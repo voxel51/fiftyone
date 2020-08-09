@@ -1,8 +1,10 @@
-# FiftyOne: Explore, Analyze and Curate Your Visual Data
+# [FiftyOne](http://www.voxel51.com/fiftyone): Explore, Analyze and Curate Your Visual Data
 
 <img src="https://user-images.githubusercontent.com/25985824/89583450-5b38ab80-d808-11ea-909e-4fa8bc366d7f.png" alt="FiftyOne"/>
 
-FiftyOne is a machine learning tool that helps you get closer to your data. Rapidly experiment with and iterate on your visual data without wrangling or custom scripting. FiftyOne is lightweight, with core functionalities that are open sourced, to enable you to quantitatively analyze which data will be most valuable in solving your ML problems. 
+[FiftyOne](http://www.voxel51.com/docs/fiftyone) is a machine learning tool that helps you get closer to your data. Rapidly experiment with and iterate on your visual data without wrangling or custom scripting. [FiftyOne](http://www.voxel51.com/docs/fiftyone) is lightweight, with core functionalities that are open sourced, to enable you to quantitatively analyze which data will be most valuable in solving your ML problems. 
+
+Check it out here: http://www.voxel51.com/fiftyone
 
 
 ## Table of Contents
@@ -26,8 +28,7 @@ FiftyOne is a machine learning tool that helps you get closer to your data. Rapi
 
 ### Installation
 
-Install in just minutes with a few lines of code.
-
+Install [FiftyOne](http://www.voxel51.com/docs/fiftyone) in just minutes with two lines of code.
 
 ```python
 pip install --upgrade pip setuptools wheel
@@ -36,7 +37,8 @@ pip install --index https://pypi.voxel51.com fiftyone
 
 Our [Install Guide](https://voxel51.com/docs/fiftyone/getting_started/install.html) is a helpful resource for getting FiftyOne up and running.  
 
-### Docs
+### Documentation
+
 
 For [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html), [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html), and a [User Guide](https://voxel51.com/docs/fiftyone/user_guide/index.html), go to our official [FiftyOne Documentation](https://voxel51.com/docs/fiftyone/). 
 
@@ -53,7 +55,7 @@ Check out our [Voxel51 Blog](https://medium.com/voxel51) for regular posts on co
 
 ## Installing FiftyOne from source
 
-This section explains how to install the development version of FiftyOne from
+This section explains how to install the development version of [FiftyOne](http://www.voxel51.com/docs/fiftyone) from
 GitHub. This is necessary if you want to contribute to FiftyOne or use the
 latest unreleased changes. If you simply want to install FiftyOne, see the
 [FiftyOne documentation](https://voxel51.com/docs/fiftyone/getting_started/install.html)
