@@ -20,6 +20,7 @@ import SampleModal from "../components/SampleModal";
 import Search from "../components/Search";
 import { ModalWrapper, Overlay } from "../components/utils";
 import routes from "../constants/routes.json";
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import connect from "../utils/connect";
 
@@ -37,6 +38,7 @@ function Dataset(props) {
   const hasDataset = Boolean(state && state.dataset);
   const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({ visible: false, sample: null });
+  const currentSamples = useRecoilValue(atoms.currentSamples);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const handleHideModal = () => setModal({ visible: false, sample: null });
@@ -58,6 +60,22 @@ function Dataset(props) {
     return <Redirect to={routes.SETUP} />;
   }
 
+  let modalProps = {};
+  if (modal.visible && modal.sample) {
+    const currentSampleIndex = currentSamples.findIndex(
+      (sample) => sample._id.$oid == modal.sample._id.$oid
+    );
+    const previousSample = currentSamples[currentSampleIndex - 1];
+    if (previousSample) {
+      modalProps.onPrevious = () =>
+        setModal({ ...modal, sample: previousSample });
+    }
+    const nextSample = currentSamples[currentSampleIndex + 1];
+    if (nextSample) {
+      modalProps.onNext = () => setModal({ ...modal, sample: nextSample });
+    }
+  }
+
   return (
     <>
       {modal.visible ? (
@@ -69,8 +87,7 @@ function Dataset(props) {
             sample={modal.sample}
             sampleUrl={src}
             onClose={handleHideModal}
-            onPrevious={() => {}}
-            onNext={() => {}}
+            {...modalProps}
           />
         </ModalWrapper>
       ) : null}

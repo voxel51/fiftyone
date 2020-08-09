@@ -143,6 +143,7 @@ const SampleModal = ({
     <Container>
       <div className="player" ref={playerContainerRef}>
         <Player51
+          key={sampleUrl} // force re-render when this changes
           src={sampleUrl}
           onLoad={handleResize}
           style={{
