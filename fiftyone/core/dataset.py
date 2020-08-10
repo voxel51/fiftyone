@@ -571,17 +571,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._meta.save()
 
-    def save_dataset_samples(self):
-        """Saves all modified in-memory samples in the dataset to the database.
-
-        Only samples with non-persisted changes will be processed.
-        """
-        fos.Sample._save_dataset_samples(self.name)
-
-    def reload_dataset_samples(self):
-        """Reloads all in-memory samples in the dataset from the database."""
-        fos.Sample._reload_dataset_samples(self.name)
-
     def clear(self):
         """Removes all samples from the dataset.
 
