@@ -10,6 +10,7 @@ import { GlobalStyle } from "../shared/global";
 import { darkTheme } from "../shared/colors";
 import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
+import Header from "../components/Header";
 
 import {
   updateState,
@@ -145,6 +146,7 @@ function App(props: Props) {
         </Modal.Content>
       </Modal>
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
+        <Header />
         {children}
       </div>
     </ThemeProvider>
