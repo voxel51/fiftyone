@@ -536,7 +536,7 @@ class Shuffle(ViewStage):
 
     Args:
         seed (None): a seed used to randomly shuffle samples, by
-        default it will use a different seed every time
+            default it will use a different seed every time
     """
 
     def __init__(self, seed=None):
@@ -555,9 +555,8 @@ class Shuffle(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        seed = self._seed
-        random.seed(seed)
-        random_int = random.randint(10000000, 1000000000)
+        random.seed(self._seed)
+        random_int = random.randint(1e7, 1e10)
 
         return [
             {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
@@ -689,19 +688,16 @@ class Take(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        size = self._size
-        seed = self._seed
-
-        if size <= 0:
+        if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        random.seed(seed)
-        random_int = random.randint(10000000, 1000000000)
+        random.seed(self._seed)
+        random_int = random.randint(1e7, 1e10)
 
         return [
             {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
             {"$sort": {"_rand_take": ASCENDING}},
-            {"$limit": size},
+            {"$limit": self._size},
             {"$unset": "_rand_take"},
         ]
 

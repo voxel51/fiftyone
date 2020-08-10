@@ -392,6 +392,10 @@ class SampleCollection(object):
     def shuffle(self, seed=None):
         """Shuffles samples by sorting them by their _rand field 
 
+        Args:
+            seed (None): a seed used to randomly shuffle samples, by
+                default it will use a different seed every time
+
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
