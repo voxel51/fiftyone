@@ -566,7 +566,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return num_cloned, num_skipped
 
     def save(self):
-        """Saves dataset-level data like ``persistent`` and ``info`` to the
+        """Saves dataset-level information such as its ``info`` to the
         database.
         """
         self._meta.save()
