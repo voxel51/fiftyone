@@ -139,6 +139,29 @@ to sort a |Dataset| or |DatasetView| and this always returns a new
 
     view = dataset.sort_by("filepath")
     view = dataset.sort_by("id", reverse=True)
+    
+
+A |Dataset| or |DatasetView| can be randomly sorted using 
+:meth:`shuffle <fiftyone.core.view.DatasetView.shuffle>`. This method will
+return a |DatasetView| where samples are randomly ordered. A ``seed`` can be
+set to generate the same random order multiple times:
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset.shuffle(seed=51)
+    print(view.first().id)
+    # 5f31bbfcd0d78c13abe159af
+
+    view2 = dataset.shuffle(seed=52)
+    print(view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
+    view3 = dataset.shuffle(seed=52)
+    print(view3.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
+
 
 Slicing
 _______
@@ -159,6 +182,27 @@ using array slicing:
 
     # Equivalently, using array slicing
     range_view2 = dataset[2:5]
+
+Random samples can be extracted from a |Dataset| or |DatasetView| using 
+:meth:`take <fiftyone.core.view.DatasetView.take>`. This method will
+return a |DatasetView| where samples are randomly selected. A ``seed`` can be
+set to return the same random samples multiple times:
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset.take(5, seed=51)
+    print(view.first().id)
+    # 5f31bbfcd0d78c13abe159af
+
+    view2 = dataset.take(5, seed=52)
+    print(view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
+    view3 = dataset.take(5, seed=52)
+    print(view3.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
 
 Accessing single samples
 ------------------------
