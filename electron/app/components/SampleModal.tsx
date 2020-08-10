@@ -5,6 +5,7 @@ import { Close } from "@material-ui/icons";
 
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
+import { Button } from "./utils";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 
@@ -20,8 +21,16 @@ const Container = styled.div`
   height: 80vh;
   background-color: ${({ theme }) => theme.background};
 
+  h2 {
+    display: flex;
+    align-items: center;
+  }
+
+  h2 .push-right {
+    margin-left: auto;
+  }
+
   h2 svg {
-    float: right;
     cursor: pointer;
   }
 
@@ -182,7 +191,10 @@ const SampleModal = ({
       </div>
       <div className="sidebar">
         <h2>
-          Metadata <Close onClick={onClose} />
+          Metadata
+          <span className="push-right" />
+          <Button>Show JSON</Button>
+          <Close onClick={onClose} />
         </h2>
         <Row name="ID" value={sample._id.$oid} />
         <Row name="Source" value={sample.filepath} />

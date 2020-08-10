@@ -15,6 +15,17 @@ export const VerticalSpacer = styled.div`
     opaque ? theme.background : undefined};
 `;
 
+export const Button = styled.button`
+  background-color: ${({ theme }) => theme.button};
+  color: ${({ theme }) => theme.font};
+  border: 1px solid ${({ theme }) => theme.buttonBorder};
+  border-radius: 1px;
+  margin: 0 3px;
+  padding: 3px 10px;
+  font-weight: bold;
+  cursor: pointer;
+`;
+
 export const Overlay = styled.div`
   position: fixed;
   top: 0;
