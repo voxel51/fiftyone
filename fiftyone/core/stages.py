@@ -535,13 +535,18 @@ class Shuffle(ViewStage):
     """Randomly shuffles the samples in the view using a provided seed.
 
     Args:
-        seed (None): a seed used to randomly shuffle samples, by
-            default it will use a different seed every time
+        seed (None): an integer or float seed used to randomly shuffle samples,
+            by default it will use a different seed every time
     """
 
     def __init__(self, seed=None):
         if seed == None:
             seed = random.random()
+        elif type(seed) in [int, float]:
+            seed = seed
+        else:
+            raise ValueError("Shuffle seed must be either int or float")
+
         self._seed = seed
 
     @property
@@ -559,9 +564,9 @@ class Shuffle(ViewStage):
         random_int = random.randint(1e7, 1e10)
 
         return [
-            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
-            {"$sort": {"_rand_take": ASCENDING}},
-            {"$unset": "_rand_take"},
+            {"$set": {"_rand_shuf": {"$mod": [random_int, "$_rand"]}}},
+            {"$sort": {"_rand_shuf": ASCENDING}},
+            {"$unset": "_rand_shuf"},
         ]
 
     def _kwargs(self):
@@ -661,14 +666,19 @@ class Take(ViewStage):
     Args:
         size: the number of samples to return. If a non-positive number is
             provided, an empty view is returned
-        seed (None): a seed used to randomly take samples, by
-            default it will use a different seed every time
+        seed (None): an integer or float seed used to randomly take samples,
+            by default it will use a different seed every time
+
 
     """
 
     def __init__(self, size, seed=None):
         if seed == None:
             seed = random.random()
+        elif type(seed) in [int, float]:
+            seed = seed
+        else:
+            raise ValueError("Take seed must be either int or float")
         self._seed = seed
         self._size = size
 

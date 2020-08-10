@@ -393,8 +393,8 @@ class SampleCollection(object):
         """Shuffles samples by sorting them by their _rand field 
 
         Args:
-            seed (None): a seed used to randomly shuffle samples, by
-                default it will use a different seed every time
+            seed (None): an integer or float seed used to randomly shuffle 
+                samples, by default it will use a different seed every time
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -440,8 +440,8 @@ class SampleCollection(object):
         Args:
             size: the number of samples to return. If a non-positive number is
                 provided, an empty view is returned
-            seed (None): a seed used to randomly take samples, by
-                default it will use a different seed every time
+            seed (None): an integer or float seed used to randomly take
+                samples, by default it will use a different seed every time
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
