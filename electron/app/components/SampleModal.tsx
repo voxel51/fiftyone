@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
-import { Close } from "@material-ui/icons";
+import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
@@ -31,7 +31,8 @@ const Container = styled.div`
     }
   }
 
-  h2 {
+  h2,
+  h2 span {
     display: flex;
     align-items: center;
   }
@@ -42,6 +43,7 @@ const Container = styled.div`
 
   h2 svg {
     cursor: pointer;
+    margin-left: 5px;
   }
 
   .player {
@@ -218,21 +220,30 @@ const SampleModal = ({
           />
         )}
         {onPrevious ? (
-          <div className="nav-button left" onClick={onPrevious}>
+          <div
+            className="nav-button left"
+            onClick={onPrevious}
+            title="Previous sample (Left arrow)"
+          >
             &lt;
           </div>
         ) : null}
         {onNext ? (
-          <div className="nav-button right" onClick={onNext}>
+          <div
+            className="nav-button right"
+            onClick={onNext}
+            title="Next sample (Right arrow)"
+          >
             &gt;
           </div>
         ) : null}
         {fullscreen ? (
           <div
             className="nav-button fullscreen"
+            title="Exit full screen (Esc)"
             onClick={() => setFullscreen(false)}
           >
-            <Close />
+            <FullscreenExit />
           </div>
         ) : null}
       </div>
@@ -241,7 +252,12 @@ const SampleModal = ({
           <h2>
             Metadata
             <span className="push-right" />
-            <Close onClick={onClose} />
+            <span title="Full screen">
+              <Fullscreen onClick={() => setFullscreen(true)} />
+            </span>
+            <span title="Close">
+              <Close onClick={onClose} />
+            </span>
           </h2>
           <Row name="ID" value={sample._id.$oid} />
           <Row name="Source" value={sample.filepath} />
@@ -265,9 +281,6 @@ const SampleModal = ({
           ) : null}
         </div>
         <ModalFooter>
-          <Button onClick={() => setFullscreen(!fullscreen)}>
-            Full Screen
-          </Button>
           <Button onClick={() => setShowJSON(!showJSON)}>
             {showJSON ? "Hide" : "Show"} JSON
           </Button>
