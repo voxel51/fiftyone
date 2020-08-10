@@ -253,15 +253,18 @@ class Sample(_Sample):
     # Instance references keyed by [dataset_name][sample_id]
     _instances = defaultdict(weakref.WeakValueDictionary)
 
-    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+    def __init__(
+        self, filepath, tags=None, metadata=None, _rand=None, **kwargs
+    ):
         filepath = os.path.abspath(os.path.expanduser(filepath))
-        random.seed(filepath)
-        rand_value = random.random() * 0.001 + 0.999
+        if _rand is None:
+            random.seed(filepath)
+            _rand = random.random() * 0.001 + 0.999
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath,
             tags=tags,
             metadata=metadata,
-            _rand=rand_value,
+            _rand=_rand,
             **kwargs
         )
         super().__init__()
