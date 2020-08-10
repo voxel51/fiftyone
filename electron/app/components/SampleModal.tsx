@@ -61,6 +61,8 @@ const Container = styled.div`
     border-left: 2px solid ${({ theme }) => theme.border};
     padding-left: 1em;
     padding-right: 1em;
+    max-height: 100%;
+    overflow-y: auto;
   }
 
   .row {
