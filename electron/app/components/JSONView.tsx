@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import styled from "styled-components";
 import copy from "copy-to-clipboard";
 
-import { Button } from "./utils";
+import { Button, ModalFooter } from "./utils";
 
 type Props = {
   object: object;
@@ -21,14 +21,9 @@ const Body = styled.div`
     overflow-y: auto;
   }
 
-  footer {
-    display: flex;
+  ${ModalFooter} {
     flex-direction: column;
-    flex-shrink: 0;
     align-items: flex-end;
-    border-top: 2px solid ${({ theme }) => theme.border};
-    padding: 1em;
-    background-color: ${({ theme }) => theme.backgroundLight};
   }
 `;
 
@@ -37,9 +32,9 @@ const JSONView = ({ object }: Props) => {
   return (
     <Body>
       <pre>{str}</pre>
-      <footer>
+      <ModalFooter>
         <Button onClick={() => copy(str)}>Copy JSON</Button>
-      </footer>
+      </ModalFooter>
     </Body>
   );
 };

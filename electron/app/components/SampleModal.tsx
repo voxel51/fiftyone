@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
 import { Close } from "@material-ui/icons";
@@ -6,7 +6,7 @@ import { Close } from "@material-ui/icons";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
-import { Button } from "./utils";
+import { Button, ModalFooter } from "./utils";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 
@@ -21,6 +21,15 @@ const Container = styled.div`
   width: 90vw;
   height: 80vh;
   background-color: ${({ theme }) => theme.background};
+
+  &.fullscreen {
+    width: 100vw;
+    height: 100vh;
+    grid-template-columns: auto;
+    .sidebar {
+      display: none;
+    }
+  }
 
   h2 {
     display: flex;
@@ -45,7 +54,7 @@ const Container = styled.div`
 
   .nav-button {
     position: absolute;
-    z-index: 1;
+    z-index: 1000;
     top: 50%;
     width: 2em;
     height: 5em;
@@ -53,7 +62,7 @@ const Container = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: ${({ theme }) => theme.overlay};
+    background-color: ${({ theme }) => theme.overlayButton};
     cursor: pointer;
     font-size: 150%;
     font-weight: bold;
@@ -65,14 +74,32 @@ const Container = styled.div`
     &.right {
       right: 0;
     }
+
+    &.fullscreen {
+      right: 0;
+      top: 0;
+      margin-top: 0;
+      height: 2em;
+    }
   }
 
   .sidebar {
+    display: flex;
+    flex-direction: column;
     border-left: 2px solid ${({ theme }) => theme.border};
     padding-left: 1em;
     padding-right: 1em;
     max-height: 100%;
     overflow-y: auto;
+
+    .sidebar-content {
+      flex-grow: 1;
+    }
+
+    ${ModalFooter} {
+      align-items: flex-start;
+      margin: 0 -1em;
+    }
   }
 
   .row {
@@ -104,6 +131,7 @@ const SampleModal = ({
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   const handleResize = () => {
     if (!playerContainerRef.current) {
@@ -129,18 +157,23 @@ const SampleModal = ({
   };
 
   useResizeHandler(handleResize);
+  useEffect(handleResize, [fullscreen]);
 
   useKeydownHandler(
     (e) => {
-      if (e.key == "Escape" && onClose) {
-        onClose();
+      if (e.key == "Escape") {
+        if (fullscreen) {
+          setFullscreen(false);
+        } else if (onClose) {
+          onClose();
+        }
       } else if (e.key == "ArrowLeft" && onPrevious) {
         onPrevious();
       } else if (e.key == "ArrowRight" && onNext) {
         onNext();
       }
     },
-    [onClose, onPrevious, onNext]
+    [onClose, onPrevious, onNext, fullscreen]
   );
 
   const classifications = Object.keys(sample)
@@ -166,7 +199,7 @@ const SampleModal = ({
     });
 
   return (
-    <Container>
+    <Container className={fullscreen ? "fullscreen" : ""}>
       <div className="player" ref={playerContainerRef}>
         {showJSON ? (
           <JSONView object={sample} />
@@ -194,36 +227,51 @@ const SampleModal = ({
             &gt;
           </div>
         ) : null}
+        {fullscreen ? (
+          <div
+            className="nav-button fullscreen"
+            onClick={() => setFullscreen(false)}
+          >
+            <Close />
+          </div>
+        ) : null}
       </div>
       <div className="sidebar">
-        <h2>
-          Metadata
-          <span className="push-right" />
+        <div className="sidebar-content">
+          <h2>
+            Metadata
+            <span className="push-right" />
+            <Close onClick={onClose} />
+          </h2>
+          <Row name="ID" value={sample._id.$oid} />
+          <Row name="Source" value={sample.filepath} />
+          <Row
+            name="Tags"
+            value={sample.tags.map((tag) => (
+              <Tag key={tag} name={tag} color={colorMapping[tag]} />
+            ))}
+          />
+          {classifications.length ? (
+            <>
+              <h2>Classification</h2>
+              {classifications}
+            </>
+          ) : null}
+          {detections.length ? (
+            <>
+              <h2>Object Detection</h2>
+              {detections}
+            </>
+          ) : null}
+        </div>
+        <ModalFooter>
+          <Button onClick={() => setFullscreen(!fullscreen)}>
+            Full Screen
+          </Button>
           <Button onClick={() => setShowJSON(!showJSON)}>
             {showJSON ? "Hide" : "Show"} JSON
           </Button>
-          <Close onClick={onClose} />
-        </h2>
-        <Row name="ID" value={sample._id.$oid} />
-        <Row name="Source" value={sample.filepath} />
-        <Row
-          name="Tags"
-          value={sample.tags.map((tag) => (
-            <Tag key={tag} name={tag} color={colorMapping[tag]} />
-          ))}
-        />
-        {classifications.length ? (
-          <>
-            <h2>Classification</h2>
-            {classifications}
-          </>
-        ) : null}
-        {detections.length ? (
-          <>
-            <h2>Object Detection</h2>
-            {detections}
-          </>
-        ) : null}
+        </ModalFooter>
       </div>
     </Container>
   );

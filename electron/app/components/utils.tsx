@@ -51,3 +51,11 @@ export const ModalWrapper = styled.div`
     z-index: 10001;
   }
 `;
+
+export const ModalFooter = styled.footer`
+  display: flex;
+  flex-shrink: 0;
+  border-top: 2px solid ${({ theme }) => theme.border};
+  padding: 1em;
+  background-color: ${({ theme }) => theme.backgroundLight};
+`;
