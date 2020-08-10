@@ -91,23 +91,42 @@ In a new Python session:
 Note that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have been
 deleted because they were not persistent.
 
-Custom dataset information 
--------------------------
+Storing dataset information
+---------------------------
 
-All |Dataset| instances have an ``info`` attribute. This attribute is a ``dict`` that
-exists to allow the user to store any information they want that relates to
-their |Dataset|. 
+All |Dataset| instances have an
+:meth:`info <fiftyone.core.dataset.Dataset.info>` property, which contains a
+dictionary that you can use to store any (JSON-serializable) information you
+wish about your dataset.
 
-Every time that this `dataset.info` dictionary is updated, call 
-:meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` to save the updates
-in the backing database.
-
-For example, ``info`` could be used to store classes for a detection |Dataset|:
+A typical use case is to store the class list for a classification/detection
+model:
 
 .. code-block:: python
-    dataset.info["classes"] = {"dog": 1, "cat": 2, "bird": 3}
-    dataset.save()
 
+    # Store a class list in the dataset's info
+    dataset1.info["classes"] = ["bird", "cat", "deer", "dog", "frog", "horse"]
+    dataset1.save()
+
+In a new Python session:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("my_first_dataset")
+
+    # Load the class list for the dataset
+    classes = dataset.info["classes"]
+    print(classes)  # ['bird', 'cat', 'deer', ...]
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property to
+    save the changes to the database.
 
 Deleting a dataset
 ------------------
@@ -382,6 +401,7 @@ To to simply view the field schema print the dataset:
 
     Name:           a_dataset
     Persistent:     False
+    Info:           {}
     Num samples:    0
     Tags:           []
     Sample fields:
@@ -421,6 +441,7 @@ updated:
 
     Name:           a_dataset
     Persistent:     False
+    Info:           {}
     Num samples:    0
     Tags:           []
     Sample fields:
@@ -614,7 +635,6 @@ To automatically compute metadata for all samples in the dataset use
                     'mime_type': 'application/zip',
                 }>,
             }>
-
 
 .. _using-labels:
 
