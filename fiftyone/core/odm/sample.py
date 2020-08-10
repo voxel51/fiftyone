@@ -72,6 +72,10 @@ from .document import (
 )
 
 
+def _generate_rand():
+    return random.random() * 0.001 + 0.999
+
+
 def default_sample_fields(include_private=False):
     """The default fields present on all :class:`SampleDocument` objects.
 
@@ -817,7 +821,3 @@ def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
     field.name = field_name
 
     return field
-
-
-def _generate_rand():
-    return random.random() * 0.001 + 0.999
