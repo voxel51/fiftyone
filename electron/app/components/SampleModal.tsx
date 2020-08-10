@@ -89,18 +89,18 @@ const Container = styled.div`
     display: flex;
     flex-direction: column;
     border-left: 2px solid ${({ theme }) => theme.border};
-    padding-left: 1em;
-    padding-right: 1em;
     max-height: 100%;
     overflow-y: auto;
 
     .sidebar-content {
+      padding-left: 1em;
+      padding-right: 1em;
       flex-grow: 1;
+      overflow-y: auto;
     }
 
     ${ModalFooter} {
       align-items: flex-start;
-      margin: 0 -1em;
     }
   }
 
