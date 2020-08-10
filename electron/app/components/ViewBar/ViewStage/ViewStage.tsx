@@ -86,7 +86,6 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     },
     config: config.stiff,
   }));
-  console.log(active);
 
   const handlers = active
     ? {

@@ -22,6 +22,10 @@ body {
   height: 100vh;
 }
 
+body.noscroll {
+  overflow: hidden;
+}
+
 * {
   box-sizing: border-box;
 }

@@ -7,6 +7,8 @@ export const VALID_SCALAR_TYPES = [
   "fiftyone.core.fields.StringField",
 ];
 
+export const RESERVED_FIELDS = ["metadata", "_id", "tags", "filepath"];
+
 export const stringify = (value) => {
   if (typeof value == "number") {
     value = Number(value.toFixed(3));

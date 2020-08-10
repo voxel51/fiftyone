@@ -25,3 +25,8 @@ export const sidebarVisible = atom({
   key: "sidebarVisible",
   default: false,
 });
+
+export const currentSamples = atom({
+  key: "currentSamples",
+  default: [],
+});
