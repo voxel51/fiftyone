@@ -535,10 +535,13 @@ class Shuffle(ViewStage):
     """Randomly shuffles the samples in the view using a provided seed.
 
     Args:
-        seed (51): an integer seed used to randomly shuffle samples
+        seed (None): a seed used to randomly shuffle samples, by
+        default it will use a different seed every time
     """
 
-    def __init__(self, seed=51):
+    def __init__(self, seed=None):
+        if seed == None:
+            seed = random.random()
         self._seed = seed
 
     @property
@@ -552,8 +555,10 @@ class Shuffle(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        random.seed(self._seed)
+        seed = self._seed
+        random.seed(seed)
         random_int = random.randint(10000000, 1000000000)
+
         return [
             {"$set": {"_rand": {"$mod": [random_int, "$_rand"]}}},
             {"$sort": {"_rand": ASCENDING}},
@@ -656,10 +661,21 @@ class Take(ViewStage):
     Args:
         size: the number of samples to return. If a non-positive number is
             provided, an empty view is returned
+        seed (None): a seed used to randomly take samples, by
+            default it will use a different seed every time
+
     """
 
-    def __init__(self, size):
+    def __init__(self, size, seed=None):
+        if seed == None:
+            seed = random.random()
+        self._seed = seed
         self._size = size
+
+    @property
+    def seed(self):
+        """The seed to randomly take by."""
+        return self._seed
 
     @property
     def size(self):
@@ -673,11 +689,19 @@ class Take(ViewStage):
             a MongoDB aggregation pipeline (list of dicts)
         """
         size = self._size
+        seed = self._seed
 
         if size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        return [{"$sample": {"size": size}}]
+        random.seed(seed)
+        random_int = random.randint(10000000, 1000000000)
+
+        return [
+            {"$set": {"_rand": {"$mod": [random_int, "$_rand"]}}},
+            {"$sort": {"_rand": ASCENDING}},
+            {"$limit": size},
+        ]
 
     def _kwargs(self):
-        return {"size": self._size}
+        return {"size": self._size, "seed": self._seed}

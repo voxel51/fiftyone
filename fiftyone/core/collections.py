@@ -389,7 +389,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.SelectFields(field_names))
 
     @view_stage
-    def shuffle(self, seed=51):
+    def shuffle(self, seed=None):
         """Shuffles samples by sorting them by their _rand field 
 
         Returns:
@@ -430,17 +430,19 @@ class SampleCollection(object):
         return self._add_view_stage(fos.SortBy(field_or_expr, reverse=reverse))
 
     @view_stage
-    def take(self, size):
+    def take(self, size, seed=None):
         """Randomly samples the given number of samples from the collection.
 
         Args:
             size: the number of samples to return. If a non-positive number is
                 provided, an empty view is returned
+            seed (None): a seed used to randomly take samples, by
+                default it will use a different seed every time
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Take(size))
+        return self._add_view_stage(fos.Take(size, seed))
 
     def draw_labels(self, anno_dir, label_fields=None, annotation_config=None):
         """Renders annotated versions of the samples in the collection with
