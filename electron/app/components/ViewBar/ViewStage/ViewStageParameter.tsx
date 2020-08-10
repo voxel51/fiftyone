@@ -4,6 +4,8 @@ import styled, { ThemeContext } from "styled-components";
 import { useService, asEffect } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
+import { PARSER } from "./viewStageParameterMachine";
+
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
@@ -17,7 +19,6 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     margin: 0.5rem;
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
-    border: none;
     font-weight: bold;
   }
 
@@ -30,6 +31,97 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     color: ${({ theme }) => theme.font};
   }
 `);
+
+const ObjectEditorContainer = styled.div`
+  height: 100%;
+  margin: 0.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  line-height: 1rem;
+`;
+
+const ObjectEditorTextArea = animated(styled.textarea`
+  background-color: transparent;
+  font-weight: bold;
+  line-height: 1rem;
+  border: none;
+  color: ${({ theme }) => theme.font};
+  width: 100%;
+  height: 100%;
+  font-size: 1rem;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
+
+  &:focus {
+    border: none;
+    outline: none;
+  }
+`);
+
+const convert = (value) => {
+  const isObject = PARSER.dict.validate(value);
+  if (isObject) return "{ ... }";
+  return value;
+};
+
+const ObjectEditor = ({ parameterRef, inputRef }) => {
+  const [state, send] = useService(parameterRef);
+  const theme = useContext(ThemeContext);
+  const textAreaRef = useRef(null);
+
+  const { value, type } = state.context;
+  const [props, set] = useSpring(() => ({
+    width: 0,
+    height: 0,
+  }));
+
+  const isEditing = state.matches("editing");
+
+  useEffect(() => {
+    set({
+      width: isEditing ? 100 : 0,
+      height: isEditing ? 100 : 0,
+    });
+  }, [isEditing]);
+
+  return (
+    <ObjectEditorContainer
+      onClick={() => state.matches("reading") && send("EDIT")}
+    >
+      {state.matches("reading") ? (
+        convert(value)
+      ) : (
+        <ObjectEditorTextArea
+          style={props}
+          onChange={(e) => {
+            send({ type: "CHANGE", value: e.target.value });
+          }}
+          onBlur={() => send({ type: "BLUR" })}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              isEditing && send({ type: "COMMIT" });
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              send({ type: "CANCEL" });
+            }
+          }}
+          value={value}
+          ref={inputRef}
+        ></ObjectEditorTextArea>
+      )}
+    </ObjectEditorContainer>
+  );
+};
 
 const ViewStageParameter = React.memo(({ parameterRef }) => {
   const theme = useContext(ThemeContext);
@@ -55,7 +147,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { parameter, value, tail } = state.context;
+  const { parameter, value, type, tail } = state.context;
 
   const props = useSpring({
     backgroundColor: state.matches("reading.submitted")
@@ -73,26 +165,30 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
 
   return (
     <ViewStageParameterDiv style={props}>
-      <ViewStageParameterInput
-        placeholder={parameter}
-        value={value}
-        onFocus={() => !isEditing && send({ type: "EDIT" })}
-        onBlur={() => isEditing && send({ type: "BLUR" })}
-        onChange={(e) => {
-          send({ type: "CHANGE", value: e.target.value });
-        }}
-        onKeyPress={(e) => {
-          if (e.key === "Enter") {
-            isEditing && send({ type: "COMMIT" });
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            send({ type: "CANCEL" });
-          }
-        }}
-        ref={inputRef}
-      />
+      {type.includes("dict") ? (
+        <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
+      ) : (
+        <ViewStageParameterInput
+          placeholder={parameter}
+          value={value}
+          onFocus={() => !isEditing && send({ type: "EDIT" })}
+          onBlur={() => isEditing && send({ type: "BLUR" })}
+          onChange={(e) => {
+            send({ type: "CHANGE", value: e.target.value });
+          }}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              isEditing && send({ type: "COMMIT" });
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              send({ type: "CANCEL" });
+            }
+          }}
+          ref={inputRef}
+        />
+      )}
     </ViewStageParameterDiv>
   );
 });

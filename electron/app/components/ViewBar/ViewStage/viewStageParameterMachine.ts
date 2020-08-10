@@ -71,7 +71,7 @@ export const PARSER = {
     validate: (value) => {
       try {
         const v = typeof value === "string" ? JSON.parse(value) : value;
-        return v instanceof Object;
+        return v instanceof Object && !Array.isArray(value);
       } catch {
         return false;
       }
