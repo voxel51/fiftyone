@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
 import { useRecoilValue } from "recoil";
 import {
@@ -42,6 +42,9 @@ function Dataset(props) {
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const handleHideModal = () => setModal({ visible: false, sample: null });
+  useEffect(() => {
+    document.body.classList.toggle("noscroll", modal.visible);
+  }, [modal.visible]);
 
   let src = null;
   let s = null;
