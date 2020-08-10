@@ -1,6 +1,29 @@
 FiftyOne
 ========
 
+.. Social links ---------------------------------------------------------------
+
+.. raw:: html
+
+  <div class="social-links">
+    <table>
+      <th>
+        <a target="_blank" href="https://github.com/voxel51/fiftyone">
+          <img alt="GitHub repository" src="_static/images/icons/github-mark.svg" />
+          &nbsp View on GitHub
+        </a>
+      </th>
+      <th>
+        <a target="_blank" href="https://join.slack.com/t/fiftyone-group/shared_invite/zt-gfml1qxd-r0RNVtRiWjPy97OtNm~~yA">
+          <img alt="Slack community" src="_static/images/icons/slack-mark.svg" />
+          &nbsp Join us on Slack
+        </a>
+      </th>
+    </table>
+  </div>
+
+.. End social links -----------------------------------------------------------
+
 *"Rapidly experiment with your datasets"*
 
 If you are looking to boost the performance of your machine learning models,
