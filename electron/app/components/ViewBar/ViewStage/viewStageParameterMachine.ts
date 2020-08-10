@@ -69,9 +69,9 @@ export const PARSER = {
     castTo: (value) => JSON.parse(value),
     parse: (value) => value,
     validate: (value) => {
-      const v = typeof value === "string" ? JSON.parse(value) : value;
       try {
-        return JSON.parse(v) instanceof Object;
+        const v = typeof value === "string" ? JSON.parse(value) : value;
+        return v instanceof Object;
       } catch {
         return false;
       }
