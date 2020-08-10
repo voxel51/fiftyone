@@ -5,6 +5,7 @@ View stages.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import random
 import reprlib
 
 from bson import ObjectId
@@ -587,6 +588,47 @@ class SelectFields(ViewStage):
         return [{"name": "field_names", "type": ["list", "str"]}]
 
 
+class Shuffle(ViewStage):
+    """Randomly shuffles the samples in the view using a provided seed.
+
+    Args:
+        seed (None): a seed used to randomly shuffle samples, by
+            default it will use a different seed every time
+    """
+
+    def __init__(self, seed=None):
+        if seed == None:
+            seed = random.random()
+        self._seed = seed
+
+    @property
+    def seed(self):
+        """The seed to shuffle by."""
+        return self._seed
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        random.seed(self._seed)
+        random_int = random.randint(1e7, 1e10)
+
+        return [
+            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
+            {"$sort": {"_rand_take": ASCENDING}},
+            {"$unset": "_rand_take"},
+        ]
+
+    def _kwargs(self):
+        return [["seed", self._seed]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "seed", "type": "float"}]
+
+
 class SortBy(ViewStage):
     """Sorts the samples in the view by the given field or expression.
 
@@ -691,10 +733,21 @@ class Take(ViewStage):
     Args:
         size: the number of samples to return. If a non-positive number is
             provided, an empty view is returned
+        seed (None): a seed used to randomly take samples, by
+            default it will use a different seed every time
+
     """
 
-    def __init__(self, size):
+    def __init__(self, size, seed=None):
+        if seed == None:
+            seed = random.random()
+        self._seed = seed
         self._size = size
+
+    @property
+    def seed(self):
+        """The seed to randomly take by."""
+        return self._seed
 
     @property
     def size(self):
@@ -707,19 +760,28 @@ class Take(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        size = self._size
-
-        if size <= 0:
+        if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        return [{"$sample": {"size": size}}]
+        random.seed(self._seed)
+        random_int = random.randint(1e7, 1e10)
+
+        return [
+            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
+            {"$sort": {"_rand_take": ASCENDING}},
+            {"$limit": self._size},
+            {"$unset": "_rand_take"},
+        ]
 
     def _kwargs(self):
-        return [["size", self._size]]
+        return [["size", self._size, "seed", self._seed]]
 
     @classmethod
     def _params(cls):
-        return [{"name": "size", "type": "int"}]
+        return [
+            {"name": "size", "type": "int"},
+            {"name": "seed", "type": "float"},
+        ]
 
 
 # simple registry for the server to grab available view stages
@@ -734,6 +796,7 @@ _STAGES = [
     MatchTag,
     MatchTags,
     Mongo,
+    Shuffle,
     Select,
     SelectFields,
     SortBy,

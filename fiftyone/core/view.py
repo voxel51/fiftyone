@@ -71,17 +71,26 @@ class DatasetView(foc.SampleCollection):
         if isinstance(sample_id, slice):
             return self._slice(sample_id)
 
-        # Ensure `sample_id` is in the view
         view = self.match({"_id": ObjectId(sample_id)})
-        if not view:
+        try:
+            return view.first()
+        except ValueError:
             raise KeyError("No sample found with ID '%s'" % sample_id)
-
-        return self._dataset[sample_id]
 
     def __copy__(self):
         view = self.__class__(self._dataset)
         view._stages = deepcopy(self._stages)
         return view
+
+    @property
+    def name(self):
+        """The name of the view."""
+        return self.dataset_name + "-view"
+
+    @property
+    def dataset_name(self):
+        """The name of the underlying dataset."""
+        return self._dataset.name
 
     @property
     def stages(self):
@@ -96,7 +105,8 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        fields_str = self._dataset._get_fields_str()
+        field_schema = self.get_field_schema()
+        fields_str = self._dataset._to_fields_str(field_schema)
 
         if self._stages:
             pipeline_str = "    " + "\n    ".join(
@@ -110,7 +120,7 @@ class DatasetView(foc.SampleCollection):
 
         return "\n".join(
             [
-                "Dataset:        %s" % self._dataset.name,
+                "Dataset:        %s" % self.dataset_name,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
@@ -144,7 +154,9 @@ class DatasetView(foc.SampleCollection):
                     "due to an invalid stage in the DatasetView"
                 ) from e
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, return_all=False
+    ):
         """Returns a schema dictionary describing the fields of the samples in
         the view.
 
@@ -155,13 +167,34 @@ class DatasetView(foc.SampleCollection):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.BaseEmbeddedDocument``
+            return_all (False): a boolean indicating whether to return fields
+                that start with the character "_"
 
         Returns:
              a dictionary mapping field names to field types
         """
-        return self._dataset.get_field_schema(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+        field_schema = self._dataset.get_field_schema(
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            return_all=return_all,
         )
+
+        selected_fields, excluded_fields = self._get_selected_excluded_fields()
+        if selected_fields is not None:
+            field_schema = {
+                fn: f
+                for fn, f in field_schema.items()
+                if fn in selected_fields
+            }
+
+        if excluded_fields is not None:
+            field_schema = {
+                fn: f
+                for fn, f in field_schema.items()
+                if fn not in excluded_fields
+            }
+
+        return field_schema
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the view.
@@ -209,6 +242,27 @@ class DatasetView(foc.SampleCollection):
 
         return self._dataset.aggregate(_pipeline)
 
+    def to_dict(self, rel_dir=None):
+        """Returns a JSON dictionary representation of the view.
+
+        Args:
+            rel_dir (None): a relative directory to remove from the
+                ``filepath`` of each sample, if possible. The path is converted
+                to an absolute path (if necessary) via
+                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
+                than absolute, paths to the data within that directory
+
+        Returns:
+            a JSON dict
+        """
+        d = super().to_dict(rel_dir=rel_dir)
+        samples = d.pop("samples")  # hack so that `samples` is last in JSON
+        d["stages"] = [s._serialize() for s in self._stages]
+        d["samples"] = samples
+        return d
+
     def serialize(self):
         """Serializes the view.
 
@@ -219,22 +273,6 @@ class DatasetView(foc.SampleCollection):
             "dataset": self._dataset.serialize(),
             "view": json_util.dumps([s._serialize() for s in self._stages]),
         }
-
-    def to_dict(self):
-        """Returns a JSON dictionary representation of the view.
-
-        Returns:
-            a JSON dict
-        """
-        d = {
-            "name": self._dataset.name,
-            "num_samples": len(self),
-            "tags": self.get_tags(),
-            "sample_fields": self._dataset._get_fields_dict(),
-            "pipeline_stages": [str(d) for d in self._stages],
-        }
-        d.update(super().to_dict())
-        return d
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:

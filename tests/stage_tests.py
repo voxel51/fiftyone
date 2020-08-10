@@ -161,12 +161,24 @@ class StageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
 
-    def test_mongo(self):
+    def test_re_match(self):
+        result = list(self.dataset.match(F("filepath").re_match("two\.png$")))
+        self.assertIs(len(result), 1)
+        self.assertTrue(result[0].filepath.endswith("two.png"))
+
+        # case-insentive match
         result = list(
-            self.dataset.mongo([{"$match": {"filepath": "test_two.png"}}])
+            self.dataset.match(
+                F("filepath").re_match("TWO\.PNG$", options="i")
+            )
         )
         self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample2.id)
+        self.assertTrue(result[0].filepath.endswith("two.png"))
+
+    def test_mongo(self):
+        result = list(self.dataset.mongo([{"$limit": 1}]))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample1.id)
 
     def test_select(self):
         result = list(self.dataset.select([self.sample1.id]))

@@ -195,7 +195,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.remove_sample(sample_id)
 
     def __getattribute__(self, name):
-        if name in ["name", "deleted", "_name", "_deleted"]:
+        if name.startswith("__") or name in [
+            "name",
+            "deleted",
+            "_name",
+            "_deleted",
+        ]:
             return super().__getattribute__(name)
 
         if getattr(self, "_deleted", False):
@@ -238,7 +243,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
-                self._get_fields_str(),
+                self._to_fields_str(self.get_field_schema()),
             ]
         )
 
@@ -247,6 +252,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
+
+        Raises:
+            ValueError: if the dataset is empty
         """
         return super().first()
 
@@ -255,9 +263,44 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Returns:
             a :class:`fiftyone.core.sample.Sample`
+
+        Raises:
+            ValueError: if the dataset is empty
         """
-        sample_view = self[-1:].first()
+        try:
+            sample_view = self[-1:].first()
+        except ValueError:
+            raise ValueError("%s is empty" % self.__class__.__name__)
+
         return fos.Sample.from_doc(sample_view._doc)
+
+    def head(self, num_samples=3):
+        """Returns a list of the first few samples in the dataset.
+
+        If fewer than ``num_samples`` samples are in the dataset, only the
+        available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        return [fos.Sample.from_doc(sv._doc) for sv in self[:num_samples]]
+
+    def tail(self, num_samples=3):
+        """Returns a list of the last few samples in the dataset.
+
+        If fewer than ``num_samples`` samples are in the dataset, only the
+        available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        return [fos.Sample.from_doc(sv._doc) for sv in self[-num_samples:]]
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -268,7 +311,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return fov.DatasetView(self)
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, return_all=False
+    ):
         """Returns a schema dictionary describing the fields of the samples in
         the dataset.
 
@@ -279,12 +324,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.BaseEmbeddedDocument``
+            return_all (False): a boolean indicating whether to return fields
+                that start with the character "_"
 
         Returns:
              a dictionary mapping field names to field types
         """
         return self._sample_doc_cls.get_field_schema(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            return_all=return_all,
         )
 
     def add_sample_field(
@@ -650,7 +699,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        if isinstance(dataset_importer, foud.UnlabeledImageDatasetImporter):
+        if isinstance(dataset_importer, foud.GenericSampleDatasetImporter):
+
+            def parse_sample(sample):
+                if tags:
+                    sample.tags.extend(tags)
+
+                return sample
+
+        elif isinstance(dataset_importer, foud.UnlabeledImageDatasetImporter):
 
             def parse_sample(sample):
                 image_path, image_metadata = sample
@@ -1135,23 +1192,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return {"name": self.name}
 
-    def to_dict(self):
-        """Returns a JSON dictionary representation of the dataset.
-
-        Returns:
-            a JSON dict
-        """
-        d = {
-            "name": self.name,
-            "num_samples": len(self),
-            "tags": self.get_tags(),
-            "sample_fields": self._get_fields_dict(),
-        }
-        d.update(super().to_dict())
-        return d
-
     @classmethod
-    def from_dict(cls, d, name=None):
+    def from_dict(cls, d, name=None, rel_dir=None):
         """Loads a :class:`Dataset` from a JSON dictionary generated by
         :func:`fiftyone.core.collections.SampleCollection.to_dict`.
 
@@ -1163,6 +1205,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             d: a JSON dictionary
             name (None): a name for the new dataset. By default, ``d["name"]``
                 is used
+            rel_dir (None): a relative directory to prepend to the ``filepath``
+                of each sample, if the filepath is not absolute (begins with a
+                path separator). The path is converted to an absolute path
+                (if necessary) via
+                ``os.path.abspath(os.path.expanduser(rel_dir))``
 
         Returns:
             a :class:`Dataset`
@@ -1170,12 +1217,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name is None:
             name = d["name"]
 
+        if rel_dir is not None:
+            rel_dir = os.path.abspath(os.path.expanduser(rel_dir))
+
+        def parse_sample(sd):
+            if rel_dir and not sd["filepath"].startswith(os.path.sep):
+                sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
+
+            return fos.Sample.from_dict(sd)
+
+        samples = d["samples"]
+        num_samples = len(samples)
+        _samples = map(parse_sample, d["samples"])
+
         dataset = cls(name)
-        dataset.add_samples([fos.Sample.from_dict(s) for s in d["samples"]])
+        dataset.add_samples(_samples, num_samples=num_samples)
         return dataset
 
     @classmethod
-    def from_json(cls, path_or_str, name=None):
+    def from_json(cls, path_or_str, name=None, rel_dir=None):
         """Loads a :class:`Dataset` from JSON generated by
         :func:`fiftyone.core.collections.SampleCollection.write_json` or
         :func:`fiftyone.core.collections.SampleCollection.to_json`.
@@ -1188,12 +1248,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             path_or_str: the path to a JSON file on disk or a JSON string
             name (None): a name for the new dataset. By default, ``d["name"]``
                 is used
+            rel_dir (None): a relative directory to prepend to the ``filepath``
+                of each sample, if the filepath is not absolute (begins with a
+                path separator). The path is converted to an absolute path
+                (if necessary) via
+                ``os.path.abspath(os.path.expanduser(rel_dir))``
 
         Returns:
             a :class:`Dataset`
         """
         d = etas.load_json(path_or_str)
-        return cls.from_dict(d, name=name)
+        return cls.from_dict(d, name=name, rel_dir=rel_dir)
 
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
@@ -1207,14 +1272,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return foo.get_db_conn()[self._collection_name]
 
     def _expand_schema(self, samples):
-        fields = self.get_field_schema()
+        fields = self.get_field_schema(return_all=True)
         for sample in samples:
             for field_name in sample.field_names:
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
                     )
-                    fields = self.get_field_schema()
+                    fields = self.get_field_schema(return_all=True)
 
     def _sample_dict_to_doc(self, d):
         return self._sample_doc_cls.from_dict(d, extended=False)
@@ -1223,12 +1288,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # pylint: disable=no-member
         return self._sample_doc_cls.objects(**kwargs)
 
-    def _get_fields_dict(self):
-        fields = self.get_field_schema()
-        return {field_name: str(field) for field_name, field in fields.items()}
-
-    def _get_fields_str(self):
-        fields_dict = self._get_fields_dict()
+    def _to_fields_str(self, field_schema):
+        fields_dict = {
+            field_name: str(field)
+            for field_name, field in field_schema.items()
+        }
         max_len = max([len(field_name) for field_name in fields_dict]) + 1
         return "\n".join(
             "    %s %s" % ((field_name + ":").ljust(max_len), field)
@@ -1236,7 +1300,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def _validate_sample(self, sample):
-        fields = self.get_field_schema()
+        fields = self.get_field_schema(return_all=True)
 
         non_existest_fields = {
             fn for fn in sample.field_names if fn not in fields
@@ -1279,7 +1343,7 @@ def _create_dataset(name, persistent=False):
     _meta = foo.DatasetDocument(
         name=name,
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            _sample_doc_cls.get_field_schema()
+            _sample_doc_cls.get_field_schema(return_all=True)
         ),
         persistent=persistent,
     )
@@ -1302,7 +1366,7 @@ def _load_dataset(name):
 
     _sample_doc_cls = type(name, (foo.DatasetSampleDocument,), {})
 
-    num_default_fields = len(_sample_doc_cls.get_field_schema())
+    num_default_fields = len(_sample_doc_cls.get_field_schema(return_all=True))
 
     for sample_field in _meta.sample_fields[num_default_fields:]:
         subfield = (

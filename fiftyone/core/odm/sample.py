@@ -190,6 +190,9 @@ class DatasetSampleDocument(Document, SampleDocument):
     # Metadata about the sample media
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
+    # Random float used for random dataset operations (e.g. shuffle)
+    _rand = fof.FloatField(default=0)
+
     def __setattr__(self, name, value):
         # pylint: disable=no-member
         has_field = self.has_field(name)
@@ -222,7 +225,9 @@ class DatasetSampleDocument(Document, SampleDocument):
         return tuple(f for f in self._fields_ordered if f != "id")
 
     @classmethod
-    def get_field_schema(cls, ftype=None, embedded_doc_type=None):
+    def get_field_schema(
+        cls, ftype=None, embedded_doc_type=None, return_all=False
+    ):
         """Returns a schema dictionary describing the fields of this sample.
 
         If the sample belongs to a dataset, the schema will apply to all
@@ -235,6 +240,8 @@ class DatasetSampleDocument(Document, SampleDocument):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            return_all (False): a boolean indicating whether to return fields
+                that start with the character "_"
 
         Returns:
              a dictionary mapping field names to field types
@@ -265,6 +272,9 @@ class DatasetSampleDocument(Document, SampleDocument):
             if embedded_doc_type and not issubclass(
                 field.document_type, embedded_doc_type
             ):
+                continue
+
+            if not return_all and field_name.startswith("_"):
                 continue
 
             d[field_name] = field
@@ -549,7 +559,6 @@ class NoDatasetSampleDocument(SampleDocument):
         self._data = OrderedDict()
 
         for field_name in self.default_fields_ordered:
-
             value = kwargs.pop(field_name, None)
 
             if value is None:
