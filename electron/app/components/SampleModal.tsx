@@ -214,7 +214,9 @@ const SampleModal = ({
     .filter(
       (k) =>
         VALID_SCALAR_TYPES.includes(fieldSchema[k]) &&
-        !RESERVED_FIELDS.includes(k)
+        !RESERVED_FIELDS.includes(k) &&
+        sample[k] !== null &&
+        sample[k] !== undefined
     )
     .map((k) => {
       return (

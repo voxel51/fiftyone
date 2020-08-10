@@ -47,7 +47,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema) => {
       continue;
     }
     const field = sample[sampleField];
-    if (!field) continue;
+    if (field === null || field === undefined) continue;
     if (["Classification", "Detection"].includes(field._cls)) {
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
