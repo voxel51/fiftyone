@@ -55,6 +55,8 @@ This section explains how to install the latest development version of
 [FiftyOne](http://www.voxel51.com/docs/fiftyone) from source. This is necessary
 if you want to [contribute](CONTRIBUTING.md) to FiftyOne or use the latest unreleased changes.
 
+Check out our [contributing guide.](CONTRIBUTING.md)
+
 The instructions below are for macOS and Linux systems. Windows users may need
 to make adjustments.
 
