@@ -10,6 +10,8 @@ const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   position: relative;
+  z-index: 1000;
+  overflow: hidden;
 `);
 
 const ViewStageParameterInput = animated(styled(AutosizeInput)`
@@ -34,13 +36,14 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 
 const ObjectEditorContainer = styled.div`
   height: 100%;
-  margin: 0.5rem;
   font-size: 1rem;
   font-weight: bold;
   line-height: 1rem;
+  position: relative;
 `;
 
 const ObjectEditorTextArea = animated(styled.textarea`
+  position: relative;
   background-color: transparent;
   font-weight: bold;
   line-height: 1rem;
@@ -104,7 +107,7 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
           onChange={(e) => {
             send({ type: "CHANGE", value: e.target.value });
           }}
-          onBlur={() => send({ type: "BLUR" })}
+          onBlur={() => alert("ee") && send({ type: "BLUR" })}
           onKeyPress={(e) => {
             if (e.key === "Enter") {
               isEditing && send({ type: "COMMIT" });
@@ -148,6 +151,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
   }, []);
 
   const { parameter, value, type, tail } = state.context;
+  const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
     backgroundColor: state.matches("reading.submitted")
@@ -155,6 +159,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
       : theme.brandMoreTransparent,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
     borderRightWidth: tail ? 2 : 0,
+    y: hasObjectType && state.matches("editing") ? -50 : 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -165,7 +170,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
 
   return (
     <ViewStageParameterDiv style={props}>
-      {type.includes("dict") ? (
+      {hasObjectType ? (
         <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
       ) : (
         <ViewStageParameterInput
