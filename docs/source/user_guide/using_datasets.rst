@@ -28,7 +28,7 @@ Instantiating a |Dataset| object creates a **new** dataset.
     dataset3 = fo.Dataset()  # generates a default unique name
 
 Check to see what datasets exist at any time via :meth:`list_dataset_names()
-<fiftyone.core.dataset.list_dataset_names>`.
+<fiftyone.core.dataset.list_dataset_names>`:
 
 .. code-block:: python
     :linenos:
@@ -63,11 +63,14 @@ have a bad time:
 Dataset persistence
 -------------------
 
-By default, datasets are non-persistent. Non-persistent datasets are wiped
-from FiftyOne on exit of the Python process. This means any data in the
-FiftyOne backing database is deleted, however files on disk are untouched.
+By default, datasets are non-persistent. Non-persistent datasets are deleted
+from the database each time `fiftyone` is imported. Note that FiftyOne does not
+store the raw data in datasets directly (only the labels), so your source files
+on disk are untouched.
 
-To make a dataset persistent, set the attribute to `True`.
+To make a dataset persistent, set its
+:meth:`persistent <fiftyone.core.dataset.Dataset.persistent>` property to
+`True`:
 
 .. code-block:: python
     :linenos:
@@ -75,9 +78,7 @@ To make a dataset persistent, set the attribute to `True`.
     # Make the dataset persistent
     dataset1.persistent = True
 
-    quit()
-
-Start a new Python session:
+In a new Python session:
 
 .. code-block:: python
     :linenos:
@@ -88,7 +89,7 @@ Start a new Python session:
     # ['my_first_dataset']
 
 Note that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have been
-wiped because they were not persistent.
+deleted because they were not persistent.
 
 Custom dataset information 
 -------------------------
