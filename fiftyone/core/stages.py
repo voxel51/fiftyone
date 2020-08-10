@@ -535,18 +535,24 @@ class Shuffle(ViewStage):
     """Randomly shuffles the samples in the view using a provided seed.
 
     Args:
-        seed (None): a seed used to randomly shuffle samples, by
-        default it will use a different seed every time
+        seed (None): an optional random seed to use when shuffling the samples
     """
 
     def __init__(self, seed=None):
-        if seed == None:
-            seed = random.random()
         self._seed = seed
+
+        if seed is not None:
+            _random = random.Random()
+            _random.seed(seed)
+            r = _random
+        else:
+            r = random
+
+        self._mod = r.randint(1e7, 1e9)
 
     @property
     def seed(self):
-        """The seed to shuffle by."""
+        """The random seed to use, or ``None``."""
         return self._seed
 
     def to_mongo(self):
@@ -555,12 +561,8 @@ class Shuffle(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        seed = self._seed
-        random.seed(seed)
-        random_int = random.randint(10000000, 1000000000)
-
         return [
-            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
+            {"$set": {"_rand_take": {"$mod": [self._mod, "$_rand"]}}},
             {"$sort": {"_rand_take": ASCENDING}},
             {"$unset": "_rand_take"},
         ]
@@ -662,26 +664,31 @@ class Take(ViewStage):
     Args:
         size: the number of samples to return. If a non-positive number is
             provided, an empty view is returned
-        seed (None): a seed used to randomly take samples, by
-            default it will use a different seed every time
-
+        seed (None): an optional random seed to use when selecting the samples
     """
 
     def __init__(self, size, seed=None):
-        if seed == None:
-            seed = random.random()
-        self._seed = seed
         self._size = size
+        self._seed = seed
 
-    @property
-    def seed(self):
-        """The seed to randomly take by."""
-        return self._seed
+        if seed is not None:
+            _random = random.Random()
+            _random.seed(seed)
+            r = _random
+        else:
+            r = random
+
+        self._mod = r.randint(1e7, 1e9)
 
     @property
     def size(self):
         """The number of samples to return."""
         return self._size
+
+    @property
+    def seed(self):
+        """The random seed to use, or ``None``."""
+        return self._seed
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -695,14 +702,11 @@ class Take(ViewStage):
         if size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        random.seed(seed)
-        random_int = random.randint(10000000, 1000000000)
-
         return [
-            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
+            {"$set": {"_rand_take": {"$mod": [self._mod, "$_rand"]}}},
             {"$sort": {"_rand_take": ASCENDING}},
-            {"$limit": size},
             {"$unset": "_rand_take"},
+            {"$limit": size},
         ]
 
     def _kwargs(self):
