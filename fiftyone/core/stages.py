@@ -548,7 +548,7 @@ class Shuffle(ViewStage):
         else:
             r = random
 
-        self._mod = r.randint(1e7, 1e9)
+        self._mod = r.randint(1e7, 1e10)
 
     @property
     def seed(self):
@@ -678,7 +678,7 @@ class Take(ViewStage):
         else:
             r = random
 
-        self._mod = r.randint(1e7, 1e9)
+        self._mod = r.randint(1e7, 1e10)
 
     @property
     def size(self):
@@ -696,17 +696,14 @@ class Take(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        size = self._size
-        seed = self._seed
-
-        if size <= 0:
+        if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
         return [
             {"$set": {"_rand_take": {"$mod": [self._mod, "$_rand"]}}},
             {"$sort": {"_rand_take": ASCENDING}},
             {"$unset": "_rand_take"},
-            {"$limit": size},
+            {"$limit": self._size},
         ]
 
     def _kwargs(self):

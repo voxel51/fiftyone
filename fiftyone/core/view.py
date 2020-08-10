@@ -154,7 +154,9 @@ class DatasetView(foc.SampleCollection):
                     "due to an invalid stage in the DatasetView"
                 ) from e
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, return_all=False
+    ):
         """Returns a schema dictionary describing the fields of the samples in
         the view.
 
@@ -165,12 +167,16 @@ class DatasetView(foc.SampleCollection):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.BaseEmbeddedDocument``
+            return_all (False): a boolean indicating whether to return fields
+                that start with the character "_"
 
         Returns:
              a dictionary mapping field names to field types
         """
         field_schema = self._dataset.get_field_schema(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            return_all=return_all,
         )
 
         selected_fields, excluded_fields = self._get_selected_excluded_fields()

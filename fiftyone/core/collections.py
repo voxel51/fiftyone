@@ -396,6 +396,10 @@ class SampleCollection(object):
             seed (None): an optional random seed to use when shuffling the
                 samples
 
+        Args:
+            seed (None): a seed used to randomly shuffle samples, by
+                default it will use a different seed every time
+
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
