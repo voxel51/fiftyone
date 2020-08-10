@@ -338,6 +338,14 @@ const viewStageMachine = Machine(
             if (currentResult === null) return 0;
             return Math.min(currentResult + 1, results.length - 1);
           },
+          stage: ({ currentResult, results }) => {
+            if (currentResult === null) return results[0];
+            return results[Math.min(currentResult + 1, results.length - 1)];
+          },
+          prevStage: ({ currentResult, stage, prevStage }) => {
+            if (currentResult === null) return stage;
+            return prevStage;
+          },
         }),
       },
       PREVIOUS_RESULT: {
@@ -345,6 +353,10 @@ const viewStageMachine = Machine(
           currentResult: ({ currentResult }) => {
             if (currentResult === 0) return null;
             return currentResult - 1;
+          },
+          stage: ({ currentResult, prevStage, results }) => {
+            if (currentResult === 0) return prevStage;
+            return results[currentResult - 1];
           },
         }),
       },

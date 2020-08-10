@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 
@@ -22,6 +22,15 @@ const SearchResult = React.memo(
       backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
       color: isActive ? theme.font : theme.fontDark,
     }));
+
+    useEffect(() => {
+      set({
+        backgroundColor: isActive
+          ? theme.backgroundLight
+          : theme.backgroundDark,
+        color: isActive ? theme.font : theme.fontDark,
+      });
+    }, [isActive]);
 
     const handleMouseEnter = () =>
       set({ backgroundColor: theme.backgroundLight, color: theme.font });
