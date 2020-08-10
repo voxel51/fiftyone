@@ -351,11 +351,11 @@ const viewStageMachine = Machine(
       PREVIOUS_RESULT: {
         actions: assign({
           currentResult: ({ currentResult }) => {
-            if (currentResult === 0) return null;
+            if (currentResult === 0 || currentResult === null) return null;
             return currentResult - 1;
           },
           stage: ({ currentResult, prevStage, results }) => {
-            if (currentResult === 0) return prevStage;
+            if (currentResult === 0 || currentResult === null) return prevStage;
             return results[currentResult - 1];
           },
         }),
