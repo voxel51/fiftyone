@@ -263,9 +263,13 @@ const SampleModal = ({
           <Row name="Source" value={sample.filepath} />
           <Row
             name="Tags"
-            value={sample.tags.map((tag) => (
-              <Tag key={tag} name={tag} color={colorMapping[tag]} />
-            ))}
+            value={
+              sample.tags.length
+                ? sample.tags.map((tag) => (
+                    <Tag key={tag} name={tag} color={colorMapping[tag]} />
+                  ))
+                : "none"
+            }
           />
           {classifications.length ? (
             <>
