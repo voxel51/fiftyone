@@ -3,7 +3,11 @@ import uuid from "react-uuid";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
-import { RESERVED_FIELDS } from "../utils/labels";
+import {
+  RESERVED_FIELDS,
+  VALID_SCALAR_TYPES,
+  stringify,
+} from "../utils/labels";
 
 const PARSERS = {
   Classification: [
@@ -34,7 +38,7 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colorMapping) => {
+const loadOverlay = (sample, colorMapping, fieldSchema) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
@@ -57,6 +61,8 @@ const loadOverlay = (sample, colorMapping) => {
           colorMapping[sampleField];
       }
       continue;
+    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
+      imgLabels.attrs.attrs.push({ name: sampleField, value: field });
     }
   }
   return [imgLabels, playerColorMap];
@@ -72,8 +78,13 @@ export default ({
   onDoubleClick,
   onLoad = () => {},
   activeLabels,
+  fieldSchema = {},
 }) => {
-  const [overlay, playerColorMap] = loadOverlay(sample, colorMapping);
+  const [overlay, playerColorMap] = loadOverlay(
+    sample,
+    colorMapping,
+    fieldSchema
+  );
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();

@@ -243,6 +243,7 @@ const SampleModal = ({
             sample={sample}
             colorMapping={colorMapping}
             activeLabels={activeLabels}
+            fieldSchema={fieldSchema}
           />
         )}
         {onPrevious ? (
