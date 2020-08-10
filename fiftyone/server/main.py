@@ -270,6 +270,7 @@ def _numeric_bounds(view, numerics):
 
 def _get_label_fields(view):
     pipeline = [
+        {"$project": {"_rand": False}},
         {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
         {"$unwind": "$field"},
         {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
