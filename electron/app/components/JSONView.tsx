@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import styled from "styled-components";
+import copy from "copy-to-clipboard";
 
 import { Button } from "./utils";
 
@@ -32,11 +33,12 @@ const Body = styled.div`
 `;
 
 const JSONView = ({ object }: Props) => {
+  const str = JSON.stringify(object, null, 4);
   return (
     <Body>
-      <pre>{JSON.stringify(object, null, 4)}</pre>
+      <pre>{str}</pre>
       <footer>
-        <Button>Copy JSON</Button>
+        <Button onClick={() => copy(str)}>Copy JSON</Button>
       </footer>
     </Body>
   );
