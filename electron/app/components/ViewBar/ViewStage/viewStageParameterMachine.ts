@@ -2,6 +2,8 @@ import { Machine, actions, sendParent, send } from "xstate";
 import viewStageMachine from "./viewStageMachine";
 const { assign, choose } = actions;
 
+const convert = (v) => (typeof v !== "string" ? String(v) : v);
+
 /**
  * See https://stackoverflow.com/questions/175739/built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
  * for details about numbers and javascript
@@ -16,7 +18,8 @@ export const PARSER = {
         value.toLowerCase().slice(1)
       );
     },
-    validate: (value) => ["true", "false"].indexOf(value.toLowerCase()) >= 0,
+    validate: (value) =>
+      ["true", "false"].indexOf(convert(value).toLowerCase()) >= 0,
   },
   float: {
     castFrom: (value) => String(value),
@@ -27,7 +30,7 @@ export const PARSER = {
       return integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + fractional;
     },
     validate: (value) => {
-      const stripped = value.replace(/[\s]/g, "");
+      const stripped = convert(value).replace(/[\s]/g, "");
       return stripped !== "" && !isNaN(+stripped);
     },
   },
@@ -36,7 +39,7 @@ export const PARSER = {
     castTo: (value) => +value,
     parse: (value) =>
       value.replace(/[,\s]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","),
-    validate: (value) => /^\d+$/.test(value.replace(/[,\s]/g, "")),
+    validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
   },
   list: {
     castFrom: (value, next) => {
@@ -66,8 +69,9 @@ export const PARSER = {
     castTo: (value) => JSON.parse(value),
     parse: (value) => value,
     validate: (value) => {
+      const v = typeof value === "string" ? JSON.parse(value) : value;
       try {
-        return JSON.parse(value) instanceof Object;
+        return JSON.parse(v) instanceof Object;
       } catch {
         return false;
       }
