@@ -23,6 +23,8 @@ export const createParameter = (
   focusOnInit,
   inputRef: {},
   tail,
+  currentResult: null,
+  results: [],
 });
 
 const viewStageMachine = Machine(
@@ -125,6 +127,13 @@ const viewStageMachine = Machine(
               assign({
                 prevStage: (ctx) => ctx.stage,
                 prevSubmitted: (ctx) => ctx.submitted,
+                results: ({ stageInfo, stage }) =>
+                  stageInfo
+                    .map((s) => s.name)
+                    .filter((n) =>
+                      n.toLowerCase().includes(stage.toLowerCase())
+                    ),
+                currentResult: null,
               }),
               "focusInput",
               sendParent((ctx) => ({
@@ -169,6 +178,13 @@ const viewStageMachine = Machine(
               CHANGE: {
                 actions: assign({
                   stage: (ctx, e) => e.stage,
+                  results: ({ stageInfo, stage }) =>
+                    stageInfo
+                      .map((s) => s.name)
+                      .filter((n) =>
+                        n.toLowerCase().includes(stage.toLowerCase())
+                      ),
+                  currentResult: null,
                 }),
               },
               COMMIT: [
@@ -316,6 +332,22 @@ const viewStageMachine = Machine(
       },
     },
     on: {
+      NEXT_RESULT: {
+        actions: assign({
+          currentResult: ({ currentResult, results }) => {
+            if (currentResult === null) return 0;
+            return Math.min(currentResult + 1, results.length - 1);
+          },
+        }),
+      },
+      PREVIOUS_RESULT: {
+        actions: assign({
+          currentResult: ({ currentResult }) => {
+            if (currentResult === 0) return null;
+            return currentResult - 1;
+          },
+        }),
+      },
       BAR_FOCUS: "focusedViewBar.yes",
       BAR_BLUR: "focusedViewBar.no",
       UPDATE_DELIBLE: "delible",
