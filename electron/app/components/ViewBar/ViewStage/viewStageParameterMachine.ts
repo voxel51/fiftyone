@@ -179,7 +179,7 @@ export default Machine(
             },
           ],
           CANCEL: {
-            target: "reading",
+            target: "decide",
             actions: [
               assign({
                 value: ({ prevValue }) => prevValue,

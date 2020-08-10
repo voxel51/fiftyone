@@ -5,24 +5,10 @@ import { useMachine } from "@xstate/react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 
+import { useOutsideClick } from "../../utils/hooks";
 import { port, stateDescription } from "../../recoil/atoms";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
-
-function useOutsideClick(ref, callback) {
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (ref.current && !ref.current.contains(event.target)) {
-        callback();
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [ref, callback]);
-}
 
 const ViewBarContainer = styled.div`
   position: relative;
@@ -39,7 +25,6 @@ const ViewBarDiv = styled.div`
   height: 54px;
   width: 100%;
   padding: 0 0.25rem;
-  overflow: auto;
   display: flex;
 
   &::-webkit-scrollbar {
@@ -105,6 +90,9 @@ const ViewBar = () => {
   };
 
   useOutsideClick(barRef, () => send("BLUR"));
+  const props = useSpring({
+    overflow: state.matches("running.focus.focused") ? "hidden" : "auto",
+  });
 
   return (
     <ViewBarContainer>

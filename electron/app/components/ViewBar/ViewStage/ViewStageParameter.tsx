@@ -5,12 +5,13 @@ import { useService, asEffect } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
 import { PARSER } from "./viewStageParameterMachine";
+import { useOutsideClick } from "../../../utils/hooks";
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   position: relative;
-  z-index: 1000;
+  z-index: 100000;
   overflow: hidden;
 `);
 
@@ -36,22 +37,27 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 
 const ObjectEditorContainer = styled.div`
   height: 100%;
+  width: 100%;
   font-size: 1rem;
   font-weight: bold;
   line-height: 1rem;
   position: relative;
+  margin: 0.5rem;
+  overflow: visible;
 `;
 
 const ObjectEditorTextArea = animated(styled.textarea`
   position: relative;
   background-color: transparent;
+  overflow: visible;
   font-weight: bold;
   line-height: 1rem;
+  margin: -0.5rem;
   border: none;
   color: ${({ theme }) => theme.font};
-  width: 100%;
   height: 100%;
   font-size: 1rem;
+  white-space: pre-wrap;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -69,6 +75,40 @@ const ObjectEditorTextArea = animated(styled.textarea`
   }
 `);
 
+const SubmitButton = animated(styled.button`
+  box-sizing: border-box;
+  border: 2px dashed ${({ theme }) => theme.brand};
+  color: ${({ theme }) => theme.font};
+  background-color: ${(theme) => theme.brandTransparent};
+  border-radius: 3px;
+  position: relative;
+  margin: 0.5rem;
+  line-height: 1rem;
+  cursor: pointer;
+  font-weight: bold;
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+
+  :focus {
+    outline: none;
+  }
+`);
+
+const Submit = ({ send }) => {
+  const props = useSpring({
+    opacity: 1,
+    from: {
+      opacity: 0,
+    },
+  });
+  return (
+    <SubmitButton style={props} onClick={() => send("COMMIT")}>
+      Submit
+    </SubmitButton>
+  );
+};
+
 const convert = (value) => {
   const isObject = PARSER.dict.validate(value);
   if (isObject) return "{ ... }";
@@ -81,19 +121,16 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
   const textAreaRef = useRef(null);
 
   const { value, type } = state.context;
-  const [props, set] = useSpring(() => ({
-    width: 0,
-    height: 0,
-  }));
 
   const isEditing = state.matches("editing");
+  const props = useSpring({
+    width: state.matches("editing") ? 400 : 0,
+  });
 
-  useEffect(() => {
-    set({
-      width: isEditing ? 100 : 0,
-      height: isEditing ? 100 : 0,
-    });
-  }, [isEditing]);
+  const isObject = PARSER.dict.validate(value);
+  const isReading = state.matches("reading");
+
+  useOutsideClick(inputRef, () => send("BLUR"));
 
   return (
     <ObjectEditorContainer
@@ -102,25 +139,30 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
       {state.matches("reading") ? (
         convert(value)
       ) : (
-        <ObjectEditorTextArea
-          style={props}
-          onChange={(e) => {
-            send({ type: "CHANGE", value: e.target.value });
-          }}
-          onBlur={() => alert("ee") && send({ type: "BLUR" })}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              isEditing && send({ type: "COMMIT" });
+        <>
+          <ObjectEditorTextArea
+            key="textarea"
+            autoFocus={state.matches("editing")}
+            style={props}
+            onChange={(e) => {
+              send({
+                type: "CHANGE",
+                value: e.target.value.replace(/&#13/g, "\n"),
+              });
+            }}
+            onBlur={() => console.log("blur") && send({ type: "BLUR" })}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                send({ type: "CANCEL" });
+              }
+            }}
+            value={
+              isObject ? JSON.stringify(JSON.parse(value), null, 2) : value
             }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              send({ type: "CANCEL" });
-            }
-          }}
-          value={value}
-          ref={inputRef}
-        ></ObjectEditorTextArea>
+            ref={inputRef}
+          ></ObjectEditorTextArea>
+          <Submit key="submit" send={send} />
+        </>
       )}
     </ObjectEditorContainer>
   );
@@ -154,12 +196,16 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
-    backgroundColor: state.matches("reading.submitted")
-      ? theme.brandTransparent
-      : theme.brandMoreTransparent,
+    backgroundColor:
+      state.matches("editing") && hasObjectType
+        ? theme.backgroundDark
+        : state.matches("reading.submitted")
+        ? theme.brandTransparent
+        : theme.brandMoreTransparent,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
     borderRightWidth: tail ? 2 : 0,
-    y: hasObjectType && state.matches("editing") ? -50 : 0,
+    top: hasObjectType && state.matches("editing") ? -82 : 0,
+    height: hasObjectType && state.matches("editing") ? 200 : 36,
     opacity: 1,
     from: {
       opacity: 0,
