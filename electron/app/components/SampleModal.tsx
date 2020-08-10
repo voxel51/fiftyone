@@ -12,6 +12,7 @@ import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
   stringify,
   getLabelText,
+  formatMetadata,
   VALID_SCALAR_TYPES,
   VALID_CLASS_TYPES,
   VALID_OBJECT_TYPES,
@@ -286,6 +287,9 @@ const SampleModal = ({
           </h2>
           <Row name="ID" value={sample._id.$oid} />
           <Row name="Source" value={sample.filepath} />
+          {formatMetadata(sample.metadata).map(({ name, value }) => (
+            <Row name={name} value={value} />
+          ))}
           <Row
             name="Tags"
             value={
