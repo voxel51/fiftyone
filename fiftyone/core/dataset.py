@@ -11,6 +11,7 @@ import inspect
 import logging
 import numbers
 import os
+import reprlib
 
 from bson import ObjectId
 from mongoengine.errors import DoesNotExist, FieldDoesNotExist
@@ -239,6 +240,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             [
                 "Name:           %s" % self.name,
                 "Persistent:     %s" % self.persistent,
+                "Info:           %s" % _info_repr.repr(self.info),
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
@@ -1280,6 +1282,24 @@ class DoesNotExistError(Exception):
     """Exception raised when a dataset that does not exist is encountered."""
 
     pass
+
+
+class _DatasetInfoRepr(reprlib.Repr):
+    def repr_BaseList(self, obj, level):
+        return self.repr_list(obj, level)
+
+    def repr_BaseDict(self, obj, level):
+        return self.repr_dict(obj, level)
+
+
+_info_repr = _DatasetInfoRepr()
+_info_repr.maxlevel = 2
+_info_repr.maxdict = 3
+_info_repr.maxlist = 3
+_info_repr.maxtuple = 3
+_info_repr.maxset = 3
+_info_repr.maxstring = 63
+_info_repr.maxother = 63
 
 
 def _create_dataset(name, persistent=False):
