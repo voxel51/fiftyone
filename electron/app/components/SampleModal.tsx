@@ -14,6 +14,7 @@ import {
   getLabelText,
   VALID_SCALAR_TYPES,
   VALID_CLASS_TYPES,
+  VALID_OBJECT_TYPES,
   RESERVED_FIELDS,
 } from "../utils/labels";
 
@@ -197,9 +198,9 @@ const SampleModal = ({
       />
     ));
   const detections = Object.keys(sample)
-    .filter((k) => sample[k] && sample[k]._cls == "Detections")
+    .filter((k) => sample[k] && VALID_OBJECT_TYPES.includes(sample[k]._cls))
     .map((k) => {
-      const len = sample[k].detections.length;
+      const len = sample[k].detections ? sample[k].detections.length : 1;
       return (
         <Row
           key={k}

@@ -44,19 +44,19 @@ const loadOverlay = (sample, colorMapping) => {
     }
     const field = sample[sampleField];
     if (!field) continue;
-    if (field._cls === "Detections") {
-      for (const j in field.detections) {
-        const detection = field.detections[j];
-        const [key, fn] = PARSERS[detection._cls];
-        imgLabels[key][key].push(fn(sampleField, detection));
-        playerColorMap[`${sampleField}:${detection.label}`] =
+    if (["Classification", "Detection"].includes(field._cls)) {
+      const [key, fn] = PARSERS[field._cls];
+      imgLabels[key][key].push(fn(sampleField, field));
+      playerColorMap[`${sampleField}:${field.label}`] =
+        colorMapping[sampleField];
+    } else if (["Classifications", "Detections"].includes(field._cls)) {
+      for (const object of field[field._cls.toLowerCase()]) {
+        const [key, fn] = PARSERS[object._cls];
+        imgLabels[key][key].push(fn(sampleField, object));
+        playerColorMap[`${sampleField}:${object.label}`] =
           colorMapping[sampleField];
       }
       continue;
-    }
-    if (field._cls === "Classification") {
-      const [key, fn] = PARSERS[field._cls];
-      imgLabels[key][key].push(fn(sampleField, field));
     }
   }
   return [imgLabels, playerColorMap];
