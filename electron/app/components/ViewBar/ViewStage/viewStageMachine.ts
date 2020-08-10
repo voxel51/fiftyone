@@ -108,6 +108,7 @@ const viewStageMachine = Machine(
             },
           },
           reading: {
+            entry: "blurInput",
             states: {
               pending: {},
               selected: {},
@@ -178,11 +179,11 @@ const viewStageMachine = Machine(
               CHANGE: {
                 actions: assign({
                   stage: (ctx, e) => e.stage,
-                  results: ({ stageInfo, stage }) =>
+                  results: ({ stageInfo }, e) =>
                     stageInfo
                       .map((s) => s.name)
                       .filter((n) =>
-                        n.toLowerCase().includes(stage.toLowerCase())
+                        n.toLowerCase().includes(e.stage.toLowerCase())
                       ),
                   currentResult: null,
                 }),
@@ -341,10 +342,6 @@ const viewStageMachine = Machine(
           stage: ({ currentResult, results }) => {
             if (currentResult === null) return results[0];
             return results[Math.min(currentResult + 1, results.length - 1)];
-          },
-          prevStage: ({ currentResult, stage, prevStage }) => {
-            if (currentResult === null) return stage;
-            return prevStage;
           },
         }),
       },

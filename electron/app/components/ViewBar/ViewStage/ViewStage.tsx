@@ -234,6 +234,8 @@ const ViewStage = React.memo(({ stageRef }) => {
     inputRef.current && send({ type: "FOCUS", inputRef: inputRef });
   }, [inputRef.current]);
 
+  console.log(state.toStrings());
+
   return (
     <>
       <GlobalHotKeys handlers={handlers} keyMap={viewStageKeyMap} />
