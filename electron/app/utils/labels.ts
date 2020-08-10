@@ -1,4 +1,6 @@
-export const VALID_LABEL_TYPES = ["Classification", "Detections"];
+export const VALID_OBJECT_TYPES = ["Detection", "Detections"];
+export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
+export const VALID_LABEL_TYPES = [...VALID_CLASS_TYPES, ...VALID_OBJECT_TYPES];
 
 export const VALID_SCALAR_TYPES = [
   "fiftyone.core.fields.BooleanField",
@@ -22,9 +24,13 @@ export const getLabelText = (label) => {
     !(
       VALID_LABEL_TYPES.includes(label._cls) ||
       VALID_SCALAR_TYPES.includes(label._cls)
-    )
+    ) ||
+    VALID_OBJECT_TYPES.includes(label._cls)
   ) {
     return undefined;
+  }
+  if (label._cls == "Classifications") {
+    return label.classifications.map(getLabelText).join(", ");
   }
   let value = undefined;
   for (const prop of ["label", "value"]) {

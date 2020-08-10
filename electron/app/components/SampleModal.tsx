@@ -11,7 +11,9 @@ import { Button, ModalFooter } from "./utils";
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
   stringify,
+  getLabelText,
   VALID_SCALAR_TYPES,
+  VALID_CLASS_TYPES,
   RESERVED_FIELDS,
 } from "../utils/labels";
 
@@ -100,6 +102,7 @@ const Container = styled.div`
     .sidebar-content {
       padding-left: 1em;
       padding-right: 1em;
+      padding-bottom: 1em;
       flex-grow: 1;
       overflow-y: auto;
     }
@@ -185,12 +188,12 @@ const SampleModal = ({
   );
 
   const classifications = Object.keys(sample)
-    .filter((k) => sample[k] && sample[k]._cls == "Classification")
+    .filter((k) => sample[k] && VALID_CLASS_TYPES.includes(sample[k]._cls))
     .map((k) => (
       <Row
         key={k}
         name={<Tag name={k} color={colorMapping[k]} />}
-        value={sample[k].label}
+        value={getLabelText(sample[k])}
       />
     ));
   const detections = Object.keys(sample)
