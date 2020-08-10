@@ -9,6 +9,11 @@ import Tag from "./Tags/Tag";
 import { Button, ModalFooter } from "./utils";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
+import {
+  stringify,
+  VALID_SCALAR_TYPES,
+  RESERVED_FIELDS,
+} from "../utils/labels";
 
 type Props = {
   sample: object;
@@ -125,6 +130,7 @@ const SampleModal = ({
   sample,
   sampleUrl,
   activeLabels,
+  fieldSchema,
   colorMapping,
   onClose,
   onPrevious,
@@ -158,8 +164,8 @@ const SampleModal = ({
     }
   };
 
-  useResizeHandler(handleResize);
-  useEffect(handleResize, [fullscreen]);
+  useResizeHandler(handleResize, [showJSON]);
+  useEffect(handleResize, [showJSON, fullscreen]);
 
   useKeydownHandler(
     (e) => {
@@ -196,6 +202,21 @@ const SampleModal = ({
           key={k}
           name={<Tag name={k} color={colorMapping[k]} />}
           value={`${len} detection${len == 1 ? "" : "s"}`}
+        />
+      );
+    });
+  const scalars = Object.keys(sample)
+    .filter(
+      (k) =>
+        VALID_SCALAR_TYPES.includes(fieldSchema[k]) &&
+        !RESERVED_FIELDS.includes(k)
+    )
+    .map((k) => {
+      return (
+        <Row
+          key={k}
+          name={<Tag name={k} color={colorMapping[k]} />}
+          value={stringify(sample[k])}
         />
       );
     });
@@ -281,6 +302,12 @@ const SampleModal = ({
             <>
               <h2>Object Detection</h2>
               {detections}
+            </>
+          ) : null}
+          {scalars.length ? (
+            <>
+              <h2>Scalars</h2>
+              {scalars}
             </>
           ) : null}
         </div>

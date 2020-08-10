@@ -40,6 +40,7 @@ function Dataset(props) {
   const [modal, setModal] = useState({ visible: false, sample: null });
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
+  const fieldSchema = useRecoilValue(selectors.fieldSchema);
 
   const handleHideModal = () => setModal({ visible: false, sample: null });
   useEffect(() => {
@@ -86,6 +87,7 @@ function Dataset(props) {
           <Overlay onClick={handleHideModal} />
           <SampleModal
             activeLabels={displayProps.activeLabels}
+            fieldSchema={fieldSchema}
             colorMapping={colorMapping}
             sample={modal.sample}
             sampleUrl={src}

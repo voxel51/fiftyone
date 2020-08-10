@@ -3,6 +3,7 @@ import uuid from "react-uuid";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
+import { RESERVED_FIELDS } from "../utils/labels";
 
 const PARSERS = {
   Classification: [
@@ -38,7 +39,7 @@ const loadOverlay = (sample, colorMapping) => {
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
-    if (["metadata", "_id", "tags", "filepath"].includes(sampleField)) {
+    if (RESERVED_FIELDS.includes(sampleField)) {
       continue;
     }
     const field = sample[sampleField];
