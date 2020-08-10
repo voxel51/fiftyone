@@ -39,21 +39,20 @@ export const PARSER = {
     validate: (value) => /^\d+$/.test(value.replace(/[,\s]/g, "")),
   },
   list: {
-    castFrom: (value, next) => JSON.stringify(value),
-    castTo: (value, next) => JSON.parse(value).map((e) => PARSER[next].cast(e)),
+    castFrom: (value, next) => {
+      return JSON.stringify(value);
+    },
+    castTo: (value, next) =>
+      JSON.parse(value).map((e) => PARSER[next].castTo(e)),
     parse: (value, next) => {
       const array = JSON.parse(value);
       return JSON.stringify(array.map((e) => PARSER[next].parse(e)));
     },
     validate: (value, next) => {
-      try {
-        const array = JSON.parse(value);
-        return (
-          Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
-        );
-      } catch {
-        return false;
-      }
+      const array = typeof value === "string" ? JSON.parse(value) : value;
+      return (
+        Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
+      );
     },
   },
   str: {
