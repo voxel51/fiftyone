@@ -512,6 +512,11 @@ a.with-right-arrow,
   margin-bottom: 1.5rem;
 }
 
+.social-links #social-links-table th {
+  text-align: center !important;
+  border: 1px solid var(--bg-light-secondary);
+}
+
 .social-links img {
   width: 32px !important;
 }
