@@ -51,6 +51,7 @@ from collections import OrderedDict
 from functools import wraps
 import json
 import numbers
+import random
 
 from bson import json_util
 from bson.binary import Binary
@@ -71,13 +72,18 @@ from .document import (
 )
 
 
-def default_sample_fields():
+def default_sample_fields(include_private=False):
     """The default fields present on all :class:`SampleDocument` objects.
+
+    Args:
+        include_private (False): or not to return fields prefixed with a `_`
 
     Returns:
         a tuple of field names
     """
-    return DatasetSampleDocument._fields_ordered
+    return DatasetSampleDocument._get_fields_ordered(
+        include_private=include_private
+    )
 
 
 def no_delete_default_field(func):
@@ -191,7 +197,7 @@ class DatasetSampleDocument(Document, SampleDocument):
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
     # Random float used for random dataset operations (e.g. shuffle)
-    _rand = fof.FloatField(default=0)
+    _rand = fof.FloatField(default=_generate_rand)
 
     def __setattr__(self, name, value):
         # pylint: disable=no-member
@@ -221,12 +227,15 @@ class DatasetSampleDocument(Document, SampleDocument):
 
     @property
     def field_names(self):
-        # pylint: disable=no-member
-        return tuple(f for f in self._fields_ordered if f != "id")
+        return tuple(
+            f
+            for f in self._get_fields_ordered(include_private=False)
+            if f != "id"
+        )
 
     @classmethod
     def get_field_schema(
-        cls, ftype=None, embedded_doc_type=None, return_all=False
+        cls, ftype=None, embedded_doc_type=None, include_private=False
     ):
         """Returns a schema dictionary describing the fields of this sample.
 
@@ -240,7 +249,7 @@ class DatasetSampleDocument(Document, SampleDocument):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
-            return_all (False): a boolean indicating whether to return fields
+            include_private (False): a boolean indicating whether to return fields
                 that start with the character "_"
 
         Returns:
@@ -263,7 +272,8 @@ class DatasetSampleDocument(Document, SampleDocument):
             )
 
         d = OrderedDict()
-        for field_name in cls._fields_ordered:
+        field_names = cls._get_fields_ordered(include_private=include_private)
+        for field_name in field_names:
             # pylint: disable=no-member
             field = cls._fields[field_name]
             if not isinstance(cls._fields[field_name], ftype):
@@ -272,9 +282,6 @@ class DatasetSampleDocument(Document, SampleDocument):
             if embedded_doc_type and not issubclass(
                 field.document_type, embedded_doc_type
             ):
-                continue
-
-            if not return_all and field_name.startswith("_"):
                 continue
 
             d[field_name] = field
@@ -547,13 +554,19 @@ class DatasetSampleDocument(Document, SampleDocument):
 
         return el._id, el_filter
 
+    @classmethod
+    def _get_fields_ordered(cls, include_private=False):
+        if include_private:
+            return cls._fields_ordered
+        return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
+
 
 class NoDatasetSampleDocument(SampleDocument):
     """Backing document for samples that have not been added to a dataset."""
 
     # pylint: disable=no-member
     default_fields = DatasetSampleDocument._fields
-    default_fields_ordered = default_sample_fields()
+    default_fields_ordered = default_sample_fields(include_private=True)
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()
@@ -604,7 +617,7 @@ class NoDatasetSampleDocument(SampleDocument):
 
     @property
     def field_names(self):
-        return tuple(self._data.keys())
+        return tuple(k for k in self._data.keys() if not k.startswith("_"))
 
     @staticmethod
     def _get_default(field):
@@ -804,3 +817,7 @@ def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
     field.name = field_name
 
     return field
+
+
+def _generate_rand():
+    return random.random() * 0.001 + 0.999

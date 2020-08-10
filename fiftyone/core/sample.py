@@ -8,9 +8,9 @@ Dataset samples.
 from collections import defaultdict
 from copy import deepcopy
 import os
-import random
 import weakref
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.metadata as fom
@@ -188,8 +188,7 @@ class _Sample(object):
             a JSON dict
         """
         d = self._doc.to_dict(extended=True)
-        d.pop("_id", None)
-        return d
+        return {k: v for k, v in d.items() if not k.startswith("_")}
 
     def to_json(self, pretty_print=False):
         """Serializes the sample to a JSON string.
@@ -201,7 +200,7 @@ class _Sample(object):
         Returns:
             a JSON string
         """
-        return self._doc.to_json(pretty_print=pretty_print)
+        return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
 
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
@@ -253,19 +252,10 @@ class Sample(_Sample):
     # Instance references keyed by [dataset_name][sample_id]
     _instances = defaultdict(weakref.WeakValueDictionary)
 
-    def __init__(
-        self, filepath, tags=None, metadata=None, _rand=None, **kwargs
-    ):
+    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         filepath = os.path.abspath(os.path.expanduser(filepath))
-        if _rand is None:
-            random.seed(filepath)
-            _rand = random.random() * 0.001 + 0.999
         self._doc = foo.NoDatasetSampleDocument(
-            filepath=filepath,
-            tags=tags,
-            metadata=metadata,
-            _rand=_rand,
-            **kwargs
+            filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
         super().__init__()
 
