@@ -136,7 +136,7 @@ const SampleModal = ({
   const [fullscreen, setFullscreen] = useState(false);
 
   const handleResize = () => {
-    if (!playerContainerRef.current) {
+    if (!playerContainerRef.current || showJSON) {
       return;
     }
     const container = playerContainerRef.current;
