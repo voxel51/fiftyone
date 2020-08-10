@@ -2,6 +2,8 @@ import { Machine, actions, sendParent, send } from "xstate";
 import viewStageMachine from "./viewStageMachine";
 const { assign, choose } = actions;
 
+const convert = (v) => (typeof v !== "string" ? String(v) : v);
+
 /**
  * See https://stackoverflow.com/questions/175739/built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
  * for details about numbers and javascript
@@ -16,7 +18,8 @@ export const PARSER = {
         value.toLowerCase().slice(1)
       );
     },
-    validate: (value) => ["true", "false"].indexOf(value.toLowerCase()) >= 0,
+    validate: (value) =>
+      ["true", "false"].indexOf(convert(value).toLowerCase()) >= 0,
   },
   float: {
     castFrom: (value) => String(value),
@@ -27,7 +30,7 @@ export const PARSER = {
       return integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + fractional;
     },
     validate: (value) => {
-      const stripped = value.replace(/[\s]/g, "");
+      const stripped = convert(value).replace(/[\s]/g, "");
       return stripped !== "" && !isNaN(+stripped);
     },
   },
@@ -36,24 +39,23 @@ export const PARSER = {
     castTo: (value) => +value,
     parse: (value) =>
       value.replace(/[,\s]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","),
-    validate: (value) => /^\d+$/.test(value.replace(/[,\s]/g, "")),
+    validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
   },
   list: {
-    castFrom: (value, next) => JSON.stringify(value),
-    castTo: (value, next) => JSON.parse(value).map((e) => PARSER[next].cast(e)),
+    castFrom: (value, next) => {
+      return JSON.stringify(value);
+    },
+    castTo: (value, next) =>
+      JSON.parse(value).map((e) => PARSER[next].castTo(e)),
     parse: (value, next) => {
       const array = JSON.parse(value);
       return JSON.stringify(array.map((e) => PARSER[next].parse(e)));
     },
     validate: (value, next) => {
-      try {
-        const array = JSON.parse(value);
-        return (
-          Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
-        );
-      } catch {
-        return false;
-      }
+      const array = typeof value === "string" ? JSON.parse(value) : value;
+      return (
+        Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
+      );
     },
   },
   str: {
@@ -68,7 +70,8 @@ export const PARSER = {
     parse: (value) => value,
     validate: (value) => {
       try {
-        return JSON.parse(value) instanceof Object;
+        const v = typeof value === "string" ? JSON.parse(value) : value;
+        return v instanceof Object;
       } catch {
         return false;
       }
