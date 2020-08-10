@@ -3,6 +3,7 @@ import styled from "styled-components";
 
 import { Close } from "@material-ui/icons";
 
+import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import { Button } from "./utils";
@@ -102,6 +103,7 @@ const SampleModal = ({
 }: Props) => {
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
+  const [showJSON, setShowJSON] = useState(false);
 
   const handleResize = () => {
     if (!playerContainerRef.current) {
@@ -166,18 +168,22 @@ const SampleModal = ({
   return (
     <Container>
       <div className="player" ref={playerContainerRef}>
-        <Player51
-          key={sampleUrl} // force re-render when this changes
-          src={sampleUrl}
-          onLoad={handleResize}
-          style={{
-            position: "relative",
-            ...playerStyle,
-          }}
-          sample={sample}
-          colorMapping={colorMapping}
-          activeLabels={activeLabels}
-        />
+        {showJSON ? (
+          <JSONView object={sample} />
+        ) : (
+          <Player51
+            key={sampleUrl} // force re-render when this changes
+            src={sampleUrl}
+            onLoad={handleResize}
+            style={{
+              position: "relative",
+              ...playerStyle,
+            }}
+            sample={sample}
+            colorMapping={colorMapping}
+            activeLabels={activeLabels}
+          />
+        )}
         {onPrevious ? (
           <div className="nav-button left" onClick={onPrevious}>
             &lt;
@@ -193,7 +199,9 @@ const SampleModal = ({
         <h2>
           Metadata
           <span className="push-right" />
-          <Button>Show JSON</Button>
+          <Button onClick={() => setShowJSON(!showJSON)}>
+            {showJSON ? "Hide" : "Show"} JSON
+          </Button>
           <Close onClick={onClose} />
         </h2>
         <Row name="ID" value={sample._id.$oid} />
