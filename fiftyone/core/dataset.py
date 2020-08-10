@@ -223,7 +223,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def info(self):
+        """A dictionary of information about the dataset."""
         return self._meta.info
+
+    @info.setter
+    def info(self, info):
+        self._meta.info = info
 
     @property
     def deleted(self):
