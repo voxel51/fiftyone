@@ -90,6 +90,24 @@ Start a new Python session:
 Note that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have been
 wiped because they were not persistent.
 
+Custom dataset information 
+-------------------------
+
+All |Dataset| instances have an ``info`` attribute. This attribute is a ``dict`` that
+exists to allow the user to store any information they want that relates to
+their |Dataset|. 
+
+Every time that this `dataset.info` dictionary is updated, call 
+:meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` to save the updates
+in the backing database.
+
+For example, ``info`` could be used to store classes for a detection |Dataset|:
+
+.. code-block:: python
+    dataset.info["classes"] = {"dog": 1, "cat": 2, "bird": 3}
+    dataset.save()
+
+
 Deleting a dataset
 ------------------
 
@@ -595,6 +613,7 @@ To automatically compute metadata for all samples in the dataset use
                     'mime_type': 'application/zip',
                 }>,
             }>
+
 
 .. _using-labels:
 

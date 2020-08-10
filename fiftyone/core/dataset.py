@@ -221,6 +221,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._meta.save()
 
     @property
+    def info(self):
+        return self._meta.info
+
+    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
@@ -555,16 +559,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return num_cloned, num_skipped
 
     def save(self):
-        """Saves all modified in-memory samples in the dataset to the database.
-        Also saves dataset-level data like ``persistent`` and ``info`` to the
+        """Saves dataset-level data like ``persistent`` and ``info`` to the
         database.
+        """
+        self._meta.save()
+
+    def save_dataset_samples(self):
+        """Saves all modified in-memory samples in the dataset to the database.
 
         Only samples with non-persisted changes will be processed.
         """
         fos.Sample._save_dataset_samples(self.name)
-        self._meta.save()
 
-    def reload(self):
+    def reload_dataset_samples(self):
         """Reloads all in-memory samples in the dataset from the database."""
         fos.Sample._reload_dataset_samples(self.name)
 
