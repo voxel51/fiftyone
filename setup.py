@@ -66,6 +66,7 @@ setup(
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
+        "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
     ],
