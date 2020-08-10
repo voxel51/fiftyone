@@ -157,7 +157,7 @@ const ViewStage = React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage, stageInfo, parameters, active } = state.context;
+  const { stage, parameters, active, results, currentResult } = state.context;
 
   const handlers = {
     VIEW_STAGE_DELETE: useCallback(
@@ -254,8 +254,16 @@ const ViewStage = React.memo(({ stageRef }) => {
               }
             }}
             onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send("BLUR");
+              switch (e.key) {
+                case "Escape":
+                  send("BLUR");
+                  break;
+                case "ArrowDown":
+                  send("NEXT_RESULT");
+                  break;
+                case "ArrowUp":
+                  send("PREVIOUS_RESULT");
+                  break;
               }
             }}
             style={{ fontSize: "1rem" }}
@@ -263,10 +271,9 @@ const ViewStage = React.memo(({ stageRef }) => {
           />
           {state.matches("input.editing") && (
             <SearchResults
-              results={stageInfo
-                .map((s) => s.name)
-                .filter((n) => n.toLowerCase().includes(stage.toLowerCase()))}
+              results={results}
               send={send}
+              currentResult={currentResult}
             />
           )}
         </ViewStageDiv>

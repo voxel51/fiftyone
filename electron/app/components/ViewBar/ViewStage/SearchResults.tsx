@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 
@@ -22,6 +22,15 @@ const SearchResult = React.memo(
       backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
       color: isActive ? theme.font : theme.fontDark,
     }));
+
+    useEffect(() => {
+      set({
+        backgroundColor: isActive
+          ? theme.backgroundLight
+          : theme.backgroundDark,
+        color: isActive ? theme.font : theme.fontDark,
+      });
+    }, [isActive]);
 
     const handleMouseEnter = () =>
       set({ backgroundColor: theme.backgroundLight, color: theme.font });
@@ -64,18 +73,18 @@ interface SearchResultsProps {
   send: any;
 }
 
-const SearchResults = React.memo(({ results, send }) => {
+const SearchResults = React.memo(({ results, send, currentResult }) => {
   if (!results.length) return null;
   return (
     <SearchResultsDiv
       onMouseEnter={() => send("MOUSEENTER_RESULTS")}
       onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
     >
-      {results.map((result) => (
+      {results.map((result, i) => (
         <SearchResult
           key={result}
           result={result}
-          isActive={false}
+          isActive={currentResult === i}
           send={send}
         />
       ))}
