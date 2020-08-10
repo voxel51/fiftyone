@@ -30,8 +30,8 @@ If you are looking to boost the performance of your machine learning models,
 chances are improving the quality of your dataset will provide the highest
 return on your investment. **Enter FiftyOne.** FiftyOne is a Python-based tool
 for machine learning/computer vision engineers and scientists that enables you
-to create valuable and diverse datasets. Work efficiently with FiftyOne to
-achieve better models with dependable performance.
+to curate better datasets. Work efficiently with FiftyOne to achieve better
+models with dependable performance.
 
 *"Become one with your data"*
 
@@ -43,6 +43,12 @@ much more!
 .. image:: images/video_placeholder.png
    :alt: Overview
    :align: center
+
+.. note::
+
+  FiftyOne is rapidly growing.
+  `Sign up for the mailing list <https://app.hubspot.com/contacts/4972700/lists/55>`_
+  so we can keep you posted on new features as they come out!
 
 Core Capabilities
 _________________
