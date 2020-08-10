@@ -560,8 +560,9 @@ class Shuffle(ViewStage):
         random_int = random.randint(10000000, 1000000000)
 
         return [
-            {"$set": {"_rand": {"$mod": [random_int, "$_rand"]}}},
-            {"$sort": {"_rand": ASCENDING}},
+            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
+            {"$sort": {"_rand_take": ASCENDING}},
+            {"$unset": "_rand_take"},
         ]
 
     def _kwargs(self):
@@ -698,9 +699,10 @@ class Take(ViewStage):
         random_int = random.randint(10000000, 1000000000)
 
         return [
-            {"$set": {"_rand": {"$mod": [random_int, "$_rand"]}}},
-            {"$sort": {"_rand": ASCENDING}},
+            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
+            {"$sort": {"_rand_take": ASCENDING}},
             {"$limit": size},
+            {"$unset": "_rand_take"},
         ]
 
     def _kwargs(self):

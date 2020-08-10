@@ -17,9 +17,6 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
 
 
-random.seed(51)
-
-
 class _Sample(object):
     """Base class for :class:`Sample` and :class:`SampleView`."""
 
@@ -258,6 +255,7 @@ class Sample(_Sample):
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         filepath = os.path.abspath(os.path.expanduser(filepath))
+        random.seed(self.filepath)
         rand_value = random.random() * 0.001 + 0.999
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath,

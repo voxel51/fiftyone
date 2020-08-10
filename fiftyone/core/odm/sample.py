@@ -190,6 +190,7 @@ class DatasetSampleDocument(Document, SampleDocument):
     # Metadata about the sample media
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
+    # Random float used for random dataset operations (e.g. shuffle)
     _rand = fof.FloatField(default=0)
 
     def __setattr__(self, name, value):
