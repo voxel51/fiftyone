@@ -8,3 +8,12 @@ export const useResizeHandler = (handler, deps = []) => {
     };
   }, deps);
 };
+
+export const useKeydownHandler = (handler, deps = []) => {
+  useEffect(() => {
+    document.body.addEventListener("keydown", handler);
+    return () => {
+      document.body.removeEventListener("keydown", handler);
+    };
+  }, deps);
+};

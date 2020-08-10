@@ -6,7 +6,7 @@ import { Close } from "@material-ui/icons";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 
-import { useResizeHandler } from "../utils/hooks";
+import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 
 type Props = {
   sample: object;
@@ -118,6 +118,19 @@ const SampleModal = ({
   };
 
   useResizeHandler(handleResize);
+
+  useKeydownHandler(
+    (e) => {
+      if (e.key == "Escape" && onClose) {
+        onClose();
+      } else if (e.key == "ArrowLeft" && onPrevious) {
+        onPrevious();
+      } else if (e.key == "ArrowRight" && onNext) {
+        onNext();
+      }
+    },
+    [onClose, onPrevious, onNext]
+  );
 
   const classifications = Object.keys(sample)
     .filter((k) => sample[k] && sample[k]._cls == "Classification")
