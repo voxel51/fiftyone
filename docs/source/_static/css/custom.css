@@ -505,13 +505,11 @@ a.with-right-arrow,
 
 /* social links on main page */
 
-.social-links table {
+.social-links #social-links-table {
   width: 400px !important;
-}
-
-.social-links table.center {
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1.5rem;
 }
 
 .social-links img {

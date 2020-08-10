@@ -6,7 +6,7 @@ FiftyOne
 .. raw:: html
 
   <div class="social-links">
-    <table>
+    <table id="social-links-table">
       <th>
         <a target="_blank" href="https://github.com/voxel51/fiftyone">
           <img alt="GitHub repository" src="_static/images/icons/github-mark.svg" />
