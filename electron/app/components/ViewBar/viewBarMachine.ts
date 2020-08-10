@@ -40,7 +40,6 @@ function getStageInfo(context) {
 }
 
 function serializeStage(stage, stageMap) {
-  console.log(stage, stageMap[stage.stage][i].type);
   return {
     kwargs: stage.parameters.map((param, i) => [
       param.parameter,
