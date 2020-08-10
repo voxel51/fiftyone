@@ -53,7 +53,7 @@ https://voxel51.com/docs/fiftyone. In particular, check out:
 
 This section explains how to install the latest development version of
 [FiftyOne](http://www.voxel51.com/docs/fiftyone) from source. This is necessary
-if you want to contribute to FiftyOne or use the latest unreleased changes.
+if you want to [contribute](CONTRIBUTING.md) to FiftyOne or use the latest unreleased changes.
 
 The instructions below are for macOS and Linux systems. Windows users may need
 to make adjustments.
@@ -116,7 +116,7 @@ or wish to otherwise customize your ETA installation,
 
 ### Developer installation
 
-If you are a developer contributing to FiftyOne or generating its documentation
+If you are a developer [contributing](CONTRIBUTING.md) to FiftyOne or generating its documentation
 from source, you should perform a developer installation using the `-d` flag of
 the install script:
 
@@ -126,7 +126,7 @@ bash install.bash -d
 
 You should also check out the
 [developer's guide](https://github.com/voxel51/fiftyone/blob/develop/docs/dev_guide.md)
-to learn how to contribute this repository.
+to learn how to [contribute](CONTRIBUTING.md) this repository.
 
 ### Generating Documentation
 
