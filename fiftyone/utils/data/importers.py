@@ -276,6 +276,7 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
     """
 
     def __init__(self, dataset_dir):
+        dataset_dir = os.path.abspath(os.path.expanduser(dataset_dir))
         super().__init__(dataset_dir)
         self._metadata = None
         self._samples = None

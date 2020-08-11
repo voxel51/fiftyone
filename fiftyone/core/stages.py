@@ -5,6 +5,7 @@ View stages.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import random
 import reprlib
 
 from bson import ObjectId
@@ -16,16 +17,6 @@ from fiftyone.core.odm.sample import default_sample_fields
 import eta.core.utils as etau
 
 
-class _StageRepr(reprlib.Repr):
-    def repr_ViewExpression(self, expr, level):
-        return self.repr1(expr.to_mongo(), level=level)
-
-
-_aRepr = _StageRepr()
-_aRepr.maxlevel = 2
-_aRepr.maxlist = 3
-
-
 class ViewStage(object):
     """Abstract base class for all :class:`fiftyone.core.view.DatasetView`
     stages.
@@ -34,10 +25,6 @@ class ViewStage(object):
     :class:`fiftyone.core.view.DatasetView`, which may decide what subset of
     samples in a view should pass though the stage, and also what subset of the
     contents of each :class:`fiftyone.core.sample.Sample` should be passed.
-
-    Args:
-        **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
-            arguments
     """
 
     def __str__(self):
@@ -45,7 +32,7 @@ class ViewStage(object):
 
     def __repr__(self):
         kwargs_str = ", ".join(
-            ["%s=%s" % (k, _aRepr.repr(v)) for k, v in self._kwargs().items()]
+            ["%s=%s" % (k, _repr.repr(v)) for k, v in self._kwargs()]
         )
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
@@ -70,13 +57,23 @@ class ViewStage(object):
         }
 
     def _kwargs(self):
-        """Returns a JSON dict describing the keyword arguments that define the
-        ViewStage.
+        """Returns a list of ``[name, value]`` lists describing the parameters
+        that define the stage.
 
         Returns:
             a JSON dict
         """
         raise NotImplementedError("subclasses must implement `_kwargs()`")
+
+    @classmethod
+    def _params(self):
+        """Returns a list of JSON dicts describing the parameters that define
+        the stage.
+
+        Returns:
+            a list of JSON dicts
+        """
+        raise NotImplementedError("subclasses must implement `_params()`")
 
     @classmethod
     def _from_dict(cls, d):
@@ -90,7 +87,7 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        return view_stage_cls(**d["kwargs"])
+        return view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
 
 
 class ViewStageError(Exception):
@@ -124,7 +121,11 @@ class Exclude(ViewStage):
         return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
 
     def _kwargs(self):
-        return {"sample_ids": self._sample_ids}
+        return [["sample_ids", self._sample_ids]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "sample_ids", "type": ["list", "str"]}]
 
 
 class ExcludeFields(ViewStage):
@@ -157,7 +158,11 @@ class ExcludeFields(ViewStage):
         return [{"$unset": self._field_names}]
 
     def _kwargs(self):
-        return {"field_names": self._field_names}
+        return [["field_names", self._field_names]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "field_names", "type": ["list", "str"]}]
 
     def _validate(self):
         invalid_fields = set(self._field_names) & set(default_sample_fields())
@@ -192,7 +197,11 @@ class Exists(ViewStage):
         return Match({self._field: {"$exists": True, "$ne": None}}).to_mongo()
 
     def _kwargs(self):
-        return {"field": self._field}
+        return [["field", self._field]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "field", "type": "str"}]
 
 
 class _FilterList(ViewStage):
@@ -258,7 +267,14 @@ class _FilterList(ViewStage):
         return self._filter
 
     def _kwargs(self):
-        return {"field": self._field, "filter": self._get_mongo_filter()}
+        return [["field", self._field], ["filter", self._get_mongo_filter()]]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "str"},
+            {"name": "filter", "type": "dict"},
+        ]
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -329,7 +345,11 @@ class Limit(ViewStage):
         return [{"$limit": self._limit}]
 
     def _kwargs(self):
-        return {"limit": self._limit}
+        return [["limit", self._limit]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "limit", "type": "int"}]
 
 
 class Match(ViewStage):
@@ -365,7 +385,7 @@ class Match(ViewStage):
         return self._filter
 
     def _kwargs(self):
-        return {"filter": self._get_mongo_filter()}
+        return [["filter", self._get_mongo_filter()]]
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -373,6 +393,10 @@ class Match(ViewStage):
                 "Filter must be a ViewExpression or a MongoDB expression; "
                 "found '%s'" % self._filter
             )
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "filter", "type": "dict"}]
 
 
 class MatchTag(ViewStage):
@@ -399,7 +423,11 @@ class MatchTag(ViewStage):
         return Match({"tags": self._tag}).to_mongo()
 
     def _kwargs(self):
-        return {"tag": self._tag}
+        return [["tag", self._tag]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "tag", "type": "str"}]
 
 
 class MatchTags(ViewStage):
@@ -429,7 +457,11 @@ class MatchTags(ViewStage):
         return Match({"tags": {"$in": self._tags}}).to_mongo()
 
     def _kwargs(self):
-        return {"tags": self._tags}
+        return [["tags", self._tags]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "tags", "type": ["list", "str"]}]
 
 
 class Mongo(ViewStage):
@@ -459,7 +491,11 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def _kwargs(self):
-        return {"pipeline": self._pipeline}
+        return [["pipeline", self._pipeline]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "pipeline", "type": "dict"}]
 
 
 class Select(ViewStage):
@@ -487,7 +523,11 @@ class Select(ViewStage):
         return Match({"_id": {"$in": sample_ids}}).to_mongo()
 
     def _kwargs(self):
-        return {"sample_ids": self._sample_ids}
+        return [["sample_ids", self._sample_ids]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "sample_ids", "type": ["list", "str"]}]
 
 
 class SelectFields(ViewStage):
@@ -527,7 +567,48 @@ class SelectFields(ViewStage):
         return [{"$project": {fn: True for fn in self.field_names}}]
 
     def _kwargs(self):
-        return {"field_names": self._field_names}
+        return [["field_names", self._field_names]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "field_names", "type": ["list", "str"]}]
+
+
+class Shuffle(ViewStage):
+    """Randomly shuffles the samples in the view.
+
+    Args:
+        seed (None): an optional random seed to use when shuffling the samples
+    """
+
+    def __init__(self, seed=None):
+        self._seed = seed
+        self._randint = _get_rng(seed).randint(1e7, 1e10)
+
+    @property
+    def seed(self):
+        """The random seed to use, or ``None``."""
+        return self._seed
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        # @todo avoid creating new field here?
+        return [
+            {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
+            {"$sort": {"_rand_shuffle": ASCENDING}},
+            {"$unset": "_rand_shuffle"},
+        ]
+
+    def _kwargs(self):
+        return [["seed", self._seed]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "seed", "type": "float"}]
 
 
 class SortBy(ViewStage):
@@ -583,10 +664,17 @@ class SortBy(ViewStage):
         return self._field_or_expr
 
     def _kwargs(self):
-        return {
-            "field_or_expr": self._get_mongo_field_or_expr(),
-            "reverse": self._reverse,
-        }
+        return [
+            ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["reverse", self._reverse],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field_or_expr", "type": "dict|str"},
+            {"name": "reverse", "type": "bool"},
+        ]
 
 
 class Skip(ViewStage):
@@ -614,7 +702,11 @@ class Skip(ViewStage):
         return [{"$skip": self._skip}]
 
     def _kwargs(self):
-        return {"skip": self._skip}
+        return [["skip", self._skip]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "skip", "type": "int"}]
 
 
 class Take(ViewStage):
@@ -623,15 +715,23 @@ class Take(ViewStage):
     Args:
         size: the number of samples to return. If a non-positive number is
             provided, an empty view is returned
+        seed (None): an optional random seed to use when selecting the samples
     """
 
-    def __init__(self, size):
+    def __init__(self, size, seed=None):
+        self._seed = seed
         self._size = size
+        self._randint = _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def size(self):
         """The number of samples to return."""
         return self._size
+
+    @property
+    def seed(self):
+        """The random seed to use, or ``None``."""
+        return self._seed
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -639,12 +739,68 @@ class Take(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        size = self._size
-
-        if size <= 0:
+        if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        return [{"$sample": {"size": size}}]
+        # @todo avoid creating new field here?
+        return [
+            {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
+            {"$sort": {"_rand_take": ASCENDING}},
+            {"$limit": self._size},
+            {"$unset": "_rand_take"},
+        ]
 
     def _kwargs(self):
-        return {"size": self._size}
+        return [["size", self._size], ["seed", self._seed]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "size", "type": "int"},
+            {"name": "seed", "type": "float"},
+        ]
+
+
+def _get_rng(seed):
+    if seed is None:
+        return random
+
+    _random = random.Random()
+    _random.seed(seed)
+    return _random
+
+
+class _ViewStageRepr(reprlib.Repr):
+    def repr_ViewExpression(self, expr, level):
+        return self.repr1(expr.to_mongo(), level=level - 1)
+
+
+_repr = _ViewStageRepr()
+_repr.maxlevel = 2
+_repr.maxdict = 3
+_repr.maxlist = 3
+_repr.maxtuple = 3
+_repr.maxset = 3
+_repr.maxstring = 30
+_repr.maxother = 30
+
+
+# Simple registry for the server to grab available view stages
+_STAGES = [
+    Exclude,
+    ExcludeFields,
+    Exists,
+    FilterClassifications,
+    FilterDetections,
+    Limit,
+    Match,
+    MatchTag,
+    MatchTags,
+    Mongo,
+    Shuffle,
+    Select,
+    SelectFields,
+    SortBy,
+    Skip,
+    Take,
+]
