@@ -93,6 +93,10 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return image_path, image_metadata, detections
 
     @property
+    def has_dataset_info(self):
+        return False
+
+    @property
     def has_image_metadata(self):
         return True
 

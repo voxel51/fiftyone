@@ -91,6 +91,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     def __init__(self, dataset_dir):
         super().__init__(dataset_dir)
         self._data_dir = None
+        self._info = None
         self._classes = None
         self._images_map = None
         self._annotations = None
@@ -127,6 +128,10 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return image_path, image_metadata, detections
 
     @property
+    def has_dataset_info(self):
+        return True
+
+    @property
     def has_image_metadata(self):
         return True
 
@@ -138,14 +143,21 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._data_dir = os.path.join(self.dataset_dir, "data")
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
-        classes, images, annotations = load_coco_detection_annotations(
+        info, classes, images, annotations = load_coco_detection_annotations(
             labels_path
         )
 
+        if classes is not None:
+            info["classes"] = classes
+
+        self._info = info
         self._classes = classes
         self._images_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
         self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+    def get_dataset_info(self):
+        return self._info
 
 
 class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
@@ -444,12 +456,16 @@ def load_coco_detection_annotations(json_path):
     Returns:
         a tuple of
 
+        -   info: a dict of dataset info
         -   classes: a list of classes
         -   images: a dict mapping image filenames to image dicts
         -   annotations: a dict mapping image IDs to list of
             :class:`COCOObject` instances
     """
     d = etas.load_json(json_path)
+
+    # Load info
+    info = d.get("info", {})
 
     # Load classes
     categories = d.get("categories", None)
@@ -466,7 +482,7 @@ def load_coco_detection_annotations(json_path):
     for a in d["annotations"]:
         annotations[a["image_id"]].append(COCOObject.from_annotation_dict(a))
 
-    return classes, images, dict(annotations)
+    return info, classes, images, dict(annotations)
 
 
 def coco_categories_to_classes(categories):

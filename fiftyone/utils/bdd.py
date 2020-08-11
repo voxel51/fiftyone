@@ -136,6 +136,10 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         return image_path, image_metadata, image_labels
 
     @property
+    def has_dataset_info(self):
+        return False
+
+    @property
     def has_image_metadata(self):
         return True
 

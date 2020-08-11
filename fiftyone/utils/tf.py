@@ -458,6 +458,10 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
         return next(self._iter_dataset_ingestor)
 
     @property
+    def has_dataset_info(self):
+        return False
+
+    @property
     def has_image_metadata(self):
         return self._sample_parser.has_image_metadata
 

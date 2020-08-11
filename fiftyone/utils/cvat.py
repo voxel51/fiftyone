@@ -121,6 +121,7 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         super().__init__(dataset_dir)
         self._data_dir = None
         self._labels_path = None
+        self._info = None
         self._images_map = None
         self._filenames = None
         self._iter_filenames = None
@@ -143,6 +144,10 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         return image_path, image_metadata, detections
 
     @property
+    def has_dataset_info(self):
+        return True
+
+    @property
     def has_image_metadata(self):
         return True
 
@@ -154,12 +159,17 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._labels_path = os.path.join(self.dataset_dir, "labels.xml")
 
-        _, cvat_images = load_cvat_image_annotations(self._labels_path)
+        info, _, cvat_images = load_cvat_image_annotations(self._labels_path)
+
+        self._info = info
 
         # Index by filename
         self._images_map = {i.name: i for i in cvat_images}
 
         self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+    def get_dataset_info(self):
+        return self._info
 
 
 class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
@@ -667,25 +677,30 @@ def load_cvat_image_annotations(xml_path):
     Returns:
         a tuple of
 
+        -   info: a dict of dataset info
         -   cvat_task_labels: a :class:`CVATTaskLabels` instance
         -   cvat_images: a list of :class:`CVATImage` instances
     """
     d = fou.load_xml_as_json_dict(xml_path)
 
+    # Load meta
+    meta = d.get("annotations", {}).get("meta", {})
+
     # Load task labels
-    labels_dict = (
-        d.get("annotations", {})
-        .get("meta", {})
-        .get("task", {})
-        .get("labels", {})
-    )
+    labels_dict = meta.get("task", {}).get("labels", {})
     cvat_task_labels = CVATTaskLabels.from_labels_dict(labels_dict)
 
     # Load annotations
     image_dicts = _ensure_list(d.get("annotations", {}).get("image", []))
     cvat_images = [CVATImage.from_image_dict(id) for id in image_dicts]
 
-    return cvat_task_labels, cvat_images
+    # Wrangle dataset info
+    info = {
+        "task_labels": cvat_task_labels.labels,
+        "dumped": meta.get("dumped", None),
+    }
+
+    return info, cvat_task_labels, cvat_images
 
 
 def _ensure_list(value):
