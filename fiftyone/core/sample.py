@@ -8,7 +8,6 @@ Dataset samples.
 from collections import defaultdict
 from copy import deepcopy
 import os
-import random
 import weakref
 
 import eta.core.utils as etau
