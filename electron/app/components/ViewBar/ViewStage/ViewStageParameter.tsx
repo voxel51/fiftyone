@@ -50,7 +50,6 @@ const ObjectEditorTextArea = animated(styled.textarea`
   position: relative;
   background-color: transparent;
   overflow: visible;
-  font-weight: bold;
   line-height: 1rem;
   margin: -0.5rem;
   border: none;
