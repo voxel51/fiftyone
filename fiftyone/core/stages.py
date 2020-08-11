@@ -532,26 +532,19 @@ class SelectFields(ViewStage):
 
 
 class Shuffle(ViewStage):
-    """Randomly shuffles the samples in the view using a provided seed.
+    """Randomly shuffles the samples in the view.
 
     Args:
-        seed (None): an integer or float seed used to randomly shuffle samples,
-            by default it will use a different seed every time
+        seed (None): an optional random seed to use when shuffling the samples
     """
 
     def __init__(self, seed=None):
-        if seed == None:
-            seed = random.random()
-        elif type(seed) in [int, float]:
-            seed = seed
-        else:
-            raise ValueError("Shuffle seed must be either int or float")
-
         self._seed = seed
+        self._randint = _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def seed(self):
-        """The seed to shuffle by."""
+        """The random seed to use, or ``None``."""
         return self._seed
 
     def to_mongo(self):
@@ -560,13 +553,10 @@ class Shuffle(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        random.seed(self._seed)
-        random_int = random.randint(1e7, 1e10)
-
         return [
-            {"$set": {"_rand_shuf": {"$mod": [random_int, "$_rand"]}}},
-            {"$sort": {"_rand_shuf": ASCENDING}},
-            {"$unset": "_rand_shuf"},
+            {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
+            {"$sort": {"_rand_shuffle": ASCENDING}},
+            {"$unset": "_rand_shuffle"},
         ]
 
     def _kwargs(self):
@@ -666,31 +656,23 @@ class Take(ViewStage):
     Args:
         size: the number of samples to return. If a non-positive number is
             provided, an empty view is returned
-        seed (None): an integer or float seed used to randomly take samples,
-            by default it will use a different seed every time
-
-
+        seed (None): an optional random seed to use when selecting the samples
     """
 
     def __init__(self, size, seed=None):
-        if seed == None:
-            seed = random.random()
-        elif type(seed) in [int, float]:
-            seed = seed
-        else:
-            raise ValueError("Take seed must be either int or float")
         self._seed = seed
         self._size = size
-
-    @property
-    def seed(self):
-        """The seed to randomly take by."""
-        return self._seed
+        self._randint = _get_rng(seed).randint(1e8, 1e11)
 
     @property
     def size(self):
         """The number of samples to return."""
         return self._size
+
+    @property
+    def seed(self):
+        """The random seed to use, or ``None``."""
+        return self._seed
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -701,11 +683,8 @@ class Take(ViewStage):
         if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        random.seed(self._seed)
-        random_int = random.randint(1e7, 1e10)
-
         return [
-            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
+            {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
             {"$sort": {"_rand_take": ASCENDING}},
             {"$limit": self._size},
             {"$unset": "_rand_take"},
@@ -713,3 +692,12 @@ class Take(ViewStage):
 
     def _kwargs(self):
         return {"size": self._size, "seed": self._seed}
+
+
+def _get_rng(seed):
+    if seed is None:
+        return random
+
+    _random = random.Random()
+    _random.seed(seed)
+    return _random
