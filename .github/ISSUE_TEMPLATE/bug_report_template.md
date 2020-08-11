@@ -5,6 +5,10 @@ labels: "bug"
 title: "[BUG]"
 ---
 
+Thank you for submitting an issue. Please refer to our
+[issue policy](https://www.github.com/voxel51/fiftyone/blob/master/ISSUE_POLICY.md)
+for information on what types of issues we address.
+
 **Please fill in this bug report template to ensure a timely and thorough
 response.**
 
@@ -50,12 +54,13 @@ files should be attached.
 
 -   [ ] `App`: FiftyOne application issue
 -   [ ] `Core`: Core `fiftyone` Python library issue
+-   [ ] `Server`: Fiftyone server issue
 
 ### Willingness to contribute
 
 The FiftyOne Community encourages bug fix contributions. Would you or another
 member of your organization be willing to contribute a fix for this bug to the
-FiftyOne code base?
+FiftyOne codebase?
 
 -   [ ] Yes. I can contribute a fix for this bug independently.
 -   [ ] Yes. I would be willing to contribute a fix for this bug with guidance

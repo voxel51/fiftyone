@@ -5,6 +5,10 @@ labels: "enhancement"
 title: "[FR]"
 ---
 
+Thank you for submitting an issue. Please refer to our
+[issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md)
+for information on what types of issues we address.
+
 **Please fill in this feature request template to ensure a timely and thorough
 response.**
 
@@ -31,8 +35,9 @@ request)
 
 ### What areas of FiftyOne does this feature affect?
 
--   [ ] `App`: FiftyOne application issue
--   [ ] `Core`: Core `fiftyone` Python library issue
+-   [ ] `App`: FiftyOne application
+-   [ ] `Core`: Core `fiftyone` Python library
+-   [ ] `Server`: FiftyOne server
 
 ### Details
 
