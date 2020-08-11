@@ -253,8 +253,9 @@ class Sample(_Sample):
     # Instance references keyed by [dataset_name][sample_id]
     _instances = defaultdict(weakref.WeakValueDictionary)
 
-
-    def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+    def __init__(
+        self, filepath, tags=None, metadata=None, _rand=None, **kwargs
+    ):
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath,
             tags=tags,
