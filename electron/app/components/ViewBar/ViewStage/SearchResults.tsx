@@ -64,7 +64,7 @@ const SearchResultsDiv = animated(styled.div`
   margin-top: 2.5rem;
   position: fixed;
   width: auto;
-  z-index: 999999;
+  z-index: 800;
   margin-left: -0.25rem;
 `);
 

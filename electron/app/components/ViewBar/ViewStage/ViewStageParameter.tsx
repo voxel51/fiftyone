@@ -11,7 +11,7 @@ const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   position: relative;
-  z-index: 100000;
+  z-index: 801;
   overflow: hidden;
 `);
 
