@@ -69,6 +69,11 @@ class DatasetImporter(object):
         """
         raise NotImplementedError("subclass must implement __next__()")
 
+    @property
+    def has_dataset_info(self):
+        """Whether this importer produces a dataset info dictionary."""
+        raise NotImplementedError("subclass must implement has_dataset_info")
+
     def setup(self):
         """Performs any necessary setup before importing the first sample in
         the dataset.
@@ -77,6 +82,23 @@ class DatasetImporter(object):
         entered, :func:`DatasetImporter.__enter__`.
         """
         pass
+
+    def get_dataset_info(self):
+        """Returns the dataset info for the dataset.
+
+        By convention, this method should be called after all samples in the
+        dataset have been imported.
+
+        Returns:
+            a dict of dataset info
+        """
+        if not self.has_dataset_info:
+            raise ValueError(
+                "This '%s' does not provide dataset info"
+                % etau.get_class_name(self)
+            )
+
+        raise NotImplementedError("subclass must implement get_dataset_info()")
 
     def close(self, *args):
         """Performs any necessary actions after the last sample has been
@@ -108,6 +130,9 @@ class GenericSampleDatasetImporter(DatasetImporter):
         with importer:
             for sample in importer:
                 dataset.add_sample(sample)
+
+            if importer.has_dataset_info:
+                dataset.info.update(importer.get_dataset_info())
 
     Args:
         dataset_dir: the dataset directory
@@ -143,6 +168,9 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
                 dataset.add_sample(
                     fo.Sample(filepath=image_path, metadata=image_metadata)
                 )
+
+            if importer.has_dataset_info:
+                dataset.info.update(importer.get_dataset_info())
 
     Args:
         dataset_dir: the dataset directory
@@ -196,6 +224,9 @@ class LabeledImageDatasetImporter(DatasetImporter):
                     sample[label_field] = label
 
                 dataset.add_sample(sample)
+
+            if importer.has_dataset_info:
+                dataset.info.update(importer.get_dataset_info())
 
     Args:
         dataset_dir: the dataset directory
