@@ -11,30 +11,6 @@ export default {
   title: "ViewBar/ViewStageParameter",
 };
 
-const spawnParameter = () => {
-  return spawn(
-    viewStageParameterMachine.withContext(
-      createParameter("limit", "limit", undefined)
-    )
-  );
-};
-
-const dumbyViewStageMachine = Machine({
-  id: "dumbyViewStage",
-  initial: "start",
-  context: {
-    parameterRef: undefined,
-  },
-  states: {
-    start: {
-      entry: assign({
-        parameterRef: () => spawnParameter(),
-      }),
-    },
-  },
-});
-
 export const standard = () => {
-  const [current] = useMachine(dumbyViewStageMachine);
-  return <ViewStageParameter parameterRef={current.context.parameterRef} />;
+  return <React.Fragment></React.Fragment>;
 };
