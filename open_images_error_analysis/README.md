@@ -16,7 +16,7 @@ pip install tensorflow-gpu
 Install other requirements:
 
 ```bash
-pip install -r requirements.txt
+pip install Pillow tensorflow-hub
 ```
 
 ## 1. Download the data and ground-truth labels
@@ -40,7 +40,6 @@ aws s3 --no-sign-request sync s3://open-images-dataset/test [target_dir/test]
 ```bash
 wget https://storage.googleapis.com/openimages/2018_04/test/test-annotations-bbox.csv
 wget https://storage.googleapis.com/openimages/2018_04/test/test-annotations-human-imagelabels-boxable.csv
-# wget https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv
 wget https://storage.googleapis.com/openimages/2018_04/class-descriptions-boxable.csv
 wget https://storage.googleapis.com/openimages/2018_04/bbox_labels_600_hierarchy.json
 ```

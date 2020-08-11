@@ -15,7 +15,8 @@ from .load_data import detections2df, classifications2df
 TF_MODELS_RESEARCH = os.getenv("TF_MODELS_RESEARCH")
 if not TF_MODELS_RESEARCH:
     raise OSError(
-        "This module requires an environment variable TF_MODELS_RESEARCH that points to the .../models/research directory"
+        "This module requires an environment variable TF_MODELS_RESEARCH that"
+        " points to the .../models/research directory"
     )
 sys.path.insert(0, TF_MODELS_RESEARCH)
 
