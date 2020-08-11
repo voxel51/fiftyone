@@ -1,14 +1,37 @@
 FiftyOne
 ========
 
+.. Social links ---------------------------------------------------------------
+
+.. raw:: html
+
+  <div class="social-links">
+    <table id="social-links-table">
+      <th>
+        <a target="_blank" href="https://github.com/voxel51/fiftyone">
+          <img alt="GitHub repository" src="_static/images/icons/github-mark.svg" />
+          &nbsp View on GitHub
+        </a>
+      </th>
+      <th>
+        <a target="_blank" href="https://join.slack.com/t/fiftyone-group/shared_invite/zt-gfml1qxd-r0RNVtRiWjPy97OtNm~~yA">
+          <img alt="Slack community" src="_static/images/icons/slack-mark.svg" />
+          &nbsp Join us on Slack
+        </a>
+      </th>
+    </table>
+  </div>
+
+.. End social links -----------------------------------------------------------
+
 *"Rapidly experiment with your datasets"*
 
 If you are looking to boost the performance of your machine learning models,
 chances are improving the quality of your dataset will provide the highest
 return on your investment. **Enter FiftyOne.** FiftyOne is a Python-based tool
-for the visual data scientist that enables you to create valuable and diverse
-datasets. Work efficiently with FiftyOne to achieve better models with
-dependable performance.
+for machine learning/computer vision engineers and scientists that enables you
+to curate better datasets. Work efficiently with FiftyOne to achieve better
+models with dependable performance.
 
 *"Become one with your data"*
 
@@ -20,6 +43,12 @@ much more!
 .. image:: images/video_placeholder.png
    :alt: Overview
    :align: center
+
+.. note::
+
+  FiftyOne is rapidly growing.
+  `Sign up for the mailing list <https://app.hubspot.com/contacts/4972700/lists/55>`_
+  so we can keep you posted on new features as they come out!
 
 Core Capabilities
 _________________
@@ -149,6 +178,14 @@ measurably better performance of your models.
 
    fob.compute_uniqueness(dataset)
    rank_view = dataset.sort_by("uniqueness")
+
+.. note::
+
+    The FiftyOne Brain is a separate Python package that is bundled with
+    FiftyOne. Although it is closed-source, it is licensed as freeware, and you
+    have permission to use it for commercial or non-commercial purposes. See
+    `the license <https://github.com/voxel51/fiftyone/blob/develop/LICENSE-BRAIN>`_
+    for more details.
 
 What's Next?
 ____________

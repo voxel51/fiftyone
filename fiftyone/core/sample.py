@@ -216,7 +216,7 @@ class _Sample(object):
         self._doc.save()
 
     def reload(self):
-        """Reload the sample from the database."""
+        """Reloads the sample from the database."""
         self._doc.reload()
 
     def _delete(self):
@@ -253,7 +253,6 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        filepath = os.path.abspath(os.path.expanduser(filepath))
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
