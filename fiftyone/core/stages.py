@@ -17,16 +17,6 @@ from fiftyone.core.odm.sample import default_sample_fields
 import eta.core.utils as etau
 
 
-class _StageRepr(reprlib.Repr):
-    def repr_ViewExpression(self, expr, level):
-        return self.repr1(expr.to_mongo(), level=level)
-
-
-_aRepr = _StageRepr()
-_aRepr.maxlevel = 2
-_aRepr.maxlist = 3
-
-
 class ViewStage(object):
     """Abstract base class for all :class:`fiftyone.core.view.DatasetView`
     stages.
@@ -46,7 +36,7 @@ class ViewStage(object):
 
     def __repr__(self):
         kwargs_str = ", ".join(
-            ["%s=%s" % (k, _aRepr.repr(v)) for k, v in self._kwargs()]
+            ["%s=%s" % (k, _repr.repr(v)) for k, v in self._kwargs()]
         )
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
@@ -783,6 +773,20 @@ class Take(ViewStage):
             {"name": "seed", "type": "float"},
         ]
 
+
+class _ViewStageRepr(reprlib.Repr):
+    def repr_ViewExpression(self, expr, level):
+        return self.repr1(expr.to_mongo(), level=level - 1)
+
+
+_repr = _ViewStageRepr()
+_repr.maxlevel = 2
+_repr.maxdict = 3
+_repr.maxlist = 3
+_repr.maxtuple = 3
+_repr.maxset = 3
+_repr.maxstring = 30
+_repr.maxother = 30
 
 # simple registry for the server to grab available view stages
 _STAGES = [
