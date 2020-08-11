@@ -72,8 +72,15 @@ from .document import (
 )
 
 
-def _generate_rand():
-    return random.random() * 0.001 + 0.999
+# Use our own Random object to avoid messing with the users's seed
+_random = random.Random()
+
+
+def _generate_rand(filepath=None):
+    if filepath is not None:
+        _random.seed(filepath)
+
+    return _random.random() * 0.001 + 0.999
 
 
 def default_sample_fields(include_private=False):
@@ -579,9 +586,8 @@ class NoDatasetSampleDocument(SampleDocument):
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
-            if field_name == "_rand" and filepath is not None:
-                random.seed(filepath)
-                value = _generate_rand()
+            if field_name == "_rand":
+                value = _generate_rand(filepath=filepath)
 
             if value is None:
                 value = self._get_default(self.default_fields[field_name])
