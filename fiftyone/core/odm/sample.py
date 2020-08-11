@@ -190,8 +190,8 @@ class DatasetSampleDocument(Document, SampleDocument):
     # Metadata about the sample media
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
-    # Random float used for random dataset operations (e.g. shuffle)
-    _rand = fof.FloatField(default=0)
+    # Sample hash used for randomized operations (e.g., take and shuffle)
+    _hash = fof.IntField(default=0)
 
     def __setattr__(self, name, value):
         # pylint: disable=no-member
@@ -556,6 +556,8 @@ class NoDatasetSampleDocument(SampleDocument):
     default_fields_ordered = default_sample_fields()
 
     def __init__(self, **kwargs):
+        kwargs["_hash"] = hash(kwargs["filepath"])
+
         self._data = OrderedDict()
 
         for field_name in self.default_fields_ordered:
