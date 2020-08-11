@@ -37,7 +37,7 @@ def main(
 
     print("Cloning True Positives to a new field...")
     tp_view = dataset.filter_detections(
-        "faster_rcnn", F("eval") == "true_positive"
+        prediction_field_name, F("eval") == "true_positive"
     )
     dataset.clone_field(
         prediction_field_name, prediction_field_name + "_TP", tp_view
@@ -45,7 +45,7 @@ def main(
 
     print("Cloning False Positives to a new field...")
     fp_view = dataset.filter_detections(
-        "faster_rcnn", F("eval") == "false_positive"
+        prediction_field_name, F("eval") == "false_positive"
     )
     dataset.clone_field(
         prediction_field_name, prediction_field_name + "_FP", fp_view
