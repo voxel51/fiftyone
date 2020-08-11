@@ -3,7 +3,11 @@ import uuid from "react-uuid";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
-import { RESERVED_FIELDS } from "../utils/labels";
+import {
+  RESERVED_FIELDS,
+  VALID_SCALAR_TYPES,
+  stringify,
+} from "../utils/labels";
 
 const PARSERS = {
   Classification: [
@@ -34,7 +38,7 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colorMapping) => {
+const loadOverlay = (sample, colorMapping, fieldSchema) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
@@ -43,20 +47,22 @@ const loadOverlay = (sample, colorMapping) => {
       continue;
     }
     const field = sample[sampleField];
-    if (!field) continue;
-    if (field._cls === "Detections") {
-      for (const j in field.detections) {
-        const detection = field.detections[j];
-        const [key, fn] = PARSERS[detection._cls];
-        imgLabels[key][key].push(fn(sampleField, detection));
-        playerColorMap[`${sampleField}:${detection.label}`] =
+    if (field === null || field === undefined) continue;
+    if (["Classification", "Detection"].includes(field._cls)) {
+      const [key, fn] = PARSERS[field._cls];
+      imgLabels[key][key].push(fn(sampleField, field));
+      playerColorMap[`${sampleField}:${field.label}`] =
+        colorMapping[sampleField];
+    } else if (["Classifications", "Detections"].includes(field._cls)) {
+      for (const object of field[field._cls.toLowerCase()]) {
+        const [key, fn] = PARSERS[object._cls];
+        imgLabels[key][key].push(fn(sampleField, object));
+        playerColorMap[`${sampleField}:${object.label}`] =
           colorMapping[sampleField];
       }
       continue;
-    }
-    if (field._cls === "Classification") {
-      const [key, fn] = PARSERS[field._cls];
-      imgLabels[key][key].push(fn(sampleField, field));
+    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
+      imgLabels.attrs.attrs.push({ name: sampleField, value: field });
     }
   }
   return [imgLabels, playerColorMap];
@@ -72,8 +78,13 @@ export default ({
   onDoubleClick,
   onLoad = () => {},
   activeLabels,
+  fieldSchema = {},
 }) => {
-  const [overlay, playerColorMap] = loadOverlay(sample, colorMapping);
+  const [overlay, playerColorMap] = loadOverlay(
+    sample,
+    colorMapping,
+    fieldSchema
+  );
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();

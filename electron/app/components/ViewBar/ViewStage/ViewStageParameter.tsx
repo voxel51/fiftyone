@@ -151,7 +151,6 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
                 value: e.target.value.replace(/&#13/g, "\n"),
               });
             }}
-            onBlur={() => send({ type: "BLUR" })}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
                 send({ type: "CANCEL" });
@@ -203,7 +202,6 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
         : theme.brandMoreTransparent,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
     borderRightWidth: tail ? 2 : 0,
-    top: hasObjectType && state.matches("editing") ? -82 : 0,
     height: hasObjectType && state.matches("editing") ? 200 : 36,
     opacity: 1,
     from: {

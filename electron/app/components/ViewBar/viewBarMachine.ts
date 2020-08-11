@@ -269,25 +269,6 @@ const viewBarMachine = Machine(
                       "sendStagesUpdate",
                     ],
                   },
-                  DELETE_STAGE: {
-                    actions: choose([
-                      {
-                        cond: ({ activeStage }) => activeStage % 1 === 0,
-                        actions: send((ctx) => {
-                          const result = ctx.stages.filter((stage) => {
-                            return stage.index === ctx.activeStage;
-                          })[0];
-                          return {
-                            type: "STAGE.DELETE",
-                            stage: result,
-                          };
-                        }),
-                      },
-                      {
-                        actions: send("PREVIOUS_STAGE"),
-                      },
-                    ]),
-                  },
                   NEXT_RESULT: {
                     actions: send(({ stages, activeStage }) => ({
                       type: "NEXT_RESULT",
@@ -383,6 +364,31 @@ const viewBarMachine = Machine(
             },
           }),
           send("FOCUS"),
+          "submit",
+        ],
+      },
+      CLEAR: {
+        actions: [
+          assign({
+            stages: (ctx) => {
+              const stage = createStage(
+                "",
+                0,
+                ctx.stageInfo,
+                false,
+                0,
+                true,
+                [],
+                false
+              );
+              return [
+                {
+                  ...stage,
+                  ref: spawn(viewStageMachine.withContext(stage)),
+                },
+              ];
+            },
+          }),
           "submit",
         ],
       },

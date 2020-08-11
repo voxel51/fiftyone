@@ -11,7 +11,11 @@ import { Button, ModalFooter } from "./utils";
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
   stringify,
+  getLabelText,
+  formatMetadata,
   VALID_SCALAR_TYPES,
+  VALID_CLASS_TYPES,
+  VALID_OBJECT_TYPES,
   RESERVED_FIELDS,
 } from "../utils/labels";
 
@@ -100,6 +104,7 @@ const Container = styled.div`
     .sidebar-content {
       padding-left: 1em;
       padding-right: 1em;
+      padding-bottom: 1em;
       flex-grow: 1;
       overflow-y: auto;
     }
@@ -130,8 +135,8 @@ const SampleModal = ({
   sample,
   sampleUrl,
   activeLabels,
-  fieldSchema,
-  colorMapping,
+  fieldSchema = {},
+  colorMapping = {},
   onClose,
   onPrevious,
   onNext,
@@ -185,18 +190,18 @@ const SampleModal = ({
   );
 
   const classifications = Object.keys(sample)
-    .filter((k) => sample[k] && sample[k]._cls == "Classification")
+    .filter((k) => sample[k] && VALID_CLASS_TYPES.includes(sample[k]._cls))
     .map((k) => (
       <Row
         key={k}
         name={<Tag name={k} color={colorMapping[k]} />}
-        value={sample[k].label}
+        value={getLabelText(sample[k])}
       />
     ));
   const detections = Object.keys(sample)
-    .filter((k) => sample[k] && sample[k]._cls == "Detections")
+    .filter((k) => sample[k] && VALID_OBJECT_TYPES.includes(sample[k]._cls))
     .map((k) => {
-      const len = sample[k].detections.length;
+      const len = sample[k].detections ? sample[k].detections.length : 1;
       return (
         <Row
           key={k}
@@ -209,7 +214,9 @@ const SampleModal = ({
     .filter(
       (k) =>
         VALID_SCALAR_TYPES.includes(fieldSchema[k]) &&
-        !RESERVED_FIELDS.includes(k)
+        !RESERVED_FIELDS.includes(k) &&
+        sample[k] !== null &&
+        sample[k] !== undefined
     )
     .map((k) => {
       return (
@@ -238,6 +245,7 @@ const SampleModal = ({
             sample={sample}
             colorMapping={colorMapping}
             activeLabels={activeLabels}
+            fieldSchema={fieldSchema}
           />
         )}
         {onPrevious ? (
@@ -282,6 +290,9 @@ const SampleModal = ({
           </h2>
           <Row name="ID" value={sample._id.$oid} />
           <Row name="Source" value={sample.filepath} />
+          {formatMetadata(sample.metadata).map(({ name, value }) => (
+            <Row name={name} value={value} />
+          ))}
           <Row
             name="Tags"
             value={

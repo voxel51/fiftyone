@@ -23,7 +23,6 @@ const Sample = ({
   const id = sample._id.$oid;
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
-  const s = sample;
   const { activeLabels, activeTags, activeOther } = displayProps;
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
   const tagNames = useRecoilValue(selectors.tagNames);
@@ -76,9 +75,10 @@ const Sample = ({
       />
     );
   };
+  const tooltip = `Path: ${sample.filepath}\nDouble-click for details`;
 
   return (
-    <div className="sample">
+    <div className="sample" title={tooltip}>
       <Player51
         src={src}
         style={{

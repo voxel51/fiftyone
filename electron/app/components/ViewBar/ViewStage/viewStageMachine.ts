@@ -67,12 +67,6 @@ const viewStageMachine = Machine(
                 },
               },
               {
-                target: "reading.pending",
-                cond: (ctx) => {
-                  return ctx.go;
-                },
-              },
-              {
                 target: "reading.submitted",
                 cond: (ctx) => {
                   return ctx.submitted && !ctx.loaded;
@@ -126,9 +120,7 @@ const viewStageMachine = Machine(
             },
           },
           reading: {
-            entry: assign({
-              go: false,
-            }),
+            entry: "blurInput",
             states: {
               pending: {},
               selected: {},
@@ -137,7 +129,6 @@ const viewStageMachine = Machine(
             on: {
               EDIT: {
                 target: "editing",
-                actions: () => alert("e"),
               },
               DELETE: {
                 target: "deleted",
@@ -200,11 +191,11 @@ const viewStageMachine = Machine(
               CHANGE: {
                 actions: assign({
                   stage: (ctx, e) => e.stage,
-                  results: ({ stageInfo, stage }) =>
+                  results: ({ stageInfo }, e) =>
                     stageInfo
                       .map((s) => s.name)
                       .filter((n) =>
-                        n.toLowerCase().includes(stage.toLowerCase())
+                        n.toLowerCase().includes(e.stage.toLowerCase())
                       ),
                   currentResult: null,
                 }),
@@ -364,10 +355,6 @@ const viewStageMachine = Machine(
             if (currentResult === null) return results[0];
             return results[Math.min(currentResult + 1, results.length - 1)];
           },
-          prevStage: ({ currentResult, stage, prevStage }) => {
-            if (currentResult === null) return stage;
-            return prevStage;
-          },
         }),
       },
       PREVIOUS_RESULT: {
@@ -392,12 +379,6 @@ const viewStageMachine = Machine(
             index: (_, { index }) => index,
             length: (_, { length }) => length,
             active: (_, { active }) => active,
-            stage: (_, { stage }) => stage,
-            parameters: ({ parameters }, { stage }) =>
-              stage === "" ? [] : parameters,
-            submitted: ({ submitted }, { stage }) =>
-              stage === "" ? false : submitted,
-            go: (_, { go }) => go,
           }),
         ],
       },

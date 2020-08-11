@@ -4,6 +4,7 @@ import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
+import { Close } from "@material-ui/icons";
 
 import { useOutsideClick } from "../../utils/hooks";
 import { port, stateDescription } from "../../recoil/atoms";
@@ -57,7 +58,6 @@ const viewBarKeyMap = {
   VIEW_BAR_BLUR: "esc",
   VIEW_BAR_NEXT: "right",
   VIEW_BAR_PREVIOUS: "left",
-  VIEW_BAR_DELETE_STAGE: ["del", "backspace"],
 };
 
 const ViewBar = () => {
@@ -84,13 +84,9 @@ const ViewBar = () => {
     VIEW_BAR_BLUR: useCallback(() => send("BLUR"), []),
     VIEW_BAR_NEXT: useCallback(() => send("NEXT"), []),
     VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
-    VIEW_BAR_DELETE_STAGE: useCallback(() => send("DELETE_STAGE"), []),
   };
 
   useOutsideClick(barRef, () => send("BLUR"));
-  const props = useSpring({
-    overflow: state.matches("running.focus.focused") ? "hidden" : "auto",
-  });
 
   return (
     <ViewBarContainer>
@@ -128,6 +124,15 @@ const ViewBar = () => {
           />
         ) : null}
       </ViewBarDiv>
+      <Close
+        onClick={() => send("CLEAR")}
+        style={{
+          cursor: "pointer",
+          position: "absolute",
+          right: "0.5rem",
+          top: "2rem",
+        }}
+      />
     </ViewBarContainer>
   );
 };

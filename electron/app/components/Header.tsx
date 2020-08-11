@@ -9,6 +9,7 @@ const HeaderDiv = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
+  border-bottom: 2px hsl(210, 5%, 24%) solid;
 `;
 
 const LogoDiv = styled.div`
