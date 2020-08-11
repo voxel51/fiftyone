@@ -4,6 +4,39 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
+FiftyOne 0.5.0
+--------------
+*Released August 11, 2020*
+
+Announcements
+^^^^^^^^^^^^^
+- FiftyOne is now open source! Read more about this exciting development
+  `in our press release <https://voxel51.com/press/fiftyone-open-source-launch>`_
+
+App
+^^^
+- Major design refresh, including a
+  `new look-and-feel for the App <https://voxel51.com/docs/fiftyone/_static/images/release-notes/v050_release_app.png>`_
+- Added view bar that supports constructing dataset views directly in the App
+- Redesigned expanded sample view:
+    - Improved look-and-feel, with modal-style form factor
+    - Added support for maximizing the media player
+    - Added support for maximizing the raw sample view
+    - Added arrow controls to navigate between samples
+
+Core
+^^^^
+- Added support for :ref:`importing <FiftyOneDataset-import>` and
+  :ref:`exporting <FiftyOneDataset-export>` FiftyOne datasets via the
+  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>` type
+- Added a :meth:`Dataset.info <fiftyone.core.dataset.Dataset.info>` field that
+  can be used to store dataset-level info in FiftyOne datasets
+- Added a :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
+  view stage for randomly shuffling the samples in a dataset
+- Upgraded the :meth:`take() <fiftyone.core.collections.SampleCollection.take>`
+  view stage so that each instance of a view maintains a deterministic set of
+  samples
+
 FiftyOne 0.4.1
 --------------
 *Released August 4, 2020*
