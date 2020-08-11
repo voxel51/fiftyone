@@ -128,15 +128,24 @@ Sorting
 _______
 
 You can use :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` to sort
-the samples in a |Dataset| or |DatasetView| by a field
-(or :ref:`expression <querying-samples>`) of interest. The samples in the
-returned |DatasetView| can be sorted in ascending or descending order:
+the samples in a |Dataset| or |DatasetView| by a field of interest. The samples
+in the returned |DatasetView| can be sorted in ascending or descending order:
 
 .. code-block:: python
     :linenos:
 
     view = dataset.sort_by("filepath")
     view = dataset.sort_by("id", reverse=True)
+
+You can also sort by :ref:`expressions <querying-samples>`!
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Sort by number of detections in `Detections` field `ground_truth`
+    view = dataset.sort_by(F("ground_truth.detections").length(), reverse=True)
 
 Shuffling
 _________
