@@ -7,14 +7,15 @@
     "declarationMap": true,
     "noEmit": true,
     "jsx": "react",
-    "strict": true,
+    "strict": false,
     "pretty": true,
     "sourceMap": true,
     /* Additional Checks */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "noImplicitAny": false,
+    "noFallthroughCasesInSwitch": false,
     /* Module Resolution Options */
     "moduleResolution": "node",
     "esModuleInterop": true,
@@ -32,8 +33,6 @@
     "app/style.css",
     "app/style.css.map",
     "app/dist",
-    "dll",
-    "app/main.js",
-    "app/main.js.map"
+    "dll"
   ]
 }

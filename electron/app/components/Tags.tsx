@@ -1,25 +1,23 @@
 import React, { useState } from "react";
-import { Menu, Dimmer, Loader, Container, Label } from "semantic-ui-react";
+import { Container } from "semantic-ui-react";
 
 import connect from "../utils/connect";
-import { getSocket, useSubscribe } from "../utils/socket";
 
 const Tags = (props) => {
-  const { port, activeTags, setActiveTags, colors, start, lengths } = props;
-  const socket = getSocket(port, "state");
+  const { activeTags, setActiveTags, start, labelData } = props;
 
   const onClick = (t) => {
     setActiveTags({ ...activeTags, [t]: !Boolean(activeTags[t]) });
   };
 
   let content;
-  if (lengths.tags && lengths.tags.length) {
-    const { tags } = lengths;
+  if (labelData.tags && labelData.tags.length) {
+    const { tags } = labelData;
     const styles = (t, i) => {
       if (activeTags[t]) {
-        return { background: colors[lengths.mapping[t]] };
+        return { background: labelData.colorMapping[t] };
       }
-      return { borderColor: colors[lengths.mapping[t]] };
+      return { borderColor: labelData.colorMapping[t] };
     };
     content = (
       <Container>

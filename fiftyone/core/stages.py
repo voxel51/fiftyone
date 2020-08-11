@@ -25,10 +25,6 @@ class ViewStage(object):
     :class:`fiftyone.core.view.DatasetView`, which may decide what subset of
     samples in a view should pass though the stage, and also what subset of the
     contents of each :class:`fiftyone.core.sample.Sample` should be passed.
-
-    Args:
-        **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
-            arguments
     """
 
     def __str__(self):
@@ -36,7 +32,7 @@ class ViewStage(object):
 
     def __repr__(self):
         kwargs_str = ", ".join(
-            ["%s=%s" % (k, _repr.repr(v)) for k, v in self._kwargs().items()]
+            ["%s=%s" % (k, _repr.repr(v)) for k, v in self._kwargs()]
         )
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
@@ -61,13 +57,23 @@ class ViewStage(object):
         }
 
     def _kwargs(self):
-        """Returns a JSON dict describing the keyword arguments that define the
-        ViewStage.
+        """Returns a list of ``[name, value]`` lists describing the parameters
+        that define the stage.
 
         Returns:
             a JSON dict
         """
         raise NotImplementedError("subclasses must implement `_kwargs()`")
+
+    @classmethod
+    def _params(self):
+        """Returns a list of JSON dicts describing the parameters that define
+        the stage.
+
+        Returns:
+            a list of JSON dicts
+        """
+        raise NotImplementedError("subclasses must implement `_params()`")
 
     @classmethod
     def _from_dict(cls, d):
@@ -81,7 +87,7 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        return view_stage_cls(**d["kwargs"])
+        return view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
 
 
 class ViewStageError(Exception):
@@ -115,7 +121,11 @@ class Exclude(ViewStage):
         return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
 
     def _kwargs(self):
-        return {"sample_ids": self._sample_ids}
+        return [["sample_ids", self._sample_ids]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "sample_ids", "type": ["list", "str"]}]
 
 
 class ExcludeFields(ViewStage):
@@ -148,7 +158,11 @@ class ExcludeFields(ViewStage):
         return [{"$unset": self._field_names}]
 
     def _kwargs(self):
-        return {"field_names": self._field_names}
+        return [["field_names", self._field_names]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "field_names", "type": ["list", "str"]}]
 
     def _validate(self):
         invalid_fields = set(self._field_names) & set(default_sample_fields())
@@ -183,7 +197,11 @@ class Exists(ViewStage):
         return Match({self._field: {"$exists": True, "$ne": None}}).to_mongo()
 
     def _kwargs(self):
-        return {"field": self._field}
+        return [["field", self._field]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "field", "type": "str"}]
 
 
 class _FilterList(ViewStage):
@@ -249,7 +267,14 @@ class _FilterList(ViewStage):
         return self._filter
 
     def _kwargs(self):
-        return {"field": self._field, "filter": self._get_mongo_filter()}
+        return [["field", self._field], ["filter", self._get_mongo_filter()]]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "str"},
+            {"name": "filter", "type": "dict"},
+        ]
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -320,7 +345,11 @@ class Limit(ViewStage):
         return [{"$limit": self._limit}]
 
     def _kwargs(self):
-        return {"limit": self._limit}
+        return [["limit", self._limit]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "limit", "type": "int"}]
 
 
 class Match(ViewStage):
@@ -356,7 +385,7 @@ class Match(ViewStage):
         return self._filter
 
     def _kwargs(self):
-        return {"filter": self._get_mongo_filter()}
+        return [["filter", self._get_mongo_filter()]]
 
     def _validate(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
@@ -364,6 +393,10 @@ class Match(ViewStage):
                 "Filter must be a ViewExpression or a MongoDB expression; "
                 "found '%s'" % self._filter
             )
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "filter", "type": "dict"}]
 
 
 class MatchTag(ViewStage):
@@ -390,7 +423,11 @@ class MatchTag(ViewStage):
         return Match({"tags": self._tag}).to_mongo()
 
     def _kwargs(self):
-        return {"tag": self._tag}
+        return [["tag", self._tag]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "tag", "type": "str"}]
 
 
 class MatchTags(ViewStage):
@@ -420,7 +457,11 @@ class MatchTags(ViewStage):
         return Match({"tags": {"$in": self._tags}}).to_mongo()
 
     def _kwargs(self):
-        return {"tags": self._tags}
+        return [["tags", self._tags]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "tags", "type": ["list", "str"]}]
 
 
 class Mongo(ViewStage):
@@ -450,7 +491,11 @@ class Mongo(ViewStage):
         return self._pipeline
 
     def _kwargs(self):
-        return {"pipeline": self._pipeline}
+        return [["pipeline", self._pipeline]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "pipeline", "type": "dict"}]
 
 
 class Select(ViewStage):
@@ -478,7 +523,11 @@ class Select(ViewStage):
         return Match({"_id": {"$in": sample_ids}}).to_mongo()
 
     def _kwargs(self):
-        return {"sample_ids": self._sample_ids}
+        return [["sample_ids", self._sample_ids]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "sample_ids", "type": ["list", "str"]}]
 
 
 class SelectFields(ViewStage):
@@ -518,7 +567,11 @@ class SelectFields(ViewStage):
         return [{"$project": {fn: True for fn in self.field_names}}]
 
     def _kwargs(self):
-        return {"field_names": self._field_names}
+        return [["field_names", self._field_names]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "field_names", "type": ["list", "str"]}]
 
 
 class Shuffle(ViewStage):
@@ -551,7 +604,11 @@ class Shuffle(ViewStage):
         ]
 
     def _kwargs(self):
-        return {"seed": self._seed}
+        return [["seed", self._seed]]
+
+    @classmethod
+    def _params(self):
+        return [{"name": "seed", "type": "float"}]
 
 
 class SortBy(ViewStage):
@@ -607,10 +664,17 @@ class SortBy(ViewStage):
         return self._field_or_expr
 
     def _kwargs(self):
-        return {
-            "field_or_expr": self._get_mongo_field_or_expr(),
-            "reverse": self._reverse,
-        }
+        return [
+            ["field_or_expr", self._get_mongo_field_or_expr()],
+            ["reverse", self._reverse],
+        ]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "field_or_expr", "type": "dict|str"},
+            {"name": "reverse", "type": "bool"},
+        ]
 
 
 class Skip(ViewStage):
@@ -638,7 +702,11 @@ class Skip(ViewStage):
         return [{"$skip": self._skip}]
 
     def _kwargs(self):
-        return {"skip": self._skip}
+        return [["skip", self._skip]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "skip", "type": "int"}]
 
 
 class Take(ViewStage):
@@ -683,7 +751,14 @@ class Take(ViewStage):
         ]
 
     def _kwargs(self):
-        return {"size": self._size, "seed": self._seed}
+        return [["size", self._size], ["seed", self._seed]]
+
+    @classmethod
+    def _params(cls):
+        return [
+            {"name": "size", "type": "int"},
+            {"name": "seed", "type": "float"},
+        ]
 
 
 def _get_rng(seed):
@@ -708,3 +783,24 @@ _repr.maxtuple = 3
 _repr.maxset = 3
 _repr.maxstring = 30
 _repr.maxother = 30
+
+
+# Simple registry for the server to grab available view stages
+_STAGES = [
+    Exclude,
+    ExcludeFields,
+    Exists,
+    FilterClassifications,
+    FilterDetections,
+    Limit,
+    Match,
+    MatchTag,
+    MatchTags,
+    Mongo,
+    Shuffle,
+    Select,
+    SelectFields,
+    SortBy,
+    Skip,
+    Take,
+]

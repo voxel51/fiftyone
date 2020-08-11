@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Menu } from "semantic-ui-react";
+import React from "react";
+import { useRecoilValue } from "recoil";
 
 import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
-import Tag from "./Tag";
+import Tag from "./Tags/Tag";
+import * as selectors from "../recoil/selectors";
+import { getLabelText, stringify } from "../utils/labels";
 
 const Sample = ({
   displayProps,
@@ -21,18 +23,10 @@ const Sample = ({
   const id = sample._id.$oid;
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
-  const s = sample;
-  const {
-    activeLabels,
-    activeTags,
-    activeOther,
-    colors,
-    lengths,
-  } = displayProps;
+  const { activeLabels, activeTags, activeOther } = displayProps;
+  const colorMapping = useRecoilValue(selectors.labelColorMapping);
+  const tagNames = useRecoilValue(selectors.tagNames);
 
-  const isFloat = (n) => {
-    return Number(n) === n && n % 1 !== 0;
-  };
   const handleClick = () => {
     const newSelected = { ...selected };
     const event = newSelected[id] ? "remove_selection" : "add_selection";
@@ -42,8 +36,49 @@ const Sample = ({
       dispatch(updateState(data));
     });
   };
+  const eventHandlers = {
+    onClick: () => handleClick(),
+    onDoubleClick: () => setView({ visible: true, sample }),
+  };
+  const renderLabel = (name) => {
+    const label = sample[name];
+    if (!activeLabels[name] || !label) {
+      return null;
+    }
+    let value = getLabelText(label);
+    if (value === undefined) {
+      return null;
+    }
+    return (
+      <Tag
+        key={"label-" + name}
+        title={name}
+        name={value}
+        color={colorMapping[name]}
+      />
+    );
+  };
+  const renderScalar = (name) => {
+    if (
+      !activeOther[name] ||
+      sample[name] === undefined ||
+      sample[name] === null
+    ) {
+      return null;
+    }
+    return (
+      <Tag
+        key={"scalar-" + name}
+        title={name}
+        name={stringify(sample[name])}
+        color={colorMapping[name]}
+      />
+    );
+  };
+  const tooltip = `Path: ${sample.filepath}\nDouble-click for details`;
+
   return (
-    <div className="sample">
+    <div className="sample" title={tooltip}>
       <Player51
         src={src}
         style={{
@@ -51,37 +86,20 @@ const Sample = ({
           width: "100%",
           position: "relative",
         }}
-        colors={colors}
+        colorMapping={colorMapping}
         sample={sample}
-        onClick={() => handleClick()}
-        onDoubleClick={() => setView({ visible: true, sample })}
         thumbnail={true}
         activeLabels={activeLabels}
+        {...eventHandlers}
       />
-      <div className="sample-info">
-        {Object.keys(s)
-          .sort()
-          .map((l, i) => {
-            return activeLabels[l] && s[l] && s[l]._cls === "Classification" ? (
-              <Tag key={i} name={String(s[l].label)} color={colors[i]} />
-            ) : null;
-          })}
-        {s.tags.map((t, i) => {
+      <div className="sample-info" {...eventHandlers}>
+        {Object.keys(sample).sort().map(renderLabel)}
+        {sample.tags.sort().map((t) => {
           return activeTags[t] ? (
-            <Tag key={i} name={String(t)} color={colors[lengths.mapping[t]]} />
+            <Tag key={t} name={String(t)} color={colorMapping[t]} />
           ) : null;
         })}
-        {Object.keys(s)
-          .sort()
-          .map((l, i) => {
-            return activeOther[l] && (s[l] || typeof s[l] === "boolean") ? (
-              <Tag
-                key={i}
-                name={String(isFloat(s[l]) ? s[l].toFixed(3) : s[l])}
-                color={colors[i]}
-              />
-            ) : null;
-          })}
+        {Object.keys(sample).sort().map(renderScalar)}
       </div>
       {selected[id] ? (
         <div
