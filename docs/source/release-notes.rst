@@ -15,7 +15,8 @@ Announcements
 
 App
 ^^^
-- Major design refresh, including new look-and-feel for the App
+- Major design refresh, including a
+  `new look-and-feel for the App <https://voxel51.com/docs/fiftyone/_static/images/release-notes/v050_release_app.png>`_
 - Added view bar that supports constructing dataset views directly in the App
 - Redesigned expanded sample view:
     - Improved look-and-feel, with modal-style form factor
