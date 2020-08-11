@@ -15,6 +15,7 @@ unittest.TextTestRunner().run(singletest)
 """
 import datetime
 from functools import wraps
+import gc
 import math
 import os
 import unittest
@@ -697,6 +698,28 @@ class DatasetTest(unittest.TestCase):
         self.assertTrue(
             issubclass(dataset._sample_doc_cls, foo.DatasetSampleDocument)
         )
+
+    @drop_datasets
+    def test_dataset_info(self):
+        dataset_name = self.test_dataset_info.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertEqual(dataset.info, {})
+        self.assertIsInstance(dataset.info, dict)
+
+        classes = ["cat", "dog"]
+
+        dataset.info["classes"] = classes
+        dataset.save()
+
+        del dataset
+        gc.collect()  # force garbage collection
+
+        dataset2 = fo.load_dataset(dataset_name)
+
+        self.assertTrue("classes" in dataset2.info)
+        self.assertEqual(classes, dataset2.info["classes"])
 
     @drop_datasets
     def test_meta_dataset(self):
