@@ -48,6 +48,14 @@ def _serialize(state):
     ).serialize()
 
 
+def _normalize_session(session):
+    # convert from OrderedDict to dict, recursively
+    session = json.loads(json.dumps(session))
+    if isinstance(session.get("view", {}).get("view"), str):
+        session["view"]["view"] = json.loads(session["view"]["view"])
+    return session
+
+
 class ServerServiceTests(unittest.TestCase):
     """Tests for ServerService"""
 
@@ -96,7 +104,9 @@ class ServerServiceTests(unittest.TestCase):
         self.wait_for_response()
         session = _serialize(self.session.state)
         client = self.client.data.serialize()
-        self.assertEqual(session, client)
+        self.assertEqual(
+            _normalize_session(session), _normalize_session(client)
+        )
 
     def step_get_current_state(self):
         self.session.view = self.dataset.limit(1)
@@ -106,7 +116,9 @@ class ServerServiceTests(unittest.TestCase):
             "get_current_state", "", callback=self.client_callback
         )
         client = self.wait_for_response()
-        self.assertEqual(session, client)
+        self.assertEqual(
+            _normalize_session(session), _normalize_session(client)
+        )
         self.assertEqual(
             sorted(client["derivables"]["tags"]),
             sorted(self.dataset.get_tags()),
