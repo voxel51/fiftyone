@@ -44,6 +44,7 @@ setup(
         "argcomplete",
         "eventlet",
         "Flask",
+        "Flask-Cors",
         "flask-socketio",
         "future",
         "Jinja2",
