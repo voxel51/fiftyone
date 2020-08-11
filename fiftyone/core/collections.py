@@ -7,6 +7,7 @@ Base classes for collections of samples.
 """
 import inspect
 import logging
+import os
 
 import eta.core.serial as etas
 
@@ -79,6 +80,11 @@ class SampleCollection(object):
     def __iter__(self):
         return self.iter_samples()
 
+    @property
+    def name(self):
+        """The name of the collection."""
+        raise NotImplementedError("Subclass must implement name")
+
     def summary(self):
         """Returns a string summary of the collection.
 
@@ -86,36 +92,6 @@ class SampleCollection(object):
             a string summary
         """
         raise NotImplementedError("Subclass must implement summary()")
-
-    def head(self, num_samples=3):
-        """Returns a string representation of the first few samples in the
-        collection.
-
-        If fewer than ``num_samples`` samples are in the collection, only
-        the available samples are returned.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return "\n".join(str(s) for s in self[:num_samples])
-
-    def tail(self, num_samples=3):
-        """Returns a string representation of the last few samples in the
-        collection.
-
-        If fewer than ``num_samples`` samples are in the collection, only
-        the available samples are returned.
-
-        Args:
-            num_samples (3): the number of samples
-
-        Returns:
-            a string representation of the samples
-        """
-        return "\n".join(str(s) for s in self[-num_samples:])
 
     def first(self):
         """Returns the first sample in the collection.
@@ -143,6 +119,34 @@ class SampleCollection(object):
             ValueError: if the collection is empty
         """
         return self[-1:].first()
+
+    def head(self, num_samples=3):
+        """Returns a list of the first few samples in the collection.
+
+        If fewer than ``num_samples`` samples are in the collection, only
+        the available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        return [s for s in self[:num_samples]]
+
+    def tail(self, num_samples=3):
+        """Returns a list of the last few samples in the collection.
+
+        If fewer than ``num_samples`` samples are in the collection, only
+        the available samples are returned.
+
+        Args:
+            num_samples (3): the number of samples
+
+        Returns:
+            a list of :class:`fiftyone.core.sample.Sample` objects
+        """
+        return [s for s in self[-num_samples:]]
 
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.
@@ -544,41 +548,94 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement aggregate()")
 
-    def to_dict(self):
+    def to_dict(self, rel_dir=None):
         """Returns a JSON dictionary representation of the collection.
 
-        The samples will be written as a list in a top-level ``samples`` field
-        of the returned dictionary.
+        Args:
+            rel_dir (None): a relative directory to remove from the
+                ``filepath`` of each sample, if possible. The path is converted
+                to an absolute path (if necessary) via
+                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
+                than absolute, paths to the data within that directory
 
         Returns:
             a JSON dict
         """
-        return {"samples": [s.to_dict() for s in self]}
+        if rel_dir is not None:
+            rel_dir = (
+                os.path.abspath(os.path.expanduser(rel_dir)) + os.path.sep
+            )
+            len_rel_dir = len(rel_dir)
 
-    def to_json(self, pretty_print=False):
+        # Get field schema
+        fields = self.get_field_schema()
+
+        # Serialize samples
+        samples = []
+        with fou.ProgressBar() as pb:
+            for sample in pb(self):
+                d = sample.to_dict()
+                if rel_dir and d["filepath"].startswith(rel_dir):
+                    d["filepath"] = d["filepath"][len_rel_dir:]
+
+                samples.append(d)
+
+        return {
+            "name": self.name,
+            "num_samples": len(self),
+            "tags": self.get_tags(),
+            "sample_fields": {
+                field_name: str(field) for field_name, field in fields.items()
+            },
+            "samples": samples,
+        }
+
+    def to_json(self, rel_dir=None, pretty_print=False):
         """Returns a JSON string representation of the collection.
 
         The samples will be written as a list in a top-level ``samples`` field
         of the returned dictionary.
 
         Args:
+            rel_dir (None): a relative directory to remove from the
+                ``filepath`` of each sample, if possible. The path is converted
+                to an absolute path (if necessary) via
+                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
+                than absolute, paths to the data within that directory
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
 
         Returns:
             a JSON string
         """
-        return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
+        return etas.json_to_str(
+            self.to_dict(rel_dir=rel_dir), pretty_print=pretty_print
+        )
 
-    def write_json(self, json_path, pretty_print=False):
+    def write_json(self, json_path, rel_dir=None, pretty_print=False):
         """Writes the colllection to disk in JSON format.
 
         Args:
             json_path: the path to write the JSON
+            rel_dir (None): a relative directory to remove from the
+                ``filepath`` of each sample, if possible. The path is converted
+                to an absolute path (if necessary) via
+                ``os.path.abspath(os.path.expanduser(rel_dir))``. The typical
+                use case for this argument is that your source data lives in
+                a single directory and you wish to serialize relative, rather
+                than absolute, paths to the data within that directory
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
         """
-        etas.write_json(self.to_dict(), json_path, pretty_print=pretty_print)
+        etas.write_json(
+            self.to_dict(rel_dir=rel_dir),
+            json_path,
+            pretty_print=pretty_print,
+        )
 
     def _add_view_stage(self, stage):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -615,9 +672,6 @@ def _get_default_dataset_type(sample_collection, label_field):
 
 
 def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
-    if isinstance(dataset_exporter, foud.UnlabeledImageDatasetExporter):
-        return None
-
     if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
         label_cls = dataset_exporter.label_cls
         label_fields = sample_collection.get_field_schema(
@@ -631,4 +685,4 @@ def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
             "No compatible label field of type %s found" % label_cls
         )
 
-    raise ValueError("Unsupported dataset exporter type %s" % dataset_exporter)
+    return None
