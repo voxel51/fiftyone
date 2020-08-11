@@ -14,7 +14,7 @@ FiftyOne
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://join.slack.com/t/fiftyone-group/shared_invite/zt-gfml1qxd-r0RNVtRiWjPy97OtNm~~yA">
+        <a target="_blank" href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">
           <img alt="Slack community" src="_static/images/icons/slack-mark.svg" />
           &nbsp Join us on Slack
         </a>
@@ -47,7 +47,7 @@ much more!
 .. note::
 
   FiftyOne is rapidly growing.
-  `Sign up for the mailing list <https://app.hubspot.com/contacts/4972700/lists/55>`_
+  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
   so we can keep you posted on new features as they come out!
 
 Core Capabilities
@@ -205,7 +205,7 @@ _____________
 
 If you run into any issues with FiftyOne or have any burning questions, feel
 free to
-`connect with us on Slack <https://join.slack.com/t/fiftyone-group/shared_invite/zt-gfml1qxd-r0RNVtRiWjPy97OtNm~~yA>`_
+`connect with us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg>`_
 or reach out to us at support@voxel51.com.
 
 .. toctree::

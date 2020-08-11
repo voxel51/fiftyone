@@ -1,12 +1,33 @@
-/*
- * @NOTE: Prepend a `~` to css file paths that are in your node_modules
- *        See https://github.com/webpack-contrib/sass-loader#imports
- */
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 @import "./player51/src/css/player51.css";
+
+:root {
+  --bg: #ffffff;
+  --bg-darker: #f8f8f8;
+  --bg-darkest: #c0c0c0;
+  --std-border-color: var(--bg-darkest);
+  --std-border-width: 0.1rem;
+  --std-border-radius: 0.2rem;
+  --std-font-color: var(--bg-darkest);
+
+  font-family: "Palanquin", sans-serif;
+}
+
+input {
+  font-family: "Palanquin", sans-serif;
+}
 
 body {
   position: relative;
   height: 100vh;
+}
+
+body.noscroll {
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 #root {

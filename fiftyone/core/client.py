@@ -71,7 +71,7 @@ class BaseClient(socketio.ClientNamespace):
             data: the new data
         """
         self.data = data
-        self.emit("update", data.serialize())
+        self.emit("update", {"data": data.serialize(), "include_self": False})
 
 
 @retry(wait_fixed=500, stop_max_delay=5000)

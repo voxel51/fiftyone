@@ -1,7 +1,8 @@
 # Contributing to FiftyOne
 
-We welcome community contributions to FiftyOne. This page provides useful
-information about contributing to FifyOne.
+FiftyOne is open source and community contributions are welcome!
+
+This page provides useful information about contributing to FifyOne.
 
 ## Contribution process
 
@@ -67,9 +68,9 @@ The majority of the FiftyOne codebase is developed in Python and TypeScript.
 
 Install the Python FiftyOne package from source - this is required for
 developing & testing changes across all languages and APIs. The
-[Core README.md](README.md) provides installation setup. The
-[App](electron/README.md) provides App source installation and development
-instructions.
+[main README](README.md) provides installation setup. The
+[App README](electron/README.md) provides App source installation and
+development instructions.
 
 ### Core development and best practices
 
@@ -183,4 +184,6 @@ Chromatic homepage: Our Chromatic homepage can be found
 [//]: # "-   TSDoc documentation for non-component code?"
 [//]: # "-   Add custom introduction page to Storybook"
 
-Copyright 2017-2020, Voxel51, Inc. voxel51.com
+## Copyright
+
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

@@ -1,6 +1,6 @@
 # [FiftyOne](http://www.voxel51.com/fiftyone): Explore, Analyze and Curate Visual Datasets
 
-<img src="https://user-images.githubusercontent.com/25985824/89583450-5b38ab80-d808-11ea-909e-4fa8bc366d7f.png" alt="FiftyOne"/>
+<img src="https://user-images.githubusercontent.com/21222883/89923076-001f0400-dbce-11ea-948c-5a7c863f8458.png" alt="FiftyOne"/>
 
 [FiftyOne](http://www.voxel51.com/docs/fiftyone) is an **open-source** machine
 learning tool that helps you get closer to your data. With FiftyOne, you can
@@ -10,16 +10,15 @@ custom scripts for every new dataset you collect. FiftyOne is designed to be
 lightweight and easily integrate into your existing computer vision/machine
 learning workflows.
 
-To learn more about FiftyOne, you can
-[read the docs](https://voxel51.com/docs/fiftyone).
-
 To stay up-to-date on all things FiftyOne, collaborate with other users, and
 get support from the Voxel51 team,
-[join the FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-g9w0pu1f-ZMJjRfGDrTmCT2ZOutUApQ).
+[join the FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg).
 
 [Follow us on Medium](https://medium.com/voxel51) for regular posts on computer
-vision, machine learning, and data science topics.You can also follow us on
-social media ( <a href="http://www.twitter.com/voxel51" rel="twitter">
+vision, machine learning, and data science topics.
+
+You can also follow us on social media (
+<a href="http://www.twitter.com/voxel51" rel="twitter">
 <img src="docs/source/_static/images/icons/logo-twitter-dark.svg" width="16" height="16"/>
 </a> <a href="http://www.facebook.com/voxel51" rel="facebook">
 <img src="docs/source/_static/images/icons/logo-facebook-dark.svg" width="16" height="16" />
@@ -49,13 +48,17 @@ https://voxel51.com/docs/fiftyone. In particular, check out:
 -   [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html)
 -   [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html)
 
+## Contributing to FiftyOne
+
+FiftyOne is open source and community contributions are welcome!
+
+Check out the [contribution guide](CONTRIBUTING.md) to learn how to get
+involved.
+
 ## Installing from source
 
 This section explains how to install the latest development version of
-[FiftyOne](http://www.voxel51.com/docs/fiftyone) from source. This is necessary
-if you want to [contribute](CONTRIBUTING.md) to FiftyOne or use the latest unreleased changes.
-
-Check out our [contributing guide.](CONTRIBUTING.md)
+[FiftyOne](http://www.voxel51.com/docs/fiftyone) from source.
 
 The instructions below are for macOS and Linux systems. Windows users may need
 to make adjustments.
@@ -118,35 +121,17 @@ or wish to otherwise customize your ETA installation,
 
 ### Developer installation
 
-If you are a developer [contributing](CONTRIBUTING.md) to FiftyOne or generating its documentation
-from source, you should perform a developer installation using the `-d` flag of
-the install script:
+If you would like to [contribute to FiftyOne](CONTRIBUTING.md), you should
+perform a developer installation using the `-d` flag of the install script:
 
 ```shell
 bash install.bash -d
 ```
 
-You should also check out the
-[developer's guide](https://github.com/voxel51/fiftyone/blob/develop/docs/dev_guide.md)
-to learn how to [contribute](CONTRIBUTING.md) this repository.
+### Generating documentation
 
-### Generating Documentation
-
-This project uses
-[Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) to
-generate its documentation from source. To generate the documentation (requires
-a developer installation), run:
-
-```shell
-bash docs/generate_docs.bash
-```
-
-To view the documentation, open the `docs/build/html/index.html` file in your
-browser.
-
-The
-[developer's guide](https://github.com/voxel51/fiftyone/blob/develop/docs/dev_guide.md#Documentation)
-has more information on working with the documentation.
+See the [docs guide](docs/docs_guide.md) for information on building and
+contributing to the documentation.
 
 ## Uninstallation
 

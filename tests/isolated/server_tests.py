@@ -25,7 +25,7 @@ import fiftyone as fo
 from fiftyone.constants import SERVER_ADDR
 import fiftyone.core.client as foc
 from fiftyone.core.session import Session
-from fiftyone.core.state import StateDescription
+from fiftyone.core.state import StateDescriptionWithDerivables
 
 
 class AppClient(foc.BaseClient):
@@ -33,7 +33,9 @@ class AppClient(foc.BaseClient):
 
     def __init__(self):
         self.response = None
-        super(AppClient, self).__init__("/state", StateDescription)
+        super(AppClient, self).__init__(
+            "/state", StateDescriptionWithDerivables
+        )
 
     def on_update(self, data):
         super(AppClient, self).on_update(data)
@@ -41,7 +43,17 @@ class AppClient(foc.BaseClient):
 
 
 def _serialize(state):
-    return StateDescription.from_dict(state.serialize()).serialize()
+    return StateDescriptionWithDerivables.from_dict(
+        state.serialize()
+    ).serialize()
+
+
+def _normalize_session(session):
+    # convert from OrderedDict to dict, recursively
+    session = json.loads(json.dumps(session))
+    if isinstance(session.get("view", {}).get("view"), str):
+        session["view"]["view"] = json.loads(session["view"]["view"])
+    return session
 
 
 class ServerServiceTests(unittest.TestCase):
@@ -92,7 +104,9 @@ class ServerServiceTests(unittest.TestCase):
         self.wait_for_response()
         session = _serialize(self.session.state)
         client = self.client.data.serialize()
-        self.assertEqual(session, client)
+        self.assertEqual(
+            _normalize_session(session), _normalize_session(client)
+        )
 
     def step_get_current_state(self):
         self.session.view = self.dataset.limit(1)
@@ -102,7 +116,15 @@ class ServerServiceTests(unittest.TestCase):
             "get_current_state", "", callback=self.client_callback
         )
         client = self.wait_for_response()
-        self.assertEqual(session, client)
+        self.assertEqual(
+            _normalize_session(session), _normalize_session(client)
+        )
+        self.assertEqual(
+            sorted(client["derivables"]["tags"]),
+            sorted(self.dataset.get_tags()),
+        )
+        self.assertEqual(client["count"], len(self.session.view))
+        self.assertNotEqual(client["count"], len(self.dataset))
 
     def step_selection(self):
         self.client.emit("add_selection", self.sample1.id)
@@ -124,19 +146,6 @@ class ServerServiceTests(unittest.TestCase):
         # this will raise an error if special floats exist that are not JSON
         # compliant
         json.dumps(results, allow_nan=False)
-
-    def step_lengths(self):
-        self.session.dataset = self.dataset
-        self.wait_for_response()
-        tags = self.dataset.get_tags()
-
-        self.client.emit("lengths", "", callback=self.client_callback)
-        client = self.wait_for_response()
-
-        def sort(l):
-            return sorted(l, key=lambda f: f["_id"]["field"])
-
-        self.assertEqual(client["tags"], tags)
 
     def step_get_distributions(self):
         self.session.dataset = self.dataset
