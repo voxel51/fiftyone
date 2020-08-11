@@ -277,7 +277,7 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     def __init__(self, dataset_dir):
         super().__init__(dataset_dir)
-        self._info = None
+        self._metadata = None
         self._samples = None
         self._iter_samples = None
 
@@ -306,18 +306,20 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     @property
     def has_dataset_info(self):
-        return self._info is not None
+        return "info" in self._metadata
 
     def setup(self):
-        info_path = os.path.join(self.dataset_dir, "info.json")
-        if os.path.isfile(info_path):
-            self._info = etas.load_json(info_path)
+        metadata_path = os.path.join(self.dataset_dir, "metadata.json")
+        if os.path.isfile(metadata_path):
+            self._metadata = etas.load_json(metadata_path)
+        else:
+            self._metadata = {}
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
         self._samples = etas.load_json(samples_path).get("samples", [])
 
     def get_dataset_info(self):
-        return self._info
+        return self._metadata.get("info", {})
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
