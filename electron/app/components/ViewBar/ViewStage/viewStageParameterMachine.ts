@@ -27,7 +27,10 @@ export const PARSER = {
     parse: (value) => {
       const stripped = value.replace(/[\s]/g, "");
       const [integer, fractional] = stripped.split(".");
-      return integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + fractional;
+      return (
+        integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",") +
+        (fractional ? "." + fractional : "")
+      );
     },
     validate: (value) => {
       const stripped = convert(value).replace(/[\s]/g, "");
