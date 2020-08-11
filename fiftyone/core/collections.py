@@ -55,7 +55,7 @@ class SampleCollection(object):
     """
 
     def __str__(self):
-        return self.summary()
+        return repr(self)
 
     def __repr__(self):
         return self.summary()
