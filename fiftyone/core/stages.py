@@ -530,7 +530,6 @@ class Shuffle(ViewStage):
 
     def __init__(self, seed=None):
         self._seed = seed
-        self._randint = _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def seed(self):
@@ -543,6 +542,7 @@ class Shuffle(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        self._randint = _get_rng(self._seed).randint(1e7, 1e10)
         # @todo avoid creating new field here?
         return [
             {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
@@ -653,7 +653,6 @@ class Take(ViewStage):
     def __init__(self, size, seed=None):
         self._seed = seed
         self._size = size
-        self._randint = _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def size(self):
@@ -674,6 +673,7 @@ class Take(ViewStage):
         if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
+        self._randint = _get_rng(self._seed).randint(1e7, 1e10)
         # @todo avoid creating new field here?
         return [
             {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
