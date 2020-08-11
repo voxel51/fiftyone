@@ -4,8 +4,11 @@ Using the dataset JSON to quickly get exploring:
 import fiftyone as fo
 from fiftyone import ViewField as F
 
-dataset = fo.load_dataset("open-images-v4-test-500")
-# dataset = fo.Dataset.from_json("open-images-v4-test-500.json")
+# dataset = fo.load_dataset("open-images-v4-test-500")
+dataset = fo.Dataset.from_dir(
+    "open-images-v4-test-500",
+    fo.types.FiftyOneDataset,
+)
 
 # Filter the visible detections by confidence
 view = (
