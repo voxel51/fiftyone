@@ -131,7 +131,6 @@ class Classification(ImageLabel):
     label = fof.StringField()
     confidence = fof.FloatField()
     logits = fof.VectorField()
-    attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
     @property
     def id(self):
