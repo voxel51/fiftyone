@@ -52,6 +52,7 @@ from functools import wraps
 import json
 import numbers
 import random
+import os
 
 from bson import json_util
 from bson.binary import Binary
@@ -591,6 +592,9 @@ class NoDatasetSampleDocument(SampleDocument):
 
             if value is None:
                 value = self._get_default(self.default_fields[field_name])
+
+            if field_name == "filepath":
+                value = os.path.abspath(os.path.expanduser(value))
 
             self._data[field_name] = value
 
