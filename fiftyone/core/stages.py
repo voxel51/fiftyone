@@ -25,10 +25,6 @@ class ViewStage(object):
     :class:`fiftyone.core.view.DatasetView`, which may decide what subset of
     samples in a view should pass though the stage, and also what subset of the
     contents of each :class:`fiftyone.core.sample.Sample` should be passed.
-
-    Args:
-        **kwargs: the concrete :class:`fiftyone.core.stages.ViewStage`
-            arguments
     """
 
     def __str__(self):
@@ -61,8 +57,8 @@ class ViewStage(object):
         }
 
     def _kwargs(self):
-        """Returns a JSON dict describing the keyword arguments that define the
-        ViewStage.
+        """Returns a list of ``[name, value]`` lists describing the parameters
+        that define the stage.
 
         Returns:
             a JSON dict
@@ -71,8 +67,8 @@ class ViewStage(object):
 
     @classmethod
     def _params(self):
-        """Returns a list of JSON dicts describing the parameters that define the
-        ViewStage.
+        """Returns a list of JSON dicts describing the parameters that define
+        the stage.
 
         Returns:
             a list of JSON dicts
@@ -579,21 +575,19 @@ class SelectFields(ViewStage):
 
 
 class Shuffle(ViewStage):
-    """Randomly shuffles the samples in the view using a provided seed.
+    """Randomly shuffles the samples in the view.
 
     Args:
-        seed (None): a seed used to randomly shuffle samples, by
-            default it will use a different seed every time
+        seed (None): an optional random seed to use when shuffling the samples
     """
 
     def __init__(self, seed=None):
-        if seed == None:
-            seed = random.random()
         self._seed = seed
+        self._randint = _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def seed(self):
-        """The seed to shuffle by."""
+        """The random seed to use, or ``None``."""
         return self._seed
 
     def to_mongo(self):
@@ -602,13 +596,11 @@ class Shuffle(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        random.seed(self._seed)
-        random_int = random.randint(1e7, 1e10)
-
+        # @todo avoid creating new field here?
         return [
-            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
-            {"$sort": {"_rand_take": ASCENDING}},
-            {"$unset": "_rand_take"},
+            {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
+            {"$sort": {"_rand_shuffle": ASCENDING}},
+            {"$unset": "_rand_shuffle"},
         ]
 
     def _kwargs(self):
@@ -723,26 +715,23 @@ class Take(ViewStage):
     Args:
         size: the number of samples to return. If a non-positive number is
             provided, an empty view is returned
-        seed (None): a seed used to randomly take samples, by
-            default it will use a different seed every time
-
+        seed (None): an optional random seed to use when selecting the samples
     """
 
     def __init__(self, size, seed=None):
-        if seed == None:
-            seed = random.random()
         self._seed = seed
         self._size = size
-
-    @property
-    def seed(self):
-        """The seed to randomly take by."""
-        return self._seed
+        self._randint = _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def size(self):
         """The number of samples to return."""
         return self._size
+
+    @property
+    def seed(self):
+        """The random seed to use, or ``None``."""
+        return self._seed
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -753,11 +742,9 @@ class Take(ViewStage):
         if self._size <= 0:
             return Match({"_id": None}).to_mongo()
 
-        random.seed(self._seed)
-        random_int = random.randint(1e7, 1e10)
-
+        # @todo avoid creating new field here?
         return [
-            {"$set": {"_rand_take": {"$mod": [random_int, "$_rand"]}}},
+            {"$set": {"_rand_take": {"$mod": [self._randint, "$_rand"]}}},
             {"$sort": {"_rand_take": ASCENDING}},
             {"$limit": self._size},
             {"$unset": "_rand_take"},
@@ -774,6 +761,15 @@ class Take(ViewStage):
         ]
 
 
+def _get_rng(seed):
+    if seed is None:
+        return random
+
+    _random = random.Random()
+    _random.seed(seed)
+    return _random
+
+
 class _ViewStageRepr(reprlib.Repr):
     def repr_ViewExpression(self, expr, level):
         return self.repr1(expr.to_mongo(), level=level - 1)
@@ -788,7 +784,8 @@ _repr.maxset = 3
 _repr.maxstring = 30
 _repr.maxother = 30
 
-# simple registry for the server to grab available view stages
+
+# Simple registry for the server to grab available view stages
 _STAGES = [
     Exclude,
     ExcludeFields,

@@ -28,10 +28,14 @@ import fiftyone.core.state as fos
 from util import get_image_size
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
+
 logger = logging.getLogger(__name__)
+
 foo.get_db_conn()
+
 app = Flask(__name__)
 CORS(app)
+
 app.config["SECRET_KEY"] = "fiftyone"
 
 socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
@@ -282,6 +286,23 @@ def _numeric_bounds(view, numerics):
         ]
 
     return list(view.aggregate(bounds_pipeline))[0] if len(numerics) else {}
+
+
+def _get_label_fields(view):
+    label_fields = []
+
+    # @todo is this necessary?
+    label_fields.append({"_id": {"field": "_id"}})
+
+    # @todo can we remove the "_id" nesting?
+    for k, v in view.get_field_schema().items():
+        d = {"field": k}
+        if isinstance(v, fof.EmbeddedDocumentField):
+            d["cls"] = v.document_type.__name__
+
+        label_fields.append({"_id": d})
+
+    return label_fields
 
 
 def _numeric_distribution_pipelines(view, pipeline, buckets=50):

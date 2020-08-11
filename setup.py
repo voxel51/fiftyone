@@ -32,7 +32,7 @@ setup(
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
-    license="",
+    license="Apache",
     packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
     package_dir={
         "fiftyone.recipes": "docs/source/recipes",
@@ -67,7 +67,9 @@ setup(
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
+        "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: Apache Software License",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.5",
