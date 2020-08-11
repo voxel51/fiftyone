@@ -14,7 +14,6 @@ import viewBarMachine from "./viewBarMachine";
 const ViewBarContainer = styled.div`
   position: relative;
   width: 100%;
-  padding: 1rem 0 0 0;
   background-color: ${({ theme }) => theme.background};
 `;
 
@@ -49,7 +48,7 @@ const ViewBarDiv = styled.div`
   },
   // load view from recoil
   {
-    stage: 
+    stage:
   }
 );*/
 
@@ -130,7 +129,7 @@ const ViewBar = () => {
           cursor: "pointer",
           position: "absolute",
           right: "0.5rem",
-          top: "2rem",
+          top: "1rem",
         }}
       />
     </ViewBarContainer>

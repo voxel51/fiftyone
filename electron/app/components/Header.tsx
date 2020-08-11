@@ -9,18 +9,19 @@ const HeaderDiv = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
+  margin-bottom: 10px;
   border-bottom: 2px hsl(210, 5%, 24%) solid;
 `;
 
 const LogoDiv = styled.div`
   height: 60px;
-  margin: 0.75rem 0;
 `;
 
 const LogoImg = styled.img`
   height: 100%;
   width: auto;
-  padding: 0.25rem 1rem 0.25rem 0;
+  margin-top: 2px;
+  padding: 0.25rem 0.5rem 0.25rem 0;
   border-right-width: 2px;
   border-color: hsl(210, 5%, 24%);
   border-right-style: solid;
@@ -38,6 +39,11 @@ const FiftyOneDiv = styled.div`
   color: ${(theme) => theme.font};
   font-weight: bold;
   font-size: 1.5rem;
+  line-height: 1.5;
+`;
+
+const DatasetDiv = styled.div`
+  line-height: 1;
 `;
 
 const DatasetNameDiv = styled.div`
@@ -56,11 +62,11 @@ const Header = () => {
         </LogoDiv>
         <TitleDiv>
           <FiftyOneDiv>FiftyOne</FiftyOneDiv>
-          <div>
+          <DatasetDiv>
             {datasetNameValue
               ? datasetNameValue.toUpperCase()
               : "NO DATASET LOADED"}
-          </div>
+          </DatasetDiv>
         </TitleDiv>
       </LeftDiv>
     </HeaderDiv>
