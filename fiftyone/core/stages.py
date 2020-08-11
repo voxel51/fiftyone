@@ -764,7 +764,7 @@ class Take(ViewStage):
         ]
 
     def _kwargs(self):
-        return [["size", self._size, "seed", self._seed]]
+        return [["size", self._size], ["seed", self._seed]]
 
     @classmethod
     def _params(cls):
