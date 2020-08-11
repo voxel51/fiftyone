@@ -108,9 +108,19 @@ const Submit = ({ send }) => {
   );
 };
 
-const convert = (value) => {
+const toTypeAnnotation = (type) => {
+  if (type.includes("|")) {
+    return ["Union[", type.split("|").join(", "), "]"].join("");
+  }
+  return type;
+};
+
+const convert = (value, type) => {
   const isObject = PARSER.dict.validate(value);
   if (isObject) return "{ ... }";
+  else if (value === "") {
+    return [value, toTypeAnnotation(type)].join(": ");
+  }
   return value;
 };
 
@@ -137,7 +147,7 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
       ref={containerRef}
     >
       {state.matches("reading") ? (
-        convert(value)
+        convert(value, type)
       ) : (
         <>
           <ObjectEditorTextArea
@@ -216,7 +226,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
         <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
       ) : (
         <ViewStageParameterInput
-          placeholder={parameter}
+          placeholder={[parameter, toTypeAnnotation(type)].join(": ")}
           value={value}
           onFocus={() => !isEditing && send({ type: "EDIT" })}
           onBlur={() => isEditing && send({ type: "BLUR" })}
