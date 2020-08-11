@@ -125,7 +125,7 @@ class Exclude(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": ["list", "str"]}]
+        return [{"name": "sample_ids", "type": ["List", "str"]}]
 
 
 class ExcludeFields(ViewStage):
@@ -162,7 +162,7 @@ class ExcludeFields(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "field_names", "type": ["list", "str"]}]
+        return [{"name": "field_names", "type": ["List", "str"]}]
 
     def _validate(self):
         invalid_fields = set(self._field_names) & set(default_sample_fields())
@@ -461,7 +461,7 @@ class MatchTags(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "tags", "type": ["list", "str"]}]
+        return [{"name": "tags", "type": ["List", "str"]}]
 
 
 class Mongo(ViewStage):
@@ -527,7 +527,7 @@ class Select(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": ["list", "str"]}]
+        return [{"name": "sample_ids", "type": ["List", "str"]}]
 
 
 class SelectFields(ViewStage):
@@ -571,7 +571,7 @@ class SelectFields(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "field_names", "type": ["list", "str"]}]
+        return [{"name": "field_names", "type": ["List", "str"]}]
 
 
 class Shuffle(ViewStage):

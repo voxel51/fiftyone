@@ -109,6 +109,9 @@ const Submit = ({ send }) => {
 };
 
 const toTypeAnnotation = (type) => {
+  if (Array.isArray(type)) {
+    return ["List[", toTypeAnnotation(type[1]), "]"].join("");
+  }
   if (type.includes("|")) {
     return ["Union[", type.split("|").join(", "), "]"].join("");
   }
