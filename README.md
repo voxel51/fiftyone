@@ -1,6 +1,6 @@
 # [FiftyOne](http://www.voxel51.com/fiftyone): Explore, Analyze and Curate Visual Datasets
 
-<img src="https://user-images.githubusercontent.com/25985824/89583450-5b38ab80-d808-11ea-909e-4fa8bc366d7f.png" alt="FiftyOne"/>
+<img src="https://user-images.githubusercontent.com/21222883/89923076-001f0400-dbce-11ea-948c-5a7c863f8458.png" alt="FiftyOne"/>
 
 [FiftyOne](http://www.voxel51.com/docs/fiftyone) is an **open-source** machine
 learning tool that helps you get closer to your data. With FiftyOne, you can

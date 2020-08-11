@@ -22,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
+import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
@@ -322,7 +323,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return fov.DatasetView(self)
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
         """Returns a schema dictionary describing the fields of the samples in
         the dataset.
 
@@ -333,12 +336,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.BaseEmbeddedDocument``
+            include_private (False): a boolean indicating whether to return
+                fields that start with the character "_"
 
         Returns:
              a dictionary mapping field names to field types
         """
         return self._sample_doc_cls.get_field_schema(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            include_private=include_private,
         )
 
     def add_sample_field(
@@ -1268,14 +1275,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return foo.get_db_conn()[self._collection_name]
 
     def _expand_schema(self, samples):
-        fields = self.get_field_schema()
+        fields = self.get_field_schema(include_private=True)
         for sample in samples:
-            for field_name in sample.field_names:
+            for field_name in sample.to_mongo_dict():
+                if field_name == "_id":
+                    continue
+
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
                     )
-                    fields = self.get_field_schema()
+                    fields = self.get_field_schema(include_private=True)
 
     def _sample_dict_to_doc(self, d):
         return self._sample_doc_cls.from_dict(d, extended=False)
@@ -1296,7 +1306,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def _validate_sample(self, sample):
-        fields = self.get_field_schema()
+        fields = self.get_field_schema(include_private=True)
 
         non_existest_fields = {
             fn for fn in sample.field_names if fn not in fields
@@ -1357,7 +1367,7 @@ def _create_dataset(name, persistent=False):
     _meta = foo.DatasetDocument(
         name=name,
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            _sample_doc_cls.get_field_schema()
+            _sample_doc_cls.get_field_schema(include_private=True)
         ),
         persistent=persistent,
     )
@@ -1380,7 +1390,7 @@ def _load_dataset(name):
 
     _sample_doc_cls = type(name, (foo.DatasetSampleDocument,), {})
 
-    num_default_fields = len(_sample_doc_cls.get_field_schema())
+    num_default_fields = len(foos.default_sample_fields(include_private=True))
 
     for sample_field in _meta.sample_fields[num_default_fields:]:
         subfield = (
