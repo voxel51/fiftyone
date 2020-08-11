@@ -28,7 +28,7 @@ Instantiating a |Dataset| object creates a **new** dataset.
     dataset3 = fo.Dataset()  # generates a default unique name
 
 Check to see what datasets exist at any time via :meth:`list_dataset_names()
-<fiftyone.core.dataset.list_dataset_names>`.
+<fiftyone.core.dataset.list_dataset_names>`:
 
 .. code-block:: python
     :linenos:
@@ -63,11 +63,14 @@ have a bad time:
 Dataset persistence
 -------------------
 
-By default, datasets are non-persistent. Non-persistent datasets are wiped
-from FiftyOne on exit of the Python process. This means any data in the
-FiftyOne backing database is deleted, however files on disk are untouched.
+By default, datasets are non-persistent. Non-persistent datasets are deleted
+from the database each time `fiftyone` is imported. Note that FiftyOne does not
+store the raw data in datasets directly (only the labels), so your source files
+on disk are untouched.
 
-To make a dataset persistent, set the attribute to `True`.
+To make a dataset persistent, set its
+:meth:`persistent <fiftyone.core.dataset.Dataset.persistent>` property to
+`True`:
 
 .. code-block:: python
     :linenos:
@@ -75,9 +78,7 @@ To make a dataset persistent, set the attribute to `True`.
     # Make the dataset persistent
     dataset1.persistent = True
 
-    quit()
-
-Start a new Python session:
+In a new Python session:
 
 .. code-block:: python
     :linenos:
@@ -88,7 +89,44 @@ Start a new Python session:
     # ['my_first_dataset']
 
 Note that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have been
-wiped because they were not persistent.
+deleted because they were not persistent.
+
+Storing dataset information
+---------------------------
+
+All |Dataset| instances have an
+:meth:`info <fiftyone.core.dataset.Dataset.info>` property, which contains a
+dictionary that you can use to store any (JSON-serializable) information you
+wish about your dataset.
+
+A typical use case is to store the class list for a classification/detection
+model:
+
+.. code-block:: python
+
+    # Store a class list in the dataset's info
+    dataset1.info["classes"] = ["bird", "cat", "deer", "dog", "frog", "horse"]
+    dataset1.save()
+
+In a new Python session:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("my_first_dataset")
+
+    # Load the class list for the dataset
+    classes = dataset.info["classes"]
+    print(classes)  # ['bird', 'cat', 'deer', ...]
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's :meth:`info <fiftyone.core.dataset.Dataset.info>` property to
+    save the changes to the database.
 
 Deleting a dataset
 ------------------
@@ -362,8 +400,9 @@ To to simply view the field schema print the dataset:
 .. code-block:: text
 
     Name:           a_dataset
-    Persistent:     False
     Num samples:    0
+    Persistent:     False
+    Info:           {}
     Tags:           []
     Sample fields:
         filepath:     fiftyone.core.fields.StringField
@@ -401,8 +440,9 @@ updated:
 .. code-block:: text
 
     Name:           a_dataset
-    Persistent:     False
     Num samples:    0
+    Persistent:     False
+    Info:           {}
     Tags:           []
     Sample fields:
         filepath:      fiftyone.core.fields.StringField

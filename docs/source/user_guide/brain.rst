@@ -8,6 +8,14 @@ The FiftyOne Brain provides powerful machine learning techniques that are
 designed to transform how you curate your data from an art into a measurable
 science.
 
+.. note::
+
+    The FiftyOne Brain is a separate Python package that is bundled with
+    FiftyOne. Although it is closed-source, it is licensed as freeware, and you
+    have permission to use it for commercial or non-commercial purposes. See
+    `the license <https://github.com/voxel51/fiftyone/blob/develop/LICENSE-BRAIN>`_
+    for more details.
+
 The FiftyOne Brain methods are useful across the stages of the machine learning
 workflow:
 
@@ -38,11 +46,6 @@ workflow:
 
 Each of these functions has a detailed :doc:`tutorial <../tutorials/index>`
 demonstrating a workflow.
-
-.. note::
-
-    FiftyOne Brain operations require the installation of `torch` and
-    `tensorflow`
 
 .. _brain-image-uniqueness:
 

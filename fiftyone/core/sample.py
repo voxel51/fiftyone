@@ -216,7 +216,7 @@ class _Sample(object):
         self._doc.save()
 
     def reload(self):
-        """Reload the sample from the database."""
+        """Reloads the sample from the database."""
         self._doc.reload()
 
     def _delete(self):

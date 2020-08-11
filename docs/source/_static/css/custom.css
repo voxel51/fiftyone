@@ -502,3 +502,21 @@ a.with-right-arrow,
 .convert-recipes-table th:first-of-type {
   width: 50%;
 }
+
+/* social links on main page */
+
+.social-links #social-links-table {
+  width: 400px !important;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1.5rem;
+}
+
+.social-links #social-links-table th {
+  text-align: center !important;
+  border: 1px solid var(--bg-light-secondary);
+}
+
+.social-links img {
+  width: 32px !important;
+}
