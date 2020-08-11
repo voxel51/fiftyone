@@ -1,27 +1,23 @@
-# FiftyOne Developer's Guide
+# FiftyOne Documentation Guide
 
-This document describes best practices for contributing to the FiftyOne
-codebase.
+Instructions for contributing to the FiftyOne Documentation, available publicly
+at https://voxel51.com/docs/fiftyone.
 
-We currently follow all of the practices established in
-[ETA](https://github.com/voxel51/eta) for the Python code in this repository,
-so this guide is mostly pointers to the relevant resources there.
+## Building
 
-> Happy exception: FiftyOne is strictly Python 3 code, so we do not follow the
-> Python 2 compability instructions in ETA!
+This project uses
+[Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) to
+generate its documentation from source. To generate the documentation (requires
+a developer installation), run the `generate_docs.bash` script in this folder:
 
-## Coding style
+```shell
+bash generate_docs.bash
+```
 
--   [Python style guide](https://github.com/voxel51/eta/blob/develop/docs/python_style_guide.md)
--   [Linting guide](https://github.com/voxel51/eta/blob/develop/docs/linting_guide.md)
--   [Logging guide](https://github.com/voxel51/eta/blob/develop/docs/logging_guide.md)
--   [Markdown style guide](https://github.com/voxel51/eta/blob/develop/docs/markdown_style_guide.md)
+The script requires that `fiftyone` and `fiftyone-brain` installed in your
+environment.
 
-## Documentation
-
-`docs/generate_docs.bash` is the script used to build the documentation. You
-will need `fiftyone` and `fiftyone-brain` installed in your environment for it
-to work. A few flags are supported:
+A few flags are supported:
 
 -   `-c` performs a clean build by removing the docs/build folder beforehand.
     This is sometimes necessary to force updates, e.g. if you have edited a
@@ -29,6 +25,8 @@ to work. A few flags are supported:
     changed.
 -   `-s` will update static files only (i.e. `custom.css` and `custom.js`
     mentioned below).
+
+## Contributing
 
 Theme files are located in the `docs/theme` folder. However, you should prefer
 to make changes in the following locations instead of the theme itself whenever
