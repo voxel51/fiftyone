@@ -38,8 +38,8 @@ class Metadata(DynamicEmbeddedDocument):
             a :class:`Metadata`
         """
         return cls(
-            size_bytes=etau.guess_mime_type(filepath),
-            mime_type=os.path.getsize(filepath),
+            size_bytes=os.path.getsize(filepath),
+            mime_type=etau.guess_mime_type(filepath),
         )
 
 
