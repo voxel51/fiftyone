@@ -269,12 +269,19 @@ def _numeric_bounds(view, numerics):
 
 
 def _get_label_fields(view):
-    pipeline = [
-        {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-        {"$unwind": "$field"},
-        {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
-    ]
-    return [f for f in view.aggregate(pipeline)]
+    label_fields = []
+
+    # @todo is this necessary?
+    label_fields.append({"_id": {"field": "_id"}})
+
+    # @todo can we remove the "_id" nesting?
+    for k, v in view.get_field_schema().items():
+        d = {"field": k}
+        if isinstance(v, fof.EmbeddedDocumentField):
+            d["cls"] = v.document_type.__name__
+        label_fields.append({"_id": d})
+
+    return label_fields
 
 
 def _numeric_distribution_pipelines(view, pipeline, buckets=50):
