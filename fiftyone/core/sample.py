@@ -10,6 +10,7 @@ from copy import deepcopy
 import os
 import weakref
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.metadata as fom
@@ -187,8 +188,7 @@ class _Sample(object):
             a JSON dict
         """
         d = self._doc.to_dict(extended=True)
-        d.pop("_id", None)
-        return d
+        return {k: v for k, v in d.items() if not k.startswith("_")}
 
     def to_json(self, pretty_print=False):
         """Serializes the sample to a JSON string.
@@ -200,7 +200,7 @@ class _Sample(object):
         Returns:
             a JSON string
         """
-        return self._doc.to_json(pretty_print=pretty_print)
+        return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
 
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
@@ -216,7 +216,7 @@ class _Sample(object):
         self._doc.save()
 
     def reload(self):
-        """Reload the sample from the database."""
+        """Reloads the sample from the database."""
         self._doc.reload()
 
     def _delete(self):

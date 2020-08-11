@@ -11,6 +11,7 @@ import inspect
 import logging
 import numbers
 import os
+import reprlib
 
 from bson import ObjectId
 from mongoengine.errors import DoesNotExist, FieldDoesNotExist
@@ -21,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.odm as foo
+import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
@@ -226,6 +228,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._meta.save()
 
     @property
+    def info(self):
+        """A dictionary of information about the dataset."""
+        return self._meta.info
+
+    @info.setter
+    def info(self, info):
+        self._meta.info = info
+
+    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
@@ -239,8 +250,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
-                "Persistent:     %s" % self.persistent,
                 "Num samples:    %d" % len(self),
+                "Persistent:     %s" % self.persistent,
+                "Info:           %s" % _info_repr.repr(self.info),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
                 self._to_fields_str(self.get_field_schema()),
@@ -311,7 +323,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return fov.DatasetView(self)
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
         """Returns a schema dictionary describing the fields of the samples in
         the dataset.
 
@@ -322,12 +336,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.BaseEmbeddedDocument``
+            include_private (False): a boolean indicating whether to return
+                fields that start with the character "_"
 
         Returns:
              a dictionary mapping field names to field types
         """
         return self._sample_doc_cls.get_field_schema(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            include_private=include_private,
         )
 
     def add_sample_field(
@@ -588,15 +606,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return num_cloned, num_skipped
 
     def save(self):
-        """Saves all modified in-memory samples in the dataset to the database.
-
-        Only samples with non-persisted changes will be processed.
+        """Saves dataset-level information such as its ``info`` to the
+        database.
         """
-        fos.Sample._save_dataset_samples(self.name)
-
-    def reload(self):
-        """Reloads all in-memory samples in the dataset from the database."""
-        fos.Sample._reload_dataset_samples(self.name)
+        self._meta.save()
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -705,20 +718,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             def parse_sample(sample):
                 image_path, image_metadata = sample
-                filepath = os.path.abspath(os.path.expanduser(image_path))
-
                 return fos.Sample(
-                    filepath=filepath, metadata=image_metadata, tags=tags,
+                    filepath=image_path, metadata=image_metadata, tags=tags,
                 )
 
         elif isinstance(dataset_importer, foud.LabeledImageDatasetImporter):
 
             def parse_sample(sample):
                 image_path, image_metadata, label = sample
-                filepath = os.path.abspath(os.path.expanduser(image_path))
-
                 sample = fos.Sample(
-                    filepath=filepath, metadata=image_metadata, tags=tags,
+                    filepath=image_path, metadata=image_metadata, tags=tags,
                 )
 
                 if label is not None:
@@ -771,14 +780,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser.with_sample(sample)
 
             image_path = sample_parser.get_image_path()
-            filepath = os.path.abspath(os.path.expanduser(image_path))
 
             if sample_parser.has_image_metadata:
                 metadata = sample_parser.get_image_metadata()
             else:
                 metadata = None
 
-            return fos.Sample(filepath=filepath, metadata=metadata, tags=tags)
+            return fos.Sample(
+                filepath=image_path, metadata=metadata, tags=tags
+            )
 
         try:
             num_samples = len(samples)
@@ -830,7 +840,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser.with_sample(sample)
 
             image_path = sample_parser.get_image_path()
-            filepath = os.path.abspath(os.path.expanduser(image_path))
 
             if sample_parser.has_image_metadata:
                 metadata = sample_parser.get_image_metadata()
@@ -840,7 +849,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label = sample_parser.get_label()
 
             sample = fos.Sample(
-                filepath=filepath, metadata=metadata, tags=tags,
+                filepath=image_path, metadata=metadata, tags=tags,
             )
 
             if label is not None:
@@ -1266,14 +1275,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return foo.get_db_conn()[self._collection_name]
 
     def _expand_schema(self, samples):
-        fields = self.get_field_schema()
+        fields = self.get_field_schema(include_private=True)
         for sample in samples:
-            for field_name in sample.field_names:
+            for field_name in sample.to_mongo_dict():
+                if field_name == "_id":
+                    continue
+
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]
                     )
-                    fields = self.get_field_schema()
+                    fields = self.get_field_schema(include_private=True)
 
     def _sample_dict_to_doc(self, d):
         return self._sample_doc_cls.from_dict(d, extended=False)
@@ -1294,7 +1306,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
     def _validate_sample(self, sample):
-        fields = self.get_field_schema()
+        fields = self.get_field_schema(include_private=True)
 
         non_existest_fields = {
             fn for fn in sample.field_names if fn not in fields
@@ -1320,6 +1332,24 @@ class DoesNotExistError(Exception):
     pass
 
 
+class _DatasetInfoRepr(reprlib.Repr):
+    def repr_BaseList(self, obj, level):
+        return self.repr_list(obj, level)
+
+    def repr_BaseDict(self, obj, level):
+        return self.repr_dict(obj, level)
+
+
+_info_repr = _DatasetInfoRepr()
+_info_repr.maxlevel = 2
+_info_repr.maxdict = 3
+_info_repr.maxlist = 3
+_info_repr.maxtuple = 3
+_info_repr.maxset = 3
+_info_repr.maxstring = 63
+_info_repr.maxother = 63
+
+
 def _create_dataset(name, persistent=False):
     if dataset_exists(name):
         raise ValueError(
@@ -1337,7 +1367,7 @@ def _create_dataset(name, persistent=False):
     _meta = foo.DatasetDocument(
         name=name,
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            _sample_doc_cls.get_field_schema()
+            _sample_doc_cls.get_field_schema(include_private=True)
         ),
         persistent=persistent,
     )
@@ -1360,7 +1390,7 @@ def _load_dataset(name):
 
     _sample_doc_cls = type(name, (foo.DatasetSampleDocument,), {})
 
-    num_default_fields = len(_sample_doc_cls.get_field_schema())
+    num_default_fields = len(foos.default_sample_fields(include_private=True))
 
     for sample_field in _meta.sample_fields[num_default_fields:]:
         subfield = (

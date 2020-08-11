@@ -15,6 +15,7 @@ unittest.TextTestRunner().run(singletest)
 """
 import datetime
 from functools import wraps
+import gc
 import math
 import os
 import unittest
@@ -697,6 +698,28 @@ class DatasetTest(unittest.TestCase):
         self.assertTrue(
             issubclass(dataset._sample_doc_cls, foo.DatasetSampleDocument)
         )
+
+    @drop_datasets
+    def test_dataset_info(self):
+        dataset_name = self.test_dataset_info.__name__
+
+        dataset = fo.Dataset(dataset_name)
+
+        self.assertEqual(dataset.info, {})
+        self.assertIsInstance(dataset.info, dict)
+
+        classes = ["cat", "dog"]
+
+        dataset.info["classes"] = classes
+        dataset.save()
+
+        del dataset
+        gc.collect()  # force garbage collection
+
+        dataset2 = fo.load_dataset(dataset_name)
+
+        self.assertTrue("classes" in dataset2.info)
+        self.assertEqual(classes, dataset2.info["classes"])
 
     @drop_datasets
     def test_meta_dataset(self):
@@ -1708,9 +1731,11 @@ class SerializationTest(unittest.TestCase):
             bool=True,
             int=51,
         )
-        self.assertEqual(sample1, sample2)
+        self.assertDictEqual(sample1.to_dict(), sample2.to_dict())
 
-        self.assertEqual(fo.Sample.from_dict(sample1.to_dict()), sample1)
+        self.assertEqual(
+            fo.Sample.from_dict(sample1.to_dict()).to_dict(), sample1.to_dict()
+        )
 
     @drop_datasets
     def test_sample_in_dataset(self):
@@ -1740,7 +1765,7 @@ class SerializationTest(unittest.TestCase):
             int=51,
         )
 
-        self.assertEqual(sample1, sample2)
+        self.assertDictEqual(sample1.to_dict(), sample2.to_dict())
 
         dataset1.add_sample(sample1)
         dataset2.add_sample(sample2)
@@ -1753,7 +1778,7 @@ class SerializationTest(unittest.TestCase):
         self.assertFalse(s1.in_dataset)
         self.assertNotEqual(s1, sample1)
 
-        self.assertEqual(s1, s2)
+        self.assertDictEqual(s1.to_dict(), s2.to_dict())
 
 
 class SampleCollectionTest(unittest.TestCase):

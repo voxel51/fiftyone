@@ -188,6 +188,10 @@ def load_zoo_dataset(
         logger.info("Loading '%s'", zoo_dataset.name)
         dataset.add_dir(dataset_dir, dataset_type)
 
+    if info.classes is not None:
+        dataset.info["classes"] = info.classes
+        dataset.save()
+
     return dataset
 
 

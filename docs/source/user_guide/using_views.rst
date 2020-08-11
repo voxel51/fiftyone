@@ -33,6 +33,8 @@ You can explicitly create a view that contains an entire dataset via
 
     Dataset:        cifar10-test
     Num samples:    10000
+    Persistent:     False
+    Info:           {'classes': ['airplane', 'automobile', 'bird', ...]}
     Tags:           ['test']
     Sample fields:
         filepath:     fiftyone.core.fields.StringField
@@ -127,12 +129,9 @@ The sections below discuss each view stage in more detail.
 Sorting
 _______
 
-Sorting samples is the simplest operation that can be performed on a |Dataset|.
-By default, a |Dataset| is unordered, however, the
-:meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` method can be used
-to sort a |Dataset| or |DatasetView| and this always returns a new
-|DatasetView|. The samples in the returned |DatasetView| can be sorted
-(forward or in reverse) by any |Field|:
+You can use :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` to sort
+the samples in a |Dataset| or |DatasetView| by a field of interest. The samples
+in the returned |DatasetView| can be sorted in ascending or descending order:
 
 .. code-block:: python
     :linenos:
@@ -140,11 +139,48 @@ to sort a |Dataset| or |DatasetView| and this always returns a new
     view = dataset.sort_by("filepath")
     view = dataset.sort_by("id", reverse=True)
 
+You can also sort by :ref:`expressions <querying-samples>`!
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Sort by number of detections in `Detections` field `ground_truth`
+    view = dataset.sort_by(F("ground_truth.detections").length(), reverse=True)
+
+Shuffling
+_________
+
+The samples in a |Dataset| or |DatasetView| can be randomly shuffled using
+:meth:`shuffle() <fiftyone.core.view.DatasetView.shuffle>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Randomly shuffle the order of the samples in the dataset
+    view1 = dataset.shuffle()
+
+    print(view1.first().id)
+    # 5f31bbfcd0d78c13abe159af
+
+An optional ``seed`` can be provided to make the shuffle deterministic:
+
+.. code-block:: python
+    :linenos:
+
+    # Randomly shuffle the samples in the dataset with a fixed seed
+
+    view2 = dataset.shuffle(seed=51)
+    print(view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
+    also_view2 = dataset.shuffle(seed=51)
+    print(also_view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
 Slicing
 _______
-
-Accessing sample ranges
------------------------
 
 You can extract a range of |Sample| instances from a |Dataset| using
 :meth:`skip() <fiftyone.core.view.DatasetView.skip>` and
@@ -159,9 +195,6 @@ using array slicing:
 
     # Equivalently, using array slicing
     range_view2 = dataset[2:5]
-
-Accessing single samples
-------------------------
 
 Samples can be accessed from views in
 :ref:`all the same ways as for datasets <accessing-samples-in-a-dataset>`.
@@ -181,11 +214,42 @@ a |DatasetView| by its ID.
         view[0]
         # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
 
+Random sampling
+_______________
+
+You can extract a random subset of the samples in a |Dataset| or |DatasetView|
+using :meth:`take() <fiftyone.core.view.DatasetView.take>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Take 5 random samples from the dataset
+    view1 = dataset.take(5)
+    print(view1.first().id)
+    # 5f31bbfcd0d78c13abe159af
+
+An optional ``seed`` can be provided to make the sampling deterministic:
+
+.. code-block:: python
+    :linenos:
+
+    # Take 5 random samples from the dataset with a fixed seed
+
+    view2 = dataset.take(5, seed=51)
+    print(view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
+    also_view2 = dataset.take(5, seed=51)
+    print(also_view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
 Filtering
 _________
 
 The real power of |DatasetView| is the ability to write your own search queries
 based on your data.
+
+.. _querying-samples:
 
 Querying samples
 ----------------
@@ -445,8 +509,9 @@ Let's say you have a dataset that looks like this:
 .. code-block:: bash
 
     Name:           open-images-v4-test
-    Persistent:     True
     Num samples:    1000
+    Persistent:     True
+    Info:           {}
     Tags:           []
     Sample fields:
         filepath:                 StringField
