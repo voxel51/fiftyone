@@ -23,7 +23,7 @@ export const colors = atom({
 
 export const sidebarVisible = atom({
   key: "sidebarVisible",
-  default: false,
+  default: true,
 });
 
 export const currentSamples = atom({
