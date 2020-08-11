@@ -33,6 +33,8 @@ You can explicitly create a view that contains an entire dataset via
 
     Dataset:        cifar10-test
     Num samples:    10000
+    Persistent:     False
+    Info:           {'classes': ['airplane', 'automobile', 'bird', ...]}
     Tags:           ['test']
     Sample fields:
         filepath:     fiftyone.core.fields.StringField
@@ -445,8 +447,9 @@ Let's say you have a dataset that looks like this:
 .. code-block:: bash
 
     Name:           open-images-v4-test
-    Persistent:     True
     Num samples:    1000
+    Persistent:     True
+    Info:           {}
     Tags:           []
     Sample fields:
         filepath:                 StringField

@@ -400,9 +400,9 @@ To to simply view the field schema print the dataset:
 .. code-block:: text
 
     Name:           a_dataset
+    Num samples:    0
     Persistent:     False
     Info:           {}
-    Num samples:    0
     Tags:           []
     Sample fields:
         filepath:     fiftyone.core.fields.StringField
@@ -440,9 +440,9 @@ updated:
 .. code-block:: text
 
     Name:           a_dataset
+    Num samples:    0
     Persistent:     False
     Info:           {}
-    Num samples:    0
     Tags:           []
     Sample fields:
         filepath:      fiftyone.core.fields.StringField

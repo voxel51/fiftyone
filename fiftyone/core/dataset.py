@@ -249,9 +249,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
+                "Num samples:    %d" % len(self),
                 "Persistent:     %s" % self.persistent,
                 "Info:           %s" % _info_repr.repr(self.info),
-                "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
                 self._to_fields_str(self.get_field_schema()),
