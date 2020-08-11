@@ -277,6 +277,7 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     def __init__(self, dataset_dir):
         super().__init__(dataset_dir)
+        self._info = None
         self._samples = None
         self._iter_samples = None
 
@@ -303,9 +304,20 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         return fos.Sample.from_dict(d)
 
+    @property
+    def has_dataset_info(self):
+        return self._info is not None
+
     def setup(self):
+        info_path = os.path.join(self.dataset_dir, "info.json")
+        if os.path.isfile(info_path):
+            self._info = etas.load_json(info_path)
+
         samples_path = os.path.join(self.dataset_dir, "samples.json")
         self._samples = etas.load_json(samples_path).get("samples", [])
+
+    def get_dataset_info(self):
+        return self._info
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
@@ -347,6 +359,10 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
         return image_path, image_metadata
 
     @property
+    def has_dataset_info(self):
+        return False
+
+    @property
     def has_image_metadata(self):
         return self.compute_metadata
 
@@ -374,6 +390,7 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
     def __init__(self, dataset_dir, compute_metadata=False):
         super().__init__(dataset_dir)
         self.compute_metadata = compute_metadata
+        self._classes = None
         self._sample_parser = None
         self._image_paths_map = None
         self._labels = None
@@ -402,6 +419,10 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         return image_path, image_metadata, label
 
     @property
+    def has_dataset_info(self):
+        return self._classes is not None
+
+    @property
     def has_image_metadata(self):
         return self.compute_metadata
 
@@ -420,9 +441,15 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
         labels = etas.load_json(labels_path)
-        self._sample_parser.classes = labels.get("classes", None)
+
+        self._classes = labels.get("classes", None)
+        self._sample_parser.classes = self._classes
+
         self._labels = labels.get("labels", {})
         self._num_samples = len(self._labels)
+
+    def get_dataset_info(self):
+        return {"classes": self._classes}
 
 
 class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
@@ -441,6 +468,7 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     def __init__(self, dataset_dir, compute_metadata=False):
         super().__init__(dataset_dir)
         self.compute_metadata = compute_metadata
+        self._classes = None
         self._sample_parser = None
         self._samples = None
         self._iter_samples = None
@@ -471,12 +499,17 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         return self.compute_metadata
 
     @property
+    def has_dataset_info(self):
+        return True
+
+    @property
     def label_cls(self):
         return fol.Classification
 
     def setup(self):
         self._sample_parser = ImageClassificationSampleParser()
 
+        classes = set()
         self._samples = []
         glob_patt = os.path.join(self.dataset_dir, "*", "*")
         for path in etau.get_glob_matches(glob_patt):
@@ -485,7 +518,13 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
                 continue
 
             label = chunks[-2]
+            classes.add(label)
             self._samples.append((path, label))
+
+        self._classes = sorted(classes)
+
+    def get_dataset_info(self):
+        return {"classes": self._classes}
 
 
 class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
@@ -505,6 +544,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
     def __init__(self, dataset_dir, compute_metadata=False):
         super().__init__(dataset_dir)
         self.compute_metadata = compute_metadata
+        self._classes = None
         self._sample_parser = None
         self._image_paths_map = None
         self._labels = None
@@ -537,6 +577,10 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         return image_path, image_metadata, label
 
     @property
+    def has_dataset_info(self):
+        return self._classes is not None
+
+    @property
     def has_image_metadata(self):
         return self.compute_metadata
 
@@ -555,10 +599,16 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
         labels = etas.load_json(labels_path)
-        self._sample_parser.classes = labels.get("classes", None)
+
+        self._classes = labels.get("classes", None)
+        self._sample_parser.classes = self._classes
+
         self._labels = labels.get("labels", {})
         self._has_labels = any(self._labels.values())
         self._num_samples = len(self._labels)
+
+    def get_dataset_info(self):
+        return {"classes": self._classes}
 
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
@@ -578,6 +628,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     def __init__(self, dataset_dir, compute_metadata=False):
         super().__init__(dataset_dir)
         self.compute_metadata = compute_metadata
+        self._description = None
         self._sample_parser = None
         self._labeled_dataset = None
         self._iter_labeled_dataset = None
@@ -607,6 +658,10 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         return image_path, image_metadata, label
 
     @property
+    def has_dataset_info(self):
+        return bool(self._description)
+
+    @property
     def has_image_metadata(self):
         return self.compute_metadata
 
@@ -617,3 +672,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     def setup(self):
         self._sample_parser = FiftyOneImageLabelsSampleParser()
         self._labeled_dataset = etads.load_dataset(self.dataset_dir)
+        self._description = self._labeled_dataset.dataset_index.description
+
+    def get_dataset_info(self):
+        return {"description": self._description}
