@@ -705,20 +705,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             def parse_sample(sample):
                 image_path, image_metadata = sample
-                filepath = os.path.abspath(os.path.expanduser(image_path))
-
                 return fos.Sample(
-                    filepath=filepath, metadata=image_metadata, tags=tags,
+                    filepath=image_path, metadata=image_metadata, tags=tags,
                 )
 
         elif isinstance(dataset_importer, foud.LabeledImageDatasetImporter):
 
             def parse_sample(sample):
                 image_path, image_metadata, label = sample
-                filepath = os.path.abspath(os.path.expanduser(image_path))
-
                 sample = fos.Sample(
-                    filepath=filepath, metadata=image_metadata, tags=tags,
+                    filepath=image_path, metadata=image_metadata, tags=tags,
                 )
 
                 if label is not None:
@@ -771,14 +767,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser.with_sample(sample)
 
             image_path = sample_parser.get_image_path()
-            filepath = os.path.abspath(os.path.expanduser(image_path))
 
             if sample_parser.has_image_metadata:
                 metadata = sample_parser.get_image_metadata()
             else:
                 metadata = None
 
-            return fos.Sample(filepath=filepath, metadata=metadata, tags=tags)
+            return fos.Sample(
+                filepath=image_path, metadata=metadata, tags=tags
+            )
 
         try:
             num_samples = len(samples)
@@ -830,7 +827,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser.with_sample(sample)
 
             image_path = sample_parser.get_image_path()
-            filepath = os.path.abspath(os.path.expanduser(image_path))
 
             if sample_parser.has_image_metadata:
                 metadata = sample_parser.get_image_metadata()
@@ -840,7 +836,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label = sample_parser.get_label()
 
             sample = fos.Sample(
-                filepath=filepath, metadata=metadata, tags=tags,
+                filepath=image_path, metadata=metadata, tags=tags,
             )
 
             if label is not None:
