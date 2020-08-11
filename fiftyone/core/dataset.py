@@ -633,6 +633,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field="ground_truth",
         tags=None,
         expand_schema=True,
+        add_info=True,
         **kwargs
     ):
         """Adds the contents of the given directory to the dataset.
@@ -651,6 +652,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            add_info (True): whether to add dataset info from the importer (if
+                any) to the dataset's ``info``
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type`` via the syntax
@@ -670,6 +673,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            add_info=add_info,
         )
 
     def add_importer(
@@ -678,6 +682,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field="ground_truth",
         tags=None,
         expand_schema=True,
+        add_info=True,
     ):
         """Adds the samples from the given
         :class:`fiftyone.utils.data.importers.DatasetImporter` to the dataset.
@@ -695,6 +700,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            add_info (True): whether to add dataset info from the importer (if
+                any) to the dataset's ``info``
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -744,9 +751,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 num_samples = None
 
             samples = map(parse_sample, iter(dataset_importer))
-            return self.add_samples(
+            sample_ids = self.add_samples(
                 samples, expand_schema=expand_schema, num_samples=num_samples
             )
+
+            if add_info and dataset_importer.has_dataset_info:
+                self.info.update(dataset_importer.get_dataset_info())
+                self.save()
+
+            return sample_ids
 
     def add_images(self, samples, sample_parser, tags=None):
         """Adds the given images to the dataset.
