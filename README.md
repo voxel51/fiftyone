@@ -12,7 +12,7 @@ learning workflows.
 
 To stay up-to-date on all things FiftyOne, collaborate with other users, and
 get support from the Voxel51 team,
-[join the FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-g9w0pu1f-ZMJjRfGDrTmCT2ZOutUApQ).
+[join the FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg).
 
 [Follow us on Medium](https://medium.com/voxel51) for regular posts on computer
 vision, machine learning, and data science topics.
