@@ -107,6 +107,10 @@ class ServerServiceTests(unittest.TestCase):
         )
         client = self.wait_for_response()
         self.assertEqual(session, client)
+        self.assertEqual(
+            sorted(client["derivables"]["tags"]),
+            sorted(self.dataset.get_tags()),
+        )
 
     def step_selection(self):
         self.client.emit("add_selection", self.sample1.id)
@@ -128,19 +132,6 @@ class ServerServiceTests(unittest.TestCase):
         # this will raise an error if special floats exist that are not JSON
         # compliant
         json.dumps(results, allow_nan=False)
-
-    def step_lengths(self):
-        self.session.dataset = self.dataset
-        self.wait_for_response()
-        tags = self.dataset.get_tags()
-
-        self.client.emit("lengths", "", callback=self.client_callback)
-        client = self.wait_for_response()
-
-        def sort(l):
-            return sorted(l, key=lambda f: f["_id"]["field"])
-
-        self.assertEqual(client["tags"], tags)
 
     def step_get_distributions(self):
         self.session.dataset = self.dataset

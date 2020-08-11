@@ -166,7 +166,10 @@ class StateDescriptionWithDerivables(StateDescription):
             {"$unwind": "$field"},
             {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
         ]
-        return [f for f in view.aggregate(pipeline)]
+        return sorted(
+            [f for f in view.aggregate(pipeline)],
+            key=lambda field: field["_id"]["field"],
+        )
 
 
 def get_dataset_stats(dataset):
