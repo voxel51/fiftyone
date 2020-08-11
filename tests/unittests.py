@@ -823,7 +823,7 @@ class SampleInDatasetTest(unittest.TestCase):
     @drop_datasets
     def test_invalid_sample(self):
         dataset = fo.Dataset()
-        sample = fo.Sample(filepath=51)
+        sample = fo.Sample(filepath="/path/to/image.jpg", tags=51)
 
         with self.assertRaises(ValidationError):
             dataset.add_sample(sample)
