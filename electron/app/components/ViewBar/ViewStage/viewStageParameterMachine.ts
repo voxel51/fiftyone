@@ -9,6 +9,12 @@ const convert = (v) => (typeof v !== "string" ? String(v) : v);
  * for details about numbers and javascript
  */
 export const PARSER = {
+  NoneType: {
+    castFrom: () => "None",
+    castTo: () => null,
+    parse: () => "None",
+    validate: (value) => [null, "None", ""].some((v) => value === v),
+  },
   bool: {
     castFrom: (value) => (value ? "True" : "False"),
     castTo: (value) => ["true", "false"].indexOf(value.toLowerCase()) === 0,

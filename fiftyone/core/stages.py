@@ -608,7 +608,7 @@ class Shuffle(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "seed", "type": "float"}]
+        return [{"name": "seed", "type": "float|NoneType"}]
 
 
 class SortBy(ViewStage):
@@ -757,7 +757,7 @@ class Take(ViewStage):
     def _params(cls):
         return [
             {"name": "size", "type": "int"},
-            {"name": "seed", "type": "float"},
+            {"name": "seed", "type": "float|NoneType"},
         ]
 
 
