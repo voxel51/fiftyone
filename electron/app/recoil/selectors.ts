@@ -86,6 +86,9 @@ export const labelNames = selector({
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
     const stats = get(datasetStats);
+    if (!stateDescription.derivables || !stateDescription.derivables.labels) {
+      return [];
+    }
     return stateDescription.derivables.labels
       .map((label) => label._id.field)
       .filter((name) => stats.custom_fields.hasOwnProperty(name));

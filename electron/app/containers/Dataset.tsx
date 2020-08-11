@@ -38,9 +38,22 @@ function Dataset(props) {
   const hasDataset = Boolean(state && state.dataset);
   const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({ visible: false, sample: null });
+  const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
+  const labelNames = useRecoilValue(selectors.labelNames);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
+
+  // select any new labels by default
+  useEffect(() => {
+    const newSelection = { ...displayProps.activeLabels };
+    for (const label of labelNames) {
+      if (newSelection[label] === undefined) {
+        newSelection[label] = true;
+      }
+    }
+    displayProps.setActiveLabels(newSelection);
+  }, [datasetName, labelNames]);
 
   const handleHideModal = () => setModal({ visible: false, sample: null });
   useEffect(() => {
