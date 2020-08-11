@@ -53,12 +53,11 @@ const ViewBarDiv = styled.div`
 );*/
 
 const viewBarKeyMap = {
-  VIEW_BAR_FOCUS: "alt+v",
+  VIEW_BAR_FOCUS: "alt+shift+v",
   VIEW_BAR_BLUR: "esc",
   VIEW_BAR_NEXT: "right",
   VIEW_BAR_PREVIOUS: "left",
-  VIEW_BAR_NEXT_STAGE: "shift+right",
-  VIEW_BAR_PREVIOUS_STAGE: "shift+left",
+  VIEW_BAR_DELETE_STAGE: ["del", "backspace"],
 };
 
 const ViewBar = () => {
@@ -85,8 +84,7 @@ const ViewBar = () => {
     VIEW_BAR_BLUR: useCallback(() => send("BLUR"), []),
     VIEW_BAR_NEXT: useCallback(() => send("NEXT"), []),
     VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
-    VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),
-    VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
+    VIEW_BAR_DELETE_STAGE: useCallback(() => send("DELETE_STAGE"), []),
   };
 
   useOutsideClick(barRef, () => send("BLUR"));

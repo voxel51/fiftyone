@@ -79,7 +79,7 @@ const SubmitButton = animated(styled.button`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   color: ${({ theme }) => theme.font};
-  background-color: ${(theme) => theme.brandTransparent};
+  background-color: hsla(27, 95%, 49%, 0.4);
   border-radius: 3px;
   position: relative;
   margin: 0.5rem;
@@ -118,7 +118,7 @@ const convert = (value) => {
 const ObjectEditor = ({ parameterRef, inputRef }) => {
   const [state, send] = useService(parameterRef);
   const theme = useContext(ThemeContext);
-  const textAreaRef = useRef(null);
+  const containerRef = useRef(null);
 
   const { value, type } = state.context;
 
@@ -127,14 +127,15 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
     width: state.matches("editing") ? 400 : 0,
   });
 
-  const isObject = PARSER.dict.validate(value);
-  const isReading = state.matches("reading");
-
-  useOutsideClick(inputRef, () => send("BLUR"));
+  useOutsideClick(containerRef, (e) => {
+    e.stopPropagation();
+    send("BLUR");
+  });
 
   return (
     <ObjectEditorContainer
       onClick={() => state.matches("reading") && send("EDIT")}
+      ref={containerRef}
     >
       {state.matches("reading") ? (
         convert(value)
@@ -150,15 +151,13 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
                 value: e.target.value.replace(/&#13/g, "\n"),
               });
             }}
-            onBlur={() => console.log("blur") && send({ type: "BLUR" })}
+            onBlur={() => send({ type: "BLUR" })}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
                 send({ type: "CANCEL" });
               }
             }}
-            value={
-              isObject ? JSON.stringify(JSON.parse(value), null, 2) : value
-            }
+            value={value}
             ref={inputRef}
           ></ObjectEditorTextArea>
           <Submit key="submit" send={send} />

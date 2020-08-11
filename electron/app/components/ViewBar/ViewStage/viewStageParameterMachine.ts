@@ -125,6 +125,10 @@ export default Machine(
           assign({
             prevValue: ({ value }) => value,
             focusOnInit: false,
+            value: ({ value }) =>
+              PARSER.dict.validate(value)
+                ? JSON.stringify(JSON.parse(value), null, 2)
+                : value,
           }),
           "focusInput",
         ],

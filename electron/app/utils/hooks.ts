@@ -22,7 +22,7 @@ export const useOutsideClick = (ref, callback) => {
   useEffect(() => {
     function handleClickOutside(event) {
       if (ref.current && !ref.current.contains(event.target)) {
-        callback();
+        callback(event);
       }
     }
 

@@ -1,4 +1,4 @@
-import { Machine, assign, spawn, send } from "xstate";
+import { Machine, actions, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine, {
   createParameter,
@@ -32,6 +32,32 @@ export const createStage = (
 });
 
 import { getSocket } from "../../utils/socket";
+
+const { choose } = actions;
+
+const compareObjects = (a, b) => {
+  if (a === b) return true;
+
+  if (typeof a != "object" || typeof b != "object" || a == null || b == null)
+    return false;
+
+  let keysA = Object.keys(a),
+    keysB = Object.keys(b);
+
+  if (keysA.length != keysB.length) return false;
+
+  for (let key of keysA) {
+    if (!keysB.includes(key)) return false;
+
+    if (typeof a[key] === "function" || typeof b[key] === "function") {
+      if (a[key].toString() != b[key].toString()) return false;
+    } else {
+      if (!compareObjects(a[key], b[key])) return false;
+    }
+  }
+
+  return true;
+};
 
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
@@ -244,12 +270,23 @@ const viewBarMachine = Machine(
                     ],
                   },
                   DELETE_STAGE: {
-                    actions: send((ctx) => ({
-                      type: "STAGE.DELETE",
-                      stage: ctx.stages.filter(
-                        (stage) => stage.index === ctx.activeStage
-                      )[0],
-                    })),
+                    actions: choose([
+                      {
+                        cond: ({ activeStage }) => activeStage % 1 === 0,
+                        actions: send((ctx) => {
+                          const result = ctx.stages.filter((stage) => {
+                            return stage.index === ctx.activeStage;
+                          })[0];
+                          return {
+                            type: "STAGE.DELETE",
+                            stage: result,
+                          };
+                        }),
+                      },
+                      {
+                        actions: send("PREVIOUS_STAGE"),
+                      },
+                    ]),
                   },
                   NEXT_RESULT: {
                     actions: send(({ stages, activeStage }) => ({
@@ -315,6 +352,7 @@ const viewBarMachine = Machine(
                 [],
                 false
               );
+              newStage.added = true;
               return [
                 ...ctx.stages.slice(0, index),
                 {
@@ -351,7 +389,7 @@ const viewBarMachine = Machine(
       "STAGE.DELETE": {
         actions: [
           assign({
-            activeStage: ({ activeStage, stages }) => activeStage,
+            activeStage: ({ activeStage }) => activeStage,
             stages: ({ stages }, e) =>
               stages
                 .filter(
@@ -359,13 +397,13 @@ const viewBarMachine = Machine(
                 )
                 .map((stage, index) => {
                   const newStage = stage.id === e.stage.id ? e.stage : stage;
-                  return {
-                    ...newStage,
-                    index,
-                    stage: e.stage.id === newStage.id ? "" : newStage.stage,
-                    length: Math.max(stages.length - 1, 1),
-                    ref: stage.ref,
-                  };
+                  newStage.index = index;
+                  newStage.length = Math.max(stages.length - 1, 1);
+                  newStage.ref = stage.ref;
+                  newStage.stage =
+                    e.stage.id === newStage.id ? "" : newStage.stage;
+                  newStage.reset = true;
+                  return newStage;
                 }),
           }),
           "sendStagesUpdate",
@@ -378,8 +416,10 @@ const viewBarMachine = Machine(
           assign({
             port: (_, { port }) => port,
             socket: (_, { port }) => getSocket(port, "state"),
-            stateDescription: (_, ctx) => ctx.stateDescription,
-            setStateDescription: (_, ctx) => ctx.setStateDescription,
+            stateDescription: (_, e) => {
+              return e.stateDescription;
+            },
+            setStateDescription: (_, e) => e.setStateDescription,
           }),
         ],
       },
@@ -395,21 +435,30 @@ const viewBarMachine = Machine(
             length: ctx.stages.length,
             active: stage.index === ctx.activeStage,
             stage: stage.stage,
+            go: stage.reset,
           })
         ),
-      submit: ({ socket, stateDescription, stages, stageInfo }) => {
+      submit: ({
+        socket,
+        setStateDescription,
+        stateDescription,
+        stages,
+        stageInfo,
+      }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );
-        const result = serializeView(stages, stageMap);
+        const result = JSON.stringify(serializeView(stages, stageMap));
         const {
           view: { dataset },
         } = stateDescription;
+        if (result === JSON.stringify(JSON.parse(stateDescription.view.view)))
+          return;
         const newState = {
           ...stateDescription,
           view: {
             dataset,
-            view: JSON.stringify(result),
+            view: result,
           },
         };
         socket.emit("update", { data: newState, include_self: true });

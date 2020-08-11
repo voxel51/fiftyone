@@ -50,19 +50,33 @@ const viewStageMachine = Machine(
             always: [
               {
                 target: "initializing",
-                cond: (ctx) => ctx.parameters.length && !ctx.parameters[0].ref,
+                cond: (ctx) => {
+                  return ctx.parameters.length && !ctx.parameters[0].ref;
+                },
               },
               {
                 target: "editing",
-                cond: (ctx) => ctx.focusOnInit && ctx.inputRef.current,
+                cond: (ctx) => {
+                  return ctx.focusOnInit && ctx.inputRef.current;
+                },
               },
               {
                 target: "waiting",
-                cond: (ctx) => ctx.focusOnInit && !ctx.inputRef.current,
+                cond: (ctx) => {
+                  return ctx.focusOnInit && !ctx.inputRef.current;
+                },
+              },
+              {
+                target: "reading.pending",
+                cond: (ctx) => {
+                  return ctx.go;
+                },
               },
               {
                 target: "reading.submitted",
-                cond: (ctx) => ctx.submitted && !ctx.loaded,
+                cond: (ctx) => {
+                  return ctx.submitted && !ctx.loaded;
+                },
                 actions: [
                   sendParent((ctx) => ({
                     type: "STAGE.COMMIT",
@@ -72,14 +86,18 @@ const viewStageMachine = Machine(
               },
               {
                 target: "reading.submitted",
-                cond: (ctx) => ctx.submitted && ctx.loaded,
+                cond: (ctx) => {
+                  return ctx.submitted && ctx.loaded;
+                },
                 actions: assign({
                   loaded: false,
                 }),
               },
               {
                 target: "reading.selected",
-                cond: (ctx) => ctx.stage !== "",
+                cond: (ctx) => {
+                  return ctx.stage !== "";
+                },
               },
               {
                 target: "reading.pending",
@@ -108,6 +126,9 @@ const viewStageMachine = Machine(
             },
           },
           reading: {
+            entry: assign({
+              go: false,
+            }),
             states: {
               pending: {},
               selected: {},
@@ -116,6 +137,7 @@ const viewStageMachine = Machine(
             on: {
               EDIT: {
                 target: "editing",
+                actions: () => alert("e"),
               },
               DELETE: {
                 target: "deleted",
@@ -370,6 +392,12 @@ const viewStageMachine = Machine(
             index: (_, { index }) => index,
             length: (_, { length }) => length,
             active: (_, { active }) => active,
+            stage: (_, { stage }) => stage,
+            parameters: ({ parameters }, { stage }) =>
+              stage === "" ? [] : parameters,
+            submitted: ({ submitted }, { stage }) =>
+              stage === "" ? false : submitted,
+            go: (_, { go }) => go,
           }),
         ],
       },

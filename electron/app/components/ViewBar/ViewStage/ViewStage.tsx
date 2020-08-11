@@ -55,7 +55,7 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 `;
 
-export const ViewStageButton = animated(styled.button`
+const ViewStageButton = animated(styled.button`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   color: ${({ theme }) => theme.font};
@@ -71,10 +71,6 @@ export const ViewStageButton = animated(styled.button`
   }
 `);
 
-const addViewStageKeyMap = {
-  ADD_VIEW_STAGE: ["enter"],
-};
-
 export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
   const [props, set] = useSpring(() => ({
@@ -87,19 +83,12 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     config: config.stiff,
   }));
 
-  const handlers = active
-    ? {
-        ADD_VIEW_STAGE: () => alert("e") && send({ type: "STAGE.ADD", index }),
-      }
-    : {};
-
   useEffect(() => {
     set({ top: active ? -3 : 0 });
   }, [active]);
 
   return (
     <>
-      <GlobalHotKeys handlers={handlers} keyMap={addViewStageKeyMap} />
       <ViewStageButton
         style={props}
         onMouseEnter={() => set({ background: theme.brandTransparent })}
@@ -146,36 +135,12 @@ const ViewStageDelete = React.memo(({ send, spring }) => {
   );
 });
 
-const viewStageKeyMap = {
-  VIEW_STAGE_DELETE: ["del", "shift+backspace"],
-  VIEW_STAGE_NEXT_RESULT: "down",
-  VIEW_STAGE_PREVIOUS_RESULT: "up",
-};
-
 const ViewStage = React.memo(({ stageRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
   const { stage, parameters, active, results, currentResult } = state.context;
-
-  const handlers = {
-    VIEW_STAGE_DELETE: useCallback(
-      () =>
-        state.matches("focusedViewBar.yes") && active && send("STAGE.DELETE"),
-      [active]
-    ),
-    VIEW_STAGE_NEXT_RESULT: useCallback(
-      () =>
-        state.matches("focusedViewBar.yes") && active && send("NEXT_RESULT"),
-      [active, state.matches("focusedViewBar.yes")]
-    ),
-    VIEW_STAGE_PREVIOUS_RESULT: useCallback(
-      () =>
-        state.matches("focusedViewBar.yes") && active && send("NEXT_RESULT"),
-      [active, state.matches("focusedViewBar.yes")]
-    ),
-  };
 
   const isCompleted = [
     "input.reading.selected",
@@ -236,7 +201,6 @@ const ViewStage = React.memo(({ stageRef }) => {
 
   return (
     <>
-      <GlobalHotKeys handlers={handlers} keyMap={viewStageKeyMap} />
       <ViewStageContainer style={containerProps}>
         <ViewStageDiv style={props}>
           <ViewStageInput
