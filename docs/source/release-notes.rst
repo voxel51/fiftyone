@@ -11,7 +11,7 @@ FiftyOne 0.5.0
 Announcements
 ^^^^^^^^^^^^^
 - FiftyOne is now open source! Read more about this exciting development
-  `in our press release <https://voxel51.com/press/fiftyone-is-open-source>`_
+  `in our press release <https://voxel51.com/press/fiftyone-open-source-launch>`_
 
 App
 ^^^
@@ -30,17 +30,11 @@ Core
   :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>` type
 - Added a :meth:`Dataset.info <fiftyone.core.dataset.Dataset.info>` field that
   can be used to store dataset-level info in FiftyOne datasets
+- Added a :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
+  view stage for randomly shuffling the samples in a dataset
 - Upgraded the :meth:`take() <fiftyone.core.collections.SampleCollection.take>`
   view stage so that each instance of a view maintains a deterministic set of
   samples
-- Added a :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
-  view stage for randomly shuffling the samples in a dataset
-
-Documentation
-^^^^^^^^^^^^^
-- Added :doc:`a tutorial </tutorials/open_images_error_analysis>` demonstrating
-  using FiftyOne to analyze the accuracy of the ground truth annotations in the
-  Open Images Dataset
 
 FiftyOne 0.4.1
 --------------
