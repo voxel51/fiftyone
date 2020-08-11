@@ -574,9 +574,14 @@ class NoDatasetSampleDocument(SampleDocument):
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()
+        filepath = kwargs.get("filepath", None)
 
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
+
+            if field_name == "_rand" and filepath is not None:
+                random.seed(filepath)
+                value = _generate_rand()
 
             if value is None:
                 value = self._get_default(self.default_fields[field_name])
