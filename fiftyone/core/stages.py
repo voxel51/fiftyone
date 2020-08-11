@@ -662,7 +662,7 @@ class Take(ViewStage):
     def __init__(self, size, seed=None):
         self._seed = seed
         self._size = size
-        self._randint = _get_rng(seed).randint(1e8, 1e11)
+        self._randint = _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def size(self):
