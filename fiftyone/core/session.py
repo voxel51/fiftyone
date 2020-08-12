@@ -116,9 +116,6 @@ class Session(foc.HasClient):
     _HC_ATTR_TYPE = StateDescription
 
     def __init__(self, dataset=None, view=None, port=5151, remote=False):
-        if session is not None:
-            raise ValueError("Only one session is permitted")
-
         self._port = port
         self._remote = remote
 
