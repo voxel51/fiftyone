@@ -82,7 +82,12 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
           <span className="label">{label}</span>
           <span className="push" />
           {numSelected ? (
-            <SelectionTag count={numSelected} onClear={handleClear} />
+            <SelectionTag
+              count={numSelected}
+              title="Clear selection"
+              onClear={handleClear}
+              onClick={handleClear}
+            />
           ) : null}
         </>
       }
