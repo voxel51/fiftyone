@@ -47,7 +47,7 @@ much more!
 .. note::
 
   FiftyOne is rapidly growing.
-  `Sign up for the mailing list <https://app.hubspot.com/contacts/4972700/lists/55>`_
+  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
   so we can keep you posted on new features as they come out!
 
 Core Capabilities

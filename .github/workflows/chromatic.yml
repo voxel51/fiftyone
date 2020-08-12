@@ -14,7 +14,6 @@ on:
       - develop
       - rel-*
       - release-*
-      - team-setup
     paths:
       - electron/
       - .github/workflows/chromatic.yml
