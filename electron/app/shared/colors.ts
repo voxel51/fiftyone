@@ -38,6 +38,9 @@ const orange49a40 = "hsla(27, 95%, 49%, 0.4)";
 
 const blue53 = "hsl(213, 100%, 53%)";
 
+const red = "hsl(348, 100%, 50%)";
+const red40 = "hsl(348, 100%, 50%, 0.4)";
+
 export const darkTheme = {
   background: grey19,
   backgroundDark: grey15,
@@ -60,6 +63,9 @@ export const darkTheme = {
   fontDarkest: grey60,
 
   secondary: blue53,
+
+  error: red,
+  errorTransparent: red40,
 };
 
 // for storybook

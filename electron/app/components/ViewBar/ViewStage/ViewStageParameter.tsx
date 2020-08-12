@@ -7,6 +7,8 @@ import AutosizeInput from "react-input-autosize";
 import { PARSER } from "./viewStageParameterMachine";
 import { useOutsideClick } from "../../../utils/hooks";
 
+const ViewStageParameterContainer = styled.div``;
+
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
@@ -14,6 +16,31 @@ const ViewStageParameterDiv = animated(styled.div`
   z-index: 801;
   overflow: hidden;
 `);
+
+const ErrorMessageDiv = animated(styled.div`
+  box-sizing: border-box;
+  border: 2px solid ${({ theme }) => theme.error};
+  position: fixed;
+  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+`);
+
+interface ErrorMessageProps {
+  error: string;
+}
+
+const ErrorMessage = React.memo(({ error }: ErrorMessageProps) => {
+  const props = useSpring({
+    opacity: error ? 1 : 0,
+    display: error ? "block" : "none",
+    marginTop: error ? "2.5rem" : 0,
+    from: {
+      opacity: 0,
+      display: "none",
+    },
+  });
+
+  return <ErrorMessageDiv style={props}>{error}</ErrorMessageDiv>;
+});
 
 const ViewStageParameterInput = animated(styled(AutosizeInput)`
   & > input {
@@ -94,7 +121,7 @@ const SubmitButton = animated(styled.button`
   }
 `);
 
-const Submit = ({ send }) => {
+const Submit = React.memo(({ send }) => {
   const props = useSpring({
     opacity: 1,
     from: {
@@ -106,7 +133,7 @@ const Submit = ({ send }) => {
       Submit
     </SubmitButton>
   );
-};
+});
 
 const toTypeAnnotation = (type) => {
   if (Array.isArray(type)) {
@@ -224,32 +251,35 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
   const isEditing = state.matches("editing");
 
   return (
-    <ViewStageParameterDiv style={props}>
-      {hasObjectType ? (
-        <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
-      ) : (
-        <ViewStageParameterInput
-          placeholder={[parameter, toTypeAnnotation(type)].join(": ")}
-          value={value}
-          onFocus={() => !isEditing && send({ type: "EDIT" })}
-          onBlur={() => isEditing && send({ type: "BLUR" })}
-          onChange={(e) => {
-            send({ type: "CHANGE", value: e.target.value });
-          }}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              isEditing && send({ type: "COMMIT" });
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              send({ type: "CANCEL" });
-            }
-          }}
-          ref={inputRef}
-        />
-      )}
-    </ViewStageParameterDiv>
+    <ViewStageParameterContainer>
+      <ViewStageParameterDiv style={props}>
+        {hasObjectType ? (
+          <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
+        ) : (
+          <ViewStageParameterInput
+            placeholder={[parameter, toTypeAnnotation(type)].join(": ")}
+            value={value}
+            onFocus={() => !isEditing && send({ type: "EDIT" })}
+            onBlur={() => isEditing && send({ type: "BLUR" })}
+            onChange={(e) => {
+              send({ type: "CHANGE", value: e.target.value });
+            }}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                isEditing && send({ type: "COMMIT" });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                send({ type: "CANCEL" });
+              }
+            }}
+            ref={inputRef}
+          />
+        )}
+      </ViewStageParameterDiv>
+      <ErrorMessage key="error" error={error} />
+    </ViewStageParameterContainer>
   );
 });
 
