@@ -266,24 +266,19 @@ const SampleModal = ({
             &gt;
           </div>
         ) : null}
-        {fullscreen ? (
-          <div
-            className="nav-button fullscreen"
-            title="Exit full screen (Esc)"
-            onClick={() => setFullscreen(false)}
-          >
-            <FullscreenExit />
-          </div>
-        ) : null}
+        <div
+          className="nav-button fullscreen"
+          title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+          onClick={() => setFullscreen(!fullscreen)}
+        >
+          {fullscreen ? <FullscreenExit /> : <Fullscreen />}
+        </div>
       </div>
       <div className="sidebar">
         <div className="sidebar-content">
           <h2>
             Metadata
             <span className="push-right" />
-            <span title="Full screen">
-              <Fullscreen onClick={() => setFullscreen(true)} />
-            </span>
             <span title="Close">
               <Close onClick={onClose} />
             </span>
