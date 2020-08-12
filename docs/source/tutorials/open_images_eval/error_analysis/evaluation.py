@@ -1,5 +1,13 @@
 """
-@todo(Tyler)
+Utilities for computing per-image evaluations on a FiftyOne dataset using the
+Tensorflow Object Detection API.
+
+**Note** importing this module requires an environment variable
+`TF_MODELS_RESEARCH` that specifies the path to the
+tensorflow [models/research directory](https://github.com/tensorflow/models/tree/master/research).
+
+Copyright 2017-2020, Voxel51, Inc.
+voxel51.com
 """
 import os
 import sys
@@ -26,6 +34,11 @@ from object_detection.utils import object_detection_evaluation
 
 
 class TensorflowObjectDetectionAPIEvaluator:
+    """Yet another nesting! Wrapper class around
+    object_detection.utils.object_detection_evaluation.OpenImagesChallengeEvaluator
+    that supports per-image evaluation and finds the true/false positive boxes.
+    """
+
     def __init__(self, class_label_map_path, iou_threshold=0.5):
         """
         Args:
@@ -47,7 +60,7 @@ class TensorflowObjectDetectionAPIEvaluator:
         )
 
     def evaluate_image(self, image_id, groundtruth, predictions):
-        """
+        """Evaluates a single image.
 
         Args:
             image_id (str): the Open Images ID
@@ -202,6 +215,21 @@ def evaluate_dataset(
     prediction_field_name="predicted_detections",
     iou_threshold=0.5,
 ):
+    """Evaluates a FiftyOne dataset that contains all necessary fields for
+    evaluation via Tensorflow Object Detection API on a per-image granularity.
+
+    Args:
+        dataset: the :class:`fiftyone.core.dataset.Dataset` to evaluate
+        label_map_path: path to the label map .pbtxt file
+        groundtruth_loc_field_name: the name of the groundtruth
+            :class:`fiftyone.core.labels.Detections` field
+        groundtruth_img_labels_field_name: the name of the groundtruth
+            :class:`fiftyone.core.labels.Classifications` field
+        prediction_field_name: the name of the predicted
+            :class:`fiftyone.core.labels.Detections` field
+        iou_threshold: the intersection-over-union bounding box matching
+            threshold
+    """
     _, categories = TensorflowObjectDetectionAPIEvaluator.load_labelmap(
         label_map_path
     )

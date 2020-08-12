@@ -1,6 +1,8 @@
 """
-Object Detection wrapper for Tensorflow Hub detectors
+Tensorflow Hub Object Detection
 
+Copyright 2017-2020, Voxel51, Inc.
+voxel51.com
 """
 import csv
 from pathlib import Path
@@ -11,6 +13,8 @@ import tensorflow_hub as hub
 
 
 class TensorFlowHubDetector:
+    """Object Detector wrapper class that simplifies use of TF Hub models."""
+
     def __init__(self, model_handle):
         """Initializes the detector.
 

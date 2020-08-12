@@ -1,13 +1,9 @@
 """
+Utilities for converting Open Images format CSV datasets to/from FiftyOne
+Dataset representation.
 
-<dataset_dir>/
-    data/
-        <id1>.<ext>
-        <id2>.<ext>
-    annotations-bbox.csv
-    annotations-human-imagelabels-boxable.csv
-    class-descriptions-boxable.csv
-
+Copyright 2017-2020, Voxel51, Inc.
+voxel51.com
 """
 import glob
 import os
@@ -49,15 +45,26 @@ def load_open_images_dataset(
     load_images_with_preds=False,
     max_num_images=-1,
 ):
-    """
+    """Loads an Open Images format dataset into FiftyOne.
+
+    **Note** If this takes a long time it is highly recommended to save the
+    dataset via:
+
+        dataset.persistent = True
+
+    such that this function only needs to be called once!
 
     Args:
-        dataset_name:
-        images_dir:
-        bounding_boxes_path:
-        image_labels_path:
-        predictions_path:
-        prediction_field_name:
+        dataset_name: the name of the dataset to create in FiftyOne.
+        images_dir: directory where images are stored. Images should be in
+            <open-images-id>.jpg format
+        bounding_boxes_path: path to the expanded-hierarchy annotation bounding
+            boxes CSV
+        image_labels_path: path to the expanded-hierarchy annotation image
+            labels CSV
+        predictions_path: path to the predicted bounding boxes CSV
+        prediction_field_name: the name of the field to save the predictions
+            under. Useful if other predictions may be added later
         class_descriptions_path: optional metadata file. if provided, the
             MID labels are mapped to descriptive labels
         load_images_with_preds: if True, skip any images that do not have
@@ -155,13 +162,18 @@ def add_open_images_predictions(
     class_descriptions_path=None,
     prediction_field_name="predicted_detections",
 ):
-    """
+    """Adds TF Object Detection API format predictions to a
+    :class:`fiftyone.core.dataset.Dataset`.
 
-    :param dataset:
-    :param predictions_path:
-    :param class_descriptions_path:
-    :param prediction_field_name:
-    :return:
+    Args:
+        dataset: the :class:`fiftyone.core.dataset.Dataset` instance to add
+            the predictions to
+        predictions_path: path to a TF Object Detection API format
+            predictions CSV
+        class_descriptions_path: optional metadata file. if provided, the
+            MID labels are mapped to descriptive labels
+        prediction_field_name: the name of the field to save the predictions
+            under
     """
     all_predictions = pd.read_csv(predictions_path)
     all_predictions.rename(columns={"Score": "Confidence"}, inplace=True)
@@ -188,7 +200,8 @@ def add_open_images_predictions(
 
 
 def df2classifications(df):
-    """
+    """Converts a pandas DataFrame to a
+    :class:`fiftyone.core.labels.Classifications` instance.
 
     Args:
         df: a pandas.DataFrame
@@ -217,7 +230,8 @@ def df2classifications(df):
 
 
 def df2detections(df):
-    """
+    """Converts a pandas DataFrame to a
+    :class:`fiftyone.core.labels.Detections` instance.
 
     Args:
         df: a pandas.DataFrame
@@ -261,15 +275,52 @@ def df2detections(df):
     )
 
 
+def classifications2df(image_id, classifications, display2name_map=None):
+    """Converts a :class:`fiftyone.core.labels.Detections` instance to a
+    pandas DataFrame.
+
+    Args:
+        image_id: the Open Images image ID
+        classifications: a :class:`fiftyone.core.labels.Classifications`
+            instance
+        display2name_map: a dictionary mapping display names to MID format
+
+    Returns:
+        a pandas.DataFrame
+    """
+    if classifications is None:
+        columns = ["ImageID", "LabelName", "ConfidenceImageLabel", "Source"]
+        return pd.DataFrame(columns=columns)
+
+    labs = classifications.classifications
+
+    d = {
+        "ImageID": image_id,
+        "LabelName": [lab.label for lab in labs],
+        "ConfidenceImageLabel": [int(lab.confidence) for lab in labs],
+    }
+
+    if display2name_map:
+        d["LabelName"] = [display2name_map[label] for label in d["LabelName"]]
+
+    for col in CLASSIFICATION_COLUMNS:
+        d[col] = [lab[col] for lab in labs]
+
+    return pd.DataFrame(d)
+
+
 def detections2df(
     image_id, detections, display2name_map=None, is_groundtruth=False
 ):
-    """
+    """Converts a :class:`fiftyone.core.labels.Detections` instance to a
+    pandas DataFrame.
 
     Args:
-        detections:
-        display2name_map:
-        is_groundtruth:
+        image_id: the Open Images image ID
+        detections: a :class:`fiftyone.core.labels.Detections` instance
+        display2name_map: a dictionary mapping display names to MID format
+        is_groundtruth: whether the detections are groundtruth. Some column
+            names are different and extra columns are added if True.
 
     Returns:
         a pandas.DataFrame
@@ -328,36 +379,5 @@ def detections2df(
             "IsInside",
         ]:
             d[col_name] = [int(det[col_name]) for det in dets]
-
-    return pd.DataFrame(d)
-
-
-def classifications2df(image_id, classifications, display2name_map=None):
-    """
-
-    Args:
-        classifications:
-        display2name_map:
-
-    Returns:
-         a pandas.DataFrame
-    """
-    if classifications is None:
-        columns = ["ImageID", "LabelName", "ConfidenceImageLabel", "Source"]
-        return pd.DataFrame(columns=columns)
-
-    labs = classifications.classifications
-
-    d = {
-        "ImageID": image_id,
-        "LabelName": [lab.label for lab in labs],
-        "ConfidenceImageLabel": [int(lab.confidence) for lab in labs],
-    }
-
-    if display2name_map:
-        d["LabelName"] = [display2name_map[label] for label in d["LabelName"]]
-
-    for col in CLASSIFICATION_COLUMNS:
-        d[col] = [lab[col] for lab in labs]
 
     return pd.DataFrame(d)
