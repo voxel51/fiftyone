@@ -1,4 +1,6 @@
-export default function tile(data, newHasMore, state, host) {
+const THRESHOLD = 5;
+
+export default function tile(data, newHasMore, state) {
   const samplesToFit = [...state.remainder, ...data];
   const rows = [...state.rows];
   const newRows = [];
@@ -14,7 +16,7 @@ export default function tile(data, newHasMore, state, host) {
       continue;
     }
 
-    if (currentWidth / currentHeight >= 5) {
+    if (currentWidth / currentHeight >= THRESHOLD) {
       newRows.push(currentRow);
       currentRow = [s];
       currentWidth = s.width;
@@ -26,7 +28,6 @@ export default function tile(data, newHasMore, state, host) {
   }
 
   let remainder = [];
-  const newRemainder = Boolean(newHasMore) ? currentRow : [];
   if (!Boolean(newHasMore) && currentRow.length) newRows.push(currentRow);
   else remainder = currentRow;
 
@@ -34,10 +35,14 @@ export default function tile(data, newHasMore, state, host) {
     const row = newRows[i];
     const columns = [];
     const baseHeight = row[0].height;
-    const refWidth = row.reduce(
-      (acc, val) => acc + (baseHeight / val.height) * val.width,
-      0
-    );
+    const refWidth =
+      !Boolean(newHasMore) && i === String(newRows.length - 1)
+        ? baseHeight * THRESHOLD
+        : row.reduce(
+            (acc, val) => acc + (baseHeight / val.height) * val.width,
+            0
+          );
+
     for (const j in row) {
       const sample = row[j];
       const sampleWidth = (baseHeight * sample.width) / sample.height;
