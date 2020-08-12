@@ -119,9 +119,6 @@ class Session(foc.HasClient):
         if session is not None:
             raise ValueError("Only one session is permitted")
 
-        self._close = False
-        self._dataset = None
-        self._view = None
         self._port = port
         self._remote = remote
 
@@ -145,16 +142,16 @@ class Session(foc.HasClient):
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
         """
-        if self.view is not None:
-            return self.view._dataset
+        if self.state.view is not None:
+            return self.state.view._dataset
 
-        return self._dataset
+        return self.state.dataset
 
     @dataset.setter
     @_update_state
     def dataset(self, dataset):
-        self._dataset = dataset
-        self._view = None
+        self.state.dataset = dataset
+        self.state.view = None
         self.state.selected = []
 
     @_update_state
@@ -162,21 +159,21 @@ class Session(foc.HasClient):
         """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
         session, if any.
         """
-        self.dataset = None
+        self.state.dataset = None
 
     @property
     def view(self):
         """The :class:`fiftyone.core.view.DatasetView` connected to the
         session, or ``None`` if no view is connected.
         """
-        return self._view
+        return self.state.view
 
     @view.setter
     @_update_state
     def view(self, view):
-        self._view = view
+        self.state.view = view
         if view is not None:
-            self._dataset = self._view._dataset
+            self.state.dataset = self.state.view._dataset
 
         self.state.selected = []
 
@@ -185,7 +182,7 @@ class Session(foc.HasClient):
         """Clears the current :class:`fiftyone.core.view.DatasetView` from the
         session, if any.
         """
-        self.view = None
+        self.state.view = None
 
     @property
     def selected(self):
@@ -212,7 +209,7 @@ class Session(foc.HasClient):
         if self._remote:
             return
 
-        self._close = True
+        self.state.view.close = True
         self._update_state()
 
     def wait(self):
@@ -228,13 +225,7 @@ class Session(foc.HasClient):
     # PRIVATE #################################################################
 
     def _update_state(self):
-        # pylint: disable=attribute-defined-outside-init
-        self.state = StateDescription(
-            close=self._close,
-            dataset=self._dataset,
-            view=self._view,
-            selected=self.state.selected,
-        )
+        self.state = self.state
 
 
 _REMOTE_INSTRUCTIONS = """
