@@ -114,54 +114,60 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
   );
 };
 
-const DisplayOptionsSidebar = ({
-  colorMapping = {},
-  tags = [],
-  labels = [],
-  scalars = [],
-  unsupported = [],
-  onSelectTag,
-  onSelectLabel,
-  onSelectScalar,
-}: Props) => {
-  return (
-    <Container>
-      <Cell
-        colorMapping={colorMapping}
-        label="Tags"
-        icon={<PhotoLibrary />}
-        entries={tags}
-        onSelect={onSelectTag}
-      />
-      <Cell
-        colorMapping={colorMapping}
-        label="Labels"
-        icon={<Label style={{ transform: "rotate(180deg)" }} />}
-        entries={labels}
-        onSelect={onSelectLabel}
-      />
-      <Cell
-        colorMapping={colorMapping}
-        label="Scalars"
-        icon={<BarChart />}
-        entries={scalars}
-        onSelect={onSelectScalar}
-      />
-      {unsupported.length ? (
+const DisplayOptionsSidebar = React.forwardRef(
+  (
+    {
+      colorMapping = {},
+      tags = [],
+      labels = [],
+      scalars = [],
+      unsupported = [],
+      onSelectTag,
+      onSelectLabel,
+      onSelectScalar,
+      ...rest
+    }: Props,
+    ref
+  ) => {
+    return (
+      <Container ref={ref} {...rest}>
         <Cell
-          label="Unsupported"
-          title="These fields cannot currently be displayed in the app"
-          icon={<Help />}
-          colorMapping={{}}
-          entries={unsupported.map((entry) => ({
-            ...entry,
-            selected: false,
-            disabled: true,
-          }))}
+          colorMapping={colorMapping}
+          label="Tags"
+          icon={<PhotoLibrary />}
+          entries={tags}
+          onSelect={onSelectTag}
         />
-      ) : null}
-    </Container>
-  );
-};
+        <Cell
+          colorMapping={colorMapping}
+          label="Labels"
+          icon={<Label style={{ transform: "rotate(180deg)" }} />}
+          entries={labels}
+          onSelect={onSelectLabel}
+        />
+        <Cell
+          colorMapping={colorMapping}
+          label="Scalars"
+          icon={<BarChart />}
+          entries={scalars}
+          onSelect={onSelectScalar}
+        />
+        {unsupported.length ? (
+          <Cell
+            label="Unsupported"
+            title="These fields cannot currently be displayed in the app"
+            icon={<Help />}
+            colorMapping={{}}
+            entries={unsupported.map((entry) => ({
+              ...entry,
+              selected: false,
+              disabled: true,
+            }))}
+          />
+        ) : null}
+      </Container>
+    );
+  }
+);
 
 export default DisplayOptionsSidebar;
