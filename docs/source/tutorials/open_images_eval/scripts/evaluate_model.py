@@ -1,8 +1,16 @@
 """
-Analyze Open Images V6
+Script for evaluating an object detection model using Tensorflow Object
+Detection API.
 
-dataset = fo.load_dataset("open-images-V6-validation")
+This script expects a persistent dataset can be loaded with FiftyOne and that
+said dataset has all necessary fields populated:
 
+    - groundtruth_loc_field_name
+    - groundtruth_img_labels_field_name
+    - prediction_field_name
+
+Copyright 2017-2020, Voxel51, Inc.
+voxel51.com
 """
 import argparse
 from pathlib import Path
@@ -65,15 +73,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "--groundtruth_loc_field_name",
         default="groundtruth_detections",
-        help="TODO",
+        help="The name of the groundtruth detections field on the dataset.",
     )
     parser.add_argument(
         "--groundtruth_img_labels_field_name",
         default="groundtruth_image_labels",
-        help="TODO",
+        help="The name of the groundtruth image labels (classifications) field"
+        " on the dataset.",
     )
     parser.add_argument(
-        "--prediction_field_name", default="predicted_detections", help="TODO",
+        "--prediction_field_name",
+        default="predicted_detections",
+        help="The name of the predicted detections field on the dataset.",
     )
     parser.add_argument(
         "--iou_threshold", type=float, default=0.5, help="IOU threhold",
