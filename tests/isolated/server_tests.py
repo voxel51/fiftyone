@@ -172,6 +172,15 @@ class ServerServiceTests(unittest.TestCase):
         self.assertIs(len(client), 1)
         self.assertEqual(client[0]["data"], [{"key": "null", "count": 2}])
 
+    def step_sessions(self):
+        other_session = Session(remote=True)
+        other_session.dataset = self.dataset
+        self.wait_for_response(session=True)
+        self.assertEqual(str(self.session.dataset), str(other_session.dataset))
+        other_session.view = self.dataset.limit(1)
+        self.wait_for_response(session=True)
+        self.assertEqual(str(self.session.view), str(other_session.view))
+
     def test_steps(self):
         for name, step in self.steps():
             try:
