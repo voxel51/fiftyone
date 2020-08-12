@@ -1,8 +1,17 @@
 import { Machine, actions, sendParent, send } from "xstate";
-import viewStageMachine from "./viewStageMachine";
-const { assign, choose } = actions;
+const { assign } = actions;
 
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
+
+export const toTypeAnnotation = (type) => {
+  if (Array.isArray(type)) {
+    return ["List[", toTypeAnnotation(type[1]), "]"].join("");
+  }
+  if (type.includes("|")) {
+    return ["Union[", type.split("|").join(", "), "]"].join("");
+  }
+  return type;
+};
 
 /**
  * See https://stackoverflow.com/questions/175739/built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
@@ -101,6 +110,8 @@ export default Machine(
       submitted: undefined,
       tail: undefined,
       focusOnInit: undefined,
+      errorTimeout: undefined,
+      error: undefined,
     },
     states: {
       decide: {
@@ -185,9 +196,14 @@ export default Machine(
               },
             },
             {
-              target: "decide",
+              target: "editing",
               actions: assign({
-                value: ({ prevValue }) => prevValue,
+                error: ({ type }) =>
+                  `Invalid value. Expected type ${toTypeAnnotation(type)}`,
+                errorTimeout: ({ errorTimeout }) => {
+                  errorTimeout && clearTimeout(errorTimeout);
+                  return setTimeout(() => send({ type: "CLEAR_ERROR" }), 2000);
+                },
               }),
             },
           ],
@@ -222,6 +238,14 @@ export default Machine(
           target: "reading.submitted",
           cond: ({ submitted }) => submitted,
         },
+      ],
+    },
+    CLEAR_ERROR: {
+      actions: [
+        assign({
+          error: undefined,
+          errorTimeout: undefined,
+        }),
       ],
     },
   },

@@ -1,10 +1,10 @@
 import React, { useContext, useMemo, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
-import { useService, asEffect } from "@xstate/react";
+import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
-import { PARSER } from "./viewStageParameterMachine";
+import { PARSER, toTypeAnnotation } from "./viewStageParameterMachine";
 import { useOutsideClick } from "../../../utils/hooks";
 
 const ViewStageParameterContainer = styled.div``;
@@ -135,16 +135,6 @@ const Submit = React.memo(({ send }) => {
   );
 });
 
-const toTypeAnnotation = (type) => {
-  if (Array.isArray(type)) {
-    return ["List[", toTypeAnnotation(type[1]), "]"].join("");
-  }
-  if (type.includes("|")) {
-    return ["Union[", type.split("|").join(", "), "]"].join("");
-  }
-  return type;
-};
-
 const convert = (value, type) => {
   const isObject = PARSER.dict.validate(value);
   if (isObject) return "{ ... }";
@@ -229,7 +219,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { parameter, value, type, tail } = state.context;
+  const { error, parameter, tail, type, value } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
