@@ -65,7 +65,6 @@ export const darkTheme = {
   secondary: blue53,
 
   error: red,
-  errorTransparent: red80,
 };
 
 // for storybook

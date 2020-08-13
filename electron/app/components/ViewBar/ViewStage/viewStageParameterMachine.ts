@@ -151,7 +151,7 @@ export default Machine(
             focusOnInit: false,
             value: ({ value }) =>
               PARSER.dict.validate(value)
-                ? JSON.stringify(JSON.parse(value), null, 2)
+                ? JSON.stringiparameterfy(JSON.parse(value), null, 2)
                 : value,
           }),
           "focusInput",
@@ -189,8 +189,8 @@ export default Machine(
               actions: [
                 assign({
                   error: ({ type }) =>
-                    `Invalid value. Expected type ${toTypeAnnotation(type)}`,
-                  clearErrorId: uuid(),
+                    `Invalid value. Expected type "${toTypeAnnotation(type)}"`,
+                  errorId: uuid(),
                 }),
               ],
             },
@@ -206,8 +206,7 @@ export default Machine(
           CLEAR_ERROR: {
             actions: [
               assign({
-                error: undefined,
-                clearErrorId: undefined,
+                errorId: undefined,
               }),
             ],
           },

@@ -215,7 +215,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
   });
 
   const isEditing = state.matches("editing");
-  console.log(defaultValue);
+
   return (
     <ViewStageParameterContainer>
       <ViewStageParameterDiv style={props}>
@@ -247,7 +247,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
           />
         )}
       </ViewStageParameterDiv>
-      <ErrorMessage key="error" parameterRef={parameterRef} />
+      <ErrorMessage key="error" serviceRef={parameterRef} />
     </ViewStageParameterContainer>
   );
 });

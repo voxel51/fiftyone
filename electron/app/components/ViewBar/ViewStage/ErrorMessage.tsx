@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useChain, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 import { useService } from "@xstate/react";
@@ -6,43 +6,53 @@ import { useService } from "@xstate/react";
 const ErrorMessageDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px solid ${({ theme }) => theme.error};
-  background-color: ${({ theme }) => theme.errorTransparent};
+  background-color: ${({ theme }) => theme.backgroundDark};
+  color: ${({ theme }) => theme.fontDark};
   border-radius: 2px;
   padding: 0.5rem;
+  line-height: 1rem;
+  margin-top: -2.5rem;
   font-weight: bold;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
-  margin-top: 2.5rem;
   position: fixed;
   width: auto;
   z-index: 800;
-  margin-left: -0.25rem;
 `);
 
-const ErrorMessage = React.memo(({ parameterRef }) => {
-  const [state, send] = useService(parameterRef);
+const ErrorMessage = React.memo(({ serviceRef }) => {
+  const [state, send] = useService(serviceRef);
+  const animationRef = useRef();
+  const displayRef = useRef();
   const [errorTimeout, setErrorTimeout] = useState(null);
-  const { error, clearErrorId } = state.context;
-  const props = useSpring({
-    opacity: error ? 1 : 0,
-    display: error ? "block" : "none",
+  const { error, errorId } = state.context;
+  const animations = useSpring({
+    opacity: errorId ? 1 : 0,
+    ref: animationRef,
     from: {
-      opacity: error ? 0 : 1,
-      display: error ? "none" : "block",
+      opacity: 0,
     },
+  });
+  const display = useSpring({
+    display: errorId ? "block" : "none",
+    ref: displayRef,
+    from: { opacity: 0 },
   });
 
   useEffect(() => {
-    if (errorTimeout) {
-      clearTimeout(errorTimeout);
-    }
-    if (clearErrorId) {
+    errorTimeout && clearTimeout(errorTimeout);
+    errorId &&
       setErrorTimeout(
-        clearErrorId ? setTimeout(() => send("CLEAR_ERROR"), 2000) : null
+        setTimeout(() => {
+          send("CLEAR_ERROR");
+        }, 2000)
       );
-    }
-  }, [clearErrorId]);
+  }, [errorId]);
 
-  return <ErrorMessageDiv style={props}>{error}</ErrorMessageDiv>;
+  return (
+    <ErrorMessageDiv style={{ ...animations, ...display }}>
+      {error}
+    </ErrorMessageDiv>
+  );
 });
 
 export default ErrorMessage;
