@@ -518,3 +518,9 @@ a.with-right-arrow,
 .social-links img {
   width: 32px !important;
 }
+
+@media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
+  .social-links #social-links-table {
+    width: 100% !important;
+  }
+}
