@@ -147,6 +147,7 @@ const viewStageMachine = Machine(
                       n.toLowerCase().includes(stage.toLowerCase())
                     ),
                 currentResult: null,
+                focusOnInit: false,
               }),
               "focusInput",
               sendParent((ctx) => ({
