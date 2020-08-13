@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
@@ -98,6 +98,7 @@ const SamplesContainer = (props) => {
   };
   useResizeHandler(updateSidebarHeight, [sidebarRef.current]);
   useScrollHandler(updateSidebarHeight, [sidebarRef.current]);
+  useEffect(updateSidebarHeight, []);
 
   return (
     <Root ref={containerRef} showSidebar={showSidebar}>
