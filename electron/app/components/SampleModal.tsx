@@ -40,6 +40,10 @@ const Container = styled.div`
     }
   }
 
+  h2 {
+    clear: both;
+  }
+
   h2,
   h2 span {
     display: flex;
@@ -293,7 +297,12 @@ const SampleModal = ({
             value={
               sample.tags.length
                 ? sample.tags.map((tag) => (
-                    <Tag key={tag} name={tag} color={colorMapping[tag]} />
+                    <Tag
+                      key={tag}
+                      name={tag}
+                      color={colorMapping[tag]}
+                      maxWidth="10em"
+                    />
                   ))
                 : "none"
             }
