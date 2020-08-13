@@ -43,7 +43,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 const ObjectEditorContainer = styled.div`
   height: 100%;
   width: 100%;
-  font-size: 1rem;
+  font-size: 14px;
   font-weight: bold;
   line-height: 1rem;
   position: relative;
@@ -113,20 +113,26 @@ const Submit = React.memo(({ send }) => {
   );
 });
 
-const convert = (value, type) => {
+const convert = (value, placeholder) => {
   const isObject = PARSER.dict.validate(value);
   if (isObject) return "{ ... }";
   else if (value === "") {
-    return [value, toTypeAnnotation(type)].join(": ");
+    return placeholder;
   }
   return value;
 };
+
+const makePlaceholder = (parameter, type, defaultValue) =>
+  [
+    defaultValue ? [parameter, defaultValue].join("=") : parameter,
+    toTypeAnnotation(type),
+  ].join(": ");
 
 const ObjectEditor = ({ parameterRef, inputRef }) => {
   const [state, send] = useService(parameterRef);
   const containerRef = useRef(null);
 
-  const { value, type } = state.context;
+  const { parameter, defaultValue, value, type } = state.context;
 
   const props = useSpring({
     width: state.matches("editing") ? 400 : 0,
@@ -143,7 +149,7 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
       ref={containerRef}
     >
       {state.matches("reading") ? (
-        convert(value, type)
+        convert(value, makePlaceholder(parameter, type, defaultValue))
       ) : (
         <>
           <ObjectEditorTextArea
@@ -223,10 +229,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
           <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
         ) : (
           <ViewStageParameterInput
-            placeholder={[
-              defaultValue ? [parameter, defaultValue].join("=") : parameter,
-              toTypeAnnotation(type),
-            ].join(": ")}
+            placeholder={makePlaceholder(parameter, type, defaultValue)}
             value={value}
             onFocus={() => !isEditing && send({ type: "EDIT" })}
             onBlur={() => isEditing && send({ type: "BLUR" })}
