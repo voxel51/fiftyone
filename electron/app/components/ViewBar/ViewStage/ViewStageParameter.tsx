@@ -195,7 +195,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { parameter, tail, type, value } = state.context;
+  const { defaultValue, parameter, tail, type, value } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
@@ -215,7 +215,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
   });
 
   const isEditing = state.matches("editing");
-
+  console.log(defaultValue);
   return (
     <ViewStageParameterContainer>
       <ViewStageParameterDiv style={props}>
@@ -223,7 +223,10 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
           <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
         ) : (
           <ViewStageParameterInput
-            placeholder={[parameter, toTypeAnnotation(type)].join(": ")}
+            placeholder={[
+              defaultValue ? [parameter, defaultValue].join("=") : parameter,
+              toTypeAnnotation(type),
+            ].join(": ")}
             value={value}
             onFocus={() => !isEditing && send({ type: "EDIT" })}
             onBlur={() => isEditing && send({ type: "BLUR" })}

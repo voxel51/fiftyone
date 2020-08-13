@@ -52,14 +52,10 @@ function serializeStage(stage, stageMap) {
 }
 
 function operate(type, operator, value) {
-  return (Array.isArray(type) ? [type[0]] : type.split("|")).reduce(
-    (acc, t) => {
-      const parser = PARAM_PARSER[t];
-      const next = Array.isArray(type) ? type[1] : undefined;
-      return parser.validate(value, next) ? parser[operator](value, next) : acc;
-    },
-    undefined
-  );
+  return type.split("|").reduce((acc, t) => {
+    const parser = PARAM_PARSER[t];
+    return parser.validate(value) ? parser[operator](value) : acc;
+  }, undefined);
 }
 
 function serializeView(stages, stageMap) {
@@ -104,6 +100,7 @@ function setStages(ctx, stageInfo) {
             stageName,
             p[0],
             stageInfoResult.params[j].type,
+            stageInfoResult.params[j].default,
             operate(stageInfoResult.params[j].type, "castFrom", p[1]),
             true,
             false,

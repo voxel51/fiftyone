@@ -9,12 +9,14 @@ export const createParameter = (
   stage,
   parameter,
   type,
+  defaultValue,
   value,
   submitted,
   focusOnInit,
   tail
 ) => ({
   id: uuid(),
+  defaultValue,
   parameter: parameter,
   type: type,
   stage: stage,
@@ -191,7 +193,7 @@ const viewStageMachine = Machine(
             on: {
               CHANGE: {
                 actions: assign({
-                  stage: (ctx, e) => e.stage,
+                  stage: (_, e) => e.stage,
                   results: ({ stageInfo }, e) =>
                     stageInfo
                       .map((s) => s.name)
@@ -216,6 +218,7 @@ const viewStageMachine = Machine(
                             stage,
                             parameter.name,
                             parameter.type,
+                            parameter.default,
                             "",
                             false,
                             i === 0,

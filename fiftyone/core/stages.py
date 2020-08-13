@@ -575,7 +575,7 @@ class SelectFields(ViewStage):
             {
                 "name": "field_names",
                 "type": "list<str>|NoneType",
-                "default": None,
+                "default": "None",
             }
         ]
 
@@ -614,7 +614,7 @@ class Shuffle(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "seed", "type": "float|NoneType", "default": None}]
+        return [{"name": "seed", "type": "float|NoneType", "default": "None"}]
 
 
 class SortBy(ViewStage):
@@ -679,7 +679,7 @@ class SortBy(ViewStage):
     def _params(cls):
         return [
             {"name": "field_or_expr", "type": "dict|str"},
-            {"name": "reverse", "type": "bool", "default": False},
+            {"name": "reverse", "type": "bool", "default": "False"},
         ]
 
 
@@ -763,7 +763,7 @@ class Take(ViewStage):
     def _params(cls):
         return [
             {"name": "size", "type": "int"},
-            {"name": "seed", "type": "float|NoneType", "default": None},
+            {"name": "seed", "type": "float|NoneType", "default": "None"},
         ]
 
 

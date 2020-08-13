@@ -5,13 +5,18 @@ const { assign, cancel, send } = actions;
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
 
 export const toTypeAnnotation = (type) => {
-  if (Array.isArray(type)) {
-    return ["List[", toTypeAnnotation(type[1]), "]"].join("");
-  }
   if (type.includes("|")) {
-    return ["Union[", type.split("|").join(", "), "]"].join("");
-  }
-  return type;
+    return [
+      "Union[",
+      type
+        .split("|")
+        .map((t) => toTypeAnnotation(t))
+        .join(", "),
+      "]",
+    ].join("");
+  } else if (type === "list<str>") {
+    return "List<str>";
+  } else return type;
 };
 
 /**
@@ -60,21 +65,18 @@ export const PARSER = {
       value.replace(/[,\s]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","),
     validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
   },
-  list: {
-    castFrom: (value, next) => {
+  "list<str>": {
+    castFrom: (value) => {
       return JSON.stringify(value);
     },
-    castTo: (value, next) =>
-      JSON.parse(value).map((e) => PARSER[next].castTo(e)),
+    castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
     parse: (value, next) => {
       const array = JSON.parse(value);
-      return JSON.stringify(array.map((e) => PARSER[next].parse(e)));
+      return JSON.stringify(array.map((e) => PARSER.str.parse(e)));
     },
     validate: (value, next) => {
       const array = typeof value === "string" ? JSON.parse(value) : value;
-      return (
-        Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
-      );
+      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
     },
   },
   str: {
@@ -98,14 +100,13 @@ export const PARSER = {
   },
 };
 
-let cancelError;
-
 export default Machine(
   {
     id: "viewStageParameter",
     initial: "decide",
     context: {
       id: undefined,
+      defaultValue: undefined,
       parameter: undefined,
       stage: undefined,
       type: undefined,
@@ -170,16 +171,10 @@ export default Machine(
                 assign({
                   submitted: true,
                   value: ({ type, value }) =>
-                    (Array.isArray(type) ? [type[0]] : type.split("|")).reduce(
-                      (acc, t) => {
-                        const parser = PARSER[t];
-                        const next = Array.isArray(type) ? type[1] : undefined;
-                        return parser.validate(value, next)
-                          ? parser.parse(value, next)
-                          : acc;
-                      },
-                      undefined
-                    ),
+                    type.split("|").reduce((acc, t) => {
+                      const parser = PARSER[t];
+                      return parser.validate(value) ? parser.parse(value) : acc;
+                    }, undefined),
                 }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
@@ -187,15 +182,7 @@ export default Machine(
                 })),
               ],
               cond: ({ type, value }) => {
-                return (Array.isArray(type)
-                  ? [type[0]]
-                  : type.split("|")
-                ).some((t) =>
-                  PARSER[t].validate(
-                    value,
-                    Array.isArray(type) ? type[1] : undefined
-                  )
-                );
+                return type.split("|").some((t) => PARSER[t].validate(value));
               },
             },
             {
