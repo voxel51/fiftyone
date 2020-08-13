@@ -411,8 +411,6 @@ const viewBarMachine = Machine(
             index: stage.index,
             length: ctx.stages.length,
             active: stage.index === ctx.activeStage,
-            stage: stage.stage,
-            go: stage.reset,
           })
         ),
       submit: ({ socket, stateDescription, stages, stageInfo }) => {

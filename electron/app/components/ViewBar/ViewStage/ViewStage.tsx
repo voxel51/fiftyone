@@ -11,6 +11,7 @@ import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 import { GlobalHotKeys } from "react-hotkeys";
+import { Add, KeyboardReturn as Arrow } from "@material-ui/icons";
 
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
@@ -65,11 +66,24 @@ const ViewStageButton = animated(styled.button`
   line-height: 1rem;
   cursor: pointer;
   font-weight: bold;
+  overflow: hidden;
+  padding: 0 0.25rem;
 
   :focus {
     outline: none;
   }
 `);
+
+const AddIcon = animated(styled(Add)``);
+
+const addTransform = (y) => `translate3d(0, ${y}px, 0)`;
+
+const ArrowIcon = animated(styled(Arrow)`
+  position: absolute;
+  top: 0.25rem;
+`);
+
+const arrowTransform = (y) => `scale(-1, 1) translate3d(0, ${y}px, 0)`;
 
 export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
@@ -85,19 +99,41 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
 
   useEffect(() => {
     set({ top: active ? -3 : 0 });
+    active ? setEnterProps() : setLeaveProps();
   }, [active]);
 
+  const [addProps, setAdd] = useSpring(() => ({
+    y: active ? 0 : 40,
+  }));
+
+  const [arrowProps, setArrow] = useSpring(() => ({
+    y: active ? -40 : 0,
+  }));
+
+  const setEnterProps = () => {
+    set({ background: theme.brandTransparent });
+    setAdd({ y: 0 });
+    setArrow({ y: -40 });
+  };
+
+  const setLeaveProps = () => {
+    set({ background: theme.brandMoreTransparent });
+    setAdd({ y: 40 });
+    setArrow({ y: 0 });
+  };
+
   return (
-    <>
-      <ViewStageButton
-        style={props}
-        onMouseEnter={() => set({ background: theme.brandTransparent })}
-        onMouseLeave={() => set({ background: theme.brandMoreTransparent })}
-        onClick={() => send({ type: "STAGE.ADD", index })}
-      >
-        +
-      </ViewStageButton>
-    </>
+    <ViewStageButton
+      style={props}
+      onMouseEnter={setEnterProps}
+      onMouseLeave={setLeaveProps}
+      onClick={() => send({ type: "STAGE.ADD", index })}
+    >
+      <ArrowIcon
+        style={{ transform: arrowProps.y.interpolate(arrowTransform) }}
+      />
+      <AddIcon style={{ transform: addProps.y.interpolate(addTransform) }} />
+    </ViewStageButton>
   );
 });
 
