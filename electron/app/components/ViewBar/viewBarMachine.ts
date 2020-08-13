@@ -415,13 +415,7 @@ const viewBarMachine = Machine(
             go: stage.reset,
           })
         ),
-      submit: ({
-        socket,
-        setStateDescription,
-        stateDescription,
-        stages,
-        stageInfo,
-      }) => {
+      submit: ({ socket, stateDescription, stages, stageInfo }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );

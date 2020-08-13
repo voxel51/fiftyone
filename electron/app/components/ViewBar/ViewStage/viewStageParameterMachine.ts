@@ -1,5 +1,6 @@
-import { Machine, actions, sendParent, send } from "xstate";
-const { assign } = actions;
+import uuid from "uuid-v4";
+import { Machine, actions, sendParent } from "xstate";
+const { assign, cancel, send } = actions;
 
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
 
@@ -97,6 +98,8 @@ export const PARSER = {
   },
 };
 
+let cancelError;
+
 export default Machine(
   {
     id: "viewStageParameter",
@@ -110,7 +113,6 @@ export default Machine(
       submitted: undefined,
       tail: undefined,
       focusOnInit: undefined,
-      errorTimeout: undefined,
       error: undefined,
     },
     states: {
@@ -142,6 +144,7 @@ export default Machine(
       },
       editing: {
         entry: [
+          sendParent("PARAMETER.EDIT"),
           assign({
             prevValue: ({ value }) => value,
             focusOnInit: false,
@@ -196,22 +199,28 @@ export default Machine(
               },
             },
             {
-              target: "editing",
-              actions: assign({
-                error: ({ type }) =>
-                  `Invalid value. Expected type ${toTypeAnnotation(type)}`,
-                errorTimeout: ({ errorTimeout }) => {
-                  errorTimeout && clearTimeout(errorTimeout);
-                  return setTimeout(() => send({ type: "CLEAR_ERROR" }), 2000);
-                },
-              }),
+              actions: [
+                assign({
+                  error: ({ type }) =>
+                    `Invalid value. Expected type ${toTypeAnnotation(type)}`,
+                  clearErrorId: uuid(),
+                }),
+              ],
             },
           ],
           CANCEL: {
-            target: "decide",
+            target: "reading.pending",
             actions: [
               assign({
                 value: ({ prevValue }) => prevValue,
+              }),
+            ],
+          },
+          CLEAR_ERROR: {
+            actions: [
+              assign({
+                error: undefined,
+                clearErrorId: undefined,
               }),
             ],
           },
@@ -230,22 +239,9 @@ export default Machine(
           ],
         },
         {
-          target: "reading.pending",
-          cond: ({ submitted, prevValue }) => !submitted && prevValue === "",
-          actions: sendParent("STAGE.DELETE"),
-        },
-        {
           target: "reading.submitted",
           cond: ({ submitted }) => submitted,
         },
-      ],
-    },
-    CLEAR_ERROR: {
-      actions: [
-        assign({
-          error: undefined,
-          errorTimeout: undefined,
-        }),
       ],
     },
   },

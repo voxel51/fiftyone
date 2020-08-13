@@ -39,7 +39,7 @@ const orange49a40 = "hsla(27, 95%, 49%, 0.4)";
 const blue53 = "hsl(213, 100%, 53%)";
 
 const red = "hsl(348, 100%, 50%)";
-const red40 = "hsl(348, 100%, 50%, 0.4)";
+const red40 = "hsl(348, 100%, 50%, 0.6)";
 
 export const darkTheme = {
   background: grey19,

@@ -150,7 +150,7 @@ const viewStageMachine = Machine(
               }),
               "focusInput",
               sendParent((ctx) => ({
-                type: "SET",
+                type: "STAGE.EDIT",
                 index: ctx.index,
               })),
             ],
@@ -436,6 +436,11 @@ const viewStageMachine = Machine(
               }),
             },
           ]),
+        ],
+      },
+      "PARAMETER.EDIT": {
+        actions: [
+          sendParent((ctx) => ({ type: "STAGE.EDIT", index: ctx.index })),
         ],
       },
     },
