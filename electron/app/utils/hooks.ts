@@ -9,6 +9,15 @@ export const useResizeHandler = (handler, deps = []) => {
   }, deps);
 };
 
+export const useScrollHandler = (handler, deps = []) => {
+  useEffect(() => {
+    window.addEventListener("scroll", handler);
+    return () => {
+      window.removeEventListener("scroll", handler);
+    };
+  }, deps);
+};
+
 export const useKeydownHandler = (handler, deps = []) => {
   useEffect(() => {
     document.body.addEventListener("keydown", handler);

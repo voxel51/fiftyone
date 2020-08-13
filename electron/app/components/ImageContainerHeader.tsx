@@ -31,8 +31,8 @@ const Wrapper = styled.div`
   }
 
   ${DropdownHandle.Body} {
-    padding-top: 0.75em;
-    padding-bottom: 0.75em;
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
   }
 `;
 
