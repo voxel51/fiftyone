@@ -15,7 +15,7 @@ export const toTypeAnnotation = (type) => {
       "]",
     ].join("");
   } else if (type === "list<str>") {
-    return "List<str>";
+    return "List[str]";
   } else return type;
 };
 
