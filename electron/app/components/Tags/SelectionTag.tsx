@@ -18,9 +18,9 @@ const Body = styled(Tag.Body)`
   }
 `;
 
-const SelectionTag = ({ count = 0, onClear }) => {
+const SelectionTag = ({ count = 0, onClear, ...rest }) => {
   return (
-    <Body>
+    <Body {...rest}>
       {count} selected <a onClick={onClear}>&times;</a>
     </Body>
   );
