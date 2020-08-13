@@ -15,7 +15,7 @@ import { Add, KeyboardReturn as Arrow } from "@material-ui/icons";
 
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
-import ViewStageStories from "./ViewStage.stories";
+import ErrorMessage from "./ErrorMessage";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem 0.25rem;
@@ -276,6 +276,7 @@ const ViewStage = React.memo(({ stageRef }) => {
               currentResult={currentResult}
             />
           )}
+          <ErrorMessage serviceRef={stageRef} />
         </ViewStageDiv>
         {isCompleted &&
           parameters.map((parameter) => (

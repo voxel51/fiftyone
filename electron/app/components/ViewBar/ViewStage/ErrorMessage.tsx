@@ -21,35 +21,32 @@ const ErrorMessageDiv = animated(styled.div`
 
 const ErrorMessage = React.memo(({ serviceRef }) => {
   const [state, send] = useService(serviceRef);
-  const animationRef = useRef();
-  const displayRef = useRef();
+  const [errorIdTimeout, setErrorIdTimeout] = useState(null);
   const [errorTimeout, setErrorTimeout] = useState(null);
   const { error, errorId } = state.context;
   const animations = useSpring({
     opacity: errorId ? 1 : 0,
-    ref: animationRef,
     from: {
       opacity: 0,
     },
   });
-  const display = useSpring({
-    display: errorId ? "block" : "none",
-    ref: displayRef,
-    from: { opacity: 0 },
-  });
 
   useEffect(() => {
     errorTimeout && clearTimeout(errorTimeout);
+    errorIdTimeout && clearTimeout(errorIdTimeout);
     errorId &&
-      setErrorTimeout(
+      setErrorIdTimeout(
         setTimeout(() => {
-          send("CLEAR_ERROR");
+          send("CLEAR_ERROR_ID");
+          setErrorTimeout(setTimeout(() => send("CLEAR_ERROR"), 1000));
         }, 2000)
       );
   }, [errorId]);
 
   return (
-    <ErrorMessageDiv style={{ ...animations, ...display }}>
+    <ErrorMessageDiv
+      style={{ ...animations, display: error ? "block" : "none" }}
+    >
       {error}
     </ErrorMessageDiv>
   );

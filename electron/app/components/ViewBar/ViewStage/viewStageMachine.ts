@@ -245,8 +245,10 @@ const viewStageMachine = Machine(
                 {
                   actions: [
                     assign({
-                      stage: () => "",
                       submitted: () => false,
+                      error: (_, { stage }) =>
+                        `${stage === "" ? '""' : stage} is not a valid stage`,
+                      errorId: uuid(),
                     }),
                   ],
                 },
@@ -347,6 +349,20 @@ const viewStageMachine = Machine(
       },
     },
     on: {
+      CLEAR_ERROR_ID: {
+        actions: [
+          assign({
+            errorId: undefined,
+          }),
+        ],
+      },
+      CLEAR_ERROR: {
+        actions: [
+          assign({
+            error: undefined,
+          }),
+        ],
+      },
       NEXT_RESULT: {
         actions: assign({
           currentResult: ({ currentResult, results }) => {

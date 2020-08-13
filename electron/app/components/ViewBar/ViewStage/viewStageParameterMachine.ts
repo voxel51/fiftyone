@@ -151,7 +151,7 @@ export default Machine(
             focusOnInit: false,
             value: ({ value }) =>
               PARSER.dict.validate(value)
-                ? JSON.stringiparameterfy(JSON.parse(value), null, 2)
+                ? JSON.stringify(JSON.parse(value), null, 2)
                 : value,
           }),
           "focusInput",
@@ -203,13 +203,6 @@ export default Machine(
               }),
             ],
           },
-          CLEAR_ERROR: {
-            actions: [
-              assign({
-                errorId: undefined,
-              }),
-            ],
-          },
         },
       },
     },
@@ -229,6 +222,20 @@ export default Machine(
           cond: ({ submitted }) => submitted,
         },
       ],
+      CLEAR_ERROR_ID: {
+        actions: [
+          assign({
+            errorId: undefined,
+          }),
+        ],
+      },
+      CLEAR_ERROR: {
+        actions: [
+          assign({
+            error: undefined,
+          }),
+        ],
+      },
     },
   },
   {
