@@ -269,14 +269,6 @@ const ViewStage = React.memo(({ stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
-          {state.matches("input.editing") && (
-            <SearchResults
-              results={results}
-              send={send}
-              currentResult={currentResult}
-            />
-          )}
-          <ErrorMessage serviceRef={stageRef} />
         </ViewStageDiv>
         {isCompleted &&
           parameters.map((parameter) => (
@@ -288,6 +280,14 @@ const ViewStage = React.memo(({ stageRef }) => {
         {state.matches("delible.yes") ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
+        {state.matches("input.editing") && (
+          <SearchResults
+            results={results}
+            send={send}
+            currentResult={currentResult}
+          />
+        )}
+        <ErrorMessage serviceRef={stageRef} />
       </ViewStageContainer>
     </>
   );
