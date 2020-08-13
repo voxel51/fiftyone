@@ -16,7 +16,6 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)

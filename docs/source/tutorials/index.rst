@@ -54,6 +54,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/label_mistakes.png
     :tags: Getting-Started,Dataset-Evaluation
 
+.. customcarditem::
+    :header: Object Detection Model Evaluation on Google's Open Images Dataset
+    :description: Use Tensorflow Object Detection API to get per-image true/false positives. Then use FiftyOne to see where your model is making mistakes or where the ground truth has errors!
+    :link: open_images_evaluation.html
+    :image: ../_static/images/tutorials/missing_wheel.gif
+    :tags: Model-Evaluation
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -75,3 +82,4 @@ your datasets and turn your good models into *great models*.
    Evaluating object detections<evaluate_detections.ipynb>
    Exploring image uniqueness<uniqueness.ipynb>
    Finding label mistakes<label_mistakes.ipynb>
+   Open Images Evaluation<open_images_evaluation.ipynb>
