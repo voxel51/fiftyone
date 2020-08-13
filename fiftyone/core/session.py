@@ -222,6 +222,7 @@ class Session(foc.HasClient):
     # PRIVATE #################################################################
 
     def _update_state(self):
+        # see fiftyone.core.client if you would like to understand this
         self.state = self.state
 
 
