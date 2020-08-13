@@ -6,8 +6,11 @@ import AutosizeInput from "react-input-autosize";
 
 import { PARSER, toTypeAnnotation } from "./viewStageParameterMachine";
 import { useOutsideClick } from "../../../utils/hooks";
+import ErrorMessage from "./ErrorMessage";
 
-const ViewStageParameterContainer = styled.div``;
+const ViewStageParameterContainer = styled.div`
+  display: flex;
+`;
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
@@ -16,45 +19,6 @@ const ViewStageParameterDiv = animated(styled.div`
   z-index: 801;
   overflow: hidden;
 `);
-
-const ErrorMessageDiv = animated(styled.div`
-  box-sizing: border-box;
-  border: 2px solid ${({ theme }) => theme.error};
-  background-color: ${({ theme }) => theme.errorTransparent};
-  border-radius: 2px;
-  position: fixed;
-  padding: 0.5rem;
-  font-weight: bold;
-  margin-top: 0.5rem;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
-`);
-
-const ErrorMessage = React.memo(({ parameterRef }) => {
-  const [state, send] = useService(parameterRef);
-  const [errorTimeout, setErrorTimeout] = useState(null);
-  const { error, clearErrorId } = state.context;
-  const props = useSpring({
-    opacity: error ? 1 : 0,
-    display: error ? "block" : "none",
-    from: {
-      opacity: error ? 0 : 1,
-      display: error ? "none" : "block",
-    },
-  });
-
-  useEffect(() => {
-    if (errorTimeout) {
-      clearTimeout(errorTimeout);
-    }
-    if (clearErrorId) {
-      setErrorTimeout(
-        clearErrorId ? setTimeout(() => send("CLEAR_ERROR"), 2000) : null
-      );
-    }
-  }, [clearErrorId]);
-
-  return <ErrorMessageDiv style={props}>{error}</ErrorMessageDiv>;
-});
 
 const ViewStageParameterInput = animated(styled(AutosizeInput)`
   & > input {

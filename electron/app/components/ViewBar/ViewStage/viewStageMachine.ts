@@ -240,13 +240,11 @@ const viewStageMachine = Machine(
                   },
                 },
                 {
-                  target: "reading.pending",
                   actions: [
                     assign({
                       stage: () => "",
                       submitted: () => false,
                     }),
-                    "blurInput",
                   ],
                 },
               ],

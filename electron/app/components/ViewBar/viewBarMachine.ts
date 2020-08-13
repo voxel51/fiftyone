@@ -281,7 +281,7 @@ const viewBarMachine = Machine(
       },
     },
     on: {
-      SET: {
+      "STAGE.EDIT": {
         actions: [
           assign({
             activeStage: (_, e) => e.index,
