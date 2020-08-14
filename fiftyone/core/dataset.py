@@ -617,6 +617,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._doc.save()
 
+    def clone(self, name=None):
+        """Creates a clone of the dataset containing deep copies of all samples
+        and dataset-level information in this dataset.
+
+        Args:
+            name (None): a name for the cloned dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        # @todo optimize by copying the collections directly via Mongo
+        dataset = self.__class__(name=name)
+        dataset.add_samples(self)
+        dataset.persistent = self.persistent
+        dataset.info = deepcopy(self.info)
+        return dataset
+
     def clear(self):
         """Removes all samples from the dataset.
 
