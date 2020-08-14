@@ -5,6 +5,8 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import eta.core.utils as etau
+
 import fiftyone.core.utils as fou
 
 
@@ -269,6 +271,7 @@ class ViewExpression(object):
         """
         return ViewExpression({"$multiply": [self, other]})
 
+    # pylint: disable=unused-argument
     def __pow__(self, power, modulo=None):
         """Creates an expression that returns ``self ** power``.
 
@@ -475,10 +478,10 @@ class ViewExpression(object):
         Examples::
 
             # Match fields that end in ".jpg"
-            expr.re_match("\.jpg$")
+            expr.re_match("\\.jpg$")
 
             # Match PNG images in "/my/dir"
-            expr.re_match("/my/dir/.*\.png")
+            expr.re_match("/my/dir/.*\\.png")
 
         Args:
             regex: the regular expression to apply. Must be a Perl Compatible
@@ -501,6 +504,63 @@ class ViewExpression(object):
                 }
             }
         )
+
+    def starts_with(self, str_or_strs, case_sensitive=True):
+        """Determines whether the string expression starts with the given
+        string (or any of a list of strings).
+
+        Args:
+            str_or_strs: a string or iterable of strings
+            case_sensitive (True): whether to perform a case sensitive match
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if etau.is_str(str_or_strs):
+            regex = "^" + str_or_strs
+        else:
+            regex = "^(%s)" % ("|".join(str_or_strs))
+
+        options = None if case_sensitive else "i"
+        return self.re_match(regex, options=options)
+
+    def ends_with(self, str_or_strs, case_sensitive=True):
+        """Determines whether the string expression ends with the given string
+        (or any of a list of strings).
+
+        Args:
+            str_or_strs: a string or iterable of strings
+            case_sensitive (True): whether to perform a case sensitive match
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if etau.is_str(str_or_strs):
+            regex = str_or_strs + "$"
+        else:
+            regex = "(%s)$" % ("|".join(str_or_strs))
+
+        options = None if case_sensitive else "i"
+        return self.re_match(regex, options=options)
+
+    def contains_str(self, str_or_strs, case_sensitive=True):
+        """Determines whether the string expression contains the given string
+        (or any of a list of strings).
+
+        Args:
+            str_or_strs: a string or iterable of strings
+            case_sensitive (True): whether to perform a case sensitive match
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if etau.is_str(str_or_strs):
+            regex = str_or_strs
+        else:
+            regex = "(%s)" % ("|".join(str_or_strs))
+
+        options = None if case_sensitive else "i"
+        return self.re_match(regex, options=options)
 
     # Private methods #########################################################
 
