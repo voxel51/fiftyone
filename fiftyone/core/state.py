@@ -116,10 +116,7 @@ class StateDescriptionWithDerivables(StateDescription):
     def __init__(self, derivables=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if derivables is not None:
-            self.derivables = derivables
-        else:
-            self.derivables = self.get_derivables()
+        self.derivables = self.get_derivables()
 
     def get_derivables(self):
         """Computes all "derivable" data that needs to be passed to the app,
