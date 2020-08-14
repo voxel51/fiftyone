@@ -132,11 +132,6 @@ class StateDescriptionWithDerivables(StateDescription):
             **self._get_label_info(),
         }
 
-    @classmethod
-    def from_dict(cls, d, **kwargs):
-        kwargs["derivables"] = d.get("derivables", None)
-        return super().from_dict(d, **kwargs)
-
     def _get_view_stats(self):
         if self.view is not None:
             return get_view_stats(self.view)
