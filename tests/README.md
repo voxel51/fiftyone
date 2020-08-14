@@ -1,5 +1,11 @@
 # FiftyOne Tests
 
+FiftyOne currently uses both
+[unittest](https://docs.python.org/3/library/unittest.html) and
+[pytest](https://docs.pytest.org/en/stable) to implement its tests.
+
+Tests do exist, but their coverage generally needs improvement...
+
 ## Contents
 
 | File                     | Description                                                                                 |
