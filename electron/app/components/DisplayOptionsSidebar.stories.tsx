@@ -1,12 +1,10 @@
 import React from "react";
 import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 import { Box } from "./utils";
-import { withKnobs, boolean } from "@storybook/addon-knobs";
 
 export default {
   component: DisplayOptionsSidebar,
   title: "DisplayOptionsSidebar",
-  decorators: [withKnobs],
 };
 
 const data = {

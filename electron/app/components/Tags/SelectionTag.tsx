@@ -2,7 +2,6 @@ import React from "react";
 import styled from "styled-components";
 
 import Tag from "./Tag";
-import { Close } from "@material-ui/icons";
 
 const Body = styled(Tag.Body)`
   background-color: transparent;

@@ -14,10 +14,8 @@ import {
 import SamplesContainer from "./SamplesContainer";
 import Distributions from "../components/Distributions";
 import HorizontalNav from "../components/HorizontalNav";
-import InfoItem from "../components/InfoItem";
 import Player51 from "../components/Player51";
 import SampleModal from "../components/SampleModal";
-import Search from "../components/Search";
 import { ModalWrapper, Overlay } from "../components/utils";
 import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";

@@ -1,12 +1,10 @@
 import React, { useState } from "react";
 import CheckboxGrid from "./CheckboxGrid";
 import { Box } from "./utils";
-import { withKnobs, boolean } from "@storybook/addon-knobs";
 
 export default {
   component: CheckboxGrid,
   title: "CheckboxGrid",
-  decorators: [withKnobs],
 };
 
 const entries = [

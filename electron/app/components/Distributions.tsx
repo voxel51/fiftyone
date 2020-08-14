@@ -1,16 +1,15 @@
-import React, { useState, useEffect, useRef, PureComponent } from "react";
-import { Bar, BarChart, LabelList, XAxis, YAxis, Tooltip } from "recharts";
+import React, { useState, useRef, PureComponent } from "react";
+import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
 import { Dimmer, Header, Loader, Message, Segment } from "semantic-ui-react";
 import _ from "lodash";
 
-import { updateState } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
 
 class CustomizedAxisTick extends PureComponent {
   render() {
-    const { x, y, stroke, payload, fill } = this.props;
+    const { x, y, payload, fill } = this.props;
     const v = payload.value;
     return (
       <g transform={`translate(${x},${y})`}>
@@ -90,7 +89,7 @@ function NoDistributions({ name }) {
   );
 }
 
-const Distributions = ({ group, port, state }) => {
+const Distributions = ({ group, port }) => {
   const socket = getSocket(port, "state");
   const [initialLoad, setInitialLoad] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -108,7 +107,7 @@ const Distributions = ({ group, port, state }) => {
     getData();
   }
 
-  useSubscribe(socket, "update", (data) => {
+  useSubscribe(socket, "update", () => {
     setLoading(true);
     getData();
   });
