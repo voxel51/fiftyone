@@ -187,15 +187,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(sample_id_or_slice, slice):
             return self.view()[sample_id_or_slice]
 
-        try:
-            d = self._collection.find_one(
-                {"_id": ObjectId(sample_id_or_slice)}
-            )
-            doc = self._sample_dict_to_doc(d)
+        d = self._collection.find_one({"_id": ObjectId(sample_id_or_slice)})
 
-            return fos.Sample.from_doc(doc)
-        except DoesNotExist:
+        if d is None:
             raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
+
+        doc = self._sample_dict_to_doc(d)
+
+        return fos.Sample.from_doc(doc)
 
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
