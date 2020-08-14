@@ -562,6 +562,25 @@ class ViewExpression(object):
         options = None if case_sensitive else "i"
         return self.re_match(regex, options=options)
 
+    def matches_str(self, str_or_strs, case_sensitive=True):
+        """Determines whether the string expression exactly matches the given
+        string (or any of a list of strings).
+
+        Args:
+            str_or_strs: a string or iterable of strings
+            case_sensitive (True): whether to perform a case sensitive match
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if etau.is_str(str_or_strs):
+            regex = str_or_strs
+        else:
+            regex = "^(%s)$" % ("|".join(str_or_strs))
+
+        options = None if case_sensitive else "i"
+        return self.re_match(regex, options=options)
+
     # Private methods #########################################################
 
     @staticmethod
