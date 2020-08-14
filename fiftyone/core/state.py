@@ -130,7 +130,7 @@ class StateDescriptionWithDerivables(StateDescription):
                 information.
         """
         return {
-            "dataset_stats": self._get_dataset_stats(),
+            "view_stats": self._get_view_stats(),
             "field_schema": self._get_field_schema(),
             **self._get_label_info(),
         }
@@ -140,7 +140,7 @@ class StateDescriptionWithDerivables(StateDescription):
         kwargs["derivables"] = d.get("derivables", None)
         return super().from_dict(d, **kwargs)
 
-    def _get_dataset_stats(self):
+    def _get_view_stats(self):
         if self.view is not None:
             return get_view_stats(self.view)
 

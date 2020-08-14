@@ -28,7 +28,7 @@ export const datasetStats = selector({
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
     return stateDescription.derivables
-      ? stateDescription.derivables.dataset_stats
+      ? stateDescription.derivables.view_stats
       : {};
   },
 });
