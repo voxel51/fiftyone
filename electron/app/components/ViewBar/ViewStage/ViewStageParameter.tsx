@@ -16,6 +16,7 @@ const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   position: relative;
+  display: flex;
   z-index: 801;
   overflow: hidden;
 `);
@@ -49,6 +50,7 @@ const ObjectEditorContainer = styled.div`
   position: relative;
   margin: 0.5rem;
   overflow: visible;
+  display: flex;
 `;
 
 const ObjectEditorTextArea = animated(styled.textarea`
@@ -61,7 +63,6 @@ const ObjectEditorTextArea = animated(styled.textarea`
   color: ${({ theme }) => theme.font};
   height: 100%;
   font-size: 1rem;
-  white-space: pre-wrap;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -86,13 +87,12 @@ const SubmitButton = animated(styled.button`
   background-color: hsla(27, 95%, 49%, 0.4);
   border-radius: 3px;
   position: relative;
-  margin: 0.5rem;
   line-height: 1rem;
   cursor: pointer;
   font-weight: bold;
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 1rem;
+  right: 0;
 
   :focus {
     outline: none;
@@ -173,6 +173,11 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
           <Submit key="submit" send={send} />
         </>
       )}
+      <ErrorMessage
+        key="error"
+        serviceRef={parameterRef}
+        style={{ marginTop: "12rem", marginLeft: -10 }}
+      />
     </ObjectEditorContainer>
   );
 };
@@ -228,29 +233,31 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
         {hasObjectType ? (
           <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
         ) : (
-          <ViewStageParameterInput
-            placeholder={makePlaceholder(parameter, type, defaultValue)}
-            value={value}
-            onFocus={() => !isEditing && send({ type: "EDIT" })}
-            onBlur={() => isEditing && send({ type: "BLUR" })}
-            onChange={(e) => {
-              send({ type: "CHANGE", value: e.target.value });
-            }}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                isEditing && send({ type: "COMMIT" });
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send({ type: "CANCEL" });
-              }
-            }}
-            ref={inputRef}
-          />
+          <>
+            <ViewStageParameterInput
+              placeholder={makePlaceholder(parameter, type, defaultValue)}
+              value={value}
+              onFocus={() => !isEditing && send({ type: "EDIT" })}
+              onBlur={() => isEditing && send({ type: "BLUR" })}
+              onChange={(e) => {
+                send({ type: "CHANGE", value: e.target.value });
+              }}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  isEditing && send({ type: "COMMIT" });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  send({ type: "CANCEL" });
+                }
+              }}
+              ref={inputRef}
+            />
+            <ErrorMessage key="error" serviceRef={parameterRef} />
+          </>
         )}
       </ViewStageParameterDiv>
-      <ErrorMessage key="error" serviceRef={parameterRef} />
     </ViewStageParameterContainer>
   );
 });

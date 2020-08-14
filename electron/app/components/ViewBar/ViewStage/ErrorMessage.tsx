@@ -19,7 +19,7 @@ const ErrorMessageDiv = animated(styled.div`
   z-index: 800;
 `);
 
-const ErrorMessage = React.memo(({ serviceRef }) => {
+const ErrorMessage = React.memo(({ serviceRef, style }) => {
   const [state, send] = useService(serviceRef);
   const [errorIdTimeout, setErrorIdTimeout] = useState(null);
   const [errorTimeout, setErrorTimeout] = useState(null);
@@ -45,7 +45,7 @@ const ErrorMessage = React.memo(({ serviceRef }) => {
 
   return (
     <ErrorMessageDiv
-      style={{ ...animations, display: error ? "block" : "none" }}
+      style={{ ...animations, display: error ? "block" : "none", ...style }}
     >
       {error}
     </ErrorMessageDiv>
