@@ -340,7 +340,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields that start with the character "_"
 
         Returns:
-             a dictionary mapping field names to field types
+             an ``OrderedDict`` mapping field names to field types
         """
         return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
