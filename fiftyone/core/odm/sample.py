@@ -73,7 +73,7 @@ from .document import (
 )
 
 
-# Use our own Random object to avoid messing with the users's seed
+# Use our own Random object to avoid messing with the user's seed
 _random = random.Random()
 
 
