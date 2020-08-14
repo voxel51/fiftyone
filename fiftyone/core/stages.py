@@ -109,6 +109,8 @@ class Exclude(ViewStage):
         else:
             self._sample_ids = list(sample_ids)
 
+        self._validate()
+
     @property
     def sample_ids(self):
         """The list of sample IDs to exclude."""
@@ -129,6 +131,10 @@ class Exclude(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "sample_ids", "type": ["list", "str"]}]
+
+    def _validate(self):
+        # ensures ObjectIDs are valid
+        _ = self.to_mongo()
 
 
 class ExcludeFields(ViewStage):
@@ -514,6 +520,8 @@ class Select(ViewStage):
         else:
             self._sample_ids = list(sample_ids)
 
+        self._validate()
+
     @property
     def sample_ids(self):
         """The list of sample IDs to select."""
@@ -534,6 +542,10 @@ class Select(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "sample_ids", "type": ["list", "str"]}]
+
+    def _validate(self):
+        # ensures ObjectIDs are valid
+        _ = self.to_mongo()
 
 
 class SelectFields(ViewStage):
