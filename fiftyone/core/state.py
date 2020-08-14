@@ -12,6 +12,7 @@ from bson import json_util
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
+import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
@@ -165,17 +166,22 @@ class StateDescriptionWithDerivables(StateDescription):
             "tags": list(sorted(view.get_tags())),
         }
 
-    def _get_label_fields(self, view):
-        pipeline = [
-            {"$project": {"_rand": False}},
-            {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-            {"$unwind": "$field"},
-            {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
-        ]
-        return sorted(
-            [f for f in view.aggregate(pipeline)],
-            key=lambda field: field["_id"]["field"],
-        )
+    @staticmethod
+    def _get_label_fields(view):
+        label_fields = []
+
+        # @todo is this necessary?
+        label_fields.append({"_id": {"field": "_id"}})
+
+        # @todo can we remove the "_id" nesting?
+        for k, v in view.get_field_schema().items():
+            d = {"field": k}
+            if isinstance(v, fof.EmbeddedDocumentField):
+                d["cls"] = v.document_type.__name__
+
+            label_fields.append({"_id": d})
+
+        return sorted(label_fields, key=lambda field: field["_id"]["field"])
 
 
 def get_dataset_stats(dataset):
