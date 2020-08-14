@@ -574,7 +574,7 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         if etau.is_str(str_or_strs):
-            regex = str_or_strs
+            regex = "^" + str_or_strs + "$"
         else:
             regex = "^(%s)$" % ("|".join(str_or_strs))
 
