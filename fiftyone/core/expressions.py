@@ -5,6 +5,8 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import re
+
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
@@ -516,6 +518,8 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        str_or_strs = _escape_regex_chars(str_or_strs)
+
         if etau.is_str(str_or_strs):
             regex = "^" + str_or_strs
         else:
@@ -535,6 +539,8 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        str_or_strs = _escape_regex_chars(str_or_strs)
+
         if etau.is_str(str_or_strs):
             regex = str_or_strs + "$"
         else:
@@ -554,6 +560,8 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        str_or_strs = _escape_regex_chars(str_or_strs)
+
         if etau.is_str(str_or_strs):
             regex = str_or_strs
         else:
@@ -573,6 +581,8 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        str_or_strs = _escape_regex_chars(str_or_strs)
+
         if etau.is_str(str_or_strs):
             regex = "^" + str_or_strs + "$"
         else:
@@ -649,3 +659,15 @@ class ViewField(ViewExpression):
             a string
         """
         return "$$this.%s" % self._expr if in_list else "$" + self._expr
+
+
+def _escape_regex_chars(str_or_strs):
+    # Must escape `]` and `-` because they have special meaning inside the `[]`
+    # that will be used in the replacement regex
+    regex_chars = "[\]{}()*+\-?.,\\^$|#"
+    _escape = lambda s: re.sub(r"([%s])" % "".join(regex_chars), r"\\\1", s)
+
+    if etau.is_str(str_or_strs):
+        return _escape(str_or_strs)
+
+    return [_escape(s) for s in str_or_strs]
