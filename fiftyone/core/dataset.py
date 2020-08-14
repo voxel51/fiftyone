@@ -412,7 +412,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for doc in self._get_query_set():
+        for d in self._collection.find():
+            doc = self._sample_dict_to_doc(d)
             yield fos.Sample.from_doc(doc)
 
     def add_sample(self, sample, expand_schema=True):
