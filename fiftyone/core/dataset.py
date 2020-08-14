@@ -164,18 +164,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name is None:
             name = get_default_dataset_name()
 
-        self._name = name
-        self._deleted = False
-
         if _create:
-            self._meta, self._sample_doc_cls = _create_dataset(
+            self._doc, self._sample_doc_cls = _create_dataset(
                 name, persistent=persistent
             )
         else:
-            self._meta, self._sample_doc_cls = _load_dataset(name)
+            self._doc, self._sample_doc_cls = _load_dataset(name)
+
+        self._deleted = False
 
     def __len__(self):
-        return self._collection.count_documents({})
+        return self._sample_collection.count_documents({})
 
     def __getitem__(self, sample_id_or_slice):
         if isinstance(sample_id_or_slice, numbers.Integral):
@@ -213,28 +212,33 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def name(self):
         """The name of the dataset."""
-        return self._name
+        return self._doc.name
+
+    @name.setter
+    def name(self, name):
+        self._doc.name = name
+        self._doc.save()
 
     @property
     def persistent(self):
         """Whether the dataset persists in the database after a session is
         terminated.
         """
-        return self._meta.persistent
+        return self._doc.persistent
 
     @persistent.setter
     def persistent(self, value):
-        self._meta.persistent = value
-        self._meta.save()
+        self._doc.persistent = value
+        self._doc.save()
 
     @property
     def info(self):
         """A dictionary of information about the dataset."""
-        return self._meta.info
+        return self._doc.info
 
     @info.setter
     def info(self, info):
-        self._meta.info = info
+        self._doc.info = info
 
     @property
     def deleted(self):
@@ -404,7 +408,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the set of distinct values
         """
-        return set(self._collection.distinct(field))
+        return set(self._sample_collection.distinct(field))
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -446,7 +450,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         d = sample.to_mongo_dict()
         d.pop("_id", None)  # remove the ID if in DB
-        self._collection.insert_one(d)  # adds `_id` to `d`
+        self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample._in_db:
             doc = self._sample_doc_cls.from_dict(d, extended=False)
@@ -508,7 +512,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
 
-        self._collection.insert_many(dicts)  # adds `_id` to each dict
+        self._sample_collection.insert_many(dicts)  # adds `_id` to each dict
 
         for sample, d in zip(samples, dicts):
             if not sample._in_db:
@@ -532,7 +536,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_id = sample_or_id.id
 
-        self._collection.delete_one({"_id": ObjectId(sample_id)})
+        self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=[sample_id]
@@ -557,7 +561,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
 
         sample_object_ids = [ObjectId(id) for id in sample_ids]
-        self._collection.delete_many({"_id": {"$in": sample_object_ids}})
+        self._sample_collection.delete_many(
+            {"_id": {"$in": sample_object_ids}}
+        )
 
         fos.Sample._reset_backing_docs(
             dataset_name=self.name, sample_ids=sample_ids
@@ -609,7 +615,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Saves dataset-level information such as its ``info`` to the
         database.
         """
-        self._meta.save()
+        self._doc.save()
 
     def clear(self):
         """Removes all samples from the dataset.
@@ -630,7 +636,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
         """
         self.clear()
-        self._meta.delete()
+        self._doc.delete()
         self._deleted = True
 
     def add_dir(
@@ -1185,7 +1191,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if pipeline is None:
             pipeline = []
 
-        return self._collection.aggregate(pipeline)
+        return self._sample_collection.aggregate(pipeline)
 
     def serialize(self):
         """Serializes the dataset.
@@ -1267,12 +1273,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.view().add_stage(stage)
 
     @property
-    def _collection_name(self):
+    def _sample_collection_name(self):
         return self._sample_doc_cls._meta["collection"]
 
     @property
-    def _collection(self):
-        return foo.get_db_conn()[self._collection_name]
+    def _sample_collection(self):
+        return foo.get_db_conn()[self._sample_collection_name]
 
     def _expand_schema(self, samples):
         fields = self.get_field_schema(include_private=True)
@@ -1351,6 +1357,7 @@ _info_repr.maxother = 63
 
 
 def _create_dataset(name, persistent=False):
+    # Ensure dataset with given `name` does not already exist
     if dataset_exists(name):
         raise ValueError(
             (
@@ -1360,39 +1367,61 @@ def _create_dataset(name, persistent=False):
             % name
         )
 
-    # Create sample class
-    _sample_doc_cls = type(name, (foo.DatasetSampleDocument,), {})
+    conn = foo.get_db_conn()
 
-    # Create dataset meta document
-    _meta = foo.DatasetDocument(
+    # Make a unique, permanent name for this sample collection
+    sample_collection_name = _make_sample_collection_name(conn)
+
+    # Create SampleDocument class for this dataset
+    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+
+    # Create DatasetDocument for this dataset
+    dataset_doc = foo.DatasetDocument(
         name=name,
-        sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            _sample_doc_cls.get_field_schema(include_private=True)
-        ),
+        sample_collection_name=sample_collection_name,
         persistent=persistent,
+        sample_fields=foo.SampleFieldDocument.list_from_field_schema(
+            sample_doc_cls.get_field_schema(include_private=True)
+        ),
     )
-    _meta.save()
+    dataset_doc.save()
 
     # Create indexes
-    collection_name = _sample_doc_cls._meta["collection"]
-    collection = foo.get_db_conn()[collection_name]
+    collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
 
-    return _meta, _sample_doc_cls
+    return dataset_doc, sample_doc_cls
+
+
+def _make_sample_collection_name(conn):
+    now = datetime.datetime.now()
+    name = "dataset." + now.strftime("%Y.%m.%d.%H.%M.%S")
+    if name in conn.list_collection_names():
+        name = "dataset." + now.strftime("%Y.%m.%d.%H.%M.%S.%f")
+
+    return name
+
+
+def _create_sample_document_cls(sample_collection_name):
+    return type(sample_collection_name, (foo.DatasetSampleDocument,), {})
 
 
 def _load_dataset(name):
+    # Load DatasetDocument for dataset
     try:
         # pylint: disable=no-member
-        _meta = foo.DatasetDocument.objects.get(name=name)
+        dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)
 
-    _sample_doc_cls = type(name, (foo.DatasetSampleDocument,), {})
+    # Create SampleDocument class for this dataset
+    sample_doc_cls = _create_sample_document_cls(
+        dataset_doc.sample_collection_name
+    )
 
+    # Populate sample field schema
     num_default_fields = len(foos.default_sample_fields(include_private=True))
-
-    for sample_field in _meta.sample_fields[num_default_fields:]:
+    for sample_field in dataset_doc.sample_fields[num_default_fields:]:
         subfield = (
             etau.get_class(sample_field.subfield)
             if sample_field.subfield
@@ -1404,7 +1433,7 @@ def _load_dataset(name):
             else None
         )
 
-        _sample_doc_cls.add_field(
+        sample_doc_cls.add_field(
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,
@@ -1412,4 +1441,4 @@ def _load_dataset(name):
             save=False,
         )
 
-    return _meta, _sample_doc_cls
+    return dataset_doc, sample_doc_cls

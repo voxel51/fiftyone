@@ -364,8 +364,8 @@ class DatasetSampleDocument(Document, SampleDocument):
             dataset = fod.load_dataset(cls.__name__)
             field = cls._fields[field_name]
             sample_field = SampleFieldDocument.from_field(field)
-            dataset._meta.sample_fields.append(sample_field)
-            dataset._meta.save()
+            dataset._doc.sample_fields.append(sample_field)
+            dataset._doc.save()
 
     @classmethod
     def add_implied_field(cls, field_name, value):
@@ -441,10 +441,10 @@ class DatasetSampleDocument(Document, SampleDocument):
         import fiftyone.core.dataset as fod
 
         dataset = fod.load_dataset(cls.__name__)
-        dataset._meta.sample_fields = [
-            sf for sf in dataset._meta.sample_fields if sf.name != field_name
+        dataset._doc.sample_fields = [
+            sf for sf in dataset._doc.sample_fields if sf.name != field_name
         ]
-        dataset._meta.save()
+        dataset._doc.save()
 
     def _get_repr_fields(self):
         return ("dataset_name",) + super()._get_repr_fields()
