@@ -130,7 +130,7 @@ class Exclude(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": "list<str>|str"}]
+        return [{"name": "sample_ids", "type": "list<id>|id"}]
 
     def _validate(self):
         # ensures ObjectIDs are valid
@@ -541,7 +541,7 @@ class Select(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": "list<str>|str"}]
+        return [{"name": "sample_ids", "type": "list<id>|id"}]
 
     def _validate(self):
         # ensures ObjectIDs are valid

@@ -3,9 +3,7 @@ import uuid from "uuid-v4";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
-import viewStageParameterMachine, {
-  PARSER as PARAM_PARSER,
-} from "./ViewStage/viewStageParameterMachine";
+import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
 
 export const createStage = (
   stage,

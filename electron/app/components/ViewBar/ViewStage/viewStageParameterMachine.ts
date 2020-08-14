@@ -16,6 +16,8 @@ export const toTypeAnnotation = (type) => {
     ].join("");
   } else if (type === "list<str>") {
     return "List[str]";
+  } else if (type === "list<id>") {
+    return "List[id]";
   } else return type;
 };
 
@@ -58,6 +60,12 @@ export const PARSER = {
       return stripped !== "" && !isNaN(+stripped);
     },
   },
+  id: {
+    castFrom: (value) => value,
+    castTo: (value) => value,
+    parse: (value) => value,
+    validate: (value) => /[0-9A-Fa-f]{24}/g.test(value),
+  },
   int: {
     castFrom: (value) => String(value),
     castTo: (value) => +value,
@@ -79,6 +87,26 @@ export const PARSER = {
         const array = typeof value === "string" ? JSON.parse(value) : value;
         return (
           Array.isArray(array) && array.every((e) => PARSER.str.validate(e))
+        );
+      } catch {
+        return false;
+      }
+    },
+  },
+  "list<id>": {
+    castFrom: (value) => {
+      return JSON.stringify(value);
+    },
+    castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
+    parse: (value) => {
+      const array = JSON.parse(value);
+      return JSON.stringify(array.map((e) => PARSER.id.parse(e)));
+    },
+    validate: (value) => {
+      try {
+        const array = typeof value === "string" ? JSON.parse(value) : value;
+        return (
+          Array.isArray(array) && array.every((e) => PARSER.id.validate(e))
         );
       } catch {
         return false;
