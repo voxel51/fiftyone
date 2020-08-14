@@ -284,7 +284,7 @@ class DatasetsListCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        datasets = fod.list_dataset_names()
+        datasets = fod.list_datasets()
 
         if datasets:
             for dataset in sorted(datasets):

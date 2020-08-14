@@ -33,7 +33,7 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-def list_dataset_names():
+def list_datasets():
     """Returns the list of available FiftyOne datasets.
 
     Returns:
@@ -89,7 +89,7 @@ def get_default_dataset_name():
     """
     now = datetime.datetime.now()
     name = now.strftime("%Y.%m.%d.%H.%M.%S")
-    if name in list_dataset_names():
+    if name in list_datasets():
         name = now.strftime("%Y.%m.%d.%H.%M.%S.%f")
 
     return name
@@ -130,7 +130,7 @@ def delete_dataset(name):
 
 def delete_non_persistent_datasets():
     """Deletes all non-persistent datasets."""
-    for dataset_name in list_dataset_names():
+    for dataset_name in list_datasets():
         dataset = load_dataset(dataset_name)
         if not dataset.persistent:
             dataset.delete()

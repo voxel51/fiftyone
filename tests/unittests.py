@@ -238,7 +238,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
             fo.load_dataset(dataset_name)
 
         def check_create_dataset_via_load():
-            self.assertIn(dataset_name, fo.list_dataset_names())
+            self.assertIn(dataset_name, fo.list_datasets())
             dataset = fo.load_dataset(dataset_name)
 
         check_create_dataset()
@@ -657,34 +657,34 @@ class MultiProcessSynchronizationTest(unittest.TestCase):
 
 class DatasetTest(unittest.TestCase):
     @drop_datasets
-    def test_list_dataset_names(self):
-        self.assertIsInstance(fo.list_dataset_names(), list)
+    def test_list_datasets(self):
+        self.assertIsInstance(fo.list_datasets(), list)
 
     @drop_datasets
     def test_delete_dataset(self):
-        IGNORED_DATASET_NAMES = fo.list_dataset_names()
+        IGNORED_DATASET_NAMES = fo.list_datasets()
 
-        def list_dataset_names():
+        def list_datasets():
             return [
                 name
-                for name in fo.list_dataset_names()
+                for name in fo.list_datasets()
                 if name not in IGNORED_DATASET_NAMES
             ]
 
         dataset_names = ["test_%d" % i for i in range(10)]
 
         datasets = {name: fo.Dataset(name) for name in dataset_names}
-        self.assertListEqual(list_dataset_names(), dataset_names)
+        self.assertListEqual(list_datasets(), dataset_names)
 
         name = dataset_names.pop(0)
         datasets[name].delete()
-        self.assertListEqual(list_dataset_names(), dataset_names)
+        self.assertListEqual(list_datasets(), dataset_names)
         with self.assertRaises(fod.DoesNotExistError):
             len(datasets[name])
 
         name = dataset_names.pop(0)
         fo.delete_dataset(name)
-        self.assertListEqual(list_dataset_names(), dataset_names)
+        self.assertListEqual(list_datasets(), dataset_names)
         with self.assertRaises(fod.DoesNotExistError):
             len(datasets[name])
 
