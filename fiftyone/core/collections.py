@@ -212,7 +212,7 @@ class SampleCollection(object):
         """Excludes the samples with the given IDs from the collection.
 
         Args:
-            sample_ids: an iterable of sample IDs
+            sample_ids: a sample ID or iterable of sample IDs
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -362,7 +362,7 @@ class SampleCollection(object):
         """Returns a view containing only the samples with the given IDs.
 
         Args:
-            sample_ids: an iterable of sample IDs
+            sample_ids: a sample ID or iterable of sample IDs
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
