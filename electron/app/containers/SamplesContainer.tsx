@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 
@@ -12,6 +12,7 @@ import { VerticalSpacer } from "../components/utils";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { useResizeHandler, useScrollHandler } from "../utils/hooks";
 import { VALID_LABEL_TYPES, VALID_SCALAR_TYPES } from "../utils/labels";
 
 const Root = styled.div`
@@ -38,6 +39,7 @@ const SamplesContainer = (props) => {
   } = props.displayProps;
 
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
+  const [sidebarHeight, setSidebarHeight] = useState("unset");
   const [stuck, setStuck] = useState(false);
   const datasetName = useRecoilValue(selectors.datasetName);
   const numSamples = useRecoilValue(selectors.numSamples);
@@ -51,6 +53,7 @@ const SamplesContainer = (props) => {
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
+  const sidebarRef = useRef();
 
   const labelNameGroups = {
     labels: [],
@@ -85,6 +88,17 @@ const SamplesContainer = (props) => {
   if (stickyHeaderRef.current && stickyHeaderRef.current.stickyRect) {
     headerHeight = stickyHeaderRef.current.stickyRect.height;
   }
+
+  const updateSidebarHeight = () => {
+    if (sidebarRef.current) {
+      setSidebarHeight(
+        window.innerHeight - sidebarRef.current.getBoundingClientRect().top
+      );
+    }
+  };
+  useResizeHandler(updateSidebarHeight, [sidebarRef.current]);
+  useScrollHandler(updateSidebarHeight, [sidebarRef.current]);
+  useEffect(updateSidebarHeight, []);
 
   return (
     <Root ref={containerRef} showSidebar={showSidebar}>
@@ -136,6 +150,15 @@ const SamplesContainer = (props) => {
                   labelSampleCounts,
                   activeLabels
                 )}
+                style={{
+                  maxHeight: sidebarHeight,
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  paddingRight: 25,
+                  marginRight: -25,
+                  scrollbarWidth: "thin",
+                }}
+                ref={sidebarRef}
               />
             </Sticky>
           </Grid.Column>

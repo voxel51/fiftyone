@@ -36,7 +36,9 @@ export default function tile(data, newHasMore, state) {
     const columns = [];
     const baseHeight = row[0].height;
     const refWidth =
-      !Boolean(newHasMore) && i === String(newRows.length - 1)
+      !Boolean(newHasMore) &&
+      i === String(newRows.length - 1) &&
+      currentWidth / currentHeight < THRESHOLD
         ? baseHeight * THRESHOLD
         : row.reduce(
             (acc, val) => acc + (baseHeight / val.height) * val.width,
