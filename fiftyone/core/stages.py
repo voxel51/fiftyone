@@ -100,11 +100,16 @@ class Exclude(ViewStage):
     """Excludes the samples with the given IDs from the view.
 
     Args:
-        sample_ids: an iterable of sample IDs
+        sample_ids: a sample ID or iterable of sample IDs
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = list(sample_ids)
+        if etau.is_str(sample_ids):
+            self._sample_ids = [sample_ids]
+        else:
+            self._sample_ids = list(sample_ids)
+
+        self._validate()
 
     @property
     def sample_ids(self):
@@ -126,6 +131,10 @@ class Exclude(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "sample_ids", "type": ["list", "str"]}]
+
+    def _validate(self):
+        # Ensures that ObjectIDs are valid
+        self.to_mongo()
 
 
 class ExcludeFields(ViewStage):
@@ -502,11 +511,16 @@ class Select(ViewStage):
     """Selects the samples with the given IDs from the view.
 
     Args:
-        sample_ids: an iterable of sample IDs
+        sample_ids: a sample ID or iterable of sample IDs
     """
 
     def __init__(self, sample_ids):
-        self._sample_ids = list(sample_ids)
+        if etau.is_str(sample_ids):
+            self._sample_ids = [sample_ids]
+        else:
+            self._sample_ids = list(sample_ids)
+
+        self._validate()
 
     @property
     def sample_ids(self):
@@ -528,6 +542,10 @@ class Select(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "sample_ids", "type": ["list", "str"]}]
+
+    def _validate(self):
+        # Ensures that ObjectIDs are valid
+        self.to_mongo()
 
 
 class SelectFields(ViewStage):

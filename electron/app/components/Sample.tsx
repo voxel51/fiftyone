@@ -4,7 +4,6 @@ import { useRecoilValue } from "recoil";
 import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
-import { isFloat } from "../utils/generic";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as selectors from "../recoil/selectors";
@@ -25,7 +24,6 @@ const Sample = ({
   const socket = getSocket(port, "state");
   const { activeLabels, activeTags, activeOther } = displayProps;
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
-  const tagNames = useRecoilValue(selectors.tagNames);
 
   const handleClick = () => {
     const newSelected = { ...selected };
@@ -94,7 +92,7 @@ const Sample = ({
       />
       <div className="sample-info" {...eventHandlers}>
         {Object.keys(sample).sort().map(renderLabel)}
-        {sample.tags.sort().map((t) => {
+        {[...sample.tags].sort().map((t) => {
           return activeTags[t] ? (
             <Tag key={t} name={String(t)} color={colorMapping[t]} />
           ) : null;

@@ -2,7 +2,6 @@ import React from "react";
 import styled from "styled-components";
 
 import Tag from "./Tag";
-import { Close } from "@material-ui/icons";
 
 const Body = styled(Tag.Body)`
   background-color: transparent;
@@ -18,9 +17,9 @@ const Body = styled(Tag.Body)`
   }
 `;
 
-const SelectionTag = ({ count = 0, onClear }) => {
+const SelectionTag = ({ count = 0, onClear, ...rest }) => {
   return (
-    <Body>
+    <Body {...rest}>
       {count} selected <a onClick={onClear}>&times;</a>
     </Body>
   );

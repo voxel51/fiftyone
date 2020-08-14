@@ -2,6 +2,11 @@ import React, { useContext } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 
+const CHECKBOX_SIZE = 24;
+const CHECKBOX_PADDING = 3;
+const CHECKBOX_TOTAL_SIZE = CHECKBOX_SIZE + 2 * CHECKBOX_PADDING;
+const LABEL_PADDING_RIGHT = 6;
+
 const Body = styled.div`
   vertical-align: middle;
 
@@ -17,7 +22,7 @@ const Body = styled.div`
     }
 
     .MuiCheckbox-root {
-      padding: 3px;
+      padding: ${CHECKBOX_PADDING}px;
 
       .MuiIconButton-label {
         position: relative;
@@ -27,6 +32,7 @@ const Body = styled.div`
       }
 
       &.Mui-checked .MuiIconButton-label::after {
+          /* fill checkmark with font color */
           content: "";
           position: absolute;
           background: ${({ theme }) => theme.font};
@@ -40,17 +46,26 @@ const Body = styled.div`
     }
 
     .MuiFormControlLabel-label {
-      width: 100%;
+      display: inline-flex;
+      min-width: 100%;
       font-weight: bold;
-      padding-right: 6px;
+      padding-right: ${CHECKBOX_TOTAL_SIZE + LABEL_PADDING_RIGHT}px;
+      color: unset;
+
+      span {
+        display: inline-block;
+      }
+
+      span.name {
+        white-space: nowrap;
+        overflow-x: hidden;
+        text-overflow: ellipsis;
+        flex-grow: 1;
+      }
 
       span.data {
-        float: right;
+        margin-left: 0.5em;
       }
-    }
-
-    .MuiFormControlLabel-label {
-      color: unset;
     }
   }
 
@@ -60,6 +75,10 @@ const Body = styled.div`
 
     svg, input[type=checkbox] {
       display: none;
+    }
+
+    .MuiFormControlLabel-label {
+      padding-right: ${LABEL_PADDING_RIGHT + 2 * CHECKBOX_PADDING}px;
     }
   }
 `;
@@ -94,7 +113,9 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
             disabled={entry.disabled}
             label={
               <>
-                <span className="name">{entry.name}</span>
+                <span className="name" title={entry.name}>
+                  {entry.name}
+                </span>
                 <span className="data">{entry.data}</span>
               </>
             }

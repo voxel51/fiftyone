@@ -23,6 +23,9 @@ class _Sample(object):
     def __init__(self):
         self._dataset = self._get_dataset()
 
+    def __dir__(self):
+        return super().__dir__() + list(self.field_names)
+
     def __getattr__(self, name):
         try:
             return super().__getattribute__(name)

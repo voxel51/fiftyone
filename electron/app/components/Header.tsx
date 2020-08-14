@@ -46,11 +46,6 @@ const DatasetDiv = styled.div`
   line-height: 1;
 `;
 
-const DatasetNameDiv = styled.div`
-  font-weight: bold;
-  line-height: 1rem;
-`;
-
 const Header = () => {
   const datasetNameValue = useRecoilValue(selectors.datasetName);
 

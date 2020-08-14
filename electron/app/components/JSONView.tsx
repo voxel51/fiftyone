@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React from "react";
 import styled from "styled-components";
 import copy from "copy-to-clipboard";
 

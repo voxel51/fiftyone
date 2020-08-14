@@ -1,8 +1,5 @@
 """
-FiftyOne's basic, high-level public interface.
-
-Parts of various fiftyone sub-packages are collected here and made available
-under the top-level `fiftyone` package.
+FiftyOne's public interface.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -16,12 +13,13 @@ config = foc.load_config()
 
 from .core.dataset import (
     Dataset,
-    list_dataset_names,
+    list_datasets,
     dataset_exists,
     load_dataset,
     delete_dataset,
     delete_non_persistent_datasets,
 )
+from .core.expressions import ViewField, ViewExpression
 from .core.fields import (
     Field,
     BooleanField,
@@ -59,5 +57,5 @@ from .core.session import (
     launch_app,
     Session,
 )
-from .core.expressions import ViewField, ViewExpression
+from .core.utils import ProgressBar
 from .core.view import DatasetView

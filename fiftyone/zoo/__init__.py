@@ -16,7 +16,6 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.types as fot
 
 
 logger = logging.getLogger(__name__)
@@ -112,6 +111,7 @@ def load_zoo_dataset(
     name,
     split=None,
     splits=None,
+    dataset_name=None,
     dataset_dir=None,
     download_if_necessary=True,
     drop_existing_dataset=False,
@@ -121,6 +121,10 @@ def load_zoo_dataset(
 
     By default, the dataset will be downloaded if it does not already exist in
     the specified directory.
+
+    If you do not specify a custom ``dataset_name`` and you have previously
+    loaded the same zoo dataset and split(s) into FiftyOne, the existing
+    :class:`fiftyone.core.dataset.Dataset` will be returned.
 
     Args:
         name: the name of the zoo dataset to load. Call
@@ -135,6 +139,9 @@ def load_zoo_dataset(
             ``splits`` are provided, all available splits are loaded. Consult
             the documentation for the :class:`ZooDataset` you specified to see
             the supported splits
+        dataset_name (None): an optional name to give the returned
+            :class:`fiftyone.core.dataset.Dataset`. By default, a name will be
+            constructed based on the dataset and split(s) you are loading
         dataset_dir (None): the directory in which the dataset is stored or
             will be downloaded. By default,
             :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
@@ -157,15 +164,17 @@ def load_zoo_dataset(
         zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
         info = zoo_dataset.load_info(dataset_dir)
 
-    dataset_name = zoo_dataset.name
-    if splits is not None:
-        dataset_name += "-" + "-".join(splits)
+    if dataset_name is None:
+        dataset_name = zoo_dataset.name
+        if splits is not None:
+            dataset_name += "-" + "-".join(splits)
 
     if fo.dataset_exists(dataset_name):
         if not drop_existing_dataset:
             logger.info(
-                "Loading existing dataset '%s'. To reload from disk, first "
-                "delete the existing dataset",
+                "Loading existing dataset '%s'. To reload from disk, either "
+                "delete the existing dataset or provide a custom "
+                "`dataset_name` to use",
                 dataset_name,
             )
             return fo.load_dataset(dataset_name)

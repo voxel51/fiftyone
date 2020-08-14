@@ -8,7 +8,6 @@ import { ThemeProvider } from "styled-components";
 
 import { GlobalStyle } from "../shared/global";
 import { darkTheme } from "../shared/colors";
-import Sidebar from "../components/Sidebar";
 import PortForm from "../components/PortForm";
 import Header from "../components/Header";
 
