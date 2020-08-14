@@ -113,7 +113,7 @@ class StateDescriptionWithDerivables(StateDescription):
     broker.
     """
 
-    def __init__(self, derivables=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.derivables = self.get_derivables()
