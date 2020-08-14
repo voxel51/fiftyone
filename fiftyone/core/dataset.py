@@ -419,7 +419,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._collection.find():
+        for d in self._sample_collection.find():
             doc = self._sample_dict_to_doc(d)
             yield fos.Sample.from_doc(doc)
 
