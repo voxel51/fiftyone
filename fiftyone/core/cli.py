@@ -1134,6 +1134,9 @@ class ZooLoadCommand(Command):
         # Load the specified split(s) of the zoo dataset
         fiftyone zoo load <name> --splits <split1> ...
 
+        # Load the zoo dataset with a custom name
+        fiftyone zoo load <name> --dataset-name <dataset-name>
+
         # Load the zoo dataset from a custom directory
         fiftyone zoo load <name> --dataset-dir <dataset-dir>
     """
@@ -1151,6 +1154,12 @@ class ZooLoadCommand(Command):
             help="the dataset splits to load",
         )
         parser.add_argument(
+            "-n",
+            "--dataset-name",
+            metavar="DATASET_NAME",
+            help="a custom name to give the FiftyOne dataset",
+        )
+        parser.add_argument(
             "-d",
             "--dataset-dir",
             metavar="DATASET_DIR",
@@ -1161,9 +1170,13 @@ class ZooLoadCommand(Command):
     def execute(parser, args):
         name = args.name
         splits = args.splits
+        dataset_name = args.dataset_name
         dataset_dir = args.dataset_dir
         dataset = foz.load_zoo_dataset(
-            name, splits=splits, dataset_dir=dataset_dir
+            name,
+            splits=splits,
+            dataset_name=dataset_name,
+            dataset_dir=dataset_dir,
         )
         dataset.persistent = True
         print("Dataset '%s' created" % dataset.name)
