@@ -128,7 +128,7 @@ class Exclude(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": "list<str>"}]
+        return [{"name": "sample_ids", "type": "list<str>|str"}]
 
 
 class ExcludeFields(ViewStage):
@@ -533,7 +533,7 @@ class Select(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": "list<str>"}]
+        return [{"name": "sample_ids", "type": "list<str>|str"}]
 
 
 class SelectFields(ViewStage):
