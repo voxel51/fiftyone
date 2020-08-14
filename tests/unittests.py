@@ -48,7 +48,7 @@ def drop_datasets(func):
     return wrapper
 
 
-class SingleProcessSynchronizationTest(unittest.TestCase):
+class SingleProcessSynchronizationTests(unittest.TestCase):
     """Tests ensuring that when a dataset or samples in a dataset are modified
     all relevant objects are instantly in sync within the same process.
     """
@@ -215,7 +215,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         self.assertIsInstance(fields[field_name], ftype)
 
 
-class ScopedObjectsSynchronizationTest(unittest.TestCase):
+class ScopedObjectsSynchronizationTests(unittest.TestCase):
     """Tests ensuring that when a dataset or samples in a dataset are modified,
     those changes are passed on the the database and can be seen in different
     scopes (or processes!).
@@ -648,7 +648,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         check_modify_list_iadd(sample_id)
 
 
-class MultiProcessSynchronizationTest(unittest.TestCase):
+class MultiProcessSynchronizationTests(unittest.TestCase):
     """Tests that ensure that multiple processes can interact with the database
     simultaneously.
     """
@@ -656,7 +656,7 @@ class MultiProcessSynchronizationTest(unittest.TestCase):
     pass
 
 
-class DatasetTest(unittest.TestCase):
+class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_list_dataset_names(self):
         self.assertIsInstance(fo.list_dataset_names(), list)
@@ -754,7 +754,7 @@ class DatasetTest(unittest.TestCase):
         self.assertIs(dataset1c, dataset1)
 
 
-class SampleTest(unittest.TestCase):
+class SampleTests(unittest.TestCase):
     @drop_datasets
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="/path/to/image.jpg")
@@ -843,7 +843,7 @@ class SampleTest(unittest.TestCase):
         self.assertEqual(sample.test_field, value)
 
 
-class SampleInDatasetTest(unittest.TestCase):
+class SampleInDatasetTests(unittest.TestCase):
     @drop_datasets
     def test_invalid_sample(self):
         dataset = fo.Dataset()
@@ -1108,7 +1108,7 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(s2.new_field, "fiftyone")
 
 
-class LabelsTest(unittest.TestCase):
+class LabelsTests(unittest.TestCase):
     @drop_datasets
     def test_create(self):
         labels = fo.Classification(label="cow", confidence=0.98)
@@ -1148,7 +1148,7 @@ class LabelsTest(unittest.TestCase):
         self.assertNotEqual(det2.id, det.id)
 
 
-class DatasetViewTest(unittest.TestCase):
+class DatasetViewTests(unittest.TestCase):
     @drop_datasets
     def test_view(self):
         dataset = fo.Dataset()
@@ -1285,7 +1285,7 @@ class DatasetViewTest(unittest.TestCase):
         self.assertListEqual(detections, [])
 
 
-class ExpressionTest(unittest.TestCase):
+class ViewExpressionTests(unittest.TestCase):
     @drop_datasets
     def test_comparison(self):
         dataset = fo.Dataset()
@@ -1486,8 +1486,83 @@ class ExpressionTest(unittest.TestCase):
         view = dataset.match(F("my_list")[idx] == value)
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
+    @drop_datasets
+    def test_str(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(filepath="test1.jpg", test="test1.jpg"),
+                fo.Sample(filepath="test2.jpg", test="test2.jpg"),
+                fo.Sample(filepath="test3.jpg", test="test3.jpg"),
+            ]
+        )
 
-class FieldTest(unittest.TestCase):
+        # test starts_with
+        self.assertEqual(
+            len(self.dataset.match(F("test").starts_with("test"))), 3
+        )
+        self.assertEqual(
+            len(self.dataset.match(F("test").starts_with("TEST"))), 0
+        )
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("test").starts_with("TEST", case_sensitive=False)
+                )
+            ),
+            3,
+        )
+
+        # test ends_with
+        self.assertEqual(
+            len(self.dataset.match(F("test").ends_with("1.jpg"))), 1
+        )
+        self.assertEqual(
+            len(self.dataset.match(F("test").ends_with("1.JPG"))), 0
+        )
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("test").ends_with("1.JPG", case_sensitive=False)
+                )
+            ),
+            1,
+        )
+
+        # test contains_str
+        self.assertEqual(
+            len(self.dataset.match(F("test").contains_str("1.j"))), 1
+        )
+        self.assertEqual(
+            len(self.dataset.match(F("test").contains_str("1.J"))), 0
+        )
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("test").contains_str("1.J", case_sensitive=False)
+                )
+            ),
+            1,
+        )
+
+        # test matches_str
+        self.assertEqual(
+            len(self.dataset.match(F("test").matches_str("test1.jpg"))), 1
+        )
+        self.assertEqual(
+            len(self.dataset.match(F("test").matches_str("TEST1.JPG"))), 0
+        )
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("test").matches_str("TEST1.JPG", case_sensitive=False)
+                )
+            ),
+            1,
+        )
+
+
+class SampleFieldTests(unittest.TestCase):
     @drop_datasets
     def test_field_add_delete_in_dataset(self):
         dataset = fo.Dataset()
@@ -1688,7 +1763,7 @@ class FieldTest(unittest.TestCase):
             self.assertIsInstance(fields["array_field"], fo.ArrayField)
 
 
-class SerializationTest(unittest.TestCase):
+class SerializationTests(unittest.TestCase):
     def test_embedded_document(self):
         label1 = fo.Classification(label="cat", logits=np.arange(4))
 
@@ -1782,7 +1857,7 @@ class SerializationTest(unittest.TestCase):
         self.assertDictEqual(s1.to_dict(), s2.to_dict())
 
 
-class SampleCollectionTest(unittest.TestCase):
+class SampleCollectionTests(unittest.TestCase):
     @drop_datasets
     def test_first_last(self):
         dataset = fo.Dataset()
@@ -1794,7 +1869,7 @@ class SampleCollectionTest(unittest.TestCase):
         self.assertIsInstance(dataset.view().last(), fos.SampleView)
 
 
-class AggregationTest(unittest.TestCase):
+class AggregationTests(unittest.TestCase):
     @drop_datasets
     def test_aggregate(self):
         dataset = fo.Dataset()
@@ -2019,83 +2094,6 @@ class ViewStageTests(unittest.TestCase):
     def test_take(self):
         result = list(self.dataset.take(1))
         self.assertIs(len(result), 1)
-
-
-class ViewExpressionTests(unittest.TestCase):
-    @drop_datasets
-    def setUp(self):
-        self.dataset = fo.Dataset()
-        self.dataset.add_samples(
-            [
-                fo.Sample(filepath="test1.jpg", test="test1.jpg"),
-                fo.Sample(filepath="test2.jpg", test="test2.jpg"),
-                fo.Sample(filepath="test3.jpg", test="test3.jpg"),
-            ]
-        )
-
-    def test_starts_with(self):
-        self.assertEqual(
-            len(self.dataset.match(F("test").starts_with("test"))), 3
-        )
-        self.assertEqual(
-            len(self.dataset.match(F("test").starts_with("TEST"))), 0
-        )
-        self.assertEqual(
-            len(
-                self.dataset.match(
-                    F("test").starts_with("TEST", case_sensitive=False)
-                )
-            ),
-            3,
-        )
-
-    def test_ends_with(self):
-        self.assertEqual(
-            len(self.dataset.match(F("test").ends_with("1.jpg"))), 1
-        )
-        self.assertEqual(
-            len(self.dataset.match(F("test").ends_with("1.JPG"))), 0
-        )
-        self.assertEqual(
-            len(
-                self.dataset.match(
-                    F("test").ends_with("1.JPG", case_sensitive=False)
-                )
-            ),
-            1,
-        )
-
-    def test_contains_str(self):
-        self.assertEqual(
-            len(self.dataset.match(F("test").contains_str("1.j"))), 1
-        )
-        self.assertEqual(
-            len(self.dataset.match(F("test").contains_str("1.J"))), 0
-        )
-        self.assertEqual(
-            len(
-                self.dataset.match(
-                    F("test").contains_str("1.J", case_sensitive=False)
-                )
-            ),
-            1,
-        )
-
-    def test_matches_str(self):
-        self.assertEqual(
-            len(self.dataset.match(F("test").matches_str("test1.jpg"))), 1
-        )
-        self.assertEqual(
-            len(self.dataset.match(F("test").matches_str("TEST1.JPG"))), 0
-        )
-        self.assertEqual(
-            len(
-                self.dataset.match(
-                    F("test").matches_str("TEST1.JPG", case_sensitive=False)
-                )
-            ),
-            1,
-        )
 
 
 if __name__ == "__main__":
