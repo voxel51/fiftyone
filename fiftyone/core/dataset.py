@@ -188,7 +188,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self.view()[sample_id_or_slice]
 
         try:
-            doc = self._get_query_set().get(id=sample_id_or_slice)
+            d = self._collection.find_one(
+                {"_id": ObjectId(sample_id_or_slice)}
+            )
+            doc = self._sample_dict_to_doc(d)
+
             return fos.Sample.from_doc(doc)
         except DoesNotExist:
             raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
@@ -1290,10 +1294,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _sample_dict_to_doc(self, d):
         return self._sample_doc_cls.from_dict(d, extended=False)
-
-    def _get_query_set(self, **kwargs):
-        # pylint: disable=no-member
-        return self._sample_doc_cls.objects(**kwargs)
 
     def _to_fields_str(self, field_schema):
         fields_dict = {
