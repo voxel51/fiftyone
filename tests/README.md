@@ -8,8 +8,8 @@
 | `import_export_tests.py` | Tests for importing/exporting datasets in supported formats                                 |
 | `unittests.py`           | Unit tests checking expected behavior of `fiftyone`                                         |
 | `zoo_tests.py`           | Basic tests of Dataset Zoo functionality                                                    |
-| `benchmarking/`          | Tests related to benchmarking the performance of FiftyOne                                   |
-| `isolated`               | Tests that must be run in a separate `pytest` process to avoid interfering with other tests |
+| `benchmarking/*.py`      | Tests related to benchmarking the performance of FiftyOne                                   |
+| `isolated/*.py`          | Tests that must be run in a separate `pytest` process to avoid interfering with other tests |
 
 ## Running a test
 
