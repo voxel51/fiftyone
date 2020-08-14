@@ -1413,9 +1413,9 @@ def _create_dataset(name, persistent=False):
 
 def _make_sample_collection_name(conn):
     now = datetime.datetime.now()
-    name = "dataset." + now.strftime("%Y.%m.%d.%H.%M.%S")
+    name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S")
     if name in conn.list_collection_names():
-        name = "dataset." + now.strftime("%Y.%m.%d.%H.%M.%S.%f")
+        name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S.%f")
 
     return name
 
