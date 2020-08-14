@@ -11,7 +11,7 @@ const ErrorMessageDiv = animated(styled.div`
   border-radius: 2px;
   padding: 0.5rem;
   line-height: 1rem;
-  margin-top: -2.5rem;
+  margin-top: 2.5rem;
   font-weight: bold;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   position: fixed;

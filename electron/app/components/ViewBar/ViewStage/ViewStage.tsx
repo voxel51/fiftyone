@@ -1,17 +1,11 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useContext, useEffect, useRef, useMemo, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
 import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 import { GlobalHotKeys } from "react-hotkeys";
-import { Add, KeyboardReturn as Arrow } from "@material-ui/icons";
+import { Add, KeyboardReturn as Arrow, Close } from "@material-ui/icons";
 
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
@@ -56,7 +50,7 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 `;
 
-const ViewStageButton = animated(styled.button`
+const ViewStageButton = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   color: ${({ theme }) => theme.font};
@@ -74,19 +68,22 @@ const ViewStageButton = animated(styled.button`
   }
 `);
 
-const AddIcon = animated(styled(Add)``);
+const AddIcon = animated(styled(Add)`
+  display: block;
+  font-size: 14px;
+`);
 
 const addTransform = (y) => `translate3d(0, ${y}px, 0)`;
 
 const ArrowIcon = animated(styled(Arrow)`
   position: absolute;
-  top: 0.25rem;
 `);
 
 const arrowTransform = (y) => `scale(-1, 1) translate3d(0, ${y}px, 0)`;
 
 export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
+  const [hovering, setHovering] = useState(false);
   const [props, set] = useSpring(() => ({
     background: theme.brandMoreTransparent,
     top: active ? -3 : 0,
@@ -122,17 +119,34 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     setArrow({ y: 0 });
   };
 
+  useEffect(() => {
+    (active || hovering) && setEnterProps();
+    !active && !hovering && setLeaveProps();
+  }, [active, hovering]);
+
   return (
     <ViewStageButton
       style={props}
-      onMouseEnter={setEnterProps}
-      onMouseLeave={setLeaveProps}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
       onClick={() => send({ type: "STAGE.ADD", index })}
     >
       <ArrowIcon
-        style={{ transform: arrowProps.y.interpolate(arrowTransform) }}
+        style={{
+          transform: arrowProps.y.interpolate(arrowTransform),
+          display: "block",
+          fontSize: "14px",
+          margin: "9px 0",
+        }}
       />
-      <AddIcon style={{ transform: addProps.y.interpolate(addTransform) }} />
+      <AddIcon
+        style={{
+          transform: addProps.y.interpolate(addTransform),
+          display: "block",
+          fontSize: "14px",
+          margin: "9px 0",
+        }}
+      />
     </ViewStageButton>
   );
 });
@@ -150,11 +164,12 @@ const ViewStageDeleteDiv = animated(styled.div`
 const ViewStageDeleteButton = animated(styled.button`
   background-color: transparent;
   border: none;
-  margin: 0.5rem;
+  padding: 0.5rem;
   color: ${({ theme }) => theme.font};
   line-height: 1rem;
+  display: block;
+  height: 100%;
   border: none;
-  padding: 0;
   cursor: pointer;
   font-weight: bold;
 
@@ -166,7 +181,14 @@ const ViewStageDeleteButton = animated(styled.button`
 const ViewStageDelete = React.memo(({ send, spring }) => {
   return (
     <ViewStageDeleteDiv style={spring} onClick={() => send("STAGE.DELETE")}>
-      <ViewStageDeleteButton>x</ViewStageDeleteButton>
+      <ViewStageDeleteButton>
+        <Close
+          style={{
+            fontSize: "14px",
+            display: "block",
+          }}
+        />
+      </ViewStageDeleteButton>
     </ViewStageDeleteDiv>
   );
 });

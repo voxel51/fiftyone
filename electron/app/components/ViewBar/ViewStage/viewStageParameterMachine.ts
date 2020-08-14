@@ -70,13 +70,19 @@ export const PARSER = {
       return JSON.stringify(value);
     },
     castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
-    parse: (value, next) => {
+    parse: (value) => {
       const array = JSON.parse(value);
       return JSON.stringify(array.map((e) => PARSER.str.parse(e)));
     },
-    validate: (value, next) => {
-      const array = typeof value === "string" ? JSON.parse(value) : value;
-      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
+    validate: (value) => {
+      try {
+        const array = typeof value === "string" ? JSON.parse(value) : value;
+        return (
+          Array.isArray(array) && array.every((e) => PARSER.str.validate(e))
+        );
+      } catch {
+        return false;
+      }
     },
   },
   str: {

@@ -43,9 +43,9 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 const ObjectEditorContainer = styled.div`
   height: 100%;
   width: 100%;
-  font-size: 14px;
   font-weight: bold;
   line-height: 1rem;
+  font-size: 14px;
   position: relative;
   margin: 0.5rem;
   overflow: visible;
