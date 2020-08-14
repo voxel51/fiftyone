@@ -133,8 +133,8 @@ class Exclude(ViewStage):
         return [{"name": "sample_ids", "type": ["list", "str"]}]
 
     def _validate(self):
-        # ensures ObjectIDs are valid
-        _ = self.to_mongo()
+        # Ensures that ObjectIDs are valid
+        self.to_mongo()
 
 
 class ExcludeFields(ViewStage):
@@ -544,8 +544,8 @@ class Select(ViewStage):
         return [{"name": "sample_ids", "type": ["list", "str"]}]
 
     def _validate(self):
-        # ensures ObjectIDs are valid
-        _ = self.to_mongo()
+        # Ensures that ObjectIDs are valid
+        self.to_mongo()
 
 
 class SelectFields(ViewStage):
