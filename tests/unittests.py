@@ -1,13 +1,11 @@
 """
-Unit tests.
+FiftyOne unit tests.
 
-To run a single test, modify the main code to:
+To run a single test, modify the main code to::
 
-```
-singletest = unittest.TestSuite()
-singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
-unittest.TextTestRunner().run(singletest)
-```
+    singletest = unittest.TestSuite()
+    singletest.addTest(TESTCASE("<TEST METHOD NAME>"))
+    unittest.TextTestRunner().run(singletest)
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -30,6 +28,7 @@ from pymongo.errors import DuplicateKeyError
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+from fiftyone.core.odm.sample import default_sample_fields
 import fiftyone.core.sample as fos
 from fiftyone import ViewField as F
 
@@ -47,7 +46,7 @@ def drop_datasets(func):
     return wrapper
 
 
-class SingleProcessSynchronizationTest(unittest.TestCase):
+class SingleProcessSynchronizationTests(unittest.TestCase):
     """Tests ensuring that when a dataset or samples in a dataset are modified
     all relevant objects are instantly in sync within the same process.
     """
@@ -214,7 +213,7 @@ class SingleProcessSynchronizationTest(unittest.TestCase):
         self.assertIsInstance(fields[field_name], ftype)
 
 
-class ScopedObjectsSynchronizationTest(unittest.TestCase):
+class ScopedObjectsSynchronizationTests(unittest.TestCase):
     """Tests ensuring that when a dataset or samples in a dataset are modified,
     those changes are passed on the the database and can be seen in different
     scopes (or processes!).
@@ -647,7 +646,7 @@ class ScopedObjectsSynchronizationTest(unittest.TestCase):
         check_modify_list_iadd(sample_id)
 
 
-class MultiProcessSynchronizationTest(unittest.TestCase):
+class MultiProcessSynchronizationTests(unittest.TestCase):
     """Tests that ensure that multiple processes can interact with the database
     simultaneously.
     """
@@ -655,7 +654,7 @@ class MultiProcessSynchronizationTest(unittest.TestCase):
     pass
 
 
-class DatasetTest(unittest.TestCase):
+class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_list_datasets(self):
         self.assertIsInstance(fo.list_datasets(), list)
@@ -753,7 +752,7 @@ class DatasetTest(unittest.TestCase):
         self.assertIs(dataset1c, dataset1)
 
 
-class SampleTest(unittest.TestCase):
+class SampleTests(unittest.TestCase):
     @drop_datasets
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="/path/to/image.jpg")
@@ -842,7 +841,7 @@ class SampleTest(unittest.TestCase):
         self.assertEqual(sample.test_field, value)
 
 
-class SampleInDatasetTest(unittest.TestCase):
+class SampleInDatasetTests(unittest.TestCase):
     @drop_datasets
     def test_invalid_sample(self):
         dataset = fo.Dataset()
@@ -1107,7 +1106,7 @@ class SampleInDatasetTest(unittest.TestCase):
         self.assertEqual(s2.new_field, "fiftyone")
 
 
-class LabelsTest(unittest.TestCase):
+class LabelsTests(unittest.TestCase):
     @drop_datasets
     def test_create(self):
         labels = fo.Classification(label="cow", confidence=0.98)
@@ -1147,7 +1146,7 @@ class LabelsTest(unittest.TestCase):
         self.assertNotEqual(det2.id, det.id)
 
 
-class ViewTest(unittest.TestCase):
+class DatasetViewTests(unittest.TestCase):
     @drop_datasets
     def test_view(self):
         dataset = fo.Dataset()
@@ -1284,7 +1283,7 @@ class ViewTest(unittest.TestCase):
         self.assertListEqual(detections, [])
 
 
-class ExpressionTest(unittest.TestCase):
+class ViewExpressionTests(unittest.TestCase):
     @drop_datasets
     def test_comparison(self):
         dataset = fo.Dataset()
@@ -1485,8 +1484,83 @@ class ExpressionTest(unittest.TestCase):
         view = dataset.match(F("my_list")[idx] == value)
         self.assertListEqual([sample.id for sample in view], manual_ids)
 
+    @drop_datasets
+    def test_str(self):
+        self.dataset = fo.Dataset()
+        self.dataset.add_samples(
+            [
+                fo.Sample(filepath="test1.jpg", test="test1.jpg"),
+                fo.Sample(filepath="test2.jpg", test="test2.jpg"),
+                fo.Sample(filepath="test3.jpg", test="test3.jpg"),
+            ]
+        )
 
-class FieldTest(unittest.TestCase):
+        # test starts_with
+        self.assertEqual(
+            len(self.dataset.match(F("test").starts_with("test"))), 3
+        )
+        self.assertEqual(
+            len(self.dataset.match(F("test").starts_with("TEST"))), 0
+        )
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("test").starts_with("TEST", case_sensitive=False)
+                )
+            ),
+            3,
+        )
+
+        # test ends_with
+        self.assertEqual(
+            len(self.dataset.match(F("test").ends_with("1.jpg"))), 1
+        )
+        self.assertEqual(
+            len(self.dataset.match(F("test").ends_with("1.JPG"))), 0
+        )
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("test").ends_with("1.JPG", case_sensitive=False)
+                )
+            ),
+            1,
+        )
+
+        # test contains_str
+        self.assertEqual(
+            len(self.dataset.match(F("test").contains_str("1.j"))), 1
+        )
+        self.assertEqual(
+            len(self.dataset.match(F("test").contains_str("1.J"))), 0
+        )
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("test").contains_str("1.J", case_sensitive=False)
+                )
+            ),
+            1,
+        )
+
+        # test matches_str
+        self.assertEqual(
+            len(self.dataset.match(F("test").matches_str("test1.jpg"))), 1
+        )
+        self.assertEqual(
+            len(self.dataset.match(F("test").matches_str("TEST1.JPG"))), 0
+        )
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("test").matches_str("TEST1.JPG", case_sensitive=False)
+                )
+            ),
+            1,
+        )
+
+
+class SampleFieldTests(unittest.TestCase):
     @drop_datasets
     def test_field_add_delete_in_dataset(self):
         dataset = fo.Dataset()
@@ -1687,7 +1761,7 @@ class FieldTest(unittest.TestCase):
             self.assertIsInstance(fields["array_field"], fo.ArrayField)
 
 
-class SerializationTest(unittest.TestCase):
+class SerializationTests(unittest.TestCase):
     def test_embedded_document(self):
         label1 = fo.Classification(label="cat", logits=np.arange(4))
 
@@ -1781,7 +1855,8 @@ class SerializationTest(unittest.TestCase):
         self.assertDictEqual(s1.to_dict(), s2.to_dict())
 
 
-class SampleCollectionTest(unittest.TestCase):
+class SampleCollectionTests(unittest.TestCase):
+    @drop_datasets
     def test_first_last(self):
         dataset = fo.Dataset()
         dataset.add_samples([fo.Sample("test_%d.png" % i) for i in range(3)])
@@ -1792,7 +1867,7 @@ class SampleCollectionTest(unittest.TestCase):
         self.assertIsInstance(dataset.view().last(), fos.SampleView)
 
 
-class AggregationTest(unittest.TestCase):
+class AggregationTests(unittest.TestCase):
     @drop_datasets
     def test_aggregate(self):
         dataset = fo.Dataset()
@@ -1820,6 +1895,203 @@ class AggregationTest(unittest.TestCase):
                 tag = d["_id"]
                 count = d["count"]
                 self.assertEqual(count, counts[tag])
+
+
+class ViewStageTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+        self.sample1 = fo.Sample(filepath="test_one.png")
+        self.sample2 = fo.Sample(filepath="test_two.png")
+        self.dataset.add_sample(self.sample1)
+        self.dataset.add_sample(self.sample2)
+
+    def test_exclude(self):
+        result = list(self.dataset.exclude([self.sample1.id]))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample2.id)
+
+    def test_exclude_fields(self):
+        self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
+        self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
+
+        for sv in self.dataset.exclude_fields(["exclude_fields_field1"]):
+            self.assertIsNone(sv.selected_field_names)
+            self.assertSetEqual(
+                sv.excluded_field_names, {"exclude_fields_field1"}
+            )
+            with self.assertRaises(NameError):
+                sv.exclude_fields_field1
+            self.assertIsNone(sv.exclude_fields_field2)
+
+    def test_exists(self):
+        self.sample1["exists"] = True
+        self.sample1.save()
+        result = list(self.dataset.exists("exists"))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_filter_classifications(self):
+        self.sample1["test_clfs"] = fo.Classifications(
+            classifications=[
+                fo.Classification(label="friend", confidence=0.9,),
+                fo.Classification(label="friend", confidence=0.3,),
+                fo.Classification(label="stopper", confidence=0.1,),
+                fo.Classification(label="big bro", confidence=0.6,),
+            ]
+        )
+        self.sample1.save()
+        self.sample2["test_clfs"] = fo.Classifications(
+            classifications=[
+                fo.Classification(label="friend", confidence=0.99,),
+                fo.Classification(label="tricam", confidence=0.2,),
+                fo.Classification(label="hex", confidence=0.8,),
+            ]
+        )
+        self.sample2.save()
+
+        view = self.dataset.filter_classifications(
+            "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
+        )
+
+        for sv in view:
+            for clf in sv.test_clfs.classifications:
+                self.assertGreater(clf.confidence, 0.5)
+                self.assertEqual(clf.label, "friend")
+
+    def test_filter_detections(self):
+        self.sample1["test_dets"] = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="friend",
+                    confidence=0.9,
+                    bounding_box=[0, 0, 0.5, 0.5],
+                ),
+                fo.Detection(
+                    label="friend",
+                    confidence=0.3,
+                    bounding_box=[0.25, 0, 0.5, 0.1],
+                ),
+                fo.Detection(
+                    label="stopper",
+                    confidence=0.1,
+                    bounding_box=[0, 0, 0.5, 0.5],
+                ),
+                fo.Detection(
+                    label="big bro",
+                    confidence=0.6,
+                    bounding_box=[0, 0, 0.1, 0.5],
+                ),
+            ]
+        )
+        self.sample1.save()
+        self.sample2["test_dets"] = fo.Detections(
+            detections=[
+                fo.Detection(
+                    label="friend", confidence=0.99, bounding_box=[0, 0, 1, 1],
+                ),
+                fo.Detection(
+                    label="tricam",
+                    confidence=0.2,
+                    bounding_box=[0, 0, 0.5, 0.5],
+                ),
+                fo.Detection(
+                    label="hex",
+                    confidence=0.8,
+                    bounding_box=[0.35, 0, 0.2, 0.25],
+                ),
+            ]
+        )
+        self.sample2.save()
+
+        view = self.dataset.filter_detections(
+            "test_dets", (F("confidence") > 0.5) & (F("label") == "friend")
+        )
+
+        for sv in view:
+            for det in sv.test_dets.detections:
+                self.assertGreater(det.confidence, 0.5)
+                self.assertEqual(det.label, "friend")
+
+    def test_limit(self):
+        result = list(self.dataset.limit(1))
+        self.assertIs(len(result), 1)
+
+    def test_match(self):
+        self.sample1["value"] = "value"
+        self.sample1.save()
+        result = list(self.dataset.match({"value": "value"}))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_match_tag(self):
+        self.sample1.tags.append("test")
+        self.sample1.save()
+        result = list(self.dataset.match_tag("test"))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_match_tags(self):
+        self.sample1.tags.append("test")
+        self.sample1.save()
+        result = list(self.dataset.match_tags(["test"]))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_re_match(self):
+        result = list(self.dataset.match(F("filepath").re_match("two\.png$")))
+        self.assertIs(len(result), 1)
+        self.assertTrue(result[0].filepath.endswith("two.png"))
+
+        # case-insentive match
+        result = list(
+            self.dataset.match(
+                F("filepath").re_match("TWO\.PNG$", options="i")
+            )
+        )
+        self.assertIs(len(result), 1)
+        self.assertTrue(result[0].filepath.endswith("two.png"))
+
+    def test_mongo(self):
+        result = list(self.dataset.mongo([{"$limit": 1}]))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_select(self):
+        result = list(self.dataset.select([self.sample1.id]))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_select_fields(self):
+        self.dataset.add_sample_field("select_fields_field", fo.IntField)
+
+        for sv in self.dataset.select_fields():
+            self.assertSetEqual(
+                sv.selected_field_names, set(default_sample_fields())
+            )
+            self.assertIsNone(sv.excluded_field_names)
+            sv.filepath
+            sv.metadata
+            sv.tags
+            with self.assertRaises(NameError):
+                sv.select_fields_field
+
+    def test_skip(self):
+        result = list(self.dataset.sort_by("filepath").skip(1))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample2.id)
+
+    def test_sort_by(self):
+        result = list(self.dataset.sort_by("filepath"))
+        self.assertIs(len(result), 2)
+        self.assertEqual(result[0].id, self.sample1.id)
+        result = list(self.dataset.sort_by("filepath", reverse=True))
+        self.assertIs(len(result), 2)
+        self.assertEqual(result[0].id, self.sample2.id)
+
+    def test_take(self):
+        result = list(self.dataset.take(1))
+        self.assertIs(len(result), 1)
 
 
 if __name__ == "__main__":
