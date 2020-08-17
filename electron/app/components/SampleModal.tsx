@@ -136,8 +136,8 @@ const Container = styled.div`
   }
 `;
 
-const Row = ({ name, value }) => (
-  <div className="row">
+const Row = ({ name, value, ...rest }) => (
+  <div className="row" {...rest}>
     <label>{name}&nbsp;</label>
     <span>{value}</span>
   </div>
@@ -306,7 +306,7 @@ const SampleModal = ({
           <Row name="ID" value={sample._id.$oid} />
           <Row name="Source" value={sample.filepath} />
           {formatMetadata(sample.metadata).map(({ name, value }) => (
-            <Row name={name} value={value} />
+            <Row key={"metadata-" + name} name={name} value={value} />
           ))}
           <Row
             name="Tags"
