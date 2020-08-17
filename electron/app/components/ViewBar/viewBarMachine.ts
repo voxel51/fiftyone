@@ -3,9 +3,7 @@ import uuid from "uuid-v4";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
-import viewStageParameterMachine, {
-  PARSER as PARAM_PARSER,
-} from "./ViewStage/viewStageParameterMachine";
+import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
 
 export const createStage = (
   stage,
@@ -35,30 +33,6 @@ import { getSocket } from "../../utils/socket";
 
 const { choose } = actions;
 
-const compareObjects = (a, b) => {
-  if (a === b) return true;
-
-  if (typeof a != "object" || typeof b != "object" || a == null || b == null)
-    return false;
-
-  let keysA = Object.keys(a),
-    keysB = Object.keys(b);
-
-  if (keysA.length != keysB.length) return false;
-
-  for (let key of keysA) {
-    if (!keysB.includes(key)) return false;
-
-    if (typeof a[key] === "function" || typeof b[key] === "function") {
-      if (a[key].toString() != b[key].toString()) return false;
-    } else {
-      if (!compareObjects(a[key], b[key])) return false;
-    }
-  }
-
-  return true;
-};
-
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
     response.json()
@@ -76,19 +50,25 @@ function serializeStage(stage, stageMap) {
 }
 
 function operate(type, operator, value) {
-  return (Array.isArray(type) ? [type[0]] : type.split("|")).reduce(
-    (acc, t) => {
-      const parser = PARAM_PARSER[t];
-      const next = Array.isArray(type) ? type[1] : undefined;
-      return parser.validate(value, next) ? parser[operator](value, next) : acc;
-    },
-    undefined
-  );
+  return type.split("|").reduce((acc, t) => {
+    const parser = PARAM_PARSER[t];
+    return parser.validate(value) ? parser[operator](value) : acc;
+  }, undefined);
 }
 
 function serializeView(stages, stageMap) {
   if (stages.length === 1 && stages[0].stage === "") return [];
   return stages.map((stage) => serializeStage(stage, stageMap));
+}
+
+function makeEmptyView(stageInfo) {
+  const stage = createStage("", 0, stageInfo, false, 0, true, [], false);
+  return [
+    {
+      ...stage,
+      ref: spawn(viewStageMachine.withContext(stage)),
+    },
+  ];
 }
 
 function setStages(ctx, stageInfo) {
@@ -97,6 +77,8 @@ function setStages(ctx, stageInfo) {
   const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
   if (viewStr === JSON.stringify(serializeView(ctx.stages, stageMap))) {
     return ctx.stages;
+  } else if (view.length === 0) {
+    return makeEmptyView(stageInfo);
   } else {
     return view.map((stage, i) => {
       let stageName = stage._cls.split(".");
@@ -116,6 +98,7 @@ function setStages(ctx, stageInfo) {
             stageName,
             p[0],
             stageInfoResult.params[j].type,
+            stageInfoResult.params[j].default,
             operate(stageInfoResult.params[j].type, "castFrom", p[1]),
             true,
             false,
@@ -178,24 +161,7 @@ const viewBarMachine = Machine(
               stageInfo: (ctx, e) => e.data.stages,
               stages: (ctx, e) => {
                 const view = JSON.parse(ctx.stateDescription.view.view);
-                if (view.length === 0) {
-                  const stage = createStage(
-                    "",
-                    0,
-                    e.data.stages,
-                    false,
-                    0,
-                    true,
-                    [],
-                    false
-                  );
-                  return [
-                    {
-                      ...stage,
-                      ref: spawn(viewStageMachine.withContext(stage)),
-                    },
-                  ];
-                }
+                if (view.length === 0) return makeEmptyView(e.data.stages);
                 return setStages(ctx, e.data.stages);
               },
             }),
@@ -310,7 +276,7 @@ const viewBarMachine = Machine(
       },
     },
     on: {
-      SET: {
+      "STAGE.EDIT": {
         actions: [
           assign({
             activeStage: (_, e) => e.index,
@@ -440,17 +406,9 @@ const viewBarMachine = Machine(
             index: stage.index,
             length: ctx.stages.length,
             active: stage.index === ctx.activeStage,
-            stage: stage.stage,
-            go: stage.reset,
           })
         ),
-      submit: ({
-        socket,
-        setStateDescription,
-        stateDescription,
-        stages,
-        stageInfo,
-      }) => {
+      submit: ({ socket, stateDescription, stages, stageInfo }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );
