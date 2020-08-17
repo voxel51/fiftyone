@@ -654,24 +654,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        # @todo optimize by copying the collections directly via Mongo
-        dataset = self.__class__(name=name)
-        dataset.add_samples(self)
-        dataset.persistent = self.persistent
-        dataset.info = deepcopy(self.info)
-        return dataset
-
-    def clone_fast(self, name=None):
-        """Creates a clone of the dataset containing deep copies of all samples
-        and dataset-level information in this dataset.
-
-        Args:
-            name (None): a name for the cloned dataset. By default,
-                :func:`get_default_dataset_name` is used
-
-        Returns:
-            a :class:`Dataset`
-        """
         if dataset_exists(name):
             raise ValueError(
                 "Dataset '%s' already exists; invalid to clone dataset." % name
@@ -697,24 +679,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset_doc.save()
 
         return load_dataset(name=name)
-
-        # dataset = self.__class__(name=name)
-        #
-        # clone_pipeline = [
-        #     {"$match": {}},
-        #     {"$out": dataset._sample_collection_name},
-        # ]
-        # self._sample_collection.aggregate(clone_pipeline)
-        #
-        # # todo copy the DatasetDocument
-        # dataset._doc.persistent = self.persistent
-        # dataset._doc.info = deepcopy(self.info)
-        # self._doc.reload("sample_fields")
-        # print([x.name for x in self._doc.sample_fields])
-        # dataset._doc.sample_fields = deepcopy(self._doc.sample_fields)
-        # print([x.name for x in dataset._doc.sample_fields])
-        # dataset._doc.save()
-        # return dataset
 
     def clear(self):
         """Removes all samples from the dataset.
