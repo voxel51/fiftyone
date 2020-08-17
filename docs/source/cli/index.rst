@@ -77,6 +77,8 @@ The FiftyOne command-line interface.
         app                 Tools for working with the FiftyOne App.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
 
+.. _cli-fiftyone-config:
+
 FiftyOne config
 ---------------
 
@@ -114,6 +116,8 @@ Tools for working with your FiftyOne config.
     # Print the location of your config
     fiftyone config --locate
 
+.. _cli-fiftyone-constants:
+
 Print constants
 ---------------
 
@@ -144,6 +148,8 @@ Print constants from `fiftyone.constants`.
 
     # Print a specific constant
     fiftyone constants <CONSTANT>
+
+.. _cli-fiftyone-convert:
 
 Convert dataset formats
 -----------------------
@@ -190,6 +196,8 @@ Convert datasets on disk between supported formats.
         --output-dir /path/for/cvat-image-dataset \
         --output-type fiftyone.types.CVATImageDataset
 
+.. _cli-fiftyone-datasets:
+
 FiftyOne datasets
 -----------------
 
@@ -220,6 +228,8 @@ Tools for working with FiftyOne datasets.
         draw                Writes annotated versions of samples in FiftyOne datasets to disk.
         delete              Delete FiftyOne datasets.
 
+.. _cli-fiftyone-datasets-list:
+
 List datasets
 ~~~~~~~~~~~~~
 
@@ -242,6 +252,8 @@ List FiftyOne datasets.
 
     # List available datasets
     fiftyone datasets list
+
+.. _cli-fiftyone-datasets-info:
 
 Print dataset information
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -268,6 +280,8 @@ Print information about FiftyOne datasets.
 
     # Print information about the given dataset
     fiftyone datasets info <name>
+
+.. _cli-fiftyone-datasets-create:
 
 Create datasets
 ~~~~~~~~~~~~~~~
@@ -304,6 +318,8 @@ Tools for creating FiftyOne datasets.
     # Create a dataset from the given samples JSON file
     fiftyone datasets create --json-path <json-path>
 
+.. _cli-fiftyone-datasets-head:
+
 Print dataset head
 ~~~~~~~~~~~~~~~~~~
 
@@ -336,6 +352,8 @@ Prints the first few samples in a FiftyOne dataset.
 
     # Prints the given number of samples from the head of a dataset
     fiftyone datasets head <name> --num-samples <num-samples>
+
+.. _cli-fiftyone-datasets-tail:
 
 Print dataset tail
 ~~~~~~~~~~~~~~~~~~
@@ -370,6 +388,8 @@ Prints the last few samples in a FiftyOne dataset.
     # Print the given number of samples from the tail of a dataset
     fiftyone datasets tail <name> --num-samples <num-samples>
 
+.. _cli-fiftyone-datasets-stream:
+
 Stream samples to the terminal
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -395,6 +415,8 @@ Stream samples in a FiftyOne dataset to the terminal.
 
     # Stream the samples of the dataset to the terminal
     fiftyone datasets stream <name>
+
+.. _cli-fiftyone-datasets-export:
 
 Export datasets
 ~~~~~~~~~~~~~~~
@@ -436,6 +458,8 @@ Export FiftyOne datasets to disk in supported formats.
     # Export the dataset to disk in JSON format
     fiftyone datasets export <name> --json-path <json-path>
 
+.. _cli-fiftyone-datasets-draw:
+
 Drawing labels on samples
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -468,6 +492,8 @@ Writes annotated versions of samples in FiftyOne datasets to disk.
     fiftyone datasets draw <name> \
         --anno-dir <anno-dir> --label-fields <label-fields>
 
+.. _cli-fiftyone-datasets-delete:
+
 Delete datasets
 ~~~~~~~~~~~~~~~
 
@@ -494,8 +520,10 @@ Delete FiftyOne datasets.
     # Delete the dataset with the given name
     fiftyone datasets delete <name>
 
+.. _cli-fiftyone-app:
+
 FiftyOne App
-------------------
+------------
 
 Tools for working with the FiftyOne App.
 
@@ -517,8 +545,10 @@ Tools for working with the FiftyOne App.
         view                View datasets in the App without persisting them to the database
         connect             Connect to a remote FiftyOne App.
 
+.. _cli-fiftyone-app-launch:
+
 Launch the App
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 Launch the FiftyOne App.
 
@@ -550,8 +580,10 @@ Launch the FiftyOne App.
     # Launch a remote App session
     fiftyone app launch <name> --remote
 
+.. _cli-fiftyone-app-view:
+
 View datasets in App
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 View datasets in the FiftyOne App without persisting them to the database.
 
@@ -602,8 +634,10 @@ View datasets in the FiftyOne App without persisting them to the database.
     # View the dataset in a remote App session
     fiftyone app view ... --remote
 
+.. _cli-fiftyone-app-connect:
+
 Connect to remote App
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 Connect to a remote FiftyOne App.
 
@@ -633,6 +667,8 @@ Connect to a remote FiftyOne App.
     # Connect to a remote App session
     fiftyone app connect --destination <destination> --port <port>
 
+.. _cli-fiftyone-zoo:
+
 FiftyOne Dataset Zoo
 --------------------
 
@@ -657,6 +693,8 @@ Tools for working with the FiftyOne Dataset Zoo.
         info                Print information about downloaded zoo datasets.
         download            Download zoo datasets.
         load                Load zoo datasets as persistent FiftyOne datasets.
+
+.. _cli-fiftyone-zoo-list:
 
 List datasets in zoo
 ~~~~~~~~~~~~~~~~~~~~
@@ -688,6 +726,8 @@ List datasets in the FiftyOne Dataset Zoo.
     # List available datasets, using the specified base directory to search for downloaded datasets
     fiftyone zoo list --base-dir <base-dir>
 
+.. _cli-fiftyone-zoo-find:
+
 Find zoo datasets on disk
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -717,6 +757,8 @@ Locate the downloaded zoo dataset on disk.
 
     # Print the location of a specific split of the dataset
     fiftyone zoo find <name> --split <split>
+
+.. _cli-fiftyone-zoo-info:
 
 Show zoo dataset info
 ~~~~~~~~~~~~~~~~~~~~~
@@ -750,6 +792,8 @@ Print information about datasets in the FiftyOne Dataset Zoo.
 
     # Print information about the zoo dataset downloaded to the specified base directory
     fiftyone zoo info <name> --base-dir <base-dir>
+
+.. _cli-fiftyone-zoo-download:
 
 Download zoo datasets
 ~~~~~~~~~~~~~~~~~~~~~
@@ -791,6 +835,8 @@ Download datasets from the FiftyOne Dataset Zoo.
     # Download to the zoo dataset to a custom directory
     fiftyone zoo download <name> --dataset-dir <dataset-dir>
 
+.. _cli-fiftyone-zoo-load:
+
 Load zoo datasets
 ~~~~~~~~~~~~~~~~~
 
@@ -798,7 +844,9 @@ Load zoo datasets as persistent FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
+    fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-n DATASET_NAME]
+                         [-d DATASET_DIR]
+                         NAME
 
 **Arguments**
 
@@ -811,6 +859,8 @@ Load zoo datasets as persistent FiftyOne datasets.
       -h, --help            show this help message and exit
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to load
+      -n DATASET_NAME, --dataset-name DATASET_NAME
+                        a custom name to give the FiftyOne dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory in which the dataset is downloaded
 
@@ -825,6 +875,11 @@ Load zoo datasets as persistent FiftyOne datasets.
 
     # Load the specified split(s) of the zoo dataset
     fiftyone zoo load <name> --splits <split1> ...
+
+.. code-block:: shell
+
+    # Load the zoo dataset with a custom name
+    fiftyone zoo load <name> --dataset-name <dataset-name>
 
 .. code-block:: shell
 
