@@ -24,7 +24,6 @@ const ErrorMessageDiv = animated(styled.div`
 const ErrorMessage = React.memo(({ serviceRef, style }) => {
   const [state, send] = useService(serviceRef);
   const ref = useRef();
-  const [errorIdTimeout, setErrorIdTimeout] = useState(null);
   const [errorTimeout, setErrorTimeout] = useState(null);
   const { error, errorId } = state.context;
   const animations = useSpring({
