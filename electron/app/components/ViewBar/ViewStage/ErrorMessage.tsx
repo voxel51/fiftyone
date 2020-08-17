@@ -1,7 +1,9 @@
-import React, { useChain, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 import { useService } from "@xstate/react";
+
+import { useOutsideClick } from "../../../utils/hooks";
 
 const ErrorMessageDiv = animated(styled.div`
   box-sizing: border-box;
@@ -21,6 +23,7 @@ const ErrorMessageDiv = animated(styled.div`
 
 const ErrorMessage = React.memo(({ serviceRef, style }) => {
   const [state, send] = useService(serviceRef);
+  const ref = useRef();
   const [errorIdTimeout, setErrorIdTimeout] = useState(null);
   const [errorTimeout, setErrorTimeout] = useState(null);
   const { error, errorId } = state.context;
@@ -36,8 +39,11 @@ const ErrorMessage = React.memo(({ serviceRef, style }) => {
     !errorId && setErrorTimeout(setTimeout(() => send("CLEAR_ERROR"), 1000));
   }, [errorId]);
 
+  useOutsideClick(ref, () => send("CLEAR_ERROR_ID"));
+
   return (
     <ErrorMessageDiv
+      ref={ref}
       style={{ ...animations, display: error ? "block" : "none", ...style }}
     >
       {error}

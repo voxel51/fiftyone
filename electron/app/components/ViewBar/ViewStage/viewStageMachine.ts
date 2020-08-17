@@ -262,6 +262,7 @@ const viewStageMachine = Machine(
                     sendParent((ctx) => ({
                       type: "STAGE.DELETE",
                       stage: ctx,
+                      errorId: undefined,
                     })),
                     "blurInput",
                   ],
@@ -272,6 +273,7 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       stage: () => "",
+                      errorId: undefined,
                     }),
                     "blurInput",
                   ],
@@ -282,6 +284,7 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       stage: (ctx) => ctx.prevStage,
+                      errorId: undefined,
                     }),
                   ],
                   cond: (ctx) => ctx.submitted,
@@ -355,6 +358,13 @@ const viewStageMachine = Machine(
         actions: [
           assign({
             error: undefined,
+          }),
+        ],
+      },
+      CLEAR_ERROR_ID: {
+        actions: [
+          assign({
+            errorId: undefined,
           }),
         ],
       },

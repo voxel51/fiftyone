@@ -266,6 +266,13 @@ export default Machine(
           }),
         ],
       },
+      CLEAR_ERROR_ID: {
+        actions: [
+          assign({
+            errorId: undefined,
+          }),
+        ],
+      },
     },
   },
   {
