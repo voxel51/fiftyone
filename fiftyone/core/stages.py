@@ -130,7 +130,7 @@ class Exclude(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": ["list", "str"]}]
+        return [{"name": "sample_ids", "type": "list<id>|id"}]
 
     def _validate(self):
         # Ensures that ObjectIDs are valid
@@ -171,7 +171,7 @@ class ExcludeFields(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "field_names", "type": ["list", "str"]}]
+        return [{"name": "field_names", "type": "list<str>"}]
 
     def _validate(self):
         invalid_fields = set(self._field_names) & set(default_sample_fields())
@@ -470,7 +470,7 @@ class MatchTags(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "tags", "type": ["list", "str"]}]
+        return [{"name": "tags", "type": "list<str>"}]
 
 
 class Mongo(ViewStage):
@@ -541,7 +541,7 @@ class Select(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": ["list", "str"]}]
+        return [{"name": "sample_ids", "type": "list<id>|id"}]
 
     def _validate(self):
         # Ensures that ObjectIDs are valid
@@ -589,7 +589,13 @@ class SelectFields(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "field_names", "type": ["list", "str"]}]
+        return [
+            {
+                "name": "field_names",
+                "type": "list<str>|NoneType",
+                "default": "None",
+            }
+        ]
 
 
 class Shuffle(ViewStage):
@@ -626,7 +632,7 @@ class Shuffle(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "seed", "type": "float"}]
+        return [{"name": "seed", "type": "float|NoneType", "default": "None"}]
 
 
 class SortBy(ViewStage):
@@ -691,7 +697,7 @@ class SortBy(ViewStage):
     def _params(cls):
         return [
             {"name": "field_or_expr", "type": "dict|str"},
-            {"name": "reverse", "type": "bool"},
+            {"name": "reverse", "type": "bool", "default": "False"},
         ]
 
 
@@ -775,7 +781,7 @@ class Take(ViewStage):
     def _params(cls):
         return [
             {"name": "size", "type": "int"},
-            {"name": "seed", "type": "float"},
+            {"name": "seed", "type": "float|NoneType", "default": "None"},
         ]
 
 

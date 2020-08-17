@@ -1,14 +1,37 @@
-import { Machine, actions, sendParent, send } from "xstate";
-import viewStageMachine from "./viewStageMachine";
-const { assign, choose } = actions;
+import uuid from "uuid-v4";
+import { Machine, actions, sendParent } from "xstate";
+const { assign, cancel, send } = actions;
 
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
+
+export const toTypeAnnotation = (type) => {
+  if (type.includes("|")) {
+    return [
+      "Union[",
+      type
+        .split("|")
+        .map((t) => toTypeAnnotation(t))
+        .join(", "),
+      "]",
+    ].join("");
+  } else if (type === "list<str>") {
+    return "List[str]";
+  } else if (type === "list<id>") {
+    return "List[id]";
+  } else return type;
+};
 
 /**
  * See https://stackoverflow.com/questions/175739/built-in-way-in-javascript-to-check-if-a-string-is-a-valid-number
  * for details about numbers and javascript
  */
 export const PARSER = {
+  NoneType: {
+    castFrom: () => "None",
+    castTo: () => null,
+    parse: () => "None",
+    validate: (value) => [null, "None", ""].some((v) => value === v),
+  },
   bool: {
     castFrom: (value) => (value ? "True" : "False"),
     castTo: (value) => ["true", "false"].indexOf(value.toLowerCase()) === 0,
@@ -37,6 +60,12 @@ export const PARSER = {
       return stripped !== "" && !isNaN(+stripped);
     },
   },
+  id: {
+    castFrom: (value) => value,
+    castTo: (value) => value,
+    parse: (value) => value,
+    validate: (value) => /[0-9A-Fa-f]{24}/g.test(value),
+  },
   int: {
     castFrom: (value) => String(value),
     castTo: (value) => +value,
@@ -44,21 +73,44 @@ export const PARSER = {
       value.replace(/[,\s]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","),
     validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
   },
-  list: {
-    castFrom: (value, next) => {
+  "list<str>": {
+    castFrom: (value) => {
       return JSON.stringify(value);
     },
-    castTo: (value, next) =>
-      JSON.parse(value).map((e) => PARSER[next].castTo(e)),
-    parse: (value, next) => {
+    castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
+    parse: (value) => {
       const array = JSON.parse(value);
-      return JSON.stringify(array.map((e) => PARSER[next].parse(e)));
+      return JSON.stringify(array.map((e) => PARSER.str.parse(e)));
     },
-    validate: (value, next) => {
-      const array = typeof value === "string" ? JSON.parse(value) : value;
-      return (
-        Array.isArray(array) && array.every((e) => PARSER[next].validate(e))
-      );
+    validate: (value) => {
+      try {
+        const array = typeof value === "string" ? JSON.parse(value) : value;
+        return (
+          Array.isArray(array) && array.every((e) => PARSER.str.validate(e))
+        );
+      } catch {
+        return false;
+      }
+    },
+  },
+  "list<id>": {
+    castFrom: (value) => {
+      return JSON.stringify(value);
+    },
+    castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
+    parse: (value) => {
+      const array = JSON.parse(value);
+      return JSON.stringify(array.map((e) => PARSER.id.parse(e)));
+    },
+    validate: (value) => {
+      try {
+        const array = typeof value === "string" ? JSON.parse(value) : value;
+        return (
+          Array.isArray(array) && array.every((e) => PARSER.id.validate(e))
+        );
+      } catch {
+        return false;
+      }
     },
   },
   str: {
@@ -88,6 +140,7 @@ export default Machine(
     initial: "decide",
     context: {
       id: undefined,
+      defaultValue: undefined,
       parameter: undefined,
       stage: undefined,
       type: undefined,
@@ -95,6 +148,7 @@ export default Machine(
       submitted: undefined,
       tail: undefined,
       focusOnInit: undefined,
+      error: undefined,
     },
     states: {
       decide: {
@@ -125,6 +179,7 @@ export default Machine(
       },
       editing: {
         entry: [
+          sendParent("PARAMETER.EDIT"),
           assign({
             prevValue: ({ value }) => value,
             focusOnInit: false,
@@ -140,6 +195,7 @@ export default Machine(
             actions: [
               assign({
                 value: (_, { value }) => value,
+                errorId: undefined,
               }),
             ],
           },
@@ -150,16 +206,11 @@ export default Machine(
                 assign({
                   submitted: true,
                   value: ({ type, value }) =>
-                    (Array.isArray(type) ? [type[0]] : type.split("|")).reduce(
-                      (acc, t) => {
-                        const parser = PARSER[t];
-                        const next = Array.isArray(type) ? type[1] : undefined;
-                        return parser.validate(value, next)
-                          ? parser.parse(value, next)
-                          : acc;
-                      },
-                      undefined
-                    ),
+                    type.split("|").reduce((acc, t) => {
+                      const parser = PARSER[t];
+                      return parser.validate(value) ? parser.parse(value) : acc;
+                    }, undefined),
+                  errorId: undefined,
                 }),
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
@@ -167,29 +218,25 @@ export default Machine(
                 })),
               ],
               cond: ({ type, value }) => {
-                return (Array.isArray(type)
-                  ? [type[0]]
-                  : type.split("|")
-                ).some((t) =>
-                  PARSER[t].validate(
-                    value,
-                    Array.isArray(type) ? type[1] : undefined
-                  )
-                );
+                return type.split("|").some((t) => PARSER[t].validate(value));
               },
             },
             {
-              target: "decide",
-              actions: assign({
-                value: ({ prevValue }) => prevValue,
-              }),
+              actions: [
+                assign({
+                  error: ({ type }) =>
+                    `Invalid value. Expected type "${toTypeAnnotation(type)}"`,
+                  errorId: uuid(),
+                }),
+              ],
             },
           ],
           CANCEL: {
-            target: "decide",
+            target: "reading.pending",
             actions: [
               assign({
                 value: ({ prevValue }) => prevValue,
+                errorId: undefined,
               }),
             ],
           },
@@ -208,15 +255,24 @@ export default Machine(
           ],
         },
         {
-          target: "reading.pending",
-          cond: ({ submitted, prevValue }) => !submitted && prevValue === "",
-          actions: sendParent("STAGE.DELETE"),
-        },
-        {
           target: "reading.submitted",
           cond: ({ submitted }) => submitted,
         },
       ],
+      CLEAR_ERROR: {
+        actions: [
+          assign({
+            error: undefined,
+          }),
+        ],
+      },
+      CLEAR_ERROR_ID: {
+        actions: [
+          assign({
+            errorId: undefined,
+          }),
+        ],
+      },
     },
   },
   {

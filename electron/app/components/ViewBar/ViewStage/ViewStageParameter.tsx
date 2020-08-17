@@ -1,16 +1,22 @@
 import React, { useContext, useMemo, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
-import { useService, asEffect } from "@xstate/react";
+import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
-import { PARSER } from "./viewStageParameterMachine";
+import { PARSER, toTypeAnnotation } from "./viewStageParameterMachine";
 import { useOutsideClick } from "../../../utils/hooks";
+import ErrorMessage from "./ErrorMessage";
+
+const ViewStageParameterContainer = styled.div`
+  display: flex;
+`;
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   position: relative;
+  display: flex;
   z-index: 801;
   overflow: hidden;
 `);
@@ -38,26 +44,25 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 const ObjectEditorContainer = styled.div`
   height: 100%;
   width: 100%;
-  font-size: 1rem;
   font-weight: bold;
   line-height: 1rem;
+  font-size: 14px;
   position: relative;
   margin: 0.5rem;
   overflow: visible;
+  display: flex;
 `;
 
 const ObjectEditorTextArea = animated(styled.textarea`
   position: relative;
   background-color: transparent;
   overflow: visible;
-  font-weight: bold;
   line-height: 1rem;
   margin: -0.5rem;
   border: none;
   color: ${({ theme }) => theme.font};
   height: 100%;
   font-size: 1rem;
-  white-space: pre-wrap;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -82,20 +87,19 @@ const SubmitButton = animated(styled.button`
   background-color: hsla(27, 95%, 49%, 0.4);
   border-radius: 3px;
   position: relative;
-  margin: 0.5rem;
   line-height: 1rem;
   cursor: pointer;
   font-weight: bold;
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 1rem;
+  right: 0;
 
   :focus {
     outline: none;
   }
 `);
 
-const Submit = ({ send }) => {
+const Submit = React.memo(({ send }) => {
   const props = useSpring({
     opacity: 1,
     from: {
@@ -107,22 +111,29 @@ const Submit = ({ send }) => {
       Submit
     </SubmitButton>
   );
-};
+});
 
-const convert = (value) => {
+const convert = (value, placeholder) => {
   const isObject = PARSER.dict.validate(value);
   if (isObject) return "{ ... }";
+  else if (value === "") {
+    return placeholder;
+  }
   return value;
 };
 
+const makePlaceholder = (parameter, type, defaultValue) =>
+  [
+    defaultValue ? [parameter, defaultValue].join("=") : parameter,
+    toTypeAnnotation(type),
+  ].join(": ");
+
 const ObjectEditor = ({ parameterRef, inputRef }) => {
   const [state, send] = useService(parameterRef);
-  const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
 
-  const { value, type } = state.context;
+  const { parameter, defaultValue, value, type } = state.context;
 
-  const isEditing = state.matches("editing");
   const props = useSpring({
     width: state.matches("editing") ? 400 : 0,
   });
@@ -138,7 +149,7 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
       ref={containerRef}
     >
       {state.matches("reading") ? (
-        convert(value)
+        convert(value, makePlaceholder(parameter, type, defaultValue))
       ) : (
         <>
           <ObjectEditorTextArea
@@ -162,6 +173,11 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
           <Submit key="submit" send={send} />
         </>
       )}
+      <ErrorMessage
+        key="error"
+        serviceRef={parameterRef}
+        style={{ marginTop: "12rem", marginLeft: -10 }}
+      />
     </ObjectEditorContainer>
   );
 };
@@ -190,7 +206,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { parameter, value, type, tail } = state.context;
+  const { defaultValue, parameter, tail, type, value } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
@@ -212,32 +228,37 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
   const isEditing = state.matches("editing");
 
   return (
-    <ViewStageParameterDiv style={props}>
-      {hasObjectType ? (
-        <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
-      ) : (
-        <ViewStageParameterInput
-          placeholder={parameter}
-          value={value}
-          onFocus={() => !isEditing && send({ type: "EDIT" })}
-          onBlur={() => isEditing && send({ type: "BLUR" })}
-          onChange={(e) => {
-            send({ type: "CHANGE", value: e.target.value });
-          }}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              isEditing && send({ type: "COMMIT" });
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              send({ type: "CANCEL" });
-            }
-          }}
-          ref={inputRef}
-        />
-      )}
-    </ViewStageParameterDiv>
+    <ViewStageParameterContainer>
+      <ViewStageParameterDiv style={props}>
+        {hasObjectType ? (
+          <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
+        ) : (
+          <>
+            <ViewStageParameterInput
+              placeholder={makePlaceholder(parameter, type, defaultValue)}
+              value={value}
+              onFocus={() => !isEditing && send({ type: "EDIT" })}
+              onBlur={() => isEditing && send({ type: "BLUR" })}
+              onChange={(e) => {
+                send({ type: "CHANGE", value: e.target.value });
+              }}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  isEditing && send({ type: "COMMIT" });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  send({ type: "CANCEL" });
+                }
+              }}
+              ref={inputRef}
+            />
+            <ErrorMessage key="error" serviceRef={parameterRef} />
+          </>
+        )}
+      </ViewStageParameterDiv>
+    </ViewStageParameterContainer>
   );
 });
 
