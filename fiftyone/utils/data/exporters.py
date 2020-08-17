@@ -15,6 +15,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.collections as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -92,6 +93,9 @@ def write_dataset(
 
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
+            if isinstance(samples, foc.SampleCollection):
+                dataset_exporter.log_collection(samples)
+
             for sample in pb(samples):
                 # GenericSampleDatasetExporter
                 if raw_samples:
@@ -204,8 +208,22 @@ def export_samples(
 
 
 class DatasetExporter(object):
-    """Base interface for exporting :class:`fiftyone.core.dataset.Dataset`
-    samples to disk.
+    """Base interface for exporting collections of
+    :class:`fiftyone.core.sample.Sample` instances to disk.
+
+    Example Usage::
+
+        import fiftyone as fo
+
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
+
+        exporter = GenericSampleDatasetExporter(export_dir, ...)
+        with exporter:
+            exporter.log_collection(samples)
+            for sample in samples:
+                # Extract relevant information from `sample` and feed to
+                # `export_sample()`
+                exporter.export_sample(*args, **kwargs)
 
     Args:
         export_dir: the directory to write the export
@@ -230,15 +248,28 @@ class DatasetExporter(object):
         """
         pass
 
-    def close(self, *args):
-        """Performs any necessary actions after the last sample has been
-        exported.
+    def log_collection(self, sample_collection):
+        """Logs any relevant information about the
+        :class:`fiftyone.core.collections.SampleCollection` whose samples will
+        be exported.
 
-        This method is called when the exporter's context manager interface is
-        exited, :func:`DatasetExporter.__exit__`.
+        Subclasses can optionally implement this method if their export format
+        can record information such as the
+        :meth:`fiftyone.core.collections.SampleCollection.name` and
+        :meth:`fiftyone.core.collections.SampleCollection.info` of the
+        collection being exported.
+
+        By convention, this method must be optional; i.e., if it is not called
+        before the first call to :meth:`export_sample`, then the exporter must
+        make do without any information about the
+        :class:`fiftyone.core.collections.SampleCollection` (which may not be
+        available, for example, if the samples being exported are not stored in
+        a collection).
 
         Args:
-            *args: the arguments to :func:`DatasetExporter.__exit__`
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` whose
+                samples will be exported
         """
         pass
 
@@ -250,6 +281,18 @@ class DatasetExporter(object):
             **kwargs: subclass-specific keyword arguments
         """
         raise NotImplementedError("subclass must implement export_sample()")
+
+    def close(self, *args):
+        """Performs any necessary actions after the last sample has been
+        exported.
+
+        This method is called when the exporter's context manager interface is
+        exited, :func:`DatasetExporter.__exit__`.
+
+        Args:
+            *args: the arguments to :func:`DatasetExporter.__exit__`
+        """
+        pass
 
 
 class ExportsImages(object):
@@ -301,10 +344,11 @@ class GenericSampleDatasetExporter(DatasetExporter):
 
         import fiftyone as fo
 
-        samples = ...  # Dataset, DatasetView, etc
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
 
         exporter = GenericSampleDatasetExporter(export_dir, ...)
         with exporter:
+            exporter.log_collection(samples)
             for sample in samples:
                 exporter.export_sample(sample)
 
@@ -328,10 +372,11 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         import fiftyone as fo
 
-        samples = ...  # Dataset, DatasetView, etc
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
 
         exporter = UnlabeledImageDatasetExporter(export_dir, ...)
         with exporter:
+            exporter.log_collection(samples)
             for sample in samples:
                 image_path = sample.filepath
                 metadata = sample.metadata
@@ -373,11 +418,12 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         import fiftyone as fo
 
-        samples = ...  # Dataset, DatasetView, etc
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
         label_field = ...
 
         exporter = LabeledImageDatasetExporter(export_dir, ...)
         with exporter:
+            exporter.log_collection(samples)
             for sample in samples:
                 image_path = sample.filepath
                 label = sample[label_field]
