@@ -203,25 +203,24 @@ const SampleModal = ({
 
   const classifications = Object.keys(sample)
     .filter((k) => sample[k] && VALID_CLASS_TYPES.includes(sample[k]._cls))
-    .map((k) => (
-      <Row
-        key={k}
-        name={<Tag name={k} color={colorMapping[k]} />}
-        value={getLabelText(sample[k])}
-      />
-    ));
+    .map((k) => ({
+      key: k,
+      name: <Tag name={k} color={colorMapping[k]} />,
+      value: getLabelText(sample[k]),
+    }));
   const detections = Object.keys(sample)
     .filter((k) => sample[k] && VALID_OBJECT_TYPES.includes(sample[k]._cls))
     .map((k) => {
       const len = sample[k].detections ? sample[k].detections.length : 1;
-      return (
-        <Row
-          key={k}
-          name={<Tag name={k} color={colorMapping[k]} />}
-          value={`${len} detection${len == 1 ? "" : "s"}`}
-        />
-      );
+      return {
+        key: k,
+        name: <Tag name={k} color={colorMapping[k]} />,
+        value: `${len} detection${len == 1 ? "" : "s"}`,
+      };
     });
+  const labels = [...classifications, ...detections]
+    .sort((a, b) => (a.key < b.key ? -1 : 1))
+    .map(Row);
   const scalars = Object.keys(sample)
     .filter(
       (k) =>
@@ -315,16 +314,10 @@ const SampleModal = ({
                 : "none"
             }
           />
-          {classifications.length ? (
+          {labels.length ? (
             <>
-              <h2>Classification</h2>
-              {classifications}
-            </>
-          ) : null}
-          {detections.length ? (
-            <>
-              <h2>Object Detection</h2>
-              {detections}
+              <h2>Labels</h2>
+              {labels}
             </>
           ) : null}
           {scalars.length ? (
