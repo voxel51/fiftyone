@@ -661,6 +661,61 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.info = deepcopy(self.info)
         return dataset
 
+    def clone_fast(self, name=None):
+        """Creates a clone of the dataset containing deep copies of all samples
+        and dataset-level information in this dataset.
+
+        Args:
+            name (None): a name for the cloned dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            a :class:`Dataset`
+        """
+        if dataset_exists(name):
+            raise ValueError(
+                "Dataset '%s' already exists; invalid to clone dataset." % name
+            )
+
+        conn = foo.get_db_conn()
+
+        # Make a unique, permanent name for this sample collection
+        sample_collection_name = _make_sample_collection_name(conn)
+
+        # clone the samples
+        clone_pipeline = [
+            {"$match": {}},
+            {"$out": sample_collection_name},
+        ]
+        self._sample_collection.aggregate(clone_pipeline)
+
+        # clone the meta dataset document
+        self._doc.reload("sample_fields")
+        dataset_doc = deepcopy(self._doc)
+        dataset_doc.name = name
+        dataset_doc.sample_collection_name = sample_collection_name
+        dataset_doc.save()
+
+        return load_dataset(name=name)
+
+        # dataset = self.__class__(name=name)
+        #
+        # clone_pipeline = [
+        #     {"$match": {}},
+        #     {"$out": dataset._sample_collection_name},
+        # ]
+        # self._sample_collection.aggregate(clone_pipeline)
+        #
+        # # todo copy the DatasetDocument
+        # dataset._doc.persistent = self.persistent
+        # dataset._doc.info = deepcopy(self.info)
+        # self._doc.reload("sample_fields")
+        # print([x.name for x in self._doc.sample_fields])
+        # dataset._doc.sample_fields = deepcopy(self._doc.sample_fields)
+        # print([x.name for x in dataset._doc.sample_fields])
+        # dataset._doc.save()
+        # return dataset
+
     def clear(self):
         """Removes all samples from the dataset.
 
