@@ -27,13 +27,13 @@ Instantiating a |Dataset| object creates a **new** dataset.
     dataset2 = fo.Dataset(name="my_second_dataset")
     dataset3 = fo.Dataset()  # generates a default unique name
 
-Check to see what datasets exist at any time via :meth:`list_dataset_names()
-<fiftyone.core.dataset.list_dataset_names>`:
+Check to see what datasets exist at any time via :meth:`list_datasets()
+<fiftyone.core.dataset.list_datasets>`:
 
 .. code-block:: python
     :linenos:
 
-    print(fo.list_dataset_names())
+    print(fo.list_datasets())
     # ['my_first_dataset', 'my_second_dataset', '2020.08.04.12.36.29']
 
 Load a dataset using
@@ -85,7 +85,7 @@ In a new Python session:
 
     import fiftyone as fo
 
-    print(fo.list_dataset_names())
+    print(fo.list_datasets())
     # ['my_first_dataset']
 
 Note that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have been
@@ -145,7 +145,7 @@ attributes, but calling any other attribute or method will raise a
     dataset = fo.load_dataset("my_first_dataset")
     dataset.delete()
 
-    print(fo.list_dataset_names())
+    print(fo.list_datasets())
     # []
 
     print(dataset.name)

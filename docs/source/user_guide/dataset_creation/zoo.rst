@@ -17,28 +17,8 @@ the CLI.
 
   .. group-tab:: CLI
 
-    The ``fiftyone zoo`` CLI command provides convenient utilities for
-    working with datasets in the FiftyOne Dataset Zoo:
-
-    .. code-block:: text
-
-        $ fiftyone zoo -h
-
-        usage: fiftyone zoo [-h] [--all-help] {list,find,info,download,load} ...
-
-        Tools for working with the FiftyOne Dataset Zoo.
-
-        optional arguments:
-          -h, --help            show this help message and exit
-          --all-help            show help recurisvely and exit
-
-        available commands:
-          {list,find,info,download,load}
-            list                List datasets in the FiftyOne Dataset Zoo.
-            find                Locate the downloaded zoo dataset on disk.
-            info                Print information about downloaded zoo datasets.
-            download            Download zoo datasets.
-            load                Load zoo datasets as persistent FiftyOne datasets.
+    The :ref:`fiftyone zoo <cli-fiftyone-zoo>` CLI command provides convenient
+    utilities for working with datasets in the FiftyOne Dataset Zoo.
 
 Listing zoo datasets
 --------------------
@@ -102,29 +82,7 @@ Listing zoo datasets
   .. group-tab:: CLI
 
     You can access information about the available zoo datasets via the
-    ``fiftyone zoo list`` command:
-
-    .. code-block:: text
-
-        $ fiftyone zoo list -h
-
-        usage: fiftyone zoo list [-h] [-b BASE_DIR]
-
-        Tools for listing datasets in the FiftyOne Dataset Zoo.
-
-            Examples::
-
-                # List available datasets
-                fiftyone zoo list
-
-                # List available datasets, using the specified base directory to search
-                # for downloaded datasets
-                fiftyone zoo list --base-dir <base-dir>
-
-        optional arguments:
-          -h, --help            show this help message and exit
-          -b BASE_DIR, --base-dir BASE_DIR
-                                a custom base directory in which to search for downloaded datasets
+    :ref:`fiftyone zoo list <cli-fiftyone-zoo-list>` command.
 
     For example, to list the available zoo datasets and whether you have
     downloaded them, you can execute:
@@ -274,31 +232,7 @@ Getting information about zoo datasets
   .. group-tab:: CLI
 
     You can view detailed information about a dataset (either downloaded or
-    not) via the ``fiftyone zoo info`` command:
-
-    .. code-block:: text
-
-        $ fiftyone zoo info -h
-        usage: fiftyone zoo info [-h] [-b BASE_DIR] NAME
-
-        Tools for printing info about downloaded zoo datasets.
-
-            Examples::
-
-                # Print information about a downloaded zoo dataset
-                fiftyone zoo info <name>
-
-                # Print information about the zoo dataset downloaded to the specified
-                # base directory
-                fiftyone zoo info <name> --base-dir <base-dir>
-
-        positional arguments:
-          NAME                  the name of the dataset
-
-        optional arguments:
-          -h, --help            show this help message and exit
-          -b BASE_DIR, --base-dir BASE_DIR
-                                a custom base directory in which to search for downloaded datasets
+    not) via the :ref:`fiftyone zoo info <cli-fiftyone-zoo-info>` command.
 
     For example, you can view information about the CIFAR-10 dataset:
 
@@ -387,37 +321,8 @@ Downloading zoo datasets
   .. group-tab:: CLI
 
     You can download zoo datasets (or individual splits of them) from the
-    web via the ``fiftyone zoo download`` command:
-
-    .. code-block:: text
-
-        $ fiftyone zoo download -h
-
-        usage: fiftyone zoo download [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR]
-                                     NAME
-
-        Tools for downloading zoo datasets.
-
-            Examples::
-
-                # Download the entire zoo dataset
-                fiftyone zoo download <name>
-
-                # Download the specified split(s) of the zoo dataset
-                fiftyone zoo download <name> --splits <split1> ...
-
-                # Download to the zoo dataset to a custom directory
-                fiftyone zoo download <name> --dataset-dir <dataset-dir>
-
-        positional arguments:
-          NAME                  the name of the dataset
-
-        optional arguments:
-          -h, --help            show this help message and exit
-          -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
-                                the dataset splits to download
-          -d DATASET_DIR, --dataset-dir DATASET_DIR
-                                a custom directory to which to download the dataset
+    web via the :ref:`fiftyone zoo download <cli-fiftyone-zoo-download>`
+    command.
 
     For example, you can download the test split of the CIFAR-10 dataset as
     follows:
@@ -466,36 +371,8 @@ Loading zoo datasets
   .. group-tab:: CLI
 
     After a zoo dataset has been downloaded from the web, you can load it as
-    a FiftyOne dataset via the ``fiftyone zoo load`` command:
-
-    .. code-block:: text
-
-        $ fiftyone zoo load -h
-
-        usage: fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
-
-        Tools for loading zoo datasets as persistent FiftyOne datasets.
-
-            Examples::
-
-                # Load the zoo dataset with the given name
-                fiftyone zoo load <name>
-
-                # Load the specified split(s) of the zoo dataset
-                fiftyone zoo load <name> --splits <split1> ...
-
-                # Load the zoo dataset from a custom directory
-                fiftyone zoo load <name> --dataset-dir <dataset-dir>
-
-        positional arguments:
-          NAME                  the name of the dataset
-
-        optional arguments:
-          -h, --help            show this help message and exit
-          -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
-                                the dataset splits to load
-          -d DATASET_DIR, --dataset-dir DATASET_DIR
-                                a custom directory in which the dataset is downloaded
+    a FiftyOne dataset via the :ref:`fiftyone zoo load <cli-fiftyone-zoo-load>`
+    command.
 
     For example, you can load the test split of the CIFAR-10 dataset as
     follows:
