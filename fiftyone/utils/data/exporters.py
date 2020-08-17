@@ -459,7 +459,8 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         Args:
             image_or_path: an image or the path to the image on disk
-            label: an instance of :meth:`label_cls`
+            label: an instance of :meth:`label_cls`, or ``None`` if the sample
+                is unlabeled
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
                 instance for the sample. Only required when
                 :meth:`requires_image_metadata` is ``True``
@@ -696,6 +697,8 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         is_image_path = self._is_image_path(image_or_path)
 
         _label = _parse_classification(classification)
+        if _label is None:
+            _label = "_unlabeled"
 
         self._class_counts[_label] += 1
 
@@ -909,6 +912,9 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
 
 def _parse_classification(classification, labels_map_rev=None):
+    if classification is None:
+        return None
+
     label = classification.label
     if labels_map_rev is not None:
         label = labels_map_rev[label]
@@ -917,6 +923,9 @@ def _parse_classification(classification, labels_map_rev=None):
 
 
 def _parse_detections(detections, labels_map_rev=None):
+    if detections is None:
+        return None
+
     _detections = []
     for detection in detections.detections:
         label = detection.label
@@ -941,6 +950,9 @@ def _parse_detections(detections, labels_map_rev=None):
 
 
 def _parse_image_labels(label):
+    if label is None:
+        return etai.ImageLabels()
+
     return label.labels
 
 
