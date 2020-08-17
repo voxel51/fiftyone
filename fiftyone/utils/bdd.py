@@ -64,7 +64,8 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
                 ...
             }
 
-          or the path to such a JSON file on disk.
+          or the path to such a JSON file on disk. For unlabeled images,
+          ``anno_or_path`` can be ``None``.
 
     See :class:`fiftyone.types.dataset_types.BDDDataset` for more format
     details.
@@ -91,6 +92,9 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
         return self._parse_label(labels, img)
 
     def _parse_label(self, labels, img):
+        if labels is None:
+            return None
+
         if etau.is_str(labels):
             labels = etas.load_json(labels)
 
@@ -129,9 +133,13 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
         image_metadata = fom.ImageMetadata.build_for(image_path)
 
-        frame_size = (image_metadata.width, image_metadata.height)
-        anno_dict = self._anno_dict_map[filename]
-        image_labels = _parse_bdd_annotation(anno_dict, frame_size)
+        anno_dict = self._anno_dict_map.get(filename, None)
+        if anno_dict is not None:
+            # Labeled image
+            frame_size = (image_metadata.width, image_metadata.height)
+            image_labels = _parse_bdd_annotation(anno_dict, frame_size)
+        else:
+            image_labels = None
 
         return image_path, image_metadata, image_labels
 
@@ -201,9 +209,10 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
 
-        filename = os.path.basename(out_image_path)
-        annotation = _make_bdd_annotation(image_labels, metadata, filename)
-        self._annotations.append(annotation)
+        if image_labels is not None:
+            filename = os.path.basename(out_image_path)
+            annotation = _make_bdd_annotation(image_labels, metadata, filename)
+            self._annotations.append(annotation)
 
     def close(self, *args):
         etas.write_json(self._annotations, self._labels_path)
@@ -279,9 +288,9 @@ def _make_bdd_annotation(image_labels, metadata, filename):
         )
 
     return {
+        "name": filename,
         "attributes": frame_attrs,
         "labels": labels,
-        "name": filename,
     }
 
 

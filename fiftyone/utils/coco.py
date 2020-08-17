@@ -52,7 +52,8 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
             ]
 
           where it is assumed that all detections correspond to the image in
-          the sample.
+          the sample. Or, for unlabeled images, ``annotations`` can be
+          ``None``.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
@@ -117,13 +118,16 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
         image_metadata = fom.ImageMetadata(width=width, height=height)
 
-        frame_size = (width, height)
-        detections = fol.Detections(
-            detections=[
-                obj.to_detection(frame_size, classes=self._classes)
-                for obj in self._annotations.get(image_id, [])
-            ]
-        )
+        if self._annotations is not None:
+            frame_size = (width, height)
+            detections = fol.Detections(
+                detections=[
+                    obj.to_detection(frame_size, classes=self._classes)
+                    for obj in self._annotations.get(image_id, [])
+                ]
+            )
+        else:
+            detections = None
 
         return image_path, image_metadata, detections
 
@@ -472,7 +476,7 @@ def load_coco_detection_annotations(json_path):
         -   classes: a list of classes
         -   images: a dict mapping image filenames to image dicts
         -   annotations: a dict mapping image IDs to list of
-            :class:`COCOObject` instances
+            :class:`COCOObject` instances, or ``None`` for unlabeled datasets
     """
     d = etas.load_json(json_path)
 
@@ -493,11 +497,19 @@ def load_coco_detection_annotations(json_path):
     images = {i["id"]: i for i in d.get("images", [])}
 
     # Load annotations
-    annotations = defaultdict(list)
-    for a in d["annotations"]:
-        annotations[a["image_id"]].append(COCOObject.from_annotation_dict(a))
+    _annotations = d.get("annotations", None)
+    if _annotations is not None:
+        annotations = defaultdict(list)
+        for a in _annotations:
+            annotations[a["image_id"]].append(
+                COCOObject.from_annotation_dict(a)
+            )
 
-    return info, classes, images, dict(annotations)
+        annotations = dict(annotations)
+    else:
+        annotations = None
+
+    return info, classes, images, annotations
 
 
 def coco_categories_to_classes(categories):

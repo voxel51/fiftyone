@@ -59,6 +59,8 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
                 ...
             }
 
+          For unlabeled images, ``image_tag_dict`` can be ``None``.
+
     See :class:`fiftyone.types.dataset_types.CVATImageDataset` for more format
     details.
     """
@@ -77,6 +79,9 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
 
     def get_image_metadata(self):
         cvat_image = self._cvat_image
+        if cvat_image is None:
+            return None
+
         return cvat_image.get_image_metadata()
 
     def get_label(self):
@@ -86,9 +91,13 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
             sample: the sample
 
         Returns:
-            a :class:`fiftyone.core.labels.Detections` instance
+            a :class:`fiftyone.core.labels.Detections` instance, or ``None`` if
+            the sample is unlabeled
         """
         cvat_image = self._cvat_image
+        if cvat_image is None:
+            return None
+
         return cvat_image.to_detections()
 
     def clear_sample(self):
@@ -104,7 +113,7 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
 
     def _parse_cvat_image(self):
         d = self.current_sample[1]
-        return CVATImage.from_image_dict(d)
+        return CVATImage.from_image_dict(d) if d is not None else None
 
 
 class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -137,9 +146,16 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         filename = next(self._iter_filenames)
 
         image_path = os.path.join(self._data_dir, filename)
-        cvat_image = self._images_map[filename]
-        image_metadata = cvat_image.get_image_metadata()
-        detections = cvat_image.to_detections()
+
+        cvat_image = self._images_map.get(filename, None)
+        if cvat_image is not None:
+            # Labeled image
+            image_metadata = cvat_image.get_image_metadata()
+            detections = cvat_image.to_detections()
+        else:
+            # Unlabeled image
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+            detections = None
 
         return image_path, image_metadata, detections
 
@@ -220,6 +236,9 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         out_image_path = self._export_image_or_path(
             image_or_path, self._filename_maker
         )
+
+        if detections is None:
+            return
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)

@@ -61,7 +61,8 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
                 }
             }
 
-          or the path to a VOC annotations XML file on disk.
+          or the path to a VOC annotations XML file on disk. Or, for unlabeled
+          images, ``annotations_or_path`` can be ``None``.
 
     See :class:`fiftyone.types.dataset_types.VOCDetectionDataset` for more
     format details.
@@ -78,6 +79,9 @@ class VOCDetectionSampleParser(foud.ImageDetectionSampleParser):
         )
 
     def _parse_label(self, target, img=None):
+        if target is None:
+            return None
+
         if etau.is_str(target):
             annotation = VOCAnnotation.from_xml(target)
         else:
@@ -98,44 +102,51 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def __init__(self, dataset_dir):
         super().__init__(dataset_dir)
-        self._img_uuids_to_paths = None
-        self._anno_paths = None
-        self._iter_anno_paths = None
+        self._uuids_to_image_paths = None
+        self._uuids_to_anno_paths = None
+        self._uuids = None
+        self._iter_uuids = None
 
     def __iter__(self):
-        self._iter_anno_paths = iter(self._anno_paths)
+        self._iter_uuids = iter(self._uuids)
         return self
 
     def __len__(self):
-        return len(self._anno_paths)
+        return len(self._uuids)
 
     def __next__(self):
-        anno_path = next(self._iter_anno_paths)
+        uuid = next(self._iter_uuids)
 
-        annotation = load_voc_detection_annotations(anno_path)
+        anno_path = self._uuids_to_anno_paths.get(uuid, None)
+        if anno_path:
+            # Labeled image
 
-        #
-        # Use image filename from annotation file if possible. Otherwise, use
-        # the filename to locate the corresponding image
-        #
-        if annotation.filename:
-            uuid = os.path.splitext(annotation.filename)[0]
-        elif annotation.path:
-            uuid = os.path.splitext(os.path.basename(annotation.path))[0]
+            annotation = load_voc_detection_annotations(anno_path)
+
+            # Use image filename from annotation file if possible
+            if annotation.filename:
+                _uuid = os.path.splitext(annotation.filename)[0]
+            elif annotation.path:
+                _uuid = os.path.splitext(os.path.basename(annotation.path))[0]
+            else:
+                _uuid = None
+
+            if _uuid not in self._uuids_to_image_paths:
+                _uuid = uuid
+
+            image_path = self._uuids_to_image_paths[_uuid]
+
+            if annotation.metadata is None:
+                annotation.metadata = fom.ImageMetadata.build_for(image_path)
+
+            image_metadata = annotation.metadata
+
+            detections = annotation.to_detections()
         else:
-            uuid = None
-
-        if uuid not in self._img_uuids_to_paths:
-            uuid = os.path.splitext(os.path.basename(anno_path))[0]
-
-        image_path = self._img_uuids_to_paths[uuid]
-
-        if annotation.metadata is None:
-            annotation.metadata = fom.ImageMetadata.build_for(image_path)
-
-        image_metadata = annotation.metadata
-
-        detections = annotation.to_detections()
+            # Unlabeled image
+            image_path = self._uuids_to_image_paths[uuid]
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+            detections = None
 
         return image_path, image_metadata, detections
 
@@ -153,14 +164,27 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def setup(self):
         data_dir = os.path.join(self.dataset_dir, "data")
+        if os.path.isdir(data_dir):
+            self._uuids_to_image_paths = {
+                os.path.splitext(f)[0]: os.path.join(data_dir, f)
+                for f in etau.list_files(data_dir, abs_paths=False)
+            }
+        else:
+            self._uuids_to_image_paths = {}
+
         labels_dir = os.path.join(self.dataset_dir, "labels")
+        if os.path.isdir(data_dir):
+            self._uuids_to_anno_paths = {
+                os.path.splitext(f)[0]: os.path.join(labels_dir, f)
+                for f in etau.list_files(labels_dir, abs_paths=False)
+            }
+        else:
+            self._uuids_to_anno_paths = {}
 
-        self._img_uuids_to_paths = {
-            os.path.splitext(f)[0]: os.path.join(data_dir, f)
-            for f in etau.list_files(data_dir, abs_paths=False)
-        }
-
-        self._anno_paths = etau.list_files(labels_dir, abs_paths=True)
+        self._uuids = sorted(
+            set(self._uuids_to_image_paths.keys())
+            | set(self._uuids_to_anno_paths.keys())
+        )
 
 
 class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
@@ -212,6 +236,9 @@ class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         out_image_path = self._export_image_or_path(
             image_or_path, self._filename_maker
         )
+
+        if detections is None:
+            return
 
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         out_anno_path = os.path.join(self._labels_dir, name + ".xml")
