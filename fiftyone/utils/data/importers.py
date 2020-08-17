@@ -242,8 +242,8 @@ class LabeledImageDatasetImporter(DatasetImporter):
             -   ``image_metadata``: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
-            -   ``label``: an instance of :meth:`label_cls`, or ``None`` if no
-                label is available for the sample
+            -   ``label``: an instance of :meth:`label_cls`, or ``None`` if the
+                sample is unlabeled
 
         Raises:
             StopIteration: if there are no more samples to import
@@ -521,7 +521,11 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
                 continue
 
             label = chunks[-2]
-            classes.add(label)
+            if label == "_unlabeled":
+                label = None
+            else:
+                classes.add(label)
+
             self._samples.append((path, label))
 
         self._classes = sorted(classes)
