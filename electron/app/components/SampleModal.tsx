@@ -130,7 +130,7 @@ const Container = styled.div`
 
 const Row = ({ name, value }) => (
   <div className="row">
-    <label>{name}</label>
+    <label>{name}&nbsp;</label>
     <span>{value}</span>
   </div>
 );
