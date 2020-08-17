@@ -763,8 +763,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
             if add_info and dataset_importer.has_dataset_info:
-                self.info.update(dataset_importer.get_dataset_info())
-                self.save()
+                _info = dataset_importer.get_dataset_info()
+                if _info:
+                    self.info.update(_info)
+                    self.save()
 
             return sample_ids
 
