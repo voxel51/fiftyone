@@ -161,11 +161,9 @@ const SampleModal = ({
   // maintain a separate copy of these local to the modal - inherit changes
   // from the rest of the app, but don't write them back
   const [activeLabels, setActiveLabels] = useState({});
-  const [activeScalars, setActiveScalars] = useState({});
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
-    setActiveScalars(rest.activeScalars);
-  }, [rest.activeLabels, rest.activeScalars]);
+  }, [rest.activeLabels]);
 
   const handleResize = () => {
     if (!playerContainerRef.current || showJSON) {
@@ -210,6 +208,18 @@ const SampleModal = ({
     [onClose, onPrevious, onNext, fullscreen]
   );
 
+  const makeTag = (name) => (
+    <Tag
+      key={name}
+      name={name}
+      color={colorMapping[name]}
+      outline={!activeLabels[name]}
+      onClick={() =>
+        setActiveLabels({ ...activeLabels, [name]: !activeLabels[name] })
+      }
+    />
+  );
+
   const classifications = Object.keys(sample)
     .filter((k) => sample[k] && VALID_CLASS_TYPES.includes(sample[k]._cls))
     .map((k) => {
@@ -222,16 +232,7 @@ const SampleModal = ({
       }
       return {
         key: k,
-        name: (
-          <Tag
-            name={k}
-            color={colorMapping[k]}
-            outline={!activeLabels[k]}
-            onClick={() =>
-              setActiveLabels({ ...activeLabels, [k]: !activeLabels[k] })
-            }
-          />
-        ),
+        name: makeTag(k),
         value,
       };
     });
@@ -241,16 +242,7 @@ const SampleModal = ({
       const len = sample[k].detections ? sample[k].detections.length : 1;
       return {
         key: k,
-        name: (
-          <Tag
-            name={k}
-            color={colorMapping[k]}
-            outline={!activeLabels[k]}
-            onClick={() =>
-              setActiveLabels({ ...activeLabels, [k]: !activeLabels[k] })
-            }
-          />
-        ),
+        name: makeTag(k),
         value: `${len} detection${len == 1 ? "" : "s"}`,
       };
     });
@@ -266,13 +258,7 @@ const SampleModal = ({
         sample[k] !== undefined
     )
     .map((k) => {
-      return (
-        <Row
-          key={k}
-          name={<Tag name={k} color={colorMapping[k]} />}
-          value={stringify(sample[k])}
-        />
-      );
+      return <Row key={k} name={makeTag(k)} value={stringify(sample[k])} />;
     });
 
   return (
