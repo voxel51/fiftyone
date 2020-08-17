@@ -25,11 +25,25 @@ const Body = styled.div`
           text-overflow: ellipsis;
         `
       : undefined}
+
+  ${({ outline }) =>
+    outline
+      ? css`
+          background-color: transparent;
+          border: 3px solid ${({ fillColor }) => fillColor};
+          padding: 0 9px 0 9px;
+        `
+      : undefined};
 `;
 
-const Tag = ({ name, title, color = "blue", maxWidth }) => {
+const Tag = ({ name, title, color = "blue", maxWidth, outline = false }) => {
   return (
-    <Body title={title || name} fillColor={color} maxWidth={maxWidth}>
+    <Body
+      title={title || name}
+      fillColor={color}
+      maxWidth={maxWidth}
+      outline={outline}
+    >
       {name}
     </Body>
   );
