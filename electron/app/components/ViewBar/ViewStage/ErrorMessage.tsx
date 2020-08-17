@@ -33,14 +33,7 @@ const ErrorMessage = React.memo(({ serviceRef, style }) => {
 
   useEffect(() => {
     errorTimeout && clearTimeout(errorTimeout);
-    errorIdTimeout && clearTimeout(errorIdTimeout);
-    errorId &&
-      setErrorIdTimeout(
-        setTimeout(() => {
-          send("CLEAR_ERROR_ID");
-          setErrorTimeout(setTimeout(() => send("CLEAR_ERROR"), 1000));
-        }, 2000)
-      );
+    !errorId && setErrorTimeout(setTimeout(() => send("CLEAR_ERROR"), 1000));
   }, [errorId]);
 
   return (

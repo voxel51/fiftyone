@@ -201,6 +201,7 @@ const viewStageMachine = Machine(
                         n.toLowerCase().includes(e.stage.toLowerCase())
                       ),
                   currentResult: null,
+                  errorId: undefined,
                 }),
               },
               COMMIT: [
@@ -232,6 +233,7 @@ const viewStageMachine = Machine(
                           ),
                         }));
                       },
+                      errorId: undefined,
                     }),
                     send("UPDATE_DELIBLE"),
                   ],
@@ -349,13 +351,6 @@ const viewStageMachine = Machine(
       },
     },
     on: {
-      CLEAR_ERROR_ID: {
-        actions: [
-          assign({
-            errorId: undefined,
-          }),
-        ],
-      },
       CLEAR_ERROR: {
         actions: [
           assign({
