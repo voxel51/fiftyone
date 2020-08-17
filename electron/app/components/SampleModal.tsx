@@ -203,11 +203,20 @@ const SampleModal = ({
 
   const classifications = Object.keys(sample)
     .filter((k) => sample[k] && VALID_CLASS_TYPES.includes(sample[k]._cls))
-    .map((k) => ({
-      key: k,
-      name: <Tag name={k} color={colorMapping[k]} />,
-      value: getLabelText(sample[k]),
-    }));
+    .map((k) => {
+      let value;
+      if (sample[k].classifications) {
+        const len = sample[k].classifications.length;
+        value = `${len} classification${len == 1 ? "" : "s"}`;
+      } else {
+        value = getLabelText(sample[k]);
+      }
+      return {
+        key: k,
+        name: <Tag name={k} color={colorMapping[k]} />,
+        value,
+      };
+    });
   const detections = Object.keys(sample)
     .filter((k) => sample[k] && VALID_OBJECT_TYPES.includes(sample[k]._cls))
     .map((k) => {
