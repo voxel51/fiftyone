@@ -59,6 +59,13 @@ const Container = styled.div`
     margin-left: 5px;
   }
 
+  h2 .close-wrapper {
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    background-color: ${({ theme }) => theme.backgroundTransparent};
+  }
+
   .player {
     position: relative;
     display: flex;
@@ -99,6 +106,7 @@ const Container = styled.div`
   }
 
   .sidebar {
+    position: relative;
     display: flex;
     flex-direction: column;
     border-left: 2px solid ${({ theme }) => theme.border};
@@ -283,7 +291,7 @@ const SampleModal = ({
           <h2>
             Metadata
             <span className="push-right" />
-            <span title="Close">
+            <span className="close-wrapper" title="Close">
               <Close onClick={onClose} />
             </span>
           </h2>
