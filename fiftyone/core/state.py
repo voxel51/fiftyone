@@ -210,16 +210,11 @@ def get_view_stats(dataset_or_view):
     else:
         view = dataset_or_view
 
-    _sample_doc_cls = type(view.dataset_name, (foo.DatasetSampleDocument,), {})
-    num_default_fields = len(_sample_doc_cls.get_field_schema())
-
-    field_schema = view.get_field_schema()
-    custom_fields_schema = OrderedDict(
-        {
-            k: field_schema[k]
-            for k in list(field_schema.keys())[num_default_fields:]
-        }
-    )
+    custom_fields_schema = view.get_field_schema().copy()
+    for field_name in fod.Dataset.get_default_sample_fields(
+        include_private=True
+    ):
+        custom_fields_schema.pop(field_name, None)
 
     return {
         "tags": {tag: len(view.match_tag(tag)) for tag in view.get_tags()},
