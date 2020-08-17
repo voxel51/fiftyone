@@ -168,8 +168,9 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        classes (None): an optional list of class labels. If omitted, this is
-            dynamically computed from the observed labels
+        classes (None): the list of possible class labels. If not provided,
+            this list will be extracted when :meth:`log_collection` is called,
+            if possible
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -182,6 +183,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         super().__init__(export_dir)
         self.classes = classes
         self.image_format = image_format
+        self._info = None
         self._labels_map_rev = None
         self._data_dir = None
         self._labels_path = None
@@ -201,11 +203,6 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         return fol.Detections
 
     def setup(self):
-        if self.classes is not None:
-            self._labels_map_rev = _to_labels_map_rev(self.classes)
-        else:
-            self._labels_map_rev = None
-
         self._data_dir = os.path.join(self.export_dir, "data")
         self._labels_path = os.path.join(self.export_dir, "labels.json")
         self._image_id = -1
@@ -216,6 +213,14 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=self._data_dir, default_ext=self.image_format
         )
+        self._parse_classes()
+
+    def log_collection(self, sample_collection):
+        if self.classes is None and "classes" in sample_collection.info:
+            self.classes = sample_collection.info["classes"]
+            self._parse_classes()
+
+        self._info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(
@@ -257,14 +262,17 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         else:
             classes = self.classes
 
+        date_created = datetime.now().replace(microsecond=0).isoformat()
         info = {
-            "year": "",
-            "version": "",
-            "description": "Exported from FiftyOne",
-            "contributor": "",
-            "url": "https://voxel51.com/fiftyone",
-            "date_created": datetime.now().replace(microsecond=0).isoformat(),
+            "year": self._info.get("year", ""),
+            "version": self._info.get("version", ""),
+            "description": self._info.get("year", "Exported from FiftyOne"),
+            "contributor": self._info.get("contributor", ""),
+            "url": self._info.get("url", "https://voxel51.com/fiftyone"),
+            "date_created": self._info("date_created", date_created),
         }
+
+        licenses = self._info.get("licenses", [])
 
         categories = [
             {"id": i, "name": l, "supercategory": "none"}
@@ -273,13 +281,17 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
 
         labels = {
             "info": info,
-            "licenses": [],
+            "licenses": licenses,
             "categories": categories,
             "images": self._images,
             "annotations": self._annotations,
         }
 
         etas.write_json(labels, self._labels_path)
+
+    def _parse_classes(self):
+        if self.classes is not None:
+            self._labels_map_rev = _to_labels_map_rev(self.classes)
 
 
 class COCOObject(etas.Serializable):
@@ -466,10 +478,13 @@ def load_coco_detection_annotations(json_path):
 
     # Load info
     info = d.get("info", {})
+    licenses = d.get("licenses", None)
+    if licenses is not None:
+        info["licenses"] = licenses
 
     # Load classes
     categories = d.get("categories", None)
-    if categories:
+    if categories is not None:
         classes = coco_categories_to_classes(categories)
     else:
         classes = None
