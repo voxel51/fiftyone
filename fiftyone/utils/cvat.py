@@ -191,6 +191,7 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
 
         super().__init__(export_dir)
         self.image_format = image_format
+        self._task_labels = None
         self._data_dir = None
         self._labels_path = None
         self._cvat_images = None
@@ -212,6 +213,9 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
             output_dir=self._data_dir, default_ext=self.image_format
         )
 
+    def log_collection(self, sample_collection):
+        self._task_labels = sample_collection.info.get("task_labels", None)
+
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(
             image_or_path, self._filename_maker
@@ -228,8 +232,15 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         self._cvat_images.append(cvat_image)
 
     def close(self, *args):
-        # Build task labels
-        cvat_task_labels = CVATTaskLabels.from_cvat_images(self._cvat_images)
+        # Get task labels
+        if self._task_labels is None:
+            # Compute task labels from active label schema
+            cvat_task_labels = CVATTaskLabels.from_cvat_images(
+                self._cvat_images
+            )
+        else:
+            # Use task labels from logged collection info
+            cvat_task_labels = CVATTaskLabels(labels=self._task_labels)
 
         # Write annotations
         writer = CVATImageAnnotationWriter()
@@ -682,16 +693,17 @@ def load_cvat_image_annotations(xml_path):
         -   cvat_images: a list of :class:`CVATImage` instances
     """
     d = fou.load_xml_as_json_dict(xml_path)
+    annotations = d.get("annotations", {})
 
     # Load meta
-    meta = d.get("annotations", {}).get("meta", {})
+    meta = annotations.get("meta", {})
 
     # Load task labels
     labels_dict = meta.get("task", {}).get("labels", {})
     cvat_task_labels = CVATTaskLabels.from_labels_dict(labels_dict)
 
     # Load annotations
-    image_dicts = _ensure_list(d.get("annotations", {}).get("image", []))
+    image_dicts = _ensure_list(annotations.get("image", []))
     cvat_images = [CVATImage.from_image_dict(id) for id in image_dicts]
 
     # Wrangle dataset info
