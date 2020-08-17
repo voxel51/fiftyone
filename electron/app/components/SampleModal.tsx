@@ -146,17 +146,26 @@ const Row = ({ name, value, ...rest }) => (
 const SampleModal = ({
   sample,
   sampleUrl,
-  activeLabels,
   fieldSchema = {},
   colorMapping = {},
   onClose,
   onPrevious,
   onNext,
+  ...rest
 }: Props) => {
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+
+  // maintain a separate copy of these local to the modal - inherit changes
+  // from the rest of the app, but don't write them back
+  const [activeLabels, setActiveLabels] = useState({});
+  const [activeScalars, setActiveScalars] = useState({});
+  useEffect(() => {
+    setActiveLabels(rest.activeLabels);
+    setActiveScalars(rest.activeScalars);
+  }, [rest.activeLabels, rest.activeScalars]);
 
   const handleResize = () => {
     if (!playerContainerRef.current || showJSON) {
@@ -213,7 +222,16 @@ const SampleModal = ({
       }
       return {
         key: k,
-        name: <Tag name={k} color={colorMapping[k]} />,
+        name: (
+          <Tag
+            name={k}
+            color={colorMapping[k]}
+            outline={!activeLabels[k]}
+            onClick={() =>
+              setActiveLabels({ ...activeLabels, [k]: !activeLabels[k] })
+            }
+          />
+        ),
         value,
       };
     });
@@ -223,7 +241,16 @@ const SampleModal = ({
       const len = sample[k].detections ? sample[k].detections.length : 1;
       return {
         key: k,
-        name: <Tag name={k} color={colorMapping[k]} />,
+        name: (
+          <Tag
+            name={k}
+            color={colorMapping[k]}
+            outline={!activeLabels[k]}
+            onClick={() =>
+              setActiveLabels({ ...activeLabels, [k]: !activeLabels[k] })
+            }
+          />
+        ),
         value: `${len} detection${len == 1 ? "" : "s"}`,
       };
     });

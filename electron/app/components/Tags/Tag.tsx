@@ -34,15 +34,31 @@ const Body = styled.div`
           padding: 0 9px 0 9px;
         `
       : undefined};
+
+  ${({ clickable }) =>
+    clickable
+      ? css`
+          cursor: pointer;
+        `
+      : undefined};
 `;
 
-const Tag = ({ name, title, color = "blue", maxWidth, outline = false }) => {
+const Tag = ({
+  name,
+  title,
+  color = "blue",
+  maxWidth,
+  outline = false,
+  onClick = undefined,
+}) => {
   return (
     <Body
       title={title || name}
       fillColor={color}
       maxWidth={maxWidth}
       outline={outline}
+      onClick={onClick}
+      clickable={Boolean(onClick)}
     >
       {name}
     </Body>
