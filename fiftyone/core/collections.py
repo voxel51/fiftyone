@@ -85,6 +85,13 @@ class SampleCollection(object):
         """The name of the collection."""
         raise NotImplementedError("Subclass must implement name")
 
+    @property
+    def info(self):
+        """The :meth:`fiftyone.core.dataset.Dataset.info` dict of the dataset
+        underlying the collection.
+        """
+        raise NotImplementedError("Subclass must implement info")
+
     def summary(self):
         """Returns a string summary of the collection.
 

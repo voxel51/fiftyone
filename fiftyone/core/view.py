@@ -93,6 +93,13 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.name
 
     @property
+    def info(self):
+        """The :meth:`fiftyone.core.dataset.Dataset.info` dict of the
+        underlying dataset.
+        """
+        return self._dataset.info
+
+    @property
     def stages(self):
         """The list of :class:`fiftyone.core.stages.ViewStage` instances in
         this view's pipeline.
