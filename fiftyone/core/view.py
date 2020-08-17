@@ -145,6 +145,7 @@ class DatasetView(foc.SampleCollection):
                 doc = self._dataset._sample_dict_to_doc(d)
                 yield fos.SampleView(
                     doc,
+                    self._dataset,
                     selected_fields=selected_fields,
                     excluded_fields=excluded_fields,
                     filtered_fields=filtered_fields,

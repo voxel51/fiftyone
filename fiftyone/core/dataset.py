@@ -186,14 +186,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if isinstance(sample_id_or_slice, slice):
             return self.view()[sample_id_or_slice]
 
-        d = self._collection.find_one({"_id": ObjectId(sample_id_or_slice)})
+        d = self._sample_collection.find_one(
+            {"_id": ObjectId(sample_id_or_slice)}
+        )
 
         if d is None:
             raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
 
         doc = self._sample_dict_to_doc(d)
 
-        return fos.Sample.from_doc(doc)
+        return fos.Sample.from_doc(doc, dataset=self)
 
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
@@ -202,8 +204,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if name.startswith("__") or name in [
             "name",
             "deleted",
-            "_name",
             "_deleted",
+            "_doc",
         ]:
             return super().__getattribute__(name)
 
@@ -291,7 +293,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except ValueError:
             raise ValueError("%s is empty" % self.__class__.__name__)
 
-        return fos.Sample.from_doc(sample_view._doc)
+        return fos.Sample.from_doc(sample_view._doc, dataset=self)
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the dataset.
@@ -305,7 +307,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [fos.Sample.from_doc(sv._doc) for sv in self[:num_samples]]
+        return [
+            fos.Sample.from_doc(sv._doc, dataset=self)
+            for sv in self[:num_samples]
+        ]
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the dataset.
@@ -319,7 +324,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [fos.Sample.from_doc(sv._doc) for sv in self[-num_samples:]]
+        return [
+            fos.Sample.from_doc(sv._doc, dataset=self)
+            for sv in self[-num_samples:]
+        ]
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -401,7 +409,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             AttributeError: if the field does not exist
         """
         self._sample_doc_cls.delete_field(field_name)
-        fos.Sample._purge_field(self.name, field_name)
+        fos.Sample._purge_field(self._sample_collection_name, field_name)
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the dataset.
@@ -434,7 +442,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         for d in self._sample_collection.find():
             doc = self._sample_dict_to_doc(d)
-            yield fos.Sample.from_doc(doc)
+            yield fos.Sample.from_doc(doc, dataset=self)
 
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
@@ -471,7 +479,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if not sample._in_db:
             doc = self._sample_doc_cls.from_dict(d, extended=False)
-            sample._set_backing_doc(doc)
+            sample._set_backing_doc(doc, dataset=self)
 
         return str(d["_id"])
 
@@ -534,7 +542,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample, d in zip(samples, dicts):
             if not sample._in_db:
                 doc = self._sample_doc_cls.from_dict(d, extended=False)
-                sample._set_backing_doc(doc)
+                sample._set_backing_doc(doc, dataset=self)
 
         return [str(d["_id"]) for d in dicts]
 
@@ -556,7 +564,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
         fos.Sample._reset_backing_docs(
-            dataset_name=self.name, sample_ids=[sample_id]
+            collection_name=self._sample_collection_name,
+            sample_ids=[sample_id],
         )
 
     def remove_samples(self, samples_or_ids):
@@ -583,7 +592,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         fos.Sample._reset_backing_docs(
-            dataset_name=self.name, sample_ids=sample_ids
+            collection_name=self._sample_collection_name, sample_ids=sample_ids
         )
 
     def clone_field(self, field_name, new_field_name, samples=None):
@@ -659,7 +668,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
         """
         self._sample_doc_cls.drop_collection()
-        fos.Sample._reset_all_backing_docs(self.name)
+        fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 
     def delete(self):
         """Deletes the dataset.

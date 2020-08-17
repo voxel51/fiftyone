@@ -65,7 +65,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
-from .dataset import SampleFieldDocument
+from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
     Document,
     BaseEmbeddedDocument,
@@ -122,9 +122,9 @@ class SampleDocument(SerializableDocument):
     """Interface for sample backing documents."""
 
     @property
-    def dataset_name(self):
-        """The name of the dataset to which this sample belongs, or ``None`` if
-        it has not been added to a dataset.
+    def collection_name(self):
+        """The name of the collection to which this sample belongs, or ``None``
+        if it has not been added to a dataset.
         """
         return None
 
@@ -232,9 +232,9 @@ class DatasetSampleDocument(Document, SampleDocument):
         super().__setattr__(name, value)
 
     @property
-    def dataset_name(self):
-        """The name of the dataset to which this sample belongs, or ``None`` if
-        it has not been added to a dataset.
+    def collection_name(self):
+        """The name of the collection to which this sample belongs, or ``None``
+        if it has not been added to a dataset.
         """
         return self.__class__.__name__
 
@@ -359,14 +359,14 @@ class DatasetSampleDocument(Document, SampleDocument):
 
         if save:
             # Update dataset meta class
-            # @todo(Tyler) refactor to avoid local import here
-            import fiftyone.core.dataset as fod
+            dataset_doc = DatasetDocument.objects.get(
+                sample_collection_name=cls.__name__
+            )
 
-            dataset = fod.load_dataset(cls.__name__)
             field = cls._fields[field_name]
             sample_field = SampleFieldDocument.from_field(field)
-            dataset._doc.sample_fields.append(sample_field)
-            dataset._doc.save()
+            dataset_doc.sample_fields.append(sample_field)
+            dataset_doc.save()
 
     @classmethod
     def add_implied_field(cls, field_name, value):
@@ -438,17 +438,16 @@ class DatasetSampleDocument(Document, SampleDocument):
         delattr(cls, field_name)
 
         # Update dataset meta class
-        # @todo(Tyler) refactor to avoid local import here
-        import fiftyone.core.dataset as fod
-
-        dataset = fod.load_dataset(cls.__name__)
-        dataset._doc.sample_fields = [
-            sf for sf in dataset._doc.sample_fields if sf.name != field_name
+        dataset_doc = DatasetDocument.objects.get(
+            sample_collection_name=cls.__name__
+        )
+        dataset_doc.sample_fields = [
+            sf for sf in dataset_doc.sample_fields if sf.name != field_name
         ]
-        dataset._doc.save()
+        dataset_doc.save()
 
     def _get_repr_fields(self):
-        return ("dataset_name",) + super()._get_repr_fields()
+        return ("collection_name",) + super()._get_repr_fields()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.
