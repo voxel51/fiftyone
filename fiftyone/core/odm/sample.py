@@ -88,7 +88,8 @@ def default_sample_fields(include_private=False):
     """The default fields present on all :class:`SampleDocument` objects.
 
     Args:
-        include_private (False): or not to return fields prefixed with a `_`
+        include_private (False): whether or not to return fields prefixed with
+            a `_`
 
     Returns:
         a tuple of field names
