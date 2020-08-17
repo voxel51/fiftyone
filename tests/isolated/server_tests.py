@@ -109,6 +109,7 @@ class ServerServiceTests(unittest.TestCase):
         )
 
     def step_get_current_state(self):
+        self.maxDiff = None
         self.session.view = self.dataset.limit(1)
         self.wait_for_response()
         session = _serialize(self.session.state)
