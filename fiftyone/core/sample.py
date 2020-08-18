@@ -107,7 +107,7 @@ class _Sample(SerializableDocument):
         if not isinstance(other._doc, self._doc.__class__):
             return False
 
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc == other._doc
 
         return super().__eq__(other)
@@ -129,7 +129,7 @@ class _Sample(SerializableDocument):
         """The time the document was added to the database, or ``None`` if it
         has not been added to the database.
         """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc.ingest_time
 
         return None
@@ -149,7 +149,7 @@ class _Sample(SerializableDocument):
     @property
     def field_names(self):
         """An ordered tuple of the names of the fields of this sample."""
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc.field_names
 
         return tuple(k for k in self._data.keys() if not k.startswith("_"))
@@ -172,7 +172,7 @@ class _Sample(SerializableDocument):
         Returns:
             True/False
         """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc.has_field(field_name)
 
         try:
@@ -193,7 +193,7 @@ class _Sample(SerializableDocument):
         Raises:
             AttributeError: if the field does not exist
         """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc.get_field(field_name)
 
         if not self.has_field(field_name):
@@ -222,7 +222,7 @@ class _Sample(SerializableDocument):
         if hasattr(self, field_name) and not self.has_field(field_name):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc.set_field(field_name, value, create=create)
 
         if not self.has_field(field_name):
@@ -247,7 +247,7 @@ class _Sample(SerializableDocument):
         Raises:
             ValueError: if the field does not exist
         """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc.clear_field(field_name=field_name)
 
         if field_name in self._default_fields:
@@ -291,7 +291,7 @@ class _Sample(SerializableDocument):
         Returns:
             a JSON dict
         """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             d = self._doc.to_dict(extended=True)
         else:
             d = self._to_dict(extended=True)
@@ -316,24 +316,24 @@ class _Sample(SerializableDocument):
         Returns:
             a BSON dict
         """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc.to_dict(extended=False)
 
         return self._to_dict(extended=False)
 
     def save(self):
         """Saves the sample to the database."""
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             self._doc.save()
 
     def reload(self):
         """Reloads the sample from the database."""
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             self._doc.reload()
 
     def _delete(self):
         """Deletes the document from the database."""
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             self._doc.delete()
 
     def _to_dict(self, extended=False):
@@ -437,7 +437,7 @@ class Sample(_Sample):
         return repr(self)
 
     def __repr__(self):
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             return self._doc.fancy_repr(class_name=self.__class__.__name__)
 
         return super().__repr__()
@@ -462,11 +462,8 @@ class Sample(_Sample):
         except KeyError:
             sample = cls.__new__(cls)
             sample._doc = None  # set to prevent RecursionError
-            if dataset is None:
-                raise ValueError(
-                    "`dataset` arg must be provided if sample is in a dataset"
-                )
-            sample._set_backing_doc(d, dataset=dataset)
+            sample._dataset = None  # set to prevent RecursionError
+            sample._set_backing_doc(d, dataset)
 
         return sample
 
@@ -563,12 +560,12 @@ class Sample(_Sample):
         for sample in cls._instances[collection_name].values():
             sample._doc._data.pop(field_name, None)
 
-    def _set_backing_doc(self, d, dataset=None):
+    def _set_backing_doc(self, d, dataset):
         """Updates the backing doc for the sample.
 
         For use **only** when adding a sample to a dataset.
         """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
+        if self.in_dataset:
             raise TypeError("Sample already belongs to a dataset")
 
         # @todo(Tyler) don't even construct this!
@@ -773,10 +770,9 @@ class SampleView(_Sample):
         Any modified fields are updated, and any in-memory :class:`Sample`
         instances of this sample are updated.
         """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
-            self._doc.save(filtered_fields=self._filtered_fields)
+        self._doc.save(filtered_fields=self._filtered_fields)
 
-            # Reload the sample singleton if it exists in memory
-            Sample._reload_dataset_sample(
-                self.dataset._sample_collection_name, self.id
-            )
+        # Reload the sample singleton if it exists in memory
+        Sample._reload_dataset_sample(
+            self.dataset._sample_collection_name, self.id
+        )

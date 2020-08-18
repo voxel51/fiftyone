@@ -475,7 +475,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample._in_db:
-            sample._set_backing_doc(d, dataset=self)
+            sample._set_backing_doc(d, self)
 
         return str(d["_id"])
 
@@ -537,7 +537,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for sample, d in zip(samples, dicts):
             if not sample._in_db:
-                sample._set_backing_doc(d, dataset=self)
+                sample._set_backing_doc(d, self)
 
         return [str(d["_id"]) for d in dicts]
 
