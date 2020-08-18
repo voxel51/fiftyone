@@ -31,8 +31,6 @@ export const createStage = (
 
 import { getSocket } from "../../utils/socket";
 
-const { choose } = actions;
-
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
     response.json()
@@ -62,7 +60,7 @@ function serializeView(stages, stageMap) {
 }
 
 function makeEmptyView(stageInfo) {
-  const stage = createStage("", 0, stageInfo, false, 0, true, [], false);
+  const stage = createStage("", 0, stageInfo, false, 1, true, [], false);
   return [
     {
       ...stage,

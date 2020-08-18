@@ -198,7 +198,15 @@ const ViewStage = React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage, parameters, active, results, currentResult } = state.context;
+  const {
+    stage,
+    parameters,
+    active,
+    results,
+    currentResult,
+    length,
+    index,
+  } = state.context;
 
   const isCompleted = [
     "input.reading.selected",
@@ -221,7 +229,7 @@ const ViewStage = React.memo(({ stageRef }) => {
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
-    borderRightWidth: isCompleted ? 0 : 2,
+    borderRightWidth: !isCompleted && index === 0 && length === 1 ? 2 : 0,
     borderTopRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     borderBottomRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     opacity: 1,
@@ -256,6 +264,8 @@ const ViewStage = React.memo(({ stageRef }) => {
   useEffect(() => {
     inputRef.current && send({ type: "FOCUS", inputRef: inputRef });
   }, [inputRef.current]);
+
+  console.log(state.toStrings(), state.event);
 
   return (
     <>
@@ -292,13 +302,9 @@ const ViewStage = React.memo(({ stageRef }) => {
             ref={inputRef}
           />
         </ViewStageDiv>
-        {isCompleted &&
-          parameters.map((parameter) => (
-            <ViewStageParameter
-              key={parameter.id}
-              parameterRef={parameter.ref}
-            />
-          ))}
+        {parameters.map((parameter) => (
+          <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
+        ))}
         {state.matches("delible.yes") ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}

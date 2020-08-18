@@ -29,6 +29,12 @@ export const createParameter = (
   results: [],
 });
 
+const isValidStage = (stageInfo, stage) => {
+  return stageInfo
+    .map((s) => s.name)
+    .some((n) => n.toLowerCase() === stage.toLowerCase());
+};
+
 const viewStageMachine = Machine(
   {
     id: "viewStage",
@@ -48,6 +54,9 @@ const viewStageMachine = Machine(
       input: {
         initial: "decide",
         states: {
+          hist: {
+            type: "history",
+          },
           decide: {
             always: [
               {
@@ -57,46 +66,15 @@ const viewStageMachine = Machine(
                 },
               },
               {
-                target: "editing",
-                cond: (ctx) => {
-                  return ctx.focusOnInit && ctx.inputRef.current;
-                },
-              },
-              {
                 target: "waiting",
-                cond: (ctx) => {
-                  return ctx.focusOnInit && !ctx.inputRef.current;
-                },
+                cond: (ctx) => !ctx.inputRef,
               },
               {
-                target: "reading.submitted",
-                cond: (ctx) => {
-                  return ctx.submitted && !ctx.loaded;
-                },
-                actions: [
-                  sendParent((ctx) => ({
-                    type: "STAGE.COMMIT",
-                    stage: ctx,
-                  })),
-                ],
+                target: "editing",
+                cond: ({ focusOnInit }) => focusOnInit,
               },
               {
-                target: "reading.submitted",
-                cond: (ctx) => {
-                  return ctx.submitted && ctx.loaded;
-                },
-                actions: assign({
-                  loaded: false,
-                }),
-              },
-              {
-                target: "reading.selected",
-                cond: (ctx) => {
-                  return ctx.stage !== "";
-                },
-              },
-              {
-                target: "reading.pending",
+                target: "reading",
               },
             ],
           },
@@ -117,13 +95,29 @@ const viewStageMachine = Machine(
                 target: "decide",
                 actions: assign({
                   inputRef: (_, { inputRef }) => inputRef,
+                  focusOnInit: true,
                 }),
               },
             },
           },
           reading: {
             entry: "blurInput",
+            initial: "decide",
             states: {
+              decide: {
+                always: [
+                  {
+                    target: "pending",
+                    cond: (ctx) => !isValidStage(ctx.stageInfo, ctx.stage),
+                  },
+                  {
+                    target: "selected",
+                  },
+                ],
+              },
+              hist: {
+                type: "history",
+              },
               pending: {},
               selected: {},
               submitted: {},
@@ -151,11 +145,6 @@ const viewStageMachine = Machine(
                 currentResult: null,
                 focusOnInit: false,
               }),
-              "focusInput",
-              sendParent((ctx) => ({
-                type: "STAGE.EDIT",
-                index: ctx.index,
-              })),
             ],
             type: "parallel",
             states: {
@@ -259,18 +248,6 @@ const viewStageMachine = Machine(
                 {
                   target: "reading.pending",
                   actions: [
-                    sendParent((ctx) => ({
-                      type: "STAGE.DELETE",
-                      stage: ctx,
-                      errorId: undefined,
-                    })),
-                    "blurInput",
-                  ],
-                  cond: ({ submitted }) => !submitted,
-                },
-                {
-                  target: "reading.pending",
-                  actions: [
                     assign({
                       stage: () => "",
                       errorId: undefined,
@@ -297,6 +274,7 @@ const viewStageMachine = Machine(
               assign({
                 stage: "",
                 submitted: false,
+                parameters: [],
               }),
               sendParent((ctx) => ({ type: "STAGE.DELETE", stage: ctx })),
             ],
@@ -396,7 +374,7 @@ const viewStageMachine = Machine(
       BAR_BLUR: "focusedViewBar.no",
       UPDATE_DELIBLE: "delible",
       "STAGE.UPDATE": {
-        target: ["draggable", "delible"],
+        target: ["draggable", "delible", "input"],
         actions: [
           assign({
             index: (_, { index }) => index,
@@ -453,10 +431,13 @@ const viewStageMachine = Machine(
                   (acc, cur) => (cur.submitted ? acc : acc + 1),
                   0
                 ) === 0,
-              actions: assign({
-                submitted: true,
-                focusOnInit: false,
-              }),
+              actions: [
+                assign({
+                  submitted: true,
+                  focusOnInit: false,
+                }),
+                sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
+              ],
             },
           ]),
         ],
