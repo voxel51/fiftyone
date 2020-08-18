@@ -245,6 +245,12 @@ const viewBarMachine = Machine(
                       to: stages[activeStage].ref,
                     })),
                   },
+                  DELETE_ACTIVE_STAGE: {
+                    actions: send(({ activeStage, stages }) => ({
+                      type: "STAGE.DELETE",
+                      stage: stages[activeStage],
+                    })),
+                  },
                 },
               },
               blurred: {
@@ -359,14 +365,16 @@ const viewBarMachine = Machine(
       },
       "STAGE.DELETE": {
         actions: [
+          (ctx, e) => console.log(e),
           assign({
-            activeStage: ({ activeStage }) => activeStage,
+            activeStage: ({ activeStage }) => Math.max(activeStage - 1, 0),
             stages: ({ stages }, e) =>
               stages
                 .filter(
                   (stage) => stage.id !== e.stage.id || stages.length === 1
                 )
                 .map((stage, index) => {
+                  console.log("ererere");
                   const newStage = stage.id === e.stage.id ? e.stage : stage;
                   newStage.index = index;
                   newStage.length = Math.max(stages.length - 1, 1);
