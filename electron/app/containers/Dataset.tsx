@@ -21,6 +21,7 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import connect from "../utils/connect";
+import { VALID_LABEL_TYPES } from "../utils/labels";
 
 function NoDataset() {
   return (
@@ -35,18 +36,26 @@ function Dataset(props) {
   const { connected, loading, port, state, displayProps } = props;
   const hasDataset = Boolean(state && state.dataset);
   const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
-  const [modal, setModal] = useState({ visible: false, sample: null });
+  const [modal, setModal] = useState({
+    visible: false,
+    sample: null,
+    activeLabels: {},
+  });
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
   const labelNames = useRecoilValue(selectors.labelNames);
+  const labelTypes = useRecoilValue(selectors.labelTypes);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
 
   // select any new labels by default
   useEffect(() => {
     const newSelection = { ...displayProps.activeLabels };
     for (const label of labelNames) {
-      if (newSelection[label] === undefined) {
+      if (
+        newSelection[label] === undefined &&
+        VALID_LABEL_TYPES.includes(labelTypes[label])
+      ) {
         newSelection[label] = true;
       }
     }
@@ -56,6 +65,16 @@ function Dataset(props) {
   const handleHideModal = () => setModal({ visible: false, sample: null });
   useEffect(() => {
     document.body.classList.toggle("noscroll", modal.visible);
+
+    setModal({
+      ...modal,
+      activeLabels: modal.visible
+        ? {
+            ...displayProps.activeLabels,
+            ...displayProps.activeOther,
+          }
+        : {},
+    });
   }, [modal.visible]);
 
   let src = null;
@@ -97,7 +116,7 @@ function Dataset(props) {
         <ModalWrapper>
           <Overlay onClick={handleHideModal} />
           <SampleModal
-            activeLabels={displayProps.activeLabels}
+            activeLabels={modal.activeLabels}
             fieldSchema={fieldSchema}
             colorMapping={colorMapping}
             sample={modal.sample}
@@ -121,7 +140,13 @@ function Dataset(props) {
               <Route path={routes.SAMPLES}>
                 <SamplesContainer
                   {...props.socket}
-                  setView={setModal}
+                  setView={(sample) =>
+                    setModal({
+                      ...modal,
+                      visible: true,
+                      sample,
+                    })
+                  }
                   displayProps={displayProps}
                 />
               </Route>
