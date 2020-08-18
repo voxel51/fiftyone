@@ -4,6 +4,35 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
+FiftyOne 0.5.1
+--------------
+*Released August 18, 2020*
+
+App
+^^^
+- XXXXXX
+- Statistics in the display options sidebar now reflect the current
+  :ref:`view <using-views>`, not the entire :ref:`dataset <using-datasets>`
+
+Core
+^^^^
+- Greatly improved the performance of loading dataset samples from the database
+- Added support for :meth:`renaming <fiftyone.core.dataset.Dataset.name>` and
+  efficiently :meth:`cloning <fiftyone.core.dataset.Dataset.clone>` datasets
+- Added more string matching operations when
+  :ref:`querying samples <querying-samples>`, including
+  :meth:`starts_with() <fiftyone.core.expressions.starts_with>`,
+  :meth:`ends_with() <fiftyone.core.expressions.ends_with>`,
+  :meth:`contains_str() <fiftyone.core.expressions.contains_str>` and
+  :meth:`matches_str() <fiftyone.core.expressions.matches_str>`
+
+Documentation
+^^^^^^^^^^^^^
+- Added :doc:`a tutorial </tutorials/open_images_evaluation>` demonstrating
+  performing error analysis on the
+  `Open Images Dataset <https://storage.googleapis.com/openimages/web/index.html>`_
+  powered by FiftyOne
+
 FiftyOne 0.5.0
 --------------
 *Released August 11, 2020*
