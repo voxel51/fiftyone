@@ -446,9 +446,6 @@ class DatasetSampleDocument(Document, SampleDocument):
         ]
         dataset_doc.save()
 
-    def _get_repr_fields(self):
-        return ("collection_name",) + super()._get_repr_fields()
-
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.
 
