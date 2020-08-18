@@ -368,22 +368,37 @@ const viewBarMachine = Machine(
           (ctx, e) => console.log(e),
           assign({
             activeStage: ({ activeStage }) => Math.max(activeStage - 1, 0),
-            stages: ({ stages }, e) =>
-              stages
-                .filter(
-                  (stage) => stage.id !== e.stage.id || stages.length === 1
-                )
-                .map((stage, index) => {
-                  console.log("ererere");
-                  const newStage = stage.id === e.stage.id ? e.stage : stage;
-                  newStage.index = index;
-                  newStage.length = Math.max(stages.length - 1, 1);
-                  newStage.ref = stage.ref;
-                  newStage.stage =
-                    e.stage.id === newStage.id ? "" : newStage.stage;
-                  newStage.reset = true;
-                  return newStage;
-                }),
+            stages: ({ stages, stageInfo }, e) => {
+              if (stages.length === 1 && stages[0].id === e.stage.id) {
+                const stage = createStage(
+                  "",
+                  0,
+                  stageInfo,
+                  false,
+                  0,
+                  true,
+                  [],
+                  false
+                );
+                return [
+                  {
+                    ...stage,
+                    ref: spawn(viewStageMachine.withContext(stage)),
+                  },
+                ];
+              } else {
+                return stages
+                  .filter(
+                    (stage) => stage.id !== e.stage.id || stages.length === 1
+                  )
+                  .map((stage, index) => {
+                    const newStage = stage.id === e.stage.id ? e.stage : stage;
+                    newStage.index = index;
+                    newStage.length = Math.max(stages.length - 1, 1);
+                    return newStage;
+                  });
+              }
+            },
           }),
           "sendStagesUpdate",
           "submit",
@@ -413,6 +428,7 @@ const viewBarMachine = Machine(
             index: stage.index,
             length: ctx.stages.length,
             active: stage.index === ctx.activeStage,
+            stage: stage.stage,
           })
         ),
       submit: ({ socket, stateDescription, stages, stageInfo }) => {

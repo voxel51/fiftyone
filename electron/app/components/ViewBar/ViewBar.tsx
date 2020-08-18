@@ -54,7 +54,7 @@ const viewBarKeyMap = {
   VIEW_BAR_PREVIOUS: "left",
   VIEW_BAR_NEXT_STAGE: "shift+right",
   VIEW_BAR_PREVIOUS_STAGE: "shift+left",
-  VIEW_BAR_DELETE: "del",
+  VIEW_BAR_DELETE: "backspace,del",
 };
 
 const ViewBar = () => {
