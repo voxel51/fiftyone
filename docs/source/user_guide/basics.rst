@@ -280,7 +280,7 @@ datasets to perform the analysis that you need.
 
 .. custombutton::
     :button_text: Get a full walkthough of dataset views
-    :button_link: using_views.html#using-views
+    :button_link: using_views.html
 
 .. code-block:: python
     :linenos:

@@ -18,13 +18,13 @@ Core
 ^^^^
 - Greatly improved the performance of loading dataset samples from the database
 - Added support for :meth:`renaming <fiftyone.core.dataset.Dataset.name>` and
-  efficiently :meth:`cloning <fiftyone.core.dataset.Dataset.clone>` datasets
+  :meth:`cloning <fiftyone.core.dataset.Dataset.clone>` datasets
 - Added more string matching operations when
   :ref:`querying samples <querying-samples>`, including
-  :meth:`starts_with() <fiftyone.core.expressions.starts_with>`,
-  :meth:`ends_with() <fiftyone.core.expressions.ends_with>`,
-  :meth:`contains_str() <fiftyone.core.expressions.contains_str>` and
-  :meth:`matches_str() <fiftyone.core.expressions.matches_str>`
+  :meth:`starts_with() <fiftyone.core.expressions.ViewExpression.starts_with>`,
+  :meth:`ends_with() <fiftyone.core.expressions.ViewExpression.ends_with>`,
+  :meth:`contains_str() <fiftyone.core.expressions.ViewExpression.contains_str>` and
+  :meth:`matches_str() <fiftyone.core.expressions.ViewExpression.matches_str>`
 
 Documentation
 ^^^^^^^^^^^^^
