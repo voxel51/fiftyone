@@ -31,8 +31,6 @@ export const createStage = (
 
 import { getSocket } from "../../utils/socket";
 
-const { choose } = actions;
-
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
     response.json()
@@ -62,7 +60,7 @@ function serializeView(stages, stageMap) {
 }
 
 function makeEmptyView(stageInfo) {
-  const stage = createStage("", 0, stageInfo, false, 0, true, [], false);
+  const stage = createStage("", 0, stageInfo, false, 1, true, [], false);
   return [
     {
       ...stage,
@@ -188,7 +186,7 @@ const viewBarMachine = Machine(
                     ),
                 ],
                 on: {
-                  BLUR: {
+                  TOGGLE_FOCUS: {
                     target: "blurred",
                   },
                   NEXT: {
@@ -247,13 +245,20 @@ const viewBarMachine = Machine(
                       to: stages[activeStage].ref,
                     })),
                   },
+                  DELETE_ACTIVE_STAGE: {
+                    actions: send(({ activeStage, stages }) => ({
+                      type: "STAGE.DELETE",
+                      stage: stages[activeStage],
+                    })),
+                  },
                 },
               },
-              blurred: {},
-            },
-            on: {
-              FOCUS: {
-                target: "focus.focused",
+              blurred: {
+                on: {
+                  TOGGLE_FOCUS: {
+                    target: "focused",
+                  },
+                },
               },
             },
           },
@@ -360,23 +365,40 @@ const viewBarMachine = Machine(
       },
       "STAGE.DELETE": {
         actions: [
+          (ctx, e) => console.log(e),
           assign({
-            activeStage: ({ activeStage }) => activeStage,
-            stages: ({ stages }, e) =>
-              stages
-                .filter(
-                  (stage) => stage.id !== e.stage.id || stages.length === 1
-                )
-                .map((stage, index) => {
-                  const newStage = stage.id === e.stage.id ? e.stage : stage;
-                  newStage.index = index;
-                  newStage.length = Math.max(stages.length - 1, 1);
-                  newStage.ref = stage.ref;
-                  newStage.stage =
-                    e.stage.id === newStage.id ? "" : newStage.stage;
-                  newStage.reset = true;
-                  return newStage;
-                }),
+            activeStage: ({ activeStage }) => Math.max(activeStage - 1, 0),
+            stages: ({ stages, stageInfo }, e) => {
+              if (stages.length === 1 && stages[0].id === e.stage.id) {
+                const stage = createStage(
+                  "",
+                  0,
+                  stageInfo,
+                  false,
+                  0,
+                  true,
+                  [],
+                  false
+                );
+                return [
+                  {
+                    ...stage,
+                    ref: spawn(viewStageMachine.withContext(stage)),
+                  },
+                ];
+              } else {
+                return stages
+                  .filter(
+                    (stage) => stage.id !== e.stage.id || stages.length === 1
+                  )
+                  .map((stage, index) => {
+                    const newStage = stage.id === e.stage.id ? e.stage : stage;
+                    newStage.index = index;
+                    newStage.length = Math.max(stages.length - 1, 1);
+                    return newStage;
+                  });
+              }
+            },
           }),
           "sendStagesUpdate",
           "submit",
@@ -406,6 +428,7 @@ const viewBarMachine = Machine(
             index: stage.index,
             length: ctx.stages.length,
             active: stage.index === ctx.activeStage,
+            stage: stage.stage,
           })
         ),
       submit: ({ socket, stateDescription, stages, stageInfo }) => {

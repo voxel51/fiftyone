@@ -1601,261 +1601,323 @@ Writing a custom DatasetImporter
 |DatasetImporter| is an abstract interface; the concrete interface that you
 should implement is determined by the type of dataset that you are importing.
 
-**Unlabeled image datasets**
+.. tabs::
 
-To define a custom importer for unlabeled image datasets, implement the
-|UnlabeledImageDatasetImporter| interface.
+  .. group-tab:: Unlabeled image datasets
 
-The pseudocode below provides a template for a custom
-|UnlabeledImageDatasetImporter|:
+    To define a custom importer for unlabeled image datasets, implement the
+    |UnlabeledImageDatasetImporter| interface.
 
-.. code-block:: python
-    :linenos:
+    The pseudocode below provides a template for a custom
+    |UnlabeledImageDatasetImporter|:
 
-    import fiftyone.utils.data as foud
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.utils.data as foud
 
 
-    class CustomUnlabeledImageDatasetImporter(foud.UnlabeledImageDatasetImporter):
-        """Custom importer for unlabeled image datasets.
-
-        Args:
-            dataset_dir: the dataset directory
-            *args: additional positional arguments for your importer
-            **kwargs: additional keyword arguments for your importer
-        """
-
-        def __init__(self, dataset_dir, *args, **kwargs):
-            super().__init__(dataset_dir)
-            # Your initialization here
-
-        def __len__(self):
-            """The total number of samples that will be imported.
-
-            Raises:
-                TypeError: if the total number is not known
-            """
-            # Return the total number of samples in the dataset (if known)
-            pass
-
-        def __next__(self):
-            """Returns information about the next sample in the dataset.
-
-            Returns:
-                an ``(image_path, image_metadata)`` tuple, where:
-                -   ``image_path`` is the path to the image on disk
-                -   ``image_metadata`` is an
-                    :class:`fiftyone.core.metadata.ImageMetadata` instances for the
-                    image, or ``None`` if :meth:`has_image_metadata` is ``False``
-
-            Raises:
-                StopIteration: if there are no more samples to import
-            """
-            # Implement loading the next sample in your dataset here
-            pass
-
-        @property
-        def has_image_metadata(self):
-            """Whether this importer produces
-            :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
-            """
-            # Return True or False here
-            pass
-
-        def setup(self):
-            """Performs any necessary setup before importing the first sample in
-            the dataset.
-
-            This method is called when the importer's context manager interface is
-            entered, :func:`DatasetImporter.__enter__`.
-            """
-            # Your custom setup here
-            pass
-
-        def close(self, *args):
-            """Performs any necessary actions after the last sample has been
-            imported.
-
-            This method is called when the importer's context manager interface is
-            exited, :func:`DatasetImporter.__exit__`.
+        class CustomUnlabeledImageDatasetImporter(foud.UnlabeledImageDatasetImporter):
+            """Custom importer for unlabeled image datasets.
 
             Args:
-                *args: the arguments to :func:`DatasetImporter.__exit__`
+                dataset_dir: the dataset directory
+                *args: additional positional arguments for your importer
+                **kwargs: additional keyword arguments for your importer
             """
-            # Your custom code here to complete the import
-            pass
 
-When :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` is
-called with a custom |UnlabeledImageDatasetImporter|, the import is effectively
-performed via the pseudocode below:
+            def __init__(self, dataset_dir, *args, **kwargs):
+                super().__init__(dataset_dir)
+                # Your initialization here
 
-.. code-block:: python
+            def __len__(self):
+                """The total number of samples that will be imported.
 
-    import fiftyone as fo
+                Raises:
+                    TypeError: if the total number is not known
+                """
+                # Return the total number of samples in the dataset (if known)
+                pass
 
-    dataset = fo.Dataset(...)
+            def __next__(self):
+                """Returns information about the next sample in the dataset.
 
-    importer = CustomUnlabeledImageDatasetImporter(dataset_dir, ...)
-    with importer:
-        for image_path, image_metadata in importer:
-            dataset.add_sample(
-                fo.Sample(filepath=image_path, metadata=image_metadata)
-            )
+                Returns:
+                    an ``(image_path, image_metadata)`` tuple, where:
+                    -   ``image_path`` is the path to the image on disk
+                    -   ``image_metadata`` is an
+                        :class:`fiftyone.core.metadata.ImageMetadata` instances for the
+                        image, or ``None`` if :meth:`has_image_metadata` is ``False``
 
-Note that the importer is invoked via its context manager interface, which
-automatically calls the
-:meth:`setup() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.setup>`
-and
-:meth:`close() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.close>`
-methods of the importer to handle setup/completion of the import.
+                Raises:
+                    StopIteration: if there are no more samples to import
+                """
+                # Implement loading the next sample in your dataset here
+                pass
 
-The images in the dataset are iteratively loaded by invoking the
-:meth:`__next__() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.__next__>`
-method of the importer.
+            @property
+            def has_dataset_info(self):
+                """Whether this importer produces a dataset info dictionary."""
+                # Return True or False here
+                pass
 
-The
-:meth:`has_image_metadata <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.has_image_metadata>`
-property of the importer allows it to declare whether it returns
-|ImageMetadata| instances for each image that it loads when
-:meth:`__next__() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.__next__>`
-is called.
+            @property
+            def has_image_metadata(self):
+                """Whether this importer produces
+                :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
+                """
+                # Return True or False here
+                pass
 
-**Labeled image datasets**
+            def setup(self):
+                """Performs any necessary setup before importing the first sample in
+                the dataset.
 
-To define a custom importer for labeled image datasets, implement the
-|LabeledImageDatasetImporter| interface.
+                This method is called when the importer's context manager interface is
+                entered, :func:`DatasetImporter.__enter__`.
+                """
+                # Your custom setup here
+                pass
 
-The pseudocode below provides a template for a custom
-|LabeledImageDatasetImporter|:
+            def get_dataset_info(self):
+                """Returns the dataset info for the dataset.
 
-.. code-block:: python
-    :linenos:
+                By convention, this method should be called after all samples in the
+                dataset have been imported.
 
-    import fiftyone.utils.data as foud
+                Returns:
+                    a dict of dataset info
+                """
+                # Return a dict of dataset info, if supported by your importer
+                pass
 
+            def close(self, *args):
+                """Performs any necessary actions after the last sample has been
+                imported.
 
-    class CustomLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
-        """Custom importer for labeled image datasets.
+                This method is called when the importer's context manager interface is
+                exited, :func:`DatasetImporter.__exit__`.
 
-        Args:
-            dataset_dir: the dataset directory
-            *args: additional positional arguments for your importer
-            **kwargs: additional keyword arguments for your importer
-        """
+                Args:
+                    *args: the arguments to :func:`DatasetImporter.__exit__`
+                """
+                # Your custom code here to complete the import
+                pass
 
-        def __init__(self, dataset_dir, *args, **kwargs):
-            super().__init__(dataset_dir)
-            # Your initialization here
+    When :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` is
+    called with a custom |UnlabeledImageDatasetImporter|, the import is effectively
+    performed via the pseudocode below:
 
-        def __len__(self):
-            """The total number of samples that will be imported.
+    .. code-block:: python
 
-            Raises:
-                TypeError: if the total number is not known
-            """
-            # Return the total number of samples in the dataset (if known)
-            pass
+        import fiftyone as fo
 
-        def __next__(self):
-            """Returns information about the next sample in the dataset.
+        dataset = fo.Dataset(...)
 
-            Returns:
-                an  ``(image_path, image_metadata, label)`` tuple, where:
-                -   ``image_path`` is the path to the image on disk
-                -   ``image_metadata`` is an
-                    :class:`fiftyone.core.metadata.ImageMetadata` instances for the
-                    image, or ``None`` if :meth:`has_image_metadata` is ``False``
-                -   ``label`` is an instance of :meth:`label_cls`
-
-            Raises:
-                StopIteration: if there are no more samples to import
-            """
-            # Implement loading the next sample in your dataset here
-            pass
-
-        @property
-        def has_image_metadata(self):
-            """Whether this importer produces
-            :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
-            """
-            # Return True or False here
-            pass
-
-        @property
-        def label_cls(self):
-            """The :class:`fiftyone.core.labels.Label` class returned by this
-            importer.
-            """
-            # Return a Label subclass here
-            pass
-
-        def setup(self):
-            """Performs any necessary setup before importing the first sample in
-            the dataset.
-
-            This method is called when the importer's context manager interface is
-            entered, :func:`DatasetImporter.__enter__`.
-            """
-            # Your custom setup here
-            pass
-
-        def close(self, *args):
-            """Performs any necessary actions after the last sample has been
-            imported.
-
-            This method is called when the importer's context manager interface is
-            exited, :func:`DatasetImporter.__exit__`.
-
-            Args:
-                *args: the arguments to :func:`DatasetImporter.__exit__`
-            """
-            # Your custom code here to complete the import
-            pass
-
-When :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` is
-called with a custom |LabeledImageDatasetImporter|, the import is effectively
-performed via the pseudocode below:
-
-.. code-block:: python
-
-    import fiftyone as fo
-
-    dataset = fo.Dataset(...)
-
-    importer = CustomLabeledImageDatasetImporter(dataset_dir, ...)
-
-    with importer:
-        for image_path, image_metadata, label in importer:
-            dataset.add_sample(
-                fo.Sample(
-                    filepath=image_path,
-                    metadata=image_metadata,
-                    **{label_field: label},
+        importer = CustomUnlabeledImageDatasetImporter(dataset_dir, ...)
+        with importer:
+            for image_path, image_metadata in importer:
+                dataset.add_sample(
+                    fo.Sample(filepath=image_path, metadata=image_metadata)
                 )
-            )
 
-Note that the importer is invoked via its context manager interface, which
-automatically calls the
-:meth:`setup() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.setup>`
-and
-:meth:`close() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.close>`
-methods of the importer to handle setup/completion of the import.
+            if importer.has_dataset_info:
+                dataset.info.update(importer.get_dataset_info())
 
-The images and their corresponding |Label| instances in the dataset are
-iteratively loaded by invoking the
-:meth:`__next__() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.__next__>`
-method of the importer.
+    Note that the importer is invoked via its context manager interface, which
+    automatically calls the
+    :meth:`setup() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.setup>`
+    and
+    :meth:`close() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.close>`
+    methods of the importer to handle setup/completion of the import.
 
-The
-:meth:`label_cls <fiftyone.utils.data.importers.LabeledImageDatasetImporter.label_cls>`
-property of the importer declares the type of |Label| that the dataset contains
-(e.g., |Classification|, |Detections|, or |ImageLabels|).
+    The images in the dataset are iteratively loaded by invoking the
+    :meth:`__next__() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.__next__>`
+    method of the importer.
 
-The
-:meth:`has_image_metadata <fiftyone.utils.data.importers.LabeledImageDatasetImporter.has_image_metadata>`
-property of the importer allows it to declare whether it returns
-|ImageMetadata| instances for each image that it loads when
-:meth:`__next__() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.__next__>`
-is called.
+    The
+    :meth:`has_dataset_info <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.has_dataset_info>`
+    property of the importer allows it to declare whether its
+    :meth:`get_dataset_info() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.get_dataset_info>`
+    method should be called after all samples have been imported to retrieve a
+    dictionary of information to store in the
+    :meth:`info <fiftyone.core.dataset.Dataset.info>` property of the FiftyOne
+    dataset.
+
+    The
+    :meth:`has_image_metadata <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.has_image_metadata>`
+    property of the importer allows it to declare whether it returns
+    |ImageMetadata| instances for each image that it loads when
+    :meth:`__next__() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.__next__>`
+    is called.
+
+  .. group-tab:: Labeled image datasets
+
+    To define a custom importer for labeled image datasets, implement the
+    |LabeledImageDatasetImporter| interface.
+
+    The pseudocode below provides a template for a custom
+    |LabeledImageDatasetImporter|:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.utils.data as foud
+
+
+        class CustomLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
+            """Custom importer for labeled image datasets.
+
+            Args:
+                dataset_dir: the dataset directory
+                *args: additional positional arguments for your importer
+                **kwargs: additional keyword arguments for your importer
+            """
+
+            def __init__(self, dataset_dir, *args, **kwargs):
+                super().__init__(dataset_dir)
+                # Your initialization here
+
+            def __len__(self):
+                """The total number of samples that will be imported.
+
+                Raises:
+                    TypeError: if the total number is not known
+                """
+                # Return the total number of samples in the dataset (if known)
+                pass
+
+            def __next__(self):
+                """Returns information about the next sample in the dataset.
+
+                Returns:
+                    an  ``(image_path, image_metadata, label)`` tuple, where:
+                    -   ``image_path`` is the path to the image on disk
+                    -   ``image_metadata`` is an
+                        :class:`fiftyone.core.metadata.ImageMetadata` instances for the
+                        image, or ``None`` if :meth:`has_image_metadata` is ``False``
+                    -   ``label`` is an instance of :meth:`label_cls`
+
+                Raises:
+                    StopIteration: if there are no more samples to import
+                """
+                # Implement loading the next sample in your dataset here
+                pass
+
+            @property
+            def has_dataset_info(self):
+                """Whether this importer produces a dataset info dictionary."""
+                # Return True or False here
+                pass
+
+            @property
+            def has_image_metadata(self):
+                """Whether this importer produces
+                :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
+                """
+                # Return True or False here
+                pass
+
+            @property
+            def label_cls(self):
+                """The :class:`fiftyone.core.labels.Label` class returned by this
+                importer.
+                """
+                # Return a Label subclass here
+                pass
+
+            def setup(self):
+                """Performs any necessary setup before importing the first sample in
+                the dataset.
+
+                This method is called when the importer's context manager interface is
+                entered, :func:`DatasetImporter.__enter__`.
+                """
+                # Your custom setup here
+                pass
+
+            def get_dataset_info(self):
+                """Returns the dataset info for the dataset.
+
+                By convention, this method should be called after all samples in the
+                dataset have been imported.
+
+                Returns:
+                    a dict of dataset info
+                """
+                # Return a dict of dataset info, if supported by your importer
+                pass
+
+            def close(self, *args):
+                """Performs any necessary actions after the last sample has been
+                imported.
+
+                This method is called when the importer's context manager interface is
+                exited, :func:`DatasetImporter.__exit__`.
+
+                Args:
+                    *args: the arguments to :func:`DatasetImporter.__exit__`
+                """
+                # Your custom code here to complete the import
+                pass
+
+    When :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` is
+    called with a custom |LabeledImageDatasetImporter|, the import is effectively
+    performed via the pseudocode below:
+
+    .. code-block:: python
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset(...)
+
+        importer = CustomLabeledImageDatasetImporter(dataset_dir, ...)
+
+        with importer:
+            for image_path, image_metadata, label in importer:
+                dataset.add_sample(
+                    fo.Sample(
+                        filepath=image_path,
+                        metadata=image_metadata,
+                        **{label_field: label},
+                    )
+                )
+
+            if importer.has_dataset_info:
+                dataset.info.update(importer.get_dataset_info())
+
+    Note that the importer is invoked via its context manager interface, which
+    automatically calls the
+    :meth:`setup() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.setup>`
+    and
+    :meth:`close() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.close>`
+    methods of the importer to handle setup/completion of the import.
+
+    The images and their corresponding |Label| instances in the dataset are
+    iteratively loaded by invoking the
+    :meth:`__next__() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.__next__>`
+    method of the importer.
+
+    The
+    :meth:`has_dataset_info <fiftyone.utils.data.importers.LabeledImageDatasetImporter.has_dataset_info>`
+    property of the importer allows it to declare whether its
+    :meth:`get_dataset_info() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.get_dataset_info>`
+    method should be called after all samples have been imported to retrieve a
+    dictionary of information to store in the
+    :meth:`info <fiftyone.core.dataset.Dataset.info>` property of the FiftyOne
+    dataset.
+
+    The
+    :meth:`label_cls <fiftyone.utils.data.importers.LabeledImageDatasetImporter.label_cls>`
+    property of the importer declares the type of |Label| that the dataset contains
+    (e.g., |Classification|, |Detections|, or |ImageLabels|).
+
+    The
+    :meth:`has_image_metadata <fiftyone.utils.data.importers.LabeledImageDatasetImporter.has_image_metadata>`
+    property of the importer allows it to declare whether it returns
+    |ImageMetadata| instances for each image that it loads when
+    :meth:`__next__() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.__next__>`
+    is called.
 
 Writing a custom Dataset type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1874,86 +1936,88 @@ about defining custom |DatasetExporter| classes.
 Custom dataset types can be declared by implementing the |DatasetType| subclass
 corresponding to the type of dataset that you are working with.
 
-**Unlabeled image datasets**
+.. tabs::
 
-The pseudocode below provides a template for a custom
-|UnlabeledImageDatasetType| subclass:
+  .. group-tab:: Unlabeled image datasets
 
-.. code-block:: python
-    :linenos:
+    The pseudocode below provides a template for a custom
+    |UnlabeledImageDatasetType| subclass:
 
-    import fiftyone.types as fot
+    .. code-block:: python
+        :linenos:
 
-
-    class CustomUnlabeledImageDataset(fot.UnlabeledImageDataset):
-        """Custom unlabeled image dataset type."""
-
-        def get_dataset_importer_cls(self):
-            """Returns the
-            :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
-            class for importing datasets of this type from disk.
-
-            Returns:
-                a :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
-                class
-            """
-            # Return your custom UnlabeledImageDatasetImporter class here
-            pass
-
-        def get_dataset_exporter_cls(self):
-            """Returns the
-            :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
-            class for exporting datasets of this type to disk.
-
-            Returns:
-                a :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
-                class
-            """
-            # Return your custom UnlabeledImageDatasetExporter class here
-            pass
-
-Note that, as this type represents an unlabeled image dataset, its importer
-must be a subclass of |UnlabeledImageDatasetImporter|, and its exporter must be
-a subclass of |UnlabeledImageDatasetExporter|.
-
-**Labeled image datasets**
-
-The pseudocode below provides a template for a custom
-|LabeledImageDatasetType| subclass:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone.types as fot
+        import fiftyone.types as fot
 
 
-    class CustomLabeledImageDataset(fot.LabeledImageDataset):
-        """Custom labeled image dataset type."""
+        class CustomUnlabeledImageDataset(fot.UnlabeledImageDataset):
+            """Custom unlabeled image dataset type."""
 
-        def get_dataset_importer_cls(self):
-            """Returns the
-            :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
-            class for importing datasets of this type from disk.
+            def get_dataset_importer_cls(self):
+                """Returns the
+                :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
+                class for importing datasets of this type from disk.
 
-            Returns:
-                a :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
-                class
-            """
-            # Return your custom LabeledImageDatasetImporter class here
-            pass
+                Returns:
+                    a :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
+                    class
+                """
+                # Return your custom UnlabeledImageDatasetImporter class here
+                pass
 
-        def get_dataset_exporter_cls(self):
-            """Returns the
-            :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
-            class for exporting datasets of this type to disk.
+            def get_dataset_exporter_cls(self):
+                """Returns the
+                :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
+                class for exporting datasets of this type to disk.
 
-            Returns:
-                a :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
-                class
-            """
-            # Return your custom LabeledImageDatasetExporter class here
-            pass
+                Returns:
+                    a :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
+                    class
+                """
+                # Return your custom UnlabeledImageDatasetExporter class here
+                pass
 
-Note that, as this type represents a labeled image dataset, its importer must
-be a subclass of |LabeledImageDatasetImporter|, and its exporter must be a
-subclass of |LabeledImageDatasetExporter|.
+    Note that, as this type represents an unlabeled image dataset, its importer
+    must be a subclass of |UnlabeledImageDatasetImporter|, and its exporter
+    must be a subclass of |UnlabeledImageDatasetExporter|.
+
+  .. group-tab:: Labeled image datasets
+
+    The pseudocode below provides a template for a custom
+    |LabeledImageDatasetType| subclass:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.types as fot
+
+
+        class CustomLabeledImageDataset(fot.LabeledImageDataset):
+            """Custom labeled image dataset type."""
+
+            def get_dataset_importer_cls(self):
+                """Returns the
+                :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+                class for importing datasets of this type from disk.
+
+                Returns:
+                    a :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+                    class
+                """
+                # Return your custom LabeledImageDatasetImporter class here
+                pass
+
+            def get_dataset_exporter_cls(self):
+                """Returns the
+                :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+                class for exporting datasets of this type to disk.
+
+                Returns:
+                    a :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+                    class
+                """
+                # Return your custom LabeledImageDatasetExporter class here
+                pass
+
+    Note that, as this type represents a labeled image dataset, its importer
+    must be a subclass of |LabeledImageDatasetImporter|, and its exporter must
+    be a subclass of |LabeledImageDatasetExporter|.

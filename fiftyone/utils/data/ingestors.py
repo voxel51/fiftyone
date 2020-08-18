@@ -132,6 +132,10 @@ class UnlabeledImageDatasetIngestor(
         return image_path, image_metadata
 
     @property
+    def has_dataset_info(self):
+        return False
+
+    @property
     def has_image_metadata(self):
         return self.sample_parser.has_image_metadata
 
@@ -201,6 +205,10 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         label = self.sample_parser.get_label()
 
         return image_path, image_metadata, label
+
+    @property
+    def has_dataset_info(self):
+        return False
 
     @property
     def has_image_metadata(self):

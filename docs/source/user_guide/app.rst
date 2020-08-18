@@ -69,7 +69,7 @@ object directly:
     dataset = foz.load_zoo_dataset("cifar10")
     session.dataset = dataset
 
-.. image:: ../images/cifar10.png
+.. image:: ../images/cifar10.gif
    :alt: CIFAR-10
    :align: center
 
@@ -83,9 +83,9 @@ sort the |DatasetView| by ground truth labels and then select the first 10
 .. code-block:: python
     :linenos:
 
-    session.view = dataset.sort_by("ground_truth")[:10]
+    session.view = dataset.sort_by("ground_truth.label")[:10]
 
-.. image:: ../images/cifar10_sorted.png
+.. image:: ../images/cifar10_sorted.gif
    :alt: CIFAR-10 Sorted
    :align: center
 
@@ -164,49 +164,40 @@ ______________________
 
 The App has various functionality built into the user interface itself.
 
-Toggle attribute bubbles
-------------------------
+Display options
+---------------
 
 Any labels, tags, and scalar fields can be viewed in the App directly on the
-sample images by toggling the corresponding buttons on the left hand side of
-the App.
+sample images by toggling the corresponding display options on the left hand 
+side of the App.
 
 .. image:: ../images/cifar10_button_toggle.gif
     :alt: CIFAR-10 Toggle
     :align: center
 
-Accessing selected samples
---------------------------
-
-First select samples in the App.
-
-.. image:: ../images/cifar10_selected.gif
-   :alt: CIFAR-10 Selected
-   :align: center
-
-Second, load those samples into python:
-
-.. code-block:: python
-    :linenos:
-
-    print(session.selected)
-
-.. code-block:: text
-
-    ['5ef0eef405059ebb0ddfa6cc',
-     '5ef0eef405059ebb0ddfa7c4',
-     '5ef0eef405059ebb0ddfa86e']
 
 Viewing a sample
 ----------------
 
-A sample can be double clicked to view a large version of it in a sidebar. This
-sidebar also contains the fields of the sample.
+A |Sample| can be double clicked to view a large version of it. This
+expanded view also contains the information like the labels of the |Sample| and
+provides access to the raw json information about the |Sample|.
 
 .. image:: ../images/cifar10_sidebar.gif
     :alt: CIFAR-10 Sidebar
     :align: center
 
+
+DatasetView stages
+-------------------
+
+The view bar in the App provides all |DatasetView| functionality directly in
+the App. Adding a new stage will create a view into your |Dataset| which only
+shows the samples and labels that are specified by your stage.
+
+.. image:: ../images/cifar10_view_bar.gif
+    :alt: CIFAR-10 View Bar
+    :align: center
 
 Tabs
 ----
