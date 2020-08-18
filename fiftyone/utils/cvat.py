@@ -326,9 +326,8 @@ class CVATTaskLabels(object):
         labels = _ensure_list(d.get("label", []))
         _labels = []
         for label in labels:
-            attributes = _ensure_list(
-                label.get("attributes", {}).get("attribute", [])
-            )
+            _tmp = label.get("attributes", None) or {}
+            attributes = _ensure_list(_tmp.get("attribute", []))
             _attributes = []
             for attribute in attributes:
                 _attributes.append(
@@ -750,4 +749,10 @@ def load_cvat_image_annotations(xml_path):
 
 
 def _ensure_list(value):
-    return [value] if not isinstance(value, list) else value
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return value
+
+    return [value]

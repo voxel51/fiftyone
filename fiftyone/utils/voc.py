@@ -635,10 +635,6 @@ def load_voc_detection_annotations(xml_path):
     return VOCAnnotation.from_xml(xml_path)
 
 
-def _ensure_list(value):
-    return [value] if not isinstance(value, list) else value
-
-
 VOC_DETECTION_CLASSES = [
     "aeroplane",
     "bicycle",
@@ -661,3 +657,13 @@ VOC_DETECTION_CLASSES = [
     "train",
     "tvmonitor",
 ]
+
+
+def _ensure_list(value):
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return value
+
+    return [value]
