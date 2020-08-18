@@ -123,8 +123,8 @@ class SampleDocument(SerializableDocument):
 
     @property
     def collection_name(self):
-        """The name of the collection to which this sample belongs, or ``None``
-        if it has not been added to a dataset.
+        """The name of the MongoDB collection to which this sample belongs, or
+        ``None`` if it has not been added to a dataset.
         """
         return None
 
@@ -233,9 +233,6 @@ class DatasetSampleDocument(Document, SampleDocument):
 
     @property
     def collection_name(self):
-        """The name of the collection to which this sample belongs, or ``None``
-        if it has not been added to a dataset.
-        """
         return self.__class__.__name__
 
     @property

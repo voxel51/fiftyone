@@ -20,8 +20,8 @@ import fiftyone.core.odm as foo
 class _Sample(object):
     """Base class for :class:`Sample` and :class:`SampleView`."""
 
-    def __init__(self):
-        self._dataset = None
+    def __init__(self, dataset=None):
+        self._dataset = dataset
 
     def __dir__(self):
         return super().__dir__() + list(self.field_names)
@@ -267,7 +267,7 @@ class Sample(_Sample):
         Args:
             doc: a :class:`fiftyone.core.odm.SampleDocument`
             dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
-                belongs to.
+                belongs to
 
         Returns:
             a :class:`Sample`
@@ -329,7 +329,7 @@ class Sample(_Sample):
         still exists in memory.
 
         Args:
-            collection_name: the name of the collection
+            collection_name: the name of the MongoDB collection
         """
         for sample in cls._instances[collection_name].values():
             sample.save()
@@ -342,7 +342,7 @@ class Sample(_Sample):
         If the sample does not exist in memory nothing is done.
 
         Args:
-            collection_name: the name of the collection
+            collection_name: the name of the MongoDB collection
             sample_id: the ID of the sample
 
         Returns:
@@ -367,7 +367,7 @@ class Sample(_Sample):
         will keep the dataset in sync.
 
         Args:
-            collection_name: the name of the collection
+            collection_name: the name of the MongoDB collection
         """
         for sample in cls._instances[collection_name].values():
             sample.reload()
@@ -377,7 +377,7 @@ class Sample(_Sample):
         """Remove any field values from samples that exist in memory.
 
         Args:
-            collection_name: the name of the collection
+            collection_name: the name of the MongoDB collection
             field_name: the name of the field to purge
         """
         for sample in cls._instances[collection_name].values():
@@ -418,7 +418,7 @@ class Sample(_Sample):
         For use **only** when removing samples from a dataset.
 
         Args:
-            collection_name: the name of the collection
+            collection_name: the name of the MongoDB collection
             sample_ids: a list of sample IDs
         """
         dataset_instances = cls._instances[collection_name]
@@ -436,7 +436,7 @@ class Sample(_Sample):
         For use **only** when clearing a dataset.
 
         Args:
-            collection_name: the name of the collection
+            collection_name: the name of the MongoDB collection
         """
         if collection_name not in cls._instances:
             return
@@ -464,7 +464,7 @@ class SampleView(_Sample):
 
     Args:
         doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
-        dataset: the :class:`fiftyone.core.dataset.Dataset` that this doc
+        dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
             belongs to
         selected_fields (None): a set of field names that this sample view is
             restricted to
@@ -500,8 +500,7 @@ class SampleView(_Sample):
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
 
-        super().__init__()
-        self._dataset = dataset
+        super().__init__(dataset=dataset)
 
     def __str__(self):
         return repr(self)
