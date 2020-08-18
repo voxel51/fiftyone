@@ -56,33 +56,12 @@ class NoDatasetSampleDocument(SerializableDocument):
 
         self._data.update(kwargs)
 
-    def __getattr__(self, name):
-        try:
-            return self._data[name]
-        except Exception:
-            pass
+    @property
+    def in_db(self):
+        """Whether the sample has been added to the database."""
+        return False
 
-        return super().__getattribute__(name)
-
-    def __setattr__(self, name, value):
-        if name.startswith("_"):
-            super().__setattr__(name, value)
-            return
-
-        has_field = self.has_field(name)
-
-        if hasattr(self, name) and not has_field:
-            super().__setattr__(name, value)
-            return
-
-        if not has_field:
-            raise ValueError(
-                "Adding sample fields using the `sample.field = value` syntax "
-                "is not allowed; use `sample['field'] = value` instead"
-            )
-
-        self._data[name] = value
-
+    # @todo(Tyler) just delete this
     @staticmethod
     def _get_default(field):
         if field.null:
@@ -105,95 +84,12 @@ class NoDatasetSampleDocument(SerializableDocument):
 
         raise ValueError("Field '%s' has no default" % field)
 
-    @property
-    def in_db(self):
-        """Whether the sample has been added to the database."""
-        return False
-
-    def has_field(self, field_name):
-        """Determines whether the sample has a field of the given name.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            True/False
-        """
-        try:
-            return field_name in self._data
-        except AttributeError:
-            # If `_data` is not initialized
-            return False
-
-    def get_field(self, field_name):
-        """Gets the field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            the field value
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        if not self.has_field(field_name):
-            raise AttributeError("Sample has no field '%s'" % field_name)
-
-        return getattr(self, field_name)
-
-    def set_field(self, field_name, value, create=False):
-        """Sets the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-            value: the field value
-            create (False): whether to create the field if it does not exist
-
-        Raises:
-            ValueError: if ``field_name`` is not an allowed field name or does
-                not exist and ``create == False``
-        """
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
-                % field_name
-            )
-
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
-        if not self.has_field(field_name):
-            if create:
-                # dummy value so that it is identified by __setattr__
-                self._data[field_name] = None
-            else:
-                msg = "Sample does not have field '%s'." % field_name
-                if value is not None:
-                    # don't report this when clearing a field.
-                    msg += " Use `create=True` to create a new field."
-                raise ValueError(msg)
-
-        self.__setattr__(field_name, value)
-
-    def clear_field(self, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Raises:
-            ValueError: if the field does not exist
-        """
-        if field_name in self.default_fields:
-            default_value = self._get_default(self.default_fields[field_name])
-            self.set_field(field_name, default_value)
-        else:
-            self._data.pop(field_name, None)
-
 
 class _Sample(SerializableDocument):
     """Base class for :class:`Sample` and :class:`SampleView`."""
+
+    _default_fields = foo.DatasetSampleDocument._fields
+    _default_fields_ordered = default_sample_fields(include_private=True)
 
     def __init__(self, dataset=None):
         self._dataset = dataset
@@ -206,15 +102,34 @@ class _Sample(SerializableDocument):
         try:
             return super().__getattribute__(name)
         except AttributeError:
+            pass
+
+        if isinstance(self._doc, foo.DatasetSampleDocument):
             return self._doc.get_field(name)
+
+        try:
+            return self._doc._data[name]
+        except Exception:
+            raise AttributeError("No attribute '%s'" % name)
 
     def __setattr__(self, name, value):
         if name.startswith("_") or (
-            hasattr(self, name) and not self._doc.has_field(name)
+            hasattr(self, name) and not self.has_field(name)
         ):
             super().__setattr__(name, value)
-        else:
+            return
+
+        if isinstance(self._doc, foo.DatasetSampleDocument):
             self._doc.__setattr__(name, value)
+            return
+
+        if not self.has_field(name):
+            raise ValueError(
+                "Adding sample fields using the `sample.field = value` syntax "
+                "is not allowed; use `sample['field'] = value` instead"
+            )
+
+        self._doc._data[name] = value
 
     def __delattr__(self, name):
         try:
@@ -296,6 +211,24 @@ class _Sample(SerializableDocument):
         """
         return self._doc.in_db
 
+    def has_field(self, field_name):
+        """Determines whether the sample has a field of the given name.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False
+        """
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.has_field(field_name)
+
+        try:
+            return field_name in self._doc._data
+        except AttributeError:
+            # If `_data` is not initialized
+            return False
+
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
 
@@ -308,7 +241,13 @@ class _Sample(SerializableDocument):
         Raises:
             AttributeError: if the field does not exist
         """
-        return self._doc.get_field(field_name)
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.get_field(field_name)
+
+        if not self.has_field(field_name):
+            raise AttributeError("Sample has no field '%s'" % field_name)
+
+        return getattr(self, field_name)
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the sample.
@@ -322,10 +261,30 @@ class _Sample(SerializableDocument):
             ValueError: if ``field_name`` is not an allowed field name or does
                 not exist and ``create == False``
         """
-        if hasattr(self, field_name) and not self._doc.has_field(field_name):
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name: '%s'. Field names cannot start with '_'"
+                % field_name
+            )
+
+        if hasattr(self, field_name) and not self.has_field(field_name):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
-        return self._doc.set_field(field_name, value, create=create)
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.set_field(field_name, value, create=create)
+
+        if not self.has_field(field_name):
+            if create:
+                # dummy value so that it is identified by __setattr__
+                self._doc._data[field_name] = None
+            else:
+                msg = "Sample does not have field '%s'." % field_name
+                if value is not None:
+                    # don't report this when clearing a field.
+                    msg += " Use `create=True` to create a new field."
+                raise ValueError(msg)
+
+        self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
         """Clears the value of a field of the sample.
@@ -336,7 +295,14 @@ class _Sample(SerializableDocument):
         Raises:
             ValueError: if the field does not exist
         """
-        return self._doc.clear_field(field_name=field_name)
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.clear_field(field_name=field_name)
+
+        if field_name in self._default_fields:
+            default_value = self._get_default(self._default_fields[field_name])
+            self.set_field(field_name, default_value)
+        else:
+            self._doc._data.pop(field_name, None)
 
     def iter_fields(self):
         """Returns an iterator over the field (name, value) pairs of the
@@ -446,6 +412,28 @@ class _Sample(SerializableDocument):
                 d[k] = v
 
         return d
+
+    @staticmethod
+    def _get_default(field):
+        if field.null:
+            return None
+
+        if field.default is not None:
+            value = field.default
+
+            if callable(value):
+                value = value()
+
+            if isinstance(value, list) and value.__class__ != list:
+                value = list(value)
+            elif isinstance(value, tuple) and value.__class__ != tuple:
+                value = tuple(value)
+            elif isinstance(value, dict) and value.__class__ != dict:
+                value = dict(value)
+
+            return value
+
+        raise ValueError("Field '%s' has no default" % field)
 
 
 class Sample(_Sample):
