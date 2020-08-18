@@ -83,13 +83,6 @@ class NoDatasetSampleDocument(SerializableDocument):
 
         self._data[name] = value
 
-    def _get_repr_fields(self):
-        return ("id",) + self.field_names
-
-    @property
-    def field_names(self):
-        return tuple(k for k in self._data.keys() if not k.startswith("_"))
-
     @staticmethod
     def _get_default(field):
         if field.null:
@@ -342,7 +335,11 @@ class _Sample(SerializableDocument):
     @property
     def field_names(self):
         """An ordered tuple of the names of the fields of this sample."""
-        return self._doc.field_names
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.field_names
+
+        _data = self._doc._data
+        return tuple(k for k in _data.keys() if not k.startswith("_"))
 
     @property
     def _in_db(self):
@@ -499,7 +496,10 @@ class Sample(_Sample):
         return repr(self)
 
     def __repr__(self):
-        return self._doc.fancy_repr(class_name=self.__class__.__name__)
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.fancy_repr(class_name=self.__class__.__name__)
+
+        return super().__repr__()
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
@@ -691,6 +691,9 @@ class Sample(_Sample):
         self._doc = self.copy()._doc
         self._dataset = None
 
+    def _get_repr_fields(self):
+        return ("id",) + self.field_names
+
 
 class SampleView(_Sample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
@@ -783,7 +786,7 @@ class SampleView(_Sample):
         This may be a subset of all fields of the dataset if fields have been
         selected or excluded.
         """
-        field_names = self._doc.field_names
+        field_names = super().field_names
 
         if self._selected_fields is not None:
             field_names = tuple(
