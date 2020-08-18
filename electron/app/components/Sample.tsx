@@ -73,7 +73,7 @@ const Sample = ({
       />
     );
   };
-  const tooltip = `Path: ${sample.filepath}\nDouble-click for details`;
+  const tooltip = `Double-click for details`;
 
   return (
     <div className="sample" title={tooltip}>
