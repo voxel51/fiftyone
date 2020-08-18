@@ -92,11 +92,14 @@ class SampleFieldDocument(EmbeddedDocument):
 
 
 class DatasetDocument(Document):
-    """Backing document that tracks and persists datasets."""
+    """Backing document for datasets."""
+
+    meta = {"collection": "datasets"}
 
     name = StringField(unique=True)
+    sample_collection_name = StringField(unique=True)
     persistent = BooleanField(default=False)
+    info = DictField(default=dict)
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
-    info = DictField(default=dict)

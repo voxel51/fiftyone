@@ -302,8 +302,9 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
         "width": tf.io.FixedLenFeature([], tf.int64),
         "depth": tf.io.FixedLenFeature([], tf.int64),
         "filename": tf.io.FixedLenFeature([], tf.string),
+        "format": tf.io.FixedLenFeature([], tf.string),
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
-        "label": tf.io.FixedLenFeature([], tf.string),
+        "label": tf.io.FixedLenFeature([], tf.string, default_value=""),
     }
 
     @property
@@ -329,6 +330,7 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
     def _parse_image_metadata(self, features):
         return fom.ImageMetadata(
             size_bytes=len(features["image_bytes"].numpy()),
+            mime_type="image/" + features["format"].numpy().decode(),
             width=features["width"].numpy(),
             height=features["height"].numpy(),
             num_channels=features["depth"].numpy(),
@@ -336,6 +338,9 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
 
     def _parse_label(self, features):
         label = features["label"].numpy().decode()
+        if not label:
+            return None
+
         return fol.Classification(label=label)
 
 
@@ -356,7 +361,7 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
         "image/format": tf.io.FixedLenFeature([], tf.string),
         "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True
+            [], tf.float32, allow_missing=True,
         ),
         "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True
@@ -456,6 +461,10 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def __next__(self):
         return next(self._iter_dataset_ingestor)
+
+    @property
+    def has_dataset_info(self):
+        return False
 
     @property
     def has_image_metadata(self):
@@ -706,6 +715,7 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
         Args:
             image_or_path: an image or the path to the image on disk
             classification: a :class:`fiftyone.core.labels.Classification`
+                instance, or ``None``
             filename (None): a filename for the image. Required when
                 ``image_or_path`` is an image, in which case the extension of
                 this filename determines the encoding used. If
@@ -718,16 +728,20 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
         img_bytes, img_shape, filename = self._parse_image_or_path(
             image_or_path, filename=filename
         )
-        label = classification.label
+        format = os.path.splitext(filename)[1][1:]  # no leading `.`
 
         feature = {
             "height": _int64_feature(img_shape[0]),
             "width": _int64_feature(img_shape[1]),
             "depth": _int64_feature(img_shape[2]),
             "filename": _bytes_feature(filename.encode()),
+            "format": _bytes_feature(format.encode()),
             "image_bytes": _bytes_feature(img_bytes),
-            "label": _bytes_feature(label.encode()),
         }
+
+        if classification is not None:
+            label = classification.label
+            feature["label"] = _bytes_feature(label.encode())
 
         return tf.train.Example(features=tf.train.Features(feature=feature))
 
@@ -760,7 +774,8 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
 
         Args:
             image_or_path: an image or the path to the image on disk
-            detections: a :class:`fiftyone.core.labels.Detections`
+            detections: a :class:`fiftyone.core.labels.Detections` instance, or
+                ``None``
             filename (None): a filename for the image. Required when
                 ``image_or_path`` is an image, in which case the extension of
                 this filename determines the encoding used. If
@@ -775,26 +790,6 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
         )
         format = os.path.splitext(filename)[1][1:]  # no leading `.`
 
-        xmins, xmaxs, ymins, ymaxs, texts, labels = [], [], [], [], [], []
-        for detection in detections.detections:
-            xmin, ymin, w, h = detection.bounding_box
-            text = detection.label
-            try:
-                label = self._labels_map_rev[text]
-            except KeyError:
-                if not self._dynamic_classes:
-                    raise
-
-                label = len(self._labels_map_rev)
-                self._labels_map_rev[text] = label
-
-            xmins.append(xmin)
-            xmaxs.append(xmin + w)
-            ymins.append(ymin)
-            ymaxs.append(ymin + h)
-            texts.append(text.encode())
-            labels.append(label)
-
         feature = {
             "image/height": _int64_feature(img_shape[0]),
             "image/width": _int64_feature(img_shape[1]),
@@ -802,13 +797,39 @@ class TFObjectDetectionExampleGenerator(TFExampleGenerator):
             "image/source_id": _bytes_feature(filename.encode()),
             "image/encoded": _bytes_feature(img_bytes),
             "image/format": _bytes_feature(format.encode()),
-            "image/object/bbox/xmin": _float_list_feature(xmins),
-            "image/object/bbox/xmax": _float_list_feature(xmaxs),
-            "image/object/bbox/ymin": _float_list_feature(ymins),
-            "image/object/bbox/ymax": _float_list_feature(ymaxs),
-            "image/object/class/text": _bytes_list_feature(texts),
-            "image/object/class/label": _int64_list_feature(labels),
         }
+
+        if detections is not None:
+            xmins, xmaxs, ymins, ymaxs, texts, labels = [], [], [], [], [], []
+            for detection in detections.detections:
+                xmin, ymin, w, h = detection.bounding_box
+                text = detection.label
+                try:
+                    label = self._labels_map_rev[text]
+                except KeyError:
+                    if not self._dynamic_classes:
+                        raise
+
+                    label = len(self._labels_map_rev)
+                    self._labels_map_rev[text] = label
+
+                xmins.append(xmin)
+                xmaxs.append(xmin + w)
+                ymins.append(ymin)
+                ymaxs.append(ymin + h)
+                texts.append(text.encode())
+                labels.append(label)
+
+            feature.update(
+                {
+                    "image/object/bbox/xmin": _float_list_feature(xmins),
+                    "image/object/bbox/xmax": _float_list_feature(xmaxs),
+                    "image/object/bbox/ymin": _float_list_feature(ymins),
+                    "image/object/bbox/ymax": _float_list_feature(ymaxs),
+                    "image/object/class/text": _bytes_list_feature(texts),
+                    "image/object/class/label": _int64_list_feature(labels),
+                }
+            )
 
         return tf.train.Example(features=tf.train.Features(feature=feature))
 

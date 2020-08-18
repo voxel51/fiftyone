@@ -148,13 +148,13 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
         dataset.add_sample(sample)
         self.assertTrue(sample.in_dataset)
         self.assertIsNotNone(sample.id)
-        self.assertEqual(sample.dataset_name, dataset.name)
+        self.assertIs(sample.dataset, dataset)
 
         # delete 1 sample
         dataset.remove_sample(sample)
         self.assertFalse(sample.in_dataset)
         self.assertIsNone(sample.id)
-        self.assertIsNone(sample.dataset_name)
+        self.assertIsNone(sample.dataset)
 
         # add multiple samples
         filepath_template = "test%d.png"
@@ -167,7 +167,7 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
         for sample in samples:
             self.assertTrue(sample.in_dataset)
             self.assertIsNotNone(sample.id)
-            self.assertEqual(sample.dataset_name, dataset.name)
+            self.assertIs(sample.dataset, dataset)
 
         # delete some
         num_delete = 7
@@ -176,18 +176,18 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
             if i < num_delete:
                 self.assertFalse(sample.in_dataset)
                 self.assertIsNone(sample.id)
-                self.assertIsNone(sample.dataset_name)
+                self.assertIsNone(sample.dataset)
             else:
                 self.assertTrue(sample.in_dataset)
                 self.assertIsNotNone(sample.id)
-                self.assertEqual(sample.dataset_name, dataset.name)
+                self.assertIs(sample.dataset, dataset)
 
         # clear dataset
         dataset.clear()
         for sample in samples:
             self.assertFalse(sample.in_dataset)
             self.assertIsNone(sample.id)
-            self.assertIsNone(sample.dataset_name)
+            self.assertIsNone(sample.dataset)
 
     @drop_datasets
     def test_sample_set_field(self):
@@ -284,7 +284,7 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
 
             # this is checking backend implementation. if it changes this may
             # be N/A
-            sample_fields = dataset._meta.sample_fields
+            sample_fields = dataset._doc.sample_fields
             sample_field_names = [sf.name for sf in sample_fields]
             self.assertNotIn(field_name, sample_field_names)
 
@@ -328,7 +328,7 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
             sample = dataset[sample_id]
             self.assertTrue(sample.in_dataset)
             self.assertIsNotNone(sample.id)
-            self.assertEqual(sample.dataset_name, dataset.name)
+            self.assertIs(sample.dataset, dataset)
 
         sample_id = add_sample()
         check_add_sample(sample_id)
@@ -369,7 +369,7 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
                 sample = dataset[sample_id]
                 self.assertTrue(sample.in_dataset)
                 self.assertIsNotNone(sample.id)
-                self.assertEqual(sample.dataset_name, dataset.name)
+                self.assertIs(sample.dataset, dataset)
 
         sample_ids = add_samples()
         check_add_samples(sample_ids)
@@ -394,7 +394,7 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
                     sample = dataset[sample_id]
                     self.assertTrue(sample.in_dataset)
                     self.assertIsNotNone(sample.id)
-                    self.assertEqual(sample.dataset_name, dataset.name)
+                    self.assertIs(sample.dataset, dataset)
 
         remove_samples(sample_ids)
         check_remove_samples(sample_ids)
@@ -928,7 +928,7 @@ class SampleInDatasetTests(unittest.TestCase):
         self.assertIsNone(sample.id)
         self.assertIsNone(sample.ingest_time)
         self.assertFalse(sample.in_dataset)
-        self.assertIsNone(sample.dataset_name)
+        self.assertIsNone(sample.dataset)
 
         dataset.add_sample(sample)
 
@@ -936,7 +936,7 @@ class SampleInDatasetTests(unittest.TestCase):
         self.assertIsInstance(sample.id, str)
         self.assertIsInstance(sample.ingest_time, datetime.datetime)
         self.assertTrue(sample.in_dataset)
-        self.assertEqual(sample.dataset_name, dataset.name)
+        self.assertIs(sample.dataset, dataset)
 
     @drop_datasets
     def test_new_fields(self):
@@ -1042,7 +1042,7 @@ class SampleInDatasetTests(unittest.TestCase):
 
         sample_id = dataset1.add_sample(sample)
         self.assertIs(dataset1[sample_id], sample)
-        self.assertEqual(sample.dataset_name, dataset1.name)
+        self.assertIs(sample.dataset, dataset1)
 
         sample_id2 = dataset2.add_sample(sample)
         self.assertNotEqual(sample_id2, sample_id)
@@ -1050,7 +1050,7 @@ class SampleInDatasetTests(unittest.TestCase):
         sample2 = dataset2[sample_id2]
         self.assertIs(dataset1[sample.id], sample)
         self.assertIsNot(dataset2[sample_id2], sample)
-        self.assertEqual(sample2.dataset_name, dataset2.name)
+        self.assertIs(sample2.dataset, dataset2)
 
         # Dataset.add_samples()
 
@@ -1058,7 +1058,7 @@ class SampleInDatasetTests(unittest.TestCase):
 
         sample_id = dataset1.add_samples([sample])[0]
         self.assertIs(dataset1[sample_id], sample)
-        self.assertEqual(sample.dataset_name, dataset1.name)
+        self.assertIs(sample.dataset, dataset1)
 
         sample_id2 = dataset2.add_samples([sample])[0]
         self.assertNotEqual(sample_id2, sample_id)
@@ -1066,7 +1066,7 @@ class SampleInDatasetTests(unittest.TestCase):
         sample2 = dataset2[sample_id2]
         self.assertIs(dataset1[sample.id], sample)
         self.assertIsNot(dataset2[sample_id2], sample)
-        self.assertEqual(sample2.dataset_name, dataset2.name)
+        self.assertIs(sample2.dataset, dataset2)
 
     @drop_datasets
     def test_copy_sample(self):
@@ -1077,14 +1077,14 @@ class SampleInDatasetTests(unittest.TestCase):
         sample_copy = sample.copy()
         self.assertIsNot(sample_copy, sample)
         self.assertIsNone(sample_copy.id)
-        self.assertIsNone(sample_copy.dataset_name)
+        self.assertIsNone(sample_copy.dataset)
 
         dataset.add_sample(sample)
 
         sample_copy = sample.copy()
         self.assertIsNot(sample_copy, sample)
         self.assertIsNone(sample_copy.id)
-        self.assertIsNone(sample_copy.dataset_name)
+        self.assertIsNone(sample_copy.dataset)
 
     @drop_datasets
     def test_in_memory_sample_fields(self):

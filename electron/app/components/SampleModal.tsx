@@ -40,6 +40,10 @@ const Container = styled.div`
     }
   }
 
+  h2 {
+    clear: both;
+  }
+
   h2,
   h2 span {
     display: flex;
@@ -55,12 +59,23 @@ const Container = styled.div`
     margin-left: 5px;
   }
 
+  h2 .close-wrapper {
+    position: absolute;
+    top: 1em;
+    right: 1em;
+    background-color: ${({ theme }) => theme.backgroundTransparent};
+  }
+
   .player {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+
+    .p51-video-options-panel {
+      z-index: 1500;
+    }
   }
 
   .nav-button {
@@ -95,6 +110,7 @@ const Container = styled.div`
   }
 
   .sidebar {
+    position: relative;
     display: flex;
     flex-direction: column;
     border-left: 2px solid ${({ theme }) => theme.border};
@@ -124,9 +140,9 @@ const Container = styled.div`
   }
 `;
 
-const Row = ({ name, value }) => (
-  <div className="row">
-    <label>{name}</label>
+const Row = ({ name, value, ...rest }) => (
+  <div className="row" {...rest}>
+    <label>{name}&nbsp;</label>
     <span>{value}</span>
   </div>
 );
@@ -134,17 +150,24 @@ const Row = ({ name, value }) => (
 const SampleModal = ({
   sample,
   sampleUrl,
-  activeLabels,
   fieldSchema = {},
   colorMapping = {},
   onClose,
   onPrevious,
   onNext,
+  ...rest
 }: Props) => {
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+
+  // maintain a separate copy of these local to the modal - inherit changes
+  // from the rest of the app, but don't write them back
+  const [activeLabels, setActiveLabels] = useState({});
+  useEffect(() => {
+    setActiveLabels(rest.activeLabels);
+  }, [rest.activeLabels]);
 
   const handleResize = () => {
     if (!playerContainerRef.current || showJSON) {
@@ -189,27 +212,47 @@ const SampleModal = ({
     [onClose, onPrevious, onNext, fullscreen]
   );
 
+  const makeTag = (name) => (
+    <Tag
+      key={name}
+      name={name}
+      color={colorMapping[name]}
+      outline={!activeLabels[name]}
+      onClick={() =>
+        setActiveLabels({ ...activeLabels, [name]: !activeLabels[name] })
+      }
+    />
+  );
+
   const classifications = Object.keys(sample)
     .filter((k) => sample[k] && VALID_CLASS_TYPES.includes(sample[k]._cls))
-    .map((k) => (
-      <Row
-        key={k}
-        name={<Tag name={k} color={colorMapping[k]} />}
-        value={getLabelText(sample[k])}
-      />
-    ));
+    .map((k) => {
+      let value;
+      if (sample[k].classifications) {
+        const len = sample[k].classifications.length;
+        value = `${len} classification${len == 1 ? "" : "s"}`;
+      } else {
+        value = getLabelText(sample[k]);
+      }
+      return {
+        key: k,
+        name: makeTag(k),
+        value,
+      };
+    });
   const detections = Object.keys(sample)
     .filter((k) => sample[k] && VALID_OBJECT_TYPES.includes(sample[k]._cls))
     .map((k) => {
       const len = sample[k].detections ? sample[k].detections.length : 1;
-      return (
-        <Row
-          key={k}
-          name={<Tag name={k} color={colorMapping[k]} />}
-          value={`${len} detection${len == 1 ? "" : "s"}`}
-        />
-      );
+      return {
+        key: k,
+        name: makeTag(k),
+        value: `${len} detection${len == 1 ? "" : "s"}`,
+      };
     });
+  const labels = [...classifications, ...detections]
+    .sort((a, b) => (a.key < b.key ? -1 : 1))
+    .map(Row);
   const scalars = Object.keys(sample)
     .filter(
       (k) =>
@@ -219,13 +262,7 @@ const SampleModal = ({
         sample[k] !== undefined
     )
     .map((k) => {
-      return (
-        <Row
-          key={k}
-          name={<Tag name={k} color={colorMapping[k]} />}
-          value={stringify(sample[k])}
-        />
-      );
+      return <Row key={k} name={makeTag(k)} value={stringify(sample[k])} />;
     });
 
   return (
@@ -266,53 +303,47 @@ const SampleModal = ({
             &gt;
           </div>
         ) : null}
-        {fullscreen ? (
-          <div
-            className="nav-button fullscreen"
-            title="Exit full screen (Esc)"
-            onClick={() => setFullscreen(false)}
-          >
-            <FullscreenExit />
-          </div>
-        ) : null}
+        <div
+          className="nav-button fullscreen"
+          title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+          onClick={() => setFullscreen(!fullscreen)}
+        >
+          {fullscreen ? <FullscreenExit /> : <Fullscreen />}
+        </div>
       </div>
       <div className="sidebar">
         <div className="sidebar-content">
           <h2>
             Metadata
             <span className="push-right" />
-            <span title="Full screen">
-              <Fullscreen onClick={() => setFullscreen(true)} />
-            </span>
-            <span title="Close">
+            <span className="close-wrapper" title="Close">
               <Close onClick={onClose} />
             </span>
           </h2>
           <Row name="ID" value={sample._id.$oid} />
           <Row name="Source" value={sample.filepath} />
           {formatMetadata(sample.metadata).map(({ name, value }) => (
-            <Row name={name} value={value} />
+            <Row key={"metadata-" + name} name={name} value={value} />
           ))}
           <Row
             name="Tags"
             value={
               sample.tags.length
                 ? sample.tags.map((tag) => (
-                    <Tag key={tag} name={tag} color={colorMapping[tag]} />
+                    <Tag
+                      key={tag}
+                      name={tag}
+                      color={colorMapping[tag]}
+                      maxWidth="10em"
+                    />
                   ))
                 : "none"
             }
           />
-          {classifications.length ? (
+          {labels.length ? (
             <>
-              <h2>Classification</h2>
-              {classifications}
-            </>
-          ) : null}
-          {detections.length ? (
-            <>
-              <h2>Object Detection</h2>
-              {detections}
+              <h2>Labels</h2>
+              {labels}
             </>
           ) : null}
           {scalars.length ? (

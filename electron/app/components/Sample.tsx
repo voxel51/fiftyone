@@ -36,7 +36,7 @@ const Sample = ({
   };
   const eventHandlers = {
     onClick: () => handleClick(),
-    onDoubleClick: () => setView({ visible: true, sample }),
+    onDoubleClick: () => setView(sample),
   };
   const renderLabel = (name) => {
     const label = sample[name];
@@ -73,7 +73,7 @@ const Sample = ({
       />
     );
   };
-  const tooltip = `Path: ${sample.filepath}\nDouble-click for details`;
+  const tooltip = `Double-click for details`;
 
   return (
     <div className="sample" title={tooltip}>

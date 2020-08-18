@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <annotations>
-    <version>{{ version }}</version>
+    <version>1.1</version>
     <meta>
         <task>
             <size>{{ size }}</size>
@@ -13,7 +13,7 @@
 {% for attribute in label.attributes %}
                         <attribute>
                             <name>{{ attribute.name }}</name>
-                            <values>{{ attribute.categories|join(',') }}</value>
+                            <values>{{ attribute.categories|join('\n') }}</values>
                         </attribute>
 {% endfor %}
                     </attributes>

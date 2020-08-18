@@ -1,10 +1,10 @@
 import React, { useEffect, useCallback, useMemo, useRef } from "react";
 import styled from "styled-components";
-import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
-import { Close } from "@material-ui/icons";
+import { Close, Help } from "@material-ui/icons";
+import { shell } from "electron";
 
 import { useOutsideClick } from "../../utils/hooks";
 import { port, stateDescription } from "../../recoil/atoms";
@@ -38,25 +38,22 @@ const ViewBarDiv = styled.div`
   }
 `;
 
-/*const connectedViewBarMachine = viewBarMachine.withConfig(
-  {
-    actions: {
-      submit: (ctx) => {
-        // ...
-      },
-    },
-  },
-  // load view from recoil
-  {
-    stage:
-  }
-);*/
+const Link = styled.a``;
+
+const IconsContainer = styled.div`
+  position: absolute;
+  top: 1rem;
+  right: 0.5rem;
+  display: flex;
+`;
 
 const viewBarKeyMap = {
-  VIEW_BAR_FOCUS: "alt+shift+v",
-  VIEW_BAR_BLUR: "esc",
+  VIEW_BAR_TOGGLE_FOCUS: "esc",
   VIEW_BAR_NEXT: "right",
   VIEW_BAR_PREVIOUS: "left",
+  VIEW_BAR_NEXT_STAGE: "shift+right",
+  VIEW_BAR_PREVIOUS_STAGE: "shift+left",
+  VIEW_BAR_DELETE: ["del", "backspace"],
 };
 
 const ViewBar = () => {
@@ -79,18 +76,28 @@ const ViewBar = () => {
   const barRef = useRef(null);
 
   const handlers = {
-    VIEW_BAR_FOCUS: useCallback(() => send("FOCUS"), []),
-    VIEW_BAR_BLUR: useCallback(() => send("BLUR"), []),
+    VIEW_BAR_TOGGLE_FOCUS: useCallback(() => send("TOGGLE_FOCUS"), []),
     VIEW_BAR_NEXT: useCallback(() => send("NEXT"), []),
     VIEW_BAR_PREVIOUS: useCallback(() => send("PREVIOUS"), []),
+    VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),
+    VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
+    VIEW_BAR_DELETE: useCallback(() => send("DELETE_ACTIVE_STAGE"), []),
   };
 
-  useOutsideClick(barRef, () => send("BLUR"));
+  useOutsideClick(
+    barRef,
+    () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
+  );
 
   return (
     <ViewBarContainer>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
-      <ViewBarDiv onClick={() => send("FOCUS")} ref={barRef}>
+      <ViewBarDiv
+        onClick={() =>
+          state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
+        }
+        ref={barRef}
+      >
         {state.matches("running")
           ? stages.map((stage, i) => {
               return (
@@ -123,15 +130,23 @@ const ViewBar = () => {
           />
         ) : null}
       </ViewBarDiv>
-      <Close
-        onClick={() => send("CLEAR")}
-        style={{
-          cursor: "pointer",
-          position: "absolute",
-          right: "0.5rem",
-          top: "1rem",
-        }}
-      />
+
+      <IconsContainer>
+        <Close
+          onClick={() => send("CLEAR")}
+          style={{
+            cursor: "pointer",
+          }}
+        />
+        <Help
+          onClick={() =>
+            shell.openExternal(
+              "https://voxel51.com/docs/fiftyone/user_guide/app.html"
+            )
+          }
+          style={{ cursor: "pointer" }}
+        />
+      </IconsContainer>
     </ViewBarContainer>
   );
 };

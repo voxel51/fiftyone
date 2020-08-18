@@ -26,6 +26,7 @@ export const blue15 = "hsl(210, 20%, 15%)";
 // Dark theme colors
 const grey15 = "hsl(210, 11%, 15%)";
 const grey19 = "hsl(214, 7%, 19%)";
+const grey19a50 = "hsla(214, 7%, 19%, 0.5)";
 const grey24 = "hsl(210, 5%, 24%)";
 const grey37 = "hsl(200, 2%, 37%)";
 const grey60 = "hsl(230, 3%, 60%)";
@@ -38,12 +39,16 @@ const orange49a40 = "hsla(27, 95%, 49%, 0.4)";
 
 const blue53 = "hsl(213, 100%, 53%)";
 
+const red = "hsla(351, 90%, 41%, 1)";
+const red80 = "hsla(351, 90%, 41%, 0.8)";
+
 export const darkTheme = {
   background: grey19,
   backgroundDark: grey15,
   backgroundLight: grey24,
   backgroundLightBorder: grey15, // e.g. for components with the light background color
   backgroundDarkBorder: grey24,
+  backgroundTransparent: grey19a50,
   border: grey37,
   borderLight: grey24,
   button: grey37,
@@ -60,6 +65,8 @@ export const darkTheme = {
   fontDarkest: grey60,
 
   secondary: blue53,
+
+  error: "#EF2020",
 };
 
 // for storybook

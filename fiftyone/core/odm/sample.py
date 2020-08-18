@@ -65,7 +65,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
-from .dataset import SampleFieldDocument
+from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
     Document,
     BaseEmbeddedDocument,
@@ -73,7 +73,7 @@ from .document import (
 )
 
 
-# Use our own Random object to avoid messing with the users's seed
+# Use our own Random object to avoid messing with the user's seed
 _random = random.Random()
 
 
@@ -88,7 +88,7 @@ def default_sample_fields(include_private=False):
     """The default fields present on all :class:`SampleDocument` objects.
 
     Args:
-        include_private (False): or not to return fields prefixed with a `_`
+        include_private (False): whether to include fields that start with `_`
 
     Returns:
         a tuple of field names
@@ -121,9 +121,9 @@ class SampleDocument(SerializableDocument):
     """Interface for sample backing documents."""
 
     @property
-    def dataset_name(self):
-        """The name of the dataset to which this sample belongs, or ``None`` if
-        it has not been added to a dataset.
+    def collection_name(self):
+        """The name of the MongoDB collection to which this sample belongs, or
+        ``None`` if it has not been added to a dataset.
         """
         return None
 
@@ -231,10 +231,7 @@ class DatasetSampleDocument(Document, SampleDocument):
         super().__setattr__(name, value)
 
     @property
-    def dataset_name(self):
-        """The name of the dataset to which this sample belongs, or ``None`` if
-        it has not been added to a dataset.
-        """
+    def collection_name(self):
         return self.__class__.__name__
 
     @property
@@ -261,8 +258,8 @@ class DatasetSampleDocument(Document, SampleDocument):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
-            include_private (False): a boolean indicating whether to return fields
-                that start with the character "_"
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types
@@ -327,10 +324,11 @@ class DatasetSampleDocument(Document, SampleDocument):
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is
+                field. Used only when ``ftype`` is an embedded
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a list or dict type
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
         """
         # Additional arg `save` is to prevent saving the fields when reloading
         # a dataset from the database.
@@ -358,14 +356,14 @@ class DatasetSampleDocument(Document, SampleDocument):
 
         if save:
             # Update dataset meta class
-            # @todo(Tyler) refactor to avoid local import here
-            import fiftyone.core.dataset as fod
+            dataset_doc = DatasetDocument.objects.get(
+                sample_collection_name=cls.__name__
+            )
 
-            dataset = fod.load_dataset(cls.__name__)
             field = cls._fields[field_name]
             sample_field = SampleFieldDocument.from_field(field)
-            dataset._meta.sample_fields.append(sample_field)
-            dataset._meta.save()
+            dataset_doc.sample_fields.append(sample_field)
+            dataset_doc.save()
 
     @classmethod
     def add_implied_field(cls, field_name, value):
@@ -437,17 +435,13 @@ class DatasetSampleDocument(Document, SampleDocument):
         delattr(cls, field_name)
 
         # Update dataset meta class
-        # @todo(Tyler) refactor to avoid local import here
-        import fiftyone.core.dataset as fod
-
-        dataset = fod.load_dataset(cls.__name__)
-        dataset._meta.sample_fields = [
-            sf for sf in dataset._meta.sample_fields if sf.name != field_name
+        dataset_doc = DatasetDocument.objects.get(
+            sample_collection_name=cls.__name__
+        )
+        dataset_doc.sample_fields = [
+            sf for sf in dataset_doc.sample_fields if sf.name != field_name
         ]
-        dataset._meta.save()
-
-    def _get_repr_fields(self):
-        return ("dataset_name",) + super()._get_repr_fields()
+        dataset_doc.save()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.

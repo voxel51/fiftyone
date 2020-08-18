@@ -360,7 +360,7 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
           format via ``np.asarray()`` or the path to an image on disk
 
         - ``target`` is either a class ID (if ``classes`` is provided) or a
-          label string
+          label string. For unlabeled images, ``target`` can be ``None``
 
     Args:
         classes (None): an optional list of class label strings. If provided,
@@ -389,6 +389,9 @@ class ImageClassificationSampleParser(LabeledImageTupleSampleParser):
         return self._parse_label(target)
 
     def _parse_label(self, target):
+        if target is None:
+            return None
+
         try:
             label = self.classes[target]
         except:
@@ -425,7 +428,8 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
                 ...
             ]
 
-          or the path to such a file on disk.
+          or the path to such a file on disk. For unlabeled images,
+          ``detections_or_path`` can be ``None``.
 
           In the above, ``label-or-target`` is either a class ID
           (if ``classes`` is provided) or a label string, and the bounding box
@@ -493,6 +497,9 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         return self._parse_label(target, img=img)
 
     def _parse_label(self, target, img=None):
+        if target is None:
+            return None
+
         if etau.is_str(target):
             target = etas.load_json(target)
 

@@ -15,6 +15,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.collections as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -92,6 +93,9 @@ def write_dataset(
 
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
+            if isinstance(samples, foc.SampleCollection):
+                dataset_exporter.log_collection(samples)
+
             for sample in pb(samples):
                 # GenericSampleDatasetExporter
                 if raw_samples:
@@ -204,8 +208,22 @@ def export_samples(
 
 
 class DatasetExporter(object):
-    """Base interface for exporting :class:`fiftyone.core.dataset.Dataset`
-    samples to disk.
+    """Base interface for exporting collections of
+    :class:`fiftyone.core.sample.Sample` instances to disk.
+
+    Example Usage::
+
+        import fiftyone as fo
+
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
+
+        exporter = GenericSampleDatasetExporter(export_dir, ...)
+        with exporter:
+            exporter.log_collection(samples)
+            for sample in samples:
+                # Extract relevant information from `sample` and feed to
+                # `export_sample()`
+                exporter.export_sample(*args, **kwargs)
 
     Args:
         export_dir: the directory to write the export
@@ -230,15 +248,28 @@ class DatasetExporter(object):
         """
         pass
 
-    def close(self, *args):
-        """Performs any necessary actions after the last sample has been
-        exported.
+    def log_collection(self, sample_collection):
+        """Logs any relevant information about the
+        :class:`fiftyone.core.collections.SampleCollection` whose samples will
+        be exported.
 
-        This method is called when the exporter's context manager interface is
-        exited, :func:`DatasetExporter.__exit__`.
+        Subclasses can optionally implement this method if their export format
+        can record information such as the
+        :meth:`fiftyone.core.collections.SampleCollection.name` and
+        :meth:`fiftyone.core.collections.SampleCollection.info` of the
+        collection being exported.
+
+        By convention, this method must be optional; i.e., if it is not called
+        before the first call to :meth:`export_sample`, then the exporter must
+        make do without any information about the
+        :class:`fiftyone.core.collections.SampleCollection` (which may not be
+        available, for example, if the samples being exported are not stored in
+        a collection).
 
         Args:
-            *args: the arguments to :func:`DatasetExporter.__exit__`
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` whose
+                samples will be exported
         """
         pass
 
@@ -250,6 +281,18 @@ class DatasetExporter(object):
             **kwargs: subclass-specific keyword arguments
         """
         raise NotImplementedError("subclass must implement export_sample()")
+
+    def close(self, *args):
+        """Performs any necessary actions after the last sample has been
+        exported.
+
+        This method is called when the exporter's context manager interface is
+        exited, :func:`DatasetExporter.__exit__`.
+
+        Args:
+            *args: the arguments to :func:`DatasetExporter.__exit__`
+        """
+        pass
 
 
 class ExportsImages(object):
@@ -301,10 +344,11 @@ class GenericSampleDatasetExporter(DatasetExporter):
 
         import fiftyone as fo
 
-        samples = ...  # Dataset, DatasetView, etc
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
 
         exporter = GenericSampleDatasetExporter(export_dir, ...)
         with exporter:
+            exporter.log_collection(samples)
             for sample in samples:
                 exporter.export_sample(sample)
 
@@ -328,10 +372,11 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         import fiftyone as fo
 
-        samples = ...  # Dataset, DatasetView, etc
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
 
         exporter = UnlabeledImageDatasetExporter(export_dir, ...)
         with exporter:
+            exporter.log_collection(samples)
             for sample in samples:
                 image_path = sample.filepath
                 metadata = sample.metadata
@@ -373,11 +418,12 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         import fiftyone as fo
 
-        samples = ...  # Dataset, DatasetView, etc
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
         label_field = ...
 
         exporter = LabeledImageDatasetExporter(export_dir, ...)
         with exporter:
+            exporter.log_collection(samples)
             for sample in samples:
                 image_path = sample.filepath
                 label = sample[label_field]
@@ -413,7 +459,8 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         Args:
             image_or_path: an image or the path to the image on disk
-            label: an instance of :meth:`label_cls`
+            label: an instance of :meth:`label_cls`, or ``None`` if the sample
+                is unlabeled
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
                 instance for the sample. Only required when
                 :meth:`requires_image_metadata` is ``True``
@@ -439,9 +486,28 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         super().__init__(export_dir)
         self.pretty_print = pretty_print
         self._data_dir = None
+        self._metadata_path = None
         self._samples_path = None
+        self._metadata = None
         self._samples = None
         self._filename_maker = None
+
+    def setup(self):
+        self._data_dir = os.path.join(self.export_dir, "data")
+        self._metadata_path = os.path.join(self.export_dir, "metadata.json")
+        self._samples_path = os.path.join(self.export_dir, "samples.json")
+        self._metadata = {}
+        self._samples = []
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir
+        )
+
+    def log_collection(self, sample_collection):
+        self._metadata["name"] = sample_collection.name
+        self._metadata[
+            "sample_fields"
+        ] = sample_collection._serialize_field_schema()
+        self._metadata["info"] = sample_collection.info
 
     def export_sample(self, sample):
         out_filepath = self._filename_maker.get_output_path(sample.filepath)
@@ -451,16 +517,11 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         d["filepath"] = os.path.relpath(out_filepath, self.export_dir)
         self._samples.append(d)
 
-    def setup(self):
-        self._data_dir = os.path.join(self.export_dir, "data")
-        self._samples_path = os.path.join(self.export_dir, "samples.json")
-        self._samples = []
-        self._filename_maker = fou.UniqueFilenameMaker(
-            output_dir=self._data_dir
-        )
-
     def close(self, *args):
         samples = {"samples": self._samples}
+        etas.write_json(
+            self._metadata, self._metadata_path, pretty_print=self.pretty_print
+        )
         etas.write_json(
             samples, self._samples_path, pretty_print=self.pretty_print
         )
@@ -496,13 +557,13 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
     def requires_image_metadata(self):
         return False
 
-    def export_sample(self, image_or_path, metadata=None):
-        self._export_image_or_path(image_or_path, self._filename_maker)
-
     def setup(self):
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=self.export_dir, default_ext=self.image_format
         )
+
+    def export_sample(self, image_or_path, metadata=None):
+        self._export_image_or_path(image_or_path, self._filename_maker)
 
 
 class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
@@ -519,7 +580,9 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        classes (None): the list of possible class labels
+        classes (None): the list of possible class labels. If not provided,
+            this list will be extracted when :meth:`log_collection` is called,
+            if possible
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -540,7 +603,7 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
-        self._labels_map_rev = _to_labels_map_rev(classes) if classes else None
+        self._labels_map_rev = None
         self._filename_maker = None
 
     @property
@@ -560,6 +623,12 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
             default_ext=self.image_format,
             ignore_exts=True,
         )
+        self._parse_classes()
+
+    def log_collection(self, sample_collection):
+        if self.classes is None and "classes" in sample_collection.info:
+            self.classes = sample_collection.info["classes"]
+            self._parse_classes()
 
     def export_sample(self, image_or_path, classification, metadata=None):
         out_image_path = self._export_image_or_path(
@@ -578,6 +647,10 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         etas.write_json(
             labels, self._labels_path, pretty_print=self.pretty_print
         )
+
+    def _parse_classes(self):
+        if self.classes is not None:
+            self._labels_map_rev = _to_labels_map_rev(self.classes)
 
 
 class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
@@ -627,6 +700,8 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         is_image_path = self._is_image_path(image_or_path)
 
         _label = _parse_classification(classification)
+        if _label is None:
+            _label = "_unlabeled"
 
         self._class_counts[_label] += 1
 
@@ -669,7 +744,9 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
-        classes (None): the list of possible class labels
+        classes (None): the list of possible class labels. If not provided,
+            this list will be extracted when :meth:`log_collection` is called,
+            if possible
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
@@ -690,7 +767,7 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = None
         self._labels_path = None
         self._labels_dict = None
-        self._labels_map_rev = _to_labels_map_rev(classes) if classes else None
+        self._labels_map_rev = None
         self._filename_maker = None
 
     @property
@@ -710,6 +787,12 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
             default_ext=self.image_format,
             ignore_exts=True,
         )
+        self._parse_classes()
+
+    def log_collection(self, sample_collection):
+        if self.classes is None and "classes" in sample_collection.info:
+            self.classes = sample_collection.info["classes"]
+            self._parse_classes()
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(
@@ -728,6 +811,10 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         etas.write_json(
             labels, self._labels_path, pretty_print=self.pretty_print
         )
+
+    def _parse_classes(self):
+        if self.classes is not None:
+            self._labels_map_rev = _to_labels_map_rev(self.classes)
 
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
@@ -762,6 +849,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         self._data_dir = None
         self._labels_dir = None
         self._filename_maker = None
+        self._description = None
 
     @property
     def requires_image_metadata(self):
@@ -782,6 +870,9 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             default_ext=self.image_format,
             ignore_exts=True,
         )
+
+    def log_collection(self, sample_collection):
+        self._description = sample_collection.info.get("description", None)
 
     def export_sample(self, image_or_path, image_labels, metadata=None):
         is_image_path = self._is_image_path(image_or_path)
@@ -819,10 +910,14 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             )
 
     def close(self, *args):
+        self._labeled_dataset.set_description(self._description)
         self._labeled_dataset.write_manifest()
 
 
 def _parse_classification(classification, labels_map_rev=None):
+    if classification is None:
+        return None
+
     label = classification.label
     if labels_map_rev is not None:
         label = labels_map_rev[label]
@@ -831,6 +926,9 @@ def _parse_classification(classification, labels_map_rev=None):
 
 
 def _parse_detections(detections, labels_map_rev=None):
+    if detections is None:
+        return None
+
     _detections = []
     for detection in detections.detections:
         label = detection.label
@@ -855,6 +953,9 @@ def _parse_detections(detections, labels_map_rev=None):
 
 
 def _parse_image_labels(label):
+    if label is None:
+        return etai.ImageLabels()
+
     return label.labels
 
 

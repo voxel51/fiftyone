@@ -1,20 +1,14 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useContext, useEffect, useRef, useMemo, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
-import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
-import { GlobalHotKeys } from "react-hotkeys";
+import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
+import { shell } from "electron";
 
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
-import ViewStageStories from "./ViewStage.stories";
+import ErrorMessage from "./ErrorMessage";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem 0.25rem;
@@ -55,7 +49,7 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 `;
 
-const ViewStageButton = animated(styled.button`
+const ViewStageButton = animated(styled.div`
   box-sizing: border-box;
   border: 2px dashed ${({ theme }) => theme.brand};
   color: ${({ theme }) => theme.font};
@@ -65,14 +59,30 @@ const ViewStageButton = animated(styled.button`
   line-height: 1rem;
   cursor: pointer;
   font-weight: bold;
+  overflow: hidden;
+  padding: 0 0.25rem;
 
   :focus {
     outline: none;
   }
 `);
 
+const AddIcon = animated(styled(Add)`
+  display: block;
+  font-size: 14px;
+`);
+
+const addTransform = (y) => `translate3d(0, ${y}px, 0)`;
+
+const ArrowIcon = animated(styled(Arrow)`
+  position: absolute;
+`);
+
+const arrowTransform = (y) => `scale(-1, 1) translate3d(0, ${y}px, 0)`;
+
 export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
+  const [hovering, setHovering] = useState(false);
   const [props, set] = useSpring(() => ({
     background: theme.brandMoreTransparent,
     top: active ? -3 : 0,
@@ -85,19 +95,58 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
 
   useEffect(() => {
     set({ top: active ? -3 : 0 });
+    active ? setEnterProps() : setLeaveProps();
   }, [active]);
 
+  const [addProps, setAdd] = useSpring(() => ({
+    y: active ? 0 : 40,
+  }));
+
+  const [arrowProps, setArrow] = useSpring(() => ({
+    y: active ? -40 : 0,
+  }));
+
+  const setEnterProps = () => {
+    set({ background: theme.brandTransparent });
+    setAdd({ y: 0 });
+    setArrow({ y: -40 });
+  };
+
+  const setLeaveProps = () => {
+    set({ background: theme.brandMoreTransparent });
+    setAdd({ y: 40 });
+    setArrow({ y: 0 });
+  };
+
+  useEffect(() => {
+    (active || hovering) && setEnterProps();
+    !active && !hovering && setLeaveProps();
+  }, [active, hovering]);
+
   return (
-    <>
-      <ViewStageButton
-        style={props}
-        onMouseEnter={() => set({ background: theme.brandTransparent })}
-        onMouseLeave={() => set({ background: theme.brandMoreTransparent })}
-        onClick={() => send({ type: "STAGE.ADD", index })}
-      >
-        +
-      </ViewStageButton>
-    </>
+    <ViewStageButton
+      style={props}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      onClick={() => send({ type: "STAGE.ADD", index })}
+    >
+      <ArrowIcon
+        style={{
+          transform: arrowProps.y.interpolate(arrowTransform),
+          display: "block",
+          fontSize: "14px",
+          margin: "9px 0",
+        }}
+      />
+      <AddIcon
+        style={{
+          transform: addProps.y.interpolate(addTransform),
+          display: "block",
+          fontSize: "14px",
+          margin: "9px 0",
+        }}
+      />
+    </ViewStageButton>
   );
 });
 
@@ -114,11 +163,12 @@ const ViewStageDeleteDiv = animated(styled.div`
 const ViewStageDeleteButton = animated(styled.button`
   background-color: transparent;
   border: none;
-  margin: 0.5rem;
+  padding: 0.5rem;
   color: ${({ theme }) => theme.font};
   line-height: 1rem;
+  display: block;
+  height: 100%;
   border: none;
-  padding: 0;
   cursor: pointer;
   font-weight: bold;
 
@@ -130,7 +180,14 @@ const ViewStageDeleteButton = animated(styled.button`
 const ViewStageDelete = React.memo(({ send, spring }) => {
   return (
     <ViewStageDeleteDiv style={spring} onClick={() => send("STAGE.DELETE")}>
-      <ViewStageDeleteButton>x</ViewStageDeleteButton>
+      <ViewStageDeleteButton>
+        <Close
+          style={{
+            fontSize: "14px",
+            display: "block",
+          }}
+        />
+      </ViewStageDeleteButton>
     </ViewStageDeleteDiv>
   );
 });
@@ -140,7 +197,15 @@ const ViewStage = React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage, parameters, active, results, currentResult } = state.context;
+  const {
+    stage,
+    parameters,
+    results,
+    currentResult,
+    length,
+    index,
+    focusOnInit,
+  } = state.context;
 
   const isCompleted = [
     "input.reading.selected",
@@ -148,10 +213,8 @@ const ViewStage = React.memo(({ stageRef }) => {
   ].some(state.matches);
 
   const deleteProps = useSpring({
-    borderStyle: isCompleted ? "solid" : "dashed",
-    backgroundColor: isCompleted
-      ? theme.brandTransparent
-      : theme.brandMoreTransparent,
+    borderStyle: "solid",
+    backgroundColor: theme.brandTransparent,
     opacity: 1,
     from: {
       opacity: 0,
@@ -163,7 +226,11 @@ const ViewStage = React.memo(({ stageRef }) => {
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
-    borderRightWidth: isCompleted ? 0 : 2,
+    borderRightWidth:
+      (!parameters.length && index === 0 && length === 1) ||
+      (index !== 0 && !parameters.length)
+        ? 2
+        : 0,
     borderTopRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     borderBottomRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     opacity: 1,
@@ -195,10 +262,6 @@ const ViewStage = React.memo(({ stageRef }) => {
     config: config.stiff,
   });
 
-  useEffect(() => {
-    inputRef.current && send({ type: "FOCUS", inputRef: inputRef });
-  }, [inputRef.current]);
-
   return (
     <>
       <ViewStageContainer style={containerProps}>
@@ -206,6 +269,7 @@ const ViewStage = React.memo(({ stageRef }) => {
           <ViewStageInput
             placeholder="+ add stage"
             value={stage}
+            autoFocus={focusOnInit}
             onFocus={() => !state.matches("input.editing") && send("EDIT")}
             onBlur={(e) => {
               state.matches("input.editing.searchResults.notHovering") &&
@@ -233,24 +297,36 @@ const ViewStage = React.memo(({ stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
-          {state.matches("input.editing") && (
-            <SearchResults
-              results={results}
-              send={send}
-              currentResult={currentResult}
+          {isCompleted && (
+            <Help
+              onClick={() =>
+                shell.openExternal(
+                  `https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`
+                )
+              }
+              style={{
+                cursor: "pointer",
+                width: "1rem",
+                height: "1rem",
+                margin: "0.5rem 0.5rem 0.5rem 0",
+              }}
             />
           )}
         </ViewStageDiv>
-        {isCompleted &&
-          parameters.map((parameter) => (
-            <ViewStageParameter
-              key={parameter.id}
-              parameterRef={parameter.ref}
-            />
-          ))}
+        {parameters.map((parameter) => (
+          <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
+        ))}
         {state.matches("delible.yes") ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
+        {state.matches("input.editing") && (
+          <SearchResults
+            results={results}
+            send={send}
+            currentResult={currentResult}
+          />
+        )}
+        <ErrorMessage serviceRef={stageRef} />
       </ViewStageContainer>
     </>
   );
