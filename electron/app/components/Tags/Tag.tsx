@@ -1,5 +1,5 @@
 import React from "react";
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 
 const Body = styled.div`
   display: inline-block;
@@ -14,11 +14,52 @@ const Body = styled.div`
   border-radius: 10px;
   font-weight: bold;
   text-align: center;
+  vertical-align: bottom;
+
+  ${({ maxWidth }) =>
+    maxWidth
+      ? css`
+          max-width: ${isNaN(maxWidth) ? maxWidth : maxWidth + "px"};
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        `
+      : undefined}
+
+  ${({ outline }) =>
+    outline
+      ? css`
+          background-color: transparent;
+          border: 3px solid ${({ fillColor }) => fillColor};
+          padding: 0 9px 0 9px;
+        `
+      : undefined};
+
+  ${({ clickable }) =>
+    clickable
+      ? css`
+          cursor: pointer;
+        `
+      : undefined};
 `;
 
-const Tag = ({ name, title, color = "blue" }) => {
+const Tag = ({
+  name,
+  title,
+  color = "blue",
+  maxWidth,
+  outline = false,
+  onClick = undefined,
+}) => {
   return (
-    <Body title={title} fillColor={color}>
+    <Body
+      title={title || name}
+      fillColor={color}
+      maxWidth={maxWidth}
+      outline={outline}
+      onClick={onClick}
+      clickable={Boolean(onClick)}
+    >
       {name}
     </Body>
   );

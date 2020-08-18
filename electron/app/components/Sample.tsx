@@ -36,7 +36,7 @@ const Sample = ({
   };
   const eventHandlers = {
     onClick: () => handleClick(),
-    onDoubleClick: () => setView({ visible: true, sample }),
+    onDoubleClick: () => setView(sample),
   };
   const renderLabel = (name) => {
     const label = sample[name];
