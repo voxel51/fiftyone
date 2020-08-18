@@ -328,6 +328,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return fov.DatasetView(self)
 
+    @classmethod
+    def get_default_sample_fields(cls, include_private=False):
+        """Get the default fields present on any :class:`Dataset`.
+
+        Args:
+            include_private (False): whether or not to return fields prefixed
+                with a `_`
+
+        Returns:
+            a tuple of field names
+        """
+        return foos.default_sample_fields(include_private=include_private)
+
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -345,7 +358,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 `_` in the returned schema
 
         Returns:
-             a dictionary mapping field names to field types
+             an ``OrderedDict`` mapping field names to field types
         """
         return self._sample_doc_cls.get_field_schema(
             ftype=ftype,
@@ -1450,9 +1463,11 @@ def _load_dataset(name):
 
     _sample_doc_cls = type(name, (foo.DatasetSampleDocument,), {})
 
-    num_default_fields = len(foos.default_sample_fields(include_private=True))
+    default_fields = Dataset.get_default_sample_fields(include_private=True)
 
-    for sample_field in _meta.sample_fields[num_default_fields:]:
+    for sample_field in _meta.sample_fields:
+        if sample_field.name in default_fields:
+            continue
         subfield = (
             etau.get_class(sample_field.subfield)
             if sample_field.subfield

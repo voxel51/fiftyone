@@ -5,6 +5,7 @@ Dataset views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import OrderedDict
 from copy import copy, deepcopy
 import numbers
 
@@ -178,7 +179,7 @@ class DatasetView(foc.SampleCollection):
                 `_` in the returned schema
 
         Returns:
-             a dictionary mapping field names to field types
+             an ``OrderedDict`` mapping field names to field types
         """
         field_schema = self._dataset.get_field_schema(
             ftype=ftype,
@@ -188,18 +189,22 @@ class DatasetView(foc.SampleCollection):
 
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         if selected_fields is not None:
-            field_schema = {
-                fn: f
-                for fn, f in field_schema.items()
-                if fn in selected_fields
-            }
+            field_schema = OrderedDict(
+                {
+                    fn: f
+                    for fn, f in field_schema.items()
+                    if fn in selected_fields
+                }
+            )
 
         if excluded_fields is not None:
-            field_schema = {
-                fn: f
-                for fn, f in field_schema.items()
-                if fn not in excluded_fields
-            }
+            field_schema = OrderedDict(
+                {
+                    fn: f
+                    for fn, f in field_schema.items()
+                    if fn not in excluded_fields
+                }
+            )
 
         return field_schema
 

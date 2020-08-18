@@ -65,7 +65,6 @@ const SearchResultsDiv = animated(styled.div`
   position: fixed;
   width: auto;
   z-index: 800;
-  margin-left: -0.25rem;
 `);
 
 interface SearchResultsProps {
