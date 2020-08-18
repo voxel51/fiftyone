@@ -227,8 +227,10 @@ export default Machine(
             {
               actions: [
                 assign({
-                  error: ({ type }) =>
-                    `Invalid value. Expected type "${toTypeAnnotation(type)}"`,
+                  error: ({ type }) => ({
+                    name: "value",
+                    error: `Expected type "${toTypeAnnotation(type)}"`,
+                  }),
                   errorId: uuid(),
                 }),
               ],

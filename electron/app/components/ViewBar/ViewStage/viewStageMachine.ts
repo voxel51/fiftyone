@@ -238,8 +238,12 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       submitted: () => false,
-                      error: (_, { stage }) =>
-                        `${stage === "" ? '""' : stage} is not a valid stage`,
+                      error: (_, { stage }) => ({
+                        name: "stage",
+                        error: `${
+                          stage === "" ? '""' : stage
+                        } is not a valid stage`,
+                      }),
                       errorId: uuid(),
                     }),
                   ],

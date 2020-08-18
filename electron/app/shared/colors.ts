@@ -64,7 +64,7 @@ export const darkTheme = {
 
   secondary: blue53,
 
-  error: red,
+  error: "#EF2020",
 };
 
 // for storybook

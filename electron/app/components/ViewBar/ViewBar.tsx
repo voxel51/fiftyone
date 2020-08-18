@@ -1,6 +1,5 @@
 import React, { useEffect, useCallback, useMemo, useRef } from "react";
 import styled from "styled-components";
-import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";

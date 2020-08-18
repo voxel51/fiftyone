@@ -1,10 +1,8 @@
 import React, { useContext, useEffect, useRef, useMemo, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
-import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
-import { GlobalHotKeys } from "react-hotkeys";
 import { Add, KeyboardReturn as Arrow, Close } from "@material-ui/icons";
 
 import SearchResults from "./SearchResults";
