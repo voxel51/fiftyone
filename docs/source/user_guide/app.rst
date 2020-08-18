@@ -11,19 +11,19 @@ visualize, browse, and interact directly with your
 Sessions
 ________
 
-The basic FiftyOne workflow is to open a Python session and load a |Dataset|.
+The basic FiftyOne workflow is to open a Python shell and load a |Dataset|.
 From there you can launch the FiftyOne App and interact with it
 programmatically via a *session*.
 
 .. _creating-an-app-session:
 
-Create a session
-----------------
+Creating a session
+------------------
 
 You can launch an instance of the App by calling
 :func:`fo.launch_app() <fiftyone.core.session.launch_app>`. This method returns
-a :class:`session <fiftyone.core.session.Session>` instance, which you can use
-to interact programmatically with the App:
+a |Session| instance, which you can subsequently use to interact
+programmatically with the App!
 
 .. code-block:: python
     :linenos:
@@ -55,11 +55,12 @@ to interact programmatically with the App:
    :alt: App Startup
    :align: center
 
-Update a session dataset
-------------------------
+Updating a session's dataset
+----------------------------
 
-Sessions can be updated to show a new |Dataset| by updating the session
-object directly:
+Sessions can be updated to show a new |Dataset| by updating the
+:meth:`Session.dataset <fiftyone.core.session.Session.dataset>` property of the
+session object:
 
 .. code-block:: python
     :linenos:
@@ -73,12 +74,15 @@ object directly:
    :alt: CIFAR-10
    :align: center
 
-Update a session view
----------------------
+Updating a session's view
+-------------------------
 
-Sessions can also directly display a |DatasetView|. For example, you can
-sort the |DatasetView| by ground truth labels and then select the first 10
-|Sample| objects to display.:
+You can also show a specific |DatasetView| into the current dataset in the App
+by updating the :meth:`Session.view <fiftyone.core.session.Session.view>`
+property of the session.
+
+For example, the command below loads a |DatasetView| in the App that shows the
+first 10 samples in the dataset sorted alphabetically by ground truth label:
 
 .. code-block:: python
     :linenos:
@@ -139,17 +143,18 @@ separately.
 
     Open two terminal windows on the **local machine**. In order to forward the
     port `5151` from the remote machine to the local machine, run the following
-    command directly in one of the terminal windows and leave this command running:
+    command directly in one of the terminal windows and leave this command
+    running:
 
     .. code-block:: shell
 
         # Local machine
         ssh -N -L 5151:127.0.0.1:5151 username@remote_machine_ip
 
-    The port `5151` is now being forwarded from the remote machine to port `5151`
-    of the local machine through a process running in the background. Now in the
-    other terminal window, open the FiftyOne App locally by starting python and
-    running the following commands:
+    The port `5151` is now being forwarded from the remote machine to port
+    `5151` of the local machine through a process running in the background.
+    Now in the other terminal window, open the FiftyOne App locally by starting
+    Python and running the following commands:
 
     .. code-block:: python
         :linenos:
@@ -162,38 +167,39 @@ separately.
 Using the FiftyOne App
 ______________________
 
-The App has various functionality built into the user interface itself.
+The App exposes powerful dataset exploration functionality directly in its
+user interface.
 
 Display options
 ---------------
 
-Any labels, tags, and scalar fields can be viewed in the App directly on the
-sample images by toggling the corresponding display options on the left hand 
-side of the App.
+Any labels, tags, and scalar fields can be overlaid on the samples in the App
+by toggling the corresponding display options on the lefthand side of the App.
 
 .. image:: ../images/cifar10_button_toggle.gif
     :alt: CIFAR-10 Toggle
     :align: center
 
-
 Viewing a sample
 ----------------
 
-A |Sample| can be double clicked to view a large version of it. This
-expanded view also contains the information like the labels of the |Sample| and
-provides access to the raw json information about the |Sample|.
+Double-click a sample to open an expanded view of the sample. This modal also
+contains information about the fields of the |Sample| and also provides access
+to the raw JSON information about the |Sample|.
 
 .. image:: ../images/cifar10_sidebar.gif
     :alt: CIFAR-10 Sidebar
     :align: center
 
+Using the view bar
+------------------
 
-DatasetView stages
--------------------
-
-The view bar in the App provides all |DatasetView| functionality directly in
-the App. Adding a new stage will create a view into your |Dataset| which only
-shows the samples and labels that are specified by your stage.
+The view bar makes all of the powerful searching, sorting, and filtering
+operations :ref:`provided by DatasetViews <using-views>` available directly in
+the App. Any changes to the current view that you make in the view bar are
+reflected in the |DatasetView| exposed by the
+:meth:`Session.view <fiftyone.core.session.Session.view>` property of the
+|Session| object associated with the App.
 
 .. image:: ../images/cifar10_view_bar.gif
     :alt: CIFAR-10 View Bar
@@ -202,40 +208,43 @@ shows the samples and labels that are specified by your stage.
 Tabs
 ----
 
-The four tabs, Samples, Labels, Tags, and Scalars let you visualize different
-aspects and statistics about your dataset.
-Samples is the default tab that lets you visualize and select your image samples.
-The Labels tab shows a distribution of labels of the currently loaded |Dataset|
-or |DatasetView|.
-Any tags that were added and their corresponding counts will show up under the
-Tags tab.
-Scalar fields, for example if you computed `uniqueness` on your dataset, will
-be displayed under the Scalars tab.
+The `Samples`, `Labels`, `Tags`, and `Scalars` tabs in the App let you
+visualize different aspects and statistics about your dataset. `Samples` is the
+default tab, which lets you visualize and select your image samples. The
+`Labels` tab shows a distribution of labels of the currently loaded |Dataset|
+or |DatasetView|. Any tags that were added and their corresponding counts will
+show up under the `Tags` tab. Scalar fields, for example if you computed
+`uniqueness` on your dataset, will be displayed under the `Scalars` tab.
 
 .. image:: ../images/cifar10_tabs.gif
    :alt: CIFAR-10 Scalars
    :align: center
 
-
 Accessing selected samples
 --------------------------
 
-As previously explained, a session lets you modify what is seen in the App by
-modifying the python object in the terminal. Additionally, you can also use the App to
-select samples and bring those into your python terminal.
+As previously explained, the |Session| object created when you launch the App
+lets you interact with the App from your Python process.
 
-First select samples in the App.
+One common workflow is to select samples visually in the App and then access
+the data for the selected samples in Python. To perform this workflow, first
+select some samples in the App:
 
 .. image:: ../images/cifar10_selected.gif
    :alt: CIFAR-10 Selected
    :align: center
 
-Second, load those samples into python:
+Next, access the
+:meth:`Session.selected <fiftyone.core.session.Session.selected>` property of
+your session to retrieve the IDs of the currently selected samples in the App:
 
 .. code-block:: python
 
-    selected = session.selected
-    print(selected)
+    # Print the IDs of the currently selected samples
+    print(session.selected)
+
+    # Create a view containing only the selected samples
+    selected_view = dataset.select(session.selected)
 
 .. code-block:: text
 
@@ -243,5 +252,3 @@ Second, load those samples into python:
      '5ef0eef405059ebb0ddfa7c4',
      '5ef0eef405059ebb0ddfa86e',
      '5ef0eef405059ebb0ddfa93c']
-
-
