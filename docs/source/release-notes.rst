@@ -21,8 +21,10 @@ App
    - DEL or BACKSPACE deletes the raised (or active) stage
    - ESC toggles focus on the ViewBar, which activates shortcuts
    - TAB, ENTER, and ESC submit input fields (parameters or stages)
-   - LEFT and RIGHT ARROW traverses stages and add buttons
-   - SHIFT+LEFT and SHIFT+RIGHT ARROW traverses stages
+   - LEFT and RIGHT ARROW traverse stages and add buttons
+   - SHIFT+LEFT and SHIFT+RIGHT ARROW traverse stages
+- Added support for changing label visibility within the expanded sample modal
+- Improved display of long label and tag names throughout the app
 
 Core
 ^^^^
