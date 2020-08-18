@@ -21,7 +21,11 @@ def _connect():
 
 
 def get_db_conn():
-    """Creates a connection to the database"""
+    """Returns a connection to the database.
+
+    Returns:
+        a ``pymongo.MongoClient``
+    """
     _connect()
     return _client[_DEFAULT_DATABASE]
 
