@@ -12,7 +12,4 @@ from .document import (
     EmbeddedDocument,
     DynamicEmbeddedDocument,
 )
-from .sample import (
-    SampleDocument,
-    DatasetSampleDocument,
-)
+from .sample import DatasetSampleDocument

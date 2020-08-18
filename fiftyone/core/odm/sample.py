@@ -62,7 +62,6 @@ from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
     Document,
     BaseEmbeddedDocument,
-    SerializableDocument,
 )
 
 
@@ -111,80 +110,7 @@ def no_delete_default_field(func):
     return wrapper
 
 
-class SampleDocument(SerializableDocument):
-    """Interface for sample backing documents."""
-
-    @property
-    def collection_name(self):
-        """The name of the MongoDB collection to which this sample belongs, or
-        ``None`` if it has not been added to a dataset.
-        """
-        return None
-
-    @property
-    def in_db(self):
-        """Whether the sample has been added to the database."""
-        return False
-
-    @property
-    def ingest_time(self):
-        """The time the sample was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        return None
-
-    def has_field(self, field_name):
-        """Determines whether the sample has a field of the given name.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            True/False
-        """
-        raise NotImplementedError("Subclass must implement `has_field()`")
-
-    def get_field(self, field_name):
-        """Gets the field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            the field value
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        raise NotImplementedError("Subclass must implement `get_field()`")
-
-    def set_field(self, field_name, value, create=False):
-        """Sets the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-            value: the field value
-            create (False): whether to create the field if it does not exist
-
-        Raises:
-            ValueError: if ``field_name`` is not an allowed field name or does
-                not exist and ``create == False``
-        """
-        raise NotImplementedError("Subclass must implement `set_field()`")
-
-    def clear_field(self, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Raises:
-            ValueError: if the field does not exist
-        """
-        raise NotImplementedError("Subclass must implement `clear_field()`")
-
-
-class DatasetSampleDocument(Document, SampleDocument):
+class DatasetSampleDocument(Document):
     """Base class for sample documents backing samples in datasets.
 
     All ``fiftyone.core.dataset.Dataset._sample_doc_cls`` classes inherit from
@@ -292,10 +218,29 @@ class DatasetSampleDocument(Document, SampleDocument):
         return d
 
     def has_field(self, field_name):
+        """Determines whether the sample has a field of the given name.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False
+        """
         # pylint: disable=no-member
         return field_name in self._fields
 
     def get_field(self, field_name):
+        """Gets the field of the sample.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            the field value
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
         if not self.has_field(field_name):
             raise AttributeError("Sample has no field '%s'" % field_name)
 
@@ -374,6 +319,17 @@ class DatasetSampleDocument(Document, SampleDocument):
         cls.add_field(field_name, **_get_implied_field_kwargs(value))
 
     def set_field(self, field_name, value, create=False):
+        """Sets the value of a field of the sample.
+
+        Args:
+            field_name: the field name
+            value: the field value
+            create (False): whether to create the field if it does not exist
+
+        Raises:
+            ValueError: if ``field_name`` is not an allowed field name or does
+                not exist and ``create == False``
+        """
         if field_name.startswith("_"):
             raise ValueError(
                 "Invalid field name: '%s'. Field names cannot start with '_'"
@@ -396,6 +352,14 @@ class DatasetSampleDocument(Document, SampleDocument):
         self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
+        """Clears the value of a field of the sample.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            ValueError: if the field does not exist
+        """
         self.set_field(field_name, None, create=False)
 
     @classmethod

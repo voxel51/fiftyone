@@ -25,10 +25,11 @@ import fiftyone as fo
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
+from fiftyone.core.odm.document import SerializableDocument
 from fiftyone.core.odm.sample import _generate_rand, default_sample_fields
 
 
-class NoDatasetSampleDocument(foo.SampleDocument):
+class NoDatasetSampleDocument(SerializableDocument):
     """Backing document for samples that have not been added to a dataset."""
 
     # pylint: disable=no-member
@@ -83,7 +84,21 @@ class NoDatasetSampleDocument(foo.SampleDocument):
         self._data[name] = value
 
     @property
+    def collection_name(self):
+        """The name of the MongoDB collection to which this sample belongs, or
+        ``None`` if it has not been added to a dataset.
+        """
+        return None
+
+    @property
     def id(self):
+        return None
+
+    @property
+    def ingest_time(self):
+        """The time the sample was added to the database, or ``None`` if it
+        has not been added to the database.
+        """
         return None
 
     def _get_repr_fields(self):
@@ -115,7 +130,20 @@ class NoDatasetSampleDocument(foo.SampleDocument):
 
         raise ValueError("Field '%s' has no default" % field)
 
+    @property
+    def in_db(self):
+        """Whether the sample has been added to the database."""
+        return False
+
     def has_field(self, field_name):
+        """Determines whether the sample has a field of the given name.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False
+        """
         try:
             return field_name in self._data
         except AttributeError:
@@ -123,12 +151,34 @@ class NoDatasetSampleDocument(foo.SampleDocument):
             return False
 
     def get_field(self, field_name):
+        """Gets the field of the sample.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            the field value
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
         if not self.has_field(field_name):
             raise AttributeError("Sample has no field '%s'" % field_name)
 
         return getattr(self, field_name)
 
     def set_field(self, field_name, value, create=False):
+        """Sets the value of a field of the sample.
+
+        Args:
+            field_name: the field name
+            value: the field value
+            create (False): whether to create the field if it does not exist
+
+        Raises:
+            ValueError: if ``field_name`` is not an allowed field name or does
+                not exist and ``create == False``
+        """
         if field_name.startswith("_"):
             raise ValueError(
                 "Invalid field name: '%s'. Field names cannot start with '_'"
@@ -152,6 +202,14 @@ class NoDatasetSampleDocument(foo.SampleDocument):
         self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
+        """Clears the value of a field of the sample.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            ValueError: if the field does not exist
+        """
         if field_name in self.default_fields:
             default_value = self._get_default(self.default_fields[field_name])
             self.set_field(field_name, default_value)
