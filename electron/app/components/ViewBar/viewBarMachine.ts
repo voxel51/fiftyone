@@ -186,7 +186,7 @@ const viewBarMachine = Machine(
                     ),
                 ],
                 on: {
-                  BLUR: {
+                  TOGGLE_FOCUS: {
                     target: "blurred",
                   },
                   NEXT: {
@@ -247,11 +247,12 @@ const viewBarMachine = Machine(
                   },
                 },
               },
-              blurred: {},
-            },
-            on: {
-              FOCUS: {
-                target: "focus.focused",
+              blurred: {
+                on: {
+                  TOGGLE_FOCUS: {
+                    target: "focused",
+                  },
+                },
               },
             },
           },

@@ -201,11 +201,11 @@ const ViewStage = React.memo(({ stageRef }) => {
   const {
     stage,
     parameters,
-    active,
     results,
     currentResult,
     length,
     index,
+    focusOnInit,
   } = state.context;
 
   const isCompleted = [
@@ -214,10 +214,8 @@ const ViewStage = React.memo(({ stageRef }) => {
   ].some(state.matches);
 
   const deleteProps = useSpring({
-    borderStyle: isCompleted ? "solid" : "dashed",
-    backgroundColor: isCompleted
-      ? theme.brandTransparent
-      : theme.brandMoreTransparent,
+    borderStyle: "solid",
+    backgroundColor: theme.brandTransparent,
     opacity: 1,
     from: {
       opacity: 0,
@@ -229,7 +227,11 @@ const ViewStage = React.memo(({ stageRef }) => {
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
-    borderRightWidth: !isCompleted && index === 0 && length === 1 ? 2 : 0,
+    borderRightWidth:
+      (!parameters.length && index === 0 && length === 1) ||
+      (index !== 0 && !parameters.length)
+        ? 2
+        : 0,
     borderTopRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     borderBottomRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     opacity: 1,
@@ -274,6 +276,7 @@ const ViewStage = React.memo(({ stageRef }) => {
           <ViewStageInput
             placeholder="+ add stage"
             value={stage}
+            autoFocus={focusOnInit}
             onFocus={() => !state.matches("input.editing") && send("EDIT")}
             onBlur={(e) => {
               state.matches("input.editing.searchResults.notHovering") &&

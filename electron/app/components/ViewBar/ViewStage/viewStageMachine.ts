@@ -95,7 +95,6 @@ const viewStageMachine = Machine(
                 target: "decide",
                 actions: assign({
                   inputRef: (_, { inputRef }) => inputRef,
-                  focusOnInit: true,
                 }),
               },
             },
@@ -143,7 +142,7 @@ const viewStageMachine = Machine(
                       n.toLowerCase().includes(stage.toLowerCase())
                     ),
                 currentResult: null,
-                focusOnInit: false,
+                focusOnInit: true,
               }),
             ],
             type: "parallel",
@@ -152,6 +151,7 @@ const viewStageMachine = Machine(
                 initial: "focused",
                 states: {
                   focused: {
+                    entry: "focusInput",
                     on: {
                       UNFOCUS_INPUT: "unfocused",
                     },
@@ -198,6 +198,7 @@ const viewStageMachine = Machine(
                   target: "reading.selected",
                   actions: [
                     assign({
+                      focusOnInit: false,
                       stage: (ctx, { stage }) => stage,
                       parameters: (ctx, { stage }) => {
                         const result = ctx.stageInfo.filter((s) =>
