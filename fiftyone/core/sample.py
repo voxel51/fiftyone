@@ -240,6 +240,7 @@ class _Sample(object):
 
     def __init__(self, dataset=None):
         self._dataset = dataset
+        self._doc = None
 
     def __dir__(self):
         return super().__dir__() + list(self.field_names)
@@ -466,10 +467,11 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+        super().__init__()
+
         self._doc = NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
-        super().__init__()
 
     def __str__(self):
         return repr(self)
@@ -700,6 +702,8 @@ class SampleView(_Sample):
         excluded_fields=None,
         filtered_fields=None,
     ):
+        super().__init__(dataset=dataset)
+
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(
                 "Backing doc must be an instance of %s; found %s"
@@ -717,8 +721,6 @@ class SampleView(_Sample):
         self._selected_fields = selected_fields
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
-
-        super().__init__(dataset=dataset)
 
     def __str__(self):
         return repr(self)
