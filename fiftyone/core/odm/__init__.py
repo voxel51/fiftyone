@@ -15,5 +15,4 @@ from .document import (
 from .sample import (
     SampleDocument,
     DatasetSampleDocument,
-    NoDatasetSampleDocument,
 )

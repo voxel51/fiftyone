@@ -5,16 +5,234 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from copy import deepcopy
+import json
 import os
 import weakref
+
+from bson import json_util
+from bson.binary import Binary
+import numpy as np
+import six
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 
-import fiftyone.core.metadata as fom
 import fiftyone.core.odm as foo
+
+import fiftyone as fo
+import fiftyone.core.metadata as fom
+import fiftyone.core.utils as fou
+
+from fiftyone.core.odm.sample import _generate_rand, default_sample_fields
+
+
+class NoDatasetSampleDocument(foo.SampleDocument):
+    """Backing document for samples that have not been added to a dataset."""
+
+    # pylint: disable=no-member
+    default_fields = foo.DatasetSampleDocument._fields
+    default_fields_ordered = default_sample_fields(include_private=True)
+
+    def __init__(self, **kwargs):
+        self._data = OrderedDict()
+        filepath = kwargs.get("filepath", None)
+
+        for field_name in self.default_fields_ordered:
+            value = kwargs.pop(field_name, None)
+
+            if field_name == "_rand":
+                value = _generate_rand(filepath=filepath)
+
+            if value is None:
+                value = self._get_default(self.default_fields[field_name])
+
+            if field_name == "filepath":
+                value = os.path.abspath(os.path.expanduser(value))
+
+            self._data[field_name] = value
+
+        self._data.update(kwargs)
+
+    def __getattr__(self, name):
+        try:
+            return self._data[name]
+        except Exception:
+            pass
+
+        return super().__getattribute__(name)
+
+    def __setattr__(self, name, value):
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+            return
+
+        has_field = self.has_field(name)
+
+        if hasattr(self, name) and not has_field:
+            super().__setattr__(name, value)
+            return
+
+        if not has_field:
+            raise ValueError(
+                "Adding sample fields using the `sample.field = value` syntax "
+                "is not allowed; use `sample['field'] = value` instead"
+            )
+
+        self._data[name] = value
+
+    @property
+    def id(self):
+        return None
+
+    def _get_repr_fields(self):
+        return ("id",) + self.field_names
+
+    @property
+    def field_names(self):
+        return tuple(k for k in self._data.keys() if not k.startswith("_"))
+
+    @staticmethod
+    def _get_default(field):
+        if field.null:
+            return None
+
+        if field.default is not None:
+            value = field.default
+
+            if callable(value):
+                value = value()
+
+            if isinstance(value, list) and value.__class__ != list:
+                value = list(value)
+            elif isinstance(value, tuple) and value.__class__ != tuple:
+                value = tuple(value)
+            elif isinstance(value, dict) and value.__class__ != dict:
+                value = dict(value)
+
+            return value
+
+        raise ValueError("Field '%s' has no default" % field)
+
+    def has_field(self, field_name):
+        try:
+            return field_name in self._data
+        except AttributeError:
+            # If `_data` is not initialized
+            return False
+
+    def get_field(self, field_name):
+        if not self.has_field(field_name):
+            raise AttributeError("Sample has no field '%s'" % field_name)
+
+        return getattr(self, field_name)
+
+    def set_field(self, field_name, value, create=False):
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name: '%s'. Field names cannot start with '_'"
+                % field_name
+            )
+
+        if hasattr(self, field_name) and not self.has_field(field_name):
+            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
+
+        if not self.has_field(field_name):
+            if create:
+                # dummy value so that it is identified by __setattr__
+                self._data[field_name] = None
+            else:
+                msg = "Sample does not have field '%s'." % field_name
+                if value is not None:
+                    # don't report this when clearing a field.
+                    msg += " Use `create=True` to create a new field."
+                raise ValueError(msg)
+
+        self.__setattr__(field_name, value)
+
+    def clear_field(self, field_name):
+        if field_name in self.default_fields:
+            default_value = self._get_default(self.default_fields[field_name])
+            self.set_field(field_name, default_value)
+        else:
+            self._data.pop(field_name, None)
+
+    def to_dict(self, extended=False):
+        d = {}
+        for k, v in self._data.items():
+            if hasattr(v, "to_dict"):
+                # Embedded document
+                d[k] = v.to_dict(extended=extended)
+            elif isinstance(v, np.ndarray):
+                # Must handle arrays separately, since they are non-primitives
+
+                # @todo cannot support serializing 1D arrays as lists because
+                # there is no way for `from_dict` to know that the data should
+                # be converted back to a numpy array
+                #
+                # if v.ndim == 1:
+                #     d[k] = v.tolist()
+                #
+
+                v_binary = fou.serialize_numpy_array(v)
+                if extended:
+                    # @todo improve this
+                    d[k] = json.loads(json_util.dumps(Binary(v_binary)))
+                else:
+                    d[k] = v_binary
+            else:
+                # JSON primitive
+                d[k] = v
+
+        return d
+
+    @classmethod
+    def from_dict(cls, d, extended=False):
+        kwargs = {}
+        for k, v in d.items():
+            if isinstance(v, dict):
+                if "_cls" in v:
+                    # Serialized embedded document
+                    _cls = getattr(fo, v["_cls"])
+                    kwargs[k] = _cls.from_dict(v)
+                elif "$binary" in v:
+                    # Serialized array in extended format
+                    binary = json_util.loads(json.dumps(v))
+                    kwargs[k] = fou.deserialize_numpy_array(binary)
+                else:
+                    kwargs[k] = v
+            elif isinstance(v, six.binary_type):
+                # Serialized array in non-extended format
+                kwargs[k] = fou.deserialize_numpy_array(v)
+            else:
+                kwargs[k] = v
+
+        return cls(**kwargs)
+
+    def save(self):
+        """Saves the sample to the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        pass
+
+    def reload(self):
+        """Reloads the sample from the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        pass
+
+    def delete(self):
+        """Deletes the sample from the database.
+
+        Because the sample does not belong to a dataset, this method does
+        nothing.
+        """
+        pass
 
 
 class _Sample(object):
@@ -248,7 +466,7 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        self._doc = foo.NoDatasetSampleDocument(
+        self._doc = NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
         super().__init__()
@@ -272,7 +490,7 @@ class Sample(_Sample):
         Returns:
             a :class:`Sample`
         """
-        if isinstance(doc, foo.NoDatasetSampleDocument):
+        if isinstance(doc, NoDatasetSampleDocument):
             sample = cls.__new__(cls)
             sample._dataset = None
             sample._doc = doc
@@ -304,7 +522,7 @@ class Sample(_Sample):
         Returns:
             a :class:`Sample`
         """
-        doc = foo.NoDatasetSampleDocument.from_dict(d, extended=True)
+        doc = NoDatasetSampleDocument.from_dict(d, extended=True)
         return cls.from_doc(doc)
 
     @classmethod
@@ -317,7 +535,7 @@ class Sample(_Sample):
         Returns:
             a :class:`Sample`
         """
-        doc = foo.NoDatasetSampleDocument.from_json(s)
+        doc = NoDatasetSampleDocument.from_json(s)
         return cls.from_doc(doc)
 
     @classmethod
@@ -413,7 +631,7 @@ class Sample(_Sample):
     @classmethod
     def _reset_backing_docs(cls, collection_name, sample_ids):
         """Resets the samples' backing documents to
-        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instances.
+        :class:`NoDatasetSampleDocument` instances.
 
         For use **only** when removing samples from a dataset.
 
@@ -430,7 +648,7 @@ class Sample(_Sample):
     @classmethod
     def _reset_all_backing_docs(cls, collection_name):
         """Resets the sample's backing document to a
-        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance for all
+        :class:`NoDatasetSampleDocument` instance for all
         samples in a dataset.
 
         For use **only** when clearing a dataset.

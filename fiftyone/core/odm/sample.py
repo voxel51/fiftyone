@@ -4,7 +4,6 @@ Backing document classes for :class:`fiftyone.core.sample.Sample` instances.
 Class hierarchy::
 
     SampleDocument
-    ├── NoDatasetSampleDocument
     └── DatasetSampleDocument
         ├── my_custom_dataset
         ├── another_dataset
@@ -23,12 +22,12 @@ Design invariants:
 **Implementation details**
 
 When a new :class:`fiftyone.core.sample.Sample` is created, its ``_doc``
-attribute is an instance of :class:`NoDatasetSampleDocument`::
+attribute is `None`
 
     import fiftyone as fo
 
     sample = fo.Sample()
-    sample._doc  # NoDatasetSampleDocument
+    sample._doc  # None
 
 When a new :class:`fiftyone.core.dataset.Dataset` is created, its
 ``_sample_doc_cls`` attribute holds a dynamically created subclass of
@@ -38,7 +37,7 @@ When a new :class:`fiftyone.core.dataset.Dataset` is created, its
     dataset._sample_doc_cls  # my_dataset(DatasetSampleDocument)
 
 When a sample is added to a dataset, its ``_doc`` attribute is changed from
-type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
+`None` to type ``dataset._sample_doc_cls``::
 
     dataset.add_sample(sample)
     sample._doc  # my_dataset(DatasetSampleDocument)
@@ -49,21 +48,15 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 """
 from collections import OrderedDict
 from functools import wraps
-import json
 import numbers
-import os
 import random
 
-from bson import json_util
-from bson.binary import Binary
 from mongoengine.errors import InvalidQueryError
 import numpy as np
 import six
 
-import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
-import fiftyone.core.utils as fou
 
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
@@ -565,213 +558,6 @@ class DatasetSampleDocument(Document, SampleDocument):
         if include_private:
             return cls._fields_ordered
         return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
-
-
-class NoDatasetSampleDocument(SampleDocument):
-    """Backing document for samples that have not been added to a dataset."""
-
-    # pylint: disable=no-member
-    default_fields = DatasetSampleDocument._fields
-    default_fields_ordered = default_sample_fields(include_private=True)
-
-    def __init__(self, **kwargs):
-        self._data = OrderedDict()
-        filepath = kwargs.get("filepath", None)
-
-        for field_name in self.default_fields_ordered:
-            value = kwargs.pop(field_name, None)
-
-            if field_name == "_rand":
-                value = _generate_rand(filepath=filepath)
-
-            if value is None:
-                value = self._get_default(self.default_fields[field_name])
-
-            if field_name == "filepath":
-                value = os.path.abspath(os.path.expanduser(value))
-
-            self._data[field_name] = value
-
-        self._data.update(kwargs)
-
-    def __getattr__(self, name):
-        try:
-            return self._data[name]
-        except Exception:
-            pass
-
-        return super().__getattribute__(name)
-
-    def __setattr__(self, name, value):
-        if name.startswith("_"):
-            super().__setattr__(name, value)
-            return
-
-        has_field = self.has_field(name)
-
-        if hasattr(self, name) and not has_field:
-            super().__setattr__(name, value)
-            return
-
-        if not has_field:
-            raise ValueError(
-                "Adding sample fields using the `sample.field = value` syntax "
-                "is not allowed; use `sample['field'] = value` instead"
-            )
-
-        self._data[name] = value
-
-    @property
-    def id(self):
-        return None
-
-    def _get_repr_fields(self):
-        return ("id",) + self.field_names
-
-    @property
-    def field_names(self):
-        return tuple(k for k in self._data.keys() if not k.startswith("_"))
-
-    @staticmethod
-    def _get_default(field):
-        if field.null:
-            return None
-
-        if field.default is not None:
-            value = field.default
-
-            if callable(value):
-                value = value()
-
-            if isinstance(value, list) and value.__class__ != list:
-                value = list(value)
-            elif isinstance(value, tuple) and value.__class__ != tuple:
-                value = tuple(value)
-            elif isinstance(value, dict) and value.__class__ != dict:
-                value = dict(value)
-
-            return value
-
-        raise ValueError("Field '%s' has no default" % field)
-
-    def has_field(self, field_name):
-        try:
-            return field_name in self._data
-        except AttributeError:
-            # If `_data` is not initialized
-            return False
-
-    def get_field(self, field_name):
-        if not self.has_field(field_name):
-            raise AttributeError("Sample has no field '%s'" % field_name)
-
-        return getattr(self, field_name)
-
-    def set_field(self, field_name, value, create=False):
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
-                % field_name
-            )
-
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
-        if not self.has_field(field_name):
-            if create:
-                # dummy value so that it is identified by __setattr__
-                self._data[field_name] = None
-            else:
-                msg = "Sample does not have field '%s'." % field_name
-                if value is not None:
-                    # don't report this when clearing a field.
-                    msg += " Use `create=True` to create a new field."
-                raise ValueError(msg)
-
-        self.__setattr__(field_name, value)
-
-    def clear_field(self, field_name):
-        if field_name in self.default_fields:
-            default_value = self._get_default(self.default_fields[field_name])
-            self.set_field(field_name, default_value)
-        else:
-            self._data.pop(field_name, None)
-
-    def to_dict(self, extended=False):
-        d = {}
-        for k, v in self._data.items():
-            if hasattr(v, "to_dict"):
-                # Embedded document
-                d[k] = v.to_dict(extended=extended)
-            elif isinstance(v, np.ndarray):
-                # Must handle arrays separately, since they are non-primitives
-
-                # @todo cannot support serializing 1D arrays as lists because
-                # there is no way for `from_dict` to know that the data should
-                # be converted back to a numpy array
-                #
-                # if v.ndim == 1:
-                #     d[k] = v.tolist()
-                #
-
-                v_binary = fou.serialize_numpy_array(v)
-                if extended:
-                    # @todo improve this
-                    d[k] = json.loads(json_util.dumps(Binary(v_binary)))
-                else:
-                    d[k] = v_binary
-            else:
-                # JSON primitive
-                d[k] = v
-
-        return d
-
-    @classmethod
-    def from_dict(cls, d, extended=False):
-        kwargs = {}
-        for k, v in d.items():
-            if isinstance(v, dict):
-                if "_cls" in v:
-                    # Serialized embedded document
-                    _cls = getattr(fo, v["_cls"])
-                    kwargs[k] = _cls.from_dict(v)
-                elif "$binary" in v:
-                    # Serialized array in extended format
-                    binary = json_util.loads(json.dumps(v))
-                    kwargs[k] = fou.deserialize_numpy_array(binary)
-                else:
-                    kwargs[k] = v
-            elif isinstance(v, six.binary_type):
-                # Serialized array in non-extended format
-                kwargs[k] = fou.deserialize_numpy_array(v)
-            else:
-                kwargs[k] = v
-
-        return cls(**kwargs)
-
-    def save(self):
-        """Saves the sample to the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
-        pass
-
-    def reload(self):
-        """Reloads the sample from the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
-        pass
-
-    def delete(self):
-        """Deletes the sample from the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
-        pass
 
 
 def _get_implied_field_kwargs(value):
