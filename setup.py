@@ -54,6 +54,7 @@ setup(
         "Pillow<7,>=6.2",
         "pprintpp",
         "psutil",
+        "pycocotools",
         "pymongo",
         "python-engineio[client]",
         "python-socketio[client]",
