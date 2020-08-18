@@ -116,14 +116,19 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def setup(self):
         data_dir = os.path.join(self.dataset_dir, "data")
+        if os.path.isdir(data_dir):
+            self._image_paths = etau.list_files(data_dir, abs_paths=True)
+        else:
+            self._image_paths = []
+
         labels_dir = os.path.join(self.dataset_dir, "labels")
-
-        self._image_paths = etau.list_files(data_dir, abs_paths=True)
-
-        self._anno_uuids_to_paths = {
-            os.path.splitext(f)[0]: os.path.join(labels_dir, f)
-            for f in etau.list_files(labels_dir, abs_paths=False)
-        }
+        if os.path.isdir(labels_dir):
+            self._anno_uuids_to_paths = {
+                os.path.splitext(f)[0]: os.path.join(labels_dir, f)
+                for f in etau.list_files(labels_dir, abs_paths=False)
+            }
+        else:
+            self._anno_uuids_to_paths = {}
 
 
 class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):

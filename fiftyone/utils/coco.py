@@ -111,7 +111,11 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
         image_path = os.path.join(self._data_dir, filename)
 
-        image_dict = self._images_map[filename]
+        image_dict = self._images_map.get(filename, None)
+        if image_dict is None:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+            return image_path, image_metadata, None
+
         image_id = image_dict["id"]
         width = image_dict["width"]
         height = image_dict["height"]
@@ -197,6 +201,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._annotations = None
         self._classes = None
         self._filename_maker = None
+        self._has_labels = None
 
     @property
     def requires_image_metadata(self):
@@ -217,6 +222,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._filename_maker = fou.UniqueFilenameMaker(
             output_dir=self._data_dir, default_ext=self.image_format
         )
+        self._has_labels = False
         self._parse_classes()
 
     def log_collection(self, sample_collection):
@@ -246,6 +252,10 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             }
         )
 
+        if detections is None:
+            return
+
+        self._has_labels = True
         for detection in detections.detections:
             self._anno_id += 1
             self._classes.add(detection.label)
@@ -273,7 +283,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             "description": self._info.get("year", "Exported from FiftyOne"),
             "contributor": self._info.get("contributor", ""),
             "url": self._info.get("url", "https://voxel51.com/fiftyone"),
-            "date_created": self._info("date_created", date_created),
+            "date_created": self._info.get("date_created", date_created),
         }
 
         licenses = self._info.get("licenses", [])
@@ -288,8 +298,10 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             "licenses": licenses,
             "categories": categories,
             "images": self._images,
-            "annotations": self._annotations,
         }
+
+        if self._has_labels:
+            labels["annotations"] = self._annotations
 
         etas.write_json(labels, self._labels_path)
 

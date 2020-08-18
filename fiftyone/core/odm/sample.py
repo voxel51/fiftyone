@@ -88,7 +88,7 @@ def default_sample_fields(include_private=False):
     """The default fields present on all :class:`SampleDocument` objects.
 
     Args:
-        include_private (False): or not to return fields prefixed with a `_`
+        include_private (False): whether to include fields that start with `_`
 
     Returns:
         a tuple of field names
@@ -261,8 +261,8 @@ class DatasetSampleDocument(Document, SampleDocument):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
-            include_private (False): a boolean indicating whether to return fields
-                that start with the character "_"
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types

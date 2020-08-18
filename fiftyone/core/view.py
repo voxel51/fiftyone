@@ -174,8 +174,8 @@ class DatasetView(foc.SampleCollection):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.BaseEmbeddedDocument``
-            include_private (False): a boolean indicating whether to return
-                fields that start with the character "_"
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types

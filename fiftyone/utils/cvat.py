@@ -324,7 +324,24 @@ class CVATTaskLabels(object):
             a :class:`CVATTaskLabels`
         """
         labels = _ensure_list(d.get("label", []))
-        return cls(labels=labels)
+        _labels = []
+        for label in labels:
+            attributes = _ensure_list(
+                label.get("attributes", {}).get("attribute", [])
+            )
+            _attributes = []
+            for attribute in attributes:
+                print(attribute)
+                _attributes.append(
+                    {
+                        "name": attribute["name"],
+                        "categories": attribute["values"].split("\n"),
+                    }
+                )
+
+            _labels.append({"name": label["name"], "attributes": _attributes})
+
+        return cls(labels=_labels)
 
     @classmethod
     def from_schema(cls, schema):
@@ -684,7 +701,6 @@ class CVATImageAnnotationWriter(object):
         """
         xml_str = self.template.render(
             {
-                "version": "1.1",
                 "size": len(cvat_images),
                 "mode": "annotation",
                 "labels": cvat_task_labels.labels,

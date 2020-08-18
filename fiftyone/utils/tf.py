@@ -302,8 +302,9 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
         "width": tf.io.FixedLenFeature([], tf.int64),
         "depth": tf.io.FixedLenFeature([], tf.int64),
         "filename": tf.io.FixedLenFeature([], tf.string),
+        "format": tf.io.FixedLenFeature([], tf.string),
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
-        "label": tf.io.FixedLenFeature([], tf.string),
+        "label": tf.io.FixedLenFeature([], tf.string, default_value=""),
     }
 
     @property
@@ -329,16 +330,17 @@ class TFImageClassificationSampleParser(TFRecordSampleParser):
     def _parse_image_metadata(self, features):
         return fom.ImageMetadata(
             size_bytes=len(features["image_bytes"].numpy()),
+            mime_type="image/" + features["format"].numpy().decode(),
             width=features["width"].numpy(),
             height=features["height"].numpy(),
             num_channels=features["depth"].numpy(),
         )
 
     def _parse_label(self, features):
-        if "label" not in features:
+        label = features["label"].numpy().decode()
+        if not label:
             return None
 
-        label = features["label"].numpy().decode()
         return fol.Classification(label=label)
 
 
@@ -359,7 +361,7 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         "image/encoded": tf.io.FixedLenFeature([], tf.string),
         "image/format": tf.io.FixedLenFeature([], tf.string),
         "image/object/bbox/xmin": tf.io.FixedLenSequenceFeature(
-            [], tf.float32, allow_missing=True
+            [], tf.float32, allow_missing=True,
         ),
         "image/object/bbox/xmax": tf.io.FixedLenSequenceFeature(
             [], tf.float32, allow_missing=True
@@ -407,9 +409,6 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
         )
 
     def _parse_label(self, features):
-        if "image/object/bbox/xmin" not in features:
-            return None
-
         xmins = features["image/object/bbox/xmin"].numpy()
         xmaxs = features["image/object/bbox/xmax"].numpy()
         ymins = features["image/object/bbox/ymin"].numpy()
@@ -729,12 +728,14 @@ class TFImageClassificationExampleGenerator(TFExampleGenerator):
         img_bytes, img_shape, filename = self._parse_image_or_path(
             image_or_path, filename=filename
         )
+        format = os.path.splitext(filename)[1][1:]  # no leading `.`
 
         feature = {
             "height": _int64_feature(img_shape[0]),
             "width": _int64_feature(img_shape[1]),
             "depth": _int64_feature(img_shape[2]),
             "filename": _bytes_feature(filename.encode()),
+            "format": _bytes_feature(format.encode()),
             "image_bytes": _bytes_feature(img_bytes),
         }
 

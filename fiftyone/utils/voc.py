@@ -173,7 +173,7 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             self._uuids_to_image_paths = {}
 
         labels_dir = os.path.join(self.dataset_dir, "labels")
-        if os.path.isdir(data_dir):
+        if os.path.isdir(labels_dir):
             self._uuids_to_anno_paths = {
                 os.path.splitext(f)[0]: os.path.join(labels_dir, f)
                 for f in etau.list_files(labels_dir, abs_paths=False)

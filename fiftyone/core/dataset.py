@@ -21,12 +21,14 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
+import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
@@ -339,8 +341,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:``fiftyone.core.odm.BaseEmbeddedDocument``
-            include_private (False): a boolean indicating whether to return
-                fields that start with the character "_"
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types
@@ -676,8 +678,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if inspect.isclass(dataset_type):
             dataset_type = dataset_type()
 
+        # If the input dataset contains TFRecords, they must be unpacked into a
+        # temporary directory during conversion
+        if (
+            isinstance(
+                dataset_type,
+                (
+                    fot.TFImageClassificationDataset,
+                    fot.TFObjectDetectionDataset,
+                ),
+            )
+            and "images_dir" not in kwargs
+        ):
+            images_dir = get_default_dataset_dir(self.name)
+            logger.info("Unpacking images to '%s'" % images_dir)
+            kwargs["images_dir"] = images_dir
+
         dataset_importer_cls = dataset_type.get_dataset_importer_cls()
-        dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
+
+        try:
+            dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
+        except Exception as e:
+            importer_name = dataset_importer_cls.__name__
+            raise ValueError(
+                "Failed to construct importer using syntax "
+                "%s(dataset_dir, **kwargs); you may need to supply mandatory "
+                "arguments to the constructor via `kwargs`. Please consult "
+                "the documentation of `%s` to learn more"
+                % (importer_name, etau.get_class_name(dataset_importer_cls))
+            ) from e
 
         return self.add_importer(
             dataset_importer,
@@ -726,6 +755,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 return sample
 
         elif isinstance(dataset_importer, foud.UnlabeledImageDatasetImporter):
+            # The schema never needs expanding when importing unlabeled samples
+            expand_schema = False
 
             def parse_sample(sample):
                 image_path, image_metadata = sample
@@ -734,6 +765,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
 
         elif isinstance(dataset_importer, foud.LabeledImageDatasetImporter):
+            if expand_schema:
+                # This has the benefit of ensuring that `label_field` exists,
+                # even if all of the imported samples are unlabeled (i.e.,
+                # return labels that are all `None`)
+                self._ensure_label_field(
+                    label_field, dataset_importer.label_cls
+                )
+
+            # The schema now never needs expanding, because we already ensured
+            # that `label_field` exists, if necessary
+            expand_schema = False
 
             def parse_sample(sample):
                 image_path, image_metadata, label = sample
@@ -795,6 +837,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "samples to the dataset"
             )
 
+        if not isinstance(sample_parser, foud.UnlabeledImageSampleParser):
+            raise ValueError(
+                "`sample_parser` must be a subclass of %s; found %s"
+                % (
+                    etau.get_class_name(foud.UnlabeledImageSampleParser),
+                    etau.get_class_name(sample_parser),
+                )
+            )
+
         def parse_sample(sample):
             sample_parser.with_sample(sample)
 
@@ -815,7 +866,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             num_samples = None
 
         _samples = map(parse_sample, samples)
-        return self.add_samples(_samples, num_samples=num_samples)
+        return self.add_samples(
+            _samples, num_samples=num_samples, expand_schema=False
+        )
 
     def add_labeled_images(
         self,
@@ -855,6 +908,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "samples to the dataset"
             )
 
+        if not isinstance(sample_parser, foud.LabeledImageSampleParser):
+            raise ValueError(
+                "`sample_parser` must be a subclass of %s; found %s"
+                % (
+                    etau.get_class_name(foud.LabeledImageSampleParser),
+                    etau.get_class_name(sample_parser),
+                )
+            )
+
+        if expand_schema:
+            self._ensure_label_field(label_field, sample_parser.label_cls)
+
         def parse_sample(sample):
             sample_parser.with_sample(sample)
 
@@ -883,7 +948,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         _samples = map(parse_sample, samples)
         return self.add_samples(
-            _samples, expand_schema=expand_schema, num_samples=num_samples
+            _samples, expand_schema=False, num_samples=num_samples
         )
 
     def add_images_dir(self, images_dir, tags=None, recursive=True):
@@ -1292,6 +1357,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _collection(self):
         return foo.get_db_conn()[self._collection_name]
+
+    def _ensure_label_field(self, label_field, label_cls):
+        if label_field not in self.get_field_schema():
+            self.add_sample_field(
+                label_field,
+                fof.EmbeddedDocumentField,
+                embedded_doc_type=label_cls,
+            )
 
     def _expand_schema(self, samples):
         fields = self.get_field_schema(include_private=True)

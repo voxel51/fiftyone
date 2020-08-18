@@ -10,14 +10,16 @@ import logging
 import os
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 import fiftyone.core.stages as fos
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
-import fiftyone.utils.annotations as foua
-import fiftyone.utils.data as foud
+
+foua = fou.lazy_import("fiftyone.utils.annotations")
+foud = fou.lazy_import("fiftyone.utils.data")
 
 
 logger = logging.getLogger(__name__)
@@ -509,6 +511,7 @@ class SampleCollection(object):
         dataset_type=None,
         dataset_exporter=None,
         label_field=None,
+        overwrite=True,
         **kwargs
     ):
         """Exports the samples in the collection to disk.
@@ -529,6 +532,8 @@ class SampleCollection(object):
                 applicable. If not specified and the requested output type is
                 a labeled dataset, the first field of compatible type for the
                 output format is used
+            overwrite (True): when an ``export_dir`` is provided, whether to
+                delete the existing directory before performing the export
             **kwargs: optional keyword arguments to pass to
                 ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
         """
@@ -543,8 +548,32 @@ class SampleCollection(object):
         # If no dataset exporter was provided, construct one based on the
         # dataset type
         if dataset_exporter is None:
+            if os.path.isdir(export_dir):
+                if overwrite:
+                    etau.delete_dir(export_dir)
+                else:
+                    logger.warning(
+                        "Directory '%s' already exists; export will be merged "
+                        "with existing files",
+                        export_dir,
+                    )
+
             dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
-            dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
+
+            try:
+                dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
+            except Exception as e:
+                exporter_name = dataset_exporter_cls.__name__
+                raise ValueError(
+                    "Failed to construct exporter using syntax "
+                    "%s(export_dir, **kwargs); you may need to supply "
+                    "mandatory arguments to the constructor via `kwargs`. "
+                    "Please consult the documentation of `%s` to learn more"
+                    % (
+                        exporter_name,
+                        etau.get_class_name(dataset_exporter_cls),
+                    )
+                ) from e
 
         # If no label field was provided, choose the first label field that is
         # compatible with the dataset exporter
