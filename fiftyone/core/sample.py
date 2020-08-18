@@ -443,7 +443,7 @@ class Sample(_Sample):
         return super().__repr__()
 
     @classmethod
-    def from_doc(cls, doc, dataset=None):
+    def from_db_doc(cls, d, dataset):
         """Creates an instance of the :class:`Sample` class backed by the given
         document.
 
@@ -455,12 +455,8 @@ class Sample(_Sample):
         Returns:
             a :class:`Sample`
         """
-        # @todo(Tyler) delete?
-        # if isinstance(doc, NoDatasetSampleDocument):
-        #     sample = cls.__new__(cls)
-        #     sample._dataset = None
-        #     sample._doc = doc
-        #     return sample
+        # @todo(Tyler) don't even construct this!
+        doc = dataset._sample_doc_cls.from_dict(d, extended=False)
 
         if not doc.id:
             raise ValueError("`doc` is not saved to the database.")
@@ -654,7 +650,7 @@ class SampleView(_Sample):
         its elements) behavior is not guaranteed
 
     Args:
-        doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
+        doc: a `dict`
         dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
             belongs to
         selected_fields (None): a set of field names that this sample view is
@@ -667,13 +663,16 @@ class SampleView(_Sample):
 
     def __init__(
         self,
-        doc,
+        d,
         dataset,
         selected_fields=None,
         excluded_fields=None,
         filtered_fields=None,
     ):
         super().__init__(dataset=dataset)
+
+        # @todo(Tyler) don't even construct this!
+        doc = dataset._sample_doc_cls.from_dict(d, extended=False)
 
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(

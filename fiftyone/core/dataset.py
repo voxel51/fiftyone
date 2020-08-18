@@ -195,9 +195,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if d is None:
             raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
 
-        doc = self._sample_dict_to_doc(d)
-
-        return fos.Sample.from_doc(doc, dataset=self)
+        return self._dict_to_sample(d)
 
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
@@ -295,7 +293,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except ValueError:
             raise ValueError("%s is empty" % self.__class__.__name__)
 
-        return fos.Sample.from_doc(sample_view._doc, dataset=self)
+        # @todo(Tyler) this could be more efficient (uses two queries ATM)
+        return self[sample_view.id]
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the dataset.
@@ -309,10 +308,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [
-            fos.Sample.from_doc(sv._doc, dataset=self)
-            for sv in self[:num_samples]
-        ]
+        # @todo(Tyler) this could be more efficient (uses two queries ATM)
+        return [self[sv.id] for sv in self[:num_samples]]
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the dataset.
@@ -326,10 +323,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [
-            fos.Sample.from_doc(sv._doc, dataset=self)
-            for sv in self[-num_samples:]
-        ]
+        # @todo(Tyler) this could be more efficient (uses two queries ATM)
+        return [self[sv.id] for sv in self[-num_samples:]]
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -444,8 +439,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self._sample_collection.find():
-            doc = self._sample_dict_to_doc(d)
-            yield fos.Sample.from_doc(doc, dataset=self)
+            yield self._dict_to_sample(d)
 
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
@@ -1419,8 +1413,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     )
                     fields = self.get_field_schema(include_private=True)
 
-    def _sample_dict_to_doc(self, d):
-        return self._sample_doc_cls.from_dict(d, extended=False)
+    def _dict_to_sample(self, d):
+        return fos.Sample.from_db_doc(d, dataset=self)
 
     def _to_fields_str(self, field_schema):
         max_len = max([len(field_name) for field_name in field_schema]) + 1
