@@ -20,12 +20,13 @@ logger = logging.getLogger(__name__)
 #
 # _session is the proxy `Session` for `launch_app()` and `close_app()` calls
 # _server_services maintains active servers
-# _subscribed_sessions maintains servers subscribed to an active server
+# _subscribed_sessions maintains sessions subscribed to an active server
 #
 # Both maps use port as the key, so the main python process is always aware
 # of what servers can be killed
 #
-# Note that a server process is killed via deletion of its `fiftyone.core.service.ServerService` instance
+# Note that a server process is killed via deletion of its
+# `fiftyone.core.service.ServerService` instance
 #
 _session = None
 _server_services = {}
@@ -155,8 +156,10 @@ class Session(foc.HasClient):
             )
 
     def __del__(self):
-        """Deletes the Session by removing it from the `_subscribed_sessions` global and
-        deleting (stopping) the associated `ServerService` if no other sessions are subscribed"""
+        """Deletes the Session by removing it from the `_subscribed_sessions`
+        global and deleting (stopping) the associated `ServerService` if no
+        other sessions are subscribed
+        """
         global _subscribed_sessions  # pylint: disable=global-statement
         _subscribed_sessions[self._port].discard(self)
 
