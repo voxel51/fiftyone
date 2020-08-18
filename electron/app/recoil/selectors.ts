@@ -98,7 +98,7 @@ export const labelNames = selector({
 export const labelTypes = selector({
   key: "labelTypes",
   get: ({ get }) => {
-    const { labels } = get(atoms.stateDescription).derivables || {};
+    const labels = (get(atoms.stateDescription).derivables || {}).labels || [];
     const names = get(labelNames);
     const types = {};
     for (const label of labels) {

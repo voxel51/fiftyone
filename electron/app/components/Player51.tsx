@@ -106,8 +106,9 @@ export default ({
       setInitLoad(true);
       onLoad();
     } else {
+      player.renderer.handleOverlay(overlay);
       player.renderer.processFrame(activeLabels);
     }
-  }, [activeLabels]);
+  }, [overlay, activeLabels]);
   return <div id={id} style={style} {...props} />;
 };
