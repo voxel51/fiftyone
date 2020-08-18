@@ -9,6 +9,8 @@ FiftyOne provides methods that allow you to sort, slice, and search your
 Performing these actions returns a |DatasetView| into your |Dataset| that will
 that will show only the samples and labels therein that match your criteria.
 
+.. _using-views:
+
 Overview
 ________
 
