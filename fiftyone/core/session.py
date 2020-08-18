@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 # Global session singleton
 session = None
+# Global server services map
+_server_services = {}
 
 
 def launch_app(dataset=None, view=None, port=5151, remote=False):
@@ -118,6 +120,9 @@ class Session(foc.HasClient):
     def __init__(self, dataset=None, view=None, port=5151, remote=False):
         self._port = port
         self._remote = remote
+        global _server_services
+        if port not in _server_services:
+            _server_services[port] = fos.ServerService(port)
 
         super().__init__(self._port)
 
@@ -157,6 +162,10 @@ class Session(foc.HasClient):
         session, if any.
         """
         self.state.dataset = None
+
+    @property
+    def server_port(self):
+        return self._port
 
     @property
     def view(self):
