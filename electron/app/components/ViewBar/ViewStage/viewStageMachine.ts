@@ -417,7 +417,7 @@ const viewStageMachine = Machine(
                     idx += 1;
                   }
                   idx = refIndex - 1;
-                  while (idx) {
+                  while (idx >= 0) {
                     if (!ctx.parameters[idx].submitted) {
                       return ctx.parameters[idx].ref;
                     }

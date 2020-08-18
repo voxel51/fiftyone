@@ -263,12 +263,6 @@ const ViewStage = React.memo(({ stageRef }) => {
     config: config.stiff,
   });
 
-  useEffect(() => {
-    inputRef.current && send({ type: "FOCUS", inputRef: inputRef });
-  }, [inputRef.current]);
-
-  console.log(state.toStrings(), state.event);
-
   return (
     <>
       <ViewStageContainer style={containerProps}>

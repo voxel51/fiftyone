@@ -238,7 +238,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
               placeholder={makePlaceholder(parameter, type, defaultValue)}
               value={value}
               onFocus={() => !isEditing && send({ type: "EDIT" })}
-              onBlur={() => isEditing && send("COMMIT")}
+              onBlur={() => isEditing && send({ type: "COMMIT" })}
               onChange={(e) => {
                 send({ type: "CHANGE", value: e.target.value });
               }}
@@ -249,7 +249,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
               }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
-                  send({ type: "CANCEL" });
+                  send({ type: "COMMIT" });
                 }
               }}
               ref={inputRef}

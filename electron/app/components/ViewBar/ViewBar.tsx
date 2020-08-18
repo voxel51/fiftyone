@@ -83,12 +83,20 @@ const ViewBar = () => {
     VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
   };
 
-  useOutsideClick(barRef, () => send("BLUR"));
+  useOutsideClick(
+    barRef,
+    () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
+  );
 
   return (
     <ViewBarContainer>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
-      <ViewBarDiv onClick={() => send("FOCUS")} ref={barRef}>
+      <ViewBarDiv
+        onClick={() =>
+          state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
+        }
+        ref={barRef}
+      >
         {state.matches("running")
           ? stages.map((stage, i) => {
               return (
