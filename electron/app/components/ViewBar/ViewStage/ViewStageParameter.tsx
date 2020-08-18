@@ -164,7 +164,7 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
-                send({ type: "CANCEL" });
+                send("COMMIT");
               }
             }}
             value={value}
