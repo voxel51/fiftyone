@@ -72,6 +72,10 @@ const Container = styled.div`
     align-items: center;
     justify-content: center;
     overflow: hidden;
+
+    .p51-video-options-panel {
+      z-index: 1500;
+    }
   }
 
   .nav-button {
