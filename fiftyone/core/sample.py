@@ -455,15 +455,10 @@ class Sample(_Sample):
         Returns:
             a :class:`Sample`
         """
-        # @todo(Tyler) don't even construct this!
-        doc = dataset._sample_doc_cls.from_dict(d, extended=False)
-
-        if not doc.id:
-            raise ValueError("`doc` is not saved to the database.")
 
         try:
             # Get instance if exists
-            sample = cls._instances[doc.collection_name][str(doc.id)]
+            sample = cls._instances[dataset._sample_collection_name][str(d["_id"])]
         except KeyError:
             sample = cls.__new__(cls)
             sample._doc = None  # set to prevent RecursionError
@@ -471,7 +466,7 @@ class Sample(_Sample):
                 raise ValueError(
                     "`dataset` arg must be provided if sample is in a dataset"
                 )
-            sample._set_backing_doc(doc, dataset=dataset)
+            sample._set_backing_doc(d, dataset=dataset)
 
         return sample
 
@@ -568,13 +563,16 @@ class Sample(_Sample):
         for sample in cls._instances[collection_name].values():
             sample._doc._data.pop(field_name, None)
 
-    def _set_backing_doc(self, doc, dataset=None):
+    def _set_backing_doc(self, d, dataset=None):
         """Updates the backing doc for the sample.
 
         For use **only** when adding a sample to a dataset.
         """
         if isinstance(self._doc, foo.DatasetSampleDocument):
             raise TypeError("Sample already belongs to a dataset")
+
+        # @todo(Tyler) don't even construct this!
+        doc = dataset._sample_doc_cls.from_dict(d, extended=False)
 
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(

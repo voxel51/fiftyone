@@ -475,8 +475,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample._in_db:
-            doc = self._sample_doc_cls.from_dict(d, extended=False)
-            sample._set_backing_doc(doc, dataset=self)
+            sample._set_backing_doc(d, dataset=self)
 
         return str(d["_id"])
 
@@ -538,8 +537,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for sample, d in zip(samples, dicts):
             if not sample._in_db:
-                doc = self._sample_doc_cls.from_dict(d, extended=False)
-                sample._set_backing_doc(doc, dataset=self)
+                sample._set_backing_doc(d, dataset=self)
 
         return [str(d["_id"]) for d in dicts]
 
@@ -1444,6 +1442,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             field.validate(value)
 
+    @property
+    def skema(self):
+        return self._sample_doc_cls
 
 class DoesNotExistError(Exception):
     """Exception raised when a dataset that does not exist is encountered."""
