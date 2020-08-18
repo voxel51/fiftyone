@@ -1,11 +1,10 @@
 import React, { useContext, useEffect, useRef, useMemo, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
-import { useRecoilValue } from "recoil";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
-import { GlobalHotKeys } from "react-hotkeys";
-import { Add, KeyboardReturn as Arrow, Close } from "@material-ui/icons";
+import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
+import { shell } from "electron";
 
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
@@ -198,7 +197,15 @@ const ViewStage = React.memo(({ stageRef }) => {
   const [state, send] = useService(stageRef);
   const inputRef = useRef(null);
 
-  const { stage, parameters, active, results, currentResult } = state.context;
+  const {
+    stage,
+    parameters,
+    results,
+    currentResult,
+    length,
+    index,
+    focusOnInit,
+  } = state.context;
 
   const isCompleted = [
     "input.reading.selected",
@@ -206,10 +213,8 @@ const ViewStage = React.memo(({ stageRef }) => {
   ].some(state.matches);
 
   const deleteProps = useSpring({
-    borderStyle: isCompleted ? "solid" : "dashed",
-    backgroundColor: isCompleted
-      ? theme.brandTransparent
-      : theme.brandMoreTransparent,
+    borderStyle: "solid",
+    backgroundColor: theme.brandTransparent,
     opacity: 1,
     from: {
       opacity: 0,
@@ -221,7 +226,11 @@ const ViewStage = React.memo(({ stageRef }) => {
     backgroundColor: isCompleted
       ? theme.brandTransparent
       : theme.brandMoreTransparent,
-    borderRightWidth: isCompleted ? 0 : 2,
+    borderRightWidth:
+      (!parameters.length && index === 0 && length === 1) ||
+      (index !== 0 && !parameters.length)
+        ? 2
+        : 0,
     borderTopRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     borderBottomRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     opacity: 1,
@@ -253,10 +262,6 @@ const ViewStage = React.memo(({ stageRef }) => {
     config: config.stiff,
   });
 
-  useEffect(() => {
-    inputRef.current && send({ type: "FOCUS", inputRef: inputRef });
-  }, [inputRef.current]);
-
   return (
     <>
       <ViewStageContainer style={containerProps}>
@@ -264,6 +269,7 @@ const ViewStage = React.memo(({ stageRef }) => {
           <ViewStageInput
             placeholder="+ add stage"
             value={stage}
+            autoFocus={focusOnInit}
             onFocus={() => !state.matches("input.editing") && send("EDIT")}
             onBlur={(e) => {
               state.matches("input.editing.searchResults.notHovering") &&
@@ -291,14 +297,25 @@ const ViewStage = React.memo(({ stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
-        </ViewStageDiv>
-        {isCompleted &&
-          parameters.map((parameter) => (
-            <ViewStageParameter
-              key={parameter.id}
-              parameterRef={parameter.ref}
+          {isCompleted && (
+            <Help
+              onClick={() =>
+                shell.openExternal(
+                  `https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`
+                )
+              }
+              style={{
+                cursor: "pointer",
+                width: "1rem",
+                height: "1rem",
+                margin: "0.5rem 0.5rem 0.5rem 0",
+              }}
             />
-          ))}
+          )}
+        </ViewStageDiv>
+        {parameters.map((parameter) => (
+          <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
+        ))}
         {state.matches("delible.yes") ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
