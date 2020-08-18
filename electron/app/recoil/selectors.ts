@@ -28,7 +28,7 @@ export const datasetStats = selector({
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
     return stateDescription.derivables
-      ? stateDescription.derivables.dataset_stats
+      ? stateDescription.derivables.view_stats
       : {};
   },
 });
@@ -69,7 +69,7 @@ export const tagNames = selector({
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.stateDescription).derivables.dataset_stats.tags || {};
+    return get(atoms.stateDescription).derivables.view_stats.tags || {};
   },
 });
 

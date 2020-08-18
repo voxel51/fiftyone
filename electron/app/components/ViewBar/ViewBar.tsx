@@ -4,7 +4,8 @@ import { useSpring } from "react-spring";
 import { useMachine } from "@xstate/react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
-import { Close } from "@material-ui/icons";
+import { Close, Help } from "@material-ui/icons";
+import { shell } from "electron";
 
 import { useOutsideClick } from "../../utils/hooks";
 import { port, stateDescription } from "../../recoil/atoms";
@@ -38,19 +39,14 @@ const ViewBarDiv = styled.div`
   }
 `;
 
-/*const connectedViewBarMachine = viewBarMachine.withConfig(
-  {
-    actions: {
-      submit: (ctx) => {
-        // ...
-      },
-    },
-  },
-  // load view from recoil
-  {
-    stage:
-  }
-);*/
+const Link = styled.a``;
+
+const IconsContainer = styled.div`
+  position: absolute;
+  top: 1rem;
+  right: 0.5rem;
+  display: flex;
+`;
 
 const viewBarKeyMap = {
   VIEW_BAR_FOCUS: "alt+shift+v",
@@ -123,15 +119,23 @@ const ViewBar = () => {
           />
         ) : null}
       </ViewBarDiv>
-      <Close
-        onClick={() => send("CLEAR")}
-        style={{
-          cursor: "pointer",
-          position: "absolute",
-          right: "0.5rem",
-          top: "1rem",
-        }}
-      />
+
+      <IconsContainer>
+        <Close
+          onClick={() => send("CLEAR")}
+          style={{
+            cursor: "pointer",
+          }}
+        />
+        <Help
+          onClick={() =>
+            shell.openExternal(
+              "https://voxel51.com/docs/fiftyone/user_guide/app.html"
+            )
+          }
+          style={{ cursor: "pointer" }}
+        />
+      </IconsContainer>
     </ViewBarContainer>
   );
 };

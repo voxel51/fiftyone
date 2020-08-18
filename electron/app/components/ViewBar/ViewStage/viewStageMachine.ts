@@ -9,12 +9,14 @@ export const createParameter = (
   stage,
   parameter,
   type,
+  defaultValue,
   value,
   submitted,
   focusOnInit,
   tail
 ) => ({
   id: uuid(),
+  defaultValue,
   parameter: parameter,
   type: type,
   stage: stage,
@@ -151,7 +153,7 @@ const viewStageMachine = Machine(
               }),
               "focusInput",
               sendParent((ctx) => ({
-                type: "SET",
+                type: "STAGE.EDIT",
                 index: ctx.index,
               })),
             ],
@@ -191,7 +193,7 @@ const viewStageMachine = Machine(
             on: {
               CHANGE: {
                 actions: assign({
-                  stage: (ctx, e) => e.stage,
+                  stage: (_, e) => e.stage,
                   results: ({ stageInfo }, e) =>
                     stageInfo
                       .map((s) => s.name)
@@ -199,6 +201,7 @@ const viewStageMachine = Machine(
                         n.toLowerCase().includes(e.stage.toLowerCase())
                       ),
                   currentResult: null,
+                  errorId: undefined,
                 }),
               },
               COMMIT: [
@@ -216,6 +219,7 @@ const viewStageMachine = Machine(
                             stage,
                             parameter.name,
                             parameter.type,
+                            parameter.default,
                             "",
                             false,
                             i === 0,
@@ -229,6 +233,7 @@ const viewStageMachine = Machine(
                           ),
                         }));
                       },
+                      errorId: undefined,
                     }),
                     send("UPDATE_DELIBLE"),
                   ],
@@ -240,13 +245,13 @@ const viewStageMachine = Machine(
                   },
                 },
                 {
-                  target: "reading.pending",
                   actions: [
                     assign({
-                      stage: () => "",
                       submitted: () => false,
+                      error: (_, { stage }) =>
+                        `${stage === "" ? '""' : stage} is not a valid stage`,
+                      errorId: uuid(),
                     }),
-                    "blurInput",
                   ],
                 },
               ],
@@ -257,6 +262,7 @@ const viewStageMachine = Machine(
                     sendParent((ctx) => ({
                       type: "STAGE.DELETE",
                       stage: ctx,
+                      errorId: undefined,
                     })),
                     "blurInput",
                   ],
@@ -267,6 +273,7 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       stage: () => "",
+                      errorId: undefined,
                     }),
                     "blurInput",
                   ],
@@ -277,6 +284,7 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       stage: (ctx) => ctx.prevStage,
+                      errorId: undefined,
                     }),
                   ],
                   cond: (ctx) => ctx.submitted,
@@ -346,6 +354,20 @@ const viewStageMachine = Machine(
       },
     },
     on: {
+      CLEAR_ERROR: {
+        actions: [
+          assign({
+            error: undefined,
+          }),
+        ],
+      },
+      CLEAR_ERROR_ID: {
+        actions: [
+          assign({
+            errorId: undefined,
+          }),
+        ],
+      },
       NEXT_RESULT: {
         actions: assign({
           currentResult: ({ currentResult, results }) => {
@@ -437,6 +459,11 @@ const viewStageMachine = Machine(
               }),
             },
           ]),
+        ],
+      },
+      "PARAMETER.EDIT": {
+        actions: [
+          sendParent((ctx) => ({ type: "STAGE.EDIT", index: ctx.index })),
         ],
       },
     },

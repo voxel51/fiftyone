@@ -5,6 +5,7 @@ Defines the shared state between the FiftyOne App and SDK.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import OrderedDict
 import logging
 
 from bson import json_util
@@ -12,6 +13,8 @@ from bson import json_util
 import eta.core.serial as etas
 
 import fiftyone.core.dataset as fod
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
@@ -110,13 +113,10 @@ class StateDescriptionWithDerivables(StateDescription):
     broker.
     """
 
-    def __init__(self, derivables=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if derivables is not None:
-            self.derivables = derivables
-        else:
-            self.derivables = self.get_derivables()
+        self.derivables = self.get_derivables()
 
     def get_derivables(self):
         """Computes all "derivable" data that needs to be passed to the app,
@@ -127,21 +127,19 @@ class StateDescriptionWithDerivables(StateDescription):
                 information.
         """
         return {
-            "dataset_stats": self._get_dataset_stats(),
+            "view_stats": self._get_view_stats(),
             "field_schema": self._get_field_schema(),
             **self._get_label_info(),
         }
 
-    @classmethod
-    def from_dict(cls, d, **kwargs):
-        kwargs["derivables"] = d.get("derivables", None)
-        return super().from_dict(d, **kwargs)
+    def _get_view_stats(self):
+        if self.view is not None:
+            return get_view_stats(self.view)
 
-    def _get_dataset_stats(self):
         if self.dataset is None:
             return {}
 
-        return get_dataset_stats(self.dataset)
+        return get_view_stats(self.dataset)
 
     def _get_field_schema(self):
         if self.dataset is None:
@@ -165,25 +163,31 @@ class StateDescriptionWithDerivables(StateDescription):
             "tags": list(sorted(view.get_tags())),
         }
 
-    def _get_label_fields(self, view):
-        pipeline = [
-            {"$project": {"_rand": False}},
-            {"$project": {"field": {"$objectToArray": "$$ROOT"}}},
-            {"$unwind": "$field"},
-            {"$group": {"_id": {"field": "$field.k", "cls": "$field.v._cls"}}},
-        ]
-        return sorted(
-            [f for f in view.aggregate(pipeline)],
-            key=lambda field: field["_id"]["field"],
-        )
+    @staticmethod
+    def _get_label_fields(view):
+        label_fields = []
+
+        # @todo is this necessary?
+        label_fields.append({"_id": {"field": "_id"}})
+
+        # @todo can we remove the "_id" nesting?
+        for k, v in view.get_field_schema().items():
+            d = {"field": k}
+            if isinstance(v, fof.EmbeddedDocumentField):
+                d["cls"] = v.document_type.__name__
+
+            label_fields.append({"_id": d})
+
+        return sorted(label_fields, key=lambda field: field["_id"]["field"])
 
 
-def get_dataset_stats(dataset):
+def get_view_stats(dataset_or_view):
     """Counts instances of each tag and each field within the samples of a
-    dataset
+    view.
 
     Args:
-        dataset: a :class:`fiftyone.core.dataset.Dataset` instance
+        dataset_or_view: a :class:`fiftyone.core.view.DatasetView` or
+            :class:`fiftyone.core.dataset.Dataset` instance
 
     Returns:
         a dictionary with structure:
@@ -201,18 +205,54 @@ def get_dataset_stats(dataset):
                 }
             }
     """
-    _sample_doc_cls = type(dataset.name, (foo.DatasetSampleDocument,), {})
-    num_default_fields = len(_sample_doc_cls.get_field_schema())
+    if isinstance(dataset_or_view, fod.Dataset):
+        view = dataset_or_view.view()
+    else:
+        view = dataset_or_view
 
-    field_names = [field_name for field_name in dataset.get_field_schema()]
+    custom_fields_schema = view.get_field_schema().copy()
+    for field_name in fod.Dataset.get_default_sample_fields(
+        include_private=True
+    ):
+        custom_fields_schema.pop(field_name, None)
 
     return {
-        "tags": {
-            tag: len(dataset.view().match_tag(tag))
-            for tag in dataset.get_tags()
-        },
+        "tags": {tag: len(view.match_tag(tag)) for tag in view.get_tags()},
         "custom_fields": {
-            field_name: len(dataset.view().exists(field_name))
-            for field_name in field_names[num_default_fields:]
+            field_name: _get_field_count(view, field_name, field)
+            for field_name, field in custom_fields_schema.items()
         },
     }
+
+
+def _get_field_count(view, field_name, field):
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if issubclass(field.document_type, fol.Classifications):
+            array_field = "$%s.classifications" % field_name
+        elif issubclass(field.document_type, fol.Detections):
+            array_field = "$%s.detections" % field_name
+        else:
+            array_field = None
+
+        if array_field:
+            # sum of lengths of arrays for each document
+            pipeline = [
+                {
+                    "$group": {
+                        "_id": None,
+                        "totalCount": {
+                            "$sum": {
+                                "$cond": {
+                                    "if": {"$isArray": array_field},
+                                    "then": {"$size": array_field},
+                                    "else": 0,
+                                }
+                            }
+                        },
+                    }
+                }
+            ]
+
+            return next(view.aggregate(pipeline))["totalCount"]
+
+    return len(view.exists(field_name))
