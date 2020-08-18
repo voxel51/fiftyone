@@ -293,7 +293,7 @@ class NoDatasetSampleDocument(SerializableDocument):
         pass
 
 
-class _Sample(object):
+class _Sample(SerializableDocument):
     """Base class for :class:`Sample` and :class:`SampleView`."""
 
     def __init__(self, dataset=None):

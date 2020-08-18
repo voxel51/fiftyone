@@ -756,7 +756,8 @@ class SampleTests(unittest.TestCase):
     @drop_datasets
     def test_backing_doc_type(self):
         sample = fo.Sample(filepath="/path/to/image.jpg")
-        self.assertIsInstance(sample._doc, foo.NoDatasetSampleDocument)
+        # @todo(Tyler)
+        # self.assertIsNone(sample._doc)
 
     @drop_datasets
     def test_abs_filepath(self):
