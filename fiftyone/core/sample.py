@@ -251,7 +251,9 @@ class _Sample(SerializableDocument):
             return self._doc.clear_field(field_name=field_name)
 
         if field_name in self._default_fields:
-            default_value = self._get_default(self._default_fields[field_name])
+            default_value = self._get_field_default(
+                self._default_fields[field_name]
+            )
             self.set_field(field_name, default_value)
         else:
             self._data.pop(field_name, None)
@@ -366,7 +368,7 @@ class _Sample(SerializableDocument):
         return d
 
     @staticmethod
-    def _get_default(field):
+    def _get_field_default(field):
         if field.null:
             return None
 
@@ -386,6 +388,9 @@ class _Sample(SerializableDocument):
             return value
 
         raise ValueError("Field '%s' has no default" % field)
+
+    def _get_repr_fields(self):
+        return ("id",) + self.field_names
 
 
 class Sample(_Sample):
@@ -424,7 +429,9 @@ class Sample(_Sample):
                 value = _generate_rand(filepath=filepath)
 
             if value is None:
-                value = self._get_default(self._default_fields[field_name])
+                value = self._get_field_default(
+                    self._default_fields[field_name]
+                )
 
             if field_name == "filepath":
                 value = os.path.abspath(os.path.expanduser(value))
@@ -432,15 +439,6 @@ class Sample(_Sample):
             self._data[field_name] = value
 
         self._data.update(kwargs)
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        if self.in_dataset:
-            return self._doc.fancy_repr(class_name=self.__class__.__name__)
-
-        return super().__repr__()
 
     @classmethod
     def from_db_doc(cls, d, dataset):
@@ -458,7 +456,9 @@ class Sample(_Sample):
 
         try:
             # Get instance if exists
-            sample = cls._instances[dataset._sample_collection_name][str(d["_id"])]
+            sample = cls._instances[dataset._sample_collection_name][
+                str(d["_id"])
+            ]
         except KeyError:
             sample = cls.__new__(cls)
             sample._doc = None  # set to prevent RecursionError
@@ -628,9 +628,6 @@ class Sample(_Sample):
         self._doc = None
         self._dataset = None
 
-    def _get_repr_fields(self):
-        return ("id",) + self.field_names
-
 
 class SampleView(_Sample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
@@ -686,16 +683,6 @@ class SampleView(_Sample):
         self._selected_fields = selected_fields
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        return self._doc.fancy_repr(
-            class_name=self.__class__.__name__,
-            select_fields=self._selected_fields,
-            exclude_fields=self._excluded_fields,
-        )
 
     def __getattr__(self, name):
         if not name.startswith("_"):

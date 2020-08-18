@@ -26,36 +26,9 @@ class SerializableDocument(object):
         return self.__repr__()
 
     def __repr__(self):
-        return self.fancy_repr()
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-
-        return self.to_dict() == other.to_dict()
-
-    def fancy_repr(
-        self, class_name=None, select_fields=None, exclude_fields=None
-    ):
-        """Generates a customizable string representation of the document.
-
-        Args:
-            class_name (None): optional class name to use
-            select_fields (None): iterable of field names to restrict to
-            exclude_fields (None): iterable of field names to exclude
-
-        Returns:
-            a string representation of the document
-        """
         d = {}
         for f in self._get_repr_fields():
-            if f.startswith("_") or (
-                f != "id"
-                and (
-                    (select_fields is not None and f not in select_fields)
-                    or (exclude_fields is not None and f in exclude_fields)
-                )
-            ):
+            if f.startswith("_"):
                 continue
 
             value = getattr(self, f)
@@ -65,9 +38,14 @@ class SerializableDocument(object):
             else:
                 d[f] = value
 
-        doc_name = class_name or self.__class__.__name__
         doc_str = fou.pformat(d)
-        return "<%s: %s>" % (doc_name, doc_str)
+        return "<%s: %s>" % (self.__class__.__name__, doc_str)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.to_dict() == other.to_dict()
 
     def _get_repr_fields(self):
         """Returns an ordered tuple of field names that should be included in
