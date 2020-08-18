@@ -619,7 +619,11 @@ class _TFDSImageClassificationSampleParser(
         return self._parse_image(img)
 
     def get_label(self):
-        target = self.current_sample[self.label_field]
+        try:
+            target = self.current_sample[self.label_field]
+        except:
+            return None
+
         return self._parse_label(target)
 
 
@@ -634,7 +638,10 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
         return self._parse_image(img)
 
     def get_label(self):
-        target = self.current_sample[self.objects_field]
+        try:
+            target = self.current_sample[self.objects_field]
+        except:
+            return None
 
         if not self.normalized:
             # Absolute bounding box coordinates were provided, so we must have
@@ -646,6 +653,9 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
         return self._parse_label(target, img=img)
 
     def _parse_label(self, target, img=None):
+        if target is None:
+            return None
+
         # Convert from dict-of-lists to list-of-dicts
         target = [
             {self.bounding_box_field: bbox, self.label_field: label}

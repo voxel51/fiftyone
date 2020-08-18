@@ -94,6 +94,13 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.name
 
     @property
+    def info(self):
+        """The :meth:`fiftyone.core.dataset.Dataset.info` dict of the
+        underlying dataset.
+        """
+        return self._dataset.info
+
+    @property
     def stages(self):
         """The list of :class:`fiftyone.core.stages.ViewStage` instances in
         this view's pipeline.
@@ -165,12 +172,12 @@ class DatasetView(foc.SampleCollection):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
-            include_private (False): a boolean indicating whether to return
-                fields that start with the character "_"
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              an ``OrderedDict`` mapping field names to field types

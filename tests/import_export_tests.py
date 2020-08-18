@@ -132,6 +132,49 @@ def make_image_labels_dataset(
     return dataset
 
 
+def make_labeled_dataset_with_no_labels(img, images_dir):
+    filepath = os.path.join(images_dir, "test.png")
+    etai.write(img, filepath)
+
+    dataset = fo.Dataset()
+    dataset.add_sample(fo.Sample(filepath=filepath))
+    dataset.add_sample_field(
+        "ground_truth", fo.EmbeddedDocumentField, embedded_doc_type=fo.Label
+    )
+
+    dataset.info = {
+        # FiftyOneImageClassificationDataset
+        # FiftyOneImageDetectionDataset
+        "classes": ["cat", "dog"],
+        # COCODetectionDataset
+        "year": "5151",
+        "version": "5151",
+        "description": "Brian's Dataset",
+        "contributor": "Brian Moore",
+        "url": "https://github.com/brimoor",
+        "date_created": "5151-51-51T51:51:51",
+        "licenses": ["license1", "license2"],
+        # CVATImageDataset
+        "task_labels": [
+            {
+                "name": "cat",
+                "attributes": [
+                    {"name": "fluffy", "categories": ["yes", "no"]}
+                ],
+            },
+            {
+                "name": "dog",
+                "attributes": [
+                    {"name": "awesome", "categories": ["yes", "of course"]}
+                ],
+            },
+        ],
+    }
+    dataset.save()
+
+    return dataset
+
+
 def test_classification_datasets(basedir, img):
     # Create a classification dataset
     images_dir = os.path.join(basedir, "source-images")
@@ -303,6 +346,112 @@ def test_rel_filepaths(basedir, img):
     )
     for s_abs, s_rel in zip(dataset1, dataset2):
         assert s_abs.filepath == s_rel.filepath
+
+
+def test_labeled_datasets_with_no_labels(basedir, img):
+    # Create a classification dataset
+    images_dir = os.path.join(basedir, "source-images")
+    dataset = make_labeled_dataset_with_no_labels(img, images_dir)
+
+    # FiftyOneImageClassificationDataset
+    export_dir = os.path.join(basedir, "FiftyOneImageClassificationDataset")
+    dataset_type = fo.types.FiftyOneImageClassificationDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d1 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # ImageClassificationDirectoryTree
+    export_dir = os.path.join(basedir, "ImageClassificationDirectoryTree")
+    dataset_type = fo.types.ImageClassificationDirectoryTree
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d2 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # TFImageClassificationDataset
+    export_dir = os.path.join(basedir, "TFImageClassificationDataset")
+    images_dir = os.path.join(
+        basedir, "TFImageClassificationDataset/unpacked-images"
+    )
+    dataset_type = fo.types.TFImageClassificationDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d3 = fo.Dataset.from_dir(export_dir, dataset_type, images_dir=images_dir)
+
+    # FiftyOneImageDetectionDataset
+    export_dir = os.path.join(basedir, "FiftyOneImageDetectionDataset")
+    dataset_type = fo.types.FiftyOneImageDetectionDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d4 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # COCODetectionDataset
+    export_dir = os.path.join(basedir, "COCODetectionDataset")
+    dataset_type = fo.types.COCODetectionDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d5 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # VOCDetectionDataset
+    export_dir = os.path.join(basedir, "VOCDetectionDataset")
+    dataset_type = fo.types.VOCDetectionDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d6 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # KITTIDetectionDataset
+    export_dir = os.path.join(basedir, "KITTIDetectionDataset")
+    dataset_type = fo.types.KITTIDetectionDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d7 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # TFObjectDetectionDataset
+    export_dir = os.path.join(basedir, "TFObjectDetectionDataset")
+    images_dir = os.path.join(
+        basedir, "TFObjectDetectionDataset/unpacked-images"
+    )
+    dataset_type = fo.types.TFObjectDetectionDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d8 = fo.Dataset.from_dir(export_dir, dataset_type, images_dir=images_dir)
+
+    # CVATImageDataset
+    export_dir = os.path.join(basedir, "CVATImageDataset")
+    dataset_type = fo.types.CVATImageDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d9 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # FiftyOneImageLabelsDataset
+    export_dir = os.path.join(basedir, "FiftyOneImageLabelsDataset")
+    dataset_type = fo.types.FiftyOneImageLabelsDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d10 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # BDDDataset
+    export_dir = os.path.join(basedir, "BDDDataset")
+    dataset_type = fo.types.BDDDataset
+    dataset.export(
+        export_dir, label_field="ground_truth", dataset_type=dataset_type
+    )
+    d11 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+    # FiftyOneDataset
+    export_dir = os.path.join(basedir, "FiftyOneDataset")
+    dataset_type = fo.types.FiftyOneDataset
+    dataset.export(export_dir, dataset_type=dataset_type)
+    d12 = fo.Dataset.from_dir(export_dir, dataset_type)
 
 
 if __name__ == "__main__":
