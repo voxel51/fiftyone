@@ -29,65 +29,10 @@ from fiftyone.core.odm.document import SerializableDocument
 from fiftyone.core.odm.sample import _generate_rand, default_sample_fields
 
 
-class NoDatasetSampleDocument(SerializableDocument):
-    """Backing document for samples that have not been added to a dataset."""
-
-    # pylint: disable=no-member
-    default_fields = foo.DatasetSampleDocument._fields
-    default_fields_ordered = default_sample_fields(include_private=True)
-
-    def __init__(self, **kwargs):
-        self._data = OrderedDict()
-        filepath = kwargs.get("filepath", None)
-
-        for field_name in self.default_fields_ordered:
-            value = kwargs.pop(field_name, None)
-
-            if field_name == "_rand":
-                value = _generate_rand(filepath=filepath)
-
-            if value is None:
-                value = self._get_default(self.default_fields[field_name])
-
-            if field_name == "filepath":
-                value = os.path.abspath(os.path.expanduser(value))
-
-            self._data[field_name] = value
-
-        self._data.update(kwargs)
-
-    @property
-    def in_db(self):
-        """Whether the sample has been added to the database."""
-        return False
-
-    # @todo(Tyler) just delete this
-    @staticmethod
-    def _get_default(field):
-        if field.null:
-            return None
-
-        if field.default is not None:
-            value = field.default
-
-            if callable(value):
-                value = value()
-
-            if isinstance(value, list) and value.__class__ != list:
-                value = list(value)
-            elif isinstance(value, tuple) and value.__class__ != tuple:
-                value = tuple(value)
-            elif isinstance(value, dict) and value.__class__ != dict:
-                value = dict(value)
-
-            return value
-
-        raise ValueError("Field '%s' has no default" % field)
-
-
 class _Sample(SerializableDocument):
     """Base class for :class:`Sample` and :class:`SampleView`."""
 
+    # pylint: disable=no-member
     _default_fields = foo.DatasetSampleDocument._fields
     _default_fields_ordered = default_sample_fields(include_private=True)
 
@@ -108,7 +53,7 @@ class _Sample(SerializableDocument):
             return self._doc.get_field(name)
 
         try:
-            return self._doc._data[name]
+            return self._data[name]
         except Exception:
             raise AttributeError("No attribute '%s'" % name)
 
@@ -129,7 +74,7 @@ class _Sample(SerializableDocument):
                 "is not allowed; use `sample['field'] = value` instead"
             )
 
-        self._doc._data[name] = value
+        self._data[name] = value
 
     def __delattr__(self, name):
         try:
@@ -159,7 +104,13 @@ class _Sample(SerializableDocument):
         if not isinstance(other, self.__class__):
             return False
 
-        return self._doc == other._doc
+        if not isinstance(other._doc, self._doc.__class__):
+            return False
+
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc == other._doc
+
+        return super().__eq__(other)
 
     @property
     def filename(self):
@@ -201,15 +152,16 @@ class _Sample(SerializableDocument):
         if isinstance(self._doc, foo.DatasetSampleDocument):
             return self._doc.field_names
 
-        _data = self._doc._data
-        return tuple(k for k in _data.keys() if not k.startswith("_"))
+        return tuple(k for k in self._data.keys() if not k.startswith("_"))
 
     @property
     def _in_db(self):
         """Whether the underlying :class:`fiftyone.core.odm.Document` has
         been inserted into the database.
         """
-        return self._doc.in_db
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.in_db
+        return False
 
     def has_field(self, field_name):
         """Determines whether the sample has a field of the given name.
@@ -224,7 +176,7 @@ class _Sample(SerializableDocument):
             return self._doc.has_field(field_name)
 
         try:
-            return field_name in self._doc._data
+            return field_name in self._data
         except AttributeError:
             # If `_data` is not initialized
             return False
@@ -276,7 +228,7 @@ class _Sample(SerializableDocument):
         if not self.has_field(field_name):
             if create:
                 # dummy value so that it is identified by __setattr__
-                self._doc._data[field_name] = None
+                self._data[field_name] = None
             else:
                 msg = "Sample does not have field '%s'." % field_name
                 if value is not None:
@@ -302,7 +254,7 @@ class _Sample(SerializableDocument):
             default_value = self._get_default(self._default_fields[field_name])
             self.set_field(field_name, default_value)
         else:
-            self._doc._data.pop(field_name, None)
+            self._data.pop(field_name, None)
 
     def iter_fields(self):
         """Returns an iterator over the field (name, value) pairs of the
@@ -386,7 +338,7 @@ class _Sample(SerializableDocument):
 
     def _to_dict(self, extended=False):
         d = {}
-        for k, v in self._doc._data.items():
+        for k, v in self._data.items():
             if hasattr(v, "to_dict"):
                 # Embedded document
                 d[k] = v.to_dict(extended=extended)
@@ -459,9 +411,27 @@ class Sample(_Sample):
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         super().__init__()
 
-        self._doc = NoDatasetSampleDocument(
-            filepath=filepath, tags=tags, metadata=metadata, **kwargs
-        )
+        kwargs["filepath"] = filepath
+        kwargs["tags"] = tags
+        kwargs["metadata"] = metadata
+
+        self._data = OrderedDict()
+
+        for field_name in self._default_fields_ordered:
+            value = kwargs.pop(field_name, None)
+
+            if field_name == "_rand":
+                value = _generate_rand(filepath=filepath)
+
+            if value is None:
+                value = self._get_default(self._default_fields[field_name])
+
+            if field_name == "filepath":
+                value = os.path.abspath(os.path.expanduser(value))
+
+            self._data[field_name] = value
+
+        self._data.update(kwargs)
 
     def __str__(self):
         return repr(self)
@@ -485,11 +455,12 @@ class Sample(_Sample):
         Returns:
             a :class:`Sample`
         """
-        if isinstance(doc, NoDatasetSampleDocument):
-            sample = cls.__new__(cls)
-            sample._dataset = None
-            sample._doc = doc
-            return sample
+        # @todo(Tyler) delete?
+        # if isinstance(doc, NoDatasetSampleDocument):
+        #     sample = cls.__new__(cls)
+        #     sample._dataset = None
+        #     sample._doc = doc
+        #     return sample
 
         if not doc.id:
             raise ValueError("`doc` is not saved to the database.")
@@ -536,21 +507,7 @@ class Sample(_Sample):
             else:
                 kwargs[k] = v
 
-        doc = NoDatasetSampleDocument(**kwargs)
-        return cls.from_doc(doc)
-
-    @classmethod
-    def from_json(cls, s):
-        """Loads the sample from a JSON string.
-
-        Args:
-            s: the JSON string
-
-        Returns:
-            a :class:`Sample`
-        """
-        doc = NoDatasetSampleDocument.from_json(s)
-        return cls.from_doc(doc)
+        return cls(**kwargs)
 
     @classmethod
     def _save_dataset_samples(cls, collection_name):
@@ -644,8 +601,7 @@ class Sample(_Sample):
 
     @classmethod
     def _reset_backing_docs(cls, collection_name, sample_ids):
-        """Resets the samples' backing documents to
-        :class:`NoDatasetSampleDocument` instances.
+        """Resets the samples' backing documents to non-database samples.
 
         For use **only** when removing samples from a dataset.
 
@@ -661,9 +617,8 @@ class Sample(_Sample):
 
     @classmethod
     def _reset_all_backing_docs(cls, collection_name):
-        """Resets the sample's backing document to a
-        :class:`NoDatasetSampleDocument` instance for all
-        samples in a dataset.
+        """Resets the sample's backing document, making the sample a
+        non-database sample for all samples in a dataset.
 
         For use **only** when clearing a dataset.
 
@@ -678,7 +633,8 @@ class Sample(_Sample):
             sample._reset_backing_doc()
 
     def _reset_backing_doc(self):
-        self._doc = self.copy()._doc
+        self._data = self.copy()._data
+        self._doc = None
         self._dataset = None
 
     def _get_repr_fields(self):
