@@ -10,14 +10,16 @@ import logging
 import os
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 import fiftyone.core.stages as fos
+import fiftyone.core.utils as fou
 import fiftyone.types as fot
-import fiftyone.utils.annotations as foua
-import fiftyone.utils.data as foud
+
+foua = fou.lazy_import("fiftyone.utils.annotations")
+foud = fou.lazy_import("fiftyone.utils.data")
 
 
 logger = logging.getLogger(__name__)
@@ -84,6 +86,13 @@ class SampleCollection(object):
     def name(self):
         """The name of the collection."""
         raise NotImplementedError("Subclass must implement name")
+
+    @property
+    def info(self):
+        """The :meth:`fiftyone.core.dataset.Dataset.info` dict of the dataset
+        underlying the collection.
+        """
+        raise NotImplementedError("Subclass must implement info")
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -157,17 +166,21 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
         """Returns a schema dictionary describing the fields of the samples in
         the collection.
 
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types
@@ -502,12 +515,17 @@ class SampleCollection(object):
         dataset_type=None,
         dataset_exporter=None,
         label_field=None,
+        overwrite=True,
         **kwargs
     ):
         """Exports the samples in the collection to disk.
 
         Provide either ``export_dir`` and ``dataset_type`` or
         ``dataset_exporter`` to perform an export.
+
+        See :ref:`this guide <custom-dataset-exporter>` for more details about
+        exporting datasets in custom formats by defining your own
+        :class:`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`.
 
         Args:
             export_dir (None): the directory to which to export the samples in
@@ -522,6 +540,8 @@ class SampleCollection(object):
                 applicable. If not specified and the requested output type is
                 a labeled dataset, the first field of compatible type for the
                 output format is used
+            overwrite (True): when an ``export_dir`` is provided, whether to
+                delete the existing directory before performing the export
             **kwargs: optional keyword arguments to pass to
                 ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
         """
@@ -536,8 +556,32 @@ class SampleCollection(object):
         # If no dataset exporter was provided, construct one based on the
         # dataset type
         if dataset_exporter is None:
+            if os.path.isdir(export_dir):
+                if overwrite:
+                    etau.delete_dir(export_dir)
+                else:
+                    logger.warning(
+                        "Directory '%s' already exists; export will be merged "
+                        "with existing files",
+                        export_dir,
+                    )
+
             dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
-            dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
+
+            try:
+                dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
+            except Exception as e:
+                exporter_name = dataset_exporter_cls.__name__
+                raise ValueError(
+                    "Failed to construct exporter using syntax "
+                    "%s(export_dir, **kwargs); you may need to supply "
+                    "mandatory arguments to the constructor via `kwargs`. "
+                    "Please consult the documentation of `%s` to learn more"
+                    % (
+                        exporter_name,
+                        etau.get_class_name(dataset_exporter_cls),
+                    )
+                ) from e
 
         # If no label field was provided, choose the first label field that is
         # compatible with the dataset exporter
@@ -584,9 +628,6 @@ class SampleCollection(object):
             )
             len_rel_dir = len(rel_dir)
 
-        # Get field schema
-        fields = self.get_field_schema()
-
         # Serialize samples
         samples = []
         with fou.ProgressBar() as pb:
@@ -601,9 +642,8 @@ class SampleCollection(object):
             "name": self.name,
             "num_samples": len(self),
             "tags": self.get_tags(),
-            "sample_fields": {
-                field_name: str(field) for field_name, field in fields.items()
-            },
+            "info": self.info,
+            "sample_fields": self._serialize_field_schema(),
             "samples": samples,
         }
 
@@ -665,6 +705,13 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
+
+    def _serialize_field_schema(self):
+        field_schema = self.get_field_schema()
+        return {
+            field_name: str(field)
+            for field_name, field in field_schema.items()
+        }
 
 
 def _get_default_dataset_type(sample_collection, label_field):
