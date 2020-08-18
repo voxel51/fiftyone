@@ -191,58 +191,6 @@ class NoDatasetSampleDocument(SerializableDocument):
         else:
             self._data.pop(field_name, None)
 
-    def to_dict(self, extended=False):
-        d = {}
-        for k, v in self._data.items():
-            if hasattr(v, "to_dict"):
-                # Embedded document
-                d[k] = v.to_dict(extended=extended)
-            elif isinstance(v, np.ndarray):
-                # Must handle arrays separately, since they are non-primitives
-
-                # @todo cannot support serializing 1D arrays as lists because
-                # there is no way for `from_dict` to know that the data should
-                # be converted back to a numpy array
-                #
-                # if v.ndim == 1:
-                #     d[k] = v.tolist()
-                #
-
-                v_binary = fou.serialize_numpy_array(v)
-                if extended:
-                    # @todo improve this
-                    d[k] = json.loads(json_util.dumps(Binary(v_binary)))
-                else:
-                    d[k] = v_binary
-            else:
-                # JSON primitive
-                d[k] = v
-
-        return d
-
-    @classmethod
-    def from_dict(cls, d, extended=False):
-        kwargs = {}
-        for k, v in d.items():
-            if isinstance(v, dict):
-                if "_cls" in v:
-                    # Serialized embedded document
-                    _cls = getattr(fo, v["_cls"])
-                    kwargs[k] = _cls.from_dict(v)
-                elif "$binary" in v:
-                    # Serialized array in extended format
-                    binary = json_util.loads(json.dumps(v))
-                    kwargs[k] = fou.deserialize_numpy_array(binary)
-                else:
-                    kwargs[k] = v
-            elif isinstance(v, six.binary_type):
-                # Serialized array in non-extended format
-                kwargs[k] = fou.deserialize_numpy_array(v)
-            else:
-                kwargs[k] = v
-
-        return cls(**kwargs)
-
 
 class _Sample(SerializableDocument):
     """Base class for :class:`Sample` and :class:`SampleView`."""
@@ -425,7 +373,10 @@ class _Sample(SerializableDocument):
         Returns:
             a JSON dict
         """
-        d = self._doc.to_dict(extended=True)
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            d = self._doc.to_dict(extended=True)
+        else:
+            d = self._to_dict(extended=True)
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
     def to_json(self, pretty_print=False):
@@ -447,7 +398,10 @@ class _Sample(SerializableDocument):
         Returns:
             a BSON dict
         """
-        return self._doc.to_dict(extended=False)
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.to_dict(extended=False)
+
+        return self._to_dict(extended=False)
 
     def save(self):
         """Saves the sample to the database."""
@@ -463,6 +417,35 @@ class _Sample(SerializableDocument):
         """Deletes the document from the database."""
         if isinstance(self._doc, foo.DatasetSampleDocument):
             self._doc.delete()
+
+    def _to_dict(self, extended=False):
+        d = {}
+        for k, v in self._doc._data.items():
+            if hasattr(v, "to_dict"):
+                # Embedded document
+                d[k] = v.to_dict(extended=extended)
+            elif isinstance(v, np.ndarray):
+                # Must handle arrays separately, since they are non-primitives
+
+                # @todo cannot support serializing 1D arrays as lists because
+                # there is no way for `from_dict` to know that the data should
+                # be converted back to a numpy array
+                #
+                # if v.ndim == 1:
+                #     d[k] = v.tolist()
+                #
+
+                v_binary = fou.serialize_numpy_array(v)
+                if extended:
+                    # @todo improve this
+                    d[k] = json.loads(json_util.dumps(Binary(v_binary)))
+                else:
+                    d[k] = v_binary
+            else:
+                # JSON primitive
+                d[k] = v
+
+        return d
 
 
 class Sample(_Sample):
@@ -546,7 +529,26 @@ class Sample(_Sample):
         Returns:
             a :class:`Sample`
         """
-        doc = NoDatasetSampleDocument.from_dict(d, extended=True)
+        kwargs = {}
+        for k, v in d.items():
+            if isinstance(v, dict):
+                if "_cls" in v:
+                    # Serialized embedded document
+                    _cls = getattr(fo, v["_cls"])
+                    kwargs[k] = _cls.from_dict(v)
+                elif "$binary" in v:
+                    # Serialized array in extended format
+                    binary = json_util.loads(json.dumps(v))
+                    kwargs[k] = fou.deserialize_numpy_array(binary)
+                else:
+                    kwargs[k] = v
+            elif isinstance(v, six.binary_type):
+                # Serialized array in non-extended format
+                kwargs[k] = fou.deserialize_numpy_array(v)
+            else:
+                kwargs[k] = v
+
+        doc = NoDatasetSampleDocument(**kwargs)
         return cls.from_doc(doc)
 
     @classmethod
