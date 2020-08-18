@@ -4,7 +4,7 @@ import { animated, useSpring, config } from "react-spring";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
-import { shell } from "electron";
+// import { shell } from "electron";
 
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
@@ -299,11 +299,11 @@ const ViewStage = React.memo(({ stageRef }) => {
           />
           {isCompleted && (
             <Help
-              onClick={() =>
-                shell.openExternal(
-                  `https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`
-                )
-              }
+              // onClick={() =>
+              // shell.openExternal(
+              //   `https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`
+              // )
+              // }
               style={{
                 cursor: "pointer",
                 width: "1rem",
