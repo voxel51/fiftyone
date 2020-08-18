@@ -182,6 +182,25 @@ class ServerServiceTests(unittest.TestCase):
         self.wait_for_response(session=True)
         self.assertEqual(str(self.session.view), str(other_session.view))
 
+    def step_server_services(self):
+        from fiftyone.core.session import (
+            _subscribed_sessions,
+            _server_services,
+        )
+
+        session_one = Session(port=5252, remote=True)
+        session_two = Session(port=5252, remote=True)
+        self.assertEqual(len(_subscribed_sessions[5252]), 2)
+        self.assertEqual(len(_subscribed_sessions), 2)
+        self.assertEqual(len(_server_services), 2)
+        session_two.__del__()
+        self.assertEqual(len(_subscribed_sessions[5252]), 1)
+        self.assertEqual(len(_subscribed_sessions), 2)
+        self.assertEqual(len(_server_services), 2)
+        session_one.__del__()
+        self.assertEqual(len(_subscribed_sessions[5252]), 0)
+        self.assertEqual(len(_server_services), 1)
+
     def test_steps(self):
         for name, step in self.steps():
             try:

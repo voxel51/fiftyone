@@ -6,6 +6,7 @@ Session class for interacting with the FiftyOne App.
 |
 """
 import logging
+from collections import defaultdict
 
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
@@ -14,10 +15,21 @@ from fiftyone.core.state import StateDescription
 
 logger = logging.getLogger(__name__)
 
-# Global session singleton
-session = None
-# Global server services map
+#
+# Session globals
+#
+# _session is the proxy `Session` for `launch_app()` and `close_app()` calls
+# _server_services maintains active servers
+# _subscribed_sessions maintains servers subscribed to an active server
+#
+# Both maps use port as the key, so the main python process is always aware
+# of what servers can be killed
+#
+# Note that a server process is killed via deletion of its `fiftyone.core.service.ServerService` instance
+#
+_session = None
 _server_services = {}
+_subscribed_sessions = defaultdict(set)
 
 
 def launch_app(dataset=None, view=None, port=5151, remote=False):
@@ -37,7 +49,7 @@ def launch_app(dataset=None, view=None, port=5151, remote=False):
     Returns:
         a :class:`Session`
     """
-    global session  # pylint: disable=global-statement
+    global _session  # pylint: disable=global-statement
     #
     # Note, we always `close_app()` here rather than just calling
     # `session.open()` if a session already exists, because the app may have
@@ -50,20 +62,19 @@ def launch_app(dataset=None, view=None, port=5151, remote=False):
     #
     close_app()
 
-    session = Session(dataset=dataset, view=view, port=port, remote=remote)
+    _session = Session(dataset=dataset, view=view, port=port, remote=remote)
 
-    return session
+    return _session
 
 
 def close_app():
     """Closes the FiftyOne App, if necessary.
     If no app is currently open, this method has no effect.
     """
-    global session  # pylint: disable=global-statement
-
-    if session is not None:
-        session.close()
-        session = None
+    global _session  # pylint: disable=global-statement
+    if _session is not None:
+        _session.close()
+        _session = None
 
 
 def _update_state(func):
@@ -120,9 +131,12 @@ class Session(foc.HasClient):
     def __init__(self, dataset=None, view=None, port=5151, remote=False):
         self._port = port
         self._remote = remote
-        global _server_services
+        global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
             _server_services[port] = fos.ServerService(port)
+
+        global _subscribed_sessions  # pylint: disable=global-statement
+        _subscribed_sessions[port].add(self)
 
         super().__init__(self._port)
 
@@ -139,6 +153,17 @@ class Session(foc.HasClient):
                 _REMOTE_INSTRUCTIONS.strip()
                 % (self.server_port, self.server_port, self.server_port)
             )
+
+    def __del__(self):
+        """Deletes the Session by removing it from the `_subscribed_sessions` global and
+        deleting (stopping) the associated `ServerService` if no other sessions are subscribed"""
+        global _subscribed_sessions  # pylint: disable=global-statement
+        _subscribed_sessions[self._port].discard(self)
+
+        if len(_subscribed_sessions[self._port]) == 0:
+            global _server_services  # pylint: disable=global-statement
+            if self._port in _server_services:
+                _server_services.pop(self._port)
 
     @property
     def dataset(self):
