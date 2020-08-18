@@ -75,7 +75,7 @@ export const PARSER = {
   },
   "list<str>": {
     castFrom: (value) => {
-      return JSON.stringify(value);
+      return value === "string" ? JSON.stringify(value) : value;
     },
     castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
     parse: (value) => {
@@ -97,7 +97,10 @@ export const PARSER = {
     castFrom: (value) => {
       return JSON.stringify(value);
     },
-    castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
+    castTo: (value) =>
+      typeof value === "string"
+        ? JSON.parse(value).map((e) => PARSER.str.castTo(e))
+        : value,
     parse: (value) => {
       const array = JSON.parse(value);
       return JSON.stringify(array.map((e) => PARSER.id.parse(e)));
@@ -121,7 +124,7 @@ export const PARSER = {
   },
   dict: {
     castFrom: (value) => JSON.stringify(value),
-    castTo: (value) => JSON.parse(value),
+    castTo: (value) => (typeof value === "string" ? JSON.parse(value) : value),
     parse: (value) => value,
     validate: (value) => {
       try {
