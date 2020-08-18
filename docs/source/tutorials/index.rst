@@ -79,7 +79,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
-   Evaluating COCO detections<evaluate_detections.ipynb>
+   Evaluating object detections<evaluate_detections.ipynb>
    Evaluating Open Images<open_images_evaluation.ipynb>
    Exploring image uniqueness<uniqueness.ipynb>
    Finding label mistakes<label_mistakes.ipynb>
