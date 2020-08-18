@@ -10,9 +10,19 @@ FiftyOne 0.5.1
 
 App
 ^^^
-- XXXXXX
 - Statistics in the display options sidebar now reflect the current
   :ref:`view <using-views>`, not the entire :ref:`dataset <using-datasets>`
+- The last row of images are now tiled consistently in the samples listing. A
+  single image will no longer fill the entire width.
+- Keyword arguments, type annotations, error messages, and help links have
+  been added to the ViewBar. Overall stability has been improved, and a small
+  set of keyboard shortcuts have been added. More will be added in the near
+  future, along with corresponding documentation.
+   - DEL or BACKSPACE deletes the raised (or active) stage
+   - ESC toggles focus on the ViewBar, which activates shortcuts
+   - TAB, ENTER, and ESC submit input fields (parameters or stages)
+   - LEFT and RIGHT ARROW traverses stages and add buttons
+   - SHIFT+LEFT and SHIFT+RIGHT ARROW traverses stages
 
 Core
 ^^^^
