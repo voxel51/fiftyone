@@ -184,8 +184,8 @@ Viewing a sample
 ----------------
 
 Double-click a sample to open an expanded view of the sample. This modal also
-contains information about the fields of the |Sample| and also provides access
-to the raw JSON information about the |Sample|.
+contains information about the fields of the |Sample| and allows you to access
+the raw JSON description of the sample.
 
 .. image:: ../images/cifar10_sidebar.gif
     :alt: CIFAR-10 Sidebar
