@@ -83,24 +83,6 @@ class NoDatasetSampleDocument(SerializableDocument):
 
         self._data[name] = value
 
-    @property
-    def collection_name(self):
-        """The name of the MongoDB collection to which this sample belongs, or
-        ``None`` if it has not been added to a dataset.
-        """
-        return None
-
-    @property
-    def id(self):
-        return None
-
-    @property
-    def ingest_time(self):
-        """The time the sample was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        return None
-
     def _get_repr_fields(self):
         return ("id",) + self.field_names
 
@@ -268,30 +250,6 @@ class NoDatasetSampleDocument(SerializableDocument):
 
         return cls(**kwargs)
 
-    def save(self):
-        """Saves the sample to the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
-        pass
-
-    def reload(self):
-        """Reloads the sample from the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
-        pass
-
-    def delete(self):
-        """Deletes the sample from the database.
-
-        Because the sample does not belong to a dataset, this method does
-        nothing.
-        """
-        pass
-
 
 class _Sample(SerializableDocument):
     """Base class for :class:`Sample` and :class:`SampleView`."""
@@ -364,7 +322,10 @@ class _Sample(SerializableDocument):
         """The time the document was added to the database, or ``None`` if it
         has not been added to the database.
         """
-        return self._doc.ingest_time
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            return self._doc.ingest_time
+
+        return None
 
     @property
     def in_dataset(self):
@@ -493,15 +454,18 @@ class _Sample(SerializableDocument):
 
     def save(self):
         """Saves the sample to the database."""
-        self._doc.save()
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            self._doc.save()
 
     def reload(self):
         """Reloads the sample from the database."""
-        self._doc.reload()
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            self._doc.reload()
 
     def _delete(self):
         """Deletes the document from the database."""
-        self._doc.delete()
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            self._doc.delete()
 
 
 class Sample(_Sample):
@@ -863,9 +827,10 @@ class SampleView(_Sample):
         Any modified fields are updated, and any in-memory :class:`Sample`
         instances of this sample are updated.
         """
-        self._doc.save(filtered_fields=self._filtered_fields)
+        if isinstance(self._doc, foo.DatasetSampleDocument):
+            self._doc.save(filtered_fields=self._filtered_fields)
 
-        # Reload the sample singleton if it exists in memory
-        Sample._reload_dataset_sample(
-            self.dataset._sample_collection_name, self.id
-        )
+            # Reload the sample singleton if it exists in memory
+            Sample._reload_dataset_sample(
+                self.dataset._sample_collection_name, self.id
+            )
