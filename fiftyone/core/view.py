@@ -170,10 +170,10 @@ class DatasetView(foc.SampleCollection):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 `_` in the returned schema
 

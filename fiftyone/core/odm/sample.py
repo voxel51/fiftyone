@@ -327,10 +327,11 @@ class DatasetSampleDocument(Document, SampleDocument):
                 :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is
+                field. Used only when ``ftype`` is an embedded
                 :class:`fiftyone.core.fields.EmbeddedDocumentField`
             subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a list or dict type
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
         """
         # Additional arg `save` is to prevent saving the fields when reloading
         # a dataset from the database.

@@ -504,6 +504,9 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def log_collection(self, sample_collection):
         self._metadata["name"] = sample_collection.name
+        self._metadata[
+            "sample_fields"
+        ] = sample_collection._serialize_field_schema()
         self._metadata["info"] = sample_collection.info
 
     def export_sample(self, sample):

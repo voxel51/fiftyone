@@ -331,7 +331,6 @@ class CVATTaskLabels(object):
             )
             _attributes = []
             for attribute in attributes:
-                print(attribute)
                 _attributes.append(
                     {
                         "name": attribute["name"],

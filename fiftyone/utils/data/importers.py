@@ -24,6 +24,130 @@ from .parsers import (
 )
 
 
+def import_samples(
+    dataset,
+    dataset_importer,
+    label_field=None,
+    tags=None,
+    expand_schema=True,
+    add_info=True,
+):
+    """Adds the samples from the given
+    :class:`fiftyone.utils.data.importers.DatasetImporter` to the dataset.
+
+    See :ref:`this guide <custom-dataset-importer>` for more details about
+    importing datasets in custom formats by defining your own
+    :class:`DatasetImporter <fiftyone.utils.data.importers.DatasetImporter>`.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        dataset_importer: a :class:`DatasetImporter`
+        label_field (None): the name of the field in which to store the
+            imported labels. Only applicable if ``dataset_importer`` is a
+            required if ``dataset_exporter`` is a
+            :class:`LabeledImageDatasetImporter`
+        tags (None): an optional list of tags to attach to each sample
+        expand_schema (True): whether to dynamically add new sample fields
+            encountered to the dataset schema. If False, an error is raised
+            if a sample's schema is not a subset of the dataset schema
+        add_info (True): whether to add dataset info from the importer (if
+            any) to the dataset's ``info``
+
+    Returns:
+        a list of IDs of the samples that were added to the dataset
+    """
+    # Invoke the importer's context manager first, since some of its properies
+    # may need to be initialized
+    with dataset_importer:
+
+        # Construct function to parse samples
+        if isinstance(dataset_importer, GenericSampleDatasetImporter):
+            #
+            # If the importer provides a sample field schema, apply it now
+            #
+            # This is more efficient than adding samples with
+            # `expand_schema == True`. Also, ensures that all fields exist with
+            # the appropriate types, even if all of the imported samples have
+            # `None` values
+            #
+            if expand_schema and dataset_importer.has_sample_field_schema:
+                dataset._apply_field_schema(
+                    dataset_importer.get_sample_field_schema()
+                )
+                expand_schema = False
+
+            def parse_sample(sample):
+                if tags:
+                    sample.tags.extend(tags)
+
+                return sample
+
+        elif isinstance(dataset_importer, UnlabeledImageDatasetImporter):
+            # The schema never needs expanding when importing unlabeled samples
+            expand_schema = False
+
+            def parse_sample(sample):
+                image_path, image_metadata = sample
+                return fos.Sample(
+                    filepath=image_path, metadata=image_metadata, tags=tags,
+                )
+
+        elif isinstance(dataset_importer, LabeledImageDatasetImporter):
+            if label_field is None:
+                raise ValueError(
+                    "A `label_field` must be provided when importing samples "
+                    "from a LabeledImageDatasetImporter"
+                )
+
+            if expand_schema:
+                # This has the benefit of ensuring that `label_field` exists,
+                # even if all of the imported samples are unlabeled (i.e.,
+                # return labels that are all `None`)
+                dataset._ensure_label_field(
+                    label_field, dataset_importer.label_cls
+                )
+
+            # The schema now never needs expanding, because we already ensured
+            # that `label_field` exists, if necessary
+            expand_schema = False
+
+            def parse_sample(sample):
+                image_path, image_metadata, label = sample
+                sample = fos.Sample(
+                    filepath=image_path, metadata=image_metadata, tags=tags,
+                )
+
+                if label is not None:
+                    sample[label_field] = label
+
+                return sample
+
+        else:
+            raise ValueError(
+                "Unsupported DatasetImporter type %s" % type(dataset_importer)
+            )
+
+        try:
+            num_samples = len(dataset_importer)
+        except:
+            num_samples = None
+
+        # Import samples
+        samples = map(parse_sample, iter(dataset_importer))
+        sample_ids = dataset.add_samples(
+            samples, expand_schema=expand_schema, num_samples=num_samples
+        )
+
+        # Load dataset info
+        if add_info and dataset_importer.has_dataset_info:
+            _info = dataset_importer.get_dataset_info()
+            if _info:
+                dataset.info.update(_info)
+                dataset.save()
+
+        return sample_ids
+
+
 class DatasetImporter(object):
     """Base interface for importing datasets stored on disk into FiftyOne.
 
@@ -148,6 +272,32 @@ class GenericSampleDatasetImporter(DatasetImporter):
             StopIteration: if there are no more samples to import
         """
         raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def has_sample_field_schema(self):
+        """Whether this importer produces a sample field schema."""
+        raise NotImplementedError("subclass must implement has_dataset_info")
+
+    def get_sample_field_schema(self):
+        """Returns dictionary describing the field schema of the samples loaded
+        by this importer.
+
+        The returned dictionary should map field names to to string
+        representations of :class:`fiftyone.core.fields.Field` instances
+        generated by ``str(field)``.
+
+        Returns:
+            a dict
+        """
+        if not self.has_sample_field_schema:
+            raise ValueError(
+                "This '%s' does not provide a sample field schema"
+                % etau.get_class_name(self)
+            )
+
+        raise NotImplementedError(
+            "subclass must implement get_sample_field_schema()"
+        )
 
 
 class UnlabeledImageDatasetImporter(DatasetImporter):
@@ -306,6 +456,10 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
         return fos.Sample.from_dict(d)
 
     @property
+    def has_sample_field_schema(self):
+        return "sample_fields" in self._metadata
+
+    @property
     def has_dataset_info(self):
         return "info" in self._metadata
 
@@ -318,6 +472,9 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         samples_path = os.path.join(self.dataset_dir, "samples.json")
         self._samples = etas.load_json(samples_path).get("samples", [])
+
+    def get_sample_field_schema(self):
+        return self._metadata.get("sample_fields", {})
 
     def get_dataset_info(self):
         return self._metadata.get("info", {})

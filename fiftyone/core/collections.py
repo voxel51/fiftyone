@@ -166,17 +166,21 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement iter_samples()")
 
-    def get_field_schema(self, ftype=None, embedded_doc_type=None):
+    def get_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
         """Returns a schema dictionary describing the fields of the samples in
         the collection.
 
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              a dictionary mapping field names to field types
@@ -519,6 +523,10 @@ class SampleCollection(object):
         Provide either ``export_dir`` and ``dataset_type`` or
         ``dataset_exporter`` to perform an export.
 
+        See :ref:`this guide <custom-dataset-exporter>` for more details about
+        exporting datasets in custom formats by defining your own
+        :class:`DatasetExporter <fiftyone.utils.data.exporters.DatasetExporter>`.
+
         Args:
             export_dir (None): the directory to which to export the samples in
                 format ``dataset_type``
@@ -620,9 +628,6 @@ class SampleCollection(object):
             )
             len_rel_dir = len(rel_dir)
 
-        # Get field schema
-        fields = self.get_field_schema()
-
         # Serialize samples
         samples = []
         with fou.ProgressBar() as pb:
@@ -637,9 +642,8 @@ class SampleCollection(object):
             "name": self.name,
             "num_samples": len(self),
             "tags": self.get_tags(),
-            "sample_fields": {
-                field_name: str(field) for field_name, field in fields.items()
-            },
+            "info": self.info,
+            "sample_fields": self._serialize_field_schema(),
             "samples": samples,
         }
 
@@ -701,6 +705,13 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
+
+    def _serialize_field_schema(self):
+        field_schema = self.get_field_schema()
+        return {
+            field_name: str(field)
+            for field_name, field in field_schema.items()
+        }
 
 
 def _get_default_dataset_type(sample_collection, label_field):
