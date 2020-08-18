@@ -34,7 +34,7 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
-    :header: Evaluating detections on COCO
+    :header: Evaluating object detections
     :description: Object detections are difficult to visualize. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your data.
     :link: evaluate_detections.html
     :image: ../_static/images/tutorials/evaluate_detections.png

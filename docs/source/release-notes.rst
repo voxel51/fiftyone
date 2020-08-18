@@ -12,19 +12,18 @@ App
 ^^^
 - Statistics in the display options sidebar now reflect the current
   :ref:`view <using-views>`, not the entire :ref:`dataset <using-datasets>`
-- The last row of images are now tiled consistently in the samples listing. A
-  single image will no longer fill the entire width.
-- Keyword arguments, type annotations, error messages, and help links have
-  been added to the ViewBar. Overall stability has been improved, and a small
-  set of keyboard shortcuts have been added. More will be added in the near
-  future, along with corresponding documentation.
-   - DEL or BACKSPACE deletes the raised (or active) stage
-   - ESC toggles focus on the ViewBar, which activates shortcuts
-   - TAB, ENTER, and ESC submit input fields (parameters or stages)
-   - LEFT and RIGHT ARROW traverse stages and add buttons
-   - SHIFT+LEFT and SHIFT+RIGHT ARROW traverse stages
-- Added support for changing label visibility within the expanded sample modal
+- Improved image tiling algorithm that prevents single images from filling an
+  entire grid row
+- Added support for toggling label visibility within the expanded sample modal
 - Improved display of long label and tag names throughout the app
+- Enhanced view bar functionality, including keyword arguments, type
+  annotations, error messages, help links, and overall stability improvements
+- Added keyboard shortcuts for interacting with the view bar:
+   - `DEL` and `BACKSPACE` delete the raised (active) stage
+   - `ESC` toggles focus on the ViewBar, which activates shortcuts
+   - `TAB`, `ENTER`, and `ESC` submits stage input fields
+   - `LEFT` and `RIGHT ARROW` traverses view stages and add-stage buttons
+   - `SHIFT + LEFT ARROW` and `SHIFT + RIGHT ARROW` traverse stages
 
 Core
 ^^^^
