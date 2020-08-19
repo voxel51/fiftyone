@@ -257,9 +257,7 @@ class _Sample(SerializableDocument):
             return self._doc.clear_field(field_name=field_name)
 
         if field_name in self._default_fields:
-            default_value = self._get_field_default(
-                self._default_fields[field_name]
-            )
+            default_value = self._default_fields[field_name].get_default()
             self.set_field(field_name, default_value)
         else:
             self._data.pop(field_name, None)
@@ -373,28 +371,6 @@ class _Sample(SerializableDocument):
 
         return d
 
-    @staticmethod
-    def _get_field_default(field):
-        if field.null:
-            return None
-
-        if field.default is not None:
-            value = field.default
-
-            if callable(value):
-                value = value()
-
-            if isinstance(value, list) and value.__class__ != list:
-                value = list(value)
-            elif isinstance(value, tuple) and value.__class__ != tuple:
-                value = tuple(value)
-            elif isinstance(value, dict) and value.__class__ != dict:
-                value = dict(value)
-
-            return value
-
-        raise ValueError("Field '%s' has no default" % field)
-
     def _get_repr_fields(self):
         return ("id",) + self.field_names
 
@@ -435,9 +411,7 @@ class Sample(_Sample):
                 value = _generate_rand(filepath=filepath)
 
             if value is None:
-                value = self._get_field_default(
-                    self._default_fields[field_name]
-                )
+                value = self._default_fields[field_name].get_default()
 
             if field_name == "filepath":
                 value = os.path.abspath(os.path.expanduser(value))

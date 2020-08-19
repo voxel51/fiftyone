@@ -6,16 +6,13 @@ FiftyOne dataset helper.
 |
 """
 from collections import OrderedDict
-from functools import wraps
 import numbers
-import random
 
 from mongoengine.errors import InvalidQueryError
 import numpy as np
 import six
 
 import fiftyone.core.fields as fof
-import fiftyone.core.metadata as fom
 from fiftyone.core.odm.dataset import SampleFieldDocument, DatasetDocument
 from fiftyone.core.odm.document import BaseEmbeddedDocument
 from fiftyone.core.odm.sample import no_delete_default_field
