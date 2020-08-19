@@ -5,6 +5,8 @@ import viewStageMachine, {
 } from "./ViewStage/viewStageMachine";
 import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
 
+const { choose } = actions;
+
 export const createStage = (
   stage,
   index,
@@ -250,6 +252,19 @@ const viewBarMachine = Machine(
                       type: "STAGE.DELETE",
                       stage: stages[activeStage],
                     })),
+                  },
+                  ENTER: {
+                    actions: [
+                      choose([
+                        {
+                          actions: send(({ activeStage }) => ({
+                            type: "STAGE.ADD",
+                            index: Math.ceil(activeStage),
+                          })),
+                          cond: ({ activeStage }) => activeStage % 1 === 0.5,
+                        },
+                      ]),
+                    ],
                   },
                 },
               },
