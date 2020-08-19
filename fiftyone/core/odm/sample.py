@@ -41,13 +41,11 @@ When a sample is added to a dataset, its ``_doc`` attribute is changed from
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from functools import wraps
 import random
 
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 
-from .dataset import DatasetDocument
 from .document import Document
 
 
@@ -76,24 +74,6 @@ def default_sample_fields(include_private=False):
     )
 
 
-def no_delete_default_field(func):
-    """Wrapper for :func:`DatasetHelper.delete_field` that prevents deleting
-    default fields of :class:`SampleDocument`.
-
-    This is a decorator because the subclasses implement this as either an
-    instance or class method.
-    """
-
-    @wraps(func)
-    def wrapper(cls_or_self, field_name, *args, **kwargs):
-        if field_name in default_sample_fields():
-            raise ValueError("Cannot delete default field '%s'" % field_name)
-
-        return func(cls_or_self, field_name, *args, **kwargs)
-
-    return wrapper
-
-
 class DatasetSampleDocument(Document):
     """Base class for sample documents backing samples in datasets.
 
@@ -114,96 +94,6 @@ class DatasetSampleDocument(Document):
 
     # Random float used for random dataset operations (e.g. shuffle)
     _rand = fof.FloatField(default=_generate_rand)
-
-    def __setattr__(self, name, value):
-        # pylint: disable=no-member
-        has_field = self.has_field(name)
-
-        if name.startswith("_") or (hasattr(self, name) and not has_field):
-            super().__setattr__(name, value)
-            return
-
-        if not has_field:
-            raise ValueError(
-                "Adding sample fields using the `sample.field = value` syntax "
-                "is not allowed; use `sample['field'] = value` instead"
-            )
-
-        if value is not None:
-            self._fields[name].validate(value)
-
-        super().__setattr__(name, value)
-
-    @property
-    def field_names(self):
-        return tuple(
-            f
-            for f in self._get_fields_ordered(include_private=False)
-            if f != "id"
-        )
-
-    def has_field(self, field_name):
-        """Determines whether the sample has a field of the given name.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            True/False
-        """
-        # pylint: disable=no-member
-        return field_name in self._fields
-
-    def set_field(self, field_name, value, create=False):
-        """Sets the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-            value: the field value
-            create (False): whether to create the field if it does not exist
-
-        Raises:
-            ValueError: if ``field_name`` is not an allowed field name or does
-                not exist and ``create == False``
-        """
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
-                % field_name
-            )
-
-        if hasattr(self, field_name) and not self.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
-        if not self.has_field(field_name):
-            if create:
-                # @todo(Tyler) instead pass the dataset into this call
-                import fiftyone.core.dataset as fod
-
-                dataset_doc = DatasetDocument.objects.get(
-                    sample_collection_name=self.__class__.__name__
-                )
-                dataset = fod.load_dataset(dataset_doc.name)
-                dataset._schema.add_implied_field(field_name, value)
-            else:
-                msg = "Sample does not have field '%s'." % field_name
-                if value is not None:
-                    # don't report this when clearing a field.
-                    msg += " Use `create=True` to create a new field."
-                raise ValueError(msg)
-
-        self.__setattr__(field_name, value)
-
-    def clear_field(self, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Raises:
-            ValueError: if the field does not exist
-        """
-        self.set_field(field_name, None, create=False)
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.

@@ -6,6 +6,7 @@ FiftyOne dataset helper.
 |
 """
 from collections import OrderedDict
+from functools import wraps
 import numbers
 
 from mongoengine.errors import InvalidQueryError
@@ -15,7 +16,25 @@ import six
 import fiftyone.core.fields as fof
 from fiftyone.core.odm.dataset import SampleFieldDocument, DatasetDocument
 from fiftyone.core.odm.document import BaseEmbeddedDocument
-from fiftyone.core.odm.sample import no_delete_default_field
+from fiftyone.core.odm.sample import default_sample_fields
+
+
+def no_delete_default_field(func):
+    """Wrapper for :func:`DatasetHelper.delete_field` that prevents deleting
+    default fields of :class:`SampleDocument`.
+
+    This is a decorator because the subclasses implement this as either an
+    instance or class method.
+    """
+
+    @wraps(func)
+    def wrapper(cls_or_self, field_name, *args, **kwargs):
+        if field_name in default_sample_fields():
+            raise ValueError("Cannot delete default field '%s'" % field_name)
+
+        return func(cls_or_self, field_name, *args, **kwargs)
+
+    return wrapper
 
 
 class DatasetHelper(object):
@@ -230,18 +249,20 @@ class DatasetHelper(object):
                 % field_name
             )
 
-        if hasattr(doc, field_name) and not doc.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
+        if field_name not in self.fields:
+            if hasattr(doc, field_name):
+                raise ValueError(
+                    "Cannot use reserved keyword '%s'" % field_name
+                )
 
-        if not doc.has_field(field_name):
-            if create:
-                self.add_implied_field(field_name, value)
-            else:
+            if not create:
                 msg = "Sample does not have field '%s'." % field_name
                 if value is not None:
                     # don't report this when clearing a field.
                     msg += " Use `create=True` to create a new field."
                 raise ValueError(msg)
+
+            self.add_implied_field(field_name, value)
 
         field = self.fields[field_name]
         return field.__set__(doc, value)

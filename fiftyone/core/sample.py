@@ -177,12 +177,11 @@ class _Sample(SerializableDocument):
         """
         try:
             if self.in_dataset:
-                return self._dataset._schema.get_field(self._doc, field_name)
+                return self.dataset._schema.get_field(self._doc, field_name)
             else:
                 return self._data[field_name]
         except KeyError:
             raise AttributeError("Sample has no field '%s'" % field_name)
-
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the sample.
@@ -206,14 +205,18 @@ class _Sample(SerializableDocument):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
         if self.in_dataset:
-            return self._dataset._schema.set_field(self._doc, field_name, value, create=create)
+            return self.dataset._schema.set_field(
+                self._doc, field_name, value, create=create
+            )
 
         if not self.has_field(field_name) and not create:
             msg = "Sample does not have field '%s'." % field_name
             if value is not None:
                 # don't report this when clearing a field.
-                msg += " Sample.set_field(..., create=True) to create" \
-                       " a new field."
+                msg += (
+                    " Sample.set_field(..., create=True) to create"
+                    " a new field."
+                )
             raise ValueError(msg)
 
         self._data[field_name] = value
@@ -228,7 +231,7 @@ class _Sample(SerializableDocument):
             ValueError: if the field does not exist
         """
         if self.in_dataset:
-            return self._dataset._schema.clear_field(self._doc, field_name)
+            return self.dataset._schema.clear_field(self._doc, field_name)
 
         if field_name in self._default_fields:
             default_value = self._default_fields[field_name].get_default()
