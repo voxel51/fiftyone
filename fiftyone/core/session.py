@@ -157,8 +157,9 @@ class Session(foc.HasClient):
 
     def __del__(self):
         """Deletes the Session by removing it from the `_subscribed_sessions`
-        global and deleting (stopping) the associated `ServerService` if no
-        other sessions are subscribed
+        global and deleting (stopping) the associated
+        :class:`fiftyone.core.service.ServerService` if no other sessions are
+        subscribed.
         """
         global _subscribed_sessions  # pylint: disable=global-statement
         _subscribed_sessions[self._port].discard(self)
@@ -193,6 +194,8 @@ class Session(foc.HasClient):
 
     @property
     def server_port(self):
+        """Getter for the port number of the session.
+        """
         return self._port
 
     @property
