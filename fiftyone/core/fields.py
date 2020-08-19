@@ -53,6 +53,14 @@ class Field(mongoengine.fields.BaseField):
         return etau.get_class_name(self)
 
     def get_default(self):
+        """Returns the default value for this field
+
+        Returns:
+            the default value of the field
+
+        Raises:
+            ValueError if there is no default
+        """
         if self.null:
             return None
 
