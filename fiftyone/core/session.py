@@ -167,7 +167,8 @@ class Session(foc.HasClient):
         if len(_subscribed_sessions[self._port]) == 0:
             global _server_services  # pylint: disable=global-statement
             if self._port in _server_services:
-                _server_services.pop(self._port)
+                service = _server_services.pop(self._port)
+                service.stop()
 
     @property
     def dataset(self):
