@@ -47,17 +47,7 @@ class _Sample(SerializableDocument):
         try:
             return super().__getattribute__(name)
         except AttributeError:
-            pass
-
-        if self._dataset:
-            if not self.has_field(name):
-                raise AttributeError("Sample has no field '%s'" % name)
-
-            return self._dataset._schema.get_field(self._doc, name)
-        try:
-            return self._data[name]
-        except Exception:
-            raise AttributeError("No attribute '%s'" % name)
+            return self.get_field(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_") or (
@@ -119,17 +109,14 @@ class _Sample(SerializableDocument):
         """The ID of the document, or ``None`` if it has not been added to the
         database.
         """
-        return str(self._doc.id) if self._in_db else None
+        return str(self._object_id) if self._object_id else None
 
     @property
     def ingest_time(self):
         """The time the document was added to the database, or ``None`` if it
         has not been added to the database.
         """
-        if self.in_dataset:
-            return self._doc.ingest_time
-
-        return None
+        return self._object_id.generation_time if self._object_id else None
 
     @property
     def in_dataset(self):
@@ -147,9 +134,16 @@ class _Sample(SerializableDocument):
     def field_names(self):
         """An ordered tuple of the names of the fields of this sample."""
         if self.in_dataset:
-            return self._doc.field_names
+            return self._dataset._schema.field_names
 
         return tuple(k for k in self._data.keys() if not k.startswith("_"))
+
+    @property
+    def _object_id(self):
+        """The a :class:``bson.objectid.ObjectId``, or ``None`` if it has not
+        been added to the database.
+        """
+        return self._doc.id if self._in_db else None
 
     @property
     def _in_db(self):
@@ -190,16 +184,14 @@ class _Sample(SerializableDocument):
         Raises:
             AttributeError: if the field does not exist
         """
-        if self.in_dataset:
-            # self._doc.get_field(field_name)
-            if not self.has_field(field_name):
-                raise AttributeError("Sample has no field '%s'" % field_name)
-            return getattr(self._doc, field_name)
-
-        if not self.has_field(field_name):
+        try:
+            if self.in_dataset:
+                return self._dataset._schema.get_field(self._doc, field_name)
+            else:
+                return self._data[field_name]
+        except KeyError:
             raise AttributeError("Sample has no field '%s'" % field_name)
 
-        return getattr(self, field_name)
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the sample.

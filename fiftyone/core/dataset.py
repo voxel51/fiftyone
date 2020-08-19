@@ -557,12 +557,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             sample_id = sample_or_id.id
 
-        self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
-
         fos.Sample._reset_backing_docs(
             collection_name=self._sample_collection_name,
             sample_ids=[sample_id],
         )
+
+        self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
     def remove_samples(self, samples_or_ids):
         """Removes the given samples from the dataset.

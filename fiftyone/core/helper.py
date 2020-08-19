@@ -34,6 +34,14 @@ class DatasetHelper(object):
     def fields_ordered(self):
         return self._sample_doc_cls._fields_ordered
 
+    @property
+    def field_names(self):
+        return tuple(
+            f
+            for f in self._get_fields_ordered(include_private=False)
+            if f != "id"
+        )
+
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -207,6 +215,11 @@ class DatasetHelper(object):
     def set_field(self, doc, field_name, value):
         field = self.fields[field_name]
         return field.__set__(doc, value)
+
+    def _get_fields_ordered(self, include_private=False):
+        if include_private:
+            return self.fields_ordered
+        return tuple(f for f in self.fields_ordered if not f.startswith("_"))
 
 
 def _get_implied_field_kwargs(value):
