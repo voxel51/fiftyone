@@ -50,7 +50,10 @@ class _Sample(SerializableDocument):
             pass
 
         if isinstance(self._doc, foo.DatasetSampleDocument):
-            return self._doc.get_field(name)
+            # self._doc.get_field(name)
+            if not self.has_field(name):
+                raise AttributeError("Sample has no field '%s'" % name)
+            return getattr(self._doc, name)
 
         try:
             return self._data[name]
@@ -173,7 +176,7 @@ class _Sample(SerializableDocument):
             True/False
         """
         if self.in_dataset:
-            return self._doc.has_field(field_name)
+            return field_name in self.dataset._dataset_helper.fields
 
         try:
             return field_name in self._data
@@ -194,7 +197,10 @@ class _Sample(SerializableDocument):
             AttributeError: if the field does not exist
         """
         if self.in_dataset:
-            return self._doc.get_field(field_name)
+            # self._doc.get_field(field_name)
+            if not self.has_field(field_name):
+                raise AttributeError("Sample has no field '%s'" % field_name)
+            return getattr(self._doc, field_name)
 
         if not self.has_field(field_name):
             raise AttributeError("Sample has no field '%s'" % field_name)
@@ -569,7 +575,7 @@ class Sample(_Sample):
             raise TypeError("Sample already belongs to a dataset")
 
         # @todo(Tyler) don't even construct this!
-        doc = dataset._sample_doc_cls.from_dict(d, extended=False)
+        doc = dataset._dataset_helper.from_dict(d, extended=False)
 
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(
@@ -584,7 +590,7 @@ class Sample(_Sample):
         self._doc = doc
 
         # Save weak reference
-        dataset_instances = self._instances[doc.collection_name]
+        dataset_instances = self._instances[dataset._sample_collection_name]
         if self.id not in dataset_instances:
             dataset_instances[self.id] = self
 
@@ -664,7 +670,7 @@ class SampleView(_Sample):
         super().__init__(dataset=dataset)
 
         # @todo(Tyler) don't even construct this!
-        doc = dataset._sample_doc_cls.from_dict(d, extended=False)
+        doc = dataset._dataset_helper.from_dict(d, extended=False)
 
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(

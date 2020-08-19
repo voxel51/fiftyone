@@ -691,14 +691,6 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(len(new_dataset), 0)
 
     @drop_datasets
-    def test_backing_doc_class(self):
-        dataset_name = self.test_backing_doc_class.__name__
-        dataset = fo.Dataset(dataset_name)
-        self.assertTrue(
-            issubclass(dataset._sample_doc_cls, foo.DatasetSampleDocument)
-        )
-
-    @drop_datasets
     def test_dataset_info(self):
         dataset_name = self.test_dataset_info.__name__
 

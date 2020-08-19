@@ -15,10 +15,6 @@ Design invariants:
     ``sample._doc``, which is an instance of a subclass of
     :class:`SampleDocument`
 
--   A :class:`fiftyone.core.dataset.Dataset` always has a backing
-    ``dataset._sample_doc_cls`` which is a subclass of
-    :class:`DatasetSampleDocument``.
-
 **Implementation details**
 
 When a new :class:`fiftyone.core.sample.Sample` is created, its ``_doc``
@@ -34,10 +30,9 @@ When a new :class:`fiftyone.core.dataset.Dataset` is created, its
 :class:`DatasetSampleDocument` whose name is the name of the dataset::
 
     dataset = fo.Dataset(name="my_dataset")
-    dataset._sample_doc_cls  # my_dataset(DatasetSampleDocument)
 
 When a sample is added to a dataset, its ``_doc`` attribute is changed from
-`None` to type ``dataset._sample_doc_cls``::
+
 
     dataset.add_sample(sample)
     sample._doc  # my_dataset(DatasetSampleDocument)
@@ -112,8 +107,8 @@ def no_delete_default_field(func):
 class DatasetSampleDocument(Document):
     """Base class for sample documents backing samples in datasets.
 
-    All ``fiftyone.core.dataset.Dataset._sample_doc_cls`` classes inherit from
-    this class.
+    All ``fiftyone.core.dataset.DatasetHelper._sample_doc_cls`` classes inherit
+    from this class.
     """
 
     meta = {"abstract": True}
@@ -148,10 +143,6 @@ class DatasetSampleDocument(Document):
             self._fields[name].validate(value)
 
         super().__setattr__(name, value)
-
-    @property
-    def collection_name(self):
-        return self.__class__.__name__
 
     @property
     def field_names(self):
@@ -227,23 +218,6 @@ class DatasetSampleDocument(Document):
         """
         # pylint: disable=no-member
         return field_name in self._fields
-
-    def get_field(self, field_name):
-        """Gets the field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            the field value
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        if not self.has_field(field_name):
-            raise AttributeError("Sample has no field '%s'" % field_name)
-
-        return getattr(self, field_name)
 
     @classmethod
     def add_field(

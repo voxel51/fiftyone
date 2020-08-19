@@ -22,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.helper as foh
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
@@ -167,11 +168,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         if _create:
-            self._doc, self._sample_doc_cls = _create_dataset(
+            self._doc, self._dataset_helper = _create_dataset(
                 name, persistent=persistent
             )
         else:
-            self._doc, self._sample_doc_cls = _load_dataset(name)
+            self._doc, self._dataset_helper = _load_dataset(name)
 
         self._deleted = False
 
@@ -367,7 +368,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        return self._sample_doc_cls.get_field_schema(
+        return self._dataset_helper.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
@@ -390,7 +391,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
         """
-        self._sample_doc_cls.add_field(
+        self._dataset_helper.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -406,7 +407,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Raises:
             AttributeError: if the field does not exist
         """
-        self._sample_doc_cls.delete_field(field_name)
+        self._dataset_helper.delete_field(field_name)
         fos.Sample._purge_field(self._sample_collection_name, field_name)
 
     def get_tags(self):
@@ -681,7 +682,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample object will be
         updated such that ``sample.in_dataset == False``.
         """
-        self._sample_doc_cls.drop_collection()
+        self._dataset_helper.drop_collection()
         fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 
     def delete(self):
@@ -1360,7 +1361,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _sample_collection_name(self):
-        return self._sample_doc_cls._meta["collection"]
+        return self._dataset_helper.sample_collection_name
 
     @property
     def _sample_collection(self):
@@ -1406,7 +1407,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 if field_name not in fields:
-                    self._sample_doc_cls.add_implied_field(
+                    self._dataset_helper.add_implied_field(
                         field_name, sample[field_name]
                     )
                     fields = self.get_field_schema(include_private=True)
@@ -1442,9 +1443,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             field.validate(value)
 
-    @property
-    def skema(self):
-        return self._sample_doc_cls
 
 class DoesNotExistError(Exception):
     """Exception raised when a dataset that does not exist is encountered."""
@@ -1488,6 +1486,7 @@ def _create_dataset(name, persistent=False):
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+    dataset_helper = foh.DatasetHelper(sample_doc_cls)
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
@@ -1495,7 +1494,7 @@ def _create_dataset(name, persistent=False):
         sample_collection_name=sample_collection_name,
         persistent=persistent,
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            sample_doc_cls.get_field_schema(include_private=True)
+            dataset_helper.get_field_schema(include_private=True)
         ),
     )
     dataset_doc.save()
@@ -1504,7 +1503,7 @@ def _create_dataset(name, persistent=False):
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
 
-    return dataset_doc, sample_doc_cls
+    return dataset_doc, dataset_helper
 
 
 def _make_sample_collection_name(conn):
@@ -1532,6 +1531,7 @@ def _load_dataset(name):
     sample_doc_cls = _create_sample_document_cls(
         dataset_doc.sample_collection_name
     )
+    dataset_helper = foh.DatasetHelper(sample_doc_cls)
 
     # Populate sample field schema
     default_fields = Dataset.get_default_sample_fields(include_private=True)
@@ -1550,7 +1550,7 @@ def _load_dataset(name):
             else None
         )
 
-        sample_doc_cls.add_field(
+        dataset_helper.add_field(
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,
@@ -1558,4 +1558,4 @@ def _load_dataset(name):
             save=False,
         )
 
-    return dataset_doc, sample_doc_cls
+    return dataset_doc, dataset_helper
