@@ -138,6 +138,12 @@ class _Sample(SerializableDocument):
             return self._doc.id
         return None
 
+    @property
+    def _data(self):
+        if self.in_dataset:
+            return self._doc._data
+        return self.__data
+
     def has_field(self, field_name):
         """Determines whether the sample has a field of the given name.
 
@@ -372,7 +378,7 @@ class Sample(_Sample):
         kwargs["tags"] = tags
         kwargs["metadata"] = metadata
 
-        self._data = OrderedDict()
+        self.__data = OrderedDict()
 
         for field_name in self._default_fields_ordered:
             value = kwargs.pop(field_name, None)
@@ -573,7 +579,7 @@ class Sample(_Sample):
             sample._reset_backing_doc()
 
     def _reset_backing_doc(self):
-        self._data = self.copy()._data
+        self.__data = self.copy()._data
         self._doc = None
         self._dataset = None
 
@@ -614,21 +620,13 @@ class SampleView(_Sample):
 
         # @todo(Tyler) don't even construct this!
         doc = dataset._schema.construct_doc_from_dict(d, extended=False)
-
-        if not isinstance(doc, foo.DatasetSampleDocument):
-            raise TypeError(
-                "Backing doc must be an instance of %s; found %s"
-                % (foo.DatasetSampleDocument, type(doc))
-            )
-
         if not doc.id:
             raise ValueError("`doc` is not saved to the database.")
+        self._doc = doc
 
         if selected_fields is not None and excluded_fields is not None:
             selected_fields = selected_fields.difference(excluded_fields)
             excluded_fields = None
-
-        self._doc = doc
         self._selected_fields = selected_fields
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
