@@ -223,8 +223,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @name.setter
     def name(self, name):
-        self._doc.name = name
-        self._doc.save()
+        _name = self._doc.name
+        try:
+            self._doc.name = name
+            self._doc.save()
+        except:
+            self._doc.name = _name
+            raise
 
     @property
     def persistent(self):
@@ -235,8 +240,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @persistent.setter
     def persistent(self, value):
-        self._doc.persistent = value
-        self._doc.save()
+        _value = self._doc.persistent
+        try:
+            self._doc.persistent = value
+            self._doc.save()
+        except:
+            self._doc.persistent = _value
+            raise
 
     @property
     def info(self):
