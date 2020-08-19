@@ -657,6 +657,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
+        if name is None:
+            name = get_default_dataset_name()
+
         if dataset_exists(name):
             raise ValueError(
                 "Dataset '%s' already exists; invalid to clone dataset." % name
