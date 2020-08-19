@@ -99,9 +99,7 @@ class DatasetHelper(object):
             )
 
         d = OrderedDict()
-        field_names = self._sample_doc_cls._get_fields_ordered(
-            include_private=include_private
-        )
+        field_names = self._get_fields_ordered(include_private=include_private)
         for field_name in field_names:
             # pylint: disable=no-member
             field = self._sample_doc_cls._fields[field_name]

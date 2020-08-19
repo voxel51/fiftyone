@@ -69,9 +69,9 @@ def default_sample_fields(include_private=False):
     Returns:
         a tuple of field names
     """
-    return DatasetSampleDocument._get_fields_ordered(
-        include_private=include_private
-    )
+    if include_private:
+        return DatasetSampleDocument._fields_ordered
+    return tuple(f for f in DatasetSampleDocument._fields_ordered if not f.startswith("_"))
 
 
 class DatasetSampleDocument(Document):
@@ -211,9 +211,3 @@ class DatasetSampleDocument(Document):
         el_filter = ".".join([filtered_field, "$[element]"] + el_fields)
 
         return el._id, el_filter
-
-    @classmethod
-    def _get_fields_ordered(cls, include_private=False):
-        if include_private:
-            return cls._fields_ordered
-        return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
