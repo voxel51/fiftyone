@@ -212,9 +212,50 @@ class DatasetHelper(object):
         field = self.fields[field_name]
         return field.__get__(doc, self._sample_doc_cls)
 
-    def set_field(self, doc, field_name, value):
+    def set_field(self, doc, field_name, value, create=False):
+        """Sets the value of a field of the sample document.
+
+        Args:
+            field_name: the field name
+            value: the field value
+            create (False): whether to create the field if it does not exist
+
+        Raises:
+            ValueError: if ``field_name`` is not an allowed field name or does
+                not exist and ``create == False``
+        """
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name: '%s'. Field names cannot start with '_'"
+                % field_name
+            )
+
+        if hasattr(doc, field_name) and not doc.has_field(field_name):
+            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
+
+        if not doc.has_field(field_name):
+            if create:
+                self.add_implied_field(field_name, value)
+            else:
+                msg = "Sample does not have field '%s'." % field_name
+                if value is not None:
+                    # don't report this when clearing a field.
+                    msg += " Use `create=True` to create a new field."
+                raise ValueError(msg)
+
         field = self.fields[field_name]
         return field.__set__(doc, value)
+
+    def clear_field(self, doc, field_name):
+        """Clears the value of a field of the sample.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            ValueError: if the field does not exist
+        """
+        self.set_field(doc, field_name, None, create=False)
 
     def _get_fields_ordered(self, include_private=False):
         if include_private:

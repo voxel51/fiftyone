@@ -55,16 +55,7 @@ class _Sample(SerializableDocument):
         ):
             return super().__setattr__(name, value)
 
-        if self._dataset:
-            return self._dataset._schema.set_field(self._doc, name, value)
-
-        if not self.has_field(name):
-            raise ValueError(
-                "Adding sample fields using the `sample.field = value` syntax "
-                "is not allowed; use `sample['field'] = value` instead"
-            )
-
-        self._data[name] = value
+        return self.set_field(name, value, create=False)
 
     def __delattr__(self, name):
         try:
@@ -215,20 +206,17 @@ class _Sample(SerializableDocument):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
         if self.in_dataset:
-            return self._doc.set_field(field_name, value, create=create)
+            return self._dataset._schema.set_field(self._doc, field_name, value, create=create)
 
-        if not self.has_field(field_name):
-            if create:
-                # dummy value so that it is identified by __setattr__
-                self._data[field_name] = None
-            else:
-                msg = "Sample does not have field '%s'." % field_name
-                if value is not None:
-                    # don't report this when clearing a field.
-                    msg += " Use `create=True` to create a new field."
-                raise ValueError(msg)
+        if not self.has_field(field_name) and not create:
+            msg = "Sample does not have field '%s'." % field_name
+            if value is not None:
+                # don't report this when clearing a field.
+                msg += " Sample.set_field(..., create=True) to create" \
+                       " a new field."
+            raise ValueError(msg)
 
-        self.__setattr__(field_name, value)
+        self._data[field_name] = value
 
     def clear_field(self, field_name):
         """Clears the value of a field of the sample.
@@ -240,7 +228,7 @@ class _Sample(SerializableDocument):
             ValueError: if the field does not exist
         """
         if self.in_dataset:
-            return self._doc.clear_field(field_name=field_name)
+            return self._dataset._schema.clear_field(self._doc, field_name)
 
         if field_name in self._default_fields:
             default_value = self._default_fields[field_name].get_default()
