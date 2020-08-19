@@ -41,23 +41,14 @@ When a sample is added to a dataset, its ``_doc`` attribute is changed from
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
 from functools import wraps
-import numbers
 import random
-
-from mongoengine.errors import InvalidQueryError
-import numpy as np
-import six
 
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 
-from .dataset import SampleFieldDocument, DatasetDocument
-from .document import (
-    Document,
-    BaseEmbeddedDocument,
-)
+from .dataset import DatasetDocument
+from .document import Document
 
 
 # Use our own Random object to avoid messing with the user's seed
@@ -86,7 +77,7 @@ def default_sample_fields(include_private=False):
 
 
 def no_delete_default_field(func):
-    """Wrapper for :func:`SampleDocument.delete_field` that prevents deleting
+    """Wrapper for :func:`DatasetHelper.delete_field` that prevents deleting
     default fields of :class:`SampleDocument`.
 
     This is a decorator because the subclasses implement this as either an
@@ -95,7 +86,6 @@ def no_delete_default_field(func):
 
     @wraps(func)
     def wrapper(cls_or_self, field_name, *args, **kwargs):
-        # pylint: disable=no-member
         if field_name in default_sample_fields():
             raise ValueError("Cannot delete default field '%s'" % field_name)
 
@@ -152,61 +142,6 @@ class DatasetSampleDocument(Document):
             if f != "id"
         )
 
-    @classmethod
-    def get_field_schema(
-        cls, ftype=None, embedded_doc_type=None, include_private=False
-    ):
-        """Returns a schema dictionary describing the fields of this sample.
-
-        If the sample belongs to a dataset, the schema will apply to all
-        samples in the dataset.
-
-        Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
-            include_private (False): whether to include fields that start with
-                `_` in the returned schema
-
-        Returns:
-             a dictionary mapping field names to field types
-        """
-        if ftype is None:
-            ftype = fof.Field
-
-        if not issubclass(ftype, fof.Field):
-            raise ValueError(
-                "Field type %s must be subclass of %s" % (ftype, fof.Field)
-            )
-
-        if embedded_doc_type and not issubclass(
-            ftype, fof.EmbeddedDocumentField
-        ):
-            raise ValueError(
-                "embedded_doc_type should only be specified if ftype is a"
-                " subclass of %s" % fof.EmbeddedDocumentField
-            )
-
-        d = OrderedDict()
-        field_names = cls._get_fields_ordered(include_private=include_private)
-        for field_name in field_names:
-            # pylint: disable=no-member
-            field = cls._fields[field_name]
-            if not isinstance(cls._fields[field_name], ftype):
-                continue
-
-            if embedded_doc_type and not issubclass(
-                field.document_type, embedded_doc_type
-            ):
-                continue
-
-            d[field_name] = field
-
-        return d
-
     def has_field(self, field_name):
         """Determines whether the sample has a field of the given name.
 
@@ -218,79 +153,6 @@ class DatasetSampleDocument(Document):
         """
         # pylint: disable=no-member
         return field_name in self._fields
-
-    @classmethod
-    def add_field(
-        cls,
-        field_name,
-        ftype,
-        embedded_doc_type=None,
-        subfield=None,
-        save=True,
-    ):
-        """Adds a new field to the sample.
-
-        Args:
-            field_name: the field name
-            ftype: the field type to create. Must be a subclass of
-                :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): the
-                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
-                field. Used only when ``ftype`` is an embedded
-                :class:`fiftyone.core.fields.EmbeddedDocumentField`
-            subfield (None): the type of the contained field. Used only when
-                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
-                :class:`fiftyone.core.fields.DictField`
-        """
-        # Additional arg `save` is to prevent saving the fields when reloading
-        # a dataset from the database.
-
-        # pylint: disable=no-member
-        if field_name in cls._fields:
-            raise ValueError("Field '%s' already exists" % field_name)
-
-        field = _create_field(
-            field_name,
-            ftype,
-            embedded_doc_type=embedded_doc_type,
-            subfield=subfield,
-        )
-
-        cls._fields[field_name] = field
-        cls._fields_ordered += (field_name,)
-        try:
-            if issubclass(cls, DatasetSampleDocument):
-                # Only set the attribute if it is a class
-                setattr(cls, field_name, field)
-        except TypeError:
-            # Instance, not class, so do not `setattr`
-            pass
-
-        if save:
-            # Update dataset meta class
-            dataset_doc = DatasetDocument.objects.get(
-                sample_collection_name=cls.__name__
-            )
-
-            field = cls._fields[field_name]
-            sample_field = SampleFieldDocument.from_field(field)
-            dataset_doc.sample_fields.append(sample_field)
-            dataset_doc.save()
-
-    @classmethod
-    def add_implied_field(cls, field_name, value):
-        """Adds the field to the sample, inferring the field type from the
-        provided value.
-
-        Args:
-            field_name: the field name
-            value: the field value
-        """
-        # pylint: disable=no-member
-        if field_name in cls._fields:
-            raise ValueError("Field '%s' already exists" % field_name)
-
-        cls.add_field(field_name, **_get_implied_field_kwargs(value))
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the sample.
@@ -315,7 +177,14 @@ class DatasetSampleDocument(Document):
 
         if not self.has_field(field_name):
             if create:
-                self.add_implied_field(field_name, value)
+                # @todo(Tyler) instead pass the dataset into this call
+                import fiftyone.core.dataset as fod
+
+                dataset_doc = DatasetDocument.objects.get(
+                    sample_collection_name=self.__class__.__name__
+                )
+                dataset = fod.load_dataset(dataset_doc.name)
+                dataset._dataset_helper.add_implied_field(field_name, value)
             else:
                 msg = "Sample does not have field '%s'." % field_name
                 if value is not None:
@@ -335,44 +204,6 @@ class DatasetSampleDocument(Document):
             ValueError: if the field does not exist
         """
         self.set_field(field_name, None, create=False)
-
-    @classmethod
-    @no_delete_default_field
-    def delete_field(cls, field_name):
-        """Deletes the field from the sample.
-
-        If the sample is in a dataset, the field will be removed from all
-        samples in the dataset.
-
-        Args:
-            field_name: the field name
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        try:
-            # Delete from all samples
-            # pylint: disable=no-member
-            cls.objects.update(**{"unset__%s" % field_name: None})
-        except InvalidQueryError:
-            raise AttributeError("Sample has no field '%s'" % field_name)
-
-        # Remove from dataset
-        # pylint: disable=no-member
-        del cls._fields[field_name]
-        cls._fields_ordered = tuple(
-            fn for fn in cls._fields_ordered if fn != field_name
-        )
-        delattr(cls, field_name)
-
-        # Update dataset meta class
-        dataset_doc = DatasetDocument.objects.get(
-            sample_collection_name=cls.__name__
-        )
-        dataset_doc.sample_fields = [
-            sf for sf in dataset_doc.sample_fields if sf.name != field_name
-        ]
-        dataset_doc.save()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.
@@ -496,61 +327,3 @@ class DatasetSampleDocument(Document):
         if include_private:
             return cls._fields_ordered
         return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
-
-
-def _get_implied_field_kwargs(value):
-    if isinstance(value, BaseEmbeddedDocument):
-        return {
-            "ftype": fof.EmbeddedDocumentField,
-            "embedded_doc_type": type(value),
-        }
-
-    if isinstance(value, bool):
-        return {"ftype": fof.BooleanField}
-
-    if isinstance(value, six.integer_types):
-        return {"ftype": fof.IntField}
-
-    if isinstance(value, numbers.Number):
-        return {"ftype": fof.FloatField}
-
-    if isinstance(value, six.string_types):
-        return {"ftype": fof.StringField}
-
-    if isinstance(value, (list, tuple)):
-        return {"ftype": fof.ListField}
-
-    if isinstance(value, np.ndarray):
-        if value.ndim == 1:
-            return {"ftype": fof.VectorField}
-
-        return {"ftype": fof.ArrayField}
-
-    if isinstance(value, dict):
-        return {"ftype": fof.DictField}
-
-    raise TypeError("Unsupported field value '%s'" % type(value))
-
-
-def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
-    if not issubclass(ftype, fof.Field):
-        raise ValueError(
-            "Invalid field type '%s'; must be a subclass of '%s'"
-            % (ftype, fof.Field)
-        )
-
-    kwargs = {"db_field": field_name}
-
-    if issubclass(ftype, fof.EmbeddedDocumentField):
-        kwargs.update({"document_type": embedded_doc_type})
-        kwargs["null"] = True
-    elif issubclass(ftype, (fof.ListField, fof.DictField)):
-        if subfield is not None:
-            kwargs["field"] = subfield
-    else:
-        kwargs["null"] = True
-
-    field = ftype(**kwargs)
-    field.name = field_name
-
-    return field
