@@ -155,15 +155,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     Args:
         name (None): the name of the dataset. By default,
             :func:`get_default_dataset_name` is used
-        persistent (False): whether the dataset will persist in the database
-            once the session terminates
+        persistent (False): whether the dataset should persist in the database
+            after the session terminates
     """
 
     # Batch size used when commiting samples to the database
     _BATCH_SIZE = 128
 
     def __init__(self, name=None, persistent=False, _create=True):
-        if name is None:
+        if name is None and _create:
             name = get_default_dataset_name()
 
         if _create:

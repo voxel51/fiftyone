@@ -287,7 +287,7 @@ class DatasetsListCommand(Command):
         datasets = fod.list_datasets()
 
         if datasets:
-            for dataset in sorted(datasets):
+            for dataset in datasets:
                 print(dataset)
         else:
             print("No datasets found")
