@@ -658,23 +658,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         if dataset_exists(name):
-            raise ValueError(
-                "Dataset '%s' already exists; invalid to clone dataset." % name
-            )
-
-        conn = foo.get_db_conn()
+            raise ValueError("Dataset '%s' already exists" % name)
 
         # Make a unique, permanent name for this sample collection
-        sample_collection_name = _make_sample_collection_name(conn)
+        sample_collection_name = _make_sample_collection_name()
 
-        # clone the samples
+        # Clone the samples
         clone_pipeline = [
             {"$match": {}},
             {"$out": sample_collection_name},
         ]
         self._sample_collection.aggregate(clone_pipeline)
 
-        # clone the meta dataset document
+        # Clone the dataset document
         self._doc.reload("sample_fields")
         dataset_doc = deepcopy(self._doc)
         dataset_doc.name = name
@@ -1486,10 +1482,8 @@ def _create_dataset(name, persistent=False):
             % name
         )
 
-    conn = foo.get_db_conn()
-
     # Make a unique, permanent name for this sample collection
-    sample_collection_name = _make_sample_collection_name(conn)
+    sample_collection_name = _make_sample_collection_name()
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
@@ -1506,13 +1500,15 @@ def _create_dataset(name, persistent=False):
     dataset_doc.save()
 
     # Create indexes
+    conn = foo.get_db_conn()
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
 
     return dataset_doc, sample_doc_cls
 
 
-def _make_sample_collection_name(conn):
+def _make_sample_collection_name():
+    conn = foo.get_db_conn()
     now = datetime.datetime.now()
     name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S")
     if name in conn.list_collection_names():
