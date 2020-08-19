@@ -1,4 +1,5 @@
 .. include:: /substitutions.rst
+.. default-role:: ref
 
 Troubleshooting
 ===============
@@ -9,8 +10,46 @@ feel free to
 `open an issue on GitHub <https://github.com/voxel51/fiftyone/issues/new?labels=bug&template=installation_issue_template.md&title=%5BSETUP-BUG%5D>`_
 or contact us on Slack.
 
-MongoDB failing to start on Linux
----------------------------------
+Python/pip incompatibilities
+----------------------------
+
+"No matching distribution found"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you attempt to install FiftyOne with a version of Python or pip that is too
+old, you may encounter errors like these:
+
+.. code-block:: text
+
+    ERROR: Could not find a version that satisfies the requirement fiftyone (from versions: none)
+    ERROR: No matching distribution found for fiftyone
+
+.. code-block:: text
+
+    Could not find a version that satisfies the requirement fiftyone-brain (from versions: )
+    No matching distribution found for fiftyone-brain
+
+.. code-block:: text
+
+    fiftyone requires Python '>=3.5' but the running Python is 3.4.10
+
+To resolve this, you will need to use Python 3.5 or newer, and pip 19.3 or
+newer. See the `installation guide <installing-fiftyone>` for details. If you
+have installed a suitable version of Python in a virtual environment and still
+encounter this error, ensure that the virtual environment is activated. See the
+:doc:`virtual environment setup guide <virtualenv>` for more details.
+
+"No module named skbuild"
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On Linux, this error can occur when attempting to install OpenCV with an old pip
+version. To fix this, upgrade pip. See the
+`installation guide <installing-fiftyone>` for instructions, or the
+`opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>` for more
+details.
+
+MongoDB fails to start on Linux
+-------------------------------
 
 FiftyOne relies on a version of MongoDB that works on Ubuntu 18.04 and several
 other modern distributions. If this version does not work on your distribution,
