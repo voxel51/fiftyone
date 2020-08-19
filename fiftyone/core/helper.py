@@ -195,10 +195,19 @@ class DatasetHelper(object):
     def drop_collection(self, *args, **kwargs):
         return self._sample_doc_cls.drop_collection(*args, **kwargs)
 
-    def construct_doc_from_dict(self, *args, **kwargs):
-        doc = self._sample_doc_cls.from_dict(*args, **kwargs)
+    def construct_doc_from_dict(self, d, extended=False):
+        doc = self._sample_doc_cls.from_dict(d, extended=extended)
 
         return doc
+
+    def get_field(self, doc, field_name):
+        field = self.fields[field_name]
+        return field.__get__(doc, self._sample_doc_cls)
+
+    def set_field(self, doc, field_name, value):
+        field = self.fields[field_name]
+        return field.__set__(doc, value)
+
 
 def _get_implied_field_kwargs(value):
     if isinstance(value, BaseEmbeddedDocument):

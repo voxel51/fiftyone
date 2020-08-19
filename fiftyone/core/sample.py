@@ -49,12 +49,11 @@ class _Sample(SerializableDocument):
         except AttributeError:
             pass
 
-        if isinstance(self._doc, foo.DatasetSampleDocument):
-            # self._doc.get_field(name)
+        if self._dataset:
             if not self.has_field(name):
                 raise AttributeError("Sample has no field '%s'" % name)
-            return getattr(self._doc, name)
 
+            return self._dataset._schema.get_field(self._doc, name)
         try:
             return self._data[name]
         except Exception:
@@ -64,12 +63,10 @@ class _Sample(SerializableDocument):
         if name.startswith("_") or (
             hasattr(self, name) and not self.has_field(name)
         ):
-            super().__setattr__(name, value)
-            return
+            return super().__setattr__(name, value)
 
-        if isinstance(self._doc, foo.DatasetSampleDocument):
-            self._doc.__setattr__(name, value)
-            return
+        if self._dataset:
+            return self._dataset._schema.set_field(self._doc, name, value)
 
         if not self.has_field(name):
             raise ValueError(
@@ -107,11 +104,8 @@ class _Sample(SerializableDocument):
         if not isinstance(other, self.__class__):
             return False
 
-        if not isinstance(other._doc, self._doc.__class__):
+        if self.id != other.id:
             return False
-
-        if self.in_dataset:
-            return self._doc == other._doc
 
         return super().__eq__(other)
 
