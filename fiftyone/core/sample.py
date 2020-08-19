@@ -134,16 +134,9 @@ class _Sample(SerializableDocument):
         """The a :class:``bson.objectid.ObjectId``, or ``None`` if it has not
         been added to the database.
         """
-        return self._doc.id if self._in_db else None
-
-    @property
-    def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
-        if isinstance(self._doc, foo.DatasetSampleDocument):
-            return self._doc.in_db
-        return False
+        if self.in_dataset:
+            return self._doc.id
+        return None
 
     def has_field(self, field_name):
         """Determines whether the sample has a field of the given name.
@@ -539,13 +532,12 @@ class Sample(_Sample):
             doc.save()
 
         self._doc = doc
+        self._dataset = dataset
 
         # Save weak reference
         dataset_instances = self._instances[dataset._sample_collection_name]
         if self.id not in dataset_instances:
             dataset_instances[self.id] = self
-
-        self._dataset = dataset
 
     @classmethod
     def _reset_backing_docs(cls, collection_name, sample_ids):

@@ -466,16 +466,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expand_schema:
             self._expand_schema([sample])
 
-        if sample._in_db:
-            sample = sample.copy()
-
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
         d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
-        if not sample._in_db:
+        if not sample.in_dataset:
             sample._set_backing_doc(d, self)
 
         return str(d["_id"])
@@ -537,7 +534,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.insert_many(dicts)  # adds `_id` to each dict
 
         for sample, d in zip(samples, dicts):
-            if not sample._in_db:
+            if not sample.in_dataset:
                 sample._set_backing_doc(d, self)
 
         return [str(d["_id"]) for d in dicts]
