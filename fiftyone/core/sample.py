@@ -176,7 +176,7 @@ class _Sample(SerializableDocument):
             True/False
         """
         if self.in_dataset:
-            return field_name in self.dataset._dataset_helper.fields
+            return field_name in self.dataset._schema.fields
 
         try:
             return field_name in self._data
@@ -549,7 +549,7 @@ class Sample(_Sample):
             raise TypeError("Sample already belongs to a dataset")
 
         # @todo(Tyler) don't even construct this!
-        doc = dataset._dataset_helper.from_dict(d, extended=False)
+        doc = dataset._schema.construct_doc_from_dict(d, extended=False)
 
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(
@@ -644,7 +644,7 @@ class SampleView(_Sample):
         super().__init__(dataset=dataset)
 
         # @todo(Tyler) don't even construct this!
-        doc = dataset._dataset_helper.from_dict(d, extended=False)
+        doc = dataset._schema.construct_doc_from_dict(d, extended=False)
 
         if not isinstance(doc, foo.DatasetSampleDocument):
             raise TypeError(

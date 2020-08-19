@@ -168,11 +168,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         if _create:
-            self._doc, self._dataset_helper = _create_dataset(
+            self._doc, self._schema = _create_dataset(
                 name, persistent=persistent
             )
         else:
-            self._doc, self._dataset_helper = _load_dataset(name)
+            self._doc, self._schema = _load_dataset(name)
 
         self._deleted = False
 
@@ -368,7 +368,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        return self._dataset_helper.get_field_schema(
+        return self._schema.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
@@ -391,7 +391,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
         """
-        self._dataset_helper.add_field(
+        self._schema.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -407,7 +407,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Raises:
             AttributeError: if the field does not exist
         """
-        self._dataset_helper.delete_field(field_name)
+        self._schema.delete_field(field_name)
         fos.Sample._purge_field(self._sample_collection_name, field_name)
 
     def get_tags(self):
@@ -682,7 +682,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample object will be
         updated such that ``sample.in_dataset == False``.
         """
-        self._dataset_helper.drop_collection()
+        self._schema.drop_collection()
         fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 
     def delete(self):
@@ -1361,7 +1361,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _sample_collection_name(self):
-        return self._dataset_helper.sample_collection_name
+        return self._schema.sample_collection_name
 
     @property
     def _sample_collection(self):
@@ -1407,7 +1407,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 if field_name not in fields:
-                    self._dataset_helper.add_implied_field(
+                    self._schema.add_implied_field(
                         field_name, sample[field_name]
                     )
                     fields = self.get_field_schema(include_private=True)

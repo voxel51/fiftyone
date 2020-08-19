@@ -184,7 +184,7 @@ class DatasetSampleDocument(Document):
                     sample_collection_name=self.__class__.__name__
                 )
                 dataset = fod.load_dataset(dataset_doc.name)
-                dataset._dataset_helper.add_implied_field(field_name, value)
+                dataset._schema.add_implied_field(field_name, value)
             else:
                 msg = "Sample does not have field '%s'." % field_name
                 if value is not None:
