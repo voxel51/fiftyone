@@ -8,7 +8,10 @@ FiftyOne dataset helper.
 from collections import OrderedDict
 from functools import wraps
 import numbers
+import weakref
 
+import mongoengine
+from mongoengine.base import BaseList, BaseDict
 from mongoengine.errors import InvalidQueryError
 import numpy as np
 import six
@@ -223,13 +226,30 @@ class DatasetHelper(object):
     def construct_doc_from_dict(self, d, extended=False):
         doc = self._sample_doc_cls.from_dict(d, extended=extended)
 
+        for name, value in doc._data.items():
+            if isinstance(value, (list, tuple)):
+                if not isinstance(value, BaseList):
+                    value = BaseList(value, doc, name)
+                    value._dereferenced = True
+                    doc._data[name] = value
+            elif isinstance(value, dict) and not isinstance(value, BaseDict):
+                value = BaseDict(value, doc, name)
+                value._dereferenced = True
+                doc._data[name] = value
+
         return doc
 
-    def get_field(self, doc, field_name):
-        field = self.fields[field_name]
-        return field.__get__(doc, self._sample_doc_cls)
+    def get_field(self, sample, field_name):
+        # field = self.fields[field_name]
+        # return field.__get__(sample._doc, self._sample_doc_cls)
 
-    def set_field(self, doc, field_name, value, create=False):
+        try:
+            return sample._data[field_name]
+        except KeyError:
+            field = self.fields[field_name]
+            return field.get_default()
+
+    def set_field(self, sample, field_name, value, create=False):
         """Sets the value of a field of the sample document.
 
         Args:
@@ -248,7 +268,7 @@ class DatasetHelper(object):
             )
 
         if field_name not in self.fields:
-            if hasattr(doc, field_name):
+            if hasattr(sample, field_name):
                 raise ValueError(
                     "Cannot use reserved keyword '%s'" % field_name
                 )
@@ -262,10 +282,43 @@ class DatasetHelper(object):
 
             self.add_implied_field(field_name, value)
 
-        field = self.fields[field_name]
-        return field.__set__(doc, value)
+        # field = self.fields[field_name]
+        # return field.__set__(sample._doc, value)
 
-    def clear_field(self, doc, field_name):
+        return self._set_field(sample, field_name, value)
+
+    def _set_field(self, sample, field_name, value):
+        """Descriptor for assigning a value to a field in a document."""
+        field = self.fields[field_name]
+        doc = sample._doc
+
+        # If setting to None and there is a default value provided for this
+        # field, then set the value to the default value.
+        if value is None:
+            value = field.get_default()
+
+        try:
+            value_has_changed = (
+                field.name not in doc._data or doc._data[self.name] != value
+            )
+            if value_has_changed:
+                doc._mark_as_changed(field.name)
+        except Exception:
+            # Some values can't be compared and throw an error when we
+            # attempt to do so (e.g. tz-naive and tz-aware datetimes).
+            # Mark the field as changed in such cases.
+            doc._mark_as_changed(field.name)
+
+        if isinstance(value, mongoengine.EmbeddedDocument):
+            value._instance = weakref.proxy(doc)
+        elif isinstance(value, (list, tuple)):
+            for v in value:
+                if isinstance(v, mongoengine.EmbeddedDocument):
+                    v._instance = weakref.proxy(doc)
+
+        sample._data[field.name] = value
+
+    def clear_field(self, sample, field_name):
         """Clears the value of a field of the sample.
 
         Args:
@@ -274,7 +327,7 @@ class DatasetHelper(object):
         Raises:
             ValueError: if the field does not exist
         """
-        self.set_field(doc, field_name, None, create=False)
+        self.set_field(sample, field_name, None, create=False)
 
     def _get_fields_ordered(self, include_private=False):
         if include_private:

@@ -14,6 +14,7 @@ import weakref
 from bson import json_util
 from bson.binary import Binary
 import numpy as np
+from pymongo import ReturnDocument
 import six
 
 import eta.core.serial as etas
@@ -135,7 +136,7 @@ class _Sample(SerializableDocument):
         been added to the database.
         """
         if self.in_dataset:
-            return self._doc.id
+            return self._data["id"]
         return None
 
     @property
@@ -176,7 +177,7 @@ class _Sample(SerializableDocument):
         """
         try:
             if self.in_dataset:
-                return self.dataset._schema.get_field(self._doc, field_name)
+                return self.dataset._schema.get_field(self, field_name)
             else:
                 return self._data[field_name]
         except KeyError:
@@ -205,7 +206,7 @@ class _Sample(SerializableDocument):
 
         if self.in_dataset:
             return self.dataset._schema.set_field(
-                self._doc, field_name, value, create=create
+                self, field_name, value, create=create
             )
 
         if not self.has_field(field_name) and not create:
@@ -230,7 +231,7 @@ class _Sample(SerializableDocument):
             ValueError: if the field does not exist
         """
         if self.in_dataset:
-            return self.dataset._schema.clear_field(self._doc, field_name)
+            return self.dataset._schema.clear_field(self, field_name)
 
         if field_name in self._default_fields:
             default_value = self._default_fields[field_name].get_default()
@@ -306,17 +307,27 @@ class _Sample(SerializableDocument):
     def save(self):
         """Saves the sample to the database."""
         if self.in_dataset:
-            self._doc.save()
+            # @todo(Tyler) could use an update rather than a full replace
+            d = self.dataset._sample_collection.find_one_and_replace(
+                {"_id": self._object_id},
+                self.to_mongo_dict(),
+                return_document=ReturnDocument.AFTER,
+            )
+            # @todo(Tyler) don't even construct this!
+            self._doc = self.dataset._schema.construct_doc_from_dict(
+                d, extended=False
+            )
 
     def reload(self):
         """Reloads the sample from the database."""
         if self.in_dataset:
-            self._doc.reload()
-
-    def _delete(self):
-        """Deletes the document from the database."""
-        if self.in_dataset:
-            self._doc.delete()
+            d = self.dataset._sample_collection.find_one(
+                {"_id": self._object_id}
+            )
+            # @todo(Tyler) don't even construct this!
+            self._doc = self.dataset._schema.construct_doc_from_dict(
+                d, extended=False
+            )
 
     def _to_dict(self, extended=False):
         d = {}
@@ -704,6 +715,15 @@ class SampleView(_Sample):
         Any modified fields are updated, and any in-memory :class:`Sample`
         instances of this sample are updated.
         """
+        # # @todo(Tyler) write an update for this that replaces doc.save
+        # d = self.dataset._sample_collection.find_one_and_replace(
+        #     {"_id": self._object_id},
+        #     self.to_mongo_dict(),
+        #     return_document=ReturnDocument.AFTER
+        # )
+        # # @todo(Tyler) don't even construct this!
+        # self._doc = self.dataset._schema.construct_doc_from_dict(d, extended=False)
+
         self._doc.save(filtered_fields=self._filtered_fields)
 
         # Reload the sample singleton if it exists in memory
