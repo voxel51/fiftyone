@@ -40,6 +40,15 @@ class ViewStage(object):
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
+    def get_filtered_list_fields(self):
+        """Returns a list of names of fields or subfields that contain arrays
+        that may have been filtered by the stage.
+
+        Returns:
+            a list of fields
+        """
+        return []
+
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
 
@@ -239,10 +248,6 @@ class FilterField(ViewStage):
     Values of ``field`` for which ``filter`` returns ``False`` are
     replaced with ``None``.
 
-    The actual document field to filter is exposed via the
-    :meth:`FilterField.filter_field` property, which may be computed from the
-    provided ``field``.
-
     Args:
         field: the field to filter
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -265,13 +270,6 @@ class FilterField(ViewStage):
         """The filter expression."""
         return self._filter
 
-    @property
-    def filter_field(self):
-        """The *actual* field to filter, which may be computed from
-        `self.field`.
-        """
-        return self.field
-
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
 
@@ -281,10 +279,10 @@ class FilterField(ViewStage):
         return [
             {
                 "$addFields": {
-                    self.filter_field: {
+                    self.field: {
                         "$cond": {
                             "if": self._get_mongo_filter(),
-                            "then": "$" + self.filter_field,
+                            "then": "$" + self.field,
                             "else": None,
                         }
                     }
@@ -294,7 +292,7 @@ class FilterField(ViewStage):
 
     def _get_mongo_filter(self):
         if isinstance(self._filter, ViewExpression):
-            return self._filter.to_mongo(prefix="$" + self.filter_field)
+            return self._filter.to_mongo(prefix="$" + self.field)
 
         return self._filter
 
@@ -324,11 +322,11 @@ class FilterField(ViewStage):
 
 class _FilterListField(FilterField):
     @property
-    def filter_field(self):
-        raise NotImplementedError("subclasses must implement `filter_field`")
+    def _filter_field(self):
+        raise NotImplementedError("subclasses must implement `_filter_field`")
 
-    def validate(self, sample_collection):
-        raise NotImplementedError("subclasses must implement `validate()`")
+    def get_filtered_list_fields(self):
+        return [self._filter_field]
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -339,9 +337,9 @@ class _FilterListField(FilterField):
         return [
             {
                 "$addFields": {
-                    self.filter_field: {
+                    self._filter_field: {
                         "$filter": {
-                            "input": "$" + self.filter_field,
+                            "input": "$" + self._filter_field,
                             "cond": self._get_mongo_filter(),
                         }
                     }
@@ -354,6 +352,9 @@ class _FilterListField(FilterField):
             return self._filter.to_mongo(prefix="$$this")
 
         return self._filter
+
+    def validate(self, sample_collection):
+        raise NotImplementedError("subclasses must implement `validate()`")
 
 
 class FilterClassifications(_FilterListField):
@@ -370,7 +371,7 @@ class FilterClassifications(_FilterListField):
     """
 
     @property
-    def filter_field(self):
+    def _filter_field(self):
         return self.field + ".classifications"
 
     def validate(self, sample_collection):
@@ -396,7 +397,7 @@ class FilterDetections(_FilterListField):
     """
 
     @property
-    def filter_field(self):
+    def _filter_field(self):
         return self.field + ".detections"
 
     def validate(self, sample_collection):

@@ -353,10 +353,7 @@ class DatasetView(foc.SampleCollection):
 
     def _get_filtered_fields(self):
         filtered_fields = set()
-
-        # @todo convert logic here to method on filtering ViewStages
         for stage in self._stages:
-            if isinstance(stage, fost.FilterField):
-                filtered_fields.add(stage.filter_field)
+            filtered_fields.update(stage.get_filtered_list_fields())
 
         return filtered_fields
