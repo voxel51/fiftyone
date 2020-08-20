@@ -1931,14 +1931,14 @@ class ViewStageTests(unittest.TestCase):
         self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
         self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
 
-        for sv in self.dataset.exclude_fields(["exclude_fields_field1"]):
-            self.assertIsNone(sv.selected_field_names)
+        for sample in self.dataset.exclude_fields(["exclude_fields_field1"]):
+            self.assertIsNone(sample.selected_field_names)
             self.assertSetEqual(
-                sv.excluded_field_names, {"exclude_fields_field1"}
+                sample.excluded_field_names, {"exclude_fields_field1"}
             )
             with self.assertRaises(NameError):
-                sv.exclude_fields_field1
-            self.assertIsNone(sv.exclude_fields_field2)
+                sample.exclude_fields_field1
+            self.assertIsNone(sample.exclude_fields_field2)
 
     def test_exists(self):
         self.sample1["exists"] = True
@@ -1984,8 +1984,8 @@ class ViewStageTests(unittest.TestCase):
             "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
         )
 
-        for sv in view:
-            for clf in sv.test_clfs.classifications:
+        for sample in view:
+            for clf in sample.test_clfs.classifications:
                 self.assertGreater(clf.confidence, 0.5)
                 self.assertEqual(clf.label, "friend")
 
@@ -2038,8 +2038,8 @@ class ViewStageTests(unittest.TestCase):
             "test_dets", (F("confidence") > 0.5) & (F("label") == "friend")
         )
 
-        for sv in view:
-            for det in sv.test_dets.detections:
+        for sample in view:
+            for det in sample.test_dets.detections:
                 self.assertGreater(det.confidence, 0.5)
                 self.assertEqual(det.label, "friend")
 
@@ -2095,16 +2095,16 @@ class ViewStageTests(unittest.TestCase):
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)
 
-        for sv in self.dataset.select_fields():
+        for sample in self.dataset.select_fields():
             self.assertSetEqual(
-                sv.selected_field_names, set(default_sample_fields())
+                sample.selected_field_names, set(default_sample_fields())
             )
-            self.assertIsNone(sv.excluded_field_names)
-            sv.filepath
-            sv.metadata
-            sv.tags
+            self.assertIsNone(sample.excluded_field_names)
+            sample.filepath
+            sample.metadata
+            sample.tags
             with self.assertRaises(NameError):
-                sv.select_fields_field
+                sample.select_fields_field
 
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))
