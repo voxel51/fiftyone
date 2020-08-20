@@ -85,6 +85,7 @@ export const labelNames = selector({
   key: "labelNames",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+    console.log(stateDescription);
     const stats = get(datasetStats);
     if (!stateDescription.derivables || !stateDescription.derivables.labels) {
       return [];

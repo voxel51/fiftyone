@@ -1,6 +1,9 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
+import { ArrowDropDown } from "@material-ui/icons";
+
+import Filter from "./Filter";
 
 const CHECKBOX_SIZE = 24;
 const CHECKBOX_PADDING = 3;
@@ -89,6 +92,7 @@ export type Entry = {
   data: Any;
   color: string;
   disabled: boolean;
+  type?: string;
 };
 
 type Props = {
@@ -98,6 +102,7 @@ type Props = {
 
 const CheckboxGrid = ({ entries, onCheck }: Props) => {
   const theme = useContext(ThemeContext);
+  const [expanded, setExpanded] = useState(false);
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -117,6 +122,14 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
                   {entry.name}
                 </span>
                 <span className="data">{entry.data}</span>
+                {entry.type && (
+                  <ArrowDropDown
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpanded(!expanded);
+                    }}
+                  />
+                )}
               </>
             }
             style={{
@@ -143,6 +156,7 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
               />
             }
           />
+          {expanded && <Filter />}
         </div>
       ))}
     </Body>
