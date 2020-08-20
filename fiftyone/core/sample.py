@@ -440,6 +440,40 @@ class Sample(_Sample):
         return sample
 
     @classmethod
+    def from_sample_view(cls, sample_view):
+        """Creates an instance of the :class:`Sample` class backed by the given
+        support.
+
+        Args:
+            data: the dict backing this document
+            dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
+                belongs to
+
+        Returns:
+            a :class:`Sample`
+        """
+        if (
+            sample_view.selected_field_names
+            or sample_view.excluded_field_names
+            or sample_view.filtered_field_names
+        ):
+            raise ValueError(
+                "%s can only be constructed from a SampleView that does not"
+                " exclude or restrict fields." % cls.__name__
+            )
+
+        try:
+            # Get instance if exists
+            collection_name = sample_view.dataset._sample_collection_name
+            sample = cls._instances[collection_name][sample_view.id]
+        except KeyError:
+            sample = cls.__new__(cls)
+            sample._dataset = None  # set to prevent RecursionError
+            sample._set_support(sample_view._data, sample_view.dataset)
+
+        return sample
+
+    @classmethod
     def from_dict(cls, d):
         """Loads the sample from a JSON dictionary.
 
@@ -644,6 +678,13 @@ class SampleView(_Sample):
         ``None`` if no fields were explicitly excluded.
         """
         return self._excluded_fields
+
+    @property
+    def filtered_field_names(self):
+        """The set of field names that were filtered on this sample, or
+        ``None`` if no fields were filtered.
+        """
+        return self._filtered_fields
 
     def get_field(self, field_name):
         if (

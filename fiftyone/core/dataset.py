@@ -304,8 +304,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except ValueError:
             raise ValueError("%s is empty" % self.__class__.__name__)
 
-        # @todo(Tyler) this could be more efficient (uses two queries ATM)
-        return self[sample_view.id]
+        return fos.Sample.from_sample_view(sample_view)
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the dataset.
@@ -319,8 +318,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        # @todo(Tyler) this could be more efficient (uses two queries ATM)
-        return [self[sv.id] for sv in self[:num_samples]]
+        return [fos.Sample.from_sample_view(sv) for sv in self[:num_samples]]
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the dataset.
@@ -334,8 +332,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        # @todo(Tyler) this could be more efficient (uses two queries ATM)
-        return [self[sv.id] for sv in self[-num_samples:]]
+        return [fos.Sample.from_sample_view(sv) for sv in self[-num_samples:]]
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
