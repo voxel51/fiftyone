@@ -5,6 +5,7 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 import re
 
 import eta.core.utils as etau
@@ -56,17 +57,20 @@ class ViewExpression(object):
     def __repr__(self):
         return fou.pformat(self.to_mongo())
 
-    def to_mongo(self, in_list=False):
+    def __deepcopy__(self, memo):
+        return self.__class__(deepcopy(self._expr, memo))
+
+    def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the expression.
 
         Args:
-            in_list (False): whether this expression is being used in the
-                context of a list filter
+            prefix (None): an optional prefix to prepend to all
+                :class:`ViewField` instances in the expression
 
         Returns:
             a MongoDB expression
         """
-        return ViewExpression._recurse(self._expr, in_list)
+        return ViewExpression._recurse(self._expr, prefix)
 
     # Comparison expression operators #########################################
 
@@ -432,11 +436,14 @@ class ViewExpression(object):
         ``self in values``.
 
         Args:
-            values: a list of values to check if ``self`` is in
+            values: a value or iterable of values
 
         Returns:
             a :class:`ViewExpression`
         """
+        if etau.is_str(values):
+            values = [values]
+
         return ViewExpression({"$in": [self, list(values)]})
 
     def contains(self, value):
@@ -465,7 +472,12 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression(
-            {"$filter": {"input": self, "cond": expr.to_mongo(in_list=True)}}
+            {
+                "$filter": {
+                    "input": self,
+                    "cond": expr.to_mongo(prefix="$$this"),
+                }
+            }
         )
 
     # String expression operators #############################################
@@ -594,26 +606,51 @@ class ViewExpression(object):
     # Private methods #########################################################
 
     @staticmethod
-    def _recurse(val, in_list):
+    def _recurse(val, prefix):
         if isinstance(val, ViewExpression):
-            return val.to_mongo(in_list=in_list)
+            return val.to_mongo(prefix=prefix)
 
         if isinstance(val, dict):
             return {
-                ViewExpression._recurse(k, in_list): ViewExpression._recurse(
-                    v, in_list
+                ViewExpression._recurse(k, prefix): ViewExpression._recurse(
+                    v, prefix
                 )
                 for k, v in val.items()
             }
 
         if isinstance(val, list):
-            return [ViewExpression._recurse(v, in_list) for v in val]
+            return [ViewExpression._recurse(v, prefix) for v in val]
 
         return val
 
 
-class ViewField(ViewExpression):
-    """A field of an object in a :class:`fiftyone.core.stages.ViewStage`.
+class _MetaViewField(type):
+    def __getattr__(self, name):
+        return ViewField(name)
+
+
+class ViewField(ViewExpression, metaclass=_MetaViewField):
+    """A field (or subfield) of an object in a
+    :class:`fiftyone.core.stages.ViewStage`.
+
+    A :class:`ViewField` can be created either via class attribute or object
+    constructor syntax.
+
+    You can use `dot notation <https://docs.mongodb.com/manual/core/document/#dot-notation>`_
+    to refer to subfields of embedded objects within fields.
+
+    Example uses::
+
+        from fiftyone import ViewField as F
+
+        # Reference a field named `ground_truth`
+        F("ground_truth")
+        F.ground_truth           # equivalent
+
+        # Reference the `label` field of the `ground_truth` object
+        F("ground_truth.label")
+        F("ground_truth").label  # equivalent
+        F.ground_truth.label     # equivalent
 
     .. automethod:: __eq__
     .. automethod:: __ge__
@@ -637,28 +674,31 @@ class ViewField(ViewExpression):
     .. automethod:: __getitem__
 
     Args:
-        expr: the name of the field
+        name: the name of the field
     """
 
-    def __init__(self, expr):
-        if not isinstance(expr, str):
-            raise TypeError(
-                "Invalid `expr` type '%s' for %s. Expected 'str'"
-                % (type(expr), self.__class__.__name__)
-            )
-        super().__init__(expr)
+    def __init__(self, name):
+        if not etau.is_str(name):
+            raise TypeError("`name` must be str; found %s" % name)
 
-    def to_mongo(self, in_list=False):
+        super().__init__(name)
+
+    def __getattr__(self, name):
+        return ViewField(self._expr + "." + name)
+
+    def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the field.
 
         Args:
-            in_list (False): whether this field is being used in the context of
-                a list filter
+            prefix (None): an optional prefix to prepend to the field name
 
         Returns:
             a string
         """
-        return "$$this.%s" % self._expr if in_list else "$" + self._expr
+        if prefix:
+            return prefix + "." + self._expr
+
+        return "$" + self._expr
 
 
 def _escape_regex_chars(str_or_strs):
