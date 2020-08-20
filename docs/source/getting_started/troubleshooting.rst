@@ -49,6 +49,37 @@ version. To fix this, upgrade pip. See the
 `opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
 details.
 
+IPython installation
+--------------------
+
+If you are using IPython and a virtual environment for FiftyOne, IPython must
+be installed in the virtual environment, per the
+:ref:`installation guide <installing-extras>`. If you attempt to use a
+system-wide IPython installation in a virtual environment with FiftyOne, you
+may encounter errors such as:
+
+.. code-block:: text
+
+    .../IPython/core/interactiveshell.py:935: UserWarning: Attempting to work in a virtualenv. If you encounter problems, please install IPython inside the virtualenv.
+
+.. code-block:: text
+
+    File ".../fiftyone/core/../_service_main.py", line 29, in <module>
+        import psutil
+    ModuleNotFoundError: No module named 'psutil'
+
+.. code-block:: text
+
+    ServerSelectionTimeoutError: localhost:27017: [Errno 111] Connection refused
+
+To resolve this, install IPython in your active virtual environment (see the
+:ref:`virtual environment guide <virtualenv-guide>` for more information):
+
+.. code-block:: shell
+
+    pip install ipython
+
+
 MongoDB compatibility issues on Linux
 -------------------------------------
 

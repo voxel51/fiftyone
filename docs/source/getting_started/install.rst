@@ -86,6 +86,8 @@ messages that you may encounter.
   `available here <https://www.microsoft.com/en-us/download/details.aspx?id=48145>`_
   (choose the x64 version).
 
+.. _installing-extras:
+
 Installing extra packages
 -------------------------
 
@@ -95,7 +97,9 @@ helpful instructions on what you need to install. Alternatively, you can
 preemptively install what you'll need by installing the following additional
 packages via `pip` in your virtual environment:
 
-* `ipython` to follow along with interactive examples more easily
+* `ipython` to follow along with interactive examples more easily (note that
+  a system-wide IPython installation will *not* work in a virtual environment,
+  even if it is accessible)
 * `tensorflow` for examples requiring TensorFlow. The installation process
   can vary depending on your system, so consult the
   `Tensorflow documentation <https://www.tensorflow.org/install>`_ for specific
