@@ -769,13 +769,15 @@ class SampleView(_Sample):
 
 
 def serialize_dict(d, extended=False):
-    """
+    """Serializes the serializable elements of the given dict.
+
     Args:
-        d: TODO
-        extended: TODO
+        d: a dictionary
+        extended (False): whether the input dictionary may contain
+            serialized extended JSON constructs
 
     Returns:
-        a dict
+        a dictionary
     """
     sd = {}
     for k, v in d.items():
@@ -807,12 +809,13 @@ def serialize_dict(d, extended=False):
 
 
 def deserialize_dict(d):
-    """
+    """De-serializes the serializable elements of the given dict.
+
     Args:
-        d: TODO
+        d: a dictionary
 
     Returns:
-        a dict
+        a dictionary
     """
     dd = {}
     for k, v in d.items():
