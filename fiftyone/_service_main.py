@@ -109,10 +109,13 @@ parser.add_argument(
     type=str,
     required=True,
 )
+parser.add_argument("--multi", action="store_true")
 
 args, command = parser.parse_known_args()
 if not command:
     raise ValueError("No command given")
+if command[0].startswith("--"):
+    raise ValueError("Unhandled service argument: %s" % command[0])
 
 # ignore signals sent to the parent process - parent process termination is
 # handled below, and necessary for cleaning up the child process

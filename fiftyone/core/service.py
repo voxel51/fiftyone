@@ -93,6 +93,7 @@ class Service(object):
 
     @property
     def _service_args(self):
+        """Arguments passed to the service entrypoint"""
         if not self.service_name:
             raise NotImplementedError(
                 "%r must define `service_name`" % type(self)
@@ -164,7 +165,15 @@ class Service(object):
         return find_port()
 
 
-class DatabaseService(Service):
+class MultiClientService(Service):
+    """Base class for services that support multiple clients."""
+
+    @property
+    def _service_args(self):
+        return super()._service_args + ["--multi"]
+
+
+class DatabaseService(MultiClientService):
     """Service that controls the underlying MongoDB database."""
 
     service_name = "db"
