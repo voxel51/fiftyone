@@ -1,5 +1,5 @@
 """
-FiftyOne dataset helper.
+FiftyOne dataset schema.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -331,18 +331,6 @@ class DatasetSchema(object):
         #             v._instance = weakref.proxy(sample)
 
         sample._data[field_name] = value
-
-    # @todo(Tyler) move sample-parts to _Sample
-    def clear_field(self, sample, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Raises:
-            ValueError: if the field does not exist
-        """
-        self.set_field(sample, field_name, None, create=False)
 
     def _get_fields_ordered(self, include_private=False):
         if include_private:

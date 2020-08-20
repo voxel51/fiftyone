@@ -196,7 +196,7 @@ class _Sample(SerializableDocument):
             ValueError: if the field does not exist
         """
         if self.in_dataset:
-            return self.dataset._schema.clear_field(self, field_name)
+            return self.set_field(field_name, None, create=False)
 
         if field_name in fos.DatasetSchema.default_fields:
             field = fos.DatasetSchema.default_fields[field_name]
@@ -582,28 +582,6 @@ class SampleView(_Sample):
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
 
-    def __getattr__(self, name):
-        if not name.startswith("_"):
-            if (
-                self._selected_fields is not None
-                and name not in self._selected_fields
-            ):
-                raise NameError(
-                    "Field '%s' is not selected from this %s"
-                    % (name, type(self).__name__)
-                )
-
-            if (
-                self._excluded_fields is not None
-                and name in self._excluded_fields
-            ):
-                raise NameError(
-                    "Field '%s' is excluded from this %s"
-                    % (name, type(self).__name__)
-                )
-
-        return super().__getattr__(name)
-
     @property
     def field_names(self):
         """An ordered tuple of field names of this sample.
@@ -638,6 +616,27 @@ class SampleView(_Sample):
         ``None`` if no fields were explicitly excluded.
         """
         return self._excluded_fields
+
+    def get_field(self, field_name):
+        if (
+            self._selected_fields is not None
+            and field_name not in self._selected_fields
+        ):
+            raise NameError(
+                "Field '%s' is not selected from this %s"
+                % (field_name, type(self).__name__)
+            )
+
+        if (
+            self._excluded_fields is not None
+            and field_name in self._excluded_fields
+        ):
+            raise NameError(
+                "Field '%s' is excluded from this %s"
+                % (field_name, type(self).__name__)
+            )
+
+        return super().get_field(field_name)
 
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the
