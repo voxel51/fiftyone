@@ -8,16 +8,14 @@ FiftyOne dataset helper.
 from collections import OrderedDict
 from functools import wraps
 import numbers
-import weakref
 
-import mongoengine
 from mongoengine.base import BaseList, BaseDict
 from mongoengine.errors import InvalidQueryError
 import numpy as np
 import six
 
 import fiftyone.core.fields as fof
-from fiftyone.core.odm.dataset import SampleFieldDocument, DatasetDocument
+import fiftyone.core.odm as foo
 from fiftyone.core.odm.document import BaseEmbeddedDocument
 from fiftyone.core.odm.sample import default_sample_fields
 
@@ -40,7 +38,11 @@ def no_delete_default_field(func):
     return wrapper
 
 
-class DatasetHelper(object):
+class DatasetSchema(object):
+    # pylint: disable=no-member
+    default_fields = foo.DatasetSampleDocument._fields
+    default_fields_ordered = default_sample_fields(include_private=True)
+
     def __init__(self, sample_doc_cls):
         self._sample_doc_cls = sample_doc_cls
 
@@ -162,12 +164,12 @@ class DatasetHelper(object):
 
         if save:
             # Update dataset meta class
-            dataset_doc = DatasetDocument.objects.get(
+            dataset_doc = foo.DatasetDocument.objects.get(
                 sample_collection_name=self.sample_collection_name
             )
 
             field = self.fields[field_name]
-            sample_field = SampleFieldDocument.from_field(field)
+            sample_field = foo.SampleFieldDocument.from_field(field)
             dataset_doc.sample_fields.append(sample_field)
             dataset_doc.save()
 
@@ -214,7 +216,7 @@ class DatasetHelper(object):
         delattr(self._sample_doc_cls, field_name)
 
         # Update dataset meta class
-        dataset_doc = DatasetDocument.objects.get(
+        dataset_doc = foo.DatasetDocument.objects.get(
             sample_collection_name=self.sample_collection_name
         )
         dataset_doc.sample_fields = [
@@ -241,6 +243,7 @@ class DatasetHelper(object):
 
         return doc
 
+    # @todo(Tyler) move sample-parts to _Sample
     def get_field(self, sample, field_name):
         try:
             return sample._data[field_name]
@@ -248,6 +251,7 @@ class DatasetHelper(object):
             field = self.fields[field_name]
             return field.get_default()
 
+    # @todo(Tyler) move sample-parts to _Sample
     def set_field(self, sample, field_name, value, create=False):
         """Sets the value of a field of the sample document.
 
@@ -283,6 +287,7 @@ class DatasetHelper(object):
 
         return self._set_field(sample, field_name, value)
 
+    # @todo(Tyler) move sample-parts to _Sample
     def _set_field(self, sample, field_name, value):
         """Descriptor for assigning a value to a field in a document."""
         # If setting to None and there is a default value provided for this
@@ -313,6 +318,7 @@ class DatasetHelper(object):
 
         sample._data[field_name] = value
 
+    # @todo(Tyler) move sample-parts to _Sample
     def clear_field(self, sample, field_name):
         """Clears the value of a field of the sample.
 

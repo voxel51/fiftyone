@@ -3,39 +3,18 @@ Backing document classes for :class:`fiftyone.core.sample.Sample` instances.
 
 Class hierarchy::
 
-    SampleDocument
-    └── DatasetSampleDocument
-        ├── my_custom_dataset
-        ├── another_dataset
-        └── ...
-
-Design invariants:
-
--   A :class:`fiftyone.core.sample.Sample` always has a backing
-    ``sample._doc``, which is an instance of a subclass of
-    :class:`SampleDocument`
+    DatasetSampleDocument
+      ├── my_custom_dataset
+      ├── another_dataset
+      └── ...
 
 **Implementation details**
 
-When a new :class:`fiftyone.core.sample.Sample` is created, its ``_doc``
-attribute is `None`
-
-    import fiftyone as fo
-
-    sample = fo.Sample()
-    sample._doc  # None
-
 When a new :class:`fiftyone.core.dataset.Dataset` is created, its
-``_sample_doc_cls`` attribute holds a dynamically created subclass of
+``_schema._sample_doc_cls`` attribute holds a dynamically created subclass of
 :class:`DatasetSampleDocument` whose name is the name of the dataset::
 
     dataset = fo.Dataset(name="my_dataset")
-
-When a sample is added to a dataset, its ``_doc`` attribute is changed from
-
-
-    dataset.add_sample(sample)
-    sample._doc  # my_dataset(DatasetSampleDocument)
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

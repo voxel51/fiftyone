@@ -473,7 +473,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample.in_dataset:
-            sample._set_backing_doc(d, self)
+            sample._set_support(d, self)
 
         return str(d["_id"])
 
@@ -535,7 +535,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for sample, d in zip(samples, dicts):
             if not sample.in_dataset:
-                sample._set_backing_doc(d, self)
+                sample._set_support(d, self)
 
         return [str(d["_id"]) for d in dicts]
 
@@ -1406,7 +1406,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     fields = self.get_field_schema(include_private=True)
 
     def _dict_to_sample(self, d):
-        return fos.Sample.from_db_doc(d, dataset=self)
+        return fos.Sample.from_support(d, dataset=self)
 
     def _to_fields_str(self, field_schema):
         max_len = max([len(field_name) for field_name in field_schema]) + 1
@@ -1477,7 +1477,7 @@ def _create_dataset(name, persistent=False):
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
-    dataset_helper = foh.DatasetHelper(sample_doc_cls)
+    schema = foh.DatasetSchema(sample_doc_cls)
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
@@ -1485,7 +1485,7 @@ def _create_dataset(name, persistent=False):
         sample_collection_name=sample_collection_name,
         persistent=persistent,
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            dataset_helper.get_field_schema(include_private=True)
+            schema.get_field_schema(include_private=True)
         ),
     )
     dataset_doc.save()
@@ -1495,7 +1495,7 @@ def _create_dataset(name, persistent=False):
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
 
-    return dataset_doc, dataset_helper
+    return dataset_doc, schema
 
 
 def _make_sample_collection_name():
@@ -1524,7 +1524,7 @@ def _load_dataset(name):
     sample_doc_cls = _create_sample_document_cls(
         dataset_doc.sample_collection_name
     )
-    dataset_helper = foh.DatasetHelper(sample_doc_cls)
+    schema = foh.DatasetSchema(sample_doc_cls)
 
     # Populate sample field schema
     default_fields = Dataset.get_default_sample_fields(include_private=True)
@@ -1543,7 +1543,7 @@ def _load_dataset(name):
             else None
         )
 
-        dataset_helper.add_field(
+        schema.add_field(
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,
@@ -1551,4 +1551,4 @@ def _load_dataset(name):
             save=False,
         )
 
-    return dataset_doc, dataset_helper
+    return dataset_doc, schema

@@ -20,30 +20,16 @@ import six
 import eta.core.serial as etas
 import eta.core.utils as etau
 
-import fiftyone.core.odm as foo
-
 import fiftyone as fo
+import fiftyone.core.helper as foh
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
-
 from fiftyone.core.odm.document import SerializableDocument
-from fiftyone.core.odm.sample import _generate_rand, default_sample_fields
+from fiftyone.core.odm.sample import _generate_rand
 
 
 class _Sample(SerializableDocument):
     """Base class for :class:`Sample` and :class:`SampleView`."""
-
-    # pylint: disable=no-member
-    _default_fields = foo.DatasetSampleDocument._fields
-    _default_fields_ordered = default_sample_fields(include_private=True)
-
-    # _initialised = True
-    #
-    # @property
-    # def _fields(self):
-    #     if self.in_dataset:
-    #         return self.dataset._schema.fields
-    #     return None
 
     def __init__(self, dataset=None):
         self._dataset = dataset
@@ -59,7 +45,7 @@ class _Sample(SerializableDocument):
 
     def __setattr__(self, name, value):
         if name.startswith("_") or (
-            hasattr(self, name) and not self.has_field(name)
+            hasattr(self, name) and name not in self.field_names
         ):
             return super().__setattr__(name, value)
 
@@ -137,56 +123,6 @@ class _Sample(SerializableDocument):
 
         return tuple(k for k in self._data.keys() if not k.startswith("_"))
 
-    @property
-    def _object_id(self):
-        """The a :class:``bson.objectid.ObjectId``, or ``None`` if it has not
-        been added to the database.
-        """
-        if self.in_dataset:
-            return self._data["_id"]
-        return None
-
-    @property
-    def _data(self):
-        return self.__data
-
-    @_data.setter
-    def _data(self, d):
-        if "id" in d:
-            d["_id"] = d.pop("id")
-        self.__data = OrderedDict(deserialize_dict(d))
-
-    @property
-    def _collection(self):
-        if self.in_dataset:
-            return self.dataset._sample_collection
-        return None
-
-    @property
-    def _doc(self):
-        assert self.in_dataset, "Requesting Sample._doc but not in dataset"
-        return self.dataset._schema.construct_doc_from_dict(
-            self._data, extended=False
-        )
-
-    def has_field(self, field_name):
-        """Determines whether the sample has a field of the given name.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            True/False
-        """
-        if self.in_dataset:
-            return field_name in self.dataset._schema.fields
-
-        try:
-            return field_name in self._data
-        except AttributeError:
-            # If `_data` is not initialized
-            return False
-
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
 
@@ -227,7 +163,7 @@ class _Sample(SerializableDocument):
                 % field_name
             )
 
-        if hasattr(self, field_name) and not self.has_field(field_name):
+        if hasattr(self, field_name) and field_name not in self.field_names:
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
         if self.in_dataset:
@@ -235,7 +171,7 @@ class _Sample(SerializableDocument):
                 self, field_name, value, create=create
             )
 
-        if not self.has_field(field_name) and not create:
+        if not create and field_name not in self.field_names:
             msg = "Sample does not have field '%s'." % field_name
             if value is not None:
                 # don't report this when clearing a field.
@@ -259,8 +195,8 @@ class _Sample(SerializableDocument):
         if self.in_dataset:
             return self.dataset._schema.clear_field(self, field_name)
 
-        if field_name in self._default_fields:
-            default_value = self._default_fields[field_name].get_default()
+        if field_name in foh.DatasetSchema.default_fields:
+            default_value = foh.DatasetSchema.default_fields[field_name].get_default()
             self.set_field(field_name, default_value)
         else:
             self._data.pop(field_name, None)
@@ -339,12 +275,37 @@ class _Sample(SerializableDocument):
         if self.in_dataset:
             self._data = self._collection.find_one({"_id": self._object_id})
 
+    @property
+    def _object_id(self):
+        """The a :class:``bson.objectid.ObjectId``, or ``None`` if it has not
+        been added to the database.
+        """
+        if self.in_dataset:
+            return self._data["_id"]
+        return None
+
+    @property
+    def _data(self):
+        return self.__data
+
+    @_data.setter
+    def _data(self, d):
+        self.__data = OrderedDict(deserialize_dict(d))
+
+    @property
+    def _collection(self):
+        if self.in_dataset:
+            return self.dataset._sample_collection
+        return None
+
     def _get_repr_fields(self):
         return ("id",) + self.field_names
 
     def _mark_as_changed(self, key):
         """Mark a key as explicitly changed by the user."""
         pass
+
+        # @todo(Tyler) is this useful?
         # if not key:
         #     return
         #
@@ -403,14 +364,14 @@ class Sample(_Sample):
 
         self._data = {}
 
-        for field_name in self._default_fields_ordered:
+        for field_name in foh.DatasetSchema.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
             if field_name == "_rand":
                 value = _generate_rand(filepath=filepath)
 
             if value is None:
-                value = self._default_fields[field_name].get_default()
+                value = foh.DatasetSchema.default_fields[field_name].get_default()
 
             if field_name == "filepath":
                 value = os.path.abspath(os.path.expanduser(value))
@@ -420,12 +381,12 @@ class Sample(_Sample):
         self._data.update(kwargs)
 
     @classmethod
-    def from_db_doc(cls, d, dataset):
+    def from_support(cls, data, dataset):
         """Creates an instance of the :class:`Sample` class backed by the given
-        document.
+        support.
 
         Args:
-            doc: a :class:`fiftyone.core.odm.SampleDocument`
+            data: the dict backing this document
             dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
                 belongs to
 
@@ -436,12 +397,12 @@ class Sample(_Sample):
         try:
             # Get instance if exists
             sample = cls._instances[dataset._sample_collection_name][
-                str(d["_id"])
+                str(data["_id"])
             ]
         except KeyError:
             sample = cls.__new__(cls)
             sample._dataset = None  # set to prevent RecursionError
-            sample._set_backing_doc(d, dataset)
+            sample._set_support(data, dataset)
 
         return sample
 
@@ -519,15 +480,15 @@ class Sample(_Sample):
         for sample in cls._instances[collection_name].values():
             sample._data.pop(field_name, None)
 
-    def _set_backing_doc(self, d, dataset):
-        """Updates the backing doc for the sample.
+    def _set_support(self, data, dataset):
+        """Updates the backing support for the sample.
 
         For use **only** when adding a sample to a dataset.
         """
         if self.in_dataset:
             raise TypeError("Sample already belongs to a dataset")
 
-        self._data = d
+        self._data = data
         self._dataset = dataset
 
         # Save weak reference
@@ -586,7 +547,7 @@ class SampleView(_Sample):
         its elements) behavior is not guaranteed
 
     Args:
-        doc: a `dict`
+        data: a `dict`
         dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
             belongs to
         selected_fields (None): a set of field names that this sample view is
@@ -599,7 +560,7 @@ class SampleView(_Sample):
 
     def __init__(
         self,
-        d,
+        data,
         dataset,
         selected_fields=None,
         excluded_fields=None,
@@ -607,10 +568,7 @@ class SampleView(_Sample):
     ):
         super().__init__(dataset=dataset)
 
-        if "_id" not in d:
-            raise ValueError("`doc` is not saved to the database.")
-
-        self._data = d
+        self._data = data
 
         if selected_fields is not None and excluded_fields is not None:
             selected_fields = selected_fields.difference(excluded_fields)
@@ -737,6 +695,14 @@ class SampleView(_Sample):
 
 
 def serialize_dict(d, extended=False):
+    """
+    Args:
+        d: TODO
+        extended: TODO
+
+    Returns:
+        a dict
+    """
     sd = {}
     for k, v in d.items():
         if hasattr(v, "to_dict"):
@@ -759,9 +725,6 @@ def serialize_dict(d, extended=False):
                 sd[k] = json.loads(json_util.dumps(Binary(v_binary)))
             else:
                 sd[k] = v_binary
-        elif k == "id":
-            # @todo(Tyler) use "_id" instead of "id"
-            sd["_id"] = v
         else:
             # JSON primitive
             sd[k] = v
