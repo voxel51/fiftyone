@@ -901,8 +901,8 @@ def _validate_field_type(
     field = schema[field_name]
 
     if embedded_doc_type is not None:
-        if not isinstance(field, fof.EmbeddedDocumentField) or not isinstance(
-            field.document_type, embedded_doc_type
+        if not isinstance(field, fof.EmbeddedDocumentField) or (
+            field.document_type is not embedded_doc_type
         ):
             raise ViewStageError(
                 "Field '%s' must be an instance of %s; found %s"
