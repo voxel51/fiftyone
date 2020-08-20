@@ -5,7 +5,6 @@ FiftyOne Services.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import itertools
 import logging
 import multiprocessing
 import os
@@ -21,6 +20,7 @@ from retrying import retry
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.service.util as fosu
 
 
 logger = logging.getLogger(__name__)
@@ -148,16 +148,8 @@ class Service(object):
             retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
         )
         def find_port():
-            child_connections = itertools.chain.from_iterable(  # flatten
-                child.connections(kind="tcp")
-                for child in self.child.children(recursive=True)
-            )
-            for conn in child_connections:
-                if (
-                    not conn.raddr  # not connected to a remote socket
-                    and conn.status == psutil.CONN_LISTEN
-                ):
-                    local_port = conn.laddr[1]
+            for child in self.child.children(recursive=True):
+                for local_port in fosu.get_listening_tcp_ports(child):
                     if port is None or port == local_port:
                         return local_port
             raise ServiceListenTimeout(etau.get_class_name(self), port)
