@@ -15,6 +15,7 @@ import reprlib
 
 from bson import ObjectId
 from mongoengine.errors import DoesNotExist, FieldDoesNotExist
+from pymongo.errors import BulkWriteError, DuplicateKeyError
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -538,7 +539,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
 
-        self._sample_collection.insert_many(dicts)  # adds `_id` to each dict
+        try:
+            # adds `_id` to each dict
+            self._sample_collection.insert_many(dicts)
+        except BulkWriteError as err:
+            writeError = err.details["writeErrors"][0]
+            if writeError["code"] == 11000:
+                raise DuplicateKeyError(writeError["errmsg"])
+            raise
 
         for sample, d in zip(samples, dicts):
             if not sample.in_dataset:

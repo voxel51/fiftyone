@@ -515,7 +515,7 @@ class Sample(_Sample):
         Returns:
             True/False whether the sample was reloaded
         """
-        # @todo(Tyler) it could optimize the code to instead flag the sample as
+        # @todo it could optimize the code to instead flag the sample as
         #   "stale", then have it reload once __getattribute__ is called
         dataset_instances = cls._instances[collection_name]
         sample = dataset_instances.get(sample_id, None)

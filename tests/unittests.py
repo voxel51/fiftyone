@@ -27,7 +27,6 @@ from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.core.odm as foo
 from fiftyone.core.odm.sample import default_sample_fields
 import fiftyone.core.sample as fos
 from fiftyone import ViewField as F
@@ -972,19 +971,28 @@ class SampleInDatasetTests(unittest.TestCase):
         self.assertEqual(dataset[sample.id][field_name], value)
 
     @drop_datasets
+    def test_duplicate_key(self):
+        dataset = fo.Dataset()
+        filepath = "/path/to/image.jpg"
+        dataset.add_samples([fo.Sample(filepath), fo.Sample("/path/to/2.jpg")])
+
+        with self.assertRaises(DuplicateKeyError):
+            dataset.add_sample(fo.Sample(filepath=filepath))
+
+        with self.assertRaises(DuplicateKeyError):
+            dataset.add_samples([fo.Sample(filepath=filepath)])
+
+        with self.assertRaises(DuplicateKeyError):
+            sample = dataset.last()
+            sample.filepath = filepath
+            sample.save()
+
+    @drop_datasets
     def test_update_sample(self):
         dataset = fo.Dataset()
         filepath = "/path/to/image.jpg"
         sample = fo.Sample(filepath=filepath, tags=["tag1", "tag2"])
         dataset.add_sample(sample)
-
-        # add duplicate filepath
-        with self.assertRaises(DuplicateKeyError):
-            dataset.add_sample(fo.Sample(filepath=filepath))
-
-        # @todo(Tyler)
-        # with self.assertRaises(DuplicateKeyError):
-        #     dataset.add_samples([fo.Sample(filepath=filepath)])
 
         self.assertEqual(len(dataset), 1)
 

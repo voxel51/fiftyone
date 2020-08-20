@@ -155,7 +155,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         return cls._from_son(bson_data)
 
     def _to_json(self):
-        # @todo(Tyler) mongoengine snippet, to be replaced
+        # @todo mongoengine snippet, to be replaced
         # pylint: disable=no-member
         return json_util.dumps(self.to_mongo(use_db_field=True))
 
