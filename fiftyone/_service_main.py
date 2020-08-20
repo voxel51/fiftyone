@@ -18,6 +18,7 @@ then exiting itself.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import argparse
 import collections
 import enum
 import os
@@ -100,7 +101,16 @@ if __name__ != "__main__":
         "This file is for internal use only and cannot be imported"
     )
 
-command = sys.argv[1:]
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--51-service",
+    dest="service_name",
+    metavar="SERVICE_NAME",
+    type=str,
+    required=True,
+)
+
+args, command = parser.parse_known_args()
 if not command:
     raise ValueError("No command given")
 

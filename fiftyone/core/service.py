@@ -57,6 +57,7 @@ class Service(object):
     service in the subprocess.
     """
 
+    service_name = None
     working_dir = "."
     allow_headless = False
 
@@ -88,7 +89,15 @@ class Service(object):
 
     @property
     def command(self):
-        raise NotImplementedError("subclasses must define `command`")
+        raise NotImplementedError("%r must define `command`" % type(self))
+
+    @property
+    def _service_args(self):
+        if not self.service_name:
+            raise NotImplementedError(
+                "%r must define `service_name`" % type(self)
+            )
+        return ["--51-service", self.service_name]
 
     def start(self):
         """Starts the Service."""
@@ -100,7 +109,9 @@ class Service(object):
         # use psutil's Popen wrapper because its wait() more reliably waits
         # for the process to exit on Windows
         self.child = psutil.Popen(
-            [sys.executable, service_main_path] + self.command,
+            [sys.executable, service_main_path]
+            + self._service_args
+            + self.command,
             cwd=self.working_dir,
             stdin=subprocess.PIPE,
         )
@@ -156,6 +167,7 @@ class Service(object):
 class DatabaseService(Service):
     """Service that controls the underlying MongoDB database."""
 
+    service_name = "db"
     allow_headless = True
 
     MONGOD_EXE_NAME = "mongod"
@@ -243,6 +255,7 @@ class DatabaseService(Service):
 class ServerService(Service):
     """Service that controls the FiftyOne web server."""
 
+    service_name = "server"
     working_dir = foc.SERVER_DIR
     allow_headless = True
 
@@ -293,6 +306,7 @@ class ServerService(Service):
 class AppService(Service):
     """Service that controls the FiftyOne app."""
 
+    service_name = "app"
     working_dir = foc.FIFTYONE_APP_DIR
 
     @property
