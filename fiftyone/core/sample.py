@@ -144,6 +144,10 @@ class _Sample(SerializableDocument):
         if self.in_dataset:
             return self.dataset._schema.get_field_default(field_name)
 
+        if field_name in fos.DatasetSchema.default_fields:
+            field = fos.DatasetSchema.default_fields[field_name]
+            return field.get_default()
+
         raise AttributeError(
             "%s has no field '%s'" % (type(self).__name__, field_name)
         )
@@ -182,15 +186,19 @@ class _Sample(SerializableDocument):
                 )
             raise ValueError(msg)
 
-        if self.in_dataset:
-            if not field_exists:
-                self.dataset._schema.add_implied_field(field_name, value)
+        if self.in_dataset and not field_exists:
+            self.dataset._schema.add_implied_field(field_name, value)
 
+        if value is None:
             # If setting to None and there is a default value provided for this
             # field, then set the value to the default value.
-            if value is None:
+            if self.in_dataset:
                 value = self.dataset._schema.get_field_default(field_name)
+            elif field_name in fos.DatasetSchema.default_fields:
+                field = fos.DatasetSchema.default_fields[field_name]
+                value = field.get_default()
 
+        if self.in_dataset:
             try:
                 value_has_changed = (
                     field_name not in self._data
@@ -212,7 +220,10 @@ class _Sample(SerializableDocument):
             #         if isinstance(v, mongoengine.EmbeddedDocument):
             #             v._instance = weakref.proxy(self)
 
-        self._data[field_name] = value
+        if value is None:
+            self._data.pop(field_name, None)
+        else:
+            self._data[field_name] = value
 
     def clear_field(self, field_name):
         """Clears the value of a field of the sample.
@@ -223,15 +234,7 @@ class _Sample(SerializableDocument):
         Raises:
             ValueError: if the field does not exist
         """
-        if self.in_dataset:
-            return self.set_field(field_name, None, create=False)
-
-        if field_name in fos.DatasetSchema.default_fields:
-            field = fos.DatasetSchema.default_fields[field_name]
-            default_value = field.get_default()
-            self.set_field(field_name, default_value)
-        else:
-            self._data.pop(field_name, None)
+        return self.set_field(field_name, None, create=False)
 
     def iter_fields(self):
         """Returns an iterator over the field (name, value) pairs of the
