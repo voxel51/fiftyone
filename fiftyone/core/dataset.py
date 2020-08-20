@@ -22,10 +22,10 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
-import fiftyone.core.helper as foh
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
+import fiftyone.core.schema as fosc
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
@@ -1477,7 +1477,7 @@ def _create_dataset(name, persistent=False):
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
-    schema = foh.DatasetSchema(sample_doc_cls)
+    schema = fosc.DatasetSchema(sample_doc_cls)
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
@@ -1524,7 +1524,7 @@ def _load_dataset(name):
     sample_doc_cls = _create_sample_document_cls(
         dataset_doc.sample_collection_name
     )
-    schema = foh.DatasetSchema(sample_doc_cls)
+    schema = fosc.DatasetSchema(sample_doc_cls)
 
     # Populate sample field schema
     default_fields = Dataset.get_default_sample_fields(include_private=True)

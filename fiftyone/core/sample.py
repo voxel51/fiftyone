@@ -21,8 +21,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.helper as foh
 import fiftyone.core.metadata as fom
+import fiftyone.core.schema as fos
 import fiftyone.core.utils as fou
 from fiftyone.core.odm.document import SerializableDocument
 from fiftyone.core.odm.sample import _generate_rand
@@ -195,8 +195,9 @@ class _Sample(SerializableDocument):
         if self.in_dataset:
             return self.dataset._schema.clear_field(self, field_name)
 
-        if field_name in foh.DatasetSchema.default_fields:
-            default_value = foh.DatasetSchema.default_fields[field_name].get_default()
+        if field_name in fos.DatasetSchema.default_fields:
+            field = fos.DatasetSchema.default_fields[field_name]
+            default_value = field.get_default()
             self.set_field(field_name, default_value)
         else:
             self._data.pop(field_name, None)
@@ -364,14 +365,15 @@ class Sample(_Sample):
 
         self._data = {}
 
-        for field_name in foh.DatasetSchema.default_fields_ordered:
+        for field_name in fos.DatasetSchema.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
             if field_name == "_rand":
                 value = _generate_rand(filepath=filepath)
 
             if value is None:
-                value = foh.DatasetSchema.default_fields[field_name].get_default()
+                field = fos.DatasetSchema.default_fields[field_name]
+                value = field.get_default()
 
             if field_name == "filepath":
                 value = os.path.abspath(os.path.expanduser(value))
