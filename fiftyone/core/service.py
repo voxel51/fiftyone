@@ -207,11 +207,17 @@ class DatabaseService(Service):
             searched.add(folder)
             mongod_path = os.path.join(folder, DatabaseService.MONGOD_EXE_NAME)
             if os.path.isfile(mongod_path):
-                ok, out, err = etau.communicate([mongod_path, "--version"])
+                logger.debug("Trying %s", mongod_path)
+                p = psutil.Popen(
+                    [mongod_path, "--version"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                out, err = p.communicate()
                 out = out.decode(errors="ignore").strip()
                 err = err.decode(errors="ignore").strip()
                 mongod_version = None
-                if ok:
+                if p.returncode == 0:
                     match = re.search(r"db version.+?([\d\.]+)", out, re.I)
                     if match:
                         mongod_version = match.group(1)
@@ -219,12 +225,16 @@ class DatabaseService(Service):
                             DatabaseService.MIN_MONGO_VERSION
                         ):
                             return mongod_path
-                attempts.append((mongod_path, mongod_version, err))
-        for path, version, err in attempts:
+                attempts.append(
+                    (mongod_path, mongod_version, p.returncode, err)
+                )
+        for path, version, code, err in attempts:
             if version is not None:
                 logger.warn("%s: incompatible version %s" % (path, version))
             else:
-                logger.error("%s: failed to launch: %s" % (path, err))
+                logger.error(
+                    "%s: failed to launch (code %r): %s" % (path, code, err)
+                )
         raise RuntimeError(
             "Could not find mongod >= %s" % DatabaseService.MIN_MONGO_VERSION
         )
