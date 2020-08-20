@@ -80,6 +80,8 @@ To resolve this, install IPython in your active virtual environment (see the
     pip install ipython
 
 
+.. _troubleshooting-mongodb-linux:
+
 MongoDB compatibility issues on Linux
 -------------------------------------
 

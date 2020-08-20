@@ -77,7 +77,7 @@ messages that you may encounter.
   ``python3-dev`` package.
 - If you encounter an error related to MongoDB failing to start, such as `Could
   not find mongod`, you may need to install additional packages. See the
-  `troubleshooting section <#troubleshooting>`_ for details.
+  :ref:`troubleshooting page <troubleshooting-mongodb-linux>` for details.
 
 **Windows users:**
 
@@ -138,4 +138,4 @@ Troubleshooting
 
 If you encounter any issues when installing FiftyOne, verify that you have
 installed any system dependencies as described above, then see the
-:doc:`troubleshooting` page.
+:doc:`troubleshooting page <troubleshooting>`.
