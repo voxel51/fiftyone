@@ -85,7 +85,6 @@ export const labelNames = selector({
   key: "labelNames",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    console.log(stateDescription);
     const stats = get(datasetStats);
     if (!stateDescription.derivables || !stateDescription.derivables.labels) {
       return [];
@@ -115,5 +114,13 @@ export const labelSampleCounts = selector({
   key: "labelSampleCounts",
   get: ({ get }) => {
     return get(datasetStats).custom_fields || {};
+  },
+});
+
+export const labelFilters = selector({
+  key: "labelFilters",
+  get: ({ get }) => {
+    const labels = get(atoms.activeLabels);
+    console.log(labels);
   },
 });

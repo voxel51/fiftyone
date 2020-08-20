@@ -1,20 +1,20 @@
-import React, { useState } from "react";
+import React from "react";
 import styled from "styled-components";
 import Slider from "@material-ui/core/Slider";
-import { atomFamily, useRecoilState } from "recoil";
+import { useRecoilState } from "recoil";
 
-const filterLabelConfidenceRange = atomFamily({
-  key: "filterLabelConfidenceRange",
-  default: [0, 1],
-});
+import { filterLabelConfidenceRange } from "../recoil/atoms";
 
-function valuetext(value: number) {
-  return value;
+function valuetext(value: number[]) {
+  return `${value[0]}-${value[1]}`;
 }
 
-const SliderContainer = styled.div``;
+const SliderContainer = styled.div`
+  font-weight: bold;
+  display: flex;
+`;
 
-const RangeSlider = ({ title, atom }) => {
+const RangeSlider = ({ title, atom, ...rest }) => {
   const [value, setValue] = useRecoilState(atom);
 
   const handleChange = (event: any, newValue: number | number[]) => {
@@ -25,11 +25,12 @@ const RangeSlider = ({ title, atom }) => {
     <SliderContainer>
       <span>{title}</span>
       <Slider
-        value={value}
+        value={[...value]}
         onChange={handleChange}
         valueLabelDisplay="auto"
         aria-labelledby="range-slider"
         getAriaValueText={valuetext}
+        {...rest}
       />
     </SliderContainer>
   );
@@ -44,7 +45,13 @@ const Filter = ({ name, type }) => {
   console.log(name, type);
   return (
     <FilterDiv>
-      <RangeSlider atom={filterLabelConfidenceRange(name)} title={name} />
+      <RangeSlider
+        atom={filterLabelConfidenceRange(name)}
+        title={"Confidence"}
+        min={0}
+        max={1}
+        step={0.01}
+      />
     </FilterDiv>
   );
 };

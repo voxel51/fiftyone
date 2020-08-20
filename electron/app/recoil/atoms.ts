@@ -1,5 +1,5 @@
 import randomColor from "randomcolor";
-import { atom } from "recoil";
+import { atom, atomFamily } from "recoil";
 
 export const port = atom({
   key: "port",
@@ -29,4 +29,19 @@ export const sidebarVisible = atom({
 export const currentSamples = atom({
   key: "currentSamples",
   default: [],
+});
+
+export const filterLabelConfidenceRange = atomFamily({
+  key: "filterLabelConfidenceRange",
+  default: [0, 1],
+});
+
+export const activeLabels = atom({
+  key: "activeLabels",
+  default: {},
+});
+
+export const activeOther = atom({
+  key: "activeLabels",
+  default: {},
 });

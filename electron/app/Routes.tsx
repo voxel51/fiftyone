@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Switch, Route } from "react-router-dom";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 import routes from "./constants/routes.json";
 import App from "./containers/App";
@@ -12,8 +12,8 @@ import * as atoms from "./recoil/atoms";
 
 function Routes({ port }) {
   const [activeTags, setActiveTags] = useState({});
-  const [activeLabels, setActiveLabels] = useState({});
-  const [activeOther, setActiveOther] = useState({});
+  const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
+  const [activeOther, setActiveOther] = useRecoilState(atoms.activeOther);
   const colors = useRecoilValue(atoms.colors);
   const appProps = {
     activeTags,
