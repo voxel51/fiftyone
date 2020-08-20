@@ -51,7 +51,7 @@ class Service(object):
 
     All services must define a ``command`` property.
 
-    Services are run in an isolated Python subprocess (see ``_service_main.py``)
+    Services are run in an isolated Python subprocess (see ``service/main.py``)
     to ensure that they are shut down when the main Python process exits. The
     ``command`` and ``working_dir`` properties control the execution of the
     service in the subprocess.
@@ -84,7 +84,7 @@ class Service(object):
                 self.stop()
             except:
                 # something probably failed due to interpreter shutdown, which
-                # will be handled by _service_main.py
+                # will be handled by service/main.py
                 pass
 
     @property
@@ -103,9 +103,9 @@ class Service(object):
     def start(self):
         """Starts the Service."""
         service_main_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..",
-            "_service_main.py",
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "service",
+            "main.py",
         )
         # use psutil's Popen wrapper because its wait() more reliably waits
         # for the process to exit on Windows

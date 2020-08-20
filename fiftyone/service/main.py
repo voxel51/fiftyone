@@ -3,7 +3,7 @@ This script provides a consistent environment for services to run in. The basic
 architecture is:
 
 - parent process (python, ipython, etc.)
-    - this process, referred to as the "current" process (_service_main.py)
+    - this process, referred to as the "current" process (service/main.py)
         - child process (the service)
             - (optional): any child processes that the service creates
 
