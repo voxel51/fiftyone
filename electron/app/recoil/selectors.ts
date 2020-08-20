@@ -121,6 +121,15 @@ export const labelFilters = selector({
   key: "labelFilters",
   get: ({ get }) => {
     const labels = get(atoms.activeLabels);
-    console.log(labels);
+    const filters = {};
+    for (const label in labels) {
+      filters[label] = [
+        (s) => {
+          console.log(s);
+          return true;
+        },
+      ];
+    }
+    return filters;
   },
 });

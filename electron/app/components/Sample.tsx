@@ -23,6 +23,7 @@ const Sample = ({
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
   const { activeLabels, activeTags, activeOther } = displayProps;
+  const filters = useRecoilValue(selectors.labelFilters);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const handleClick = () => {
@@ -45,6 +46,10 @@ const Sample = ({
     }
     let value = getLabelText(label);
     if (value === undefined) {
+      return null;
+    }
+
+    if (!filters[name].every((filter) => filter(value))) {
       return null;
     }
     return (

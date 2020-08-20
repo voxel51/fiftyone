@@ -11,10 +11,11 @@ import connect from "./utils/connect";
 import * as atoms from "./recoil/atoms";
 
 function Routes({ port }) {
-  const [activeTags, setActiveTags] = useState({});
+  const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
   const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
   const [activeOther, setActiveOther] = useRecoilState(atoms.activeOther);
   const colors = useRecoilValue(atoms.colors);
+
   const appProps = {
     activeTags,
     setActiveTags,

@@ -42,6 +42,11 @@ export const activeLabels = atom({
 });
 
 export const activeOther = atom({
-  key: "activeLabels",
+  key: "activeOther",
+  default: {},
+});
+
+export const activeTags = atom({
+  key: "activeTags",
   default: {},
 });
