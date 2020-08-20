@@ -227,15 +227,6 @@ class DatasetView(foc.SampleCollection):
 
         return []
 
-    def add_stage(self, stage):
-        """Adds a :class:`fiftyone.core.stages.ViewStage` to the current view,
-        returning a new view.
-
-        Args:
-            stage: a :class:`fiftyone.core.stages.ViewStage`
-        """
-        return self._add_view_stage(stage)
-
     def aggregate(self, pipeline=None):
         """Calls the view's current MongoDB aggregation pipeline.
 
@@ -323,6 +314,8 @@ class DatasetView(foc.SampleCollection):
         return self.skip(start).limit(stop - start)
 
     def _add_view_stage(self, stage):
+        stage.validate(self)
+
         view = copy(self)
         view._stages.append(stage)
         return view
@@ -361,8 +354,9 @@ class DatasetView(foc.SampleCollection):
     def _get_filtered_fields(self):
         filtered_fields = set()
 
+        # @todo convert logic here to method on filtering ViewStages
         for stage in self._stages:
-            if isinstance(stage, fost._FilterList):
-                filtered_fields.add(stage.list_field)
+            if isinstance(stage, fost.FilterField):
+                filtered_fields.add(stage.filter_field)
 
         return filtered_fields

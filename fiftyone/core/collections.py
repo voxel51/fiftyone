@@ -220,6 +220,22 @@ class SampleCollection(object):
         """
         return list(view_stage.all)
 
+    def add_stage(self, stage):
+        """Applies the given :class:`fiftyone.core.stages.ViewStage` to the
+        collection.
+
+        Args:
+            stage: a :class:`fiftyone.core.stages.ViewStage`
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+
+        Raises:
+            :class:`fiftyone.core.stages.ViewStageError` if the stage was not a
+            valid stage for this collection
+        """
+        return self._add_view_stage(stage)
+
     @view_stage
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the collection.
@@ -698,11 +714,18 @@ class SampleCollection(object):
         :class:fiftyone.core.stages.ViewStage` appended to its aggregation
         pipeline.
 
+        Subclasses are responsible for performing any validation on the view
+        stage to ensure that it is a valid stage to add to this collection.
+
         Args:
-            a :class:fiftyone.core.stages.ViewStage`
+            stage: a :class:fiftyone.core.stages.ViewStage`
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
+
+        Raises:
+            :class:`fiftyone.core.stages.ViewStageError` if the stage was not a
+            valid stage for this collection
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
