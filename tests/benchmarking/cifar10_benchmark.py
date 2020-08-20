@@ -8,7 +8,6 @@ Results are appended to `cifar10_benchmark.log`.
 |
 """
 from collections import OrderedDict
-import pathlib
 import random
 import os
 import subprocess

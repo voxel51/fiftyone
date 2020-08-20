@@ -549,7 +549,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
                 ID to remove
         """
-        if not isinstance(sample_or_id, fos.Sample):
+        if not isinstance(sample_or_id, fos._Sample):
             sample_id = sample_or_id
         else:
             sample_id = sample_or_id.id
@@ -574,7 +574,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         sample_ids = [
             sample_or_id.id
-            if isinstance(sample_or_id, fos.Sample)
+            if isinstance(sample_or_id, fos._Sample)
             else sample_or_id
             for sample_or_id in samples_or_ids
         ]
