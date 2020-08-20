@@ -20,13 +20,14 @@ import eta.core.utils as etau
 
 
 class ViewStage(object):
-    """Abstract base class for all :class:`fiftyone.core.view.DatasetView`
-    stages.
+    """Abstract base class for all view stages.
 
-    :class:`ViewStage` instances represent a logical operation to apply to a
-    :class:`fiftyone.core.view.DatasetView`, which may decide what subset of
-    samples in a view should pass though the stage, and also what subset of the
-    contents of each :class:`fiftyone.core.sample.Sample` should be passed.
+    :class:`ViewStage` instances represent logical operations to apply to
+    :class:`fiftyone.core.collections.SampleCollection` instances, which may
+    decide what subset of samples in the collection should pass though the
+    stage, and also what subset of the contents of each
+    :class:`fiftyone.core.sample.Sample` should be passed. The output of
+    view stages are represented by a :class:`fiftyone.core.view.DatasetView`.
     """
 
     def __str__(self):
