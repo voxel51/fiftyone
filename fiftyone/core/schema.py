@@ -243,13 +243,27 @@ class DatasetSchema(object):
 
         return doc
 
-    # @todo(Tyler) move sample-parts to _Sample
-    def get_field(self, sample, field_name):
+    def get_field_default(self, field_name):
+        """Returns the default value of a field.
+
+        Args:
+            field_name: the name of the field
+
+        Returns:
+            the field's default value
+
+        Raises:
+            AttributeError: if the field does not exist
+            ValueError: if the field has no default
+        """
         try:
-            return sample._data[field_name]
-        except KeyError:
             field = self.fields[field_name]
-            return field.get_default()
+        except KeyError:
+            raise AttributeError(
+                "%s doesn't have a field '%s'"
+                % (type(self).__name__, field_name)
+            )
+        return field.get_default()
 
     # @todo(Tyler) move sample-parts to _Sample
     def set_field(self, sample, field_name, value, create=False):

@@ -134,16 +134,19 @@ class _Sample(SerializableDocument):
 
         Raises:
             AttributeError: if the field does not exist
+            ValueError: if the field is not set and there is no default either
         """
         try:
-            if self.in_dataset:
-                return self.dataset._schema.get_field(self, field_name)
-            else:
-                return self._data[field_name]
+            return self._data[field_name]
         except KeyError:
-            raise AttributeError(
-                "%s has no field '%s'" % (type(self).__name__, field_name)
-            )
+            pass
+
+        if self.in_dataset:
+            return self.dataset._schema.get_field_default(field_name)
+
+        raise AttributeError(
+            "%s has no field '%s'" % (type(self).__name__, field_name)
+        )
 
     def set_field(self, field_name, value, create=False):
         """Sets the value of a field of the sample.
