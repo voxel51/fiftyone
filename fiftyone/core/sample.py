@@ -169,20 +169,48 @@ class _Sample(SerializableDocument):
         if hasattr(self, field_name) and field_name not in self.field_names:
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
-        if self.in_dataset:
-            return self.dataset._schema.set_field(
-                self, field_name, value, create=create
-            )
+        field_exists = field_name in self.field_names
 
-        if not create and field_name not in self.field_names:
-            msg = "Sample does not have field '%s'." % field_name
+        if not field_exists and not create:
+            class_name = type(self).__name__
+            msg = "%s does not have field '%s'." % (class_name, field_name)
             if value is not None:
                 # don't report this when clearing a field.
                 msg += (
-                    " Sample.set_field(..., create=True) to create"
-                    " a new field."
+                    " %s.set_field(..., create=True) to create"
+                    " a new field." % class_name
                 )
             raise ValueError(msg)
+
+        if self.in_dataset:
+            if not field_exists:
+                self.dataset._schema.add_implied_field(field_name, value)
+
+            # If setting to None and there is a default value provided for this
+            # field, then set the value to the default value.
+            if value is None:
+                value = self.dataset._schema.get_field_default(field_name)
+
+            try:
+                value_has_changed = (
+                    field_name not in self._data
+                    or self._data[field_name] != value
+                )
+                if value_has_changed:
+                    self._mark_as_changed(field_name)
+            except Exception:
+                # Some values can't be compared and throw an error when we
+                # attempt to do so (e.g. tz-naive and tz-aware datetimes).
+                # Mark the field as changed in such cases.
+                self._mark_as_changed(field_name)
+
+            # @todo(Tyler) just delete this? is it doing anything?
+            # if isinstance(value, mongoengine.EmbeddedDocument):
+            #     value._instance = weakref.proxy(self)
+            # elif isinstance(value, (list, tuple)):
+            #     for v in value:
+            #         if isinstance(v, mongoengine.EmbeddedDocument):
+            #             v._instance = weakref.proxy(self)
 
         self._data[field_name] = value
 
