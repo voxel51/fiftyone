@@ -99,6 +99,34 @@ class ViewStageError(Exception):
 class Exclude(ViewStage):
     """Excludes the samples with the given IDs from the view.
 
+    Example uses::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Exclude
+
+        dataset = fo.load_dataset(...)
+
+        view = dataset.view()
+
+        #
+        # Example 1
+        # Exclude a single sample from a view
+        #
+
+        stage = Exclude("5f3c298768fd4d3baf422d2f")
+        new_view = view.add_stage(stage)
+
+        #
+        # Example 2
+        # Exclude a list of samples from a view
+        #
+
+        stage = Exclude([
+            "5f3c298768fd4d3baf422d2f",
+            "5f3c298768fd4d3baf422d30"
+        ])
+        new_view = view.add_stage(stage)
+
     Args:
         sample_ids: a sample ID or iterable of sample IDs
     """
@@ -140,7 +168,32 @@ class Exclude(ViewStage):
 class ExcludeFields(ViewStage):
     """Excludes the fields with the given names from the samples in the view.
 
-    Note: Default fields cannot be excluded.
+    Note that default fields cannot be excluded.
+
+    Example uses::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import ExcludeFields
+
+        dataset = fo.load_dataset(...)
+
+        view = dataset.view()
+
+        #
+        # Example 1
+        # Exclude a field from all samples in the view
+        #
+
+        stage = ExcludeFields("predictions")
+        new_view = view.add_stage(stage)
+
+        #
+        # Example 2
+        # Exclude a list of fields from all samples in the view
+        #
+
+        stage = ExcludeFields(["ground_truth", "predictions"])
+        new_view = view.add_stage(stage)
 
     Args:
         field_names: a field name or iterable of field names to exclude
@@ -184,6 +237,23 @@ class ExcludeFields(ViewStage):
 class Exists(ViewStage):
     """Returns a view containing the samples that have a non-``None`` value
     for the given field.
+
+    Example uses::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Exists
+
+        dataset = fo.load_dataset(...)
+
+        view = dataset.view()
+
+        #
+        # Example
+        # Only include samples that have a value in their `predictions` field
+        #
+
+        stage = Exists("predictions")
+        new_view = view.add_stage(stage)
 
     Args:
         field: the field
@@ -297,6 +367,34 @@ class FilterClassifications(_FilterList):
     """Filters the :class:`fiftyone.core.labels.Classification` elements in the
     specified :class:`fiftyone.core.labels.Classifications` field of the
     samples in a view.
+
+    Example uses::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import FilterClassifications
+        from fiftyone import ViewField as F
+
+        dataset = fo.load_dataset(...)
+
+        view = dataset.view()
+
+        #
+        # Example 1
+        # Only include classifications with confidence > 0.8
+        #
+
+        stage = FilterClassifications("predictions", F("confidence") > 0.8)
+        new_view = view.add_stage(stage)
+
+        #
+        # Example 2
+        # Only include classifications whose label is "cat" or "dog"
+        #
+
+        stage = FilterClassifications(
+            "predictions", F("label").is_in(["cat", "dog"])
+        )
+        new_view = view.add_stage(stage)
 
     Args:
         field: the field to filter, which must be a
