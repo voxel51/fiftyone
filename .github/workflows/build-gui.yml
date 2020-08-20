@@ -36,7 +36,7 @@ jobs:
           python-version: 3.8
       - name: Install Python dependencies
         run: |
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools "wheel<0.35"
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:

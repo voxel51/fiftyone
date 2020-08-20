@@ -16,9 +16,9 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.1.6",
-            "fiftyone-gui>=0.5.0",
-            "fiftyone-db>=0.1.1",
+            "fiftyone-brain>=0.1.7,<0.2",
+            "fiftyone-gui>=0.5.1,<0.6",
+            "fiftyone-db>=0.1.1,<0.2",
         ]
 
 
@@ -63,7 +63,7 @@ setup(
         "tabulate",
         "xmltodict",
         # internal packages
-        "voxel51-eta>=0.1.2",
+        "voxel51-eta>=0.1.4,<0.2",
     ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
