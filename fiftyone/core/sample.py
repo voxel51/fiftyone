@@ -23,7 +23,6 @@ import eta.core.utils as etau
 import fiftyone.core.odm as foo
 
 import fiftyone as fo
-import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 
@@ -301,7 +300,7 @@ class _Sample(SerializableDocument):
         Returns:
             a JSON dict
         """
-        d = self._to_dict(extended=True)
+        d = serialize_dict(self._data, extended=True)
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
     def to_json(self, pretty_print=False):
@@ -323,7 +322,7 @@ class _Sample(SerializableDocument):
         Returns:
             a BSON dict
         """
-        return self._to_dict(extended=False)
+        return serialize_dict(self._data, extended=False)
 
     def save(self):
         """Saves the sample to the database."""
@@ -339,38 +338,6 @@ class _Sample(SerializableDocument):
         """Reloads the sample from the database."""
         if self.in_dataset:
             self._data = self._collection.find_one({"_id": self._object_id})
-
-    def _to_dict(self, extended=False):
-        d = {}
-        for k, v in self._data.items():
-            if hasattr(v, "to_dict"):
-                # Embedded document
-                d[k] = v.to_dict(extended=extended)
-            elif isinstance(v, np.ndarray):
-                # Must handle arrays separately, since they are non-primitives
-
-                # @todo cannot support serializing 1D arrays as lists because
-                # there is no way for `from_dict` to know that the data should
-                # be converted back to a numpy array
-                #
-                # if v.ndim == 1:
-                #     d[k] = v.tolist()
-                #
-
-                v_binary = fou.serialize_numpy_array(v)
-                if extended:
-                    # @todo improve this
-                    d[k] = json.loads(json_util.dumps(Binary(v_binary)))
-                else:
-                    d[k] = v_binary
-            elif k == "id":
-                # @todo(Tyler) use "_id" instead of "id"
-                d["_id"] = v
-            else:
-                # JSON primitive
-                d[k] = v
-
-        return d
 
     def _get_repr_fields(self):
         return ("id",) + self.field_names
@@ -767,6 +734,39 @@ class SampleView(_Sample):
         Sample._reload_dataset_sample(
             self.dataset._sample_collection_name, self.id
         )
+
+
+def serialize_dict(d, extended=False):
+    sd = {}
+    for k, v in d.items():
+        if hasattr(v, "to_dict"):
+            # Embedded document
+            sd[k] = v.to_dict(extended=extended)
+        elif isinstance(v, np.ndarray):
+            # Must handle arrays separately, since they are non-primitives
+
+            # @todo cannot support serializing 1D arrays as lists because
+            # there is no way for `from_dict` to know that the data should
+            # be converted back to a numpy array
+            #
+            # if v.ndim == 1:
+            #     d[k] = v.tolist()
+            #
+
+            v_binary = fou.serialize_numpy_array(v)
+            if extended:
+                # @todo improve this
+                sd[k] = json.loads(json_util.dumps(Binary(v_binary)))
+            else:
+                sd[k] = v_binary
+        elif k == "id":
+            # @todo(Tyler) use "_id" instead of "id"
+            sd["_id"] = v
+        else:
+            # JSON primitive
+            sd[k] = v
+
+    return sd
 
 
 def deserialize_dict(d):
