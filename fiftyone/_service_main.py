@@ -167,7 +167,7 @@ def shutdown():
         pass
 
     child.wait()
-    if exit_mode == ExitMode.CHILD and child.returncode > 0:
+    if exit_mode == ExitMode.CHILD and child.returncode != 0:
         sys.stdout.buffer.write(child_stdout.to_bytes())
         sys.stdout.flush()
         sys.stderr.write(
