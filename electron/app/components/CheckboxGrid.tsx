@@ -100,9 +100,9 @@ type Props = {
   onCheck: (entry: Entry) => void;
 };
 
-const CheckboxGrid = ({ entries, onCheck }: Props) => {
-  const theme = useContext(ThemeContext);
+const Entry = ({ entry, onCheck }) => {
   const [expanded, setExpanded] = useState(false);
+  const theme = useContext(ThemeContext);
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -111,53 +111,57 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
   };
 
   return (
-    <Body>
-      {entries.map((entry) => (
-        <div key={entry.name}>
-          <FormControlLabel
-            disabled={entry.disabled}
-            label={
-              <>
-                <span className="name" title={entry.name}>
-                  {entry.name}
-                </span>
-                <span className="data">{entry.data}</span>
-                {entry.type && (
-                  <ArrowDropDown
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpanded(!expanded);
-                    }}
-                  />
-                )}
-              </>
-            }
+    <div key={entry.name}>
+      <FormControlLabel
+        disabled={entry.disabled}
+        label={
+          <>
+            <span className="name" title={entry.name}>
+              {entry.name}
+            </span>
+            <span className="data">{entry.data}</span>
+            {entry.type && (
+              <ArrowDropDown
+                onClick={(e) => {
+                  e.preventDefault();
+                  setExpanded(!expanded);
+                }}
+              />
+            )}
+          </>
+        }
+        style={{
+          backgroundColor: entry.selected ? theme.backgroundLight : undefined,
+          color: entry.selected
+            ? theme.font
+            : entry.disabled
+            ? theme.fontDarkest
+            : theme.fontDark,
+        }}
+        control={
+          <Checkbox
+            checked={entry.selected}
+            onChange={() => handleCheck(entry)}
             style={{
-              backgroundColor: entry.selected
-                ? theme.backgroundLight
-                : undefined,
               color: entry.selected
-                ? theme.font
+                ? entry.color
                 : entry.disabled
                 ? theme.fontDarkest
                 : theme.fontDark,
             }}
-            control={
-              <Checkbox
-                checked={entry.selected}
-                onChange={() => handleCheck(entry)}
-                style={{
-                  color: entry.selected
-                    ? entry.color
-                    : entry.disabled
-                    ? theme.fontDarkest
-                    : theme.fontDark,
-                }}
-              />
-            }
           />
-          {expanded && <Filter />}
-        </div>
+        }
+      />
+      {expanded && <Filter name={entry.name} type={entry.type} />}
+    </div>
+  );
+};
+
+const CheckboxGrid = ({ entries, onCheck }: Props) => {
+  return (
+    <Body>
+      {entries.map((entry) => (
+        <Entry key={entry.name} entry={entry} onCheck={onCheck} />
       ))}
     </Body>
   );
