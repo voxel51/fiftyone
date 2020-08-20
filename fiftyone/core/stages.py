@@ -12,6 +12,8 @@ from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 from fiftyone.core.expressions import ViewExpression
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 from fiftyone.core.odm.sample import default_sample_fields
 
 import eta.core.utils as etau
@@ -44,6 +46,19 @@ class ViewStage(object):
             a MongoDB aggregation pipeline (list of dicts)
         """
         raise NotImplementedError("subclasses must implement `to_mongo()`")
+
+    def validate(self, sample_collection):
+        """Validates that the stage can be applied to the given collection.
+
+        Args:
+            sample_collection: a
+                :class:`fiftyone.core.collections.SampleCollection`
+
+        Raises:
+            :class:`ViewStageError` if the stage cannot be applied to the
+            collection
+        """
+        pass
 
     def _serialize(self):
         """Returns a JSON dict representation of the :class:`ViewStage`.
@@ -91,7 +106,8 @@ class ViewStage(object):
 
 
 class ViewStageError(Exception):
-    """An error raise by a :class:`ViewStage`"""
+    """An error raised when a problem with a :class:`ViewStage` is encountered.
+    """
 
     pass
 
@@ -109,7 +125,7 @@ class Exclude(ViewStage):
         else:
             self._sample_ids = list(sample_ids)
 
-        self._validate()
+        self._validate_params()
 
     @property
     def sample_ids(self):
@@ -132,7 +148,7 @@ class Exclude(ViewStage):
     def _params(cls):
         return [{"name": "sample_ids", "type": "list<id>|id"}]
 
-    def _validate(self):
+    def _validate_params(self):
         # Ensures that ObjectIDs are valid
         self.to_mongo()
 
@@ -151,7 +167,7 @@ class ExcludeFields(ViewStage):
             field_names = [field_names]
 
         self._field_names = list(field_names)
-        self._validate()
+        self._validate_params()
 
     @property
     def field_names(self):
@@ -173,12 +189,15 @@ class ExcludeFields(ViewStage):
     def _params(self):
         return [{"name": "field_names", "type": "list<str>"}]
 
-    def _validate(self):
+    def _validate_params(self):
         invalid_fields = set(self._field_names) & set(default_sample_fields())
         if invalid_fields:
             raise ValueError(
                 "Cannot exclude default fields: %s" % list(invalid_fields)
             )
+
+    def validate(self, sample_collection):
+        _validate_fields_exist(sample_collection, self.field_names)
 
 
 class Exists(ViewStage):
@@ -213,12 +232,14 @@ class Exists(ViewStage):
         return [{"name": "field", "type": "str"}]
 
 
-class _FilterList(ViewStage):
-    """Base class for stages that filter elements of a list field of a
-    document.
+class FilterField(ViewStage):
+    """Filters the values of a given field of a document.
+
+    Values of ``field`` for which ``filter`` returns ``False`` are
+    replaced with ``None``.
 
     The actual document field to filter is exposed via the
-    :meth:`_FilterList.list_field` property, which may be computed from the
+    :meth:`FilterField.filter_field` property, which may be computed from the
     provided ``field``.
 
     Args:
@@ -231,7 +252,7 @@ class _FilterList(ViewStage):
     def __init__(self, field, filter):
         self._field = field
         self._filter = filter
-        self._validate()
+        self._validate_params()
 
     @property
     def field(self):
@@ -244,8 +265,8 @@ class _FilterList(ViewStage):
         return self._filter
 
     @property
-    def list_field(self):
-        """The *actual* list field to filter, which may be computed from
+    def filter_field(self):
+        """The *actual* field to filter, which may be computed from
         `self.field`.
         """
         return self.field
@@ -259,10 +280,11 @@ class _FilterList(ViewStage):
         return [
             {
                 "$addFields": {
-                    self.list_field: {
-                        "$filter": {
-                            "input": "$" + self.list_field,
-                            "cond": self._get_mongo_filter(),
+                    self.filter_field: {
+                        "$cond": {
+                            "if": self._get_mongo_filter(),
+                            "then": "$" + self.filter_field,
+                            "else": None,
                         }
                     }
                 }
@@ -271,7 +293,7 @@ class _FilterList(ViewStage):
 
     def _get_mongo_filter(self):
         if isinstance(self._filter, ViewExpression):
-            return self._filter.to_mongo(in_list=True)
+            return self._filter.to_mongo(prefix="$" + self.filter_field)
 
         return self._filter
 
@@ -285,15 +307,55 @@ class _FilterList(ViewStage):
             {"name": "filter", "type": "dict"},
         ]
 
-    def _validate(self):
+    def _validate_params(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB expression; "
                 "found '%s'" % self._filter
             )
 
+    def validate(self, sample_collection):
+        if self.field == "filepath":
+            raise ValueError("Cannot filter required field `filepath`")
 
-class FilterClassifications(_FilterList):
+        _validate_fields_exist(sample_collection, self.field)
+
+
+class _FilterListField(FilterField):
+    @property
+    def filter_field(self):
+        raise NotImplementedError("subclasses must implement `filter_field`")
+
+    def validate(self, sample_collection):
+        raise NotImplementedError("subclasses must implement `validate()`")
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return [
+            {
+                "$addFields": {
+                    self.filter_field: {
+                        "$filter": {
+                            "input": "$" + self.filter_field,
+                            "cond": self._get_mongo_filter(),
+                        }
+                    }
+                }
+            }
+        ]
+
+    def _get_mongo_filter(self):
+        if isinstance(self._filter, ViewExpression):
+            return self._filter.to_mongo(prefix="$$this")
+
+        return self._filter
+
+
+class FilterClassifications(_FilterListField):
     """Filters the :class:`fiftyone.core.labels.Classification` elements in the
     specified :class:`fiftyone.core.labels.Classifications` field of the
     samples in a view.
@@ -307,11 +369,19 @@ class FilterClassifications(_FilterList):
     """
 
     @property
-    def list_field(self):
+    def filter_field(self):
         return self.field + ".classifications"
 
+    def validate(self, sample_collection):
+        _validate_field_type(
+            sample_collection,
+            self.field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.Classifications,
+        )
 
-class FilterDetections(_FilterList):
+
+class FilterDetections(_FilterListField):
     """Filters the :class:`fiftyone.core.labels.Detection` elements in the
     specified :class:`fiftyone.core.labels.Detections` field of the samples in
     the stage.
@@ -325,8 +395,16 @@ class FilterDetections(_FilterList):
     """
 
     @property
-    def list_field(self):
+    def filter_field(self):
         return self.field + ".detections"
+
+    def validate(self, sample_collection):
+        _validate_field_type(
+            sample_collection,
+            self.field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.Detections,
+        )
 
 
 class Limit(ViewStage):
@@ -372,7 +450,7 @@ class Match(ViewStage):
 
     def __init__(self, filter):
         self._filter = filter
-        self._validate()
+        self._validate_params()
 
     @property
     def filter(self):
@@ -396,7 +474,7 @@ class Match(ViewStage):
     def _kwargs(self):
         return [["filter", self._get_mongo_filter()]]
 
-    def _validate(self):
+    def _validate_params(self):
         if not isinstance(self._filter, (ViewExpression, dict)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB expression; "
@@ -520,7 +598,7 @@ class Select(ViewStage):
         else:
             self._sample_ids = list(sample_ids)
 
-        self._validate()
+        self._validate_params()
 
     @property
     def sample_ids(self):
@@ -543,7 +621,7 @@ class Select(ViewStage):
     def _params(cls):
         return [{"name": "sample_ids", "type": "list<id>|id"}]
 
-    def _validate(self):
+    def _validate_params(self):
         # Ensures that ObjectIDs are valid
         self.to_mongo()
 
@@ -596,6 +674,9 @@ class SelectFields(ViewStage):
                 "default": "None",
             }
         ]
+
+    def validate(self, sample_collection):
+        _validate_fields_exist(sample_collection, self.field_names)
 
 
 class Shuffle(ViewStage):
@@ -700,6 +781,10 @@ class SortBy(ViewStage):
             {"name": "reverse", "type": "bool", "default": "False"},
         ]
 
+    def validate(self, sample_collection):
+        if etau.is_str(self._field_or_expr):
+            _validate_fields_exist(sample_collection, self._field_or_expr)
+
 
 class Skip(ViewStage):
     """Omits the given number of samples from the head of the view.
@@ -794,6 +879,46 @@ def _get_rng(seed):
     return _random
 
 
+def _validate_fields_exist(sample_collection, field_or_fields):
+    if etau.is_str(field_or_fields):
+        field_or_fields = [field_or_fields]
+
+    schema = sample_collection.get_field_schema()
+    for field_name in field_or_fields:
+        if field_name not in schema:
+            raise ViewStageError("Field '%s' does not exist" % field_name)
+
+
+def _validate_field_type(
+    sample_collection, field_name, ftype, embedded_doc_type=None
+):
+    schema = sample_collection.get_field_schema()
+
+    if field_name not in schema:
+        raise ViewStageError("Field '%s' does not exist" % field_name)
+
+    field = schema[field_name]
+
+    if embedded_doc_type is not None:
+        if not isinstance(field, fof.EmbeddedDocumentField) or not isinstance(
+            field.document_type, embedded_doc_type
+        ):
+            raise ViewStageError(
+                "Field '%s' must be an instance of %s; found %s"
+                % (
+                    field_name,
+                    fof.EmbeddedDocumentField(embedded_doc_type),
+                    field,
+                )
+            )
+    else:
+        if not isinstance(field, ftype):
+            raise ViewStageError(
+                "Field '%s' must be an instance of %s; found %s"
+                % (field_name, ftype, field)
+            )
+
+
 class _ViewStageRepr(reprlib.Repr):
     def repr_ViewExpression(self, expr, level):
         return self.repr1(expr.to_mongo(), level=level - 1)
@@ -814,6 +939,7 @@ _STAGES = [
     Exclude,
     ExcludeFields,
     Exists,
+    FilterField,
     FilterClassifications,
     FilterDetections,
     Limit,
