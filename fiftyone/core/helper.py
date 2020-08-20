@@ -140,6 +140,7 @@ class DatasetHelper(object):
                 ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
         """
+        # pylint: disable=no-member
         # Additional arg `save` is to prevent saving the fields when reloading
         # a dataset from the database.
 
@@ -196,6 +197,7 @@ class DatasetHelper(object):
         Raises:
             AttributeError: if the field does not exist
         """
+        # pylint: disable=no-member
         try:
             # Delete from all samples
             self._sample_doc_cls.objects.update(
@@ -240,9 +242,6 @@ class DatasetHelper(object):
         return doc
 
     def get_field(self, sample, field_name):
-        # field = self.fields[field_name]
-        # return field.__get__(sample._doc, self._sample_doc_cls)
-
         try:
             return sample._data[field_name]
         except KeyError:
@@ -282,41 +281,37 @@ class DatasetHelper(object):
 
             self.add_implied_field(field_name, value)
 
-        # field = self.fields[field_name]
-        # return field.__set__(sample._doc, value)
-
         return self._set_field(sample, field_name, value)
 
     def _set_field(self, sample, field_name, value):
         """Descriptor for assigning a value to a field in a document."""
-        field = self.fields[field_name]
-        doc = sample._doc
-
         # If setting to None and there is a default value provided for this
         # field, then set the value to the default value.
         if value is None:
-            value = field.get_default()
+            value = self.fields[field_name].get_default()
 
         try:
             value_has_changed = (
-                field.name not in doc._data or doc._data[self.name] != value
+                field_name not in sample._data
+                or sample._data[field_name] != value
             )
             if value_has_changed:
-                doc._mark_as_changed(field.name)
+                sample._mark_as_changed(field_name)
         except Exception:
             # Some values can't be compared and throw an error when we
             # attempt to do so (e.g. tz-naive and tz-aware datetimes).
             # Mark the field as changed in such cases.
-            doc._mark_as_changed(field.name)
+            sample._mark_as_changed(field_name)
 
-        if isinstance(value, mongoengine.EmbeddedDocument):
-            value._instance = weakref.proxy(doc)
-        elif isinstance(value, (list, tuple)):
-            for v in value:
-                if isinstance(v, mongoengine.EmbeddedDocument):
-                    v._instance = weakref.proxy(doc)
+        # @todo(Tyler) just delete this? is it doing anything?
+        # if isinstance(value, mongoengine.EmbeddedDocument):
+        #     value._instance = weakref.proxy(sample)
+        # elif isinstance(value, (list, tuple)):
+        #     for v in value:
+        #         if isinstance(v, mongoengine.EmbeddedDocument):
+        #             v._instance = weakref.proxy(sample)
 
-        sample._data[field.name] = value
+        sample._data[field_name] = value
 
     def clear_field(self, sample, field_name):
         """Clears the value of a field of the sample.
