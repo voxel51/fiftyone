@@ -155,15 +155,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     Args:
         name (None): the name of the dataset. By default,
             :func:`get_default_dataset_name` is used
-        persistent (False): whether the dataset will persist in the database
-            once the session terminates
+        persistent (False): whether the dataset should persist in the database
+            after the session terminates
     """
 
     # Batch size used when commiting samples to the database
     _BATCH_SIZE = 128
 
     def __init__(self, name=None, persistent=False, _create=True):
-        if name is None:
+        if name is None and _create:
             name = get_default_dataset_name()
 
         if _create:
@@ -223,8 +223,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @name.setter
     def name(self, name):
-        self._doc.name = name
-        self._doc.save()
+        _name = self._doc.name
+        try:
+            self._doc.name = name
+            self._doc.save()
+        except:
+            self._doc.name = _name
+            raise
 
     @property
     def persistent(self):
@@ -235,8 +240,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @persistent.setter
     def persistent(self, value):
-        self._doc.persistent = value
-        self._doc.save()
+        _value = self._doc.persistent
+        try:
+            self._doc.persistent = value
+            self._doc.save()
+        except:
+            self._doc.persistent = _value
+            raise
 
     @property
     def info(self):
@@ -657,6 +667,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
+        if name is None:
+            name = get_default_dataset_name()
+
         if dataset_exists(name):
             raise ValueError("Dataset '%s' already exists" % name)
 
