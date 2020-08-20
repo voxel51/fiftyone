@@ -49,22 +49,34 @@ version. To fix this, upgrade pip. See the
 `opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
 details.
 
-MongoDB fails to start on Linux
--------------------------------
+MongoDB compatibility issues on Linux
+-------------------------------------
 
-FiftyOne relies on a version of MongoDB that works on Ubuntu 18.04 and several
-other modern distributions. If this version does not work on your distribution,
-there are alternative builds available, or you can use an existing installation
-of MongoDB.
+The ``fiftyone-db`` package includes a build of MongoDB that works on Ubuntu
+18.04 and several other modern distributions. If this build does not work on
+your distribution, you may encounter an error similar to:
+
+.. code-block:: text
+
+    /usr/local/lib/python3.5/dist-packages/fiftyone/db/bin/mongod: failed to launch:
+    /usr/local/lib/python3.5/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
+    libcrypto.so.1.1: cannot open shared object file: No such file or directory
+
+.. code-block:: text
+
+    RuntimeError: Could not find mongod >= 3.6
+
+To resolve this, you can install an alternative package on some distributions,
+detailed below, or install a compatible version of MongoDB system-wide.
 
 Alternative builds
 ~~~~~~~~~~~~~~~~~~
 
-Alternative builds are available as pip packages for the distributions listed
-below, and can be installed by running the corresponding command. Note that
-these packages must be installed *after* the `fiftyone` package; if you install
-`fiftyone` afterwards, you can fix your MongoDB installation by adding
-`--force-reinstall` to the commands below.
+Alternative builds of MongoDB are available as pip packages for the
+distributions listed below, and can be installed by running the corresponding
+command. Note that these packages must be installed *after* the `fiftyone`
+package; if you install `fiftyone` afterwards, you can fix your MongoDB
+installation by adding `--force-reinstall` to the commands below.
 
 .. tabs::
 
