@@ -277,6 +277,24 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Exists(field))
 
     @view_stage
+    def filter_field(self, field, filter):
+        """Filters the values of the given field of the samples.
+
+        Values of ``field`` for which ``filter`` returns ``False`` are
+        replaced with ``None``.
+
+        Args:
+            field: the field to filter
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.FilterField(field, filter))
+
+    @view_stage
     def filter_classifications(self, field, filter):
         """Filters the classifications of the given
         :class:`fiftyone.core.labels.Classifications` field.
