@@ -1,5 +1,5 @@
 .. include:: /substitutions.rst
-.. default-role:: ref
+.. default-role:: code
 
 Troubleshooting
 ===============
@@ -34,9 +34,10 @@ old, you may encounter errors like these:
     fiftyone requires Python '>=3.5' but the running Python is 3.4.10
 
 To resolve this, you will need to use Python 3.5 or newer, and pip 19.3 or
-newer. See the `installation guide <installing-fiftyone>` for details. If you
-have installed a suitable version of Python in a virtual environment and still
-encounter this error, ensure that the virtual environment is activated. See the
+newer. See the :ref:`installation guide <installing-fiftyone>` for details. If
+you have installed a suitable version of Python in a virtual environment and
+still encounter this error, ensure that the virtual environment is activated.
+See the
 :doc:`virtual environment setup guide <virtualenv>` for more details.
 
 "No module named skbuild"
@@ -44,8 +45,8 @@ encounter this error, ensure that the virtual environment is activated. See the
 
 On Linux, this error can occur when attempting to install OpenCV with an old pip
 version. To fix this, upgrade pip. See the
-`installation guide <installing-fiftyone>` for instructions, or the
-`opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>` for more
+:ref:`installation guide <installing-fiftyone>` for instructions, or the
+`opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
 details.
 
 MongoDB fails to start on Linux
