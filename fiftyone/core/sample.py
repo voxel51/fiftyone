@@ -397,8 +397,6 @@ class Sample(_Sample):
         kwargs["tags"] = tags
         kwargs["metadata"] = metadata
 
-        self._data = {}
-
         for field_name in fos.DatasetSchema.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
@@ -412,9 +410,9 @@ class Sample(_Sample):
             if field_name == "filepath":
                 value = os.path.abspath(os.path.expanduser(value))
 
-            self._data[field_name] = value
+            kwargs[field_name] = value
 
-        self._data.update(kwargs)
+        self._data = kwargs
 
     @classmethod
     def from_support(cls, data, dataset):

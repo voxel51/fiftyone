@@ -227,22 +227,6 @@ class DatasetSchema(object):
     def drop_collection(self, *args, **kwargs):
         return self._sample_doc_cls.drop_collection(*args, **kwargs)
 
-    def construct_doc_from_dict(self, d, extended=False):
-        doc = self._sample_doc_cls.from_dict(d, extended=extended)
-
-        for name, value in doc._data.items():
-            if isinstance(value, (list, tuple)):
-                if not isinstance(value, BaseList):
-                    value = BaseList(value, doc, name)
-                    value._dereferenced = True
-                    doc._data[name] = value
-            elif isinstance(value, dict) and not isinstance(value, BaseDict):
-                value = BaseDict(value, doc, name)
-                value._dereferenced = True
-                doc._data[name] = value
-
-        return doc
-
     def get_field_default(self, field_name):
         """Returns the default value of a field.
 
