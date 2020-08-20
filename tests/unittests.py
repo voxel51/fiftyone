@@ -1283,6 +1283,22 @@ class DatasetViewTests(unittest.TestCase):
         self.assertListEqual(detections, [])
 
 
+class ViewFieldTests(unittest.TestCase):
+    def test_field_names(self):
+        self.assertEqual(
+            F.ground_truth.to_mongo(), F("ground_truth").to_mongo()
+        )
+        self.assertEqual(
+            F.ground_truth.label.to_mongo(), F("ground_truth.label").to_mongo()
+        )
+        self.assertEqual(
+            F.ground_truth.label.to_mongo(), F("ground_truth.label").to_mongo()
+        )
+        self.assertEqual(
+            F.ground_truth.label.to_mongo(), F("ground_truth").label.to_mongo()
+        )
+
+
 class ViewExpressionTests(unittest.TestCase):
     @drop_datasets
     def test_comparison(self):
@@ -1930,6 +1946,20 @@ class ViewStageTests(unittest.TestCase):
         result = list(self.dataset.exists("exists"))
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_filter_field(self):
+        self.sample1["test_class"] = fo.Classification(label="friend")
+        self.sample1.save()
+
+        self.sample2["test_class"] = fo.Classification(label="enemy")
+        self.sample2.save()
+
+        view = self.dataset.filter_field("test_class", F("label") == "friend")
+
+        self.assertEqual(len(view.exists("test_class")), 1)
+        for sample in view:
+            if sample.test_class is not None:
+                self.assertEqual(sample.test_class.label, "friend")
 
     def test_filter_classifications(self):
         self.sample1["test_clfs"] = fo.Classifications(
