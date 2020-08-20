@@ -274,10 +274,7 @@ class _Sample(SerializableDocument):
         Returns:
             a JSON dict
         """
-        if self.in_dataset:
-            d = self._doc.to_dict(extended=True)
-        else:
-            d = self._to_dict(extended=True)
+        d = self._to_dict(extended=True)
         return {k: v for k, v in d.items() if not k.startswith("_")}
 
     def to_json(self, pretty_print=False):
@@ -299,9 +296,6 @@ class _Sample(SerializableDocument):
         Returns:
             a BSON dict
         """
-        if self.in_dataset:
-            return self._doc.to_dict(extended=False)
-
         return self._to_dict(extended=False)
 
     def save(self):
@@ -352,6 +346,9 @@ class _Sample(SerializableDocument):
                     d[k] = json.loads(json_util.dumps(Binary(v_binary)))
                 else:
                     d[k] = v_binary
+            elif k == "id":
+                # @todo(Tyler) use "_id" instead of "id"
+                d["_id"] = v
             else:
                 # JSON primitive
                 d[k] = v
@@ -525,7 +522,7 @@ class Sample(_Sample):
             field_name: the name of the field to purge
         """
         for sample in cls._instances[collection_name].values():
-            sample._doc._data.pop(field_name, None)
+            sample._data.pop(field_name, None)
 
     def _set_backing_doc(self, d, dataset):
         """Updates the backing doc for the sample.
@@ -629,11 +626,11 @@ class SampleView(_Sample):
     ):
         super().__init__(dataset=dataset)
 
-        # @todo(Tyler) don't even construct this!
-        doc = dataset._schema.construct_doc_from_dict(d, extended=False)
-        if not doc.id:
+        if "_id" not in d:
             raise ValueError("`doc` is not saved to the database.")
-        self._doc = doc
+
+        # @todo(Tyler) don't even construct this!
+        self._doc = dataset._schema.construct_doc_from_dict(d, extended=False)
 
         if selected_fields is not None and excluded_fields is not None:
             selected_fields = selected_fields.difference(excluded_fields)
