@@ -5,7 +5,7 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from copy import deepcopy
 import json
 import os
@@ -13,6 +13,8 @@ import weakref
 
 from bson import json_util
 from bson.binary import Binary
+import mongoengine
+from mongoengine.base import BaseList, BaseDict
 import numpy as np
 from pymongo import ReturnDocument
 import six
@@ -28,10 +30,52 @@ from fiftyone.core.odm.document import SerializableDocument
 from fiftyone.core.odm.sample import _generate_rand
 
 
+class TrackedDict(OrderedDict):
+    def __init__(self, dict_items, sample):
+        self._sample = weakref.proxy(sample)
+
+        dict_items = deserialize_dict(dict_items)
+
+        for field_name, value in dict_items.items():
+            dict_items[field_name] = self._set_backrefs(field_name, value)
+
+        super().__init__(dict_items)
+
+    def __setitem__(self, key, value):
+        value = self._set_backrefs(key, value)
+        super().__setitem__(key, value)
+
+    def update(self, other, **kwargs):
+        for field_name, value in other.items():
+            other[field_name] = self._set_backrefs(field_name, value)
+        super().update(other, **kwargs)
+
+    def _set_backrefs(self, field_name, value):
+        if isinstance(value, mongoengine.EmbeddedDocument):
+            value._instance = self._sample
+
+        elif isinstance(value, (list, tuple)):
+            if not isinstance(value, BaseList):
+                value = BaseList(value, self._sample, field_name)
+                value._dereferenced = True
+                value._instance = self._sample
+
+            for v in value:
+                if isinstance(v, mongoengine.EmbeddedDocument):
+                    v._instance = self._sample
+
+        elif isinstance(value, dict) and not isinstance(value, BaseDict):
+            value = BaseDict(value, self._sample, field_name)
+            value._dereferenced = True
+
+        return value
+
+
 class _Sample(SerializableDocument):
     """Base class for :class:`Sample` and :class:`SampleView`."""
 
     def __init__(self, dataset=None):
+        self._changed_fields = []
         self._dataset = dataset
 
     def __dir__(self):
@@ -198,6 +242,20 @@ class _Sample(SerializableDocument):
                 field = fos.DatasetSchema.default_fields[field_name]
                 value = field.get_default()
 
+        if self.in_dataset:
+            try:
+                value_has_changed = (
+                    field_name not in self._data
+                    or self._data[field_name] != value
+                )
+                if value_has_changed:
+                    self._mark_as_changed(field_name)
+            except Exception:
+                # Some values can't be compared and throw an error when we
+                # attempt to do so (e.g. tz-naive and tz-aware datetimes).
+                # Mark the field as changed in such cases.
+                self._mark_as_changed(field_name)
+
         if value is None:
             self._data.pop(field_name, None)
         else:
@@ -303,7 +361,8 @@ class _Sample(SerializableDocument):
 
     @_data.setter
     def _data(self, d):
-        self.__data = deserialize_dict(d)
+        self._changed_fields = []
+        self.__data = TrackedDict(d, self)
 
     @property
     def _collection(self):
@@ -313,6 +372,28 @@ class _Sample(SerializableDocument):
 
     def _get_repr_fields(self):
         return ("id",) + self.field_names
+
+    def _mark_as_changed(self, key):
+        """Mark a key as explicitly changed by the user."""
+        # print(key)
+
+        if not key:
+            return
+
+        if key not in self._changed_fields:
+            levels, idx = key.split("."), 1
+            while idx <= len(levels):
+                if ".".join(levels[:idx]) in self._changed_fields:
+                    break
+                idx += 1
+            else:
+                self._changed_fields.append(key)
+                # remove lower level changed fields
+                level = ".".join(levels[:idx]) + "."
+                remove = self._changed_fields.remove
+                for field in self._changed_fields[:]:
+                    if field.startswith(level):
+                        remove(field)
 
 
 class Sample(_Sample):
