@@ -96,8 +96,8 @@ class DatasetDocument(Document):
 
     meta = {"collection": "datasets"}
 
-    name = StringField(unique=True)
-    sample_collection_name = StringField(unique=True)
+    name = StringField(unique=True, required=True)
+    sample_collection_name = StringField(unique=True, required=True)
     persistent = BooleanField(default=False)
     info = DictField(default=dict)
     sample_fields = EmbeddedDocumentListField(

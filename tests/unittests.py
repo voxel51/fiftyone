@@ -1283,6 +1283,22 @@ class DatasetViewTests(unittest.TestCase):
         self.assertListEqual(detections, [])
 
 
+class ViewFieldTests(unittest.TestCase):
+    def test_field_names(self):
+        self.assertEqual(
+            F.ground_truth.to_mongo(), F("ground_truth").to_mongo()
+        )
+        self.assertEqual(
+            F.ground_truth.label.to_mongo(), F("ground_truth.label").to_mongo()
+        )
+        self.assertEqual(
+            F.ground_truth.label.to_mongo(), F("ground_truth.label").to_mongo()
+        )
+        self.assertEqual(
+            F.ground_truth.label.to_mongo(), F("ground_truth").label.to_mongo()
+        )
+
+
 class ViewExpressionTests(unittest.TestCase):
     @drop_datasets
     def test_comparison(self):
@@ -1915,14 +1931,14 @@ class ViewStageTests(unittest.TestCase):
         self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
         self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
 
-        for sv in self.dataset.exclude_fields(["exclude_fields_field1"]):
-            self.assertIsNone(sv.selected_field_names)
+        for sample in self.dataset.exclude_fields(["exclude_fields_field1"]):
+            self.assertIsNone(sample.selected_field_names)
             self.assertSetEqual(
-                sv.excluded_field_names, {"exclude_fields_field1"}
+                sample.excluded_field_names, {"exclude_fields_field1"}
             )
             with self.assertRaises(NameError):
-                sv.exclude_fields_field1
-            self.assertIsNone(sv.exclude_fields_field2)
+                sample.exclude_fields_field1
+            self.assertIsNone(sample.exclude_fields_field2)
 
     def test_exists(self):
         self.sample1["exists"] = True
@@ -1931,21 +1947,35 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
 
+    def test_filter_field(self):
+        self.sample1["test_class"] = fo.Classification(label="friend")
+        self.sample1.save()
+
+        self.sample2["test_class"] = fo.Classification(label="enemy")
+        self.sample2.save()
+
+        view = self.dataset.filter_field("test_class", F("label") == "friend")
+
+        self.assertEqual(len(view.exists("test_class")), 1)
+        for sample in view:
+            if sample.test_class is not None:
+                self.assertEqual(sample.test_class.label, "friend")
+
     def test_filter_classifications(self):
         self.sample1["test_clfs"] = fo.Classifications(
             classifications=[
-                fo.Classification(label="friend", confidence=0.9,),
-                fo.Classification(label="friend", confidence=0.3,),
-                fo.Classification(label="stopper", confidence=0.1,),
-                fo.Classification(label="big bro", confidence=0.6,),
+                fo.Classification(label="friend", confidence=0.9),
+                fo.Classification(label="friend", confidence=0.3),
+                fo.Classification(label="stopper", confidence=0.1),
+                fo.Classification(label="big bro", confidence=0.6),
             ]
         )
         self.sample1.save()
         self.sample2["test_clfs"] = fo.Classifications(
             classifications=[
-                fo.Classification(label="friend", confidence=0.99,),
-                fo.Classification(label="tricam", confidence=0.2,),
-                fo.Classification(label="hex", confidence=0.8,),
+                fo.Classification(label="friend", confidence=0.99),
+                fo.Classification(label="tricam", confidence=0.2),
+                fo.Classification(label="hex", confidence=0.8),
             ]
         )
         self.sample2.save()
@@ -1954,8 +1984,8 @@ class ViewStageTests(unittest.TestCase):
             "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
         )
 
-        for sv in view:
-            for clf in sv.test_clfs.classifications:
+        for sample in view:
+            for clf in sample.test_clfs.classifications:
                 self.assertGreater(clf.confidence, 0.5)
                 self.assertEqual(clf.label, "friend")
 
@@ -2008,8 +2038,8 @@ class ViewStageTests(unittest.TestCase):
             "test_dets", (F("confidence") > 0.5) & (F("label") == "friend")
         )
 
-        for sv in view:
-            for det in sv.test_dets.detections:
+        for sample in view:
+            for det in sample.test_dets.detections:
                 self.assertGreater(det.confidence, 0.5)
                 self.assertEqual(det.label, "friend")
 
@@ -2065,16 +2095,16 @@ class ViewStageTests(unittest.TestCase):
     def test_select_fields(self):
         self.dataset.add_sample_field("select_fields_field", fo.IntField)
 
-        for sv in self.dataset.select_fields():
+        for sample in self.dataset.select_fields():
             self.assertSetEqual(
-                sv.selected_field_names, set(default_sample_fields())
+                sample.selected_field_names, set(default_sample_fields())
             )
-            self.assertIsNone(sv.excluded_field_names)
-            sv.filepath
-            sv.metadata
-            sv.tags
+            self.assertIsNone(sample.excluded_field_names)
+            sample.filepath
+            sample.metadata
+            sample.tags
             with self.assertRaises(NameError):
-                sv.select_fields_field
+                sample.select_fields_field
 
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))
