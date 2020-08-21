@@ -57,6 +57,11 @@ class ViewExpression(object):
     def __repr__(self):
         return fou.pformat(self.to_mongo())
 
+    def __hash__(self):
+        # Must explicitly define this, since __eq__ is customized
+        # https://docs.python.org/3.1/reference/datamodel.html#object.__hash__
+        return super().__hash__()
+
     def __deepcopy__(self, memo):
         return self.__class__(deepcopy(self._expr, memo))
 
