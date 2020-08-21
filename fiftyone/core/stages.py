@@ -133,14 +133,14 @@ class Exclude(ViewStage):
         dataset = fo.load_dataset(...)
 
         #
-        # Exclude a single sample from a view
+        # Exclude a single sample from a dataset
         #
 
         stage = Exclude("5f3c298768fd4d3baf422d2f")
         view = dataset.add_stage(stage)
 
         #
-        # Exclude a list of samples from a view
+        # Exclude a list of samples from a dataset
         #
 
         stage = Exclude([
@@ -200,14 +200,14 @@ class ExcludeFields(ViewStage):
         dataset = fo.load_dataset(...)
 
         #
-        # Exclude a field from all samples in the view
+        # Exclude a field from all samples in a dataset
         #
 
         stage = ExcludeFields("predictions")
         view = dataset.add_stage(stage)
 
         #
-        # Exclude a list of fields from all samples in the view
+        # Exclude a list of fields from all samples in a dataset
         #
 
         stage = ExcludeFields(["ground_truth", "predictions"])
@@ -799,6 +799,13 @@ class Mongo(ViewStage):
         dataset = fo.load_dataset(...)
 
         #
+        # Extract a view containing the 6th through 15th samples in the dataset
+        #
+
+        stage = Mongo([{"$skip": 5}, {"$limit": 10}])
+        view = dataset.add_stage(stage)
+
+        #
         # Sort by the number of detections in the `precictions` field of the
         # samples (assume it is a `Detections` field)
         #
@@ -814,13 +821,6 @@ class Mongo(ViewStage):
             {"$sort": {"_sort_field": -1}},
             {"$unset": "_sort_field"}
         ])
-        view = dataset.add_stage(stage)
-
-        #
-        # Extract a view containing the 6th through 15th samples in the dataset
-        #
-
-        stage = Mongo([{"$skip": 5}, {"$limit": 10}])
         view = dataset.add_stage(stage)
 
     Args:
@@ -878,7 +878,7 @@ class Select(ViewStage):
 
         session = fo.launch_app(dataset=dataset)
 
-        # select samples in the App
+        # Select samples in the App...
 
         stage = Select(session.selected)
         view = dataset.add_stage(stage)
@@ -1055,6 +1055,52 @@ class Shuffle(ViewStage):
         return [{"name": "seed", "type": "float|NoneType", "default": "None"}]
 
 
+class Skip(ViewStage):
+    """Omits the given number of samples from the head of the view.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Skip
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Omit the first 10 samples from the dataset
+        #
+
+        stage = Skip(10)
+        view = dataset.add_stage(stage)
+
+    Args:
+        skip: the number of samples to skip. If a non-positive number is
+            provided, no samples are omitted
+    """
+
+    def __init__(self, skip):
+        self._skip = skip
+
+    @property
+    def skip(self):
+        """The number of samples to skip."""
+        return self._skip
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return [{"$skip": self._skip}]
+
+    def _kwargs(self):
+        return [["skip", self._skip]]
+
+    @classmethod
+    def _params(cls):
+        return [{"name": "skip", "type": "int"}]
+
+
 class SortBy(ViewStage):
     """Sorts the samples in the view by the given field or expression.
 
@@ -1155,52 +1201,6 @@ class SortBy(ViewStage):
     def validate(self, sample_collection):
         if etau.is_str(self._field_or_expr):
             _validate_fields_exist(sample_collection, self._field_or_expr)
-
-
-class Skip(ViewStage):
-    """Omits the given number of samples from the head of the view.
-
-    Examples::
-
-        import fiftyone as fo
-        from fiftyone.core.stages import Skip
-
-        dataset = fo.load_dataset(...)
-
-        #
-        # Omit the first 10 samples from the dataset
-        #
-
-        stage = Skip(10)
-        view = dataset.add_stage(stage)
-
-    Args:
-        skip: the number of samples to skip. If a non-positive number is
-            provided, no samples are omitted
-    """
-
-    def __init__(self, skip):
-        self._skip = skip
-
-    @property
-    def skip(self):
-        """The number of samples to skip."""
-        return self._skip
-
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
-        return [{"$skip": self._skip}]
-
-    def _kwargs(self):
-        return [["skip", self._skip]]
-
-    @classmethod
-    def _params(cls):
-        return [{"name": "skip", "type": "int"}]
 
 
 class Take(ViewStage):
@@ -1356,7 +1356,7 @@ _STAGES = [
     Shuffle,
     Select,
     SelectFields,
-    SortBy,
     Skip,
+    SortBy,
     Take,
 ]
