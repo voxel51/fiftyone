@@ -68,19 +68,24 @@ def test_timeout():
 
 
 def test_stop_single():
-    with IPCServer(lambda x: x) as server, SingleRequestHandler(server):
+    requests = []
+    with IPCServer(requests.append) as server, SingleRequestHandler(server):
         server.timeout = 1
         server.stop()
         with pytest.raises(socket.error):
             send_request(server.port, 5)
+    assert not requests
 
 
 def test_stop_multi():
-    with IPCServer(lambda x: x) as server, MultiRequestHandler(server):
-        assert send_request(server.port, 5) == 5
+    requests = []
+    with IPCServer(requests.append) as server, MultiRequestHandler(server):
+        send_request(server.port, 1)
+        assert requests == [1]
         server.stop()
         with pytest.raises(socket.error):
-            send_request(server.port, 5)
+            send_request(server.port, 2)
+    assert requests == [1]
 
 
 def test_run_in_background():
