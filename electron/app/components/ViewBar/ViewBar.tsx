@@ -26,6 +26,7 @@ const ViewBarDiv = styled.div`
   width: 100%;
   padding: 0 0.25rem;
   display: flex;
+  overflow-x: scroll;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -94,8 +95,6 @@ const ViewBar = () => {
     () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
   );
 
-  console.log(activeStage);
-
   return (
     <ViewBarContainer>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
@@ -120,7 +119,11 @@ const ViewBar = () => {
                       }
                     />
                   ) : null}
-                  <ViewStage key={stage.id} stageRef={stage.ref} />
+                  <ViewStage
+                    key={stage.id}
+                    stageRef={stage.ref}
+                    barRef={barRef}
+                  />
                 </React.Fragment>
               );
             })

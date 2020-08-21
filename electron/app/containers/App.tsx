@@ -144,8 +144,8 @@ function App(props: Props) {
           </Modal.Description>
         </Modal.Content>
       </Modal>
+      <Header />
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
-        <Header />
         {children}
       </div>
     </ThemeProvider>

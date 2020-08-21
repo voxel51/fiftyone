@@ -5,7 +5,7 @@ import { useRecoilValue } from "recoil";
 import * as selectors from "../recoil/selectors";
 
 const HeaderDiv = styled.div`
-  background-color: ${(theme) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.backgroundDark};
   display: flex;
   justify-content: space-between;
   width: 100%;

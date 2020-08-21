@@ -1,5 +1,5 @@
-import React, { useContext, useEffect } from "react";
-import { animated, useSpring } from "react-spring";
+import React, { useContext, useLayoutEffect, useEffect, useRef } from "react";
+import { animated, config, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 
 const SearchResultDiv = animated(styled.div`
@@ -15,45 +15,41 @@ interface SearchResultProps {
   send: any;
 }
 
-const SearchResult = React.memo(
-  ({ result, isActive, send }: SearchResultProps) => {
-    const theme = useContext(ThemeContext);
-    const [props, set] = useSpring(() => ({
+const SearchResult = React.memo(({ result, isActive, send, followRef }) => {
+  const theme = useContext(ThemeContext);
+  const [props, set] = useSpring(() => ({
+    backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
+    color: isActive ? theme.font : theme.fontDark,
+  }));
+
+  useEffect(() => {
+    set({
       backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
       color: isActive ? theme.font : theme.fontDark,
-    }));
+    });
+  }, [isActive]);
 
-    useEffect(() => {
-      set({
-        backgroundColor: isActive
-          ? theme.backgroundLight
-          : theme.backgroundDark,
-        color: isActive ? theme.font : theme.fontDark,
-      });
-    }, [isActive]);
+  const handleMouseEnter = () =>
+    set({ backgroundColor: theme.backgroundLight, color: theme.font });
 
-    const handleMouseEnter = () =>
-      set({ backgroundColor: theme.backgroundLight, color: theme.font });
+  const handleMouseLeave = () =>
+    set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
 
-    const handleMouseLeave = () =>
-      set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
+  const setResult = (e) =>
+    send({ type: "COMMIT", stage: e.target.dataset.result });
 
-    const setResult = (e) =>
-      send({ type: "COMMIT", stage: e.target.dataset.result });
-
-    return (
-      <SearchResultDiv
-        onClick={setResult}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        style={props}
-        data-result={result}
-      >
-        {result}
-      </SearchResultDiv>
-    );
-  }
-);
+  return (
+    <SearchResultDiv
+      onClick={setResult}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={props}
+      data-result={result}
+    >
+      {result}
+    </SearchResultDiv>
+  );
+});
 
 const SearchResultsDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
@@ -73,23 +69,56 @@ interface SearchResultsProps {
   send: any;
 }
 
-const SearchResults = React.memo(({ results, send, currentResult }) => {
-  if (!results.length) return null;
-  return (
-    <SearchResultsDiv
-      onMouseEnter={() => send("MOUSEENTER_RESULTS")}
-      onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
-    >
-      {results.map((result, i) => (
-        <SearchResult
-          key={result}
-          result={result}
-          isActive={currentResult === i}
-          send={send}
-        />
-      ))}
-    </SearchResultsDiv>
-  );
-});
+const SearchResults = React.memo(
+  ({ results, send, currentResult, barRef, followRef }) => {
+    const [props, set] = useSpring(() => ({
+      left: 0,
+      opacity: 1,
+      from: {
+        opacity: 0,
+      },
+      config: config.stiff,
+    }));
+
+    useLayoutEffect(() => {
+      console.log("effec", barRef.current, followRef.current);
+      const follow = () => {
+        console.log("follow");
+        const { x } = followRef.current.getBoundingClientRect();
+        const {
+          x: barX,
+          width: barWidth,
+        } = barRef.current.getBoundingClientRect();
+        set({
+          left: x,
+          opacity: x - barX < 0 || x > barX + barWidth ? 0 : 1,
+        });
+      };
+      barRef.current && barRef.current.addEventListener("scroll", follow);
+
+      barRef.current && followRef.current && follow();
+      return () =>
+        barRef.current && barRef.current.removeEventListener("scroll", follow);
+    }, [barRef.current, followRef.current]);
+    if (!results.length) return null;
+
+    return (
+      <SearchResultsDiv
+        style={props}
+        onMouseEnter={() => send("MOUSEENTER_RESULTS")}
+        onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
+      >
+        {results.map((result, i) => (
+          <SearchResult
+            key={result}
+            result={result}
+            isActive={currentResult === i}
+            send={send}
+          />
+        ))}
+      </SearchResultsDiv>
+    );
+  }
+);
 
 export default SearchResults;

@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useRef, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useMemo,
+  useState,
+} from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
 import { useService } from "@xstate/react";
@@ -207,10 +214,11 @@ const ViewStageDelete = React.memo(({ send, spring }) => {
   );
 });
 
-const ViewStage = React.memo(({ stageRef }) => {
+const ViewStage = React.memo(({ barRef, stageRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(stageRef);
-  const inputRef = useRef(null);
+  const inputRef = useRef();
+  const [containerRef, setContainerRef] = useState({});
 
   const {
     stage,
@@ -269,6 +277,7 @@ const ViewStage = React.memo(({ stageRef }) => {
       state.actions.forEach((action) => {
         if (action.type in actionsMap) actionsMap[action.type]();
       });
+      <ErrorMessage serviceRef={stageRef} />;
     };
     stageRef.onTransition(listener);
     return () => stageRef.listeners.delete(listener);
@@ -278,11 +287,17 @@ const ViewStage = React.memo(({ stageRef }) => {
     top: state.matches("focusedViewBar.yes") && state.context.active ? -3 : 0,
     config: config.stiff,
   });
-  console.log(state.toStrings(), state.event);
 
   return (
     <>
-      <ViewStageContainer style={containerProps}>
+      <ViewStageContainer
+        style={containerProps}
+        ref={(node) =>
+          node &&
+          node !== containerRef.current &&
+          setContainerRef({ current: node })
+        }
+      >
         <ViewStageDiv style={props}>
           <ViewStageInput
             placeholder="+ add stage"
@@ -337,13 +352,17 @@ const ViewStage = React.memo(({ stageRef }) => {
         {state.matches("delible.yes") ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
-        {state.matches("input.editing") && (
-          <SearchResults
-            results={results}
-            send={send}
-            currentResult={currentResult}
-          />
-        )}
+        {state.matches("input.editing") &&
+          barRef.current &&
+          containerRef.current && (
+            <SearchResults
+              results={results}
+              send={send}
+              currentResult={currentResult}
+              followRef={containerRef}
+              barRef={barRef}
+            />
+          )}
         <ErrorMessage serviceRef={stageRef} />
       </ViewStageContainer>
     </>
