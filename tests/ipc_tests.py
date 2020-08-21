@@ -1,6 +1,8 @@
 import contextlib
+import pickle
 import socket
 import threading
+import time
 
 import pytest
 
@@ -14,6 +16,7 @@ def SingleRequestHandler(server):
     try:
         yield
     finally:
+        server.server_close()
         t.join()
 
 
@@ -39,9 +42,20 @@ def test_multiple_requests():
         assert send_request(server.port, "a") == "aa"
 
 
-# def test_bad_request():
-#     with IPCServer(lambda _: None) as server, SingleRequestHandler(server):
-#         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#         s.connect(("localhost", server.port))
-#         s.send("foo" * 200)
-#         print("recv", s.recv())
+def test_bad_request():
+    with IPCServer(lambda _: None) as server, SingleRequestHandler(server):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(("localhost", server.port))
+        s.send(b"foo")
+        res = pickle.loads(s.recv(2048))
+        assert isinstance(res, pickle.UnpicklingError)
+
+
+def test_timeout():
+    with IPCServer(lambda _: None) as server:
+        server.timeout = 1
+        timeout_called = threading.Event()
+        server.handle_timeout = timeout_called.set
+        with SingleRequestHandler(server):
+            time.sleep(server.timeout + 0.5)
+        assert timeout_called.is_set()
