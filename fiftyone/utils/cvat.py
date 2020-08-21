@@ -575,10 +575,10 @@ class CVATBox(object):
 
         label = d.pop("@label")
 
-        xtl = int(d.pop("@xtl"))
-        ytl = int(d.pop("@ytl"))
-        xbr = int(d.pop("@xbr"))
-        ybr = int(d.pop("@ybr"))
+        xtl = int(round(float(d.pop("@xtl"))))
+        ytl = int(round(float(d.pop("@ytl"))))
+        xbr = int(round(float(d.pop("@xbr"))))
+        ybr = int(round(float(d.pop("@ybr"))))
 
         attributes = [CVATAttribute(name, value) for name, value in d.items()]
 
