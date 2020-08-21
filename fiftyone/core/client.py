@@ -13,7 +13,6 @@ from retrying import retry
 import socketio
 
 import fiftyone.constants as foc
-import fiftyone.core.service as fos
 
 logging.getLogger("socketio").setLevel(logging.ERROR)
 logging.getLogger("engineio").setLevel(logging.ERROR)
@@ -97,7 +96,6 @@ class HasClient(object):
     _HC_ATTR_TYPE = None
 
     def __init__(self, port):
-        self._server_service = fos.ServerService(port)
         self._hc_sio = socketio.Client()
         # the following is a monkey patch to set threads to daemon mode
         self._hc_sio.eio.start_background_task = _start_background_task
@@ -127,13 +125,6 @@ class HasClient(object):
             self._hc_client.update(value)
         else:
             super().__setattr__(name, value)
-
-    @property
-    def server_port(self):
-        """Getter for the port number the :class:`ServerService` is listening
-        on.
-        """
-        return self._server_service.port
 
 
 def _start_background_task(target, *args, **kwargs):
