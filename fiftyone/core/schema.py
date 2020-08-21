@@ -9,7 +9,6 @@ from collections import OrderedDict
 from functools import wraps
 import numbers
 
-from mongoengine.base import BaseList, BaseDict
 from mongoengine.errors import InvalidQueryError
 import numpy as np
 import six
@@ -39,6 +38,16 @@ def no_delete_default_field(func):
 
 
 class DatasetSchema(object):
+    """A schema for a :class:`fiftyone.core.dataset.Dataset`.
+
+    DatasetSchemas keep track of the fields on a given dataset.
+
+    Args:
+        sample_doc_cls: the subclass of
+            :class:`fiftyone.core.odm.sample.DatasetSampleDocument` backing
+            the dataset
+    """
+
     # pylint: disable=no-member
     default_fields = foo.DatasetSampleDocument._fields
     default_fields_ordered = default_sample_fields(include_private=True)
@@ -164,12 +173,9 @@ class DatasetSchema(object):
 
         if save:
             # Update dataset meta class
-            dataset_doc = foo.DatasetDocument.objects.get(
-                sample_collection_name=self.sample_collection_name
-            )
-
             field = self.fields[field_name]
             sample_field = foo.SampleFieldDocument.from_field(field)
+            dataset_doc = self._get_dataset_doc()
             dataset_doc.sample_fields.append(sample_field)
             dataset_doc.save()
 
@@ -216,9 +222,7 @@ class DatasetSchema(object):
         delattr(self._sample_doc_cls, field_name)
 
         # Update dataset meta class
-        dataset_doc = foo.DatasetDocument.objects.get(
-            sample_collection_name=self.sample_collection_name
-        )
+        dataset_doc = self._get_dataset_doc()
         dataset_doc.sample_fields = [
             sf for sf in dataset_doc.sample_fields if sf.name != field_name
         ]
@@ -253,6 +257,11 @@ class DatasetSchema(object):
         if include_private:
             return self.fields_ordered
         return tuple(f for f in self.fields_ordered if not f.startswith("_"))
+
+    def _get_dataset_doc(self):
+        return foo.DatasetDocument.objects.get(
+            sample_collection_name=self.sample_collection_name
+        )
 
 
 def _get_implied_field_kwargs(value):
