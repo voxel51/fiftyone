@@ -57,6 +57,11 @@ class ViewExpression(object):
     def __repr__(self):
         return fou.pformat(self.to_mongo())
 
+    def __hash__(self):
+        # Must explicitly define this, since __eq__ is customized
+        # https://docs.python.org/3.1/reference/datamodel.html#object.__hash__
+        return super().__hash__()
+
     def __deepcopy__(self, memo):
         return self.__class__(deepcopy(self._expr, memo))
 
@@ -625,7 +630,14 @@ class ViewExpression(object):
 
 
 class _MetaViewField(type):
-    def __getattr__(self, name):
+
+    # pylint: disable=no-member
+    def __getattr__(cls, name):
+        # This is here to prevent Sphinx from getting confused...
+        # https://github.com/sphinx-doc/sphinx/issues/6859
+        if not etau.is_str(name) or name.startswith("_"):
+            return super().__getattr__(name)
+
         return ViewField(name)
 
 
