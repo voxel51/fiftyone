@@ -630,7 +630,14 @@ class ViewExpression(object):
 
 
 class _MetaViewField(type):
-    def __getattr__(self, name):
+
+    # pylint: disable=no-member
+    def __getattr__(cls, name):
+        # This is here to prevent Sphinx from getting confused...
+        # https://github.com/sphinx-doc/sphinx/issues/6859
+        if not etau.is_str(name) or name.startswith("_"):
+            return super().__getattr__(name)
+
         return ViewField(name)
 
 
