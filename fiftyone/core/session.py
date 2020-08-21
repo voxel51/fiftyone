@@ -89,6 +89,9 @@ class Session(foc.HasClient):
         :attr:`Session.view` property of the session to your
         :class:`fiftyone.core.view.DatasetView`.
 
+    -   Use :meth:`Session.refresh` to refresh the App if you update a dataset
+        outside of the App, encounter an App error, etc
+
     -   Use :attr:`Session.selected` to retrieve the IDs of the currently
         selected samples in the app.
 
@@ -106,9 +109,9 @@ class Session(foc.HasClient):
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        port (5151): the port to use to connect the FiftyOne app.
+        port (5151): the port to use to connect the FiftyOne App.
         remote (False): whether this is a remote session. Remote sessions do
-            not launch the FiftyOne app
+            not launch the FiftyOne App
     """
 
     _HC_NAMESPACE = "state"
@@ -188,13 +191,18 @@ class Session(foc.HasClient):
         """
         return list(self.state.selected)
 
+    @_update_state
+    def refresh(self):
+        """Refreshes the FiftyOne App, reloading the current dataset/view."""
+        pass
+
     def open(self):
         """Opens the session.
 
         This opens the FiftyOne App, if necessary.
         """
         if self._remote:
-            raise ValueError("Remote sessions cannot launch the FiftyOne app")
+            raise ValueError("Remote sessions cannot launch the FiftyOne App")
 
         self._app_service.start()
 
