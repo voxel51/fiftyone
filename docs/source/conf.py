@@ -85,9 +85,6 @@ templates_path = ["_templates"]
 # You can specify multiple suffix as a list of strings.
 source_suffix = [".rst", ".md"]
 
-# Parse relative links to MD files into ref and doc directives.
-m2r_parse_relative_links = True
-
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
