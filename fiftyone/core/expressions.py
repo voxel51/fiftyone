@@ -652,6 +652,9 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
         F("ground_truth").label  # equivalent
         F.ground_truth.label     # equivalent
 
+        # Reference the root object
+        F()
+
     .. automethod:: __eq__
     .. automethod:: __ge__
     .. automethod:: __gt__
