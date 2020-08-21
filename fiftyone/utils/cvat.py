@@ -580,7 +580,15 @@ class CVATBox(object):
         xbr = int(round(float(d.pop("@xbr"))))
         ybr = int(round(float(d.pop("@ybr"))))
 
-        attributes = [CVATAttribute(name, value) for name, value in d.items()]
+        attributes = []
+        for name, value in d.items():
+            name = name.lstrip("@")
+            try:
+                value = float(value)
+            except:
+                pass
+
+            attributes.append(CVATAttribute(name, value))
 
         return cls(label, xtl, ytl, xbr, ybr, attributes=attributes)
 
@@ -628,8 +636,7 @@ class CVATBox(object):
         ]
 
         attributes = {
-            a.name: fol.CategoricalAttribute(value=a.value)
-            for a in self.attributes
+            a.name: a.to_fiftyone_attribute() for a in self.attributes
         }
 
         return fol.Detection(
@@ -669,7 +676,28 @@ class CVATAttribute(object):
         Returns:
             an ``eta.core.data.Attribute``
         """
+        if isinstance(self.value, bool):
+            return etad.BooleanAttribute(self.name, self.value)
+
+        if etau.is_numeric(self.value):
+            return etad.NumericAttribute(self.name, self.value)
+
         return etad.CategoricalAttribute(self.name, self.value)
+
+    def to_fiftyone_attribute(self):
+        """Returns a :class:`fiftyone.core.labels.Attribute` representation of
+        the attribute.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Attribute`
+        """
+        if isinstance(self.value, bool):
+            return fol.BooleanAttribute(value=self.value)
+
+        if etau.is_numeric(self.value):
+            return fol.NumericAttribute(value=self.value)
+
+        return fol.CategoricalAttribute(value=self.value)
 
 
 class CVATImageAnnotationWriter(object):
