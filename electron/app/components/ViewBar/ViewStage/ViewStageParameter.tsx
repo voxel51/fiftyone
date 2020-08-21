@@ -214,8 +214,8 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
       state.matches("editing") && hasObjectType
         ? theme.backgroundDark
         : state.matches("reading.submitted")
-        ? theme.brandTransparent
-        : theme.brandMoreTransparent,
+        ? theme.backgroundLight
+        : theme.background,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
     borderRightWidth: tail ? 2 : 0,
     height: hasObjectType && state.matches("editing") ? 200 : 36,

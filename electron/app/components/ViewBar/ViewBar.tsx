@@ -89,6 +89,8 @@ const ViewBar = () => {
     () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
   );
 
+  console.log(activeStage);
+
   return (
     <ViewBarContainer>
       <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />

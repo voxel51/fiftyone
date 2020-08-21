@@ -2,15 +2,15 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
-import { ReportProblem, VerticalAlignBottom } from "@material-ui/icons";
+import { ReportProblem } from "@material-ui/icons";
 
 import { useOutsideClick } from "../../../utils/hooks";
 
 const ErrorMessageDiv = animated(styled.div`
   box-sizing: border-box;
   border-radius: 3px;
-  background-color: #191c1f;
-  box-shadow: 0 2px 25px 0 rgba(0, 0, 0, 0.16);
+  background-color: ${({ theme }) => theme.backgroundDarker};
+  box-shadow: 0 2px 25px 0 ${({ theme }) => theme.darkShadow};
   color: ${({ theme }) => theme.fontDark};
   border-radius: 2px;
   padding: 0.5rem;

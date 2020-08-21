@@ -18,7 +18,7 @@ const ViewStageContainer = animated(styled.div`
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
+  border: 2px solid ${({ theme }) => theme.brand};
   border-top-left-radius: 3px;
   border-bottom-left-radius: 3px;
   border-right-width: 0;
@@ -49,23 +49,31 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 `;
 
-const ViewStageButton = animated(styled.div`
+const ViewStageButtonContainer = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
-  color: ${({ theme }) => theme.font};
+  border: 2px dashed ${({ theme }) => theme.button};
+  color: ${({ theme }) => theme.button};
   border-radius: 3px;
   position: relative;
   margin: 0.5rem;
   line-height: 1rem;
   cursor: pointer;
   font-weight: bold;
-  overflow: hidden;
+
   padding: 0 0.25rem;
 
   :focus {
     outline: none;
   }
 `);
+
+const ViewStageButton = styled.div`
+  width: 14px;
+  height: 32px;
+  display: block;
+  position: relative;
+  overflow: hidden;
+`;
 
 const AddIcon = animated(styled(Add)`
   display: block;
@@ -84,7 +92,8 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
   const [hovering, setHovering] = useState(false);
   const [props, set] = useSpring(() => ({
-    background: theme.brandMoreTransparent,
+    background: theme.background,
+    color: active ? theme.font : theme.button,
     top: active ? -3 : 0,
     opacity: 1,
     from: {
@@ -94,7 +103,11 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }));
 
   useEffect(() => {
-    set({ top: active ? -3 : 0 });
+    set({
+      top: active ? -3 : 0,
+      color: active ? theme.font : theme.button,
+      borderColor: active ? theme.secondary : theme.button,
+    });
     active ? setEnterProps() : setLeaveProps();
   }, [active]);
 
@@ -107,13 +120,13 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }));
 
   const setEnterProps = () => {
-    set({ background: theme.brandTransparent });
+    set({ background: theme.background });
     setAdd({ y: 0 });
     setArrow({ y: -40 });
   };
 
   const setLeaveProps = () => {
-    set({ background: theme.brandMoreTransparent });
+    set({ background: theme.backgroundDark });
     setAdd({ y: 40 });
     setArrow({ y: 0 });
   };
@@ -124,29 +137,31 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }, [active, hovering]);
 
   return (
-    <ViewStageButton
+    <ViewStageButtonContainer
       style={props}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
       onClick={() => send({ type: "STAGE.ADD", index })}
     >
-      <ArrowIcon
-        style={{
-          transform: arrowProps.y.interpolate(arrowTransform),
-          display: "block",
-          fontSize: "14px",
-          margin: "9px 0",
-        }}
-      />
-      <AddIcon
-        style={{
-          transform: addProps.y.interpolate(addTransform),
-          display: "block",
-          fontSize: "14px",
-          margin: "9px 0",
-        }}
-      />
-    </ViewStageButton>
+      <ViewStageButton>
+        <ArrowIcon
+          style={{
+            transform: arrowProps.y.interpolate(arrowTransform),
+            display: "block",
+            fontSize: "14px",
+            margin: "9px 0",
+          }}
+        />
+        <AddIcon
+          style={{
+            transform: addProps.y.interpolate(addTransform),
+            display: "block",
+            fontSize: "14px",
+            margin: "9px 0",
+          }}
+        />
+      </ViewStageButton>
+    </ViewStageButtonContainer>
   );
 });
 
@@ -205,6 +220,7 @@ const ViewStage = React.memo(({ stageRef }) => {
     length,
     index,
     focusOnInit,
+    active,
   } = state.context;
 
   const isCompleted = [
@@ -213,7 +229,6 @@ const ViewStage = React.memo(({ stageRef }) => {
   ].some(state.matches);
 
   const deleteProps = useSpring({
-    borderStyle: "solid",
     backgroundColor: theme.brandTransparent,
     opacity: 1,
     from: {
@@ -222,15 +237,17 @@ const ViewStage = React.memo(({ stageRef }) => {
   });
 
   const props = useSpring({
-    borderStyle: isCompleted ? "solid" : "dashed",
-    backgroundColor: isCompleted
-      ? theme.brandTransparent
-      : theme.brandMoreTransparent,
+    backgroundColor: isCompleted ? theme.backgroundLight : theme.background,
     borderRightWidth:
       (!parameters.length && index === 0 && length === 1) ||
       (index !== 0 && !parameters.length)
         ? 2
         : 0,
+    borderColor: isCompleted
+      ? active
+        ? theme.secondary
+        : theme.fontDarkest
+      : theme.brand,
     borderTopRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     borderBottomRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
     opacity: 1,

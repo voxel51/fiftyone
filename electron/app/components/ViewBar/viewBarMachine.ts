@@ -193,10 +193,15 @@ const viewBarMachine = Machine(
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) => {
-                          return Math.min(
-                            stages.length - 0.5,
-                            activeStage + 0.5
-                          );
+                          const i = activeStage;
+                          if (i === stages.length - 0.5) return i;
+                          if (i % 1 !== 0) return Math.ceil(i);
+                          if (
+                            stages[i].submitted &&
+                            (i === stages.length - 1 || stages[i + 1].submitted)
+                          )
+                            return i + 0.5;
+                          return Math.min(stages.length - 1, i + 1);
                         },
                       }),
                       "sendStagesUpdate",
@@ -206,7 +211,15 @@ const viewBarMachine = Machine(
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) => {
-                          return Math.max(-0.5, activeStage - 0.5);
+                          const i = activeStage;
+                          if (i === -0.5) return i;
+                          if (i % 1 !== 0) return Math.floor(i);
+                          if (
+                            stages[i].submitted &&
+                            (i === 0 || stages[i - 1].submitted)
+                          )
+                            return i - 0.5;
+                          return Math.max(0, i - 1);
                         },
                       }),
                       "sendStagesUpdate",

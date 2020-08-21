@@ -5,7 +5,7 @@ import styled, { ThemeContext } from "styled-components";
 const SearchResultDiv = animated(styled.div`
   cursor: pointer;
   margin: 0.25rem 0.25rem;
-  padding: 0 0.25rem;
+  padding: 0.1rem 0.25rem;
   font-weight: bold;
 `);
 
@@ -65,6 +65,7 @@ const SearchResultsDiv = animated(styled.div`
   position: fixed;
   width: auto;
   z-index: 800;
+  padding: 0.5rem 0;
 `);
 
 interface SearchResultsProps {
