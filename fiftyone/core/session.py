@@ -90,7 +90,7 @@ class Session(foc.HasClient):
         :class:`fiftyone.core.view.DatasetView`.
 
     -   Use :meth:`Session.refresh` to refresh the App if you update a dataset
-        outside of the App, encounter an App error, etc
+        outside of the App
 
     -   Use :attr:`Session.selected` to retrieve the IDs of the currently
         selected samples in the app.
@@ -194,6 +194,7 @@ class Session(foc.HasClient):
     @_update_state
     def refresh(self):
         """Refreshes the FiftyOne App, reloading the current dataset/view."""
+        # @todo achieve same behavoir as if CTRL + R were pressed in the App
         pass
 
     def open(self):
