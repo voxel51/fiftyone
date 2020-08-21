@@ -54,6 +54,7 @@ const viewBarKeyMap = {
   VIEW_BAR_NEXT_STAGE: "shift+right",
   VIEW_BAR_PREVIOUS_STAGE: "shift+left",
   VIEW_BAR_DELETE: ["del", "backspace"],
+  VIEW_BAR_ENTER: "enter",
 };
 
 const ViewBar = () => {
@@ -82,6 +83,10 @@ const ViewBar = () => {
     VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),
     VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
     VIEW_BAR_DELETE: useCallback(() => send("DELETE_ACTIVE_STAGE"), []),
+    VIEW_BAR_ENTER: useCallback((e) => {
+      e.preventDefault();
+      send("ENTER");
+    }, []),
   };
 
   useOutsideClick(
