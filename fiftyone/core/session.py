@@ -161,14 +161,18 @@ class Session(foc.HasClient):
         :class:`fiftyone.core.service.ServerService` if no other sessions are
         subscribed.
         """
-        global _subscribed_sessions  # pylint: disable=global-statement
-        _subscribed_sessions[self._port].discard(self)
+        try:
+            global _subscribed_sessions  # pylint: disable=global-statement
+            _subscribed_sessions[self._port].discard(self)
 
-        if len(_subscribed_sessions[self._port]) == 0:
-            global _server_services  # pylint: disable=global-statement
-            if self._port in _server_services:
-                service = _server_services.pop(self._port)
-                service.stop()
+            if len(_subscribed_sessions[self._port]) == 0:
+                global _server_services  # pylint: disable=global-statement
+                if self._port in _server_services:
+                    service = _server_services.pop(self._port)
+                    service.stop()
+        except:
+            # e.g. globals were already garbage-collected
+            pass
 
     @property
     def dataset(self):
