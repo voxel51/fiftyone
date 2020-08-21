@@ -173,7 +173,7 @@ class ClientMonitor(object):
     def _handle_message(self, message):
         """Handles an incoming IPC message.
 
-        Currently this only supports registering new clients.
+        This currently supports registering and unregistering clients.
 
         Args:
             message (tuple): a 2-item tuple (command: str, argument)
@@ -193,6 +193,10 @@ class ClientMonitor(object):
                         target=lambda: self._background_wait(process)
                     )
                 return True
+        elif command == "unregister":
+            process = psutil.Process(int(arg))
+            self._notify_exit(process)
+            return True
         else:
             raise ValueError("Unrecognized command: " + repr(command))
 
