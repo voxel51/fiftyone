@@ -247,7 +247,7 @@ class Session(foc.HasClient):
         if self._remote:
             return
 
-        self.state.view.close = True
+        self.state.close = True
         self._update_state()
 
     def wait(self):
