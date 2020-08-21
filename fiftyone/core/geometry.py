@@ -422,7 +422,7 @@ class RelativePoint(DynamicEmbeddedDocument):
 
     Args:
         x: the x-coordinate in ``[0, 1]``
-        y: the x-coordinate in ``[0, 1]``
+        y: the y-coordinate in ``[0, 1]``
     """
 
     meta = {"allow_inheritance": True}
