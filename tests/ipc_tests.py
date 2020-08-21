@@ -16,7 +16,7 @@ def SingleRequestHandler(server):
     try:
         yield
     finally:
-        server.server_close()
+        server.stop()
         t.join()
 
 
@@ -27,7 +27,7 @@ def MultiRequestHandler(server):
     try:
         yield
     finally:
-        server.shutdown()
+        server.stop()
         t.join()
 
 
@@ -51,6 +51,12 @@ def test_bad_request():
         assert isinstance(res, pickle.UnpicklingError)
 
 
+def test_large_request():
+    with IPCServer(lambda x: x) as server, SingleRequestHandler(server):
+        data = list(range(10000))
+        assert send_request(server.port, data) == data
+
+
 def test_timeout():
     with IPCServer(lambda _: None) as server:
         server.timeout = 1
@@ -59,3 +65,27 @@ def test_timeout():
         with SingleRequestHandler(server):
             time.sleep(server.timeout + 0.5)
         assert timeout_called.is_set()
+
+
+def test_stop_single():
+    with IPCServer(lambda x: x) as server, SingleRequestHandler(server):
+        server.timeout = 1
+        server.stop()
+        with pytest.raises(socket.error):
+            send_request(server.port, 5)
+
+
+def test_stop_multi():
+    with IPCServer(lambda x: x) as server, MultiRequestHandler(server):
+        assert send_request(server.port, 5) == 5
+        server.stop()
+        with pytest.raises(socket.error):
+            send_request(server.port, 5)
+
+
+def test_run_in_background():
+    requests = []
+    server = IPCServer.run_in_background(requests.append)
+    send_request(server.port, 2)
+    send_request(server.port, 3)
+    assert requests == [2, 3]
