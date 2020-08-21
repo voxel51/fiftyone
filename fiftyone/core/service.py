@@ -115,6 +115,7 @@ class Service(object):
             + self.command,
             cwd=self.working_dir,
             stdin=subprocess.PIPE,
+            env={**os.environ, "FIFTYONE_DISABLE_SERVICES": "1"},
         )
 
     def stop(self):
@@ -163,6 +164,29 @@ class MultiClientService(Service):
     @property
     def _service_args(self):
         return super()._service_args + ["--multi"]
+
+    def start(self):
+        """Searches for a running instance of this service, or starts one
+        if no instance is found.
+        """
+        for process in fosu.find_processes_by_args(self._service_args):
+            desc = "Process %i (%s)" % (
+                process.pid,
+                " ".join(["service/main.py"] + self._service_args),
+            )
+            logger.debug("Connecting to %s", desc)
+            try:
+                reply = fosu.send_ipc_message(
+                    process, ("register", os.getpid())
+                )
+                if reply == True:
+                    return
+                else:
+                    logger.warn("Failed to connect to %s: %r", desc, reply)
+            except IOError:
+                logger.warn("%s did not respond", desc)
+
+        super().start()
 
 
 class DatabaseService(MultiClientService):

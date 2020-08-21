@@ -11,7 +11,7 @@ import pytest
 
 from fiftyone.service.ipc import IPCServer, send_request
 from fiftyone.service.util import (
-    find_process_by_args,
+    find_processes_by_args,
     get_listening_tcp_ports,
     send_ipc_message,
 )
@@ -110,9 +110,9 @@ def test_run_in_background():
     assert requests == [2, 3]
 
 
-def test_find_process_by_args():
+def test_find_processes_by_args():
     assert current_process in list(
-        find_process_by_args(current_process.cmdline())
+        find_processes_by_args(current_process.cmdline())
     )
 
     random_arg = str(5 + random.random())
@@ -125,7 +125,7 @@ def test_find_process_by_args():
         ]
     )
     try:
-        assert p in list(find_process_by_args([random_arg]))
+        assert p in list(find_processes_by_args([random_arg]))
     finally:
         p.kill()
 

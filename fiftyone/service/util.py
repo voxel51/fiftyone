@@ -11,7 +11,26 @@ import psutil
 from fiftyone.service.ipc import send_request
 
 
-def find_process_by_args(args):
+def describe_process(process):
+    """Returns a detailed description of a process.
+
+    Args:
+        process (psutil.Process)
+
+    Returns:
+        str
+    """
+    try:
+        details = repr(process.cmdline())
+    except psutil.Error:
+        try:
+            details = process.name()
+        except psutil.Error:
+            details = "unknown"
+    return "Process %i (%s)" % (process.pid, details)
+
+
+def find_processes_by_args(args):
     """Finds a process with the specified command-line arguments.
 
     Only processes for the current user will be returned.

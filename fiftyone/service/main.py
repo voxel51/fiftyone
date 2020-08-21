@@ -6,6 +6,7 @@ architecture is:
     - this process, referred to as the "current" process (service/main.py)
         - child process (the service)
             - (optional): any child processes that the service creates
+- clients (any other Python processes that are using this service) - see below
 
 Some services that we spin up do not terminate on their own when their parent
 process terminates, so they need to be killed explicitly. However, if the
@@ -13,6 +14,14 @@ parent process is a Python interpreter that is in the process of shutting down,
 it cannot reliably kill its children. This script works around these issues by
 detecting when the parent process exits, terminating its children, and only
 then exiting itself.
+
+Some services can also only have a single running instance per user. Notably,
+only one instance of MongoDB can use a given data folder. To support this, when
+invoked with the "--multi" option, this script allows additional "clients", i.e.
+other Python processes using FiftyOne, to register themselves at any time. This
+script will continue running in the background and keep the child process alive
+until all registered clients, including the original parent process, have
+exited.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -28,6 +37,8 @@ import sys
 import threading
 
 import psutil
+
+from fiftyone.service.ipc import IPCServer
 
 
 lock = threading.Lock()
@@ -53,6 +64,13 @@ def trigger_exit(mode):
         if exit_mode is None:
             exit_mode = ExitMode(mode)
     exiting.set()
+
+
+def start_daemon_thread(target):
+    thread = threading.Thread(target=target)
+    thread.daemon = True
+    thread.start()
+    return thread
 
 
 class ChildStreamMonitor(object):
@@ -96,6 +114,89 @@ class ChildStreamMonitor(object):
         return b"".join(self.output_deque)
 
 
+class ClientMonitor(object):
+    """Monitor to keep track of all clients using this service.
+
+    This is only used for services that use multiple clients, e.g. the database
+    service. In addition to tracking the original parent process, other
+    processes can also request to be tracked by sending a message to this
+    process as a tuple: ("register", PID). trigger_exit(PARENT) is only called
+    after the original parent and all registered clients have shut down.
+    """
+
+    # sentinel used to represent the original parent (which is tracked without
+    # its PID)
+    _PARENT = "parent"
+
+    def __init__(self):
+        """Creates and starts a client monitor."""
+        # This has an internal lock, so it is reused for any operations that
+        # need to be synchronized
+        self.cond = threading.Condition()
+        # A set of clients (psutil.Process objects, which are hashable).
+        # As long as monitor_stdin() hasn't been called yet, we can assume the
+        # parent is still alive, and this can be changed later
+        self.clients = {ClientMonitor._PARENT}
+        # start background tasks
+        self.thread = start_daemon_thread(target=self._background_loop)
+        self.server = IPCServer.run_in_background(
+            on_message=self._handle_message
+        )
+
+    def notify_parent_exit(self):
+        """Notifies the monitor that the original parent process has exited."""
+        self._notify_exit(ClientMonitor._PARENT)
+
+    def _background_loop(self):
+        """Main background loop - waits for all clients to exit, then shuts down
+        the current process."""
+        with self.cond:
+            while self.clients:
+                self.cond.wait()
+            # all clients have exited now, so shut down
+            trigger_exit(ExitMode.PARENT)
+
+    def _background_wait(self, process):
+        try:
+            process.wait()
+        except psutil.Error:
+            pass
+        finally:
+            self._notify_exit(process)
+
+    def _notify_exit(self, process):
+        """Notifies _background_loop that a client has exited."""
+        with self.cond:
+            self.clients.remove(process)
+            self.cond.notify_all()
+
+    def _handle_message(self, message):
+        """Handles an incoming IPC message.
+
+        Currently this only supports registering new clients.
+
+        Args:
+            message (tuple): a 2-item tuple (command: str, argument)
+
+        Returns:
+            response to send to the client (True on success, Exception on failure)
+        """
+        if not isinstance(message, tuple):
+            raise TypeError("Expected tuple, got " + str(type(message)))
+        command, arg = message
+        if command == "register":
+            process = psutil.Process(int(arg))
+            with self.cond:
+                if process not in self.clients:
+                    self.clients.add(process)
+                    start_daemon_thread(
+                        target=lambda: self._background_wait(process)
+                    )
+                return True
+        else:
+            raise ValueError("Unrecognized command: " + repr(command))
+
+
 if __name__ != "__main__":
     raise RuntimeError(
         "This file is for internal use only and cannot be imported"
@@ -116,6 +217,9 @@ if not command:
     raise ValueError("No command given")
 if command[0].startswith("--"):
     raise ValueError("Unhandled service argument: %s" % command[0])
+
+if args.multi:
+    client_monitor = ClientMonitor()
 
 # ignore signals sent to the parent process - parent process termination is
 # handled below, and necessary for cleaning up the child process
@@ -157,7 +261,10 @@ def monitor_stdin():
     """
     while len(sys.stdin.read(1024)):
         pass
-    trigger_exit(ExitMode.PARENT)
+    if args.multi:
+        client_monitor.notify_parent_exit()
+    else:
+        trigger_exit(ExitMode.PARENT)
 
 
 def shutdown():
@@ -191,9 +298,7 @@ def shutdown():
         sys.stderr.flush()
 
 
-stdin_thread = threading.Thread(target=monitor_stdin)
-stdin_thread.daemon = True
-stdin_thread.start()
+stdin_thread = start_daemon_thread(target=monitor_stdin)
 
 exiting.wait()
 
