@@ -674,17 +674,18 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
     .. automethod:: __getitem__
 
     Args:
-        name: the name of the field
+        name (None): the name of the field
     """
 
-    def __init__(self, name):
-        if not etau.is_str(name):
+    def __init__(self, name=None):
+        if name is not None and not etau.is_str(name):
             raise TypeError("`name` must be str; found %s" % name)
 
         super().__init__(name)
 
     def __getattr__(self, name):
-        return ViewField(self._expr + "." + name)
+        sub_name = self._expr + "." + name if self._expr else name
+        return ViewField(sub_name)
 
     def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the field.
@@ -696,9 +697,9 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
             a string
         """
         if prefix:
-            return prefix + "." + self._expr
+            return prefix + "." + self._expr if self._expr else prefix
 
-        return "$" + self._expr
+        return "$" + self._expr if self._expr else "$this"
 
 
 def _escape_regex_chars(str_or_strs):
