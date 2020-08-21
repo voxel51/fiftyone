@@ -1,6 +1,8 @@
 import contextlib
 import pickle
+import random
 import socket
+import sys
 import threading
 import time
 
@@ -8,7 +10,11 @@ import psutil
 import pytest
 
 from fiftyone.service.ipc import IPCServer, send_request
-from fiftyone.service.util import get_listening_tcp_ports, send_ipc_message
+from fiftyone.service.util import (
+    find_process_by_args,
+    get_listening_tcp_ports,
+    send_ipc_message,
+)
 
 current_process = psutil.Process()
 
@@ -102,6 +108,26 @@ def test_run_in_background():
         send_request(server.port, 2)
         send_request(server.port, 3)
     assert requests == [2, 3]
+
+
+def test_find_process_by_args():
+    assert current_process in list(
+        find_process_by_args(current_process.cmdline())
+    )
+
+    random_arg = str(5 + random.random())
+    p = psutil.Popen(
+        [
+            sys.executable,
+            "-c",
+            "import sys, time; time.sleep(float(sys.argv[1]))",
+            random_arg,
+        ]
+    )
+    try:
+        assert p in list(find_process_by_args([random_arg]))
+    finally:
+        p.kill()
 
 
 def test_get_listening_tcp_ports():
