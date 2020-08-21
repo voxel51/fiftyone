@@ -7,7 +7,7 @@ FiftyOne Installation
   :hidden:
 
   Virtual environments <virtualenv>
-  troubleshooting
+  Troubleshooting <troubleshooting>
 
 Prerequisites
 -------------
