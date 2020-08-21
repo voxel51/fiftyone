@@ -11,7 +11,7 @@ import reprlib
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
-from fiftyone.core.expressions import ViewExpression
+from fiftyone.core.expressions import ViewExpression, ViewField
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 from fiftyone.core.odm.sample import default_sample_fields
@@ -765,6 +765,9 @@ class SortBy(ViewStage):
         ]
 
     def _get_mongo_field_or_expr(self):
+        if isinstance(self._field_or_expr, ViewField):
+            return self._field_or_expr.name
+
         if isinstance(self._field_or_expr, ViewExpression):
             return self._field_or_expr.to_mongo()
 

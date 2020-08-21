@@ -690,6 +690,11 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
         sub_name = self._expr + "." + name if self._expr else name
         return ViewField(sub_name)
 
+    @property
+    def name(self):
+        """The name of the field."""
+        return self._expr
+
     def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the field.
 
