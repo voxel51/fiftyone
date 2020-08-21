@@ -125,25 +125,21 @@ class ViewStageError(Exception):
 class Exclude(ViewStage):
     """Excludes the samples with the given IDs from the view.
 
-    Example uses::
+    Examples::
 
         import fiftyone as fo
         from fiftyone.core.stages import Exclude
 
         dataset = fo.load_dataset(...)
 
-        view = dataset.view()
-
         #
-        # Example 1
         # Exclude a single sample from a view
         #
 
         stage = Exclude("5f3c298768fd4d3baf422d2f")
-        new_view = view.add_stage(stage)
+        view = dataset.add_stage(stage)
 
         #
-        # Example 2
         # Exclude a list of samples from a view
         #
 
@@ -151,7 +147,7 @@ class Exclude(ViewStage):
             "5f3c298768fd4d3baf422d2f",
             "5f3c298768fd4d3baf422d30"
         ])
-        new_view = view.add_stage(stage)
+        view = dataset.add_stage(stage)
 
     Args:
         sample_ids: a sample ID or iterable of sample IDs
@@ -196,30 +192,26 @@ class ExcludeFields(ViewStage):
 
     Note that default fields cannot be excluded.
 
-    Example uses::
+    Examples::
 
         import fiftyone as fo
         from fiftyone.core.stages import ExcludeFields
 
         dataset = fo.load_dataset(...)
 
-        view = dataset.view()
-
         #
-        # Example 1
         # Exclude a field from all samples in the view
         #
 
         stage = ExcludeFields("predictions")
-        new_view = view.add_stage(stage)
+        view = dataset.add_stage(stage)
 
         #
-        # Example 2
         # Exclude a list of fields from all samples in the view
         #
 
         stage = ExcludeFields(["ground_truth", "predictions"])
-        new_view = view.add_stage(stage)
+        view = dataset.add_stage(stage)
 
     Args:
         field_names: a field name or iterable of field names to exclude
@@ -267,22 +259,19 @@ class Exists(ViewStage):
     """Returns a view containing the samples that have a non-``None`` value
     for the given field.
 
-    Example uses::
+    Examples::
 
         import fiftyone as fo
         from fiftyone.core.stages import Exists
 
         dataset = fo.load_dataset(...)
 
-        view = dataset.view()
-
         #
-        # Example
         # Only include samples that have a value in their `predictions` field
         #
 
         stage = Exists("predictions")
-        new_view = view.add_stage(stage)
+        view = dataset.add_stage(stage)
 
     Args:
         field: the field
@@ -317,6 +306,30 @@ class FilterField(ViewStage):
 
     Values of ``field`` for which ``filter`` returns ``False`` are
     replaced with ``None``.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+        from fiftyone.core.stages import FilterField
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include classifications in the `predictions` field (assume it is
+        # a `Classification` field) whose `label` is "cat"
+        #
+
+        stage = FilterField("predictions", F.label == "cat")
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include classifications in the `predictions` field (assume it is
+        # a `Classification` field) whose `confidence` is greater than 0.8
+        #
+
+        stage = FilterField("predictions", F.confidence > 0.8)
+        view = dataset.add_stage(stage)
 
     Args:
         field: the field to filter
@@ -432,33 +445,31 @@ class FilterClassifications(_FilterListField):
     specified :class:`fiftyone.core.labels.Classifications` field of the
     samples in a view.
 
-    Example uses::
+    Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import FilterClassifications
         from fiftyone import ViewField as F
+        from fiftyone.core.stages import FilterClassifications
 
         dataset = fo.load_dataset(...)
 
-        view = dataset.view()
-
         #
-        # Example 1
-        # Only include classifications with confidence > 0.8
+        # Only include classifications in the `predictions` field whose
+        # `confidence` greater than 0.8
         #
 
-        stage = FilterClassifications("predictions", F("confidence") > 0.8)
-        new_view = view.add_stage(stage)
+        stage = FilterClassifications("predictions", F.confidence > 0.8)
+        view = dataset.add_stage(stage)
 
         #
-        # Example 2
-        # Only include classifications whose label is "cat" or "dog"
+        # Only include classifications in the `predictions` field whose `label`
+        # is "cat" or "dog"
         #
 
         stage = FilterClassifications(
-            "predictions", F("label").is_in(["cat", "dog"])
+            "predictions", F.label.is_in(["cat", "dog"])
         )
-        new_view = view.add_stage(stage)
+        view = dataset.add_stage(stage)
 
     Args:
         field: the field to filter, which must be a
@@ -486,6 +497,43 @@ class FilterDetections(_FilterListField):
     specified :class:`fiftyone.core.labels.Detections` field of the samples in
     the stage.
 
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+        from fiftyone.core.stages import FilterDetections
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include detections in the `predictions` field whose `confidence`
+        # is greater than 0.8
+        #
+
+        stage = FilterDetections("predictions", F.confidence > 0.8)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include detections in the `predictions` field whose `label` is
+        # "cat" or "dog"
+        #
+
+        stage = FilterDetections(
+            "predictions", F.label.is_in(["cat", "dog"])
+        )
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include detections in the `predictions` field whose bounding box
+        # area is smaller than 0.2
+        #
+
+        # bbox is in [top-left-x, top-left-y, width, height] format
+        bbox_area = F.bounding_box[2] * F.bounding_box[3]
+
+        stage = FilterDetections("predictions", bbox_area < 0.2)
+        view = dataset.add_stage(stage)
+
     Args:
         field: the field to filter, which must be a
             :class:`fiftyone.core.labels.Detections`
@@ -509,6 +557,20 @@ class FilterDetections(_FilterListField):
 
 class Limit(ViewStage):
     """Limits the view to the given number of samples.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Limit
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include the first 10 samples in the view
+        #
+
+        stage = Limit(10)
+        view = dataset.add_stage(stage)
 
     Args:
         num: the maximum number of samples to return. If a non-positive
@@ -541,6 +603,50 @@ class Limit(ViewStage):
 
 class Match(ViewStage):
     """Filters the samples in the stage by the given filter.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+        from fiftyone.core.stages import Match
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include samples whose `filepath` ends with ".jpg"
+        #
+
+        stage = Match(F.filepath.ends_with(".jpg"))
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples whose `predictions` field (assume it is a
+        # `Classification` field) has `label` of "cat"
+        #
+
+        stage = Match(F.predictions.label == "cat"))
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples whose `predictions` field (assume it is a
+        # `Detections` field) has at least 5 detections
+        #
+
+        stage = Match(F.predictions.detections.length() >= 5)
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples whose `predictions` field (assume it is a
+        # `Detections` field) has at least one detection with area smaller
+        # than 0.2
+        #
+
+        # bbox is in [top-left-x, top-left-y, width, height] format
+        pred_bbox = F.predictions.detections.bounding_box
+        pred_bbox_area = pred_bbox[2] * pred_bbox[3]
+
+        stage = Match((pred_bbox_area < 0.2).length() > 0)
+        view = dataset.add_stage(stage)
 
     Args:
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -589,6 +695,20 @@ class Match(ViewStage):
 class MatchTag(ViewStage):
     """Returns a view containing the samples that have the given tag.
 
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import MatchTag
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include samples that have the "test" tag
+        #
+
+        stage = MatchTag("test")
+        view = dataset.add_stage(stage)
+
     Args:
         tag: a tag
     """
@@ -621,7 +741,21 @@ class MatchTags(ViewStage):
     """Returns a view containing the samples that have any of the given
     tags.
 
-    To match samples that contain a single, use :class:`MatchTag`.
+    To match samples that contain a single tag, use :class:`MatchTag`.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import MatchTags
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include samples that have either the "test" or "validation" tag
+        #
+
+        stage = MatchTags(["test", "validation"])
+        view = dataset.add_stage(stage)
 
     Args:
         tags: an iterable of tags
@@ -657,6 +791,38 @@ class Mongo(ViewStage):
     See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
     for more details.
 
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Mongo
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Sort by the number of detections in the `precictions` field of the
+        # samples (assume it is a `Detections` field)
+        #
+
+        stage = Mongo([
+            {
+                "$addFields": {
+                    "_sort_field": {
+                        "$size": {"$ifNull": ["$predictions.detections", []]}
+                    }
+                }
+            },
+            {"$sort": {"_sort_field": -1}},
+            {"$unset": "_sort_field"}
+        ])
+        view = dataset.add_stage(stage)
+
+        #
+        # Extract a view containing the 6th through 15th samples in the dataset
+        #
+
+        stage = Mongo([{"$skip": 5}, {"$limit": 10}])
+        view = dataset.add_stage(stage)
+
     Args:
         pipeline: a MongoDB aggregation pipeline (list of dicts)
     """
@@ -687,6 +853,35 @@ class Mongo(ViewStage):
 
 class Select(ViewStage):
     """Selects the samples with the given IDs from the view.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Select
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Select the samples with the given IDs from the dataset
+        #
+
+        stage = Select([
+            "5f3c298768fd4d3baf422d34",
+            "5f3c298768fd4d3baf422d35",
+            "5f3c298768fd4d3baf422d36",
+        ])
+        view = dataset.add_stage(stage)
+
+        #
+        # Create a view containing the currently selected samples in the App
+        #
+
+        session = fo.launch_app(dataset=dataset)
+
+        # select samples in the App
+
+        stage = Select(session.selected)
+        view = dataset.add_stage(stage)
 
     Args:
         sample_ids: a sample ID or iterable of sample IDs
@@ -730,8 +925,30 @@ class SelectFields(ViewStage):
     """Selects *only* the fields with the given names from the samples in the
     view. All other fields are excluded.
 
-    Note: Default sample fields are always selected and will be added if not
-    included in ``field_names``.
+    Note that default sample fields are always selected and will be added if
+    not included in ``field_names``.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import SelectFields
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Include only the default fields on each sample
+        #
+
+        stage = SelectFields()
+        view = dataset.add_stage(stage)
+
+        #
+        # Include only the `ground_truth` field (and the default fields) on
+        # each sample
+        #
+
+        stage = SelectFields("ground_truth")
+        view = dataset.add_stage(stage)
 
     Args:
         field_names (None): a field name or iterable of field names to select.
@@ -782,6 +999,28 @@ class SelectFields(ViewStage):
 class Shuffle(ViewStage):
     """Randomly shuffles the samples in the view.
 
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Shuffle
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Return a view that contains a randomly shuffled version of the
+        # samples in the dataset
+        #
+
+        stage = Shuffle()
+        view = dataset.add_stage(stage)
+
+        #
+        # Shuffle the samples with a set random seed
+        #
+
+        stage = Shuffle(seed=51)
+        view = dataset.add_stage(stage)
+
     Args:
         seed (None): an optional random seed to use when shuffling the samples
     """
@@ -823,6 +1062,35 @@ class SortBy(ViewStage):
     :class:`fiftyone.core.expressions.ViewExpression` or a
     `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
     that defines the quantity to sort by.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+        from fiftyone.core.stages import SortBy
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Sorts the samples in descending order by the `confidence` of their
+        # `predictions` field (assume it is a `Classification` field)
+        #
+
+        stage = SortBy("predictions.confidence", reverse=True)
+        view = dataset.add_stage(stage)
+
+        #
+        # Sorts the samples in ascending order by the number of detections in
+        # their `predictions` field (assume it is a `Detections` field) whose
+        # bounding box area is at most 0.2
+        #
+
+        # bbox is in [top-left-x, top-left-y, width, height] format
+        pred_bbox = F.predictions.detections.bounding_box
+        pred_bbox_area = pred_bbox[2] * pred_bbox[3]
+
+        stage = SortBy((pred_bbox_area < 0.2).length())
+        view = dataset.add_stage(stage)
 
     Args:
         field_or_expr: the field or expression to sort by
@@ -889,6 +1157,20 @@ class SortBy(ViewStage):
 class Skip(ViewStage):
     """Omits the given number of samples from the head of the view.
 
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Skip
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Omit the first 10 samples from the dataset
+        #
+
+        stage = Skip(10)
+        view = dataset.add_stage(stage)
+
     Args:
         skip: the number of samples to skip. If a non-positive number is
             provided, no samples are omitted
@@ -920,6 +1202,27 @@ class Skip(ViewStage):
 
 class Take(ViewStage):
     """Randomly samples the given number of samples from the view.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import Take
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Take 10 random samples from the dataset
+        #
+
+        stage = Take(10)
+        view = dataset.add_stage(stage)
+
+        #
+        # Take 10 random samples from the dataset with a set seed
+        #
+
+        stage = Take(10, seed=51)
+        view = dataset.add_stage(stage)
 
     Args:
         size: the number of samples to return. If a non-positive number is
