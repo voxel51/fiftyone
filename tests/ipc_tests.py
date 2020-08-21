@@ -4,9 +4,17 @@ import socket
 import threading
 import time
 
+import psutil
 import pytest
 
 from fiftyone.service.ipc import IPCServer, send_request
+from fiftyone.service.util import get_listening_tcp_ports, send_ipc_message
+
+current_process = psutil.Process()
+
+
+def list_current_ports():
+    return list(get_listening_tcp_ports(current_process))
 
 
 @contextlib.contextmanager
@@ -90,7 +98,21 @@ def test_stop_multi():
 
 def test_run_in_background():
     requests = []
-    server = IPCServer.run_in_background(requests.append)
-    send_request(server.port, 2)
-    send_request(server.port, 3)
+    with IPCServer.run_in_background(requests.append) as server:
+        send_request(server.port, 2)
+        send_request(server.port, 3)
     assert requests == [2, 3]
+
+
+def test_get_listening_tcp_ports():
+    assert not list_current_ports()
+    with IPCServer(lambda _: None) as server:
+        assert list_current_ports() == [server.port]
+    assert not list_current_ports()
+
+
+def test_send_ipc_message():
+    with IPCServer.run_in_background(lambda x: x) as server:
+        assert send_ipc_message(current_process, 6) == 6
+    with pytest.raises(IOError):
+        send_ipc_message(current_process, 7)

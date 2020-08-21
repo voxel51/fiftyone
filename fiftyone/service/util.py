@@ -8,6 +8,8 @@ FiftyOne service utilities.
 
 import psutil
 
+from fiftyone.service.ipc import send_request
+
 
 def get_listening_tcp_ports(process):
     """
@@ -25,3 +27,20 @@ def get_listening_tcp_ports(process):
             and conn.status == psutil.CONN_LISTEN
         ):
             yield conn.laddr[1]  # port
+
+
+def send_ipc_message(process, message):
+    """Sends a message to a process's IPCServer.
+
+    Args:
+        process (psutil.Process): process to send the message to
+        message (any type)
+
+    Returns:
+        response (any type)
+    """
+    try:
+        port = next(get_listening_tcp_ports(process))
+    except StopIteration:
+        raise IOError("Process %i has no listening server" % process.pid)
+    return send_request(port, message)
