@@ -342,7 +342,11 @@ class Sample(_Sample):
         kwargs["tags"] = tags
         kwargs["metadata"] = metadata
 
-        for field_name in fos.DatasetSchema.default_fields_ordered:
+        default_fields = fos.DatasetSchema.default_sample_fields(
+            include_private=True
+        )
+
+        for field_name in default_fields:
             value = kwargs.pop(field_name, None)
 
             if field_name == "_rand":

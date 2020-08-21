@@ -15,8 +15,8 @@ import six
 
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
-from fiftyone.core.odm.document import BaseEmbeddedDocument
-from fiftyone.core.odm.sample import default_sample_fields
+import fiftyone.core.odm.document as food
+import fiftyone.core.odm.sample as foos
 
 
 def no_delete_default_field(func):
@@ -29,7 +29,7 @@ def no_delete_default_field(func):
 
     @wraps(func)
     def wrapper(cls_or_self, field_name, *args, **kwargs):
-        if field_name in default_sample_fields():
+        if field_name in DatasetSchema.default_sample_fields():
             raise ValueError("Cannot delete default field '%s'" % field_name)
 
         return func(cls_or_self, field_name, *args, **kwargs)
@@ -50,10 +50,27 @@ class DatasetSchema(object):
 
     # pylint: disable=no-member
     default_fields = foo.DatasetSampleDocument._fields
-    default_fields_ordered = default_sample_fields(include_private=True)
 
     def __init__(self, sample_doc_cls):
         self._sample_doc_cls = sample_doc_cls
+
+    @staticmethod
+    def default_sample_fields(include_private=False):
+        """The default fields present on all :class:`SampleDocument` objects.
+
+        Args:
+            include_private (False): whether to include fields that start with `_`
+
+        Returns:
+            a tuple of field names
+        """
+        if include_private:
+            return foos.DatasetSampleDocument._fields_ordered
+        return tuple(
+            f
+            for f in foos.DatasetSampleDocument._fields_ordered
+            if not f.startswith("_")
+        )
 
     @property
     def sample_collection_name(self):
@@ -265,7 +282,7 @@ class DatasetSchema(object):
 
 
 def _get_implied_field_kwargs(value):
-    if isinstance(value, BaseEmbeddedDocument):
+    if isinstance(value, food.BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,
             "embedded_doc_type": type(value),

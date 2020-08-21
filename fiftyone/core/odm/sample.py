@@ -39,24 +39,6 @@ def _generate_rand(filepath=None):
     return _random.random() * 0.001 + 0.999
 
 
-def default_sample_fields(include_private=False):
-    """The default fields present on all :class:`SampleDocument` objects.
-
-    Args:
-        include_private (False): whether to include fields that start with `_`
-
-    Returns:
-        a tuple of field names
-    """
-    if include_private:
-        return DatasetSampleDocument._fields_ordered
-    return tuple(
-        f
-        for f in DatasetSampleDocument._fields_ordered
-        if not f.startswith("_")
-    )
-
-
 class DatasetSampleDocument(Document):
     """Base class for sample documents backing samples in datasets.
 

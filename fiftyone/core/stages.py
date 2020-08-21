@@ -12,7 +12,7 @@ from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 from fiftyone.core.expressions import ViewExpression
-from fiftyone.core.odm.sample import default_sample_fields
+from fiftyone.core.schema import DatasetSchema
 
 import eta.core.utils as etau
 
@@ -174,7 +174,9 @@ class ExcludeFields(ViewStage):
         return [{"name": "field_names", "type": "list<str>"}]
 
     def _validate(self):
-        invalid_fields = set(self._field_names) & set(default_sample_fields())
+        invalid_fields = set(self._field_names) & set(
+            DatasetSchema.default_sample_fields()
+        )
         if invalid_fields:
             raise ValueError(
                 "Cannot exclude default fields: %s" % list(invalid_fields)
@@ -561,7 +563,7 @@ class SelectFields(ViewStage):
     """
 
     def __init__(self, field_names=None):
-        default_fields = default_sample_fields()
+        default_fields = DatasetSchema.default_sample_fields()
 
         if field_names:
             if etau.is_str(field_names):

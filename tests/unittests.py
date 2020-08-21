@@ -27,7 +27,6 @@ from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-from fiftyone.core.odm.sample import default_sample_fields
 import fiftyone.core.sample as fos
 from fiftyone import ViewField as F
 
@@ -2112,7 +2111,8 @@ class ViewStageTests(unittest.TestCase):
 
         for sv in self.dataset.select_fields():
             self.assertSetEqual(
-                sv.selected_field_names, set(default_sample_fields())
+                sv.selected_field_names,
+                set(fo.DatasetSchema.default_sample_fields()),
             )
             self.assertIsNone(sv.excluded_field_names)
             sv.filepath
