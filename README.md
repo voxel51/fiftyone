@@ -128,6 +128,17 @@ perform a developer installation using the `-d` flag of the install script:
 bash install.bash -d
 ```
 
+### Upgrading your source installation
+
+To upgrade an existing source installation to the bleeding edge, simply pull
+the latest `develop` branch and rerun the install script:
+
+```shell
+git checkout develop
+git pull
+bash install.bash [-d]
+```
+
 ### Generating documentation
 
 See the [docs guide](docs/docs_guide.md) for information on building and
