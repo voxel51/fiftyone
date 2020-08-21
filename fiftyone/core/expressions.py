@@ -639,7 +639,7 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
     You can use `dot notation <https://docs.mongodb.com/manual/core/document/#dot-notation>`_
     to refer to subfields of embedded objects within fields.
 
-    Example uses::
+    Examples::
 
         from fiftyone import ViewField as F
 
