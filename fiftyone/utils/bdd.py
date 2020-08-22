@@ -158,7 +158,11 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._labels_path = os.path.join(self.dataset_dir, "labels.json")
-        self._anno_dict_map = load_bdd_annotations(self._labels_path)
+        if os.path.isfile(self._labels_path):
+            self._anno_dict_map = load_bdd_annotations(self._labels_path)
+        else:
+            self._anno_dict_map = {}
+
         self._filenames = etau.list_files(self._data_dir, abs_paths=False)
 
 
