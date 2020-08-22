@@ -43,4 +43,5 @@ logger.info("\nStarting test")
 for batch_size in [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, None]:
     logger.info("\nBatch size: %s" % batch_size)
     dataset2 = fo.Dataset()
-    dataset2.add_samples(samples, _batch_size=batch_size)
+    dataset._BATCH_SIZE = batch_size
+    dataset2.add_samples(samples)

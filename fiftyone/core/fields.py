@@ -52,6 +52,35 @@ class Field(mongoengine.fields.BaseField):
     def __str__(self):
         return etau.get_class_name(self)
 
+    def get_default(self):
+        """Returns the default value for this field
+
+        Returns:
+            the default value of the field
+
+        Raises:
+            ValueError if there is no default
+        """
+        if self.null:
+            return None
+
+        if self.default is not None:
+            value = self.default
+
+            if callable(value):
+                value = value()
+
+            if isinstance(value, list) and value.__class__ != list:
+                value = list(value)
+            elif isinstance(value, tuple) and value.__class__ != tuple:
+                value = tuple(value)
+            elif isinstance(value, dict) and value.__class__ != dict:
+                value = dict(value)
+
+            return value
+
+        raise ValueError("Field '%s' has no default" % self)
+
 
 class ObjectIdField(mongoengine.ObjectIdField, Field):
     """An Object ID field."""

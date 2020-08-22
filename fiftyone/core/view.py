@@ -149,9 +149,8 @@ class DatasetView(foc.SampleCollection):
 
         for d in self.aggregate():
             try:
-                doc = self._dataset._sample_dict_to_doc(d)
                 yield fos.SampleView(
-                    doc,
+                    d,
                     self._dataset,
                     selected_fields=selected_fields,
                     excluded_fields=excluded_fields,
