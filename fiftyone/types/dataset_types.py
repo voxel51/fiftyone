@@ -271,8 +271,7 @@ class TFImageClassificationDataset(ImageClassificationDataset):
             "label": tf.io.FixedLenFeature([], tf.string),
         }
 
-    For unlabeled samples, the TFRecords will not contain ``"label"``
-    features.
+    For unlabeled samples, the TFRecords do not contain ``"label"`` features.
     """
 
     def get_dataset_importer_cls(self):
@@ -410,7 +409,7 @@ class COCODetectionDataset(ImageDetectionDataset):
             ]
         }
 
-    For unlabeled datasets, ``labels.json`` will not contain an ``annotations``
+    For unlabeled datasets, ``labels.json`` does not contain an ``annotations``
     field.
     """
 
@@ -488,7 +487,7 @@ class VOCDetectionDataset(ImageDetectionDataset):
     When writing datasets in this format, samples with no values for certain
     attributes (like ``pose`` in the above example) are left empty.
 
-    Unlabeled images will have no corresponding file in ``labels/``.
+    Unlabeled images have no corresponding file in ``labels/``.
     """
 
     def get_dataset_importer_cls(self):
