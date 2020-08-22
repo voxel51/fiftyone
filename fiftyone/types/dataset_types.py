@@ -271,7 +271,7 @@ class TFImageClassificationDataset(ImageClassificationDataset):
             "label": tf.io.FixedLenFeature([], tf.string),
         }
 
-    For unlabeled samples, the TFRecords do not contain ``"label"`` features.
+    For unlabeled samples, the TFRecords do not contain ``label`` features.
     """
 
     def get_dataset_importer_cls(self):
@@ -623,7 +623,7 @@ class TFObjectDetectionDataset(ImageDetectionDataset):
             "image/object/class/label": tf.io.FixedLenSequenceFeature([], tf.int64, allow_missing=True)
         }
 
-    The TFRecords for unlabeled samples do not contain ``"image/object/*"``
+    The TFRecords for unlabeled samples do not contain ``image/object/*``
     features.
     """
 

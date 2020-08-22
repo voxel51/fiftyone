@@ -375,7 +375,7 @@ following format:
         "label": tf.io.FixedLenFeature([], tf.string, default_value=""),
     }
 
-For unlabeled samples, the TFRecords do not contain `"label"` features.
+For unlabeled samples, the TFRecords do not contain `label` features.
 
 You can export a FiftyOne dataset as a directory of TFRecords in the above
 format as follows:
@@ -900,7 +900,7 @@ following format:
         ),
     }
 
-The TFRecords for unlabeled samples do not contain `"image/object/*"` features.
+The TFRecords for unlabeled samples do not contain `image/object/*` features.
 
 You can export a FiftyOne dataset as a directory of TFRecords in the above
 format as follows:
