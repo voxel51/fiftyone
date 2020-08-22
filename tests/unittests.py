@@ -842,6 +842,15 @@ class SampleInDatasetTests(unittest.TestCase):
 
         self.assertEqual(len(dataset), 0)
 
+    def test_invalid_field(self):
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath="/path/to/image.jpg")
+        dataset.add_sample(sample)
+
+        with self.assertRaises(ValidationError):
+            sample.filepath = 51
+            sample.save()
+
     @drop_datasets
     def test_dataset_clear(self):
         dataset = fo.Dataset()
