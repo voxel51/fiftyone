@@ -364,10 +364,12 @@ following format:
         "depth": tf.io.FixedLenFeature([], tf.int64),
         # Image filename
         "filename": tf.io.FixedLenFeature([], tf.int64),
+        # The image extension
+        "format": tf.io.FixedLenFeature([], tf.string),
         # Encoded image bytes
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
         # Class label string
-        "label": tf.io.FixedLenFeature([], tf.string),
+        "label": tf.io.FixedLenFeature([], tf.string, default_value=""),
     }
 
 For unlabeled samples, the TFRecords do not contain `"label"` features.
