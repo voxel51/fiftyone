@@ -248,6 +248,9 @@ def _parse_bdd_annotation(d, frame_size):
     # Objects
     objects = d.get("labels", [])
     for obj in objects:
+        if "box2d" not in obj:
+            continue
+
         label = obj["category"]
 
         bbox = obj["box2d"]
