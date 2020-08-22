@@ -5,8 +5,9 @@ Loading Datasets From Disk
 .. include:: ../../substitutions.rst
 
 FiftyOne provides native support for importing datasets from disk in a
-variety of :ref:`common formats <Supported formats>`, and it can be easily
-extended to import datasets in :ref:`custom formats <Custom formats>`.
+variety of :ref:`common formats <supported-import-formats>`, and it can be
+easily extended to import datasets in
+:ref:`custom formats <custom-dataset-importer>`.
 
 If you have individual or in-memory samples that you would like to load into a
 FiftyOne dataset, see :doc:`adding samples to datasets <samples>`.
@@ -64,6 +65,8 @@ that you're loading.
 
         # Import the dataset!
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
+
+.. _supported-import-formats:
 
 Supported formats
 -----------------
@@ -217,7 +220,7 @@ Datasets of this type are read in the following format:
 
 where ``labels.json`` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "classes": [
@@ -630,7 +633,7 @@ Datasets of this type are read in the following format:
 
 where ``labels.json`` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "info": {
@@ -1272,7 +1275,7 @@ Datasets of this type are read in the following format:
 
 where `manifest.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "type": "eta.core.datasets.LabeledImageDataset",
@@ -1375,7 +1378,7 @@ Datasets of this type are read in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     [
         {
@@ -1944,6 +1947,8 @@ should implement is determined by the type of dataset that you are importing.
     |ImageMetadata| instances for each image that it loads when
     :meth:`__next__() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.__next__>`
     is called.
+
+.. _writing-a-custom-dataset-type-importer:
 
 Writing a custom Dataset type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

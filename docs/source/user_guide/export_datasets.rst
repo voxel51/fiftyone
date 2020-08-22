@@ -5,8 +5,9 @@ Exporting FiftyOne Datasets
 .. include:: ../substitutions.rst
 
 FiftyOne provides native support for exporting datasets to disk in a
-variety of :ref:`common formats <Supported formats>`, and it can be easily
-extended to export datasets in :ref:`custom formats <Custom formats>`.
+variety of :ref:`common formats <supported-export-formats>`, and it can be
+easily extended to export datasets in
+:ref:`custom formats <custom-dataset-exporter>`.
 
 Basic recipe
 ------------
@@ -78,6 +79,8 @@ a |DatasetView| into any format of your choice via the basic recipe below.
     Note the `LABEL_FIELD` argument in the above example, which specifies the
     particular label field that you wish to export. This is necessary your
     FiftyOne dataset contains multiple label fields.
+
+.. _supported-export-formats:
 
 Supported formats
 -----------------
@@ -210,7 +213,7 @@ Datasets of this type are exported in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "classes": [
@@ -535,7 +538,7 @@ Datasets of this type are exported in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "info": {
@@ -1075,7 +1078,7 @@ Datasets of this type are exported in the following format:
 
 where `manifest.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "type": "eta.core.datasets.LabeledImageDataset",
@@ -1160,7 +1163,7 @@ Datasets of this type are exported in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     [
         {
@@ -1702,6 +1705,8 @@ should implement is determined by the type of dataset that you are exporting.
         is called. This allows for cases where metadata about of the image
         (e.g., its filename, encoding, shape, etc) are required in order to
         export the sample.
+
+.. _writing-a-custom-dataset-type-exporter:
 
 Writing a custom Dataset type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
