@@ -197,7 +197,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if d is None:
             raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
 
-        return self._dict_to_sample(d)
+        return fos.Sample.from_support(d, dataset=self)
 
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
@@ -450,7 +450,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self._sample_collection.find():
-            yield self._dict_to_sample(d)
+            yield fos.Sample.from_support(d, dataset=self)
 
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
@@ -1424,9 +1424,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         field_name, sample[field_name]
                     )
                     fields = self.get_field_schema(include_private=True)
-
-    def _dict_to_sample(self, d):
-        return fos.Sample.from_support(d, dataset=self)
 
     def _to_fields_str(self, field_schema):
         max_len = max([len(field_name) for field_name in field_schema]) + 1
