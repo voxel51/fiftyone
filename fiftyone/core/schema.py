@@ -9,7 +9,7 @@ from collections import OrderedDict
 from functools import wraps
 import numbers
 
-from mongoengine.errors import InvalidQueryError
+from mongoengine.errors import InvalidQueryError, FieldDoesNotExist
 import numpy as np
 import six
 
@@ -269,6 +269,33 @@ class DatasetSchema(object):
                 % (type(self).__name__, field_name)
             )
         return field.get_default()
+
+    def validate(self, sample):
+        """Validates the contents of the sample against this schema.
+
+        Raises:
+            ``mongoengine.FieldDoesNotExist``
+            ``mongoengine.ValidationError``
+        """
+        fields = self.get_field_schema(include_private=True)
+
+        non_existest_fields = {
+            fn for fn in sample.field_names if fn not in fields
+        }
+
+        if non_existest_fields:
+            msg = "The fields %s do not exist on the dataset '%s'" % (
+                non_existest_fields,
+                self._get_dataset_doc().name,
+            )
+            raise FieldDoesNotExist(msg)
+
+        for field_name, value in sample.iter_fields():
+            field = fields[field_name]
+            if value is None and field.null:
+                continue
+
+            field.validate(value)
 
     def _get_fields_ordered(self, include_private=False):
         if include_private:

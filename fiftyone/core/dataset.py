@@ -14,7 +14,7 @@ import os
 import reprlib
 
 from bson import ObjectId
-from mongoengine.errors import DoesNotExist, FieldDoesNotExist
+from mongoengine.errors import DoesNotExist
 from pymongo.errors import BulkWriteError, DuplicateKeyError
 
 import eta.core.serial as etas
@@ -24,7 +24,6 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
-import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
 import fiftyone.core.schema as fosc
 from fiftyone.core.singleton import DatasetSingleton
@@ -476,7 +475,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expand_schema:
             self._expand_schema([sample])
 
-        self._validate_sample(sample)
+        self._schema.validate(sample)
 
         d = sample.to_mongo_dict()
         d.pop("_id", None)  # remove the ID if in DB
@@ -535,7 +534,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._expand_schema(samples)
 
         for sample in samples:
-            self._validate_sample(sample)
+            self._schema.validate(sample)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
         for d in dicts:
@@ -1431,27 +1430,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
             for field_name, field in field_schema.items()
         )
-
-    def _validate_sample(self, sample):
-        fields = self.get_field_schema(include_private=True)
-
-        non_existest_fields = {
-            fn for fn in sample.field_names if fn not in fields
-        }
-
-        if non_existest_fields:
-            msg = "The fields %s do not exist on the dataset '%s'" % (
-                non_existest_fields,
-                self.name,
-            )
-            raise FieldDoesNotExist(msg)
-
-        for field_name, value in sample.iter_fields():
-            field = fields[field_name]
-            if value is None and field.null:
-                continue
-
-            field.validate(value)
 
 
 class DoesNotExistError(Exception):

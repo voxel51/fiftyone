@@ -273,8 +273,20 @@ class _Sample(SerializableDocument):
         """
         return serialize_dict(self._data, extended=False)
 
+    def validate(self):
+        """Validates the contents of the sample against a dataset schema.
+
+        Raises:
+            ``mongoengine.FieldDoesNotExist``
+            ``mongoengine.ValidationError``
+        """
+        if self.in_dataset:
+            self._dataset._schema.validate(self)
+
     def save(self):
         """Saves the sample to the database."""
+        self.validate()
+
         if self.in_dataset:
             # @todo(Tyler) could use an update rather than a full replace
             self._data = self._collection.find_one_and_replace(
@@ -287,6 +299,7 @@ class _Sample(SerializableDocument):
         """Reloads the sample from the database."""
         if self.in_dataset:
             self._data = self._collection.find_one({"_id": self._object_id})
+            self.validate()
 
     @property
     def _object_id(self):
@@ -673,6 +686,8 @@ class SampleView(_Sample):
         Any modified fields are updated, and any in-memory :class:`Sample`
         instances of this sample are updated.
         """
+        self.validate()
+
         select_dict = {"_id": self._object_id}
         set_dict = self.to_mongo_dict()
         unset_dict = {k: True for k in self.field_names if k not in set_dict}
