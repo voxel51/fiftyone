@@ -13,8 +13,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.sample as fos
 import fiftyone.core.metadata as fom
+import fiftyone.core.sample as fos
 
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
@@ -99,7 +99,7 @@ def import_samples(
                     "from a LabeledImageDatasetImporter"
                 )
 
-            if expand_schema:
+            if expand_schema and dataset_importer.label_cls is not None:
                 # This has the benefit of ensuring that `label_field` exists,
                 # even if all of the imported samples are unlabeled (i.e.,
                 # return labels that are all `None`)
@@ -107,9 +107,9 @@ def import_samples(
                     label_field, dataset_importer.label_cls
                 )
 
-            # The schema now never needs expanding, because we already ensured
-            # that `label_field` exists, if necessary
-            expand_schema = False
+                # The schema now never needs expanding, because we already
+                # ensured that `label_field` exists, if necessary
+                expand_schema = False
 
             def parse_sample(sample):
                 image_path, image_metadata, label = sample
@@ -117,7 +117,9 @@ def import_samples(
                     filepath=image_path, metadata=image_metadata, tags=tags,
                 )
 
-                if label is not None:
+                if isinstance(label, dict):
+                    sample.update_fields(label)
+                elif label is not None:
                     sample[label_field] = label
 
                 return sample
@@ -367,10 +369,12 @@ class LabeledImageDatasetImporter(DatasetImporter):
         with importer:
             for image_path, image_metadata, label in importer:
                 sample = fo.Sample(
-                    filepath=image_path, metadata=image_metadata,
-                }
+                    filepath=image_path, metadata=image_metadata
+                )
 
-                if label is not None:
+                if isinstance(label, dict):
+                    sample.update_fields(label)
+                elif label is not None:
                     sample[label_field] = label
 
                 dataset.add_sample(sample)
@@ -392,8 +396,9 @@ class LabeledImageDatasetImporter(DatasetImporter):
             -   ``image_metadata``: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
-            -   ``label``: an instance of :meth:`label_cls`, or ``None`` if the
-                sample is unlabeled
+            -   ``label``: an instance of :meth:`label_cls`, or a dictionary
+                mapping field names to :class:`fiftyone.core.labels.Label`
+                instances, or ``None`` if the sample is unlabeled
 
         Raises:
             StopIteration: if there are no more samples to import
@@ -410,7 +415,7 @@ class LabeledImageDatasetImporter(DatasetImporter):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class returned by this
-        importer.
+        importer, or ``None`` if it returns a dictionary of labels.
         """
         raise NotImplementedError("subclass must implement label_cls")
 
