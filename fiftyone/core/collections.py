@@ -16,7 +16,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
-import fiftyone.types as fot
 
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -515,6 +514,8 @@ class SampleCollection(object):
         dataset_type=None,
         dataset_exporter=None,
         label_field=None,
+        label_dict=None,
+        label_prefix=None,
         overwrite=True,
         **kwargs
     ):
@@ -537,21 +538,31 @@ class SampleCollection(object):
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
                 to export the samples
             label_field (None): the name of the label field to export, if
-                applicable. If not specified and the requested output type is
+                applicable. If none of ``label_field``, ``label_dict``, and
+                ``label_prefix`` are specified and the requested output type is
                 a labeled dataset, the first field of compatible type for the
                 output format is used
+            label_dict (None): a dictionary mapping label field names to keys
+                to use when constructing the label dict to pass to the
+                exporter. This parameter can only be used when the exporter can
+                handle dictionaries of labels
+            label_prefix (None): a label field prefix; all fields whose name
+                starts with the given prefix will be exported (with the prefix
+                removed when constructing the label dicts). This parameter can
+                only be used when the exporter can handle dictionaries of
+                labels
             overwrite (True): when an ``export_dir`` is provided, whether to
                 delete the existing directory before performing the export
             **kwargs: optional keyword arguments to pass to
                 ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
         """
+        if dataset_type is None and dataset_exporter is None:
+            raise ValueError(
+                "Either `dataset_type` or `dataset_exporter` must be provided"
+            )
+
         if dataset_type is not None and inspect.isclass(dataset_type):
             dataset_type = dataset_type()
-
-        # If no dataset type or exporter was provided, choose the default type
-        # for the label field
-        if dataset_type is None and dataset_exporter is None:
-            dataset_type = _get_default_dataset_type(self, label_field)
 
         # If no dataset exporter was provided, construct one based on the
         # dataset type
@@ -583,16 +594,25 @@ class SampleCollection(object):
                     )
                 ) from e
 
-        # If no label field was provided, choose the first label field that is
-        # compatible with the dataset exporter
-        if label_field is None:
-            label_field = _get_default_label_field_for_exporter(
+        if label_prefix is not None:
+            label_dict = _get_label_dict_for_prefix(self, label_prefix)
+
+        if label_dict is not None:
+            label_field_or_dict = label_dict
+        elif label_field is None:
+            # Choose the first label field that is compatible with the dataset
+            # exporter (if any)
+            label_field_or_dict = _get_default_label_field_for_exporter(
                 self, dataset_exporter
             )
+        else:
+            label_field_or_dict = label_field
 
         # Export the dataset
         foud.export_samples(
-            self, dataset_exporter=dataset_exporter, label_field=label_field
+            self,
+            dataset_exporter=dataset_exporter,
+            label_field_or_dict=label_field_or_dict,
         )
 
     def aggregate(self, pipeline=None):
@@ -714,23 +734,16 @@ class SampleCollection(object):
         }
 
 
-def _get_default_dataset_type(sample_collection, label_field):
-    if label_field is None:
-        return fot.ImageDirectory()
+def _get_label_dict_for_prefix(sample_collection, label_prefix):
+    label_fields = sample_collection.get_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    )
+    label_dict = {}
+    for field_name in label_fields:
+        if field_name.startswith(label_prefix):
+            label_dict[field_name] = field_name[len(label_prefix) :]
 
-    sample = next(iter(sample_collection))
-    label = sample[label_field]
-
-    if isinstance(label, fol.Classification):
-        return fot.FiftyOneImageClassificationDataset()
-
-    if isinstance(label, fol.Detections):
-        return fot.FiftyOneImageDetectionDataset()
-
-    if isinstance(label, fol.ImageLabels):
-        return fot.FiftyOneImageLabelsDataset()
-
-    raise ValueError("Unsupported label type %s" % type(label))
+    return label_dict
 
 
 def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
