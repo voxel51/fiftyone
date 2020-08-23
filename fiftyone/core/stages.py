@@ -174,11 +174,17 @@ class ExcludeFields(ViewStage):
         return [{"name": "field_names", "type": "list<str>"}]
 
     def _validate(self):
-        invalid_fields = set(self._field_names) & set(default_sample_fields())
-        if invalid_fields:
-            raise ValueError(
-                "Cannot exclude default fields: %s" % list(invalid_fields)
-            )
+        default_fields = set(default_sample_fields())
+        for field_name in self._field_names:
+            if field_name.startswith("_"):
+                raise ValueError(
+                    "Cannot exclude private field '%s'" % field_name
+                )
+
+            if field_name in default_fields:
+                raise ValueError(
+                    "Cannot exclude default field '%s'" % field_name
+                )
 
 
 class Exists(ViewStage):
@@ -561,7 +567,7 @@ class SelectFields(ViewStage):
     """
 
     def __init__(self, field_names=None):
-        default_fields = default_sample_fields()
+        default_fields = default_sample_fields(include_private=True)
 
         if field_names:
             if etau.is_str(field_names):
