@@ -374,7 +374,7 @@ class LabeledImageSampleParser(SampleParser):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class returned by this
-        parser.
+        parser, or ``None`` if it returns a dictionary of labels.
         """
         raise NotImplementedError("subclass must implement label_cls")
 
@@ -420,7 +420,9 @@ class LabeledImageSampleParser(SampleParser):
         """Returns the label for the current sample.
 
         Returns:
-            a :class:`fiftyone.core.labels.Label` instance
+            a :class:`fiftyone.core.labels.Label` instance, or a dictionary
+            mapping field names to :class:`fiftyone.core.labels.Label`
+            instances, or ``None`` if the sample is unlabeled
         """
         raise NotImplementedError("subclass must implement get_label()")
 
@@ -728,11 +730,26 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
         - ``image_labels_or_path`` is an ``eta.core.image.ImageLabels``
           instance, a serialized dict representation of one, or the path to one
           on disk
+
+    Args:
+        expand (False): whether to expand the image labels into a dictionary of
+            :class:`fiftyone.core.labels.Label` instances
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded label dictionary. Only applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
     """
+
+    def __init__(self, expand=False, prefix=None, multilabel=False):
+        super().__init__()
+        self.expand = expand
+        self.prefix = prefix
+        self.multilabel = multilabel
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return fol.ImageLabels if not self.expand else None
 
     def get_label(self):
         """Returns the label for the current sample.
@@ -749,7 +766,14 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
         elif isinstance(labels, dict):
             labels = etai.ImageLabels.from_dict(labels)
 
-        return fol.ImageLabels(labels=labels)
+        label = fol.ImageLabels(labels=labels)
+
+        if label is not None and self.expand:
+            label = label.expand(
+                prefix=self.prefix, multilabel=self.multilabel
+            )
+
+        return label
 
 
 class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
@@ -796,6 +820,15 @@ class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
 
     See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
     format details.
+
+    Args:
+        expand (False): whether to expand the image labels into a dictionary of
+            :class:`fiftyone.core.labels.Label` instances
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded label dictionary. Only applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
     """
 
     pass
@@ -845,17 +878,19 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
     labeled images.
 
     Args:
-        label_field: the name of the :class:`fiftyone.core.labels.Label` field
-            of the samples to parse
+        label_field_or_dict: the name of the
+            :class:`fiftyone.core.labels.Label` field of the samples to parse,
+            or a dictionary mapping label field names to keys in the returned
+            label dictionary
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
             if :func:`get_image_metadata` is called and no metadata is
             available
     """
 
-    def __init__(self, label_field, compute_metadata=False):
+    def __init__(self, label_field_or_dict, compute_metadata=False):
         super().__init__()
-        self.label_field = label_field
+        self.label_field_or_dict = label_field_or_dict
         self.compute_metadata = compute_metadata
 
     @property
@@ -886,4 +921,10 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
         return metadata
 
     def get_label(self):
-        return self.current_sample[self.label_field]
+        if isinstance(self.label_field_or_dict, dict):
+            return {
+                v: self.current_sample[k]
+                for k, v in self.label_field_or_dict.items()
+            }
+
+        return self.current_sample[self.label_field_or_dict]
