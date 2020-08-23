@@ -69,11 +69,26 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
 
     See :class:`fiftyone.types.dataset_types.BDDDataset` for more format
     details.
+
+    Args:
+        expand (False): whether to expand the image labels into a dictionary of
+            :class:`fiftyone.core.labels.Label` instances
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded label dictionary. Only applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
     """
+
+    def __init__(self, expand=False, prefix=None, multilabel=False):
+        super().__init__()
+        self.expand = expand
+        self.prefix = prefix
+        self.multilabel = multilabel
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return fol.ImageLabels if not self.expand else None
 
     def get_label(self):
         """Returns the label for the current sample.
@@ -99,7 +114,14 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
             labels = etas.load_json(labels)
 
         frame_size = etai.to_frame_size(img=img)
-        return _parse_bdd_annotation(labels, frame_size)
+        label = _parse_bdd_annotation(labels, frame_size)
+
+        if label is not None and self.expand:
+            label = label.expand(
+                prefix=self.prefix, multilabel=self.multilabel
+            )
+
+        return label
 
 
 class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -109,10 +131,22 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        expand (False): whether to expand the image labels into a dictionary of
+            :class:`fiftyone.core.labels.Label` instances
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded label dictionary. Only applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
     """
 
-    def __init__(self, dataset_dir):
+    def __init__(
+        self, dataset_dir, expand=False, prefix=None, multilabel=False,
+    ):
         super().__init__(dataset_dir)
+        self.expand = expand
+        self.prefix = prefix
+        self.multilabel = multilabel
         self._data_dir = None
         self._labels_path = None
         self._anno_dict_map = None
@@ -137,11 +171,16 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         if anno_dict is not None:
             # Labeled image
             frame_size = (image_metadata.width, image_metadata.height)
-            image_labels = _parse_bdd_annotation(anno_dict, frame_size)
+            label = _parse_bdd_annotation(anno_dict, frame_size)
         else:
-            image_labels = None
+            label = None
 
-        return image_path, image_metadata, image_labels
+        if label is not None and self.expand:
+            label = label.expand(
+                prefix=self.prefix, multilabel=self.multilabel
+            )
+
+        return image_path, image_metadata, label
 
     @property
     def has_dataset_info(self):
@@ -153,7 +192,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return fol.ImageLabels if not self.expand else None
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
@@ -205,7 +244,9 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
             output_dir=self._data_dir, default_ext=self.image_format
         )
 
-    def export_sample(self, image_or_path, image_labels, metadata=None):
+    def export_sample(
+        self, image_or_path, image_labels_or_dict, metadata=None
+    ):
         out_image_path = self._export_image_or_path(
             image_or_path, self._filename_maker
         )
@@ -213,9 +254,11 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
 
-        if image_labels is not None:
+        if image_labels_or_dict is not None:
             filename = os.path.basename(out_image_path)
-            annotation = _make_bdd_annotation(image_labels, metadata, filename)
+            annotation = _make_bdd_annotation(
+                image_labels_or_dict, metadata, filename
+            )
             self._annotations.append(annotation)
 
     def close(self, *args):
@@ -274,7 +317,15 @@ def _parse_bdd_annotation(d, frame_size):
     return fol.ImageLabels(labels=image_labels)
 
 
-def _make_bdd_annotation(image_labels, metadata, filename):
+def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
+    # Convert to `eta.core.image.ImageLabels` format
+    if isinstance(image_labels_or_dict, dict):
+        image_labels = etai.ImageLabels()
+        for name, label in image_labels_or_dict.items():
+            image_labels.merge_labels(label.to_image_labels(name=name))
+    else:
+        image_labels = image_labels_or_dict
+
     # Frame attributes
     frame_attrs = {a.name: a.value for a in image_labels.labels.attrs}
 
