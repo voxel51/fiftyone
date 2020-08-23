@@ -1296,8 +1296,9 @@ def _validate_fields_exist(sample_collection, field_or_fields):
         field_or_fields = [field_or_fields]
 
     schema = sample_collection.get_field_schema()
+    default_fields = set(default_sample_fields(include_private=True))
     for field_name in field_or_fields:
-        if field_name not in schema:
+        if field_name not in schema and field_name not in default_fields:
             raise ViewStageError("Field '%s' does not exist" % field_name)
 
 
