@@ -86,8 +86,9 @@ def add_labeled_images(
 ):
     """Adds the given labeled images to the dataset.
 
-    This operation will iterate over all provided samples, but the images
-    will not be read.
+    This operation will iterate over all provided samples, but the images will
+    not be read (unless the sample parser requires it in order to compute image
+    metadata).
 
     See :ref:`this guide <custom-sample-parser>` for more details about
     adding labeled images to a dataset by defining your own
