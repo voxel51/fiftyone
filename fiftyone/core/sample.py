@@ -46,18 +46,18 @@ class _Sample(object):
         except KeyError:
             super().__delattr__(name)
 
-    def __getitem__(self, name):
+    def __getitem__(self, field_name):
         try:
-            return self.get_field(name)
+            return self.get_field(field_name)
         except AttributeError:
-            raise KeyError("Sample has no field '%s'" % name)
+            raise KeyError("Sample has no field '%s'" % field_name)
 
-    def __setitem__(self, name, value):
-        self.set_field(name, value=value)
+    def __setitem__(self, field_name, value):
+        self.set_field(field_name, value=value)
 
-    def __delitem__(self, name):
+    def __delitem__(self, field_name):
         try:
-            self.clear_field(name)
+            self.clear_field(field_name)
         except ValueError as e:
             raise KeyError(e.args[0])
 
