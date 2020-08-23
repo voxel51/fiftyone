@@ -13,6 +13,157 @@ import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.sample as fos
+
+
+def add_images(
+    dataset, samples, sample_parser, tags=None,
+):
+    """Adds the given images to the dataset.
+
+    This operation does not read the images.
+
+    See :ref:`this guide <custom-sample-parser>` for more details about
+    adding images to a dataset by defining your own
+    :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        samples: an iterable of samples
+        sample_parser: a
+            :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
+            instance to use to parse the samples
+        tags (None): an optional list of tags to attach to each sample
+
+    Returns:
+        a list of IDs of the samples that were added to the dataset
+    """
+    if not sample_parser.has_image_path:
+        raise ValueError(
+            "Sample parser must have `has_image_path == True` to add its "
+            "samples to the dataset"
+        )
+
+    if not isinstance(sample_parser, UnlabeledImageSampleParser):
+        raise ValueError(
+            "`sample_parser` must be a subclass of %s; found %s"
+            % (
+                etau.get_class_name(UnlabeledImageSampleParser),
+                etau.get_class_name(sample_parser),
+            )
+        )
+
+    def parse_sample(sample):
+        sample_parser.with_sample(sample)
+
+        image_path = sample_parser.get_image_path()
+
+        if sample_parser.has_image_metadata:
+            metadata = sample_parser.get_image_metadata()
+        else:
+            metadata = None
+
+        return fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
+
+    try:
+        num_samples = len(samples)
+    except:
+        num_samples = None
+
+    _samples = map(parse_sample, samples)
+    return dataset.add_samples(
+        _samples, num_samples=num_samples, expand_schema=False
+    )
+
+
+def add_labeled_images(
+    dataset,
+    samples,
+    sample_parser,
+    label_field="ground_truth",
+    tags=None,
+    expand_schema=True,
+):
+    """Adds the given labeled images to the dataset.
+
+    This operation will iterate over all provided samples, but the images
+    will not be read.
+
+    See :ref:`this guide <custom-sample-parser>` for more details about
+    adding labeled images to a dataset by defining your own
+    :class:`LabeledImageSampleParser <fiftyone.utils.data.parsers.LabeledImageSampleParser>`.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        samples: an iterable of samples
+        sample_parser: a
+            :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
+            instance to use to parse the samples
+        label_field ("ground_truth"): the name of the field to use for the
+            labels
+        tags (None): an optional list of tags to attach to each sample
+        expand_schema (True): whether to dynamically add new sample fields
+            encountered to the dataset schema. If False, an error is raised
+            if a sample's schema is not a subset of the dataset schema
+
+    Returns:
+        a list of IDs of the samples that were added to the dataset
+    """
+    if not sample_parser.has_image_path:
+        raise ValueError(
+            "Sample parser must have `has_image_path == True` to add its "
+            "samples to the dataset"
+        )
+
+    if not isinstance(sample_parser, LabeledImageSampleParser):
+        raise ValueError(
+            "`sample_parser` must be a subclass of %s; found %s"
+            % (
+                etau.get_class_name(LabeledImageSampleParser),
+                etau.get_class_name(sample_parser),
+            )
+        )
+
+    if expand_schema and sample_parser.label_cls is not None:
+        # This has the benefit of ensuring that `label_field` exists, even if
+        # all of the parsed samples are unlabeled (i.e., return labels that are
+        # all `None`)
+        dataset._ensure_label_field(label_field, sample_parser.label_cls)
+
+        # The schema now never needs expanding, because we already ensured
+        # that `label_field` exists, if necessary
+        expand_schema = False
+
+    def parse_sample(sample):
+        sample_parser.with_sample(sample)
+
+        image_path = sample_parser.get_image_path()
+
+        if sample_parser.has_image_metadata:
+            metadata = sample_parser.get_image_metadata()
+        else:
+            metadata = None
+
+        label = sample_parser.get_label()
+
+        sample = fos.Sample(filepath=image_path, metadata=metadata, tags=tags,)
+
+        if isinstance(label, dict):
+            sample.update_fields(label)
+        elif label is not None:
+            sample[label_field] = label
+
+        return sample
+
+    try:
+        num_samples = len(samples)
+    except:
+        num_samples = None
+
+    _samples = map(parse_sample, samples)
+    return dataset.add_samples(
+        _samples, expand_schema=expand_schema, num_samples=num_samples
+    )
 
 
 class SampleParser(object):

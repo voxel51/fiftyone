@@ -847,46 +847,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
-            a list of IDs of the samples in the dataset
+            a list of IDs of the samples that were added to the dataset
         """
-        if not sample_parser.has_image_path:
-            raise ValueError(
-                "Sample parser must have `has_image_path == True` to add its "
-                "samples to the dataset"
-            )
-
-        if not isinstance(sample_parser, foud.UnlabeledImageSampleParser):
-            raise ValueError(
-                "`sample_parser` must be a subclass of %s; found %s"
-                % (
-                    etau.get_class_name(foud.UnlabeledImageSampleParser),
-                    etau.get_class_name(sample_parser),
-                )
-            )
-
-        def parse_sample(sample):
-            sample_parser.with_sample(sample)
-
-            image_path = sample_parser.get_image_path()
-
-            if sample_parser.has_image_metadata:
-                metadata = sample_parser.get_image_metadata()
-            else:
-                metadata = None
-
-            return fos.Sample(
-                filepath=image_path, metadata=metadata, tags=tags
-            )
-
-        try:
-            num_samples = len(samples)
-        except:
-            num_samples = None
-
-        _samples = map(parse_sample, samples)
-        return self.add_samples(
-            _samples, num_samples=num_samples, expand_schema=False
-        )
+        return foud.add_images(self, samples, sample_parser, tags=tags)
 
     def add_labeled_images(
         self,
@@ -918,55 +881,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
 
         Returns:
-            a list of IDs of the samples in the dataset
+            a list of IDs of the samples that were added to the dataset
         """
-        if not sample_parser.has_image_path:
-            raise ValueError(
-                "Sample parser must have `has_image_path == True` to add its "
-                "samples to the dataset"
-            )
-
-        if not isinstance(sample_parser, foud.LabeledImageSampleParser):
-            raise ValueError(
-                "`sample_parser` must be a subclass of %s; found %s"
-                % (
-                    etau.get_class_name(foud.LabeledImageSampleParser),
-                    etau.get_class_name(sample_parser),
-                )
-            )
-
-        if expand_schema:
-            self._ensure_label_field(label_field, sample_parser.label_cls)
-
-        def parse_sample(sample):
-            sample_parser.with_sample(sample)
-
-            image_path = sample_parser.get_image_path()
-
-            if sample_parser.has_image_metadata:
-                metadata = sample_parser.get_image_metadata()
-            else:
-                metadata = None
-
-            label = sample_parser.get_label()
-
-            sample = fos.Sample(
-                filepath=image_path, metadata=metadata, tags=tags,
-            )
-
-            if label is not None:
-                sample[label_field] = label
-
-            return sample
-
-        try:
-            num_samples = len(samples)
-        except:
-            num_samples = None
-
-        _samples = map(parse_sample, samples)
-        return self.add_samples(
-            _samples, expand_schema=False, num_samples=num_samples
+        return foud.add_labeled_images(
+            self,
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
+            expand_schema=expand_schema,
         )
 
     def add_images_dir(self, images_dir, tags=None, recursive=True):
