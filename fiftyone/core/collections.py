@@ -219,6 +219,22 @@ class SampleCollection(object):
         """
         return list(view_stage.all)
 
+    def add_stage(self, stage):
+        """Applies the given :class:`fiftyone.core.stages.ViewStage` to the
+        collection.
+
+        Args:
+            stage: a :class:`fiftyone.core.stages.ViewStage`
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+
+        Raises:
+            :class:`fiftyone.core.stages.ViewStageError` if the stage was not a
+            valid stage for this collection
+        """
+        return self._add_view_stage(stage)
+
     @view_stage
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the collection.
@@ -258,6 +274,24 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Exists(field))
+
+    @view_stage
+    def filter_field(self, field, filter):
+        """Filters the values of the given field of the samples.
+
+        Values of ``field`` for which ``filter`` returns ``False`` are
+        replaced with ``None``.
+
+        Args:
+            field: the field to filter
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.FilterField(field, filter))
 
     @view_stage
     def filter_classifications(self, field, filter):
@@ -718,11 +752,18 @@ class SampleCollection(object):
         :class:fiftyone.core.stages.ViewStage` appended to its aggregation
         pipeline.
 
+        Subclasses are responsible for performing any validation on the view
+        stage to ensure that it is a valid stage to add to this collection.
+
         Args:
-            a :class:fiftyone.core.stages.ViewStage`
+            stage: a :class:fiftyone.core.stages.ViewStage`
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
+
+        Raises:
+            :class:`fiftyone.core.stages.ViewStageError` if the stage was not a
+            valid stage for this collection
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
