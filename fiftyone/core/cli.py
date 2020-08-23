@@ -262,6 +262,7 @@ class DatasetsCommand(Command):
         _register_command(subparsers, "stream", DatasetsStreamCommand)
         _register_command(subparsers, "export", DatasetsExportCommand)
         _register_command(subparsers, "draw", DatasetsDrawCommand)
+        _register_command(subparsers, "rename", DatasetsRenameCommand)
         _register_command(subparsers, "delete", DatasetsDeleteCommand)
 
     @staticmethod
@@ -594,6 +595,34 @@ class DatasetsDrawCommand(Command):
 
         dataset.draw_labels(anno_dir, label_fields=label_fields)
         print("Annotations written to '%s'" % anno_dir)
+
+
+class DatasetsRenameCommand(Command):
+    """Rename FiftyOne datasets.
+
+    Examples::
+
+        # Rename the dataset
+        fiftyone datasets rename <old-name> <new-name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset",
+        )
+        parser.add_argument(
+            "new_name", metavar="NEW_NAME", help="a new name for the dataset",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        new_name = args.new_name
+
+        dataset = fod.load_dataset(name)
+        dataset.name = new_name
+        print("Dataset '%s' renamed to '%s'" % (name, new_name))
 
 
 class DatasetsDeleteCommand(Command):

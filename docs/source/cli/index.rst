@@ -226,6 +226,7 @@ Tools for working with FiftyOne datasets.
         stream              Streams the samples in a FiftyOne dataset.
         export              Export FiftyOne datasets to disk in supported formats.
         draw                Writes annotated versions of samples in FiftyOne datasets to disk.
+        rename              Rename FiftyOne datasets.
         delete              Delete FiftyOne datasets.
 
 .. _cli-fiftyone-datasets-list:
@@ -491,6 +492,35 @@ Writes annotated versions of samples in FiftyOne datasets to disk.
     # specified labels overlaid to disk
     fiftyone datasets draw <name> \
         --anno-dir <anno-dir> --label-fields <label-fields>
+
+.. _cli-fiftyone-datasets-rename:
+
+Rename datasets
+~~~~~~~~~~~~~~~
+
+Rename FiftyOne datasets.
+
+.. code-block:: text
+
+    fiftyone datasets rename [-h] NAME NEW_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the name of the dataset
+      NEW_NAME    a new name for the dataset
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Rename the dataset
+    fiftyone datasets rename <old-name> <new-name>
 
 .. _cli-fiftyone-datasets-delete:
 
