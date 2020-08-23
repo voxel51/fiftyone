@@ -1938,6 +1938,7 @@ class ViewStageTests(unittest.TestCase):
             )
             with self.assertRaises(AttributeError):
                 sample.exclude_fields_field1
+
             self.assertIsNone(sample.exclude_fields_field2)
 
     def test_exists(self):

@@ -1,5 +1,5 @@
-Viewing Datasets in the FiftyOne App
-====================================
+Using the FiftyOne App
+======================
 
 .. include:: ../substitutions.rst
 .. default-role:: code
