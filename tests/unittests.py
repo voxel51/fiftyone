@@ -1920,7 +1920,7 @@ class ViewStageTests(unittest.TestCase):
             self.assertSetEqual(
                 sv.excluded_field_names, {"exclude_fields_field1"}
             )
-            with self.assertRaises(NameError):
+            with self.assertRaises(AttributeError):
                 sv.exclude_fields_field1
             self.assertIsNone(sv.exclude_fields_field2)
 
@@ -2073,7 +2073,7 @@ class ViewStageTests(unittest.TestCase):
             sv.filepath
             sv.metadata
             sv.tags
-            with self.assertRaises(NameError):
+            with self.assertRaises(AttributeError):
                 sv.select_fields_field
 
     def test_skip(self):
