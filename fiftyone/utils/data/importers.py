@@ -798,11 +798,28 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
+        expand (False): whether to expand the image labels into a dictionary of
+            :class:`fiftyone.core.labels.Label` instances
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded label dictionary. Only applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
     """
 
-    def __init__(self, dataset_dir, compute_metadata=False):
+    def __init__(
+        self,
+        dataset_dir,
+        compute_metadata=False,
+        expand=False,
+        prefix=None,
+        multilabel=False,
+    ):
         super().__init__(dataset_dir)
         self.compute_metadata = compute_metadata
+        self.expand = expand
+        self.prefix = prefix
+        self.multilabel = multilabel
         self._description = None
         self._sample_parser = None
         self._labeled_dataset = None
@@ -830,6 +847,11 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         else:
             image_metadata = None
 
+        if label is not None and self.expand:
+            label = label.expand(
+                prefix=self.prefix, multilabel=self.multilabel
+            )
+
         return image_path, image_metadata, label
 
     @property
@@ -842,7 +864,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return fol.ImageLabels if not self.expand else None
 
     def setup(self):
         self._sample_parser = FiftyOneImageLabelsSampleParser()
