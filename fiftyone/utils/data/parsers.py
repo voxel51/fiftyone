@@ -147,7 +147,7 @@ def add_labeled_images(
 
         label = sample_parser.get_label()
 
-        sample = fos.Sample(filepath=image_path, metadata=metadata, tags=tags,)
+        sample = fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
 
         if isinstance(label, dict):
             sample.update_fields(label)

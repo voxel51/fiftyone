@@ -1935,18 +1935,18 @@ class ViewStageTests(unittest.TestCase):
     def test_filter_classifications(self):
         self.sample1["test_clfs"] = fo.Classifications(
             classifications=[
-                fo.Classification(label="friend", confidence=0.9,),
-                fo.Classification(label="friend", confidence=0.3,),
-                fo.Classification(label="stopper", confidence=0.1,),
-                fo.Classification(label="big bro", confidence=0.6,),
+                fo.Classification(label="friend", confidence=0.9),
+                fo.Classification(label="friend", confidence=0.3),
+                fo.Classification(label="stopper", confidence=0.1),
+                fo.Classification(label="big bro", confidence=0.6),
             ]
         )
         self.sample1.save()
         self.sample2["test_clfs"] = fo.Classifications(
             classifications=[
-                fo.Classification(label="friend", confidence=0.99,),
-                fo.Classification(label="tricam", confidence=0.2,),
-                fo.Classification(label="hex", confidence=0.8,),
+                fo.Classification(label="friend", confidence=0.99),
+                fo.Classification(label="tricam", confidence=0.2),
+                fo.Classification(label="hex", confidence=0.8),
             ]
         )
         self.sample2.save()
