@@ -10,6 +10,8 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
 
@@ -78,6 +80,7 @@ def expand_image_labels_field(
     prefix=None,
     multilabel=False,
     skip_non_categorical=False,
+    keep_label_field=False,
 ):
     """Expands the :class:`fiftyone.core.labels.ImageLabels` field of the
     dataset into per-label fields.
@@ -92,17 +95,19 @@ def expand_image_labels_field(
 
     All objects will be stored in a ``prefix + "objs"`` field.
 
-    The ``label_field`` of the dataset will be deleted after the expansion is
-    completed.
-
     Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        label_field: the name of the :class:`fiftyone.core.labels.ImageLabels`
+            field to expand
         prefix (None): a string prefix to prepend to each expanded field name
         multilabel (False): whether to store frame attributes in a single
             :class:`fiftyone.core.labels.Classifications` field
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
+        keep_label_field (False): whether to keep ``label_field`` after the
+            expansion is completed. By default, the field is deleted from the
+            dataset
     """
-    # Expand image labels field
     with fou.ProgressBar() as pb:
         for sample in pb(dataset):
             labels = sample[label_field]
@@ -116,7 +121,62 @@ def expand_image_labels_field(
                     skip_non_categorical=skip_non_categorical,
                 )
             )
-            sample.clear_field(label_field)
+            if not keep_label_field:
+                sample.clear_field(label_field)
+
             sample.save()
 
-    dataset.delete_sample_field(label_field)
+    if not keep_label_field:
+        dataset.delete_sample_field(label_field)
+
+
+def condense_image_labels_field(
+    dataset, label_field, prefix=None, keep_label_fields=False
+):
+    """Merges all label fields matching the given prefix in each sample in the
+    dataset into a single :class:`fiftyone.core.labels.ImageLabels` field.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        label_field: the name of the :class:`fiftyone.core.labels.ImageLabels`
+            field to create
+        prefix (None): a label field prefix; all
+            :class:`fiftyone.core.labels.Label` fields matching this prefix are
+            merged into ``label_field``, with the prefix removed from the names
+            of the labels
+        keep_label_fields (False): whether to keep the input label fields after
+            ``label_field`` is created. By default, the fields are deleted
+    """
+    if prefix is None:
+        prefix = ""
+
+    labels_dict = _get_label_dict_for_prefix(dataset, prefix)
+
+    with fou.ProgressBar() as pb:
+        for sample in pb(dataset):
+            image_labels = etai.ImageLabels()
+            for field_name, name in labels_dict.items():
+                image_labels.merge_labels(
+                    sample[field_name].to_image_labels(name=name)
+                )
+                if not keep_label_fields:
+                    sample.clear_field(field_name)
+
+            sample[label_field] = fol.ImageLabels(labels=image_labels)
+            sample.save()
+
+    if not keep_label_fields:
+        for field_name in labels_dict:
+            dataset.delete_sample_field(field_name)
+
+
+def _get_label_dict_for_prefix(dataset, prefix):
+    label_fields = dataset.get_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    )
+    labels_dict = {}
+    for field_name in label_fields:
+        if field_name.startswith(prefix):
+            labels_dict[field_name] = field_name[len(prefix) :]
+
+    return labels_dict
