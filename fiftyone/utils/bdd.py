@@ -324,15 +324,15 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
         for name, label in image_labels_or_dict.items():
             image_labels.merge_labels(label.to_image_labels(name=name))
     else:
-        image_labels = image_labels_or_dict
+        image_labels = image_labels_or_dict.labels
 
     # Frame attributes
-    frame_attrs = {a.name: a.value for a in image_labels.labels.attrs}
+    frame_attrs = {a.name: a.value for a in image_labels.attrs}
 
     # Objects
     labels = []
     frame_size = (metadata.width, metadata.height)
-    for idx, obj in enumerate(image_labels.labels.objects):
+    for idx, obj in enumerate(image_labels.objects):
         tlx, tly, w, h = obj.bounding_box.coords_in(frame_size=frame_size)
         labels.append(
             {
