@@ -215,7 +215,7 @@ def get_view_stats(dataset_or_view):
         include_private=True
     ):
         custom_fields_schema.pop(field_name, None)
-    print(_get_label_fields(custom_fields_schema))
+
     return {
         "tags": {tag: len(view.match_tag(tag)) for tag in view.get_tags()},
         "custom_fields": {
