@@ -161,9 +161,10 @@ class Service(object):
 class MultiClientService(Service):
     """Base class for services that support multiple clients."""
 
+    # set when attaching to an existing process
+    attached = False
+
     def __init__(self):
-        # initialize before parent constructor calls start()
-        self.attached_child = None
         super().__init__()
 
     @property
@@ -185,7 +186,8 @@ class MultiClientService(Service):
                     process, ("register", os.getpid())
                 )
                 if reply == True:
-                    self.attached_child = process
+                    self.attached = True
+                    self.child = process
                     return
                 else:
                     logger.warn("Failed to connect to %s: %r", desc, reply)
@@ -196,12 +198,12 @@ class MultiClientService(Service):
 
     def stop(self):
         """Disconnects from the service without actually stopping it."""
-        if self.attached_child is not None:
-            self.attached_child = None
+        if self.attached:
+            self.attached = False
         elif self.child is not None:
             # this process is the original parent
             self.child.stdin.close()
-            self.child = None
+        self.child = None
 
 
 class DatabaseService(MultiClientService):
