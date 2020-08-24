@@ -15,6 +15,9 @@ import fiftyone.core.service as fos
 import fiftyone.service.util as fosu
 
 
+MONGOD_EXE_NAME = fos.DatabaseService.MONGOD_EXE_NAME
+
+
 def get_child_processes(process=psutil.Process()):
     return process.children(recursive=True)
 
@@ -76,6 +79,10 @@ class InteractiveSubprocess(object):
 
     process = None
 
+    def __init__(self, autostart=False):
+        if autostart:
+            self.start()
+
     def start(self):
         env = os.environ.copy()
         env.pop("FIFTYONE_DISABLE_SERVICES", None)
@@ -113,14 +120,25 @@ class InteractiveSubprocess(object):
         return fosu.send_ipc_message(self.process, code)
 
 
+_start_db_snippet = """
+import fiftyone.core.service as fos
+db = fos.DatabaseService()
+db.start()
+"""
+
+_list_datasets_snippet = """
+__import__("fiftyone.core.dataset").list_datasets()
+"""
+
+
 def test_db():
     with cleanup_subprocesses(strict=True):
         db = fos.DatabaseService()
         db.start()
-        p = wait_for_subprocess_by_name(db.MONGOD_EXE_NAME)
+        p = wait_for_subprocess_by_name(MONGOD_EXE_NAME)
         db.stop()
         assert not p.is_running()
-        assert db.MONGOD_EXE_NAME not in get_child_process_names()
+        assert MONGOD_EXE_NAME not in get_child_process_names()
 
 
 def test_server():
@@ -137,9 +155,82 @@ def test_server():
 
 def test_db_interactive():
     with cleanup_subprocesses(strict=True), InteractiveSubprocess() as ip:
-        ip.run_code("import fiftyone.core.service as fos")
-        ip.run_code("db = fos.DatabaseService()")
-        ip.run_code("db.start()")
-        assert fos.DatabaseService.MONGOD_EXE_NAME in get_child_process_names(
-            process=ip.process
-        )
+        ip.run_code(_start_db_snippet)
+        assert MONGOD_EXE_NAME in get_child_process_names(process=ip.process)
+
+
+def _check_db_connectivity(interactive_subprocess):
+    assert isinstance(
+        interactive_subprocess.run_code(_list_datasets_snippet), list
+    )
+
+
+def test_db_multi_client():
+    with cleanup_subprocesses(strict=True):
+        ip1 = InteractiveSubprocess(autostart=True)
+        ip2 = InteractiveSubprocess(autostart=True)
+        try:
+            ip1.run_code(_start_db_snippet)
+            ip2.run_code(_start_db_snippet)
+            # only the first process that started mongodb should have it as a child
+            assert MONGOD_EXE_NAME in get_child_process_names(
+                process=ip1.process
+            )
+            assert MONGOD_EXE_NAME not in get_child_process_names(
+                process=ip2.process
+            )
+            # ports should match
+            assert ip1.run_code("db.port") == ip2.run_code("db.port")
+            # DB should be reachable from both processes
+            _check_db_connectivity(ip1)
+            _check_db_connectivity(ip2)
+            assert ip1.run_code(_list_datasets_snippet) == ip2.run_code(
+                _list_datasets_snippet
+            )
+        finally:
+            ip1.stop()
+            ip2.stop()
+
+
+def test_db_multi_client_cleanup():
+    with cleanup_subprocesses(strict=True):
+        ip1 = InteractiveSubprocess(autostart=True)
+        ip2 = InteractiveSubprocess(autostart=True)
+        try:
+            ip1.run_code(_start_db_snippet)
+            ip2.run_code(_start_db_snippet)
+            # save a reference to the mongo process before killing ip1
+            mongo_process = wait_for_subprocess_by_name(
+                MONGOD_EXE_NAME, process=ip1.process
+            )
+            ip1.stop()
+            # make sure mongo is still reachable
+            assert mongo_process.is_running()
+            assert MONGOD_EXE_NAME not in get_child_process_names(
+                process=ip2.process
+            )
+            _check_db_connectivity(ip2)
+
+            # make sure a new process can reach mongo
+            ip1.start()
+            ip1.run_code(_start_db_snippet)
+            assert MONGOD_EXE_NAME not in get_child_process_names(
+                process=ip1.process
+            )
+            _check_db_connectivity(ip1)
+            assert ip1.run_code("db.port") == ip2.run_code("db.port")
+            assert ip1.run_code("db.port") in fosu.get_listening_tcp_ports(
+                mongo_process
+            )
+
+            # make sure mongodb exits only after both python processes exit
+            ip2.stop()
+            assert mongo_process.is_running()
+            _check_db_connectivity(ip1)
+            ip1.stop()
+            # give it a small grace period to exit
+            mongo_process.wait(timeout=1)
+            assert not mongo_process.is_running()
+        finally:
+            ip1.stop()
+            ip2.stop()
