@@ -230,7 +230,28 @@ def get_view_stats(dataset_or_view):
 
 
 def _get_label_classes(view, field_name, field):
-    return []  # wip
+    pipeline = []
+    is_list = False
+    path = "$%s" % field_name
+    if issubclass(field.document_type, fol.Classifications):
+        path = "%s.classifications" % path
+        is_list = True
+    elif issubclass(field.document_type, fol.Detections):
+        path = "%s.detections" % path
+        is_list = True
+
+    path = "%s.label" % path
+
+    if is_list:
+        pipeline.append(
+            {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
+        )
+
+    pipeline.append(
+        {"$group": {"_id": None, "labels": {"$addToSet": "$path"},}}
+    )
+
+    return next(view.aggregate(pipeline))["totalCount"]
 
 
 def _get_label_fields(custom_fields_schema):
