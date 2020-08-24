@@ -247,11 +247,9 @@ def _get_label_classes(view, field_name, field):
             {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
         )
 
-    pipeline.append(
-        {"$group": {"_id": None, "labels": {"$addToSet": "$path"},}}
-    )
+    pipeline.append({"$group": {"_id": None, "labels": {"$addToSet": path},}})
 
-    return next(view.aggregate(pipeline))["totalCount"]
+    return next(view.aggregate(pipeline))["labels"]
 
 
 def _get_label_fields(custom_fields_schema):
