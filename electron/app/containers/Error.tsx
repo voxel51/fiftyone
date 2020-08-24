@@ -15,11 +15,10 @@ const ErrorDiv = styled.div``;
 
 const ErrorMessage = styled.div`
   font-weight: bold;
-
-  & > p {
-    font-weight: normal;
-  }
+  text-align: center;
 `;
+
+const ReloadButton = styled.button``;
 
 const LogoImg = styled.img`
   width: 5rem;
@@ -33,7 +32,15 @@ const Error = () => {
     <ErrorContainer>
       <ErrorDiv>
         <LogoImg src={logo} />
-        <ErrorMessage>Oops. We made an error.</ErrorMessage>
+        <ErrorMessage>
+          <p>Oops. We made an error.</p>
+          <br />
+          <p>
+            Resetting your session view to it's last valid state often works.
+            And then reload App.
+          </p>
+          <ReloadButton>Reload</ReloadButton>
+        </ErrorMessage>
       </ErrorDiv>
     </ErrorContainer>
   );
