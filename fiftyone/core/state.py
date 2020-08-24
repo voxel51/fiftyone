@@ -215,14 +215,36 @@ def get_view_stats(dataset_or_view):
         include_private=True
     ):
         custom_fields_schema.pop(field_name, None)
-
+    print(_get_label_fields(custom_fields_schema))
     return {
         "tags": {tag: len(view.match_tag(tag)) for tag in view.get_tags()},
         "custom_fields": {
             field_name: _get_field_count(view, field_name, field)
             for field_name, field in custom_fields_schema.items()
         },
+        "label_classes": {
+            field_name: _get_label_classes(view, field_name, field)
+            for field_name, field in _get_label_fields(custom_fields_schema)
+        },
     }
+
+
+def _get_label_classes(view, field_name, field):
+    return []  # wip
+
+
+def _get_label_fields(custom_fields_schema):
+    def _filter(item):
+        _, field = item
+        if not isinstance(field, fof.EmbeddedDocumentField):
+            return False
+
+        if issubclass(field.document_type, fol.ImageLabel):
+            return True
+
+        return False
+
+    return filter(_filter, custom_fields_schema.items())
 
 
 def _get_field_count(view, field_name, field):
