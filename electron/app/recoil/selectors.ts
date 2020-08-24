@@ -1,4 +1,4 @@
-import { selector } from "recoil";
+import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 
 export const viewStages = selector({
@@ -107,6 +107,15 @@ export const labelTypes = selector({
       }
     }
     return types;
+  },
+});
+
+export const labelClasses = selectorFamily({
+  key: "labelClasses",
+  get: (label) => ({ get }) => {
+    return get(atoms.stateDescription).derivables.view_stats.label_classes[
+      label
+    ];
   },
 });
 

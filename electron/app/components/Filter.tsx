@@ -1,12 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import styled from "styled-components";
-import { Slider as SLiderUnstyled } from "@material-ui/core";
-import { useRecoilState } from "recoil";
-import { Machine } from "xstate";
+import { Slider as SliderUnstyled } from "@material-ui/core";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 
 import { filterLabelConfidenceRange } from "../recoil/atoms";
+import { labelClasses } from "../recoil/selectors";
 
 function valuetext(value: number[]) {
   return `${value[0]}-${value[1]}`;
@@ -17,7 +18,7 @@ const SliderContainer = styled.div`
   display: flex;
 `;
 
-const Slider = styled(SLiderUnstyled)`
+const Slider = styled(SliderUnstyled)`
   && {
     color: ${({ theme }) => theme.secondary};
   }
@@ -60,10 +61,51 @@ const classFilterMachine = Machine({
     error: undefined,
     classes: [],
     inputValue: "",
-    availableClasses: null,
+    classes: null,
+    selected: [],
   },
   states: {
     init: {},
+    reading: {
+      on: {
+        FOCUS: {
+          target: "editing",
+        },
+      },
+    },
+    editing: {
+      on: {
+        COMMIT: [
+          {
+            actions: assign({}),
+            cond: (ctx) => {
+              ctx.classes.some((c) => c === ctx.inputValue);
+            },
+          },
+        ],
+        CHANGE: {
+          actions: [
+            assign({
+              inputValue: (_, { value }) => value,
+              results: ({ classes }, e) =>
+                classes.filter((c) =>
+                  c.toLowerCase().includes(e.value.toLowerCase())
+                ),
+            }),
+          ],
+        },
+      },
+    },
+  },
+  on: {
+    SET_CLASSES: {
+      target: "reading",
+      actions: [
+        assign({
+          classes: (_, { classes }) => classes,
+        }),
+      ],
+    },
   },
 });
 
@@ -90,13 +132,31 @@ const ClassFilterContainer = styled.div`
   margin-bottom: 0.5rem;
 `;
 
-const ClassFilter = () => {
+const ClassFilter = ({ name }) => {
+  const classes = useRecoilValue(labelClasses(name));
   const [state, send] = useMachine(classFilterMachine);
 
-  const { inputValue } = state.context;
+  useEffect(() => {
+    send({ type: "SET_CLASSES", classes });
+  }, [classes]);
+
+  console.log(state.toStrings());
+
+  const { inputValue, results } = state.context;
   return (
     <ClassFilterContainer>
-      <ClassInput value={inputValue} placeholder={"+ add label"} />
+      <ClassInput
+        value={inputValue}
+        placeholder={"+ add label"}
+        onFocus={state.matches("reading") && send("EDIT")}
+      />
+      {state.matches("editing") && (
+        <SearchResults
+          results={results}
+          send={send}
+          currentResult={currentResult}
+        />
+      )}
     </ClassFilterContainer>
   );
 };
@@ -107,7 +167,7 @@ const Filter = ({ name }) => {
   return (
     <FilterDiv>
       <div>Labels</div>
-      <ClassFilter />
+      <ClassFilter name={name} />
       <div>Confidence</div>
       <RangeSlider
         atom={filterLabelConfidenceRange(name)}
