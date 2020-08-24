@@ -18,7 +18,7 @@ def _connect():
     global _client
     if _client is None:
         connect(_DEFAULT_DATABASE, port=_default_port)
-        _client = pymongo.MongoClient()
+        _client = pymongo.MongoClient(port=_default_port)
 
 
 def set_default_port(port):
