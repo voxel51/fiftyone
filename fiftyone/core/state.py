@@ -248,9 +248,7 @@ def _get_label_classes(view, field_name, field):
     path = "%s.label" % path
     pipeline.append({"$group": {"_id": None, "labels": {"$addToSet": path}}})
 
-    result = next(view.aggregate(pipeline))["labels"]
-
-    return result
+    return next(view.aggregate(pipeline))["labels"]
 
 
 def _get_label_fields(custom_fields_schema):
