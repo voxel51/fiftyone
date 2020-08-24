@@ -58,7 +58,7 @@ const Error = ({ resetErrorBoundary }) => {
           <p>Oops. We made an error.</p>
           <p>
             Resetting your session view to its last valid state often fixes
-            things. And then reload App.
+            things. And then reload the App.
           </p>
           <Code>session.view = ...</Code>
           <ReloadButton onClick={resetErrorBoundary}>Reload App</ReloadButton>
