@@ -19,6 +19,7 @@ const Body = styled.div`
     margin-bottom: 3px;
     margin-left: 0;
     margin-right: 0;
+    border-radius: 2px;
 
     .MuiTypography-body1 {
       font-size: unset;
