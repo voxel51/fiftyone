@@ -1,13 +1,9 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useEffect, useRef } from "react";
 import ReactGA from "react-ga";
-import { Button, Modal, Label } from "semantic-ui-react";
-import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
+import { Button, Modal } from "semantic-ui-react";
 import { useSetRecoilState } from "recoil";
-import { ThemeProvider } from "styled-components";
 
-import { GlobalStyle } from "../shared/global";
-import { darkTheme } from "../shared/colors";
 import PortForm from "../components/PortForm";
 import Header from "../components/Header";
 
@@ -27,17 +23,8 @@ type Props = {
 };
 
 function App(props: Props) {
-  const { path, url } = useRouteMatch();
   const [showInfo, setShowInfo] = useState(true);
-  const {
-    loading,
-    children,
-    dispatch,
-    update,
-    connected,
-    port,
-    displayProps,
-  } = props;
+  const { loading, children, dispatch, connected, port } = props;
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
@@ -117,38 +104,10 @@ function App(props: Props) {
   };
 
   return (
-    <ThemeProvider theme={darkTheme}>
-      <GlobalStyle />
-      <Modal
-        trigger={
-          <Button
-            style={{ padding: "1rem", display: "none" }}
-            ref={portRef}
-          ></Button>
-        }
-        size="tiny"
-        onClose={() => {
-          dispatch(updatePort(result.port));
-          setSocket(getSocket(result.port, "state"));
-        }}
-      >
-        <Modal.Header>Port number</Modal.Header>
-        <Modal.Content>
-          <Modal.Description>
-            <PortForm
-              setResult={setResultFromForm}
-              connected={connected}
-              port={port}
-              invalid={false}
-            />
-          </Modal.Description>
-        </Modal.Content>
-      </Modal>
-      <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
-        <Header />
-        {children}
-      </div>
-    </ThemeProvider>
+    <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
+      <Header />
+      {children}
+    </div>
   );
 }
 

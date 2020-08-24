@@ -5,12 +5,13 @@ import { useRecoilValue } from "recoil";
 import routes from "./constants/routes.json";
 import App from "./containers/App";
 import Dataset from "./containers/Dataset";
+import Error from "./containers/Error";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
 import connect from "./utils/connect";
 import * as atoms from "./recoil/atoms";
 
-function Routes({ port }) {
+function Routes() {
   const [activeTags, setActiveTags] = useState({});
   const [activeLabels, setActiveLabels] = useState({});
   const [activeOther, setActiveOther] = useState({});
@@ -40,6 +41,7 @@ function Routes({ port }) {
   return (
     <App displayProps={appProps} colors={colors}>
       <Switch>
+        <Route path={routes.ERROR} exact component={Error} />
         <Route path={routes.LOADING} exact component={Loading} />
         <Route path={routes.SETUP} exact component={Setup} />
         <Route path={routes.SAMPLES} exact render={dataset} />
