@@ -226,7 +226,13 @@ class DatabaseService(MultiClientService):
             foc.DB_PATH,
             "--logpath",
             foc.DB_LOG_PATH,
+            "--port",
+            "0",
         ]
+
+    @property
+    def port(self):
+        return self._wait_for_child_port()
 
     def start(self):
         """Starts the DatabaseService."""
@@ -237,9 +243,10 @@ class DatabaseService(MultiClientService):
         super().start()
 
         # Set up a default connection
-        import fiftyone.core.odm as foo
+        import fiftyone.core.odm.database as food
 
-        foo.get_db_conn()
+        food.set_default_port(self.port)
+        food.get_db_conn()
 
         # Drop non-persistent datasets
         import fiftyone.core.dataset as fod

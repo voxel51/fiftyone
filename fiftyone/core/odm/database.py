@@ -11,13 +11,24 @@ import pymongo
 
 _DEFAULT_DATABASE = "fiftyone"
 _client = None
+_default_port = 27017
 
 
 def _connect():
     global _client
     if _client is None:
-        connect(_DEFAULT_DATABASE)
+        connect(_DEFAULT_DATABASE, port=_default_port)
         _client = pymongo.MongoClient()
+
+
+def set_default_port(port):
+    """Changes the default port used to connect to the database.
+
+    Args:
+        port (int): port number
+    """
+    global _default_port
+    _default_port = int(port)
 
 
 def get_db_conn():
