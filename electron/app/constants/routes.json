@@ -1,6 +1,5 @@
 {
   "DATASET": "/",
-  "ERROR": "/error",
   "LABELS": "/labels",
   "LOADING": "/loading",
   "SAMPLES": "/samples",
