@@ -10,7 +10,7 @@ import Loading from "./containers/Loading";
 import connect from "./utils/connect";
 import * as atoms from "./recoil/atoms";
 
-function Routes({ port }) {
+function Routes() {
   const [activeTags, setActiveTags] = useState({});
   const [activeLabels, setActiveLabels] = useState({});
   const [activeOther, setActiveOther] = useState({});

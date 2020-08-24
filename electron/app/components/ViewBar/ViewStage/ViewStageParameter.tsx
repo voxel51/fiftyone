@@ -14,7 +14,7 @@ const ViewStageParameterContainer = styled.div`
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.brand};
   position: relative;
   display: flex;
   z-index: 801;
@@ -82,9 +82,9 @@ const ObjectEditorTextArea = animated(styled.textarea`
 
 const SubmitButton = animated(styled.button`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.brand};
   color: ${({ theme }) => theme.font};
-  background-color: hsla(27, 95%, 49%, 0.4);
+  background-color: ${({ theme }) => theme.brandTransparent};
   border-radius: 3px;
   position: relative;
   line-height: 1rem;
@@ -218,7 +218,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
         : theme.background,
     borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
     borderRightWidth: tail ? 2 : 0,
-    height: hasObjectType && state.matches("editing") ? 200 : 36,
+    height: hasObjectType && state.matches("editing") ? 200 : 34,
     opacity: 1,
     from: {
       opacity: 0,

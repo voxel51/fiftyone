@@ -15,6 +15,7 @@ const ViewBarContainer = styled.div`
   position: relative;
   width: 100%;
   background-color: ${({ theme }) => theme.background};
+  margin: 1rem 0;
 `;
 
 const ViewBarDiv = styled.div`
@@ -22,7 +23,7 @@ const ViewBarDiv = styled.div`
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   box-sizing: border-box;
-  height: 54px;
+  height: 52px;
   width: 100%;
   padding: 0 0.25rem;
   display: flex;
@@ -38,8 +39,6 @@ const ViewBarDiv = styled.div`
     display: none;
   }
 `;
-
-const Link = styled.a``;
 
 const IconsContainer = styled.div`
   position: absolute;

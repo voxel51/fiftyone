@@ -199,14 +199,13 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       focusOnInit: false,
-                      stage: (ctx, { stage }) => stage,
-                      parameters: (ctx, { stage }) => {
+                      parameters: (ctx) => {
                         const result = ctx.stageInfo.filter((s) =>
-                          s.name.toLowerCase().includes(stage.toLowerCase())
+                          s.name.toLowerCase().includes(ctx.stage.toLowerCase())
                         )[0].params;
                         const parameters = result.map((parameter, i) =>
                           createParameter(
-                            stage,
+                            ctx.stage,
                             parameter.name,
                             parameter.type,
                             parameter.default,
@@ -227,9 +226,9 @@ const viewStageMachine = Machine(
                     }),
                     send("UPDATE_DELIBLE"),
                   ],
-                  cond: (ctx, e) => {
+                  cond: (ctx) => {
                     const result = ctx.stageInfo.filter(
-                      (s) => s.name.toLowerCase() === e.stage.toLowerCase()
+                      (s) => s.name.toLowerCase() === ctx.stage.toLowerCase()
                     );
                     return result.length === 1;
                   },
@@ -251,25 +250,13 @@ const viewStageMachine = Machine(
               ],
               BLUR: [
                 {
-                  target: "reading.pending",
                   actions: [
                     assign({
-                      stage: () => "",
-                      errorId: undefined,
+                      focusOnInit: false,
                     }),
                     "blurInput",
+                    send("COMMIT"),
                   ],
-                  cond: (ctx) => !ctx.submitted,
-                },
-                {
-                  target: "reading.submitted",
-                  actions: [
-                    assign({
-                      stage: (ctx) => ctx.prevStage,
-                      errorId: undefined,
-                    }),
-                  ],
-                  cond: (ctx) => ctx.submitted,
                 },
               ],
             },

@@ -13,8 +13,10 @@ export type Props = {
 };
 
 const Body = styled.div`
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 0 -2rem;
+  padding: 1rem 2rem;
+  background-color: ${({ theme }) => theme.backgroundDark};
+  border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
 `;
 
 const Item = styled(Link)`
@@ -26,6 +28,7 @@ const Item = styled(Link)`
   text-decoration: none;
   font-weight: bold;
   text-transform: capitalize;
+  border-radius: 2px;
 
   &.active {
     background-color: ${({ theme }) => theme.secondary};

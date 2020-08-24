@@ -25,7 +25,7 @@ const ViewStageContainer = animated(styled.div`
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px solid ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.brand};
   border-top-left-radius: 3px;
   border-bottom-left-radius: 3px;
   border-right-width: 0;
@@ -58,7 +58,7 @@ const ViewStageInput = styled(AuosizeInput)`
 
 const ViewStageButtonContainer = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.button};
+  border: 1px dashed ${({ theme }) => theme.button};
   color: ${({ theme }) => theme.button};
   border-radius: 3px;
   position: relative;
@@ -113,7 +113,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
     set({
       top: active ? -3 : 0,
       color: active ? theme.font : theme.button,
-      borderColor: active ? theme.secondary : theme.button,
+      borderColor: active ? theme.brand : theme.button,
     });
     active ? setEnterProps() : setLeaveProps();
   }, [active]);
@@ -174,7 +174,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
 
 const ViewStageDeleteDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.brand};
   position: relative;
   border-top-right-radius: 3px;
   border-bottom-right-radius: 3px;
@@ -183,7 +183,7 @@ const ViewStageDeleteDiv = animated(styled.div`
 `);
 
 const ViewStageDeleteButton = animated(styled.button`
-  background-color: transparent;
+  background-color: ${({ theme }) => theme.backgroundLight};
   border: none;
   padding: 0.5rem;
   color: ${({ theme }) => theme.font};
@@ -237,7 +237,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
   ].some(state.matches);
 
   const deleteProps = useSpring({
-    backgroundColor: theme.brandTransparent,
+    borderColor: active ? theme.brand : theme.fontDarkest,
     opacity: 1,
     from: {
       opacity: 0,
@@ -253,11 +253,13 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
         : 0,
     borderColor: isCompleted
       ? active
-        ? theme.secondary
+        ? theme.brand
         : theme.fontDarkest
-      : theme.brand,
-    borderTopRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
-    borderBottomRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
+      : theme.secondary,
+    borderTopRightRadius:
+      state.matches("delible") || !parameters.length ? 3 : 0,
+    borderBottomRightRadius:
+      state.matches("delible") || !parameters.length ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -311,7 +313,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             onChange={(e) => send({ type: "CHANGE", stage: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
-                send({ type: "COMMIT", stage: e.target.value });
+                send("COMMIT");
               }
             }}
             onKeyDown={(e) => {

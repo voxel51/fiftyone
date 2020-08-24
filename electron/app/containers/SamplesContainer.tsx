@@ -102,7 +102,6 @@ const SamplesContainer = (props) => {
 
   return (
     <Root ref={containerRef} showSidebar={showSidebar}>
-      <VerticalSpacer opaque height={5} />
       <Sticky
         ref={stickyHeaderRef}
         context={containerRef}
@@ -110,14 +109,12 @@ const SamplesContainer = (props) => {
         onUnstick={() => setStuck(false)}
       >
         <ViewBar />
-        <VerticalSpacer opaque height={5} />
         <ImageContainerHeader
           datasetName={datasetName}
           total={numSamples}
           showSidebar={showSidebar}
           onShowSidebar={setShowSidebar}
         />
-        <VerticalSpacer opaque height={5} />
       </Sticky>
       <Grid>
         {showSidebar ? (

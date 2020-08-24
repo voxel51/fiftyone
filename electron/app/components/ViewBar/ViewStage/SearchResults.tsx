@@ -53,8 +53,8 @@ const SearchResult = React.memo(({ result, isActive, send, followRef }) => {
 
 const SearchResultsDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
-  border: 2px solid ${({ theme }) => theme.backgroundDarkBorder};
-  border-radius: 2px;
+  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  border-radius: 3px;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   box-sizing: border-box;
   margin-top: 2.5rem;
@@ -73,6 +73,7 @@ const SearchResults = React.memo(
   ({ results, send, currentResult, barRef, followRef }) => {
     const [props, set] = useSpring(() => ({
       left: 0,
+      top: 0,
       opacity: 1,
       from: {
         opacity: 0,
@@ -81,10 +82,8 @@ const SearchResults = React.memo(
     }));
 
     useLayoutEffect(() => {
-      console.log("effec", barRef.current, followRef.current);
       const follow = () => {
-        console.log("follow");
-        const { x } = followRef.current.getBoundingClientRect();
+        const { x, y } = followRef.current.getBoundingClientRect();
         const {
           x: barX,
           width: barWidth,
