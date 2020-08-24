@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import Slider from "@material-ui/core/Slider";
+import { Slider as SLiderUnstyled } from "@material-ui/core";
 import { useRecoilState } from "recoil";
 
 import { filterLabelConfidenceRange } from "../recoil/atoms";
@@ -12,6 +12,12 @@ function valuetext(value: number[]) {
 const SliderContainer = styled.div`
   font-weight: bold;
   display: flex;
+`;
+
+const Slider = styled(SLiderUnstyled)`
+  && {
+    color: ${({ theme }) => theme.secondary};
+  }
 `;
 
 const RangeSlider = ({ title, atom, ...rest }) => {
@@ -42,7 +48,6 @@ const FilterDiv = styled.div`
 `;
 
 const Filter = ({ name, type }) => {
-  console.log(name, type);
   return (
     <FilterDiv>
       <RangeSlider
