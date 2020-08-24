@@ -1,22 +1,17 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useEffect, useRef } from "react";
 import ReactGA from "react-ga";
-import { Button, Modal } from "semantic-ui-react";
 import { useSetRecoilState } from "recoil";
+import { withErrorBoundary } from "react-error-boundary";
 
-import PortForm from "../components/PortForm";
 import Header from "../components/Header";
 
-import {
-  updateState,
-  updateConnected,
-  updatePort,
-  updateLoading,
-} from "../actions/update";
+import { updateState, updateConnected, updateLoading } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 import { stateDescription } from "../recoil/atoms";
 import gaConfig from "../constants/ga.json";
+import Error from "./Error";
 
 type Props = {
   children: ReactNode;
@@ -111,4 +106,6 @@ function App(props: Props) {
   );
 }
 
-export default connect(App);
+export default withErrorBoundary(connect(App), {
+  FallbackComponent: Error,
+});

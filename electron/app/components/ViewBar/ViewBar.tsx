@@ -98,7 +98,7 @@ const ViewBar = () => {
         }
         ref={barRef}
       >
-        {state.matches("running")
+        {state.matches("running") && rr.e
           ? stages.map((stage, i) => {
               return (
                 <React.Fragment key={stage.id}>

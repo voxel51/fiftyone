@@ -70,7 +70,7 @@ function makeEmptyView(stageInfo) {
 }
 
 function setStages(ctx, stageInfo) {
-  const viewStr = ctx.stateDescription.vew.iew;
+  const viewStr = ctx.stateDescription.view.view;
   const view = JSON.parse(viewStr);
   const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
   if (viewStr === JSON.stringify(serializeView(ctx.stages, stageMap))) {

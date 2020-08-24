@@ -41,7 +41,6 @@ function Routes() {
   return (
     <App displayProps={appProps} colors={colors}>
       <Switch>
-        <Route path={routes.ERROR} exact component={Error} />
         <Route path={routes.LOADING} exact component={Loading} />
         <Route path={routes.SETUP} exact component={Setup} />
         <Route path={routes.SAMPLES} exact render={dataset} />
