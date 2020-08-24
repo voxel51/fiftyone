@@ -56,6 +56,11 @@ def cleanup_subprocesses(strict=False):
     finally:
         children = get_child_processes()
         for p in children:
+            if strict:
+                print(
+                    "cleanup_subprocesses: found %r: %r"
+                    % (p.name(), p.cmdline())
+                )
             p.terminate()
 
         _, alive = psutil.wait_procs(children, timeout=3)
@@ -136,7 +141,11 @@ def test_db():
         db = fos.DatabaseService()
         db.start()
         p = wait_for_subprocess_by_name(MONGOD_EXE_NAME)
+        # brief grace period because MultiClientService doesn't stop children
+        # immediately
+        child = db.child
         db.stop()
+        child.wait(timeout=1)
         assert not p.is_running()
         assert MONGOD_EXE_NAME not in get_child_process_names()
 
