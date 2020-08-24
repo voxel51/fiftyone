@@ -240,16 +240,17 @@ def _get_label_classes(view, field_name, field):
         path = "%s.detections" % path
         is_list = True
 
-    path = "%s.label" % path
-
     if is_list:
         pipeline.append(
             {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
         )
 
-    pipeline.append({"$group": {"_id": None, "labels": {"$addToSet": path},}})
+    path = "%s.label" % path
+    pipeline.append({"$group": {"_id": None, "labels": {"$addToSet": path}}})
 
-    return next(view.aggregate(pipeline))["labels"]
+    result = next(view.aggregate(pipeline))["labels"]
+
+    return result
 
 
 def _get_label_fields(custom_fields_schema):
