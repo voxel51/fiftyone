@@ -2,7 +2,7 @@ import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useEffect, useRef } from "react";
 import ReactGA from "react-ga";
 import { useSetRecoilState } from "recoil";
-import { withErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary } from "react-error-boundary";
 
 import Header from "../components/Header";
 
@@ -19,6 +19,7 @@ type Props = {
 
 function App(props: Props) {
   const [showInfo, setShowInfo] = useState(true);
+  const [reset, setReset] = useState(false);
   const { loading, children, dispatch, connected, port } = props;
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
@@ -90,6 +91,15 @@ function App(props: Props) {
     handleStateUpdate(data);
   });
 
+  useEffect(() => {
+    if (reset) {
+      socket.emit("get_current_state", "", (data) => {
+        handleStateUpdate(data);
+        dispatch(updateLoading(false));
+      });
+    }
+  }, [reset]);
+
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
@@ -99,13 +109,17 @@ function App(props: Props) {
   };
 
   return (
-    <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
-      <Header />
-      {children}
-    </div>
+    <ErrorBoundary
+      FallbackComponent={Error}
+      onReset={() => setReset(true)}
+      resetKeys={[reset]}
+    >
+      <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
+        <Header />
+        {children}
+      </div>
+    </ErrorBoundary>
   );
 }
 
-export default withErrorBoundary(connect(App), {
-  FallbackComponent: Error,
-});
+export default connect(App);
