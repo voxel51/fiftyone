@@ -36,6 +36,11 @@ export const filterLabelConfidenceRange = atomFamily({
   default: [0, 1],
 });
 
+export const filterLabelIncludeNoConfidence = atomFamily({
+  key: "filterLabelNoConfidence",
+  default: true,
+});
+
 export const activeLabels = atom({
   key: "activeLabels",
   default: {},

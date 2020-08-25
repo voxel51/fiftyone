@@ -1,17 +1,27 @@
-import React, { useEffect } from "react";
-import styled from "styled-components";
+import React, { useContext, useEffect } from "react";
+import styled, { ThemeContext } from "styled-components";
 import { Slider as SliderUnstyled } from "@material-ui/core";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 
-import { filterLabelConfidenceRange } from "../recoil/atoms";
+import {
+  filterLabelConfidenceRange,
+  filterLabelIncludeNoConfidence,
+} from "../recoil/atoms";
 import { labelClasses } from "../recoil/selectors";
+import SearchResults from "./ViewBar/ViewStage/SearchResults";
 
 function valuetext(value: number[]) {
   return `${value[0]}-${value[1]}`;
 }
+
+const SearchResultsWrapper = styled.div`
+  display: block;
+  position: absolute;
+  top: 4.5rem;
+`;
 
 const SliderContainer = styled.div`
   font-weight: bold;
@@ -61,26 +71,65 @@ const classFilterMachine = Machine({
     error: undefined,
     classes: [],
     inputValue: "",
-    classes: null,
     selected: [],
+    currentResult: null,
+    errorId: null,
+    results: [],
   },
   states: {
     init: {},
     reading: {
       on: {
-        FOCUS: {
+        EDIT: {
           target: "editing",
         },
       },
     },
     editing: {
+      entry: [
+        assign({
+          currentResult: null,
+          errorId: null,
+        }),
+      ],
+      type: "parallel",
+      states: {
+        input: {
+          initial: "focused",
+          states: {
+            focused: {
+              on: {
+                UNFOCUS_INPUT: "unfocused",
+              },
+            },
+            unfocused: {
+              on: {
+                FOCUS_INPUT: "focused",
+              },
+            },
+          },
+        },
+        searchResults: {
+          initial: "notHovering",
+          states: {
+            hovering: {
+              on: {
+                MOUSELEAVE_RESULTS: "notHovering",
+              },
+            },
+            notHovering: {
+              on: {
+                MOUSEENTER_RESULTS: "hovering",
+              },
+            },
+          },
+        },
+      },
       on: {
         COMMIT: [
           {
             actions: assign({}),
-            cond: (ctx) => {
-              ctx.classes.some((c) => c === ctx.inputValue);
-            },
+            cond: (ctx) => ctx.classes.some((c) => c === ctx.inputValue),
           },
         ],
         CHANGE: {
@@ -103,6 +152,10 @@ const classFilterMachine = Machine({
       actions: [
         assign({
           classes: (_, { classes }) => classes,
+          results: ({ classes, inputValue }) =>
+            classes.filter((c) =>
+              c.toLowerCase().includes(inputValue.toLowerCase())
+            ),
         }),
       ],
     },
@@ -140,22 +193,42 @@ const ClassFilter = ({ name }) => {
     send({ type: "SET_CLASSES", classes });
   }, [classes]);
 
-  console.log(state.toStrings());
+  const { inputValue, results, currentResult } = state.context;
 
-  const { inputValue, results } = state.context;
   return (
     <ClassFilterContainer>
       <ClassInput
         value={inputValue}
         placeholder={"+ add label"}
-        onFocus={state.matches("reading") && send("EDIT")}
+        onFocus={() => state.matches("reading") && send("EDIT")}
+        onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
+        onKeyPress={(e) => {
+          if (e.key === "Enter") {
+            send({ type: "COMMIT", value: e.target.value });
+          }
+        }}
+        onKeyDown={(e) => {
+          switch (e.key) {
+            case "Escape":
+              send("BLUR");
+              break;
+            case "ArrowDown":
+              send("NEXT_RESULT");
+              break;
+            case "ArrowUp":
+              send("PREVIOUS_RESULT");
+              break;
+          }
+        }}
       />
       {state.matches("editing") && (
-        <SearchResults
-          results={results}
-          send={send}
-          currentResult={currentResult}
-        />
+        <SearchResultsWrapper>
+          <SearchResults
+            results={results}
+            send={send}
+            currentResult={currentResult}
+          />
+        </SearchResultsWrapper>
       )}
     </ClassFilterContainer>
   );
@@ -163,11 +236,16 @@ const ClassFilter = ({ name }) => {
 
 const ConfidenceContainer = styled.div``;
 
-const Filter = ({ name }) => {
+const Filter = ({ entry }) => {
+  const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
+    filterLabelIncludeNoConfidence(entry.name)
+  );
+  const theme = useContext(ThemeContext);
+
   return (
     <FilterDiv>
       <div>Labels</div>
-      <ClassFilter name={name} />
+      <ClassFilter name={entry.name} />
       <div>Confidence</div>
       <RangeSlider
         atom={filterLabelConfidenceRange(name)}
@@ -178,7 +256,19 @@ const Filter = ({ name }) => {
       />
       <FormControlLabel
         label={<div>Show no confidence</div>}
-        control={<Checkbox checked={true} />}
+        control={
+          <Checkbox
+            checked={includeNoConfidence}
+            onChange={() => setIncludeNoConfidence(!includeNoConfidence)}
+            style={{
+              color: entry.selected
+                ? entry.color
+                : entry.disabled
+                ? theme.fontDarkest
+                : theme.fontDark,
+            }}
+          />
+        }
       />
     </FilterDiv>
   );

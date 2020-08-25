@@ -153,7 +153,7 @@ const Entry = ({ entry, onCheck }) => {
           />
         }
       />
-      {expanded && <Filter name={entry.name} type={entry.type} />}
+      {expanded && <Filter entry={entry} />}
     </div>
   );
 };
