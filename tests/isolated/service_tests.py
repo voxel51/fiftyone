@@ -151,12 +151,15 @@ def test_db():
     with cleanup_subprocesses(strict=True):
         db = fos.DatabaseService()
         db.start()
+        # make sure it started a new mongod process
+        assert db.child is not None
+        assert not db.attached
         p = wait_for_subprocess_by_name(MONGOD_EXE_NAME)
         # brief grace period because MultiClientService doesn't stop children
         # immediately
         child = db.child
         db.stop()
-        child.wait(timeout=1)
+        psutil.wait_procs([p, child], timeout=2)
         assert not p.is_running()
         assert MONGOD_EXE_NAME not in get_child_process_names()
 
