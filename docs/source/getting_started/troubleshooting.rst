@@ -1,5 +1,8 @@
-Troubleshooting
-===============
+
+.. _troubleshooting:
+
+Install Troubleshooting
+=======================
 
 .. include:: /substitutions.rst
 .. default-role:: code
