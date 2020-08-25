@@ -57,7 +57,7 @@ The FiftyOne command-line interface.
 
 .. code-block:: text
 
-    fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,app,zoo} ...
+    fiftyone [-h] [-v] [--all-help] {quickstart,config,constants,convert,datasets,app,zoo} ...
 
 **Arguments**
 
