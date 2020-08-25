@@ -320,7 +320,7 @@ class FilterField(ViewStage):
         # a `Classification` field) whose `label` is "cat"
         #
 
-        stage = FilterField("predictions", F.label == "cat")
+        stage = FilterField("predictions", F("label") == "cat")
         view = dataset.add_stage(stage)
 
         #
@@ -328,7 +328,7 @@ class FilterField(ViewStage):
         # a `Classification` field) whose `confidence` is greater than 0.8
         #
 
-        stage = FilterField("predictions", F.confidence > 0.8)
+        stage = FilterField("predictions", F("confidence") > 0.8)
         view = dataset.add_stage(stage)
 
     Args:
@@ -458,7 +458,7 @@ class FilterClassifications(_FilterListField):
         # `confidence` greater than 0.8
         #
 
-        stage = FilterClassifications("predictions", F.confidence > 0.8)
+        stage = FilterClassifications("predictions", F("confidence") > 0.8)
         view = dataset.add_stage(stage)
 
         #
@@ -467,7 +467,7 @@ class FilterClassifications(_FilterListField):
         #
 
         stage = FilterClassifications(
-            "predictions", F.label.is_in(["cat", "dog"])
+            "predictions", F("label").is_in(["cat", "dog"])
         )
         view = dataset.add_stage(stage)
 
@@ -510,7 +510,7 @@ class FilterDetections(_FilterListField):
         # is greater than 0.8
         #
 
-        stage = FilterDetections("predictions", F.confidence > 0.8)
+        stage = FilterDetections("predictions", F("confidence") > 0.8)
         view = dataset.add_stage(stage)
 
         #
@@ -519,7 +519,7 @@ class FilterDetections(_FilterListField):
         #
 
         stage = FilterDetections(
-            "predictions", F.label.is_in(["cat", "dog"])
+            "predictions", F("label").is_in(["cat", "dog"])
         )
         view = dataset.add_stage(stage)
 
@@ -529,7 +529,7 @@ class FilterDetections(_FilterListField):
         #
 
         # bbox is in [top-left-x, top-left-y, width, height] format
-        bbox_area = F.bounding_box[2] * F.bounding_box[3]
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
         stage = FilterDetections("predictions", bbox_area < 0.2)
         view = dataset.add_stage(stage)
@@ -616,7 +616,7 @@ class Match(ViewStage):
         # Only include samples whose `filepath` ends with ".jpg"
         #
 
-        stage = Match(F.filepath.ends_with(".jpg"))
+        stage = Match(F("filepath").ends_with(".jpg"))
         view = dataset.add_stage(stage)
 
         #
@@ -624,7 +624,7 @@ class Match(ViewStage):
         # `Classification` field) has `label` of "cat"
         #
 
-        stage = Match(F.predictions.label == "cat"))
+        stage = Match(F("predictions").label == "cat"))
         view = dataset.add_stage(stage)
 
         #
@@ -632,7 +632,7 @@ class Match(ViewStage):
         # `Detections` field) has at least 5 detections
         #
 
-        stage = Match(F.predictions.detections.length() >= 5)
+        stage = Match(F("predictions").detections.length() >= 5)
         view = dataset.add_stage(stage)
 
         #
@@ -642,7 +642,7 @@ class Match(ViewStage):
         #
 
         # bbox is in [top-left-x, top-left-y, width, height] format
-        pred_bbox = F.predictions.detections.bounding_box
+        pred_bbox = F("predictions.detections.bounding_box")
         pred_bbox_area = pred_bbox[2] * pred_bbox[3]
 
         stage = Match((pred_bbox_area < 0.2).length() > 0)
@@ -1132,7 +1132,7 @@ class SortBy(ViewStage):
         #
 
         # bbox is in [top-left-x, top-left-y, width, height] format
-        pred_bbox = F.predictions.detections.bounding_box
+        pred_bbox = F("predictions.detections.bounding_box")
         pred_bbox_area = pred_bbox[2] * pred_bbox[3]
 
         stage = SortBy((pred_bbox_area < 0.2).length())
