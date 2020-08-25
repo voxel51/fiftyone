@@ -78,6 +78,13 @@ class IPCServer(socketserver.TCPServer):
         thread.start()
         return server
 
+    # backport for Python 3.5 - these were added in Python 3.6
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.server_close()
+
 
 class IPCRequestHandler(socketserver.StreamRequestHandler):
     def handle(self):
