@@ -130,9 +130,7 @@ export const labelFilters = selector({
   key: "labelFilters",
   get: ({ get }) => {
     const labels = get(atoms.activeLabels);
-    let r = get(atoms.filterLabelConfidenceRange("real"));
     const filters = {};
-    console.log("up", r);
     for (const label in labels) {
       const range = get(atoms.filterLabelConfidenceRange(label));
       const none = get(atoms.filterLabelIncludeNoConfidence(label));

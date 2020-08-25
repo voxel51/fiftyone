@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Slider as SliderUnstyled } from "@material-ui/core";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useSetRecoilState, useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
@@ -35,18 +35,17 @@ const Slider = styled(SliderUnstyled)`
 `;
 
 const RangeSlider = ({ name, ...rest }) => {
-  const [value, setValue] = useRecoilState(filterLabelConfidenceRange(name));
-  const [intValue, setIntValue] = useState([0, 1]);
+  const setValue = useSetRecoilState(filterLabelConfidenceRange(name));
+  const [localValue, setLocalValue] = useState([0, 1]);
 
   return (
     <SliderContainer>
       <Slider
-        value={intValue}
-        onChange={(e, v) => setIntValue([v[0], v[1]].sort())}
+        value={[...localValue]}
+        onChange={(e, v) => setLocalValue([...v])}
         onChangeCommitted={(e, v) => {
-          console.log("e");
-          setIntValue([v[0], v[1]].sort());
-          setValue([v[0], v[1]].sort());
+          setLocalValue([...v]);
+          setValue([...v]);
         }}
         valueLabelDisplay="auto"
         aria-labelledby="range-slider"
@@ -250,7 +249,7 @@ const Filter = ({ entry }) => {
       <ClassFilter name={entry.name} />
       <div>Confidence</div>
       <RangeSlider
-        name={name}
+        name={entry.name}
         title={"Confidence"}
         min={0}
         max={1}
