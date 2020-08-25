@@ -50,10 +50,10 @@ App. The dataset contains ground truth labels in a `ground_truth` field and
 predictions from an off-the-shelf detector in a `predictions` field. It also
 has a `uniqueness` field that indexes the dataset by visual uniqueness.
 
-Here's some things you can do to explore the dataset!
+Here are some things you can do to explore the dataset:
 
 
-(a) Double-click on an image to explore its labels in more detail.
+(a) Double-click on an image to explore its labels in more detail
 
 
 (b) Sort the dataset by uniqueness:
@@ -66,7 +66,7 @@ Here's some things you can do to explore the dataset!
     Try setting `reverse` to `False` to show the *least unique* images first.
 
 
-(c) Filter predictions by confidence.
+(c) Filter predictions by confidence
 
     The predictions field is noisy, but you can use FiftyOne to filter them!
 
