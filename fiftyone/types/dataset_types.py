@@ -197,7 +197,7 @@ class FiftyOneImageClassificationDataset(ImageClassificationDataset):
     ``classes`` field is provided, then the ``target`` values directly store
     the label strings.
 
-    The target value in ``labels`` for unlabeled images will be ``None``.
+    The target value in ``labels`` for unlabeled images is ``None``.
     """
 
     def get_dataset_importer_cls(self):
@@ -228,7 +228,7 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
                 ...
             ...
 
-    Unlabeled images will be stored in a subdirectory named ``_unlabeled``.
+    Unlabeled images are stored in a subdirectory named ``_unlabeled``.
     """
 
     def get_dataset_importer_cls(self):
@@ -271,8 +271,7 @@ class TFImageClassificationDataset(ImageClassificationDataset):
             "label": tf.io.FixedLenFeature([], tf.string),
         }
 
-    For unlabeled samples, the TFRecords will not contain ``"label"``
-    features.
+    For unlabeled samples, the TFRecords do not contain ``label`` features.
     """
 
     def get_dataset_importer_cls(self):
@@ -337,7 +336,7 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
     ``classes`` field is provided, then the ``target`` values directly store
     the label strings.
 
-    The target value in ``labels`` for unlabeled images will be ``None``.
+    The target value in ``labels`` for unlabeled images is ``None``.
     """
 
     def get_dataset_importer_cls(self):
@@ -410,7 +409,7 @@ class COCODetectionDataset(ImageDetectionDataset):
             ]
         }
 
-    For unlabeled datasets, ``labels.json`` will not contain an ``annotations``
+    For unlabeled datasets, ``labels.json`` does not contain an ``annotations``
     field.
     """
 
@@ -488,7 +487,7 @@ class VOCDetectionDataset(ImageDetectionDataset):
     When writing datasets in this format, samples with no values for certain
     attributes (like ``pose`` in the above example) are left empty.
 
-    Unlabeled images will have no corresponding file in ``labels/``.
+    Unlabeled images have no corresponding file in ``labels/``.
     """
 
     def get_dataset_importer_cls(self):
@@ -569,7 +568,7 @@ class KITTIDetectionDataset(ImageDetectionDataset):
     When reading datasets of this type, all columns after the four ``bbox``
     columns may be omitted.
 
-    Unlabeled images will have no corresponding file in ``labels/``.
+    Unlabeled images have no corresponding file in ``labels/``.
     """
 
     def get_dataset_importer_cls(self):
@@ -624,7 +623,7 @@ class TFObjectDetectionDataset(ImageDetectionDataset):
             "image/object/class/label": tf.io.FixedLenSequenceFeature([], tf.int64, allow_missing=True)
         }
 
-    The TFRecords for unlabeled samples will not contain ``"image/object/*"``
+    The TFRecords for unlabeled samples do not contain ``image/object/*``
     features.
     """
 
@@ -698,8 +697,7 @@ class CVATImageDataset(ImageDetectionDataset):
             </image>
         </annotations>
 
-    Unlabeled images will have no corresponding ``image`` tag in
-    ``labels.xml``.
+    Unlabeled images have no corresponding ``image`` tag in ``labels.xml``.
     """
 
     def get_dataset_importer_cls(self):
@@ -753,7 +751,7 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
     format. See https://voxel51.com/docs/api/#types-imagelabels for more
     details.
 
-    For unlabeled images, an empty ``eta.core.image.ImageLabels`` file will be
+    For unlabeled images, an empty ``eta.core.image.ImageLabels`` file is
     stored.
     """
 
@@ -817,7 +815,7 @@ class BDDDataset(ImageLabelsDataset):
             ...
         ]
 
-    Unlabeled images will have no corresponding entry in ``labels.json``.
+    Unlabeled images have no corresponding entry in ``labels.json``.
     """
 
     def get_dataset_importer_cls(self):
