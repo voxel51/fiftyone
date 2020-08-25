@@ -40,6 +40,16 @@ def wait_for_subprocess_by_name(name, **kwargs):
     return wait_for_subprocess(lambda p: p.name() == name, **kwargs)
 
 
+def wait_for_mongod_exit(timeout=1):
+    try:
+        mongod_process = wait_for_subprocess_by_name(
+            MONGOD_EXE_NAME, timeout=0.01
+        )
+    except RuntimeError:
+        return
+    mongod_process.wait(timeout=timeout)
+
+
 @retrying.retry(
     wait_fixed=500,
     stop_max_delay=5000,
@@ -126,6 +136,7 @@ class InteractiveSubprocess(object):
 
 
 _start_db_snippet = """
+import fiftyone as fo
 import fiftyone.core.service as fos
 db = fos.DatabaseService()
 db.start()
@@ -243,3 +254,41 @@ def test_db_multi_client_cleanup():
         finally:
             ip1.stop()
             ip2.stop()
+
+
+def test_db_cleanup():
+    def _get_new_datasets(new_datasets, old_datasets):
+        new_datasets = set(new_datasets) - set(old_datasets)
+        assert len(new_datasets) == 1
+        return list(new_datasets)[0]
+
+    with cleanup_subprocesses(strict=True):
+        with InteractiveSubprocess() as ip:
+            ip.run_code(_start_db_snippet)
+            orig_datasets = set(ip.run_code(_list_datasets_snippet))
+            ip.run_code("d1 = fo.Dataset()")
+            dataset_nonpersistent = _get_new_datasets(
+                ip.run_code(_list_datasets_snippet), orig_datasets
+            )
+            ip.run_code("d2 = fo.Dataset(persistent=True)")
+            dataset_persistent = _get_new_datasets(
+                ip.run_code(_list_datasets_snippet),
+                orig_datasets | {dataset_nonpersistent},
+            )
+
+        wait_for_mongod_exit()  # runs DatabaseService.cleanup()
+
+        with InteractiveSubprocess() as ip:
+            ip.run_code(_start_db_snippet)
+            cur_datasets = set(ip.run_code(_list_datasets_snippet))
+            assert cur_datasets == orig_datasets | {dataset_persistent}
+            ip.run_code("d = fo.load_dataset(%r)" % dataset_persistent)
+            ip.run_code("d.persistent = False")
+            ip.run_code("d.save()")
+
+        wait_for_mongod_exit()  # runs DatabaseService.cleanup()
+
+        with InteractiveSubprocess() as ip:
+            ip.run_code(_start_db_snippet)
+            cur_datasets = set(ip.run_code(_list_datasets_snippet))
+            assert cur_datasets == orig_datasets
