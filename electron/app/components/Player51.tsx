@@ -45,7 +45,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
     const field = sample[sampleField];
     if (field === null || field === undefined) continue;
     if (["Classification", "Detection"].includes(field._cls)) {
-      if (!filter[field.label](field)) {
+      if (!filter[sampleField](field)) {
         continue;
       }
       const [key, fn] = PARSERS[field._cls];
@@ -54,7 +54,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
         colorMapping[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
-        if (!filter[field.label](object)) {
+        if (!filter[sampleField](object)) {
           continue;
         }
         const [key, fn] = PARSERS[object._cls];
@@ -83,7 +83,7 @@ export default ({
   fieldSchema = {},
   filter,
 }) => {
-  const [overlay, playerColorMap] = loadOverlay(
+  let [overlay, playerColorMap] = loadOverlay(
     sample,
     colorMapping,
     fieldSchema,
@@ -106,6 +106,13 @@ export default ({
     ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
     : {};
   useEffect(() => {
+    let [overlay, playerColorMap] = loadOverlay(
+      sample,
+      colorMapping,
+      fieldSchema,
+      filter
+    );
+    console.log(overlay.objects.objects.length);
     if (!initLoad) {
       if (thumbnail) {
         player.thumbnailMode();
@@ -117,6 +124,6 @@ export default ({
       player.renderer.handleOverlay(overlay);
       player.renderer.processFrame(activeLabels);
     }
-  }, [overlay, activeLabels]);
+  }, [filter, overlay, activeLabels]);
   return <div id={id} style={style} {...props} />;
 };

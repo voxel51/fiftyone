@@ -134,9 +134,13 @@ export const labelFilters = selector({
     for (const label in labels) {
       const range = get(atoms.filterLabelConfidenceRange(label));
       const none = get(atoms.filterLabelIncludeNoConfidence(label));
+      const include = get(atoms.filterIncludeLabels(label));
       filters[label] = (s) => {
-        console.log(range, none, "AAAAA");
-        return true;
+        const inRange = range[0] <= s.confidence && s.confidence <= range[1];
+        const noConfidence = none && s.confidence === undefined;
+        const isIncluded = include.length === 0 || include.includes(s.label);
+        console.log((inRange || noConfidence) && isIncluded);
+        return (inRange || noConfidence) && isIncluded;
       };
     }
     return filters;

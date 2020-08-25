@@ -31,13 +31,18 @@ export const currentSamples = atom({
   default: [],
 });
 
+export const filterIncludeLabels = atomFamily({
+  key: "filterIncludeLabels",
+  default: [],
+});
+
 export const filterLabelConfidenceRange = atomFamily({
   key: "filterLabelConfidenceRange",
   default: [0, 1],
 });
 
 export const filterLabelIncludeNoConfidence = atomFamily({
-  key: "filterLabelNoConfidence",
+  key: "filterLabelIncludeNoConfidence",
   default: true,
 });
 
