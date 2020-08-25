@@ -30,9 +30,9 @@ Installing FiftyOne
 
 .. note::
 
-  FiftyOne is rapidly growing.
-  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  so we can keep you posted on new features as they come out!
+    FiftyOne is rapidly growing.
+    `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
+    so we can keep you posted on new features as they come out!
 
 To install FiftyOne in a virtual environment, ensure you have activated any
 virtual environment that you are using, then run:
@@ -48,17 +48,29 @@ your virtual environment by importing the `fiftyone` package:
 
 .. code-block:: text
 
-   $ python
-   Python 3.6.9 (default, Apr 18 2020, 01:56:04)
-   [GCC 8.4.0] on linux
-   Type "help", "copyright", "credits" or "license" for more information.
-   >>>
-   >>> import fiftyone as fo
-   >>>
+    $ python
+    Python 3.6.9 (default, Apr 18 2020, 01:56:04)
+    [GCC 8.4.0] on linux
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>>
+    >>> import fiftyone as fo
+    >>>
 
 A successful installation of FiftyOne should result in no output when
-`fiftyone` is imported. See below for help with troubleshooting error
-messages that you may encounter.
+`fiftyone` is imported.
+
+.. note::
+
+    Dive right into FiftyOne by running the quickstart! Running the command
+    below from a shell will download a small dataset, launch the App,
+    and print some suggestions for exploring the dataset!
+
+    .. code-block:: text
+
+        fiftyone quickstart
+
+If you run into any installation issues, review the suggestions below or check
+the :ref:`troubleshooting page <troubleshooting>` for more details.
 
 **Mac users:**
 
