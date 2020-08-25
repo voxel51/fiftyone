@@ -85,8 +85,9 @@ jobs:
         run: |
           pytest tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/
       - name: Run isolated tests
+        if: success() || failure()
         run: |
-          find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 pytest --verbose
+          find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
 
   publish:
     needs: [build, test]
