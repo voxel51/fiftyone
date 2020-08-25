@@ -45,3 +45,9 @@ def drop_database():
     """Drops the database."""
     _connect()
     _client.drop_database(_DEFAULT_DATABASE)
+
+
+def sync_database():
+    """Syncs all pending database writes to disk."""
+    if _client is not None:
+        _client.admin.command("fsync")

@@ -294,6 +294,7 @@ class DatabaseService(MultiClientService):
         food.set_default_port(port)
         food.get_db_conn()
         fod.delete_non_persistent_datasets()
+        food.sync_database()
 
     @staticmethod
     def find_mongod():
