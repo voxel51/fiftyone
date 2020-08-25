@@ -240,6 +240,27 @@ class SampleCollection(object):
     def exclude(self, sample_ids):
         """Excludes the samples with the given IDs from the collection.
 
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Exclude a single sample from a dataset
+            #
+
+            view = dataset.exclude("5f3c298768fd4d3baf422d2f")
+
+            #
+            # Exclude a list of samples from a dataset
+            #
+
+            view = dataset.exclude([
+                "5f3c298768fd4d3baf422d2f",
+                "5f3c298768fd4d3baf422d30"
+            ])
+
         Args:
             sample_ids: a sample ID or iterable of sample IDs
 
@@ -253,7 +274,25 @@ class SampleCollection(object):
         """Excludes the fields with the given names from the returned
         :class:`fiftyone.core.sample.SampleView` instances.
 
-        Note: Default fields cannot be excluded.
+        Note that default fields cannot be excluded.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Exclude a field from all samples in a dataset
+            #
+
+            view = dataset.exclude_fields("predictions")
+
+            #
+            # Exclude a list of fields from all samples in a dataset
+            #
+
+            view = dataset.exclude_fields(["ground_truth", "predictions"])
 
         Args:
             field_names: a field name or iterable of field names to exclude
@@ -267,6 +306,19 @@ class SampleCollection(object):
     def exists(self, field):
         """Returns a view containing the samples that have a non-``None`` value
         for the given field.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include samples that have a value in their `predictions`
+            # field
+            #
+
+            view = dataset.exists("predictions")
 
         Args:
             field: the field
@@ -282,6 +334,28 @@ class SampleCollection(object):
 
         Values of ``field`` for which ``filter`` returns ``False`` are
         replaced with ``None``.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include classifications in the `predictions` field (assume
+            # it is a `Classification` field) whose `label` is "cat"
+            #
+
+            view = dataset.filter_field("predictions", F("label") == "cat")
+
+            #
+            # Only include classifications in the `predictions` field (assume
+            # it is a `Classification` field) whose `confidence` is greater
+            # than 0.8
+            #
+
+            view = dataset.filter_field("predictions", F("confidence") > 0.8)
 
         Args:
             field: the field to filter
@@ -302,6 +376,31 @@ class SampleCollection(object):
         Elements of ``<field>.classifications`` for which ``filter`` returns
         ``False`` are omitted from the field.
 
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include classifications in the `predictions` field whose
+            # `confidence` greater than 0.8
+            #
+
+            view = dataset.filter_classifications(
+                "predictions", F("confidence") > 0.8
+            )
+
+            #
+            # Only include classifications in the `predictions` field whose
+            # `label` is "cat" or "dog"
+            #
+
+            view = dataset.filter_classifications(
+                "predictions", F("label").is_in(["cat", "dog"])
+            )
+
         Args:
             field: the :class:`fiftyone.core.labels.Classifications` field
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -321,6 +420,41 @@ class SampleCollection(object):
         Elements of ``<field>.detections`` for which ``filter`` returns
         ``False`` are omitted from the field.
 
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include detections in the `predictions` field whose
+            # `confidence` is greater than 0.8
+            #
+
+            view = dataset.filter_detections(
+                "predictions", F("confidence") > 0.8
+            )
+
+            #
+            # Only include detections in the `predictions` field whose `label`
+            # is "cat" or "dog"
+            #
+
+            view = dataset.filter_detections(
+                "predictions", F("label").is_in(["cat", "dog"])
+            )
+
+            #
+            # Only include detections in the `predictions` field whose bounding
+            # box area is smaller than 0.2
+            #
+
+            # bbox is in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            view = dataset.filter_detections("predictions", bbox_area < 0.2)
+
         Args:
             field: the :class:`fiftyone.core.labels.Detections` field
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -335,6 +469,18 @@ class SampleCollection(object):
     @view_stage
     def limit(self, limit):
         """Returns a view with at most the given number of samples.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include the first 10 samples in the view
+            #
+
+            view = dataset.limit(10)
 
         Args:
             limit: the maximum number of samples to return. If a non-positive
@@ -351,6 +497,45 @@ class SampleCollection(object):
 
         Samples for which ``filter`` returns ``False`` are omitted.
 
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include samples whose `filepath` ends with ".jpg"
+            #
+
+            view = dataset.match(F("filepath").ends_with(".jpg"))
+
+            #
+            # Only include samples whose `predictions` field (assume it is a
+            # `Classification` field) has `label` of "cat"
+            #
+
+            view = dataset.match(F("predictions").label == "cat"))
+
+            #
+            # Only include samples whose `predictions` field (assume it is a
+            # `Detections` field) has at least 5 detections
+            #
+
+            view = dataset.match(F("predictions").detections.length() >= 5)
+
+            #
+            # Only include samples whose `predictions` field (assume it is a
+            # `Detections` field) has at least one detection with area smaller
+            # than 0.2
+            #
+
+            # bbox is in [top-left-x, top-left-y, width, height] format
+            pred_bbox = F("predictions.detections.bounding_box")
+            pred_bbox_area = pred_bbox[2] * pred_bbox[3]
+
+            view = dataset.match((pred_bbox_area < 0.2).length() > 0)
+
         Args:
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -364,6 +549,18 @@ class SampleCollection(object):
     @view_stage
     def match_tag(self, tag):
         """Returns a view containing the samples that have the given tag.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include samples that have the "test" tag
+            #
+
+            view = dataset.match_tag("test")
 
         Args:
             tag: a tag
@@ -381,6 +578,19 @@ class SampleCollection(object):
         To match samples that must contain multiple tags, chain multiple
         :meth:`match_tag` or :meth:`match_tags` calls together.
 
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include samples that have either the "test" or "validation"
+            # tag
+            #
+
+            view = dataset.match_tags(["test", "validation"])
+
         Args:
             tags: an iterable of tags
 
@@ -396,6 +606,38 @@ class SampleCollection(object):
         See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
         for more details.
 
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Extract a view containing the 6th through 15th samples in the
+            # dataset
+            #
+
+            view = dataset.mongo([{"$skip": 5}, {"$limit": 10}])
+
+            #
+            # Sort by the number of detections in the `precictions` field of
+            # the samples (assume it is a `Detections` field)
+            #
+
+            view = dataset.mongo([
+                {
+                    "$addFields": {
+                        "_sort_field": {
+                            "$size": {
+                                "$ifNull": ["$predictions.detections", []]
+                            }
+                        }
+                    }
+                },
+                {"$sort": {"_sort_field": -1}},
+                {"$unset": "_sort_field"}
+            ])
+
         Args:
             pipeline: a MongoDB aggregation pipeline (list of dicts)
 
@@ -407,6 +649,33 @@ class SampleCollection(object):
     @view_stage
     def select(self, sample_ids):
         """Returns a view containing only the samples with the given IDs.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Select the samples with the given IDs from the dataset
+            #
+
+            view = dataset.select([
+                "5f3c298768fd4d3baf422d34",
+                "5f3c298768fd4d3baf422d35",
+                "5f3c298768fd4d3baf422d36",
+            ])
+
+            #
+            # Create a view containing the currently selected samples in the
+            # App
+            #
+
+            session = fo.launch_app(dataset=dataset)
+
+            # Select samples in the App...
+
+            view = dataset.select(session.selected)
 
         Args:
             sample_ids: a sample ID or iterable of sample IDs
@@ -422,8 +691,27 @@ class SampleCollection(object):
         present in the returned :class:`fiftyone.core.sample.SampleView`
         instances. All other fields are excluded.
 
-        Note: Default sample fields are always selected and will be added if
-        not included in ``field_names``.
+        Note that default sample fields are always selected and will be added
+        if not included in ``field_names``.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Include only the default fields on each sample
+            #
+
+            view = dataset.select_fields()
+
+            #
+            # Include only the `ground_truth` field (and the default fields) on
+            # each sample
+            #
+
+            view = dataset.select_fields("ground_truth")
 
         Args:
             field_names (None): a field name or iterable of field names to
@@ -439,6 +727,25 @@ class SampleCollection(object):
     def shuffle(self, seed=None):
         """Randomly shuffles the samples in the collection.
 
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Return a view that contains a randomly shuffled version of the
+            # samples in the dataset
+            #
+
+            view = dataset.shuffle()
+
+            #
+            # Shuffle the samples with a set random seed
+            #
+
+            view = dataset.shuffle(seed=51)
+
         Args:
             seed (None): an optional random seed to use when shuffling the
                 samples
@@ -451,6 +758,18 @@ class SampleCollection(object):
     @view_stage
     def skip(self, skip):
         """Omits the given number of samples from the head of the collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Omit the first 10 samples from the dataset
+            #
+
+            view = dataset.skip(10)
 
         Args:
             skip: the number of samples to skip. If a non-positive number is
@@ -471,6 +790,32 @@ class SampleCollection(object):
         `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
         that defines the quantity to sort by.
 
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Sorts the samples in descending order by the `confidence` of
+            # their `predictions` field (assume it is a `Classification` field)
+            #
+
+            view = dataset.sort_by("predictions.confidence", reverse=True)
+
+            #
+            # Sorts the samples in ascending order by the number of detections
+            # in their `predictions` field (assume it is a `Detections` field)
+            # whose bounding box area is at most 0.2
+            #
+
+            # bbox is in [top-left-x, top-left-y, width, height] format
+            pred_bbox = F("predictions.detections.bounding_box")
+            pred_bbox_area = pred_bbox[2] * pred_bbox[3]
+
+            view = dataset.sort_by((pred_bbox_area < 0.2).length())
+
         Args:
             field_or_expr: the field or expression to sort by
             reverse (False): whether to return the results in descending order
@@ -483,6 +828,24 @@ class SampleCollection(object):
     @view_stage
     def take(self, size, seed=None):
         """Randomly samples the given number of samples from the collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Take 10 random samples from the dataset
+            #
+
+            view = dataset.take(10)
+
+            #
+            # Take 10 random samples from the dataset with a set seed
+            #
+
+            view = dataset.take(10, seed=51)
 
         Args:
             size: the number of samples to return. If a non-positive number is
