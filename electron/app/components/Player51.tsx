@@ -34,7 +34,7 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colorMapping, fieldSchema) => {
+const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
@@ -45,12 +45,18 @@ const loadOverlay = (sample, colorMapping, fieldSchema) => {
     const field = sample[sampleField];
     if (field === null || field === undefined) continue;
     if (["Classification", "Detection"].includes(field._cls)) {
+      if (!filter[field.label](field)) {
+        continue;
+      }
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
       playerColorMap[`${sampleField}:${field.label}`] =
         colorMapping[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
+        if (!filter[field.label](object)) {
+          continue;
+        }
         const [key, fn] = PARSERS[object._cls];
         imgLabels[key][key].push(fn(sampleField, object));
         playerColorMap[`${sampleField}:${object.label}`] =
@@ -75,11 +81,13 @@ export default ({
   onLoad = () => {},
   activeLabels,
   fieldSchema = {},
+  filter,
 }) => {
   const [overlay, playerColorMap] = loadOverlay(
     sample,
     colorMapping,
-    fieldSchema
+    fieldSchema,
+    filter
   );
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);

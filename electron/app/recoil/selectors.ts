@@ -132,12 +132,12 @@ export const labelFilters = selector({
     const labels = get(atoms.activeLabels);
     const filters = {};
     for (const label in labels) {
-      filters[label] = [
-        (s) => {
-          console.log(s);
-          return true;
-        },
-      ];
+      const range = get(atoms.filterLabelConfidenceRange(label));
+      const none = get(atoms.filterLabelIncludeNoConfidence(label));
+      filters[label] = (s) => {
+        console.log(range, none, "AAAAA");
+        return true;
+      };
     }
     return filters;
   },

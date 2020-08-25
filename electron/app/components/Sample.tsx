@@ -23,7 +23,7 @@ const Sample = ({
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
   const { activeLabels, activeTags, activeOther } = displayProps;
-  const filters = useRecoilValue(selectors.labelFilters);
+  const filter = useRecoilValue(selectors.labelFilters);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const handleClick = () => {
@@ -49,7 +49,7 @@ const Sample = ({
       return null;
     }
 
-    if (!filters[name].every((filter) => filter(value))) {
+    if (!filter[name](value)) {
       return null;
     }
     return (
@@ -94,6 +94,7 @@ const Sample = ({
         thumbnail={true}
         activeLabels={activeLabels}
         {...eventHandlers}
+        filter={filter}
       />
       <div className="sample-info" {...eventHandlers}>
         {Object.keys(sample).sort().map(renderLabel)}
