@@ -7,12 +7,14 @@ FiftyOne Zoo Datasets provided natively by the library.
 """
 import logging
 import os
+import shutil
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.types as fot
+import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
 
@@ -37,6 +39,7 @@ class QuickstartDataset(FiftyOneDataset):
     """
 
     _GDRIVE_ID = "1Clg45_r7ApaSypqs9X-UzFezvnfHd5Db"
+    _DIR_NAME = "quickstart"
 
     @property
     def name(self):
@@ -48,27 +51,19 @@ class QuickstartDataset(FiftyOneDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
         # Download dataset
-        tmp_zip_path = os.path.join(scratch_dir, "quickstart.zip")
-        logger.info("Downloading quickstart dataset to '%s'", tmp_zip_path)
+        tmp_zip_path = os.path.join(scratch_dir, "dataset.zip")
+        logger.info("Downloading dataset to '%s'", tmp_zip_path)
         etaw.download_google_drive_file(self._GDRIVE_ID, path=tmp_zip_path)
 
         # Extract zip
         logger.info("Extracting dataset to '%s'", dataset_dir)
-        etau.extract_zip(tmp_zip_path, outdir=dataset_dir, delete_zip=True)
-        # @todo fix nested dir issue...
+        etau.extract_zip(tmp_zip_path, delete_zip=True)
+        _move_dir(os.path.join(scratch_dir, self._DIR_NAME), dataset_dir)
 
-        # Get classes, if possible
+        # Get metadata
         logger.info("Parsing dataset metadata")
-        metadata_path = os.path.join(dataset_dir, "metadata.json")
-        if os.path.isfile(metadata_path):
-            metadata = etas.load_json(metadata_path)
-            classes = metadata.get("info", {}).get("classes", None)
-        else:
-            classes = None
-
-        # Compute number of samples
-        data_dir = os.path.join(dataset_dir, "data")
-        num_samples = len(etau.list_files(data_dir))
+        classes = foud.FiftyOneDatasetImporter.get_classes(dataset_dir)
+        num_samples = foud.FiftyOneDatasetImporter.get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
         dataset_type = fot.FiftyOneDataset()
@@ -78,3 +73,8 @@ class QuickstartDataset(FiftyOneDataset):
 AVAILABLE_DATASETS = {
     "quickstart": QuickstartDataset,
 }
+
+
+def _move_dir(src, dst):
+    for f in os.listdir(src):
+        shutil.move(os.path.join(src, f), dst)
