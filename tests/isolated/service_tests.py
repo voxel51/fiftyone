@@ -132,7 +132,9 @@ class InteractiveSubprocess(object):
         retry_on_exception=lambda e: isinstance(e, IOError),
     )
     def run_code(self, code):
-        return fosu.send_ipc_message(self.process, code)
+        return fosu.send_ipc_message(
+            fosu.normalize_wrapper_process(self.process), code
+        )
 
 
 _start_db_snippet = """
