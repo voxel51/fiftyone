@@ -144,6 +144,15 @@ def ensure_torch(error_msg=None):
     _ensure_package("torchvision", error_msg=error_msg)
 
 
+def ensure_pycocotools():
+    """Verifies that pycocotools is installed on the host machine.
+
+    Raises:
+        ImportError: if ``pycocotools`` could not be imported
+    """
+    _ensure_package("pycocotools")
+
+
 def _ensure_package(package_name, min_version=None, error_msg=None):
     has_min_ver = min_version is not None
 

@@ -22,9 +22,12 @@ from builtins import *
 import logging
 
 import numpy as np
-from pycocotools import mask as mask_utils
 
 import fiftyone.core.utils as fou
+
+mask_utils = fou.lazy_import(
+    "pycocotools.mask", callback=fou.ensure_pycocotools
+)
 
 
 logger = logging.getLogger(__name__)
