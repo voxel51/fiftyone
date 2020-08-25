@@ -33,17 +33,17 @@ export const currentSamples = atom({
 
 export const filterIncludeLabels = atomFamily({
   key: "filterIncludeLabels",
-  default: [],
+  default: () => [],
 });
 
 export const filterLabelConfidenceRange = atomFamily({
   key: "filterLabelConfidenceRange",
-  default: [0, 1],
+  default: () => [0, 1],
 });
 
 export const filterLabelIncludeNoConfidence = atomFamily({
   key: "filterLabelIncludeNoConfidence",
-  default: true,
+  default: () => true,
 });
 
 export const activeLabels = atom({

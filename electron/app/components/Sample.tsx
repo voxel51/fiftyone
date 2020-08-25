@@ -24,6 +24,7 @@ const Sample = ({
   const socket = getSocket(port, "state");
   const { activeLabels, activeTags, activeOther } = displayProps;
   const filter = useRecoilValue(selectors.labelFilters);
+  console.log(filter);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const handleClick = () => {
