@@ -186,21 +186,24 @@ class ClientMonitor(object):
         if not isinstance(message, tuple):
             raise TypeError("Expected tuple, got " + str(type(message)))
         command, arg = message
-        if command == "register":
-            process = psutil.Process(int(arg))
-            with self.cond:
-                if process not in self.clients:
-                    self.clients.add(process)
-                    start_daemon_thread(
-                        target=lambda: self._background_wait(process)
-                    )
+        with lock:
+            if exiting.is_set():
+                raise RuntimeError("service is exiting, cannot connect")
+            if command == "register":
+                process = psutil.Process(int(arg))
+                with self.cond:
+                    if process not in self.clients:
+                        self.clients.add(process)
+                        start_daemon_thread(
+                            target=lambda: self._background_wait(process)
+                        )
+                    return True
+            elif command == "unregister":
+                process = psutil.Process(int(arg))
+                self._notify_exit(process)
                 return True
-        elif command == "unregister":
-            process = psutil.Process(int(arg))
-            self._notify_exit(process)
-            return True
-        else:
-            raise ValueError("Unrecognized command: " + repr(command))
+            else:
+                raise ValueError("Unrecognized command: " + repr(command))
 
 
 if __name__ != "__main__":
