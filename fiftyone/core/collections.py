@@ -653,7 +653,6 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
-            from fiftyone.core.stages import Select
 
             dataset = fo.load_dataset(...)
 
@@ -661,12 +660,11 @@ class SampleCollection(object):
             # Select the samples with the given IDs from the dataset
             #
 
-            stage = Select([
+            view = dataset.select([
                 "5f3c298768fd4d3baf422d34",
                 "5f3c298768fd4d3baf422d35",
                 "5f3c298768fd4d3baf422d36",
             ])
-            view = dataset.add_stage(stage)
 
             #
             # Create a view containing the currently selected samples in the
@@ -677,8 +675,7 @@ class SampleCollection(object):
 
             # Select samples in the App...
 
-            stage = Select(session.selected)
-            view = dataset.add_stage(stage)
+            view = dataset.select(session.selected)
 
         Args:
             sample_ids: a sample ID or iterable of sample IDs
@@ -733,7 +730,6 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
-            from fiftyone.core.stages import Shuffle
 
             dataset = fo.load_dataset(...)
 
