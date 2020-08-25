@@ -238,7 +238,7 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       submitted: () => false,
-                      error: (_, { stage }) => ({
+                      error: (_, { value }) => ({
                         name: "stage",
                         error: `${
                           value === "" ? '""' : value

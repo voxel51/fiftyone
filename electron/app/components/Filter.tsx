@@ -5,6 +5,7 @@ import { useSetRecoilState, useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
+import uuid from "uuid-v4";
 
 import {
   filterLabelConfidenceRange,
@@ -19,8 +20,8 @@ function valuetext(value: number[]) {
 
 const SearchResultsWrapper = styled.div`
   display: block;
-  position: absolute;
-  top: 4.5rem;
+  position: relative;
+  top: -2rem;
 `;
 
 const SliderContainer = styled.div`
@@ -127,10 +128,26 @@ const classFilterMachine = Machine({
         },
       },
       on: {
+        BLUR: {
+          target: "reading",
+        },
         COMMIT: [
           {
-            actions: assign({}),
-            cond: (ctx) => ctx.classes.some((c) => c === ctx.inputValue),
+            actions: [
+              assign({
+                selected: (_, { value }) => value,
+              }),
+            ],
+            cond: ({ classes }, { value }) => classes.some((c) => c === value),
+          },
+          {
+            actions: assign({
+              error: (_, { value }) => ({
+                name: "label",
+                error: `${value === "" ? '""' : value} does not exist`,
+              }),
+              errorId: uuid(),
+            }),
           },
         ],
         CHANGE: {
@@ -153,7 +170,7 @@ const classFilterMachine = Machine({
       actions: [
         assign({
           classes: (_, { classes }) => classes,
-          results: ({ classes, inputValue }) =>
+          results: ({ inputValue }, { classes }) =>
             classes.filter((c) =>
               c.toLowerCase().includes(inputValue.toLowerCase())
             ),
@@ -195,6 +212,7 @@ const ClassFilter = ({ name }) => {
   }, [classes]);
 
   const { inputValue, results, currentResult } = state.context;
+  console.log(state.toStrings());
 
   return (
     <ClassFilterContainer>
@@ -202,6 +220,9 @@ const ClassFilter = ({ name }) => {
         value={inputValue}
         placeholder={"+ add label"}
         onFocus={() => state.matches("reading") && send("EDIT")}
+        onBlur={() =>
+          state.matches("editing.searchResults.notHovering") && send("BLUR")
+        }
         onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
