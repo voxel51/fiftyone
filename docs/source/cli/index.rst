@@ -70,12 +70,38 @@ The FiftyOne command-line interface.
 
     available commands:
       {config,constants,convert,datasets,app,zoo}
+        quickstart          Launch a FiftyOne quickstart.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
         app                 Tools for working with the FiftyOne App.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
+
+.. _cli-fiftyone-quickstart:
+
+FiftyOne quickstart
+-------------------
+
+Launch a FiftyOne quickstart.
+
+.. code-block:: text
+
+    fiftyone quickstart [-h]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help    show this help message and exit
+
+**Examples**
+
+.. code:: shell
+
+    # Launch the quickstart
+    fiftyone quickstart
 
 .. _cli-fiftyone-config:
 
