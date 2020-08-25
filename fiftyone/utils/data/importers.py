@@ -479,6 +479,23 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def get_dataset_info(self):
         return self._metadata.get("info", {})
 
+    @staticmethod
+    def get_classes(dataset_dir):
+        metadata_path = os.path.join(dataset_dir, "metadata.json")
+        if os.path.isfile(metadata_path):
+            metadata = etas.load_json(metadata_path)
+            classes = metadata.get("info", {}).get("classes", None)
+        else:
+            classes = None
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        data_dir = os.path.join(dataset_dir, "data")
+        if not os.path.isdir(data_dir):
+            return 0
+
+        return len(etau.list_files(data_dir))
+
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
     """Importer for a directory of images stored on disk.
