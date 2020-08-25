@@ -83,7 +83,7 @@ jobs:
           pip install pytest tensorflow tensorflow-datasets torch torchvision
       - name: Run tests
         run: |
-          pytest tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/
+          pytest tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/ --ignore tests/utils/
       - name: Run isolated tests
         if: success() || failure()
         run: |
