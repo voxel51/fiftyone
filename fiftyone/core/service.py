@@ -92,6 +92,10 @@ class Service(object):
         raise NotImplementedError("%r must define `command`" % type(self))
 
     @property
+    def env(self):
+        return {}
+
+    @property
     def _service_args(self):
         """Arguments passed to the service entrypoint"""
         if not self.service_name:
@@ -115,7 +119,7 @@ class Service(object):
             + self.command,
             cwd=self.working_dir,
             stdin=subprocess.PIPE,
-            env={**os.environ, "FIFTYONE_DISABLE_SERVICES": "1"},
+            env={**os.environ, "FIFTYONE_DISABLE_SERVICES": "1", **self.env},
         )
 
     def stop(self):
@@ -394,6 +398,11 @@ class AppService(Service):
     service_name = "app"
     working_dir = foc.FIFTYONE_APP_DIR
 
+    def __init__(self, server_port=None):
+        # initialize before start() is called
+        self.server_port = server_port
+        super().__init__()
+
     @property
     def command(self):
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
@@ -414,3 +423,14 @@ class AppService(Service):
                     "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR
                 )
         return args
+
+    @property
+    def env(self):
+        env = {}
+        if self.server_port is not None:
+            env["FIFTYONE_SERVER_PORT"] = str(self.server_port)
+            if foc.DEV_INSTALL:
+                # override port 1212 used by "yarn dev" for hot-reloading
+                # (specifying port 0 doesn't work here)
+                env["PORT"] = str(self.server_port + 1)
+        return env

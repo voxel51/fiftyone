@@ -3,7 +3,7 @@ import { atom } from "recoil";
 
 export const port = atom({
   key: "port",
-  default: 5151,
+  default: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,
 });
 
 export const stateDescription = atom({

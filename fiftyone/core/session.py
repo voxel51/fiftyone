@@ -127,7 +127,7 @@ class Session(foc.HasClient):
             self.dataset = dataset
 
         if not self._remote:
-            self._app_service = fos.AppService()
+            self._app_service = fos.AppService(server_port=port)
             logger.info("App launched")
         else:
             logger.info(
