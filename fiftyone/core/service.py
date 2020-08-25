@@ -162,7 +162,9 @@ class Service(object):
             retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
         )
         def find_port():
-            for child in self.child.children(recursive=True):
+            for child in fosu.normalize_wrapper_process(self.child).children(
+                recursive=True
+            ):
                 for local_port in fosu.get_listening_tcp_ports(child):
                     if port is None or port == local_port:
                         return local_port

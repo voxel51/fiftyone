@@ -30,6 +30,46 @@ def describe_process(process):
     return "Process %i (%s)" % (process.pid, details)
 
 
+def _is_wrapper_process(process):
+    """Returns true if the specified process is a wrapper around a single
+    child process with the same arguments.
+
+    This can happen on Windows when a Python subprocess is created. These
+    processes should generally be ignored.
+
+    Args:
+        process (psutil.Process)
+
+    Returns:
+        bool
+    """
+    try:
+        children = process.children()
+        if len(children) != 1:
+            return False
+        if process.cmdline()[1:] == children[0].cmdline()[1:]:
+            return True
+    except psutil.Error:
+        pass
+    return False
+
+
+def normalize_wrapper_process(process):
+    """Returns the given process, or its child if it is a wrapper processes.
+
+    See _is_wrapper_process() for details.
+
+    Args:
+        process (psutil.Process)
+
+    Returns:
+        psutil.Process
+    """
+    if _is_wrapper_process(process):
+        return process.children()[0]
+    return process
+
+
 def find_processes_by_args(args):
     """Finds a process with the specified command-line arguments.
 
@@ -53,7 +93,8 @@ def find_processes_by_args(args):
                 cmdline = p.info["cmdline"]
                 for i in range(len(cmdline) - len(args) + 1):
                     if cmdline[i : i + len(args)] == args:
-                        yield p
+                        if not _is_wrapper_process(p):
+                            yield p
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
