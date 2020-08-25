@@ -600,7 +600,10 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         }
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
-        labels = etas.load_json(labels_path)
+        if os.path.isfile(labels_path):
+            labels = etas.load_json(labels_path)
+        else:
+            labels = {}
 
         self._classes = labels.get("classes", None)
         self._sample_parser.classes = self._classes
@@ -762,7 +765,10 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         }
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
-        labels = etas.load_json(labels_path)
+        if os.path.isfile(labels_path):
+            labels = etas.load_json(labels_path)
+        else:
+            labels = {}
 
         self._classes = labels.get("classes", None)
         self._sample_parser.classes = self._classes

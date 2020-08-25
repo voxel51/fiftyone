@@ -347,7 +347,7 @@ class SampleCollection(object):
             # it is a `Classification` field) whose `label` is "cat"
             #
 
-            view = dataset.filter_field("predictions", F.label == "cat")
+            view = dataset.filter_field("predictions", F("label") == "cat")
 
             #
             # Only include classifications in the `predictions` field (assume
@@ -355,7 +355,7 @@ class SampleCollection(object):
             # than 0.8
             #
 
-            view = dataset.filter_field("predictions", F.confidence > 0.8)
+            view = dataset.filter_field("predictions", F("confidence") > 0.8)
 
         Args:
             field: the field to filter
@@ -389,7 +389,7 @@ class SampleCollection(object):
             #
 
             view = dataset.filter_classifications(
-                "predictions", F.confidence > 0.8
+                "predictions", F("confidence") > 0.8
             )
 
             #
@@ -398,7 +398,7 @@ class SampleCollection(object):
             #
 
             view = dataset.filter_classifications(
-                "predictions", F.label.is_in(["cat", "dog"])
+                "predictions", F("label").is_in(["cat", "dog"])
             )
 
         Args:
@@ -432,7 +432,9 @@ class SampleCollection(object):
             # `confidence` is greater than 0.8
             #
 
-            view = dataset.filter_detections("predictions", F.confidence > 0.8)
+            view = dataset.filter_detections(
+                "predictions", F("confidence") > 0.8
+            )
 
             #
             # Only include detections in the `predictions` field whose `label`
@@ -440,16 +442,16 @@ class SampleCollection(object):
             #
 
             view = dataset.filter_detections(
-                "predictions", F.label.is_in(["cat", "dog"])
+                "predictions", F("label").is_in(["cat", "dog"])
             )
 
             #
-            # Only include detections in the `predictions` field whose bounding box
-            # area is smaller than 0.2
+            # Only include detections in the `predictions` field whose bounding
+            # box area is smaller than 0.2
             #
 
             # bbox is in [top-left-x, top-left-y, width, height] format
-            bbox_area = F.bounding_box[2] * F.bounding_box[3]
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
             view = dataset.filter_detections("predictions", bbox_area < 0.2)
 
@@ -506,21 +508,21 @@ class SampleCollection(object):
             # Only include samples whose `filepath` ends with ".jpg"
             #
 
-            view = dataset.match(F.filepath.ends_with(".jpg"))
+            view = dataset.match(F("filepath").ends_with(".jpg"))
 
             #
             # Only include samples whose `predictions` field (assume it is a
             # `Classification` field) has `label` of "cat"
             #
 
-            view = dataset.match(F.predictions.label == "cat"))
+            view = dataset.match(F("predictions").label == "cat"))
 
             #
             # Only include samples whose `predictions` field (assume it is a
             # `Detections` field) has at least 5 detections
             #
 
-            view = dataset.match(F.predictions.detections.length() >= 5)
+            view = dataset.match(F("predictions").detections.length() >= 5)
 
             #
             # Only include samples whose `predictions` field (assume it is a
@@ -529,7 +531,7 @@ class SampleCollection(object):
             #
 
             # bbox is in [top-left-x, top-left-y, width, height] format
-            pred_bbox = F.predictions.detections.bounding_box
+            pred_bbox = F("predictions.detections.bounding_box")
             pred_bbox_area = pred_bbox[2] * pred_bbox[3]
 
             view = dataset.match((pred_bbox_area < 0.2).length() > 0)
@@ -651,7 +653,6 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
-            from fiftyone.core.stages import Select
 
             dataset = fo.load_dataset(...)
 
@@ -659,12 +660,11 @@ class SampleCollection(object):
             # Select the samples with the given IDs from the dataset
             #
 
-            stage = Select([
+            view = dataset.select([
                 "5f3c298768fd4d3baf422d34",
                 "5f3c298768fd4d3baf422d35",
                 "5f3c298768fd4d3baf422d36",
             ])
-            view = dataset.add_stage(stage)
 
             #
             # Create a view containing the currently selected samples in the
@@ -675,8 +675,7 @@ class SampleCollection(object):
 
             # Select samples in the App...
 
-            stage = Select(session.selected)
-            view = dataset.add_stage(stage)
+            view = dataset.select(session.selected)
 
         Args:
             sample_ids: a sample ID or iterable of sample IDs
@@ -731,7 +730,6 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
-            from fiftyone.core.stages import Shuffle
 
             dataset = fo.load_dataset(...)
 
@@ -813,7 +811,7 @@ class SampleCollection(object):
             #
 
             # bbox is in [top-left-x, top-left-y, width, height] format
-            pred_bbox = F.predictions.detections.bounding_box
+            pred_bbox = F("predictions.detections.bounding_box")
             pred_bbox_area = pred_bbox[2] * pred_bbox[3]
 
             view = dataset.sort_by((pred_bbox_area < 0.2).length())
