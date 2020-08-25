@@ -61,9 +61,9 @@ A successful installation of FiftyOne should result in no output when
 
 .. note::
 
-    Dive right into FiftyOne by running the quickstart! Running the command
-    below from a shell will download a small dataset, launch the App,
-    and print some suggestions for exploring the dataset!
+    Dive right into FiftyOne by running the command below! It will download a
+    small dataset, launch the App, and print some suggestions for exploring the
+    dataset!
 
     .. code-block:: text
 

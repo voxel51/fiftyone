@@ -37,6 +37,17 @@ FiftyOne requires at least Python 3.5 and pip 19.3. Consult the
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
 
+## Quickstart
+
+Dive right into FiftyOne by running:
+
+```shell
+fiftyone quickstart
+```
+
+This command will download a small dataset, launch the App, and print some
+suggestions for exploring the dataset.
+
 ## Documentation
 
 Full documentation for FiftyOne can be found at
