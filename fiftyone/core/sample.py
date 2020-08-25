@@ -518,7 +518,7 @@ class SampleView(_Sample):
                 self._selected_fields is not None
                 and name not in self._selected_fields
             ):
-                raise NameError(
+                raise AttributeError(
                     "Field '%s' is not selected from this %s"
                     % (name, type(self).__name__)
                 )
@@ -527,7 +527,7 @@ class SampleView(_Sample):
                 self._excluded_fields is not None
                 and name in self._excluded_fields
             ):
-                raise NameError(
+                raise AttributeError(
                     "Field '%s' is excluded from this %s"
                     % (name, type(self).__name__)
                 )

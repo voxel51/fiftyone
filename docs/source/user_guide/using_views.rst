@@ -378,12 +378,12 @@ stages to select or exclude fields from the returned |SampleView|:
     for sample in dataset.select_fields(["tags"]):
         print(sample.tags)     # OKAY: `tags` was selected and thus available
         print(sample.id)       # OKAY: `id` is always available
-        print(sample.filepath) # NameError: `filepath` was not selected
+        print(sample.filepath) # AttributeError: `filepath` was not selected
 
     for sample in dataset.exclude_fields(["tags"]):
         print(sample.id)       # OKAY: `id` is always available
         print(sample.filepath) # OKAY: `filepath` is not excluded
-        print(sample.tags)     # NameError: `tags` was excluded
+        print(sample.tags)     # AttributeError: `tags` was excluded
     )
 
 The :meth:`filter_classifications() <fiftyone.core.view.DatasetView.filter_classifications>`

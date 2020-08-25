@@ -105,37 +105,55 @@ def indent_lines(s, indent=4, skip=0):
     return s
 
 
-def ensure_tf():
+def ensure_tf(error_msg=None):
     """Verifies that TensorFlow is installed on the host machine.
+
+    Args:
+        error_msg (None): an optional custom error message to print
 
     Raises:
         ImportError: if ``tensorflow`` could not be imported
     """
-    _ensure_package("tensorflow")
+    _ensure_package("tensorflow", error_msg=error_msg)
 
 
-def ensure_tfds():
+def ensure_tfds(error_msg=None):
     """Verifies that the ``tensorflow_datasets`` package is installed on the
     host machine.
+
+    Args:
+        error_msg (None): an optional custom error message to print
 
     Raises:
         ImportError: if ``tensorflow_datasets`` could not be imported
     """
-    _ensure_package("tensorflow", min_version="1.15")
-    _ensure_package("tensorflow_datasets")
+    _ensure_package("tensorflow", min_version="1.15", error_msg=error_msg)
+    _ensure_package("tensorflow_datasets", error_msg=error_msg)
 
 
-def ensure_torch():
+def ensure_torch(error_msg=None):
     """Verifies that PyTorch is installed on the host machine.
+
+    Args:
+        error_msg (None): an optional custom error message to print
 
     Raises:
         ImportError: if ``torch`` or ``torchvision`` could not be imported
     """
-    _ensure_package("torch")
-    _ensure_package("torchvision")
+    _ensure_package("torch", error_msg=error_msg)
+    _ensure_package("torchvision", error_msg=error_msg)
 
 
-def _ensure_package(package_name, min_version=None):
+def ensure_pycocotools():
+    """Verifies that pycocotools is installed on the host machine.
+
+    Raises:
+        ImportError: if ``pycocotools`` could not be imported
+    """
+    _ensure_package("pycocotools")
+
+
+def _ensure_package(package_name, min_version=None, error_msg=None):
     has_min_ver = min_version is not None
 
     if has_min_ver:
@@ -148,6 +166,9 @@ def _ensure_package(package_name, min_version=None):
             pkg_str = "%s>=%s" % (package_name, min_version)
         else:
             pkg_str = package_name
+
+        if error_msg is not None:
+            raise ImportError(error_msg) from e
 
         raise ImportError(
             "The requested operation requires that '%s' is installed on your "

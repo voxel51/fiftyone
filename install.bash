@@ -42,6 +42,8 @@ if [[ ! -d "eta" ]]; then
     git clone https://github.com/voxel51/eta
 fi
 cd eta
+git checkout develop
+git pull
 pip install -e .
 if [[ ! -f config.json ]]; then
     echo "Installing default ETA config"

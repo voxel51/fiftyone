@@ -175,7 +175,13 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._labels_path = os.path.join(self.dataset_dir, "labels.xml")
 
-        info, _, cvat_images = load_cvat_image_annotations(self._labels_path)
+        if os.path.isfile(self._labels_path):
+            info, _, cvat_images = load_cvat_image_annotations(
+                self._labels_path
+            )
+        else:
+            info = {}
+            cvat_images = []
 
         self._info = info
 
@@ -575,12 +581,20 @@ class CVATBox(object):
 
         label = d.pop("@label")
 
-        xtl = int(d.pop("@xtl"))
-        ytl = int(d.pop("@ytl"))
-        xbr = int(d.pop("@xbr"))
-        ybr = int(d.pop("@ybr"))
+        xtl = int(round(float(d.pop("@xtl"))))
+        ytl = int(round(float(d.pop("@ytl"))))
+        xbr = int(round(float(d.pop("@xbr"))))
+        ybr = int(round(float(d.pop("@ybr"))))
 
-        attributes = [CVATAttribute(name, value) for name, value in d.items()]
+        attributes = []
+        for name, value in d.items():
+            name = name.lstrip("@")
+            try:
+                value = float(value)
+            except:
+                pass
+
+            attributes.append(CVATAttribute(name, value))
 
         return cls(label, xtl, ytl, xbr, ybr, attributes=attributes)
 
@@ -628,8 +642,7 @@ class CVATBox(object):
         ]
 
         attributes = {
-            a.name: fol.CategoricalAttribute(value=a.value)
-            for a in self.attributes
+            a.name: a.to_fiftyone_attribute() for a in self.attributes
         }
 
         return fol.Detection(
@@ -669,7 +682,28 @@ class CVATAttribute(object):
         Returns:
             an ``eta.core.data.Attribute``
         """
+        if isinstance(self.value, bool):
+            return etad.BooleanAttribute(self.name, self.value)
+
+        if etau.is_numeric(self.value):
+            return etad.NumericAttribute(self.name, self.value)
+
         return etad.CategoricalAttribute(self.name, self.value)
+
+    def to_fiftyone_attribute(self):
+        """Returns a :class:`fiftyone.core.labels.Attribute` representation of
+        the attribute.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Attribute`
+        """
+        if isinstance(self.value, bool):
+            return fol.BooleanAttribute(value=self.value)
+
+        if etau.is_numeric(self.value):
+            return fol.NumericAttribute(value=self.value)
+
+        return fol.CategoricalAttribute(value=self.value)
 
 
 class CVATImageAnnotationWriter(object):

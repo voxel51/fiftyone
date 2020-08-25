@@ -11,6 +11,7 @@ import eta.core.data as etad
 import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
+import eta.core.utils as etau
 
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
@@ -290,7 +291,15 @@ class Detection(ImageLabel):
         # pylint: disable=no-member
         attrs = etad.AttributeContainer()
         for attr_name, attr in self.attributes.items():
-            attrs.add(etad.CategoricalAttribute(attr_name, attr.value))
+            attr_value = attr.value
+            if isinstance(attr_value, bool):
+                _attr = etad.BooleanAttribute(attr_name, attr_value)
+            elif etau.is_numeric(attr_value):
+                _attr = etad.NumericAttribute(attr_name, attr_value)
+            else:
+                _attr = etad.CategoricalAttribute(attr_name, str(attr_value))
+
+            attrs.add(_attr)
 
         return etao.DetectedObject(
             label=label,
