@@ -8,11 +8,13 @@ import time
 
 import psutil
 import pytest
+import retrying
 
 from fiftyone.service.ipc import IPCServer, send_request
 from fiftyone.service.util import (
     find_processes_by_args,
     get_listening_tcp_ports,
+    normalize_wrapper_process,
     send_ipc_message,
 )
 
@@ -124,8 +126,15 @@ def test_find_processes_by_args():
             random_arg,
         ]
     )
+
+    @retrying.retry(stop_max_delay=2000)
+    def _check():
+        assert normalize_wrapper_process(p) in list(
+            find_processes_by_args([random_arg])
+        )
+
     try:
-        assert p in list(find_processes_by_args([random_arg]))
+        _check()
     finally:
         p.kill()
 
