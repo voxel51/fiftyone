@@ -151,9 +151,18 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._data_dir = os.path.join(self.dataset_dir, "data")
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
-        info, classes, images, annotations = load_coco_detection_annotations(
-            labels_path
-        )
+        if os.path.isfile(labels_path):
+            (
+                info,
+                classes,
+                images,
+                annotations,
+            ) = load_coco_detection_annotations(labels_path)
+        else:
+            info = {}
+            classes = None
+            images = {}
+            annotations = None
 
         if classes is not None:
             info["classes"] = classes

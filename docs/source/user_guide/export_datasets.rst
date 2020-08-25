@@ -5,8 +5,9 @@ Exporting FiftyOne Datasets
 .. include:: ../substitutions.rst
 
 FiftyOne provides native support for exporting datasets to disk in a
-variety of :ref:`common formats <Supported formats>`, and it can be easily
-extended to export datasets in :ref:`custom formats <Custom formats>`.
+variety of :ref:`common formats <supported-export-formats>`, and it can be
+easily extended to export datasets in
+:ref:`custom formats <custom-dataset-exporter>`.
 
 Basic recipe
 ------------
@@ -78,6 +79,8 @@ a |DatasetView| into any format of your choice via the basic recipe below.
     Note the `LABEL_FIELD` argument in the above example, which specifies the
     particular label field that you wish to export. This is necessary your
     FiftyOne dataset contains multiple label fields.
+
+.. _supported-export-formats:
 
 Supported formats
 -----------------
@@ -210,7 +213,7 @@ Datasets of this type are exported in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "classes": [
@@ -228,6 +231,8 @@ where `labels.json` is a JSON file in the following format:
 If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
+
+The target value in `labels` for unlabeled images is `None`.
 
 You can export a FiftyOne dataset as an image classification dataset stored on
 disk in the above format as follows:
@@ -291,6 +296,8 @@ Datasets of this type are exported in the following format:
             <image2>.<ext>
             ...
         ...
+
+Unlabeled images are stored in a subdirectory named `_unlabeled`.
 
 You can export a FiftyOne dataset as an image classification directory tree
 stored on disk in the above format as follows:
@@ -360,11 +367,15 @@ following format:
         "depth": tf.io.FixedLenFeature([], tf.int64),
         # Image filename
         "filename": tf.io.FixedLenFeature([], tf.int64),
+        # The image extension
+        "format": tf.io.FixedLenFeature([], tf.string),
         # Encoded image bytes
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
         # Class label string
-        "label": tf.io.FixedLenFeature([], tf.string),
+        "label": tf.io.FixedLenFeature([], tf.string, default_value=""),
     }
+
+For unlabeled samples, the TFRecords do not contain `label` features.
 
 You can export a FiftyOne dataset as a directory of TFRecords in the above
 format as follows:
@@ -464,6 +475,8 @@ If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
+The target value in `labels` for unlabeled images is `None`.
+
 You can export a FiftyOne dataset as an image detection dataset in the above
 format as follows:
 
@@ -525,7 +538,7 @@ Datasets of this type are exported in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "info": {
@@ -570,6 +583,8 @@ where `labels.json` is a JSON file in the following format:
             ...
         ]
     }
+
+For unlabeled datasets, `labels.json` does not contain an `annotations` field.
 
 You can export a FiftyOne dataset as a COCO detection dataset in the above
 format as follows:
@@ -683,6 +698,8 @@ where the labels XML files are in the following format:
 Samples with no values for certain attributes (like `pose` in the above
 example) are left empty.
 
+Unlabeled images have no corresponding file in `labels/`.
+
 You can export a FiftyOne dataset as a VOC detection dataset in the above
 format as follows:
 
@@ -785,6 +802,8 @@ The `default` column above indicates the default value that will be used when
 writing datasets in this type whose samples do not contain the necessary
 field(s).
 
+Unlabeled images have no corresponding file in `labels/`.
+
 You can export a FiftyOne dataset as a KITTI detection dataset in the above
 format as follows:
 
@@ -880,6 +899,8 @@ following format:
             [], tf.int64, allow_missing=True
         ),
     }
+
+The TFRecords for unlabeled samples do not contain `image/object/*` features.
 
 You can export a FiftyOne dataset as a directory of TFRecords in the above
 format as follows:
@@ -989,6 +1010,8 @@ where `labels.xml` is an XML file in the following format:
         </image>
     </annotations>
 
+Unlabeled images have no corresponding `image` tag in `labels.xml`.
+
 You can export a FiftyOne dataset as a CVAT image dataset in the above format
 as follows:
 
@@ -1055,7 +1078,7 @@ Datasets of this type are exported in the following format:
 
 where `manifest.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "type": "eta.core.datasets.LabeledImageDataset",
@@ -1075,6 +1098,8 @@ where `manifest.json` is a JSON file in the following format:
 
 and where each labels JSON file is stored in
 `eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
+
+For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
 You can export a FiftyOne dataset as an image labels dataset in the above
 format as follows:
@@ -1138,7 +1163,7 @@ Datasets of this type are exported in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     [
         {
@@ -1171,6 +1196,8 @@ where `labels.json` is a JSON file in the following format:
         },
         ...
     ]
+
+Unlabeled images have no corresponding entry in `labels.json`.
 
 You can export a FiftyOne dataset as a BDD dataset in the above format as
 follows:
@@ -1229,10 +1256,12 @@ Datasets of this type are exported in the following format:
             <filename1>.<ext>
             <filename2>.<ext>
             ...
+        metadata.json
         samples.json
 
-where `samples.json` is a JSON file containing a serialized representation of
-the samples in the dataset generated by
+where `metadata.json` is an optional JSON file containing metadata associated
+with the dataset, and `samples.json` is a JSON file containing a serialized
+representation of the samples in the dataset generated by
 :meth:`Sample.to_dict() <fiftyone.core.sample.Sample.to_dict>`.
 
 You can export a FiftyOne dataset to disk in the above format as follows:
@@ -1362,243 +1391,322 @@ Writing a custom DatasetExporter
 |DatasetExporter| is an abstract interface; the concrete interface that you
 should implement is determined by the type of dataset that you are exporting.
 
-**Unlabeled image datasets**
+.. tabs::
 
-To define a custom exporter for unlabeled image datasets, implement the
-|UnlabeledImageDatasetExporter| interface.
+  .. group-tab:: Unlabeled image datasets
 
-The pseudocode below provides a template for a custom
-|UnlabeledImageDatasetExporter|:
+        To define a custom exporter for unlabeled image datasets, implement the
+        |UnlabeledImageDatasetExporter| interface.
 
-.. code-block:: python
-    :linenos:
+        The pseudocode below provides a template for a custom
+        |UnlabeledImageDatasetExporter|:
 
-    import fiftyone.utils.data as foud
+        .. code-block:: python
+            :linenos:
 
-
-    class CustomUnlabeledImageDatasetExporter(foud.UnlabeledImageDatasetExporter):
-        """Custom exporter for unlabeled image datasets.
-
-        Args:
-            export_dir: the directory to write the export
-            *args: additional positional arguments for your exporter
-            **kwargs: additional keyword arguments for your exporter
-        """
-
-        def __init__(self, export_dir, *args, **kwargs):
-            super().__init__(export_dir)
-            # Your initialization here
-
-        @property
-        def requires_image_metadata(self):
-            """Whether this exporter requires
-            :class:`fiftyone.core.metadata.ImageMetadata` instances for each sample
-            being exported.
-            """
-            # Return True or False here
-            pass
-
-        def setup(self):
-            """Performs any necessary setup before exporting the first sample in
-            the dataset.
-
-            This method is called when the exporter's context manager interface is
-            entered, :func:`DatasetExporter.__enter__`.
-            """
-            # Your custom setup here
-            pass
-
-        def export_sample(self, image_or_path, metadata=None):
-            """Exports the given sample to the dataset.
-
-            Args:
-                image_or_path: an image or the path to the image on disk
-                metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
-                    isinstance for the sample. Only required when
-                    :meth:`requires_image_metadata` is ``True``
-            """
-            # Export the provided sample
-            pass
-
-        def close(self, *args):
-            """Performs any necessary actions after the last sample has been
-            exported.
-
-            This method is called when the importer's context manager interface is
-            exited, :func:`DatasetExporter.__exit__`.
-
-            Args:
-                *args: the arguments to :func:`DatasetExporter.__exit__`
-            """
-            # Your custom code here to complete the export
-            pass
-
-When :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
-called with a custom |UnlabeledImageDatasetExporter|, the export is effectively
-performed via the pseudocode below:
-
-.. code-block:: python
-
-    import fiftyone as fo
-
-    samples = ...  # Dataset, DatasetView, etc
-
-    exporter = CustomUnlabeledImageDatasetExporter(dataset_dir, ...)
-    with exporter:
-        for sample in samples:
-            image_path = sample.filepath
-            metadata = sample.metadata
-            if exporter.requires_image_metadata and metadata is None:
-                metadata = fo.ImageMetadata.build_for(image_path)
-
-            exporter.export_sample(image_path, metadata=metadata)
-
-Note that the exporter is invoked via its context manager interface, which
-automatically calls the
-:meth:`setup() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.setup>`
-and
-:meth:`close() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.close>`
-methods of the exporter to handle setup/completion of the export.
-
-The image in each |Sample| is exported via the
-:meth:`export_sample() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.export_sample>`
-method.
-
-The
-:meth:`requires_image_metadata <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.requires_image_metadata>`
-property of the exporter allows it to declare whether it requires
-|ImageMetadata| instances for each image to be provided when
-:meth:`export_sample() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.export_sample>`
-is called. This allows for cases where metadata about of the image
-(e.g., its filename, encoding, shape, etc) are required in order to export the
-sample.
-
-**Labeled image dataset**
-
-To define a custom exporter for labeled image datasets, you must implement the
-|LabeledImageDatasetExporter| interface.
-
-The pseudocode below provides a template for a custom
-|LabeledImageDatasetExporter|:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone.utils.data as foud
+            import fiftyone.utils.data as foud
 
 
-    class CustomLabeledImageDatasetExporter(foud.LabeledImageDatasetExporter):
-        """Custom exporter for labeled image datasets.
+            class CustomUnlabeledImageDatasetExporter(foud.UnlabeledImageDatasetExporter):
+                """Custom exporter for unlabeled image datasets.
 
-        Args:
-            export_dir: the directory to write the export
-            *args: additional positional arguments for your exporter
-            **kwargs: additional keyword arguments for your exporter
-        """
+                Args:
+                    export_dir: the directory to write the export
+                    *args: additional positional arguments for your exporter
+                    **kwargs: additional keyword arguments for your exporter
+                """
 
-        def __init__(self, export_dir, *args, **kwargs):
-            super().__init__(export_dir)
-            # Your initialization here
+                def __init__(self, export_dir, *args, **kwargs):
+                    super().__init__(export_dir)
+                    # Your initialization here
 
-        @property
-        def requires_image_metadata(self):
-            """Whether this exporter requires
-            :class:`fiftyone.core.metadata.ImageMetadata` instances for each sample
-            being exported.
-            """
-            # Return True or False here
-            pass
+                @property
+                def requires_image_metadata(self):
+                    """Whether this exporter requires
+                    :class:`fiftyone.core.metadata.ImageMetadata` instances for each sample
+                    being exported.
+                    """
+                    # Return True or False here
+                    pass
 
-        @property
-        def label_cls(self):
-            """The :class:`fiftyone.core.labels.Label` class exported by this
-            exporter.
-            """
-            # Return a Label subclass here
-            pass
+                def setup(self):
+                    """Performs any necessary setup before exporting the first sample in
+                    the dataset.
 
-        def setup(self):
-            """Performs any necessary setup before exporting the first sample in
-            the dataset.
+                    This method is called when the exporter's context manager interface is
+                    entered, :func:`DatasetExporter.__enter__`.
+                    """
+                    # Your custom setup here
+                    pass
 
-            This method is called when the exporter's context manager interface is
-            entered, :func:`DatasetExporter.__enter__`.
-            """
-            # Your custom setup here
-            pass
+                def log_collection(self, sample_collection):
+                    """Logs any relevant information about the
+                    :class:`fiftyone.core.collections.SampleCollection` whose samples will
+                    be exported.
 
-        def export_sample(self, image_or_path, label, metadata=None):
-            """Exports the given sample to the dataset.
+                    Subclasses can optionally implement this method if their export format
+                    can record information such as the
+                    :meth:`fiftyone.core.collections.SampleCollection.name` and
+                    :meth:`fiftyone.core.collections.SampleCollection.info` of the
+                    collection being exported.
 
-            Args:
-                image_or_path: an image or the path to the image on disk
-                label: an instance of :meth:`label_cls`
-                metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
-                    isinstance for the sample. Only required when
-                    :meth:`requires_image_metadata` is ``True``
-            """
-            # Export the provided sample
-            pass
+                    By convention, this method must be optional; i.e., if it is not called
+                    before the first call to :meth:`export_sample`, then the exporter must
+                    make do without any information about the
+                    :class:`fiftyone.core.collections.SampleCollection` (which may not be
+                    available, for example, if the samples being exported are not stored in
+                    a collection).
 
-        def close(self, *args):
-            """Performs any necessary actions after the last sample has been
-            exported.
+                    Args:
+                        sample_collection: the
+                            :class:`fiftyone.core.collections.SampleCollection` whose
+                            samples will be exported
+                    """
+                    # Log any information from the sample collection here
+                    pass
 
-            This method is called when the importer's context manager interface is
-            exited, :func:`DatasetExporter.__exit__`.
+                def export_sample(self, image_or_path, metadata=None):
+                    """Exports the given sample to the dataset.
 
-            Args:
-                *args: the arguments to :func:`DatasetExporter.__exit__`
-            """
-            # Your custom code here to complete the export
-            pass
+                    Args:
+                        image_or_path: an image or the path to the image on disk
+                        metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
+                            isinstance for the sample. Only required when
+                            :meth:`requires_image_metadata` is ``True``
+                    """
+                    # Export the provided sample
+                    pass
 
-When :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
-called with a custom |LabeledImageDatasetExporter|, the export is effectively
-performed via the pseudocode below:
+                def close(self, *args):
+                    """Performs any necessary actions after the last sample has been
+                    exported.
 
-.. code-block:: python
+                    This method is called when the importer's context manager interface is
+                    exited, :func:`DatasetExporter.__exit__`.
 
-    import fiftyone as fo
+                    Args:
+                        *args: the arguments to :func:`DatasetExporter.__exit__`
+                    """
+                    # Your custom code here to complete the export
+                    pass
 
-    samples = ...  # Dataset, DatasetView, etc
-    label_field = ...
+        When
+        :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
+        called with a custom |UnlabeledImageDatasetExporter|, the export is
+        effectively performed via the pseudocode below:
 
-    exporter = CustomLabeledImageDatasetExporter(dataset_dir, ...)
-    with exporter:
-        for sample in samples:
-            image_path = sample.filepath
-            label = sample[label_field]
-            metadata = sample.metadata
-            if exporter.requires_image_metadata and metadata is None:
-                metadata = fo.ImageMetadata.build_for(image_path)
+        .. code-block:: python
 
-            exporter.export_sample(image_path, label, metadata=metadata)
+            import fiftyone as fo
 
-Note that the exporter is invoked via its context manager interface, which
-automatically calls the
-:meth:`setup() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.setup>`
-and
-:meth:`close() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.close>`
-methods of the exporter to handle setup/completion of the export.
+            samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
 
-The image and corresponding |Label| in each |Sample| is exported via the
-:meth:`export_sample() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.export_sample>`
-method.
+            exporter = CustomUnlabeledImageDatasetExporter(dataset_dir, ...)
+            with exporter:
+                exporter.log_collection(samples)
+                for sample in samples:
+                    image_path = sample.filepath
+                    metadata = sample.metadata
+                    if exporter.requires_image_metadata and metadata is None:
+                        metadata = fo.ImageMetadata.build_for(image_path)
 
-The
-:meth:`label_cls <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.label_cls>`
-property of the exporter declares the type of |Label| that the dataset format
-expects (e.g., |Classification|, |Detections|, or |ImageLabels|).
+                    exporter.export_sample(image_path, metadata=metadata)
 
-The
-:meth:`requires_image_metadata <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.requires_image_metadata>`
-property of the exporter allows it to declare whether it requires
-|ImageMetadata| instances for each image to be provided when
-:meth:`export_sample() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.export_sample>`
-is called. This allows for cases where metadata about of the image
-(e.g., its filename, encoding, shape, etc) are required in order to export the
-sample.
+        Note that the exporter is invoked via its context manager interface,
+        which automatically calls the
+        :meth:`setup() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.setup>`
+        and
+        :meth:`close() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.close>`
+        methods of the exporter to handle setup/completion of the export.
+
+        The
+        :meth:`log_collection() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.log_collection>`
+        method is called after the exporter's context manager has been entered
+        but before any samples have been exported. This method can optionally
+        be implemented by exporters that store information such as the
+        :meth:`name <fiftyone.core.collections.SampleCollection.name>` or
+        :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
+        collection being exported.
+
+        The image in each |Sample| is exported via the
+        :meth:`export_sample() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.export_sample>`
+        method.
+
+        The
+        :meth:`requires_image_metadata <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.requires_image_metadata>`
+        property of the exporter allows it to declare whether it requires
+        |ImageMetadata| instances for each image to be provided when
+        :meth:`export_sample() <fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter.export_sample>`
+        is called. This allows for cases where metadata about of the image
+        (e.g., its filename, encoding, shape, etc) are required in order to export the
+        sample.
+
+  .. group-tab:: Labeled image datasets
+
+        To define a custom exporter for labeled image datasets, implement the
+        |LabeledImageDatasetExporter| interface.
+
+        The pseudocode below provides a template for a custom
+        |LabeledImageDatasetExporter|:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.utils.data as foud
+
+
+            class CustomLabeledImageDatasetExporter(foud.LabeledImageDatasetExporter):
+                """Custom exporter for labeled image datasets.
+
+                Args:
+                    export_dir: the directory to write the export
+                    *args: additional positional arguments for your exporter
+                    **kwargs: additional keyword arguments for your exporter
+                """
+
+                def __init__(self, export_dir, *args, **kwargs):
+                    super().__init__(export_dir)
+                    # Your initialization here
+
+                @property
+                def requires_image_metadata(self):
+                    """Whether this exporter requires
+                    :class:`fiftyone.core.metadata.ImageMetadata` instances for each sample
+                    being exported.
+                    """
+                    # Return True or False here
+                    pass
+
+                @property
+                def label_cls(self):
+                    """The :class:`fiftyone.core.labels.Label` class exported by this
+                    exporter.
+                    """
+                    # Return a Label subclass here
+                    pass
+
+                def setup(self):
+                    """Performs any necessary setup before exporting the first sample in
+                    the dataset.
+
+                    This method is called when the exporter's context manager interface is
+                    entered, :func:`DatasetExporter.__enter__`.
+                    """
+                    # Your custom setup here
+                    pass
+
+                def log_collection(self, sample_collection):
+                    """Logs any relevant information about the
+                    :class:`fiftyone.core.collections.SampleCollection` whose samples will
+                    be exported.
+
+                    Subclasses can optionally implement this method if their export format
+                    can record information such as the
+                    :meth:`fiftyone.core.collections.SampleCollection.name` and
+                    :meth:`fiftyone.core.collections.SampleCollection.info` of the
+                    collection being exported.
+
+                    By convention, this method must be optional; i.e., if it is not called
+                    before the first call to :meth:`export_sample`, then the exporter must
+                    make do without any information about the
+                    :class:`fiftyone.core.collections.SampleCollection` (which may not be
+                    available, for example, if the samples being exported are not stored in
+                    a collection).
+
+                    Args:
+                        sample_collection: the
+                            :class:`fiftyone.core.collections.SampleCollection` whose
+                            samples will be exported
+                    """
+                    # Log any information from the sample collection here
+                    pass
+
+                def export_sample(self, image_or_path, label, metadata=None):
+                    """Exports the given sample to the dataset.
+
+                    Args:
+                        image_or_path: an image or the path to the image on disk
+                        label: an instance of :meth:`label_cls`
+                        metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
+                            isinstance for the sample. Only required when
+                            :meth:`requires_image_metadata` is ``True``
+                    """
+                    # Export the provided sample
+                    pass
+
+                def close(self, *args):
+                    """Performs any necessary actions after the last sample has been
+                    exported.
+
+                    This method is called when the importer's context manager interface is
+                    exited, :func:`DatasetExporter.__exit__`.
+
+                    Args:
+                        *args: the arguments to :func:`DatasetExporter.__exit__`
+                    """
+                    # Your custom code here to complete the export
+                    pass
+
+        When
+        :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
+        called with a custom |LabeledImageDatasetExporter|, the export is
+        effectively performed via the pseudocode below:
+
+        .. code-block:: python
+
+            import fiftyone as fo
+
+            samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
+            label_field = ...
+
+            exporter = CustomLabeledImageDatasetExporter(dataset_dir, ...)
+            with exporter:
+                exporter.log_collection(samples)
+                for sample in samples:
+                    image_path = sample.filepath
+                    label = sample[label_field]
+                    metadata = sample.metadata
+                    if exporter.requires_image_metadata and metadata is None:
+                        metadata = fo.ImageMetadata.build_for(image_path)
+
+                    exporter.export_sample(image_path, label, metadata=metadata)
+
+        Note that the exporter is invoked via its context manager interface,
+        which automatically calls the
+        :meth:`setup() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.setup>`
+        and
+        :meth:`close() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.close>`
+        methods of the exporter to handle setup/completion of the export.
+
+        The
+        :meth:`log_collection() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.log_collection>`
+        method is called after the exporter's context manager has been entered
+        but before any samples have been exported. This method can optionally
+        be implemented by exporters that store information such as the
+        :meth:`name <fiftyone.core.collections.SampleCollection.name>` or
+        :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
+        collection being exported.
+
+        The image and corresponding |Label| in each |Sample| is exported via
+        the
+        :meth:`export_sample() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.export_sample>`
+        method.
+
+        The
+        :meth:`label_cls <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.label_cls>`
+        property of the exporter declares the type of |Label| that the dataset
+        format expects (e.g., |Classification| or |Detections|).
+
+        The
+        :meth:`requires_image_metadata <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.requires_image_metadata>`
+        property of the exporter allows it to declare whether it requires
+        |ImageMetadata| instances for each image to be provided when
+        :meth:`export_sample() <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.export_sample>`
+        is called. This allows for cases where metadata about of the image
+        (e.g., its filename, encoding, shape, etc) are required in order to
+        export the sample.
+
+.. _writing-a-custom-dataset-type-exporter:
 
 Writing a custom Dataset type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1617,86 +1725,88 @@ about defining custom |DatasetImporter| classes.
 Custom dataset types can be declared by implementing the |DatasetType| subclass
 corresponding to the type of dataset that you are working with.
 
-**Unlabeled image datasets**
+.. tabs::
 
-The pseudocode below provides a template for a custom
-|UnlabeledImageDatasetType| subclass:
+  .. group-tab:: Unlabeled image datasets
 
-.. code-block:: python
-    :linenos:
+        The pseudocode below provides a template for a custom
+        |UnlabeledImageDatasetType| subclass:
 
-    import fiftyone.types as fot
+        .. code-block:: python
+            :linenos:
 
-
-    class CustomUnlabeledImageDataset(fot.UnlabeledImageDataset):
-        """Custom unlabeled image dataset type."""
-
-        def get_dataset_importer_cls(self):
-            """Returns the
-            :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
-            class for importing datasets of this type from disk.
-
-            Returns:
-                a :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
-                class
-            """
-            # Return your custom UnlabeledImageDatasetImporter class here
-            pass
-
-        def get_dataset_exporter_cls(self):
-            """Returns the
-            :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
-            class for exporting datasets of this type to disk.
-
-            Returns:
-                a :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
-                class
-            """
-            # Return your custom UnlabeledImageDatasetExporter class here
-            pass
-
-Note that, as this type represents an unlabeled image dataset, its importer
-must be a subclass of |UnlabeledImageDatasetImporter|, and its exporter must be
-a subclass of |UnlabeledImageDatasetExporter|.
-
-**Labeled image datasets**
-
-The pseudocode below provides a template for a custom
-|LabeledImageDatasetType| subclass:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone.types as fot
+            import fiftyone.types as fot
 
 
-    class CustomLabeledImageDataset(fot.LabeledImageDataset):
-        """Custom labeled image dataset type."""
+            class CustomUnlabeledImageDataset(fot.UnlabeledImageDataset):
+                """Custom unlabeled image dataset type."""
 
-        def get_dataset_importer_cls(self):
-            """Returns the
-            :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
-            class for importing datasets of this type from disk.
+                def get_dataset_importer_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
+                    class for importing datasets of this type from disk.
 
-            Returns:
-                a :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
-                class
-            """
-            # Return your custom LabeledImageDatasetImporter class here
-            pass
+                    Returns:
+                        a :class:`fiftyone.utils.data.importers.UnlabeledImageDatasetImporter`
+                        class
+                    """
+                    # Return your custom UnlabeledImageDatasetImporter class here
+                    pass
 
-        def get_dataset_exporter_cls(self):
-            """Returns the
-            :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
-            class for exporting datasets of this type to disk.
+                def get_dataset_exporter_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
+                    class for exporting datasets of this type to disk.
 
-            Returns:
-                a :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
-                class
-            """
-            # Return your custom LabeledImageDatasetExporter class here
-            pass
+                    Returns:
+                        a :class:`fiftyone.utils.data.exporters.UnlabeledImageDatasetExporter`
+                        class
+                    """
+                    # Return your custom UnlabeledImageDatasetExporter class here
+                    pass
 
-Note that, as this type represents a labeled image dataset, its importer must
-be a subclass of |LabeledImageDatasetImporter|, and its exporter must be a
-subclass of |LabeledImageDatasetExporter|.
+        Note that, as this type represents an unlabeled image dataset, its
+        importer must be a subclass of |UnlabeledImageDatasetImporter|, and its
+        exporter must be a subclass of |UnlabeledImageDatasetExporter|.
+
+  .. group-tab:: Labeled image datasets
+
+        The pseudocode below provides a template for a custom
+        |LabeledImageDatasetType| subclass:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.types as fot
+
+
+            class CustomLabeledImageDataset(fot.LabeledImageDataset):
+                """Custom labeled image dataset type."""
+
+                def get_dataset_importer_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+                    class for importing datasets of this type from disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.importers.LabeledImageDatasetImporter`
+                        class
+                    """
+                    # Return your custom LabeledImageDatasetImporter class here
+                    pass
+
+                def get_dataset_exporter_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+                    class for exporting datasets of this type to disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+                        class
+                    """
+                    # Return your custom LabeledImageDatasetExporter class here
+                    pass
+
+        Note that, as this type represents a labeled image dataset, its
+        importer must be a subclass of |LabeledImageDatasetImporter|, and its
+        exporter must be a subclass of |LabeledImageDatasetExporter|.
