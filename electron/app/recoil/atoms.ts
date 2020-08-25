@@ -46,6 +46,21 @@ export const filterLabelIncludeNoConfidence = atomFamily({
   default: () => true,
 });
 
+export const modalFilterIncludeLabels = atomFamily({
+  key: "modalFilterIncludeLabels",
+  default: (name) => ({ get }) => get(filterIncludeLabels(name)),
+});
+
+export const modalFilterLabelConfidenceRange = atomFamily({
+  key: "modalFilterLabelConfidenceRange",
+  default: (name) => ({ get }) => get(filterLabelConfidenceRange(name)),
+});
+
+export const modalFilterLabelIncludeNoConfidence = atomFamily({
+  key: "modalFilterLabelIncludeNoConfidence",
+  default: (name) => ({ get }) => get(filterLabelIncludeNoConfidence(name)),
+});
+
 export const activeLabels = atom({
   key: "activeLabels",
   default: {},
