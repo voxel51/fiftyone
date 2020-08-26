@@ -4,6 +4,46 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
+FiftyOne 0.5.1
+--------------
+*Released August 18, 2020*
+
+App
+^^^
+- Statistics in the display options sidebar now reflect the current
+  :ref:`view <using-views>`, not the entire :ref:`dataset <using-datasets>`
+- Improved image tiling algorithm that prevents single images from filling an
+  entire grid row
+- Added support for toggling label visibility within the expanded sample modal
+- Improved display of long label and tag names throughout the app
+- Enhanced view bar functionality, including keyword arguments, type
+  annotations, error messages, help links, and overall stability improvements
+- Added keyboard shortcuts for interacting with the view bar:
+   - `DEL` and `BACKSPACE` delete the raised (active) stage
+   - `ESC` toggles focus on the ViewBar, which activates shortcuts
+   - `TAB`, `ENTER`, and `ESC` submits stage input fields
+   - `LEFT` and `RIGHT ARROW` traverses view stages and add-stage buttons
+   - `SHIFT + LEFT ARROW` and `SHIFT + RIGHT ARROW` traverse stages
+
+Core
+^^^^
+- Greatly improved the performance of loading dataset samples from the database
+- Added support for :meth:`renaming <fiftyone.core.dataset.Dataset.name>` and
+  :meth:`cloning <fiftyone.core.dataset.Dataset.clone>` datasets
+- Added more string matching operations when
+  :ref:`querying samples <querying-samples>`, including
+  :meth:`starts_with() <fiftyone.core.expressions.ViewExpression.starts_with>`,
+  :meth:`ends_with() <fiftyone.core.expressions.ViewExpression.ends_with>`,
+  :meth:`contains_str() <fiftyone.core.expressions.ViewExpression.contains_str>` and
+  :meth:`matches_str() <fiftyone.core.expressions.ViewExpression.matches_str>`
+
+Documentation
+^^^^^^^^^^^^^
+- Added :doc:`a tutorial </tutorials/open_images_evaluation>` demonstrating
+  performing error analysis on the
+  `Open Images Dataset <https://storage.googleapis.com/openimages/web/index.html>`_
+  powered by FiftyOne
+
 FiftyOne 0.5.0
 --------------
 *Released August 11, 2020*

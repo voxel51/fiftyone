@@ -40,7 +40,7 @@ Rapidly gain insight by visualizing samples overlayed with with dynamic and
 queryable fields such as ground truth and predicted labels, dataset splits, and
 much more!
 
-.. image:: images/video_placeholder.png
+.. image:: images/homepage1.png
    :alt: Overview
    :align: center
 
@@ -155,7 +155,7 @@ dataset into any aspect you need; and more.
     :button_text: See more of the App
     :button_link: user_guide/app.html
 
-.. image:: images/dog.png
+.. image:: images/homepage2.png
    :alt: App
    :align: center
 
