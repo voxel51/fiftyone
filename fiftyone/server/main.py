@@ -22,6 +22,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.state as fos
 
@@ -31,7 +32,9 @@ from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
 
-foo.get_db_conn()
+# connect to the existing DB service to initialize global port information
+db = DatabaseService()
+db.start()
 
 app = Flask(__name__)
 CORS(app)

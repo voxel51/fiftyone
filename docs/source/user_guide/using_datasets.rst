@@ -64,9 +64,9 @@ Dataset persistence
 -------------------
 
 By default, datasets are non-persistent. Non-persistent datasets are deleted
-from the database each time `fiftyone` is imported. Note that FiftyOne does not
-store the raw data in datasets directly (only the labels), so your source files
-on disk are untouched.
+from the database each time the database is shut down. Note that FiftyOne does
+not store the raw data in datasets directly (only the labels), so your source
+files on disk are untouched.
 
 To make a dataset persistent, set its
 :meth:`persistent <fiftyone.core.dataset.Dataset.persistent>` property to
@@ -78,18 +78,34 @@ To make a dataset persistent, set its
     # Make the dataset persistent
     dataset1.persistent = True
 
-In a new Python session:
+Without closing your current Python shell, open a new shell and run:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
 
+    # Verify that both persistent and non-persistent datasets still exist
+    print(fo.list_datasets())
+    # ['my_first_dataset', 'my_second_dataset', '2020.08.04.12.36.29']
+
+All three datasets are still available, since the database connection has not
+been terminated.
+
+However, if you exit all processes with `fiftyone` imported, then open a new
+shell and run the command again:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Verify that non-persistent datasets have been deleted
     print(fo.list_datasets())
     # ['my_first_dataset']
 
-Note that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have been
-deleted because they were not persistent.
+you'll see that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have
+been deleted because they were not persistent.
 
 Storing dataset information
 ---------------------------

@@ -1,3 +1,6 @@
+
+.. _dataset-zoo:
+
 FiftyOne Dataset Zoo
 ====================
 
@@ -5,6 +8,22 @@ FiftyOne Dataset Zoo
 
 FiftyOne provides a Dataset Zoo that contains a collection of common datasets
 that you can download and load into FiftyOne via a few simple commands.
+
+.. note::
+
+    Behind the scenes, FiftyOne's Dataset Zoo uses the
+    `TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_ or
+    `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_
+    libraries to wrangle certain datasets, depending on which ML library you
+    have installed.
+
+    If you do not have the proper packages installed when attempting to
+    download a zoo dataset, you will receive an error message that will help
+    you resolve the issue.
+
+    See :ref:`customizing your ML backend <zoo-customizing-your-ml-backend>`
+    for more information about configuring the backend behavior of the Dataset
+    Zoo.
 
 You can interact with the Dataset Zoo either via the Python library or
 the CLI.
@@ -429,6 +448,8 @@ of your :doc:`FiftyOne config </user_guide/config>`.
             import fiftyone.core.config as foc
 
             foc.set_config_settings(default_dataset_dir="/your/custom/directory")
+
+.. _zoo-customizing-your-ml-backend:
 
 Customizing your ML backend
 ---------------------------

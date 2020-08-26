@@ -11,7 +11,21 @@ import fiftyone.utils.imagenet as foui
 import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
-tfds = fou.lazy_import("tensorflow_datasets", callback=fou.ensure_tfds)
+
+_TFDS_IMPORT_ERROR = """
+
+You tried to download a dataset from the FiftyOne Dataset Zoo using the
+TensorFlow backend, but you do not have the necessary packages installed.
+
+Ensure that you have `tensorflow` and `tensorflow_datasets` installed on your
+machine, and then try running this command again.
+
+See https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/zoo.html
+for more information about working with the Dataset Zoo.
+"""
+
+_callback = lambda: fou.ensure_tfds(error_msg=_TFDS_IMPORT_ERROR)
+tfds = fou.lazy_import("tensorflow_datasets", callback=_callback)
 
 
 class TFDSDataset(foz.ZooDataset):

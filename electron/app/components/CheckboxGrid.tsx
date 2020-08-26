@@ -1,6 +1,11 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
+import { ArrowDropDown } from "@material-ui/icons";
+
+import * as atoms from "../recoil/atoms";
+
+import Filter from "./Filter";
 
 const CHECKBOX_SIZE = 24;
 const CHECKBOX_PADDING = 3;
@@ -16,6 +21,7 @@ const Body = styled.div`
     margin-bottom: 3px;
     margin-left: 0;
     margin-right: 0;
+    border-radius: 2px;
 
     .MuiTypography-body1 {
       font-size: unset;
@@ -89,6 +95,7 @@ export type Entry = {
   data: Any;
   color: string;
   disabled: boolean;
+  type?: string;
 };
 
 type Props = {
@@ -96,7 +103,8 @@ type Props = {
   onCheck: (entry: Entry) => void;
 };
 
-const CheckboxGrid = ({ entries, onCheck }: Props) => {
+const Entry = ({ entry, onCheck }) => {
+  const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
 
   const handleCheck = (entry) => {
@@ -106,44 +114,67 @@ const CheckboxGrid = ({ entries, onCheck }: Props) => {
   };
 
   return (
-    <Body>
-      {entries.map((entry) => (
-        <div key={entry.name}>
-          <FormControlLabel
-            disabled={entry.disabled}
-            label={
-              <>
-                <span className="name" title={entry.name}>
-                  {entry.name}
-                </span>
-                <span className="data">{entry.data}</span>
-              </>
-            }
+    <div key={entry.name}>
+      <FormControlLabel
+        disabled={entry.disabled}
+        label={
+          <>
+            <span className="name" title={entry.name}>
+              {entry.name}
+            </span>
+            <span className="data">{entry.data}</span>
+            {entry.selected && entry.type && (
+              <ArrowDropDown
+                onClick={(e) => {
+                  e.preventDefault();
+                  setExpanded(!expanded);
+                }}
+              />
+            )}
+          </>
+        }
+        style={{
+          backgroundColor: entry.selected ? theme.backgroundLight : undefined,
+          color: entry.selected
+            ? theme.font
+            : entry.disabled
+            ? theme.fontDarkest
+            : theme.fontDark,
+        }}
+        control={
+          <Checkbox
+            checked={entry.selected}
+            onChange={() => handleCheck(entry)}
             style={{
-              backgroundColor: entry.selected
-                ? theme.backgroundLight
-                : undefined,
               color: entry.selected
-                ? theme.font
+                ? entry.color
                 : entry.disabled
                 ? theme.fontDarkest
                 : theme.fontDark,
             }}
-            control={
-              <Checkbox
-                checked={entry.selected}
-                onChange={() => handleCheck(entry)}
-                style={{
-                  color: entry.selected
-                    ? entry.color
-                    : entry.disabled
-                    ? theme.fontDarkest
-                    : theme.fontDark,
-                }}
-              />
-            }
           />
-        </div>
+        }
+      />
+      {expanded && entry.selected && (
+        <Filter
+          entry={entry}
+          {...{
+            includeLabels: atoms.filterIncludeLabels,
+            invertInclude: atoms.filterInvertIncludeLabels,
+            includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
+            confidenceRange: atoms.filterLabelConfidenceRange,
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const CheckboxGrid = ({ entries, onCheck }: Props) => {
+  return (
+    <Body>
+      {entries.map((entry) => (
+        <Entry key={entry.name} entry={entry} onCheck={onCheck} />
       ))}
     </Body>
   );

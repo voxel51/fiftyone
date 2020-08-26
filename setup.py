@@ -24,7 +24,7 @@ class BdistWheelCustom(bdist_wheel):
 
 setup(
     name="fiftyone",
-    version="0.5.1",
+    version="0.5.2",
     description=(
         "FiftyOne: a powerful package for dataset curation, analysis, and "
         "visualization"
@@ -54,7 +54,6 @@ setup(
         "Pillow<7,>=6.2",
         "pprintpp",
         "psutil",
-        "pycocotools",
         "pymongo",
         "python-engineio[client]",
         "python-socketio[client]",

@@ -43,9 +43,6 @@ export const getLabelText = (label) => {
   ) {
     return undefined;
   }
-  if (label._cls == "Classifications") {
-    return label.classifications.map(getLabelText).join(", ");
-  }
   let value = undefined;
   for (const prop of ["label", "value"]) {
     if (label.hasOwnProperty(prop)) {

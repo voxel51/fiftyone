@@ -4,6 +4,57 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
+FiftyOne 0.5.2
+--------------
+*Released August 26, 2020*
+
+App
+^^^
+- Added a label filter to the App that allows you to interactively explore your
+  labels, investigating things like confidence thresholds, individual classes,
+  and more, directly from the App
+- Added an App error page with support for refreshing the App if something goes
+  wrong
+- The App can now be closed and reopened within the same session
+
+Core
+^^^^
+- Added a :ref:`fiftyone quickstart <cli-fiftyone-quickstart>` command that
+  downloads a small dataset, launches the App, and prints some suggestions for
+  exploring the dataset
+- Added support for multiple simultaneous FiftyOne processes. You can now
+  operate multiple App instances (using different ports), Python shells, and/or
+  CLI processes.
+- Added support for automatically expanding labels from multitask formats such
+  as :ref:`BDDDataset <BDDDataset-import>` and
+  :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>` into
+  separate label fields when importing datasets
+- Added support for exporting multiple label fields in supported formats such
+  as :ref:`BDDDataset <BDDDataset-export>` and
+  :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-export>`
+  via the :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  method
+- Added support for filtering fields via the
+  :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`
+  method
+- Provided a more helpful error message when using the
+  :ref:`Dataset Zoo <dataset-zoo>` with no backend ML framework installed
+- Made ``pycocotools`` an optional dependency to make installation on Windows
+  easier
+
+Docs
+^^^^
+- Added a
+  `getting started with FiftyOne <https://github.com/voxel51/fiftyone/blob/develop/WALKTHROUGH.md>`_
+  walkthrough to the GitHub repository
+- Updated the :doc:`evaluate object detections </tutorials/evaluate_detections>`
+  tutorial to make it more friendly for execution on CPU-only machines
+- Added
+  :meth:`detailed examples <fiftyone.core.collections.SampleCollection.filter_detections>`
+  of using view stages to the docs
+- Refreshed all App-related media in the docs to reflect the new App design
+  introduced in v0.5.0
+
 FiftyOne 0.5.1
 --------------
 *Released August 18, 2020*

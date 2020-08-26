@@ -281,7 +281,8 @@ def get_zoo_dataset(name):
         the :class:`ZooDataset` instance
     """
     all_datasets = _get_zoo_datasets()
-    for source in _get_zoo_dataset_sources():
+    all_sources, _ = _get_zoo_dataset_sources()
+    for source in all_sources:
         if source not in all_datasets:
             continue
 
@@ -314,10 +315,12 @@ def _get_zoo_datasets():
     if __ZOO_DATASETS__ is None:
         from fiftyone.zoo.torch import AVAILABLE_DATASETS as TORCH_DATASETS
         from fiftyone.zoo.tf import AVAILABLE_DATASETS as TF_DATASETS
+        from fiftyone.zoo.base import AVAILABLE_DATASETS as BASE_DATASETS
 
         __ZOO_DATASETS__ = {
             "torch": TORCH_DATASETS,
             "tensorflow": TF_DATASETS,
+            "base": BASE_DATASETS,
         }
 
     return __ZOO_DATASETS__
@@ -330,9 +333,12 @@ def _get_zoo_dataset_sources():
 
     try:
         all_sources.remove(default_source)
-        return [default_source] + all_sources
+        all_sources = [default_source] + all_sources
+        has_default = True
     except ValueError:
-        return all_sources
+        has_default = False
+
+    return all_sources, has_default
 
 
 def _parse_dataset_details(name, dataset_dir):
