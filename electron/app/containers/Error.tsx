@@ -26,8 +26,8 @@ const Code = styled.code`
 `;
 
 const ReloadButton = styled.button`
-  display: block;
-  margin: 1rem auto 0 auto;
+  display: inline-block;
+  margin: 1rem 0.5rem;
   padding: 0.5rem;
   background: ${({ theme }) => theme.backgroundDark};
   color: ${({ theme }) => theme.fontDark};
@@ -55,13 +55,16 @@ const Error = ({ resetErrorBoundary }) => {
       <ErrorDiv>
         <LogoImg src={logo} />
         <ErrorMessage>
-          <p>Oops. We made an error.</p>
-          <p>
-            Resetting your session view to its last valid state often fixes
-            things. And then reload the App.
-          </p>
-          <Code>session.view = ...</Code>
-          <ReloadButton onClick={resetErrorBoundary}>Reload App</ReloadButton>
+          <p>Oops! Something went wrong.</p>
+          <p>If you just changed your view, try reverting your changes:</p>
+          <Code>session.view = old_view</Code>
+          <div>
+            And then{" "}
+            <ReloadButton onClick={resetErrorBoundary}>
+              Reload the App
+            </ReloadButton>{" "}
+            to try again.
+          </div>
         </ErrorMessage>
       </ErrorDiv>
     </ErrorContainer>
