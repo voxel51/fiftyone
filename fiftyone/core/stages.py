@@ -1290,7 +1290,9 @@ def _validate_fields_exist(sample_collection, field_or_fields):
         field_or_fields = [field_or_fields]
 
     schema = sample_collection.get_field_schema()
-    for field_name in field_or_fields:
+    for field in field_or_fields:
+        # We only validate that the root field exists
+        field_name = field.split(".", 1)[0]
         if field_name not in schema:
             raise ViewStageError("Field '%s' does not exist" % field_name)
 
