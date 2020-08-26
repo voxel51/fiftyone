@@ -13,6 +13,7 @@ App
 - Added a label filter to the App that allows you to interactively explore your
   labels, investigating things like confidence thresholds, individual classes,
   and more, directly from the App
+- Added an App error page with support for refreshing
 
 Core
 ^^^^
