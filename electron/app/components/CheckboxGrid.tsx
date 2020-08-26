@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import { ArrowDropDown } from "@material-ui/icons";
@@ -113,6 +113,10 @@ const Entry = ({ entry, onCheck }) => {
     }
   };
 
+  useEffect(() => {
+    !entry.selected && expanded && setExpanded(false);
+  }, [entry.selected, expanded]);
+
   return (
     <div key={entry.name}>
       <FormControlLabel
@@ -123,7 +127,7 @@ const Entry = ({ entry, onCheck }) => {
               {entry.name}
             </span>
             <span className="data">{entry.data}</span>
-            {entry.type && (
+            {entry.selected && entry.type && (
               <ArrowDropDown
                 onClick={(e) => {
                   e.preventDefault();
@@ -155,7 +159,7 @@ const Entry = ({ entry, onCheck }) => {
           />
         }
       />
-      {expanded && (
+      {expanded && entry.selected && (
         <Filter
           entry={entry}
           atoms={{

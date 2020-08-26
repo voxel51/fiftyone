@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
-import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
+import {
+  ArrowDropDown,
+  Close,
+  Fullscreen,
+  FullscreenExit,
+} from "@material-ui/icons";
 import { useRecoilValue, useRecoilState } from "recoil";
 
 import JSONView from "./JSONView";
@@ -10,6 +15,7 @@ import Tag from "./Tags/Tag";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
+import Filter from "./Filter";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
@@ -143,12 +149,38 @@ const Container = styled.div`
   }
 `;
 
-const Row = ({ name, value, ...rest }) => (
+const Row = ({ name, value, children, ...rest }) => (
   <div className="row" {...rest}>
     <label>{name}&nbsp;</label>
     <span>{value}</span>
+    {children}
   </div>
 );
+
+const LabelRow = (props) => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <Row {...props}>
+      <ArrowDropDown
+        onClick={(e) => {
+          e.preventDefault();
+          setExpanded(!expanded);
+        }}
+      />
+      {expanded && (
+        <Filter
+          entry={{ name: props.name }}
+          atoms={{
+            includeLabels: atoms.modalFilterIncludeLabels,
+            invertInclude: atoms.modalFilterInvertIncludeLabels,
+            includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
+            confidenceRange: atoms.modalFilterLabelConfidenceRange,
+          }}
+        />
+      )}
+    </Row>
+  );
+};
 
 const SampleModal = ({
   sample,
@@ -253,7 +285,7 @@ const SampleModal = ({
     });
   const labels = [...classifications, ...detections]
     .sort((a, b) => (a.key < b.key ? -1 : 1))
-    .map(Row);
+    .map(LabelRow);
   const scalars = Object.keys(sample)
     .filter(
       (k) =>

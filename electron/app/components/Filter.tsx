@@ -1,7 +1,12 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Slider as SliderUnstyled } from "@material-ui/core";
-import { useSetRecoilState, useRecoilState, useRecoilValue } from "recoil";
+import {
+  useSetRecoilState,
+  useRecoilSetState,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
@@ -138,6 +143,7 @@ const classFilterMachine = Machine({
               assign({
                 selected: ({ selected }, { value }) =>
                   [...new Set([...selected, value])].sort(),
+                inputValue: "",
               }),
             ],
             cond: ({ classes }, { value }) => {
@@ -221,6 +227,7 @@ const Selected = styled.div`
   display: flex;
   justify-content: flex-start;
   margin: 0 -0.25rem;
+  flex-wrap: wrap;
 `;
 
 const ClassButton = styled.button`
@@ -229,7 +236,7 @@ const ClassButton = styled.button`
   border-radius: 11px;
   text-align: center
   vertical-align: middle;
-  margin: 0.5rem 0.25rem;
+  margin: 0.5rem 0.25rem 0;
   padding: 0 0.5rem;
   font-weight: bold;
   cursor: pointer;
@@ -281,54 +288,67 @@ const ClassFilter = ({ name, atoms }) => {
   }, [selected]);
 
   return (
-    <ClassFilterContainer>
-      <div ref={ref}>
-        <ClassInput
-          value={inputValue}
-          placeholder={"+ add label"}
-          onFocus={() => state.matches("reading") && send("EDIT")}
-          onBlur={() =>
-            state.matches("editing.searchResults.notHovering") && send("BLUR")
-          }
-          onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              send({ type: "COMMIT", value: e.target.value });
-            }
-          }}
-          onKeyDown={(e) => {
-            switch (e.key) {
-              case "Escape":
-                send("BLUR");
-                break;
-              case "ArrowDown":
-                send("NEXT_RESULT");
-                break;
-              case "ArrowUp":
-                send("PREVIOUS_RESULT");
-                break;
-            }
-          }}
-        />
-        {state.matches("editing") && (
-          <SearchResultsWrapper>
-            <SearchResults
-              results={results.filter((r) => !selected.includes(r)).sort()}
-              send={send}
-              currentResult={currentResult}
-            />
-          </SearchResultsWrapper>
-        )}
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        Labels{" "}
+        {selected.length ? (
+          <a
+            style={{ cursor: "pointer", textDecoration: "underline" }}
+            onClick={() => send({ type: "SET_SELECTED", selected: [] })}
+          >
+            clear {selected.length}
+          </a>
+        ) : null}
       </div>
-      <Selected>
-        {selected.map((s) => (
-          <ClassButton onClick={() => send({ type: "REMOVE", value: s })}>
-            {s + " "}
-            <a style={{ color: theme.fontDark }}>x</a>
-          </ClassButton>
-        ))}
-      </Selected>
-    </ClassFilterContainer>
+      <ClassFilterContainer>
+        <div ref={ref}>
+          <ClassInput
+            value={inputValue}
+            placeholder={"+ add label"}
+            onFocus={() => state.matches("reading") && send("EDIT")}
+            onBlur={() =>
+              state.matches("editing.searchResults.notHovering") && send("BLUR")
+            }
+            onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                send({ type: "COMMIT", value: e.target.value });
+              }
+            }}
+            onKeyDown={(e) => {
+              switch (e.key) {
+                case "Escape":
+                  send("BLUR");
+                  break;
+                case "ArrowDown":
+                  send("NEXT_RESULT");
+                  break;
+                case "ArrowUp":
+                  send("PREVIOUS_RESULT");
+                  break;
+              }
+            }}
+          />
+          {state.matches("editing") && (
+            <SearchResultsWrapper>
+              <SearchResults
+                results={results.filter((r) => !selected.includes(r)).sort()}
+                send={send}
+                currentResult={currentResult}
+              />
+            </SearchResultsWrapper>
+          )}
+        </div>
+        <Selected>
+          {selected.map((s) => (
+            <ClassButton onClick={() => send({ type: "REMOVE", value: s })}>
+              {s + " "}
+              <a style={{ color: theme.fontDark }}>x</a>
+            </ClassButton>
+          ))}
+        </Selected>
+      </ClassFilterContainer>
+    </>
   );
 };
 
@@ -345,13 +365,25 @@ const Filter = ({ entry, atoms }) => {
   const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
     atoms.includeNoConfidence(entry.name)
   );
+  const [range, setRange] = useRecoilState(atoms.confidenceRange(entry.name));
   const theme = useContext(ThemeContext);
+
+  const isDefaultRange = range[0] === 0 && range[1] === 1;
 
   return (
     <FilterDiv>
-      <div>Labels</div>
       <ClassFilter name={entry.name} atoms={atoms} />
-      <div>Confidence</div>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        Confidence{" "}
+        {!isDefaultRange ? (
+          <a
+            style={{ cursor: "pointer", textDecoration: "underline" }}
+            onClick={() => setRange([0, 1])}
+          >
+            reset
+          </a>
+        ) : null}
+      </div>
       <ConfidenceContainer>
         <RangeSlider
           atom={atoms.confidenceRange(entry.name)}
