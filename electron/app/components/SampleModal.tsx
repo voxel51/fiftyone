@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
-import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
+import {
+  ArrowDropDown,
+  Close,
+  Fullscreen,
+  FullscreenExit,
+} from "@material-ui/icons";
+import { useRecoilValue, useRecoilState } from "recoil";
 
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import { Button, ModalFooter } from "./utils";
+import * as selectors from "../recoil/selectors";
+import * as atoms from "../recoil/atoms";
+import Filter from "./Filter";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
@@ -140,12 +149,17 @@ const Container = styled.div`
   }
 `;
 
-const Row = ({ name, value, ...rest }) => (
+const Row = ({ name, renderedName, value, children, ...rest }) => (
   <div className="row" {...rest}>
-    <label>{name}&nbsp;</label>
+    <label>{renderedName || name}&nbsp;</label>
     <span>{value}</span>
+    {children}
   </div>
 );
+
+const LabelRow = (props) => {
+  return <Row {...props}></Row>;
+};
 
 const SampleModal = ({
   sample,
@@ -161,10 +175,10 @@ const SampleModal = ({
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-
-  // maintain a separate copy of these local to the modal - inherit changes
-  // from the rest of the app, but don't write them back
-  const [activeLabels, setActiveLabels] = useState({});
+  const [filter, setFilter] = useRecoilState(selectors.labelFilters);
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    atoms.modalActiveLabels
+  );
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
@@ -236,7 +250,8 @@ const SampleModal = ({
       }
       return {
         key: k,
-        name: makeTag(k),
+        name: k,
+        renderedName: makeTag(k),
         value,
       };
     });
@@ -246,13 +261,14 @@ const SampleModal = ({
       const len = sample[k].detections ? sample[k].detections.length : 1;
       return {
         key: k,
-        name: makeTag(k),
+        name: k,
+        renderedName: makeTag(k),
         value: `${len} detection${len == 1 ? "" : "s"}`,
       };
     });
   const labels = [...classifications, ...detections]
     .sort((a, b) => (a.key < b.key ? -1 : 1))
-    .map(Row);
+    .map(LabelRow);
   const scalars = Object.keys(sample)
     .filter(
       (k) =>
@@ -262,7 +278,9 @@ const SampleModal = ({
         sample[k] !== undefined
     )
     .map((k) => {
-      return <Row key={k} name={makeTag(k)} value={stringify(sample[k])} />;
+      return (
+        <Row key={k} renderedName={makeTag(k)} value={stringify(sample[k])} />
+      );
     });
 
   return (
@@ -283,6 +301,7 @@ const SampleModal = ({
             colorMapping={colorMapping}
             activeLabels={activeLabels}
             fieldSchema={fieldSchema}
+            filter={filter}
           />
         )}
         {onPrevious ? (

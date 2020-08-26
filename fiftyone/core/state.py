@@ -222,7 +222,47 @@ def get_view_stats(dataset_or_view):
             field_name: _get_field_count(view, field_name, field)
             for field_name, field in custom_fields_schema.items()
         },
+        "label_classes": {
+            field_name: _get_label_classes(view, field_name, field)
+            for field_name, field in _get_label_fields(custom_fields_schema)
+        },
     }
+
+
+def _get_label_classes(view, field_name, field):
+    pipeline = []
+    is_list = False
+    path = "$%s" % field_name
+    if issubclass(field.document_type, fol.Classifications):
+        path = "%s.classifications" % path
+        is_list = True
+    elif issubclass(field.document_type, fol.Detections):
+        path = "%s.detections" % path
+        is_list = True
+
+    if is_list:
+        pipeline.append(
+            {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
+        )
+
+    path = "%s.label" % path
+    pipeline.append({"$group": {"_id": None, "labels": {"$addToSet": path}}})
+
+    return next(view.aggregate(pipeline))["labels"]
+
+
+def _get_label_fields(custom_fields_schema):
+    def _filter(item):
+        _, field = item
+        if not isinstance(field, fof.EmbeddedDocumentField):
+            return False
+
+        if issubclass(field.document_type, fol.ImageLabel):
+            return True
+
+        return False
+
+    return filter(_filter, custom_fields_schema.items())
 
 
 def _get_field_count(view, field_name, field):
