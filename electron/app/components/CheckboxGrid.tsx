@@ -113,10 +113,6 @@ const Entry = ({ entry, onCheck }) => {
     }
   };
 
-  useEffect(() => {
-    !entry.selected && expanded && setExpanded(false);
-  }, [entry.selected, expanded]);
-
   return (
     <div key={entry.name}>
       <FormControlLabel
@@ -162,7 +158,7 @@ const Entry = ({ entry, onCheck }) => {
       {expanded && entry.selected && (
         <Filter
           entry={entry}
-          atoms={{
+          {...{
             includeLabels: atoms.filterIncludeLabels,
             invertInclude: atoms.filterInvertIncludeLabels,
             includeNoConfidence: atoms.filterLabelIncludeNoConfidence,

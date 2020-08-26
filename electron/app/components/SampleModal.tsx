@@ -170,12 +170,10 @@ const LabelRow = (props) => {
       {expanded ? (
         <Filter
           entry={{ name: props.name }}
-          atoms={{
-            includeLabels: atoms.modalFilterIncludeLabels,
-            invertInclude: atoms.modalFilterInvertIncludeLabels,
-            includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
-            confidenceRange: atoms.modalFilterLabelConfidenceRange,
-          }}
+          includeLabels={atoms.modalFilterIncludeLabels}
+          invertInclude={atoms.modalFilterInvertIncludeLabels}
+          includeNoConfidence={atoms.modalFilterLabelIncludeNoConfidence}
+          confidenceRange={atoms.modalFilterLabelConfidenceRange}
         />
       ) : null}
     </Row>
