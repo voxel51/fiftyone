@@ -4,6 +4,37 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
+FiftyOne 0.5.2
+--------------
+*Released August 26, 2020*
+
+App
+^^^
+- Added a label filter to the App that allows you to interactively explore your
+  labels, investigating things like confidence thresholds, individual classes,
+  and more, directly from the App
+
+Core
+^^^^
+- Added a `fiftyone quickstart` command that downloads a small dataset,
+  launches the App, and prints some suggestions for exploring the dataset
+- Added support for multiple simultaneous FiftyOne processes. You can now
+  operate multiple App instances, Python shells, and/or CLI processes
+- Added support for automatically expanding labels from multitask formats such
+  as :ref:`BDDDataset <BDDDataset-import>` and
+  :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>` into
+  separate label fields during dataset import
+- Added support for exporting multiple label fields in supported formats such
+  as :ref:`BDDDataset <BDDDataset-export>` and
+  :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-export>`
+  via the `export() <fiftyone.core.collections.export>` method
+- Provide a more helpful error message when using the
+  :ref:`Dataset Zoo <dataset-zoo>` with no backend ML framework installed
+
+Docs
+^^^^
+-
+
 FiftyOne 0.5.1
 --------------
 *Released August 18, 2020*
