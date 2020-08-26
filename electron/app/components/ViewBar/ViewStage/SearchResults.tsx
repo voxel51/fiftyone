@@ -65,6 +65,16 @@ const SearchResultsDiv = animated(styled.div`
   position: fixed;
   width: auto;
   z-index: 800;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
 `);
 
 interface SearchResultsProps {

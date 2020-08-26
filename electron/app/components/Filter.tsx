@@ -74,7 +74,7 @@ const FilterDiv = styled.div`
   background: ${({ theme }) => theme.backgroundLight};
   padding: 0.5rem;
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 14px;
 `;
 
 const classFilterMachine = Machine({
@@ -228,7 +228,7 @@ const ClassInput = styled.input`
   background: ${({ theme }) => theme.backgroundDark};
   border: 1px ${({ theme }) => theme.backgroundDarkBorder};
   border-radius: 2px;
-  font-size: 1rem;
+  font-size: 14px;
   line-height: 1.2rem;
   font-weight: bold;
   padding: 0.5rem;
@@ -338,15 +338,15 @@ const ClassFilter = ({ name, atoms }) => {
           />
           {state.matches("editing") && (
             <SearchResults
-              results={results
-                .filter((r) => !selected.includes(r))
-                .sort()
-                .slice(0, 10)}
+              results={results.filter((r) => !selected.includes(r)).sort()}
               send={send}
               currentResult={currentResult}
               style={{
                 position: "absolute",
                 top: "0.25rem",
+                fontSize: 14,
+                height: 294,
+                overflowY: "scroll",
               }}
             />
           )}
