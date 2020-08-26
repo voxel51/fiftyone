@@ -345,7 +345,7 @@ const ClassFilter = ({ name, atoms }) => {
                 position: "absolute",
                 top: "0.25rem",
                 fontSize: 14,
-                height: 294,
+                maxHeight: 294,
                 overflowY: "scroll",
               }}
             />
