@@ -182,11 +182,19 @@ const classFilterMachine = Machine({
     },
   },
   on: {
+    CLEAR: {
+      actions: [
+        assign({
+          selected: [],
+        }),
+      ],
+    },
     REMOVE: {
       actions: [
         assign({
-          selected: ({ selected }, { value }) =>
-            selected.filter((s) => s !== value),
+          selected: ({ selected }, { value }) => {
+            return selected.filter((s) => s !== value);
+          },
         }),
       ],
     },
@@ -281,9 +289,10 @@ const ClassFilter = ({ name, atoms }) => {
 
   useEffect(() => {
     ((state.event.type === "COMMIT" && state.context.valid) ||
-      state.event.type === "REMOVE") &&
+      state.event.type === "REMOVE" ||
+      state.event.type === "CLEAR") &&
       setSelectedClasses(state.context.selected);
-  }, [["COMMIT", "REMOVE"].includes(state.event.type)]);
+  }, [state.event]);
 
   return (
     <>
@@ -292,7 +301,7 @@ const ClassFilter = ({ name, atoms }) => {
         {selected.length ? (
           <a
             style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => send({ type: "SET_SELECTED", selected: [] })}
+            onClick={() => send({ type: "CLEAR" })}
           >
             clear {selected.length}
           </a>
@@ -344,7 +353,11 @@ const ClassFilter = ({ name, atoms }) => {
         </div>
         <Selected>
           {selected.map((s) => (
-            <ClassButton onClick={() => send({ type: "REMOVE", value: s })}>
+            <ClassButton
+              onClick={() => {
+                send({ type: "REMOVE", value: s });
+              }}
+            >
               {s + " "}
               <a style={{ color: theme.fontDark }}>x</a>
             </ClassButton>
