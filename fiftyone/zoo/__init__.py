@@ -315,10 +315,12 @@ def _get_zoo_datasets():
     if __ZOO_DATASETS__ is None:
         from fiftyone.zoo.torch import AVAILABLE_DATASETS as TORCH_DATASETS
         from fiftyone.zoo.tf import AVAILABLE_DATASETS as TF_DATASETS
+        from fiftyone.zoo.base import AVAILABLE_DATASETS as BASE_DATASETS
 
         __ZOO_DATASETS__ = {
             "torch": TORCH_DATASETS,
             "tensorflow": TF_DATASETS,
+            "base": BASE_DATASETS,
         }
 
     return __ZOO_DATASETS__

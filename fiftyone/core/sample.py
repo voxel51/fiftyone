@@ -46,18 +46,18 @@ class _Sample(object):
         except KeyError:
             super().__delattr__(name)
 
-    def __getitem__(self, key):
+    def __getitem__(self, field_name):
         try:
-            return self.get_field(key)
+            return self.get_field(field_name)
         except AttributeError:
-            raise KeyError("Sample has no field '%s'" % key)
+            raise KeyError("Sample has no field '%s'" % field_name)
 
-    def __setitem__(self, key, value):
-        return self.set_field(key, value=value, create=True)
+    def __setitem__(self, field_name, value):
+        self.set_field(field_name, value=value)
 
-    def __delitem__(self, key):
+    def __delitem__(self, field_name):
         try:
-            return self.clear_field(key)
+            self.clear_field(field_name)
         except ValueError as e:
             raise KeyError(e.args[0])
 
@@ -127,13 +127,13 @@ class _Sample(object):
         """
         return self._doc.get_field(field_name)
 
-    def set_field(self, field_name, value, create=False):
+    def set_field(self, field_name, value, create=True):
         """Sets the value of a field of the sample.
 
         Args:
             field_name: the field name
             value: the field value
-            create (False): whether to create the field if it does not exist
+            create (True): whether to create the field if it does not exist
 
         Raises:
             ValueError: if ``field_name`` is not an allowed field name or does
@@ -142,7 +142,17 @@ class _Sample(object):
         if hasattr(self, field_name) and not self._doc.has_field(field_name):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
-        return self._doc.set_field(field_name, value, create=create)
+        self._doc.set_field(field_name, value, create=create)
+
+    def update_fields(self, fields_dict, create=True):
+        """Sets the dictionary of fields on the sample.
+
+        Args:
+            fields_dict: a dict mapping field names to values
+            create (True): whether to create fields if they do not exist
+        """
+        for field_name, value in fields_dict.items():
+            self.set_field(field_name, value, create=create)
 
     def clear_field(self, field_name):
         """Clears the value of a field of the sample.
@@ -153,7 +163,7 @@ class _Sample(object):
         Raises:
             ValueError: if the field does not exist
         """
-        return self._doc.clear_field(field_name=field_name)
+        self._doc.clear_field(field_name=field_name)
 
     def iter_fields(self):
         """Returns an iterator over the field (name, value) pairs of the
