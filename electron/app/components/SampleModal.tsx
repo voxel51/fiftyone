@@ -149,9 +149,9 @@ const Container = styled.div`
   }
 `;
 
-const Row = ({ name, value, children, ...rest }) => (
+const Row = ({ name, renderedName, value, children, ...rest }) => (
   <div className="row" {...rest}>
-    <label>{name}&nbsp;</label>
+    <label>{renderedName || name}&nbsp;</label>
     <span>{value}</span>
     {children}
   </div>
@@ -159,29 +159,26 @@ const Row = ({ name, value, children, ...rest }) => (
 
 const LabelRow = (props) => {
   const [expanded, setExpanded] = useState(false);
-  return <Row {...props}></Row>;
-};
-
-/**
- *  TODO: modal filter
- *       <ArrowDropDown
+  return (
+    <Row {...props}>
+      <ArrowDropDown
         onClick={(e) => {
           e.preventDefault();
           setExpanded(!expanded);
         }}
       />
-      {expanded && (
+      {expanded ? (
         <Filter
           entry={{ name: props.name }}
-          atoms={{
-            includeLabels: atoms.modalFilterIncludeLabels,
-            invertInclude: atoms.modalFilterInvertIncludeLabels,
-            includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
-            confidenceRange: atoms.modalFilterLabelConfidenceRange,
-          }}
+          includeLabels={atoms.modalFilterIncludeLabels}
+          invertInclude={atoms.modalFilterInvertIncludeLabels}
+          includeNoConfidence={atoms.modalFilterLabelIncludeNoConfidence}
+          confidenceRange={atoms.modalFilterLabelConfidenceRange}
         />
-      )}
- */
+      ) : null}
+    </Row>
+  );
+};
 
 const SampleModal = ({
   sample,
@@ -270,7 +267,8 @@ const SampleModal = ({
       }
       return {
         key: k,
-        name: makeTag(k),
+        name: k,
+        renderedName: makeTag(k),
         value,
       };
     });
@@ -280,7 +278,8 @@ const SampleModal = ({
       const len = sample[k].detections ? sample[k].detections.length : 1;
       return {
         key: k,
-        name: makeTag(k),
+        name: k,
+        renderedName: makeTag(k),
         value: `${len} detection${len == 1 ? "" : "s"}`,
       };
     });
@@ -296,7 +295,9 @@ const SampleModal = ({
         sample[k] !== undefined
     )
     .map((k) => {
-      return <Row key={k} name={makeTag(k)} value={stringify(sample[k])} />;
+      return (
+        <Row key={k} renderedName={makeTag(k)} value={stringify(sample[k])} />
+      );
     });
 
   return (
