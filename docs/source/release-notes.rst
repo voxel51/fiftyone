@@ -16,7 +16,7 @@ App
 
 Core
 ^^^^
-- Added a `fiftyone quickstart` command that downloads a small dataset,
+- Added a :ref:`fiftyone quickstart <cli-fiftyone-quickstart>` command that downloads a small dataset,
   launches the App, and prints some suggestions for exploring the dataset
 - Added support for multiple simultaneous FiftyOne processes. You can now
   operate multiple App instances, Python shells, and/or CLI processes
@@ -27,14 +27,24 @@ Core
 - Added support for exporting multiple label fields in supported formats such
   as :ref:`BDDDataset <BDDDataset-export>` and
   :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-export>`
-  via the `export() <fiftyone.core.collections.export>` method
+  via the :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  method
+- Added support for filtering fields via the
+  :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`
+  method
 - Provide a more helpful error message when using the
   :ref:`Dataset Zoo <dataset-zoo>` with no backend ML framework installed
 
 Docs
 ^^^^
+- Added a
+  `getting started with FiftyOne <https://github.com/voxel51/fiftyone/blob/develop/WALKTHROUGH.md>`_
+  walkthrough to the GitHub repository
 - Updated the :doc:`evaluate object detections </tutorials/evaluate_detections>`
   tutorial to make it more friendly for execution on CPU-only machines
+- Added
+  :meth:`detailed examples <fiftyone.core.collections.SampleCollection.filter_detections>`
+  of using view stages to the docs
 - Refreshed all App-related media in the docs to reflect the new App design
   introduced in v0.5.0
 
