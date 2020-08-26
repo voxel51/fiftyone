@@ -3,6 +3,8 @@ import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import { ArrowDropDown } from "@material-ui/icons";
 
+import * as atoms from "../recoil/atoms";
+
 import Filter from "./Filter";
 
 const CHECKBOX_SIZE = 24;
@@ -153,7 +155,17 @@ const Entry = ({ entry, onCheck }) => {
           />
         }
       />
-      {expanded && <Filter entry={entry} />}
+      {expanded && (
+        <Filter
+          entry={entry}
+          atoms={{
+            includeLabels: atoms.filterIncludeLabels,
+            invertInclude: atoms.filterInvertIncludeLabels,
+            includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
+            confidenceRange: atoms.filterLabelConfidenceRange,
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -150,7 +150,6 @@ export const labelFilters = selector({
 export const modalLabelFilters = selector({
   key: "modalLabelFilters",
   get: ({ get }) => {
-    const labelFilter = get(labelFilters);
     const labels = get(atoms.modalActiveLabels);
     const filters = {};
     for (const label in labels) {
@@ -162,12 +161,29 @@ export const modalLabelFilters = selector({
         const noConfidence = none && s.confidence === undefined;
         const isIncluded =
           include.length === 0 || include.includes(useName ? s.name : s.label);
-        return (
-          (labelFilter[label] && labelFilter[label](s)) ||
-          ((inRange || noConfidence) && isIncluded)
-        );
+        return (inRange || noConfidence) && isIncluded;
       };
     }
     return filters;
+  },
+  set: ({ get, set }, _) => {
+    const active = get(atoms.activeLabels);
+    set(atoms.modalActiveLabels, active);
+    for (const label in active) {
+      set(
+        atoms.modalFilterLabelConfidenceRange(label),
+        get(atoms.filterLabelConfidenceRange(label))
+      );
+
+      set(
+        atoms.modalFilterLabelIncludeNoConfidence(label),
+        get(atoms.filterLabelIncludeNoConfidence(label))
+      );
+
+      set(
+        atoms.modalFilterIncludeLabels(label),
+        get(atoms.filterIncludeLabels(label))
+      );
+    }
   },
 });

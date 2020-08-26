@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Slider as SliderUnstyled } from "@material-ui/core";
 import { useSetRecoilState, useRecoilState, useRecoilValue } from "recoil";
@@ -7,11 +7,8 @@ import { useMachine } from "@xstate/react";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import uuid from "uuid-v4";
 
-import {
-  filterLabelConfidenceRange,
-  filterLabelIncludeNoConfidence,
-} from "../recoil/atoms";
 import { labelClasses } from "../recoil/selectors";
+import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 
 function valuetext(value: number[]) {
@@ -27,20 +24,23 @@ const SearchResultsWrapper = styled.div`
 const SliderContainer = styled.div`
   font-weight: bold;
   display: flex;
+  padding: 0.5rem;
 `;
 
 const Slider = styled(SliderUnstyled)`
   && {
-    color: ${({ theme }) => theme.secondary};
+    color: ${({ theme }) => theme.brand};
+    margin: 0.1rem 0.75rem 0 0.75rem;
   }
 `;
-import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
-const RangeSlider = ({ name, ...rest }) => {
-  const setValue = useSetRecoilState(filterLabelConfidenceRange(name));
+
+const RangeSlider = ({ atom, ...rest }) => {
+  const setValue = useSetRecoilState(atom);
   const [localValue, setLocalValue] = useState([0, 1]);
 
   return (
     <SliderContainer>
+      0
       <Slider
         value={[...localValue]}
         onChange={(e, v) => setLocalValue([...v])}
@@ -53,6 +53,7 @@ const RangeSlider = ({ name, ...rest }) => {
         getAriaValueText={valuetext}
         {...rest}
       />
+      1
     </SliderContainer>
   );
 };
@@ -188,6 +189,16 @@ const classFilterMachine = Machine({
         }),
       ],
     },
+    SET_SELECTED: {
+      actions: assign({
+        selected: (_, { selected }) => selected,
+      }),
+    },
+    SET_INVERT: {
+      actions: assign({
+        invert: (_, { invert }) => invert,
+      }),
+    },
   },
 });
 
@@ -209,6 +220,7 @@ const ClassInput = styled.input`
 const Selected = styled.div`
   display: flex;
   justify-content: flex-start;
+  margin: 0 -0.25rem;
 `;
 
 const ClassButton = styled.button`
@@ -217,65 +229,101 @@ const ClassButton = styled.button`
   border-radius: 11px;
   text-align: center
   vertical-align: middle;
-  margin: 0.5rem 0;
+  margin: 0.5rem 0.25rem;
+  padding: 0 0.5rem;
+  font-weight: bold;
+  cursor: pointer;
   &:focus {
     outline: none;
   }
 `;
 
 const ClassFilterContainer = styled.div`
-  margin-bottom: 0.5rem;
+  margin: 0.5rem 0;
 `;
 
-const ClassFilter = ({ name }) => {
+const ClassFilter = ({ name, atoms }) => {
   const theme = useContext(ThemeContext);
   const classes = useRecoilValue(labelClasses(name));
+  const [selectedClasses, setSelectedClasses] = useRecoilState(
+    atoms.includeLabels(name)
+  );
+  const [invertInclude, setInvertInclude] = useRecoilState(
+    atoms.invertInclude(name)
+  );
   const [state, send] = useMachine(classFilterMachine);
+  const ref = useRef();
 
   useEffect(() => {
     send({ type: "SET_CLASSES", classes });
   }, [classes]);
 
-  const { inputValue, results, currentResult, selected } = state.context;
+  useOutsideClick(ref, () => send("BLUR"));
+  const {
+    inputValue,
+    results,
+    currentResult,
+    selected,
+    invert,
+  } = state.context;
+
+  useEffect(() => {
+    send({ type: "SET_SELECTED", selected: selectedClasses });
+  }, [selectedClasses]);
+
+  useEffect(() => {
+    send({ type: "SET_INVERT", inverted: invertInclude });
+  }, [invertInclude]);
+
+  useEffect(() => {
+    invert !== invertInclude && setInvertInclude(invert);
+  }, [invert]);
+
+  useEffect(() => {
+    selected.every((s, i) => selectedClasses[i] && s == selectedClasses[i]) &&
+      setSelectedClasses(selected);
+  }, [selected]);
 
   return (
     <ClassFilterContainer>
-      <ClassInput
-        value={inputValue}
-        placeholder={"+ add label"}
-        onFocus={() => state.matches("reading") && send("EDIT")}
-        onBlur={() =>
-          state.matches("editing.searchResults.notHovering") && send("BLUR")
-        }
-        onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
-        onKeyPress={(e) => {
-          if (e.key === "Enter") {
-            send({ type: "COMMIT", value: e.target.value });
+      <div ref={ref}>
+        <ClassInput
+          value={inputValue}
+          placeholder={"+ add label"}
+          onFocus={() => state.matches("reading") && send("EDIT")}
+          onBlur={() =>
+            state.matches("editing.searchResults.notHovering") && send("BLUR")
           }
-        }}
-        onKeyDown={(e) => {
-          switch (e.key) {
-            case "Escape":
-              send("BLUR");
-              break;
-            case "ArrowDown":
-              send("NEXT_RESULT");
-              break;
-            case "ArrowUp":
-              send("PREVIOUS_RESULT");
-              break;
-          }
-        }}
-      />
-      {state.matches("editing") && (
-        <SearchResultsWrapper>
-          <SearchResults
-            results={results.filter((r) => !selected.includes(r)).sort()}
-            send={send}
-            currentResult={currentResult}
-          />
-        </SearchResultsWrapper>
-      )}
+          onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              send({ type: "COMMIT", value: e.target.value });
+            }
+          }}
+          onKeyDown={(e) => {
+            switch (e.key) {
+              case "Escape":
+                send("BLUR");
+                break;
+              case "ArrowDown":
+                send("NEXT_RESULT");
+                break;
+              case "ArrowUp":
+                send("PREVIOUS_RESULT");
+                break;
+            }
+          }}
+        />
+        {state.matches("editing") && (
+          <SearchResultsWrapper>
+            <SearchResults
+              results={results.filter((r) => !selected.includes(r)).sort()}
+              send={send}
+              currentResult={currentResult}
+            />
+          </SearchResultsWrapper>
+        )}
+      </div>
       <Selected>
         {selected.map((s) => (
           <ClassButton onClick={() => send({ type: "REMOVE", value: s })}>
@@ -288,42 +336,51 @@ const ClassFilter = ({ name }) => {
   );
 };
 
-const ConfidenceContainer = styled.div``;
+const ConfidenceContainer = styled.div`
+  background: ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 10px 35px 0 rgba(0, 0, 0, 0.43);
+  border: 1px solid ${({ theme }) => theme.backgroundLightBorder};
+  border-radius: 2px;
+  margin-top: 0.5rem;
+  color: ${({ theme }) => theme.fontDark};
+`;
 
-const Filter = ({ entry }) => {
+const Filter = ({ entry, atoms }) => {
   const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
-    filterLabelIncludeNoConfidence(entry.name)
+    atoms.includeNoConfidence(entry.name)
   );
   const theme = useContext(ThemeContext);
 
   return (
     <FilterDiv>
       <div>Labels</div>
-      <ClassFilter name={entry.name} />
+      <ClassFilter name={entry.name} atoms={atoms} />
       <div>Confidence</div>
-      <RangeSlider
-        name={entry.name}
-        title={"Confidence"}
-        min={0}
-        max={1}
-        step={0.01}
-      />
-      <FormControlLabel
-        label={<div>Show no confidence</div>}
-        control={
-          <Checkbox
-            checked={includeNoConfidence}
-            onChange={() => setIncludeNoConfidence(!includeNoConfidence)}
-            style={{
-              color: entry.selected
-                ? entry.color
-                : entry.disabled
-                ? theme.fontDarkest
-                : theme.fontDark,
-            }}
-          />
-        }
-      />
+      <ConfidenceContainer>
+        <RangeSlider
+          atom={atoms.confidenceRange(entry.name)}
+          title={"Confidence"}
+          min={0}
+          max={1}
+          step={0.01}
+        />
+        <FormControlLabel
+          label={<div>Show no confidence</div>}
+          control={
+            <Checkbox
+              checked={includeNoConfidence}
+              onChange={() => setIncludeNoConfidence(!includeNoConfidence)}
+              style={{
+                color: entry.selected
+                  ? entry.color
+                  : entry.disabled
+                  ? theme.fontDarkest
+                  : theme.fontDark,
+              }}
+            />
+          }
+        />
+      </ConfidenceContainer>
     </FilterDiv>
   );
 };

@@ -31,6 +31,16 @@ export const currentSamples = atom({
   default: [],
 });
 
+export const filterInvertIncludeLabels = atomFamily({
+  key: "filterInvertIncludeLabels",
+  default: false,
+});
+
+export const modalFilterInvertIncludeLabels = atomFamily({
+  key: "modalFilterInvertIncludeLabels",
+  default: false,
+});
+
 export const filterIncludeLabels = atomFamily({
   key: "filterIncludeLabels",
   default: [],
