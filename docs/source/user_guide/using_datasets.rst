@@ -64,9 +64,9 @@ Dataset persistence
 -------------------
 
 By default, datasets are non-persistent. Non-persistent datasets are deleted
-from the database each time `fiftyone` is imported. Note that FiftyOne does not
-store the raw data in datasets directly (only the labels), so your source files
-on disk are untouched.
+from the database each time the database is shut down. Note that FiftyOne does
+not store the raw data in datasets directly (only the labels), so your source
+files on disk are untouched.
 
 To make a dataset persistent, set its
 :meth:`persistent <fiftyone.core.dataset.Dataset.persistent>` property to
