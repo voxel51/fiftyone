@@ -148,6 +148,7 @@ const classFilterMachine = Machine({
                 selected: ({ selected }, { value }) =>
                   [...new Set([...selected, value])].sort(),
                 inputValue: "",
+                valid: true,
               }),
             ],
             cond: ({ classes }, { value }) => {
@@ -161,6 +162,7 @@ const classFilterMachine = Machine({
                 error: `${value === "" ? '""' : value} does not exist`,
               }),
               errorId: uuid(),
+              valid: false,
             }),
           },
         ],
@@ -259,9 +261,6 @@ const ClassFilter = ({ name, atoms }) => {
   const [selectedClasses, setSelectedClasses] = useRecoilState(
     atoms.includeLabels(name)
   );
-  const [invertInclude, setInvertInclude] = useRecoilState(
-    atoms.invertInclude(name)
-  );
   const [state, send] = useMachine(classFilterMachine);
   const ref = useRef();
 
@@ -270,29 +269,19 @@ const ClassFilter = ({ name, atoms }) => {
     setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
   }, [classes]);
 
-  console.log(classes);
-
   useOutsideClick(ref, () => send("BLUR"));
-  const {
-    inputValue,
-    results,
-    currentResult,
-    selected,
-    invert,
-  } = state.context;
-
-  useEffect(() => {
-    send({ type: "SET_SELECTED", selected: selectedClasses });
-  }, [selectedClasses]);
-
-  useEffect(() => {
-    send({ type: "SET_INVERT", inverted: invertInclude });
-  }, [invertInclude]);
+  const { inputValue, results, currentResult, selected } = state.context;
 
   useEffect(() => {
     JSON.stringify(selected) !== JSON.stringify(selectedClasses) &&
-      setSelectedClasses(selected);
-  }, [selected]);
+      send({ type: "SET_SELECTED", selected: selectedClasses });
+  }, [selectedClasses]);
+
+  useEffect(() => {
+    ((state.event.type === "COMMIT" && state.context.valid) ||
+      state.event.type === "REMOVE") &&
+      setSelectedClasses(state.context.selected);
+  }, [["COMMIT", "REMOVE"].includes(state.event.type)]);
 
   return (
     <>

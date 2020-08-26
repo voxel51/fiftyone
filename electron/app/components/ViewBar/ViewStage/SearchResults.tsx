@@ -17,6 +17,7 @@ interface SearchResultProps {
 
 const SearchResult = React.memo(
   ({ result, isActive, send }: SearchResultProps) => {
+    console.log(result);
     const theme = useContext(ThemeContext);
     const [props, set] = useSpring(() => ({
       backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
