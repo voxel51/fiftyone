@@ -1,20 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
+import { Switch, Route, Redirect, useRouteMatch } from "react-router-dom";
 import { useRecoilValue } from "recoil";
-import {
-  Sidebar,
-  Container,
-  Menu,
-  Ref,
-  Sticky,
-  Message,
-  Segment,
-} from "semantic-ui-react";
+import { Container, Message, Segment } from "semantic-ui-react";
 
 import SamplesContainer from "./SamplesContainer";
 import Distributions from "../components/Distributions";
 import HorizontalNav from "../components/HorizontalNav";
-import Player51 from "../components/Player51";
 import SampleModal from "../components/SampleModal";
 import { ModalWrapper, Overlay } from "../components/utils";
 import routes from "../constants/routes.json";
