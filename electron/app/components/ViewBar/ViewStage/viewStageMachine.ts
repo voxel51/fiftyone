@@ -199,7 +199,7 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       focusOnInit: false,
-                      stage: (ctx, { stage }) => stage,
+                      stage: (ctx, { value }) => value,
                       parameters: (ctx, { value }) => {
                         const result = ctx.stageInfo.filter((s) =>
                           s.name.toLowerCase().includes(value.toLowerCase())
