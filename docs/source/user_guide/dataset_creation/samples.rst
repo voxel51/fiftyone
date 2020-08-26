@@ -805,7 +805,7 @@ The pseudocode below provides a template for a custom
         @property
         def label_cls(self):
             """The :class:`fiftyone.core.labels.Label` class returned by this
-            parser.
+            parser, or ``None`` if it returns a dictionary of labels.
             """
             # Return a Label subclass here
             pass
@@ -843,7 +843,9 @@ The pseudocode below provides a template for a custom
             """Returns the label for the current sample.
 
             Returns:
-                a :class:`fiftyone.core.labels.Label` instance
+                a :class:`fiftyone.core.labels.Label` instance, or a dictionary
+                mapping field names to :class:`fiftyone.core.labels.Label`
+                instances, or ``None`` if the sample is unlabeled
             """
             # Return the label for `self.current_sample` here
             pass
@@ -878,11 +880,14 @@ performed via the pseudocode below:
 
         label = sample_parser.get_label()
 
-        dataset.add_sample(
-            fo.Sample(
-                filepath=filepath, metadata=metadata, **{label_field: label},
-            )
-        )
+        sample = fo.Sample(filepath=filepath, metadata=metadata)
+
+        if isinstance(label, dict):
+            sample.update_fields(label)
+        elif label is not None:
+            sample[label_field] = label
+
+        dataset.add_sample(sample)
 
 The base |SampleParser| interface provides a
 :meth:`with_sample() <fiftyone.utils.data.parsers.SampleParser.with_sample>`

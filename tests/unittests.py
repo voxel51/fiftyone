@@ -790,7 +790,7 @@ class SampleTests(unittest.TestCase):
 
         value = 51
 
-        # set_field create=False
+        # set_field with create=False
         with self.assertRaises(ValueError):
             sample.set_field("field1", value, create=False)
         with self.assertRaises(AttributeError):
@@ -800,8 +800,8 @@ class SampleTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.field1
 
-        # set_field create=True
-        sample.set_field("field2", value, create=True)
+        # set_field
+        sample.set_field("field2", value)
         self.assertIsInstance(sample.field2, int)
         self.assertEqual(sample.get_field("field2"), value)
         self.assertEqual(sample["field2"], value)
@@ -1710,9 +1710,9 @@ class SampleFieldTests(unittest.TestCase):
 
         # set field (new)
         with self.assertRaises(ValueError):
-            sample.set_field("field_1", 51)
+            sample.set_field("field_1", 51, create=False)
 
-        sample.set_field("field_1", 51, create=True)
+        sample.set_field("field_1", 51)
         self.assertIn("field_1", sample.field_names)
         self.assertEqual(sample.get_field("field_1"), 51)
         self.assertEqual(sample["field_1"], 51)
