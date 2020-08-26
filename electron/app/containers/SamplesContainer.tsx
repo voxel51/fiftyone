@@ -126,7 +126,11 @@ const SamplesContainer = (props) => {
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
                 colorMapping={colorMapping}
-                tags={getDisplayOptions(tagNames, tagSampleCounts, activeTags)}
+                tags={getDisplayOptions(
+                  tagNames.map((t) => ({ name: t })),
+                  tagSampleCounts,
+                  activeTags
+                )}
                 labels={getDisplayOptions(
                   labelNameGroups.labels,
                   labelSampleCounts,
