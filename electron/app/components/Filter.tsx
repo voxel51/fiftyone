@@ -40,8 +40,12 @@ const Slider = styled(SliderUnstyled)`
 `;
 
 const RangeSlider = ({ atom, ...rest }) => {
-  const setValue = useSetRecoilState(atom);
+  const [value, setValue] = useRecoilState(atom);
   const [localValue, setLocalValue] = useState([0, 1]);
+  useEffect(() => {
+    JSON.stringify(value) !== JSON.stringify(localValue) &&
+      setLocalValue(value);
+  }, [value]);
 
   return (
     <SliderContainer>
@@ -263,7 +267,10 @@ const ClassFilter = ({ name, atoms }) => {
 
   useEffect(() => {
     send({ type: "SET_CLASSES", classes });
+    setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
   }, [classes]);
+
+  console.log;
 
   useOutsideClick(ref, () => send("BLUR"));
   const {
