@@ -139,7 +139,6 @@ export const labelFilters = selector({
         const inRange = range[0] <= s.confidence && s.confidence <= range[1];
         const noConfidence = none && s.confidence === undefined;
         const isIncluded = include.length === 0 || include.includes(s.label);
-        console.log(include, useName, s.label);
         return (inRange || noConfidence) && isIncluded;
       };
     }

@@ -270,8 +270,6 @@ const ClassFilter = ({ name, atoms }) => {
     setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
   }, [classes]);
 
-  console.log;
-
   useOutsideClick(ref, () => send("BLUR"));
   const {
     inputValue,
