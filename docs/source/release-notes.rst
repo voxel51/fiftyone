@@ -15,6 +15,7 @@ App
   and more, directly from the App
 - Added an App error page with support for refreshing the App if something goes
   wrong
+- The App can now be closed and reopened within the same session
 
 Core
 ^^^^
