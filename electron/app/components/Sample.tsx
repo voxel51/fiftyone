@@ -39,8 +39,7 @@ const Sample = ({
     onClick: () => handleClick(),
     onDoubleClick: () => setView(sample),
   };
-  const renderLabel = (name) => {
-    const label = sample[name];
+  const renderLabel = ({ name, label }) => {
     if (!activeLabels[name] || !label) {
       return null;
     }
@@ -49,8 +48,7 @@ const Sample = ({
       return null;
     }
 
-    if (!filter[name](sample[name])) {
-      console.log("ARRR", filter[name](sample), sample[name]);
+    if (!filter[name](label)) {
       return null;
     }
     return (
@@ -98,7 +96,22 @@ const Sample = ({
         filter={filter}
       />
       <div className="sample-info" {...eventHandlers}>
-        {Object.keys(sample).sort().map(renderLabel)}
+        {Object.keys(sample)
+          .sort()
+          .reduce((acc, name) => {
+            const label = sample[name];
+            if (label && label._cls === "Classifications") {
+              return [
+                ...acc,
+                ...label[label._cls.toLowerCase()].map((l) => ({
+                  name,
+                  label: l,
+                })),
+              ];
+            }
+            return [...acc, { name, label }];
+          }, [])
+          .map(renderLabel)}
         {[...sample.tags].sort().map((t) => {
           return activeTags[t] ? (
             <Tag key={t} name={String(t)} color={colorMapping[t]} />

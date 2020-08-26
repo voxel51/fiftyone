@@ -158,26 +158,7 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
 );
 
 const LabelRow = (props) => {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <Row {...props}>
-      <ArrowDropDown
-        onClick={(e) => {
-          e.preventDefault();
-          setExpanded(!expanded);
-        }}
-      />
-      {expanded ? (
-        <Filter
-          entry={{ name: props.name }}
-          includeLabels={atoms.modalFilterIncludeLabels}
-          invertInclude={atoms.modalFilterInvertIncludeLabels}
-          includeNoConfidence={atoms.modalFilterLabelIncludeNoConfidence}
-          confidenceRange={atoms.modalFilterLabelConfidenceRange}
-        />
-      ) : null}
-    </Row>
-  );
+  return <Row {...props}></Row>;
 };
 
 const SampleModal = ({
