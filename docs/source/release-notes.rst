@@ -19,7 +19,8 @@ Core
 - Added a :ref:`fiftyone quickstart <cli-fiftyone-quickstart>` command that downloads a small dataset,
   launches the App, and prints some suggestions for exploring the dataset
 - Added support for multiple simultaneous FiftyOne processes. You can now
-  operate multiple App instances, Python shells, and/or CLI processes
+  operate multiple App instances (using different ports), Python shells, and/or
+  CLI processes
 - Added support for automatically expanding labels from multitask formats such
   as :ref:`BDDDataset <BDDDataset-import>` and
   :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>` into
