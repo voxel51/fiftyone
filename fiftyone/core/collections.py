@@ -911,8 +911,8 @@ class SampleCollection(object):
         dataset_type=None,
         dataset_exporter=None,
         label_field=None,
-        label_dict=None,
         label_prefix=None,
+        labels_dict=None,
         overwrite=True,
         **kwargs
     ):
@@ -935,19 +935,19 @@ class SampleCollection(object):
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
                 to export the samples
             label_field (None): the name of the label field to export, if
-                applicable. If none of ``label_field``, ``label_dict``, and
-                ``label_prefix`` are specified and the requested output type is
+                applicable. If none of ``label_field``, ``label_prefix``, and
+                ``labels_dict`` are specified and the requested output type is
                 a labeled dataset, the first field of compatible type for the
                 output format is used
-            label_dict (None): a dictionary mapping label field names to keys
-                to use when constructing the label dict to pass to the
-                exporter. This parameter can only be used when the exporter can
-                handle dictionaries of labels
             label_prefix (None): a label field prefix; all fields whose name
                 starts with the given prefix will be exported (with the prefix
                 removed when constructing the label dicts). This parameter can
                 only be used when the exporter can handle dictionaries of
                 labels
+            labels_dict (None): a dictionary mapping label field names to keys
+                to use when constructing the label dict to pass to the
+                exporter. This parameter can only be used when the exporter can
+                handle dictionaries of labels
             overwrite (True): when an ``export_dir`` is provided, whether to
                 delete the existing directory before performing the export
             **kwargs: optional keyword arguments to pass to
@@ -992,10 +992,10 @@ class SampleCollection(object):
                 ) from e
 
         if label_prefix is not None:
-            label_dict = _get_label_dict_for_prefix(self, label_prefix)
+            labels_dict = _get_labels_dict_for_prefix(self, label_prefix)
 
-        if label_dict is not None:
-            label_field_or_dict = label_dict
+        if labels_dict is not None:
+            label_field_or_dict = labels_dict
         elif label_field is None:
             # Choose the first label field that is compatible with the dataset
             # exporter (if any)
@@ -1138,16 +1138,16 @@ class SampleCollection(object):
         }
 
 
-def _get_label_dict_for_prefix(sample_collection, label_prefix):
+def _get_labels_dict_for_prefix(sample_collection, label_prefix):
     label_fields = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
-    label_dict = {}
+    labels_dict = {}
     for field_name in label_fields:
         if field_name.startswith(label_prefix):
-            label_dict[field_name] = field_name[len(label_prefix) :]
+            labels_dict[field_name] = field_name[len(label_prefix) :]
 
-    return label_dict
+    return labels_dict
 
 
 def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
