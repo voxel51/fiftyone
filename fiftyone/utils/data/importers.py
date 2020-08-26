@@ -487,11 +487,11 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
     @staticmethod
     def get_classes(dataset_dir):
         metadata_path = os.path.join(dataset_dir, "metadata.json")
-        if os.path.isfile(metadata_path):
-            metadata = etas.load_json(metadata_path)
-            classes = metadata.get("info", {}).get("classes", None)
-        else:
-            classes = None
+        if not os.path.isfile(metadata_path):
+            return None
+
+        metadata = etas.load_json(metadata_path)
+        return metadata.get("info", {}).get("classes", None)
 
     @staticmethod
     def get_num_samples(dataset_dir):
@@ -819,9 +819,15 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
             :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
             expanded label dictionary. Only applicable when ``expand`` is True
+        labels_dict (None): a dictionary mapping names of attributes/objects
+            in the image labels to field names into which to expand them. Only
+            applicable when ``expand`` is True
         multilabel (False): whether to store frame attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance. Only
             applicable when ``expand`` is True
+        skip_non_categorical (False): whether to skip non-categorical frame
+            attributes (True) or cast them to strings (False). Only applicable
+            when ``expand`` is True
     """
 
     def __init__(
@@ -830,13 +836,17 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         compute_metadata=False,
         expand=False,
         prefix=None,
+        labels_dict=None,
         multilabel=False,
+        skip_non_categorical=False,
     ):
         super().__init__(dataset_dir)
         self.compute_metadata = compute_metadata
         self.expand = expand
         self.prefix = prefix
+        self.labels_dict = labels_dict
         self.multilabel = multilabel
+        self.skip_non_categorical = skip_non_categorical
         self._description = None
         self._sample_parser = None
         self._labeled_dataset = None
@@ -866,7 +876,10 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
         if label is not None and self.expand:
             label = label.expand(
-                prefix=self.prefix, multilabel=self.multilabel
+                prefix=self.prefix,
+                labels_dict=self.labels_dict,
+                multilabel=self.multilabel,
+                skip_non_categorical=self.skip_non_categorical,
             )
 
         return image_path, image_metadata, label
