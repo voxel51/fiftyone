@@ -73,23 +73,26 @@ interface SearchResultsProps {
   send: any;
 }
 
-const SearchResults = React.memo(({ results, send, currentResult }) => {
-  if (!results.length) return null;
-  return (
-    <SearchResultsDiv
-      onMouseEnter={() => send("MOUSEENTER_RESULTS")}
-      onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
-    >
-      {results.map((result, i) => (
-        <SearchResult
-          key={result}
-          result={result}
-          isActive={currentResult === i}
-          send={send}
-        />
-      ))}
-    </SearchResultsDiv>
-  );
-});
+const SearchResults = React.memo(
+  ({ results, send, currentResult, ...rest }) => {
+    if (!results.length) return null;
+    return (
+      <SearchResultsDiv
+        onMouseEnter={() => send("MOUSEENTER_RESULTS")}
+        onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
+        {...rest}
+      >
+        {results.map((result, i) => (
+          <SearchResult
+            key={result}
+            result={result}
+            isActive={currentResult === i}
+            send={send}
+          />
+        ))}
+      </SearchResultsDiv>
+    );
+  }
+);
 
 export default SearchResults;

@@ -36,6 +36,7 @@ const Slider = styled(SliderUnstyled)`
   && {
     color: ${({ theme }) => theme.brand};
     margin: 0.1rem 0.75rem 0 0.75rem;
+    height: 3px;
   }
 `;
 
@@ -253,6 +254,7 @@ const ClassButton = styled.button`
 
 const ClassFilterContainer = styled.div`
   margin: 0.5rem 0;
+  position: relative;
 `;
 
 const ClassFilter = ({ name, atoms }) => {
@@ -326,13 +328,18 @@ const ClassFilter = ({ name, atoms }) => {
             }}
           />
           {state.matches("editing") && (
-            <SearchResultsWrapper>
-              <SearchResults
-                results={results.filter((r) => !selected.includes(r)).sort()}
-                send={send}
-                currentResult={currentResult}
-              />
-            </SearchResultsWrapper>
+            <SearchResults
+              results={results
+                .filter((r) => !selected.includes(r))
+                .sort()
+                .slice(0, 10)}
+              send={send}
+              currentResult={currentResult}
+              style={{
+                position: "absolute",
+                top: "0.25rem",
+              }}
+            />
           )}
         </div>
         <Selected>
