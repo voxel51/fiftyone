@@ -276,11 +276,7 @@ const ClassFilter = ({ name, atoms }) => {
   }, [invertInclude]);
 
   useEffect(() => {
-    invert !== invertInclude && setInvertInclude(invert);
-  }, [invert]);
-
-  useEffect(() => {
-    selected.every((s, i) => selectedClasses[i] && s == selectedClasses[i]) &&
+    JSON.stringify(selected) !== JSON.stringify(selectedClasses) &&
       setSelectedClasses(selected);
   }, [selected]);
 
