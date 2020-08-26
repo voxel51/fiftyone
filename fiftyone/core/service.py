@@ -374,6 +374,10 @@ class ServerService(Service):
             self._wait_for_child_port(self._port)
         else:
             logger.info("Connected to fiftyone on local port %i" % self._port)
+            logger.info(
+                "If you are not connecting to a remote session, you may need\n"
+                "to start a new session and specify a port.\n"
+            )
             if server_version != foc.VERSION:
                 logger.warn(
                     "Server version (%s) does not match client version (%s)"
