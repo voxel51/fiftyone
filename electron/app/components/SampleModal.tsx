@@ -195,7 +195,9 @@ const SampleModal = ({
   const [showJSON, setShowJSON] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [filter, setFilter] = useRecoilState(selectors.modalLabelFilters);
-  const activeLabels = useRecoilValue(atoms.modalActiveLabels);
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    atoms.modalActiveLabels
+  );
   useEffect(() => {
     setFilter(null);
   }, [rest.activeLabels]);
