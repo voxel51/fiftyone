@@ -254,6 +254,7 @@ class DatabaseService(MultiClientService):
             foc.DB_LOG_PATH,
             "--port",
             "0",
+            "--nounixsocket",
         ]
 
     @property
