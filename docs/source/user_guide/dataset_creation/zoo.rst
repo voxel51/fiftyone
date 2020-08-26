@@ -1,3 +1,6 @@
+
+.. _dataset-zoo:
+
 FiftyOne Dataset Zoo
 ====================
 
