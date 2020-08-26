@@ -39,7 +39,7 @@ const Sample = ({
     onClick: () => handleClick(),
     onDoubleClick: () => setView(sample),
   };
-  const renderLabel = ({ name, label }) => {
+  const renderLabel = ({ name, label, idx }) => {
     if (!activeLabels[name] || !label) {
       return null;
     }
@@ -53,7 +53,7 @@ const Sample = ({
     }
     return (
       <Tag
-        key={"label-" + name}
+        key={"label-" + name + "-" + value + (idx ? "-" + idx : "")}
         title={name}
         name={value}
         color={colorMapping[name]}
@@ -103,9 +103,10 @@ const Sample = ({
             if (label && label._cls === "Classifications") {
               return [
                 ...acc,
-                ...label[label._cls.toLowerCase()].map((l) => ({
+                ...label[label._cls.toLowerCase()].map((l, i) => ({
                   name,
                   label: l,
+                  idx: i,
                 })),
               ];
             }
