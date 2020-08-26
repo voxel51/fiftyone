@@ -17,7 +17,7 @@ FiftyOne supports the configuration options described below:
 +========================+=================================+========================+========================================================================================+
 | `default_dataset_dir`  | `FIFTYONE_DEFAULT_DATASET_DIR`  | `~/fiftyone`           | The default directory to use when performing FiftyOne operations that                  |
 |                        |                                 |                        | require writing dataset contents to disk, such as downloading datasets from            |
-|                        |                                 |                        | the :doc:`FiftyOne Dataset Zoo </user_guide/dataset_creation/zoo_datasets>`            |
+|                        |                                 |                        | the :doc:`FiftyOne Dataset Zoo </user_guide/dataset_creation/zoo>`                     |
 |                        |                                 |                        | or ingesting datasets via                                                              |
 |                        |                                 |                        | :meth:`ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`. |
 +------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+

@@ -62,17 +62,18 @@ const SamplesContainer = (props) => {
   };
   for (const name of labelNames) {
     if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
-      labelNameGroups.labels.push(name);
+      labelNameGroups.labels.push({ name, type: labelTypes[name] });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name])) {
-      labelNameGroups.scalars.push(name);
+      labelNameGroups.scalars.push({ name });
     } else {
-      labelNameGroups.unsupported.push(name);
+      labelNameGroups.unsupported.push({ name });
     }
   }
 
-  const getDisplayOptions = (names, counts, selected) => {
-    return [...names].sort().map((name) => ({
+  const getDisplayOptions = (values, counts, selected) => {
+    return [...values].sort().map(({ name, type }) => ({
       name,
+      type,
       count: counts[name],
       selected: Boolean(selected[name]),
     }));
@@ -125,7 +126,11 @@ const SamplesContainer = (props) => {
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
                 colorMapping={colorMapping}
-                tags={getDisplayOptions(tagNames, tagSampleCounts, activeTags)}
+                tags={getDisplayOptions(
+                  tagNames.map((t) => ({ name: t })),
+                  tagSampleCounts,
+                  activeTags
+                )}
                 labels={getDisplayOptions(
                   labelNameGroups.labels,
                   labelSampleCounts,

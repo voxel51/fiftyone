@@ -32,6 +32,7 @@ function Dataset(props) {
     sample: null,
     activeLabels: {},
   });
+
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
