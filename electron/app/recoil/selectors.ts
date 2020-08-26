@@ -162,7 +162,10 @@ export const modalLabelFilters = selector({
         const noConfidence = none && s.confidence === undefined;
         const isIncluded =
           include.length === 0 || include.includes(useName ? s.name : s.label);
-        return labelFilter[label](s) && (inRange || noConfidence) && isIncluded;
+        return (
+          (labelFilter[label] && labelFilter[label](s)) ||
+          ((inRange || noConfidence) && isIncluded)
+        );
       };
     }
     return filters;
