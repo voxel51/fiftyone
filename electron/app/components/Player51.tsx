@@ -46,7 +46,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
     const field = sample[sampleField];
     if (field === null || field === undefined) continue;
     if (["Classification", "Detection"].includes(field._cls)) {
-      if (!filter[sampleField](field)) {
+      if (!filter[sampleField] || !filter[sampleField](field)) {
         continue;
       }
       const [key, fn] = PARSERS[field._cls];
@@ -54,7 +54,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
       playerColorMap[`${field.label}`] = colorMapping[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
-        if (!filter[sampleField](object)) {
+        if (!filter[sampleField] || !filter[sampleField](object)) {
           continue;
         }
         const [key, fn] = PARSERS[object._cls];

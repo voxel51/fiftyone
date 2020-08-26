@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
 import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
+import { useRecoilValue, useRecoilState } from "recoil";
 
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import { Button, ModalFooter } from "./utils";
+import * as selectors from "../recoil/selectors";
+import * as atoms from "../recoil/atoms";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
@@ -161,10 +164,10 @@ const SampleModal = ({
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-
-  // maintain a separate copy of these local to the modal - inherit changes
-  // from the rest of the app, but don't write them back
-  const [activeLabels, setActiveLabels] = useState({});
+  const filter = useRecoilValue(selectors.modalLabelFilters);
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    atoms.modalActiveLabels
+  );
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
@@ -283,6 +286,7 @@ const SampleModal = ({
             colorMapping={colorMapping}
             activeLabels={activeLabels}
             fieldSchema={fieldSchema}
+            filter={filter}
           />
         )}
         {onPrevious ? (

@@ -151,11 +151,12 @@ export const modalLabelFilters = selector({
   key: "modalLabelFilters",
   get: ({ get }) => {
     const labelFilter = get(labelFilters);
+    const labels = get(atoms.modalActiveLabels);
     const filters = {};
     for (const label in labels) {
-      const range = get(atoms.filterLabelConfidenceRange(label));
-      const none = get(atoms.filterLabelIncludeNoConfidence(label));
-      const include = get(atoms.filterIncludeLabels(label));
+      const range = get(atoms.modalFilterLabelConfidenceRange(label));
+      const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
+      const include = get(atoms.modalFilterIncludeLabels(label));
       filters[label] = (s, useName = false) => {
         const inRange = range[0] <= s.confidence && s.confidence <= range[1];
         const noConfidence = none && s.confidence === undefined;

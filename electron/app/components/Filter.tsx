@@ -154,9 +154,9 @@ const classFilterMachine = Machine({
           actions: [
             assign({
               inputValue: (_, { value }) => value,
-              results: ({ classes }, e) =>
+              results: ({ classes }, { value }) =>
                 classes.filter((c) =>
-                  c.toLowerCase().includes(e.value.toLowerCase())
+                  c.toLowerCase().includes(value.toLowerCase())
                 ),
             }),
           ],

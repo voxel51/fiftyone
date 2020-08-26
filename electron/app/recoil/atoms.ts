@@ -33,36 +33,41 @@ export const currentSamples = atom({
 
 export const filterIncludeLabels = atomFamily({
   key: "filterIncludeLabels",
-  default: () => [],
+  default: [],
 });
 
 export const filterLabelConfidenceRange = atomFamily({
   key: "filterLabelConfidenceRange",
-  default: () => [0, 1],
+  default: [0, 1],
 });
 
 export const filterLabelIncludeNoConfidence = atomFamily({
   key: "filterLabelIncludeNoConfidence",
-  default: () => true,
+  default: true,
 });
 
 export const modalFilterIncludeLabels = atomFamily({
   key: "modalFilterIncludeLabels",
-  default: (name) => ({ get }) => get(filterIncludeLabels(name)),
+  default: [],
 });
 
 export const modalFilterLabelConfidenceRange = atomFamily({
   key: "modalFilterLabelConfidenceRange",
-  default: (name) => ({ get }) => get(filterLabelConfidenceRange(name)),
+  default: [0, 1],
 });
 
 export const modalFilterLabelIncludeNoConfidence = atomFamily({
   key: "modalFilterLabelIncludeNoConfidence",
-  default: (name) => ({ get }) => get(filterLabelIncludeNoConfidence(name)),
+  default: true,
 });
 
 export const activeLabels = atom({
   key: "activeLabels",
+  default: {},
+});
+
+export const modalActiveLabels = atom({
+  key: "modalActiveLabels",
   default: {},
 });
 
