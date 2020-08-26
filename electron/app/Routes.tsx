@@ -5,6 +5,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import routes from "./constants/routes.json";
 import App from "./containers/App";
 import Dataset from "./containers/Dataset";
+import Error from "./containers/Error";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
 import connect from "./utils/connect";
