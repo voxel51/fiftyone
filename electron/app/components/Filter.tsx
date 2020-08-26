@@ -34,7 +34,7 @@ const Slider = styled(SliderUnstyled)`
     color: ${({ theme }) => theme.secondary};
   }
 `;
-
+import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
 const RangeSlider = ({ name, ...rest }) => {
   const setValue = useSetRecoilState(filterLabelConfidenceRange(name));
   const [localValue, setLocalValue] = useState([0, 1]);
@@ -135,10 +135,13 @@ const classFilterMachine = Machine({
           {
             actions: [
               assign({
-                selected: (_, { value }) => value,
+                selected: ({ selected }, { value }) =>
+                  [...new Set([...selected, value])].sort(),
               }),
             ],
-            cond: ({ classes }, { value }) => classes.some((c) => c === value),
+            cond: ({ classes }, { value }) => {
+              return classes.some((c) => c === value);
+            },
           },
           {
             actions: assign({
@@ -165,6 +168,14 @@ const classFilterMachine = Machine({
     },
   },
   on: {
+    REMOVE: {
+      actions: [
+        assign({
+          selected: ({ selected }, { value }) =>
+            selected.filter((s) => s !== value),
+        }),
+      ],
+    },
     SET_CLASSES: {
       target: "reading",
       actions: [
@@ -195,15 +206,29 @@ const ClassInput = styled.input`
   }
 `;
 
-const ClassCloud = styled.div``;
+const Selected = styled.div`
+  display: flex;
+  justify-content: flex-start;
+`;
 
-const ClassButton = styled.button``;
+const ClassButton = styled.button`
+  background: ${({ theme }) => theme.background};
+  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  border-radius: 11px;
+  text-align: center
+  vertical-align: middle;
+  margin: 0.5rem 0;
+  &:focus {
+    outline: none;
+  }
+`;
 
 const ClassFilterContainer = styled.div`
   margin-bottom: 0.5rem;
 `;
 
 const ClassFilter = ({ name }) => {
+  const theme = useContext(ThemeContext);
   const classes = useRecoilValue(labelClasses(name));
   const [state, send] = useMachine(classFilterMachine);
 
@@ -211,8 +236,7 @@ const ClassFilter = ({ name }) => {
     send({ type: "SET_CLASSES", classes });
   }, [classes]);
 
-  const { inputValue, results, currentResult } = state.context;
-  console.log(state.toStrings());
+  const { inputValue, results, currentResult, selected } = state.context;
 
   return (
     <ClassFilterContainer>
@@ -246,12 +270,20 @@ const ClassFilter = ({ name }) => {
       {state.matches("editing") && (
         <SearchResultsWrapper>
           <SearchResults
-            results={results}
+            results={results.filter((r) => !selected.includes(r)).sort()}
             send={send}
             currentResult={currentResult}
           />
         </SearchResultsWrapper>
       )}
+      <Selected>
+        {selected.map((s) => (
+          <ClassButton onClick={() => send({ type: "REMOVE", value: s })}>
+            {s + " "}
+            <a style={{ color: theme.fontDark }}>x</a>
+          </ClassButton>
+        ))}
+      </Selected>
     </ClassFilterContainer>
   );
 };
