@@ -23,7 +23,7 @@ Core
 - Added support for automatically expanding labels from multitask formats such
   as :ref:`BDDDataset <BDDDataset-import>` and
   :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>` into
-  separate label fields during dataset import
+  separate label fields when importing datasets
 - Added support for exporting multiple label fields in supported formats such
   as :ref:`BDDDataset <BDDDataset-export>` and
   :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-export>`
@@ -33,7 +33,10 @@ Core
 
 Docs
 ^^^^
--
+- Updated the :doc:`evaluate object detections </tutorials/evaluate_detections>`
+  tutorial to make it more friendly for execution on CPU-only machines
+- Refreshed all App-related media in the docs to reflect the new App design
+  introduced in v0.5.0
 
 FiftyOne 0.5.1
 --------------
