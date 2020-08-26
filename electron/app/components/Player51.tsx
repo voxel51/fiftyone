@@ -51,7 +51,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
       }
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
-      playerColorMap[`${field.label}`] = colorMapping[sampleField];
+      playerColorMap[`${sampleField}`] = colorMapping[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
         if (!filter[sampleField] || !filter[sampleField](object)) {
@@ -59,7 +59,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
         }
         const [key, fn] = PARSERS[object._cls];
         imgLabels[key][key].push(fn(sampleField, object));
-        playerColorMap[`${object.label}`] = colorMapping[sampleField];
+        playerColorMap[`${sampleField}`] = colorMapping[sampleField];
       }
       continue;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
