@@ -141,7 +141,7 @@ def export_samples(
     export_dir=None,
     dataset_type=None,
     dataset_exporter=None,
-    label_field=None,
+    label_field_or_dict=None,
     num_samples=None,
     **kwargs
 ):
@@ -161,9 +161,10 @@ def export_samples(
         dataset_exporter (None): a
             :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
             write the dataset
-        label_field (None): the name of the label field to export, which is
-            required if ``dataset_exporter`` is a
-            :class:`LabeledImageDatasetExporter`
+        label_field_or_dict (None): the name of the label field to export, or
+            a dictionary mapping field names to output keys describing the
+            label fields to export. This is required if and only if
+            ``dataset_exporter`` is a :class:`LabeledImageDatasetExporter`
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         **kwargs: optional keyword arguments to pass to
@@ -192,7 +193,7 @@ def export_samples(
         )
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
         sample_parser = FiftyOneLabeledImageSampleParser(
-            label_field, compute_metadata=True
+            label_field_or_dict, compute_metadata=True
         )
     else:
         raise ValueError(
@@ -419,7 +420,7 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         import fiftyone as fo
 
         samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-        label_field = ...
+        label_field = ...  # assumes single label field case
 
         exporter = LabeledImageDatasetExporter(export_dir, ...)
         with exporter:
@@ -459,8 +460,9 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
         Args:
             image_or_path: an image or the path to the image on disk
-            label: an instance of :meth:`label_cls`, or ``None`` if the sample
-                is unlabeled
+            label: an instance of :meth:`label_cls`, or a dictionary mapping
+                field names to :class:`fiftyone.core.labels.Label` instances,
+                or ``None`` if the sample is unlabeled
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
                 instance for the sample. Only required when
                 :meth:`requires_image_metadata` is ``True``
@@ -874,7 +876,9 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
-    def export_sample(self, image_or_path, image_labels, metadata=None):
+    def export_sample(
+        self, image_or_path, image_labels_or_dict, metadata=None
+    ):
         is_image_path = self._is_image_path(image_or_path)
 
         if is_image_path:
@@ -888,7 +892,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         new_image_filename = name + ext
         new_labels_filename = name + ".json"
 
-        _image_labels = _parse_image_labels(image_labels)
+        _image_labels = _parse_image_labels(image_labels_or_dict)
 
         if etau.is_str(image_or_path):
             image_labels_path = os.path.join(
@@ -955,6 +959,13 @@ def _parse_detections(detections, labels_map_rev=None):
 def _parse_image_labels(label):
     if label is None:
         return etai.ImageLabels()
+
+    if isinstance(label, dict):
+        image_labels = etai.ImageLabels()
+        for name, _label in label.items():
+            image_labels.merge_labels(_label.to_image_labels(name=name))
+
+        return image_labels
 
     return label.labels
 

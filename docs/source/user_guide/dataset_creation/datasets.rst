@@ -1820,12 +1820,15 @@ should implement is determined by the type of dataset that you are importing.
                 """Returns information about the next sample in the dataset.
 
                 Returns:
-                    an  ``(image_path, image_metadata, label)`` tuple, where:
-                    -   ``image_path`` is the path to the image on disk
-                    -   ``image_metadata`` is an
+                    an  ``(image_path, image_metadata, label)`` tuple, where
+
+                    -   ``image_path``: the path to the image on disk
+                    -   ``image_metadata``: an
                         :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                         image, or ``None`` if :meth:`has_image_metadata` is ``False``
-                    -   ``label`` is an instance of :meth:`label_cls`
+                    -   ``label``: an instance of :meth:`label_cls`, or a dictionary
+                        mapping field names to :class:`fiftyone.core.labels.Label`
+                        instances, or ``None`` if the sample is unlabeled
 
                 Raises:
                     StopIteration: if there are no more samples to import
@@ -1850,7 +1853,7 @@ should implement is determined by the type of dataset that you are importing.
             @property
             def label_cls(self):
                 """The :class:`fiftyone.core.labels.Label` class returned by this
-                importer.
+                importer, or ``None`` if it returns a dictionary of labels.
                 """
                 # Return a Label subclass here
                 pass
@@ -1904,13 +1907,14 @@ should implement is determined by the type of dataset that you are importing.
 
         with importer:
             for image_path, image_metadata, label in importer:
-                dataset.add_sample(
-                    fo.Sample(
-                        filepath=image_path,
-                        metadata=image_metadata,
-                        **{label_field: label},
-                    )
-                )
+                sample = fo.Sample(filepath=image_path, metadata=image_metadata)
+
+                if isinstance(label, dict):
+                    sample.update_fields(label)
+                elif label is not None:
+                    sample[label_field] = label
+
+                dataset.add_sample(sample)
 
             if importer.has_dataset_info:
                 dataset.info.update(importer.get_dataset_info())

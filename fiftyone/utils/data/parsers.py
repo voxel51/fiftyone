@@ -13,6 +13,158 @@ import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.sample as fos
+
+
+def add_images(
+    dataset, samples, sample_parser, tags=None,
+):
+    """Adds the given images to the dataset.
+
+    This operation does not read the images.
+
+    See :ref:`this guide <custom-sample-parser>` for more details about
+    adding images to a dataset by defining your own
+    :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        samples: an iterable of samples
+        sample_parser: a
+            :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
+            instance to use to parse the samples
+        tags (None): an optional list of tags to attach to each sample
+
+    Returns:
+        a list of IDs of the samples that were added to the dataset
+    """
+    if not sample_parser.has_image_path:
+        raise ValueError(
+            "Sample parser must have `has_image_path == True` to add its "
+            "samples to the dataset"
+        )
+
+    if not isinstance(sample_parser, UnlabeledImageSampleParser):
+        raise ValueError(
+            "`sample_parser` must be a subclass of %s; found %s"
+            % (
+                etau.get_class_name(UnlabeledImageSampleParser),
+                etau.get_class_name(sample_parser),
+            )
+        )
+
+    def parse_sample(sample):
+        sample_parser.with_sample(sample)
+
+        image_path = sample_parser.get_image_path()
+
+        if sample_parser.has_image_metadata:
+            metadata = sample_parser.get_image_metadata()
+        else:
+            metadata = None
+
+        return fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
+
+    try:
+        num_samples = len(samples)
+    except:
+        num_samples = None
+
+    _samples = map(parse_sample, samples)
+    return dataset.add_samples(
+        _samples, num_samples=num_samples, expand_schema=False
+    )
+
+
+def add_labeled_images(
+    dataset,
+    samples,
+    sample_parser,
+    label_field="ground_truth",
+    tags=None,
+    expand_schema=True,
+):
+    """Adds the given labeled images to the dataset.
+
+    This operation will iterate over all provided samples, but the images will
+    not be read (unless the sample parser requires it in order to compute image
+    metadata).
+
+    See :ref:`this guide <custom-sample-parser>` for more details about
+    adding labeled images to a dataset by defining your own
+    :class:`LabeledImageSampleParser <fiftyone.utils.data.parsers.LabeledImageSampleParser>`.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        samples: an iterable of samples
+        sample_parser: a
+            :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
+            instance to use to parse the samples
+        label_field ("ground_truth"): the name of the field to use for the
+            labels
+        tags (None): an optional list of tags to attach to each sample
+        expand_schema (True): whether to dynamically add new sample fields
+            encountered to the dataset schema. If False, an error is raised
+            if a sample's schema is not a subset of the dataset schema
+
+    Returns:
+        a list of IDs of the samples that were added to the dataset
+    """
+    if not sample_parser.has_image_path:
+        raise ValueError(
+            "Sample parser must have `has_image_path == True` to add its "
+            "samples to the dataset"
+        )
+
+    if not isinstance(sample_parser, LabeledImageSampleParser):
+        raise ValueError(
+            "`sample_parser` must be a subclass of %s; found %s"
+            % (
+                etau.get_class_name(LabeledImageSampleParser),
+                etau.get_class_name(sample_parser),
+            )
+        )
+
+    if expand_schema and sample_parser.label_cls is not None:
+        # This has the benefit of ensuring that `label_field` exists, even if
+        # all of the parsed samples are unlabeled (i.e., return labels that are
+        # all `None`)
+        dataset._ensure_label_field(label_field, sample_parser.label_cls)
+
+        # The schema now never needs expanding, because we already ensured
+        # that `label_field` exists, if necessary
+        expand_schema = False
+
+    def parse_sample(sample):
+        sample_parser.with_sample(sample)
+
+        image_path = sample_parser.get_image_path()
+
+        if sample_parser.has_image_metadata:
+            metadata = sample_parser.get_image_metadata()
+        else:
+            metadata = None
+
+        label = sample_parser.get_label()
+
+        sample = fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
+
+        if isinstance(label, dict):
+            sample.update_fields(label)
+        elif label is not None:
+            sample[label_field] = label
+
+        return sample
+
+    try:
+        num_samples = len(samples)
+    except:
+        num_samples = None
+
+    _samples = map(parse_sample, samples)
+    return dataset.add_samples(
+        _samples, expand_schema=expand_schema, num_samples=num_samples
+    )
 
 
 class SampleParser(object):
@@ -223,7 +375,7 @@ class LabeledImageSampleParser(SampleParser):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class returned by this
-        parser.
+        parser, or ``None`` if it returns a dictionary of labels.
         """
         raise NotImplementedError("subclass must implement label_cls")
 
@@ -269,7 +421,9 @@ class LabeledImageSampleParser(SampleParser):
         """Returns the label for the current sample.
 
         Returns:
-            a :class:`fiftyone.core.labels.Label` instance
+            a :class:`fiftyone.core.labels.Label` instance, or a dictionary
+            mapping field names to :class:`fiftyone.core.labels.Label`
+            instances, or ``None`` if the sample is unlabeled
         """
         raise NotImplementedError("subclass must implement get_label()")
 
@@ -577,11 +731,41 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
         - ``image_labels_or_path`` is an ``eta.core.image.ImageLabels``
           instance, a serialized dict representation of one, or the path to one
           on disk
+
+    Args:
+        expand (True): whether to expand the image labels into a dictionary of
+            :class:`fiftyone.core.labels.Label` instances
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded label dictionary. Only applicable when ``expand`` is True
+        labels_dict (None): a dictionary mapping names of attributes/objects
+            in the image labels to field names into which to expand them. Only
+            applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
+        skip_non_categorical (False): whether to skip non-categorical frame
+            attributes (True) or cast them to strings (False). Only applicable
+            when ``expand`` is True
     """
+
+    def __init__(
+        self,
+        expand=True,
+        prefix=None,
+        labels_dict=None,
+        multilabel=False,
+        skip_non_categorical=False,
+    ):
+        super().__init__()
+        self.expand = expand
+        self.prefix = prefix
+        self.labels_dict = labels_dict
+        self.multilabel = multilabel
+        self.skip_non_categorical = skip_non_categorical
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return fol.ImageLabels if not self.expand else None
 
     def get_label(self):
         """Returns the label for the current sample.
@@ -598,7 +782,17 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
         elif isinstance(labels, dict):
             labels = etai.ImageLabels.from_dict(labels)
 
-        return fol.ImageLabels(labels=labels)
+        label = fol.ImageLabels(labels=labels)
+
+        if label is not None and self.expand:
+            label = label.expand(
+                prefix=self.prefix,
+                labels_dict=self.labels_dict,
+                multilabel=self.multilabel,
+                skip_non_categorical=self.skip_non_categorical,
+            )
+
+        return label
 
 
 class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
@@ -645,6 +839,21 @@ class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
 
     See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
     format details.
+
+    Args:
+        expand (True): whether to expand the image labels into a dictionary of
+            :class:`fiftyone.core.labels.Label` instances
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded label dictionary. Only applicable when ``expand`` is True
+        labels_dict (None): a dictionary mapping names of attributes/objects
+            in the image labels to field names into which to expand them. Only
+            applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
+        skip_non_categorical (False): whether to skip non-categorical frame
+            attributes (True) or cast them to strings (False). Only applicable
+            when ``expand`` is True
     """
 
     pass
@@ -694,17 +903,19 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
     labeled images.
 
     Args:
-        label_field: the name of the :class:`fiftyone.core.labels.Label` field
-            of the samples to parse
+        label_field_or_dict: the name of the
+            :class:`fiftyone.core.labels.Label` field of the samples to parse,
+            or a dictionary mapping label field names to keys in the returned
+            label dictionary
         compute_metadata (False): whether to compute
             :class:`fiftyone.core.metadata.ImageMetadata` instances on-the-fly
             if :func:`get_image_metadata` is called and no metadata is
             available
     """
 
-    def __init__(self, label_field, compute_metadata=False):
+    def __init__(self, label_field_or_dict, compute_metadata=False):
         super().__init__()
-        self.label_field = label_field
+        self.label_field_or_dict = label_field_or_dict
         self.compute_metadata = compute_metadata
 
     @property
@@ -735,4 +946,10 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
         return metadata
 
     def get_label(self):
-        return self.current_sample[self.label_field]
+        if isinstance(self.label_field_or_dict, dict):
+            return {
+                v: self.current_sample[k]
+                for k, v in self.label_field_or_dict.items()
+            }
+
+        return self.current_sample[self.label_field_or_dict]

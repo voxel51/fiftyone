@@ -1626,9 +1626,11 @@ should implement is determined by the type of dataset that you are exporting.
 
                     Args:
                         image_or_path: an image or the path to the image on disk
-                        label: an instance of :meth:`label_cls`
+                        label: an instance of :meth:`label_cls`, or a dictionary mapping
+                            field names to :class:`fiftyone.core.labels.Label` instances,
+                            or ``None`` if the sample is unlabeled
                         metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
-                            isinstance for the sample. Only required when
+                            instance for the sample. Only required when
                             :meth:`requires_image_metadata` is ``True``
                     """
                     # Export the provided sample
@@ -1657,7 +1659,7 @@ should implement is determined by the type of dataset that you are exporting.
             import fiftyone as fo
 
             samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-            label_field = ...
+            label_field = ...  # assumes single label field case
 
             exporter = CustomLabeledImageDatasetExporter(dataset_dir, ...)
             with exporter:
