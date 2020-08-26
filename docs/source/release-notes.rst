@@ -37,8 +37,10 @@ Core
 - Added support for filtering fields via the
   :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`
   method
-- Provide a more helpful error message when using the
+- Provided a more helpful error message when using the
   :ref:`Dataset Zoo <dataset-zoo>` with no backend ML framework installed
+- Made ``pycocotools`` an optional dependency to make installation on Windows
+  easier
 
 Docs
 ^^^^
