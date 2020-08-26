@@ -1,4 +1,4 @@
-import { Machine, actions, assign, spawn, send } from "xstate";
+import { Machine, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine, {
   createParameter,

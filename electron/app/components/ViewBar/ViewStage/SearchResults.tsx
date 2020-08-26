@@ -17,6 +17,7 @@ interface SearchResultProps {
 
 const SearchResult = React.memo(
   ({ result, isActive, send }: SearchResultProps) => {
+    console.log(result);
     const theme = useContext(ThemeContext);
     const [props, set] = useSpring(() => ({
       backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
@@ -39,7 +40,7 @@ const SearchResult = React.memo(
       set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
 
     const setResult = (e) =>
-      send({ type: "COMMIT", stage: e.target.dataset.result });
+      send({ type: "COMMIT", value: e.target.dataset.result });
 
     return (
       <SearchResultDiv
@@ -72,23 +73,26 @@ interface SearchResultsProps {
   send: any;
 }
 
-const SearchResults = React.memo(({ results, send, currentResult }) => {
-  if (!results.length) return null;
-  return (
-    <SearchResultsDiv
-      onMouseEnter={() => send("MOUSEENTER_RESULTS")}
-      onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
-    >
-      {results.map((result, i) => (
-        <SearchResult
-          key={result}
-          result={result}
-          isActive={currentResult === i}
-          send={send}
-        />
-      ))}
-    </SearchResultsDiv>
-  );
-});
+const SearchResults = React.memo(
+  ({ results, send, currentResult, ...rest }) => {
+    if (!results.length) return null;
+    return (
+      <SearchResultsDiv
+        onMouseEnter={() => send("MOUSEENTER_RESULTS")}
+        onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
+        {...rest}
+      >
+        {results.map((result, i) => (
+          <SearchResult
+            key={result}
+            result={result}
+            isActive={currentResult === i}
+            send={send}
+          />
+        ))}
+      </SearchResultsDiv>
+    );
+  }
+);
 
 export default SearchResults;
