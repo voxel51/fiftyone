@@ -89,7 +89,7 @@ def find_processes_by_args(args):
     current_username = psutil.Process().username()
     for p in psutil.process_iter(["cmdline", "username"]):
         try:
-            if p.info["username"] == current_username:
+            if p.info["username"] == current_username and p.info["cmdline"]:
                 cmdline = p.info["cmdline"]
                 for i in range(len(cmdline) - len(args) + 1):
                     if cmdline[i : i + len(args)] == args:
