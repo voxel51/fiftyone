@@ -159,9 +159,12 @@ const Row = ({ name, value, children, ...rest }) => (
 
 const LabelRow = (props) => {
   const [expanded, setExpanded] = useState(false);
-  return (
-    <Row {...props}>
-      <ArrowDropDown
+  return <Row {...props}></Row>;
+};
+
+/**
+ *  TODO: modal filter
+ *       <ArrowDropDown
         onClick={(e) => {
           e.preventDefault();
           setExpanded(!expanded);
@@ -178,9 +181,7 @@ const LabelRow = (props) => {
           }}
         />
       )}
-    </Row>
-  );
-};
+ */
 
 const SampleModal = ({
   sample,

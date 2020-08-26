@@ -270,7 +270,7 @@ const ClassFilter = ({ name, atoms }) => {
     setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
   }, [classes]);
 
-  console.log;
+  console.log(classes);
 
   useOutsideClick(ref, () => send("BLUR"));
   const {
@@ -368,7 +368,7 @@ const ConfidenceContainer = styled.div`
   color: ${({ theme }) => theme.fontDark};
 `;
 
-const Filter = ({ entry, atoms }) => {
+const Filter = React.memo(({ entry, ...atoms }) => {
   const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
     atoms.includeNoConfidence(entry.name)
   );
@@ -418,6 +418,6 @@ const Filter = ({ entry, atoms }) => {
       </ConfidenceContainer>
     </FilterDiv>
   );
-};
+});
 
 export default Filter;
