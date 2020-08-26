@@ -71,7 +71,7 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
     details.
 
     Args:
-        expand (False): whether to expand the image labels into a dictionary of
+        expand (True): whether to expand the image labels into a dictionary of
             :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
             expanded label dictionary. Only applicable when ``expand`` is True
@@ -88,7 +88,7 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
 
     def __init__(
         self,
-        expand=False,
+        expand=True,
         prefix=None,
         labels_dict=None,
         multilabel=False,
@@ -149,7 +149,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        expand (False): whether to expand the image labels into a dictionary of
+        expand (True): whether to expand the image labels into a dictionary of
             :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
             expanded label dictionary. Only applicable when ``expand`` is True
@@ -167,7 +167,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
     def __init__(
         self,
         dataset_dir,
-        expand=False,
+        expand=True,
         prefix=None,
         labels_dict=None,
         multilabel=False,

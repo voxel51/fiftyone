@@ -815,7 +815,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
-        expand (False): whether to expand the image labels into a dictionary of
+        expand (True): whether to expand the image labels into a dictionary of
             :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
             expanded label dictionary. Only applicable when ``expand`` is True
@@ -834,7 +834,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         self,
         dataset_dir,
         compute_metadata=False,
-        expand=False,
+        expand=True,
         prefix=None,
         labels_dict=None,
         multilabel=False,
@@ -874,14 +874,6 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         else:
             image_metadata = None
 
-        if label is not None and self.expand:
-            label = label.expand(
-                prefix=self.prefix,
-                labels_dict=self.labels_dict,
-                multilabel=self.multilabel,
-                skip_non_categorical=self.skip_non_categorical,
-            )
-
         return image_path, image_metadata, label
 
     @property
@@ -897,7 +889,13 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         return fol.ImageLabels if not self.expand else None
 
     def setup(self):
-        self._sample_parser = FiftyOneImageLabelsSampleParser()
+        self._sample_parser = FiftyOneImageLabelsSampleParser(
+            expand=self.expand,
+            prefix=self.prefix,
+            labels_dict=self.labels_dict,
+            multilabel=self.multilabel,
+            skip_non_categorical=self.skip_non_categorical,
+        )
         self._labeled_dataset = etads.load_dataset(self.dataset_dir)
         self._description = self._labeled_dataset.dataset_index.description
 

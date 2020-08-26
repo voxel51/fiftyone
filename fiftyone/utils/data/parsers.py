@@ -733,7 +733,7 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
           on disk
 
     Args:
-        expand (False): whether to expand the image labels into a dictionary of
+        expand (True): whether to expand the image labels into a dictionary of
             :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
             expanded label dictionary. Only applicable when ``expand`` is True
@@ -750,7 +750,7 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
 
     def __init__(
         self,
-        expand=False,
+        expand=True,
         prefix=None,
         labels_dict=None,
         multilabel=False,
@@ -841,13 +841,19 @@ class FiftyOneImageLabelsSampleParser(ImageLabelsSampleParser):
     format details.
 
     Args:
-        expand (False): whether to expand the image labels into a dictionary of
+        expand (True): whether to expand the image labels into a dictionary of
             :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
             expanded label dictionary. Only applicable when ``expand`` is True
+        labels_dict (None): a dictionary mapping names of attributes/objects
+            in the image labels to field names into which to expand them. Only
+            applicable when ``expand`` is True
         multilabel (False): whether to store frame attributes in a single
             :class:`fiftyone.core.labels.Classifications` instance. Only
             applicable when ``expand`` is True
+        skip_non_categorical (False): whether to skip non-categorical frame
+            attributes (True) or cast them to strings (False). Only applicable
+            when ``expand`` is True
     """
 
     pass
