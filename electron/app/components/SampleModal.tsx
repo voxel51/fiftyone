@@ -194,12 +194,12 @@ const SampleModal = ({
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [filter, setFilter] = useRecoilState(selectors.modalLabelFilters);
+  const [filter, setFilter] = useRecoilState(selectors.labelFilters);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
   useEffect(() => {
-    setFilter(null);
+    setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
 
   const handleResize = () => {

@@ -49,7 +49,8 @@ const Sample = ({
       return null;
     }
 
-    if (!filter[name](value)) {
+    if (!filter[name](sample[name])) {
+      console.log("ARRR", filter[name](sample), sample[name]);
       return null;
     }
     return (
