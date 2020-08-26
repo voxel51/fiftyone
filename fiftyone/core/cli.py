@@ -26,6 +26,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.utils.quickstart as fouq
 import fiftyone.zoo as foz
 
 
@@ -68,6 +69,7 @@ class FiftyOneCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "quickstart", QuickstartCommand)
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
@@ -78,6 +80,24 @@ class FiftyOneCommand(Command):
     @staticmethod
     def execute(parser, args):
         parser.print_help()
+
+
+class QuickstartCommand(Command):
+    """Launch a FiftyOne quickstart.
+
+    Examples::
+
+        # Launch the quickstart
+        fiftyone quickstart
+    """
+
+    @staticmethod
+    def setup(parser):
+        pass
+
+    @staticmethod
+    def execute(parser, args):
+        fouq.quickstart(interactive=False)
 
 
 class ConfigCommand(Command):
@@ -948,17 +968,21 @@ class ZooListCommand(Command):
     @staticmethod
     def execute(parser, args):
         all_datasets = foz._get_zoo_datasets()
-        all_sources = foz._get_zoo_dataset_sources()
+        all_sources, has_default = foz._get_zoo_dataset_sources()
 
         base_dir = args.base_dir
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
 
-        _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets)
+        _print_zoo_dataset_list(
+            downloaded_datasets, all_datasets, all_sources, has_default
+        )
 
 
-def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
+def _print_zoo_dataset_list(
+    downloaded_datasets, all_datasets, all_sources, has_default
+):
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
         for name, zoo_dataset_cls in datasets.items():
@@ -1015,9 +1039,10 @@ def _print_zoo_dataset_list(all_datasets, all_sources, downloaded_datasets):
                 (name, split, is_downloaded, split_dir) + tuple(srcs)
             )
 
+    first_suffix = " (*)" if has_default else ""
     headers = (
         ["name", "split", "downloaded", "dataset_dir"]
-        + ["%s (*)" % all_sources[0]]
+        + ["%s%s" % (all_sources[0], first_suffix)]
         + all_sources[1:]
     )
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)

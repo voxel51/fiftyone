@@ -175,7 +175,13 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._labels_path = os.path.join(self.dataset_dir, "labels.xml")
 
-        info, _, cvat_images = load_cvat_image_annotations(self._labels_path)
+        if os.path.isfile(self._labels_path):
+            info, _, cvat_images = load_cvat_image_annotations(
+                self._labels_path
+            )
+        else:
+            info = {}
+            cvat_images = []
 
         self._info = info
 

@@ -13,8 +13,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.sample as fos
 import fiftyone.core.metadata as fom
+import fiftyone.core.sample as fos
 
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
@@ -99,7 +99,7 @@ def import_samples(
                     "from a LabeledImageDatasetImporter"
                 )
 
-            if expand_schema:
+            if expand_schema and dataset_importer.label_cls is not None:
                 # This has the benefit of ensuring that `label_field` exists,
                 # even if all of the imported samples are unlabeled (i.e.,
                 # return labels that are all `None`)
@@ -107,9 +107,9 @@ def import_samples(
                     label_field, dataset_importer.label_cls
                 )
 
-            # The schema now never needs expanding, because we already ensured
-            # that `label_field` exists, if necessary
-            expand_schema = False
+                # The schema now never needs expanding, because we already
+                # ensured that `label_field` exists, if necessary
+                expand_schema = False
 
             def parse_sample(sample):
                 image_path, image_metadata, label = sample
@@ -117,7 +117,9 @@ def import_samples(
                     filepath=image_path, metadata=image_metadata, tags=tags,
                 )
 
-                if label is not None:
+                if isinstance(label, dict):
+                    sample.update_fields(label)
+                elif label is not None:
                     sample[label_field] = label
 
                 return sample
@@ -367,10 +369,12 @@ class LabeledImageDatasetImporter(DatasetImporter):
         with importer:
             for image_path, image_metadata, label in importer:
                 sample = fo.Sample(
-                    filepath=image_path, metadata=image_metadata,
-                }
+                    filepath=image_path, metadata=image_metadata
+                )
 
-                if label is not None:
+                if isinstance(label, dict):
+                    sample.update_fields(label)
+                elif label is not None:
                     sample[label_field] = label
 
                 dataset.add_sample(sample)
@@ -392,8 +396,9 @@ class LabeledImageDatasetImporter(DatasetImporter):
             -   ``image_metadata``: an
                 :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                 image, or ``None`` if :meth:`has_image_metadata` is ``False``
-            -   ``label``: an instance of :meth:`label_cls`, or ``None`` if the
-                sample is unlabeled
+            -   ``label``: an instance of :meth:`label_cls`, or a dictionary
+                mapping field names to :class:`fiftyone.core.labels.Label`
+                instances, or ``None`` if the sample is unlabeled
 
         Raises:
             StopIteration: if there are no more samples to import
@@ -410,7 +415,7 @@ class LabeledImageDatasetImporter(DatasetImporter):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class returned by this
-        importer.
+        importer, or ``None`` if it returns a dictionary of labels.
         """
         raise NotImplementedError("subclass must implement label_cls")
 
@@ -478,6 +483,23 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
     def get_dataset_info(self):
         return self._metadata.get("info", {})
+
+    @staticmethod
+    def get_classes(dataset_dir):
+        metadata_path = os.path.join(dataset_dir, "metadata.json")
+        if not os.path.isfile(metadata_path):
+            return None
+
+        metadata = etas.load_json(metadata_path)
+        return metadata.get("info", {}).get("classes", None)
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        data_dir = os.path.join(dataset_dir, "data")
+        if not os.path.isdir(data_dir):
+            return 0
+
+        return len(etau.list_files(data_dir))
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
@@ -600,7 +622,10 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         }
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
-        labels = etas.load_json(labels_path)
+        if os.path.isfile(labels_path):
+            labels = etas.load_json(labels_path)
+        else:
+            labels = {}
 
         self._classes = labels.get("classes", None)
         self._sample_parser.classes = self._classes
@@ -762,7 +787,10 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         }
 
         labels_path = os.path.join(self.dataset_dir, "labels.json")
-        labels = etas.load_json(labels_path)
+        if os.path.isfile(labels_path):
+            labels = etas.load_json(labels_path)
+        else:
+            labels = {}
 
         self._classes = labels.get("classes", None)
         self._sample_parser.classes = self._classes
@@ -787,11 +815,38 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
+        expand (True): whether to expand the image labels into a dictionary of
+            :class:`fiftyone.core.labels.Label` instances
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded label dictionary. Only applicable when ``expand`` is True
+        labels_dict (None): a dictionary mapping names of attributes/objects
+            in the image labels to field names into which to expand them. Only
+            applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
+        skip_non_categorical (False): whether to skip non-categorical frame
+            attributes (True) or cast them to strings (False). Only applicable
+            when ``expand`` is True
     """
 
-    def __init__(self, dataset_dir, compute_metadata=False):
+    def __init__(
+        self,
+        dataset_dir,
+        compute_metadata=False,
+        expand=True,
+        prefix=None,
+        labels_dict=None,
+        multilabel=False,
+        skip_non_categorical=False,
+    ):
         super().__init__(dataset_dir)
         self.compute_metadata = compute_metadata
+        self.expand = expand
+        self.prefix = prefix
+        self.labels_dict = labels_dict
+        self.multilabel = multilabel
+        self.skip_non_categorical = skip_non_categorical
         self._description = None
         self._sample_parser = None
         self._labeled_dataset = None
@@ -831,10 +886,16 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return fol.ImageLabels if not self.expand else None
 
     def setup(self):
-        self._sample_parser = FiftyOneImageLabelsSampleParser()
+        self._sample_parser = FiftyOneImageLabelsSampleParser(
+            expand=self.expand,
+            prefix=self.prefix,
+            labels_dict=self.labels_dict,
+            multilabel=self.multilabel,
+            skip_non_categorical=self.skip_non_categorical,
+        )
         self._labeled_dataset = etads.load_dataset(self.dataset_dir)
         self._description = self._labeled_dataset.dataset_index.description
 

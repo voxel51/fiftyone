@@ -5,8 +5,9 @@ Loading Datasets From Disk
 .. include:: ../../substitutions.rst
 
 FiftyOne provides native support for importing datasets from disk in a
-variety of :ref:`common formats <Supported formats>`, and it can be easily
-extended to import datasets in :ref:`custom formats <Custom formats>`.
+variety of :ref:`common formats <supported-import-formats>`, and it can be
+easily extended to import datasets in
+:ref:`custom formats <custom-dataset-importer>`.
 
 If you have individual or in-memory samples that you would like to load into a
 FiftyOne dataset, see :doc:`adding samples to datasets <samples>`.
@@ -64,6 +65,8 @@ that you're loading.
 
         # Import the dataset!
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
+
+.. _supported-import-formats:
 
 Supported formats
 -----------------
@@ -217,7 +220,7 @@ Datasets of this type are read in the following format:
 
 where ``labels.json`` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "classes": [
@@ -235,6 +238,8 @@ where ``labels.json`` is a JSON file in the following format:
 If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
+
+The target value in `labels` for unlabeled images is `None`.
 
 You can create a FiftyOne dataset from an image classification dataset stored
 in the above format as follows:
@@ -316,6 +321,8 @@ Datasets of this type are read in the following format:
             <image2>.<ext>
             ...
         ...
+
+Unlabeled images are stored in a subdirectory named `_unlabeled`.
 
 You can create a FiftyOne dataset from an image classification directory tree
 stored in the above format as follows:
@@ -403,11 +410,15 @@ following format:
         "depth": tf.io.FixedLenFeature([], tf.int64),
         # Image filename
         "filename": tf.io.FixedLenFeature([], tf.int64),
+        # The image extension
+        "format": tf.io.FixedLenFeature([], tf.string),
         # Encoded image bytes
         "image_bytes": tf.io.FixedLenFeature([], tf.string),
         # Class label string
-        "label": tf.io.FixedLenFeature([], tf.string),
+        "label": tf.io.FixedLenFeature([], tf.string, default_value=""),
     }
+
+For unlabeled samples, the TFRecords do not contain `label` features.
 
 You can create a FiftyOne dataset from an image classification dataset stored
 as a directory of TFRecords in the above format as follows:
@@ -540,6 +551,8 @@ If the `classes` field is provided, the `target` values are class IDs that are
 mapped to class label strings via `classes[target]`. If no `classes` field is
 provided, then the `target` values directly store the label strings.
 
+The target value in `labels` for unlabeled images is `None`.
+
 You can create a FiftyOne dataset from an image detection dataset stored in the
 above format as follows:
 
@@ -620,7 +633,7 @@ Datasets of this type are read in the following format:
 
 where ``labels.json`` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "info": {
@@ -665,6 +678,8 @@ where ``labels.json`` is a JSON file in the following format:
             ...
         ]
     }
+
+For unlabeled datasets, `labels.json` does not contain an `annotations` field.
 
 You can create a FiftyOne dataset from a COCO detection dataset stored in the
 above format as follows:
@@ -793,6 +808,8 @@ where the labels XML files are in the following format:
         ...
     </annotation>
 
+Unlabeled images have no corresponding file in `labels/`.
+
 You can create a FiftyOne dataset from a VOC detection dataset stored in the
 above format as follows:
 
@@ -912,6 +929,8 @@ meanings:
 When reading datasets of this type, all columns after the four `bbox` columns
 may be omitted.
 
+Unlabeled images have no corresponding file in `labels/`.
+
 You can create a FiftyOne dataset from a KITTI detection dataset stored in the
 above format as follows:
 
@@ -1026,6 +1045,8 @@ following format:
             [], tf.int64, allow_missing=True
         ),
     }
+
+The TFRecords for unlabeled samples do not contain `image/object/*` features.
 
 You can create a FiftyOne dataset from an object detection dataset stored as a
 directory of TFRecords in the above format as follows:
@@ -1168,6 +1189,8 @@ where `labels.xml` is an XML file in the following format:
         </image>
     </annotations>
 
+Unlabeled images have no corresponding `image` tag in `labels.xml`.
+
 You can create a FiftyOne dataset from a CVAT image dataset stored in the above
 format as follows:
 
@@ -1252,7 +1275,7 @@ Datasets of this type are read in the following format:
 
 where `manifest.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     {
         "type": "eta.core.datasets.LabeledImageDataset",
@@ -1272,6 +1295,8 @@ where `manifest.json` is a JSON file in the following format:
 
 and where each labels JSON file is stored in
 `eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
+
+For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
 You can create a FiftyOne dataset from an image labels dataset stored in the
 above format as follows:
@@ -1353,7 +1378,7 @@ Datasets of this type are read in the following format:
 
 where `labels.json` is a JSON file in the following format:
 
-.. code-block:: json
+.. code-block:: text
 
     [
         {
@@ -1385,6 +1410,8 @@ where `labels.json` is a JSON file in the following format:
         },
         ...
     ]
+
+Unlabeled images have no corresponding entry in `labels.json`.
 
 You can create a FiftyOne dataset from a BDD dataset stored in the above format
 as follows:
@@ -1459,10 +1486,12 @@ Datasets of this type are read in the following format:
             <filename1>.<ext>
             <filename2>.<ext>
             ...
+        metadata.json
         samples.json
 
-where `samples.json` is a JSON file containing a serialized representation of
-the samples in the dataset generated by
+where `metadata.json` is an optional JSON file containing metadata associated
+with the dataset, and `samples.json` is a JSON file containing a serialized
+representation of the samples in the dataset generated by
 :meth:`Sample.to_dict() <fiftyone.core.sample.Sample.to_dict>`.
 
 You can create a FiftyOne dataset from a directory in the above format as
@@ -1791,12 +1820,15 @@ should implement is determined by the type of dataset that you are importing.
                 """Returns information about the next sample in the dataset.
 
                 Returns:
-                    an  ``(image_path, image_metadata, label)`` tuple, where:
-                    -   ``image_path`` is the path to the image on disk
-                    -   ``image_metadata`` is an
+                    an  ``(image_path, image_metadata, label)`` tuple, where
+
+                    -   ``image_path``: the path to the image on disk
+                    -   ``image_metadata``: an
                         :class:`fiftyone.core.metadata.ImageMetadata` instances for the
                         image, or ``None`` if :meth:`has_image_metadata` is ``False``
-                    -   ``label`` is an instance of :meth:`label_cls`
+                    -   ``label``: an instance of :meth:`label_cls`, or a dictionary
+                        mapping field names to :class:`fiftyone.core.labels.Label`
+                        instances, or ``None`` if the sample is unlabeled
 
                 Raises:
                     StopIteration: if there are no more samples to import
@@ -1821,7 +1853,7 @@ should implement is determined by the type of dataset that you are importing.
             @property
             def label_cls(self):
                 """The :class:`fiftyone.core.labels.Label` class returned by this
-                importer.
+                importer, or ``None`` if it returns a dictionary of labels.
                 """
                 # Return a Label subclass here
                 pass
@@ -1875,13 +1907,14 @@ should implement is determined by the type of dataset that you are importing.
 
         with importer:
             for image_path, image_metadata, label in importer:
-                dataset.add_sample(
-                    fo.Sample(
-                        filepath=image_path,
-                        metadata=image_metadata,
-                        **{label_field: label},
-                    )
-                )
+                sample = fo.Sample(filepath=image_path, metadata=image_metadata)
+
+                if isinstance(label, dict):
+                    sample.update_fields(label)
+                elif label is not None:
+                    sample[label_field] = label
+
+                dataset.add_sample(sample)
 
             if importer.has_dataset_info:
                 dataset.info.update(importer.get_dataset_info())
@@ -1910,7 +1943,7 @@ should implement is determined by the type of dataset that you are importing.
     The
     :meth:`label_cls <fiftyone.utils.data.importers.LabeledImageDatasetImporter.label_cls>`
     property of the importer declares the type of |Label| that the dataset contains
-    (e.g., |Classification|, |Detections|, or |ImageLabels|).
+    (e.g., |Classification| or |Detections|).
 
     The
     :meth:`has_image_metadata <fiftyone.utils.data.importers.LabeledImageDatasetImporter.has_image_metadata>`
@@ -1918,6 +1951,8 @@ should implement is determined by the type of dataset that you are importing.
     |ImageMetadata| instances for each image that it loads when
     :meth:`__next__() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.__next__>`
     is called.
+
+.. _writing-a-custom-dataset-type-importer:
 
 Writing a custom Dataset type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

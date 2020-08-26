@@ -13,7 +13,21 @@ import fiftyone.utils.imagenet as foui
 import fiftyone.utils.voc as fouv
 import fiftyone.zoo as foz
 
-torchvision = fou.lazy_import("torchvision", fou.ensure_torch)
+
+_TORCH_IMPORT_ERROR = """
+
+You tried to download a dataset from the FiftyOne Dataset Zoo using the PyTorch
+backend, but you do not have the necessary packages installed.
+
+Ensure that you have `torch` and `torchvision` installed on your machine, and
+then try running this command again.
+
+See https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/zoo.html
+for more information about working with the Dataset Zoo.
+"""
+
+_callback = lambda: fou.ensure_torch(error_msg=_TORCH_IMPORT_ERROR)
+torchvision = fou.lazy_import("torchvision", callback=_callback)
 
 
 class TorchVisionDataset(foz.ZooDataset):
@@ -281,6 +295,7 @@ class COCO2014Dataset(TorchVisionDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
+            fou.ensure_pycocotools()
             images_dir, anno_path = fouc.download_coco_dataset_split(
                 download_dir, split, year="2014", cleanup=True
             )
@@ -328,6 +343,7 @@ class COCO2017Dataset(TorchVisionDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
+            fou.ensure_pycocotools()
             images_dir, anno_path = fouc.download_coco_dataset_split(
                 download_dir, split, year="2017", cleanup=True
             )
