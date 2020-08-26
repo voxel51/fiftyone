@@ -74,7 +74,7 @@ const FilterDiv = styled.div`
   background: ${({ theme }) => theme.backgroundLight};
   padding: 0.5rem;
   font-weight: bold;
-  font-size: 1rem;
+  font-size: 14px;
 `;
 
 const classFilterMachine = Machine({
@@ -182,11 +182,19 @@ const classFilterMachine = Machine({
     },
   },
   on: {
+    CLEAR: {
+      actions: [
+        assign({
+          selected: [],
+        }),
+      ],
+    },
     REMOVE: {
       actions: [
         assign({
-          selected: ({ selected }, { value }) =>
-            selected.filter((s) => s !== value),
+          selected: ({ selected }, { value }) => {
+            return selected.filter((s) => s !== value);
+          },
         }),
       ],
     },
@@ -220,7 +228,7 @@ const ClassInput = styled.input`
   background: ${({ theme }) => theme.backgroundDark};
   border: 1px ${({ theme }) => theme.backgroundDarkBorder};
   border-radius: 2px;
-  font-size: 1rem;
+  font-size: 14px;
   line-height: 1.2rem;
   font-weight: bold;
   padding: 0.5rem;
@@ -281,9 +289,10 @@ const ClassFilter = ({ name, atoms }) => {
 
   useEffect(() => {
     ((state.event.type === "COMMIT" && state.context.valid) ||
-      state.event.type === "REMOVE") &&
+      state.event.type === "REMOVE" ||
+      state.event.type === "CLEAR") &&
       setSelectedClasses(state.context.selected);
-  }, [["COMMIT", "REMOVE"].includes(state.event.type)]);
+  }, [state.event]);
 
   return (
     <>
@@ -292,7 +301,7 @@ const ClassFilter = ({ name, atoms }) => {
         {selected.length ? (
           <a
             style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => send({ type: "SET_SELECTED", selected: [] })}
+            onClick={() => send({ type: "CLEAR" })}
           >
             clear {selected.length}
           </a>
@@ -329,22 +338,26 @@ const ClassFilter = ({ name, atoms }) => {
           />
           {state.matches("editing") && (
             <SearchResults
-              results={results
-                .filter((r) => !selected.includes(r))
-                .sort()
-                .slice(0, 10)}
+              results={results.filter((r) => !selected.includes(r)).sort()}
               send={send}
               currentResult={currentResult}
               style={{
                 position: "absolute",
                 top: "0.25rem",
+                fontSize: 14,
+                maxHeight: 294,
+                overflowY: "scroll",
               }}
             />
           )}
         </div>
         <Selected>
           {selected.map((s) => (
-            <ClassButton onClick={() => send({ type: "REMOVE", value: s })}>
+            <ClassButton
+              onClick={() => {
+                send({ type: "REMOVE", value: s });
+              }}
+            >
               {s + " "}
               <a style={{ color: theme.fontDark }}>x</a>
             </ClassButton>
