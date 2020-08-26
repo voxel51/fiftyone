@@ -40,7 +40,7 @@ Rapidly gain insight by visualizing samples overlayed with with dynamic and
 queryable fields such as ground truth and predicted labels, dataset splits, and
 much more!
 
-.. image:: images/homepage1.gif
+.. image:: images/homepage1.png
    :alt: Overview
    :align: center
 
