@@ -505,10 +505,10 @@ class ViewExpression(object):
         Args:
             regex: the regular expression to apply. Must be a Perl Compatible
                 Regular Expression (PCRE). See
-                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-regex>`_
+                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-regex>`__
                 for  details
             options (None): an optional string of regex options to apply. See
-                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-options>`_
+                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-options>`__
                 for the available options
 
         Returns:
