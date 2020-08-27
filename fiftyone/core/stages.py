@@ -35,7 +35,11 @@ class ViewStage(object):
 
     def __repr__(self):
         kwargs_str = ", ".join(
-            ["%s=%s" % (k, _repr.repr(v)) for k, v in self._kwargs()]
+            [
+                "%s=%s" % (k, _repr.repr(v))
+                for k, v in self._kwargs()
+                if not k.startswith("_")
+            ]
         )
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
@@ -173,7 +177,7 @@ class Exclude(ViewStage):
             a MongoDB aggregation pipeline (list of dicts)
         """
         sample_ids = [ObjectId(id) for id in self._sample_ids]
-        return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
+        return [{"$match": {"_id": {"$not": {"$in": sample_ids}}}}]
 
     def _kwargs(self):
         return [["sample_ids", self._sample_ids]]
@@ -262,8 +266,8 @@ class ExcludeFields(ViewStage):
 
 
 class Exists(ViewStage):
-    """Returns a view containing the samples that have a non-``None`` value
-    for the given field.
+    """Returns a view containing the samples that have (or do not have) a
+    non-``None`` value for the given field.
 
     Examples::
 
@@ -279,17 +283,35 @@ class Exists(ViewStage):
         stage = Exists("predictions")
         view = dataset.add_stage(stage)
 
+        #
+        # Only include samples that do NOT have a value in their `predictions`
+        # field
+        #
+
+        stage = Exists("predictions", bool=False)
+        view = dataset.add_stage(stage)
+
     Args:
         field: the field
+        bool (True): whether to check if the field exists (True) or does not
+            exist (False)
     """
 
-    def __init__(self, field):
+    def __init__(self, field, bool=True):
         self._field = field
+        self._bool = bool
 
     @property
     def field(self):
         """The field to check if exists."""
         return self._field
+
+    @property
+    def bool(self):
+        """Whether to check if the field exists (True) or does not exist
+        (False).
+        """
+        return self._bool
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -297,14 +319,29 @@ class Exists(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return Match({self._field: {"$exists": True, "$ne": None}}).to_mongo()
+        if self._bool:
+            return [{"$match": {self._field: {"$exists": True, "$ne": None}}}]
+
+        return [
+            {
+                "$match": {
+                    "$or": [
+                        {self._field: {"$exists": False}},
+                        {self._field: {"$eq": None}},
+                    ]
+                }
+            }
+        ]
 
     def _kwargs(self):
-        return [["field", self._field]]
+        return [["field", self._field], ["bool", self._bool]]
 
     @classmethod
     def _params(cls):
-        return [{"name": "field", "type": "str"}]
+        return [
+            {"name": "field", "type": "str"},
+            {"name": "bool", "type": "bool|NoneType", "default": "True"},
+        ]
 
 
 class FilterField(ViewStage):
@@ -597,6 +634,9 @@ class Limit(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if self._limit <= 0:
+            return [{"$match": {"_id": None}}]
+
         return [{"$limit": self._limit}]
 
     def _kwargs(self):
@@ -733,7 +773,7 @@ class MatchTag(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return Match({"tags": self._tag}).to_mongo()
+        return [{"$match": {"tags": self._tag}}]
 
     def _kwargs(self):
         return [["tag", self._tag]]
@@ -781,7 +821,7 @@ class MatchTags(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return Match({"tags": {"$in": self._tags}}).to_mongo()
+        return [{"$match": {"tags": {"$in": self._tags}}}]
 
     def _kwargs(self):
         return [["tags", self._tags]]
@@ -913,7 +953,7 @@ class Select(ViewStage):
             a MongoDB aggregation pipeline (list of dicts)
         """
         sample_ids = [ObjectId(id) for id in self._sample_ids]
-        return Match({"_id": {"$in": sample_ids}}).to_mongo()
+        return [{"$match": {"_id": {"$in": sample_ids}}}]
 
     def _kwargs(self):
         return [["sample_ids", self._sample_ids]]
@@ -1031,9 +1071,9 @@ class Shuffle(ViewStage):
         seed (None): an optional random seed to use when shuffling the samples
     """
 
-    def __init__(self, seed=None):
+    def __init__(self, seed=None, _randint=None):
         self._seed = seed
-        self._randint = _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def seed(self):
@@ -1054,7 +1094,7 @@ class Shuffle(ViewStage):
         ]
 
     def _kwargs(self):
-        return [["seed", self._seed]]
+        return [["seed", self._seed], ["_randint", self._randint]]
 
     @classmethod
     def _params(self):
@@ -1097,6 +1137,9 @@ class Skip(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if self._skip <= 0:
+            return []
+
         return [{"$skip": self._skip}]
 
     def _kwargs(self):
@@ -1201,7 +1244,7 @@ class SortBy(ViewStage):
     def _params(cls):
         return [
             {"name": "field_or_expr", "type": "dict|str"},
-            {"name": "reverse", "type": "bool", "default": "False"},
+            {"name": "reverse", "type": "bool|NoneType", "default": "False"},
         ]
 
     def validate(self, sample_collection):
@@ -1239,10 +1282,10 @@ class Take(ViewStage):
         seed (None): an optional random seed to use when selecting the samples
     """
 
-    def __init__(self, size, seed=None):
+    def __init__(self, size, seed=None, _randint=None):
         self._seed = seed
         self._size = size
-        self._randint = _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def size(self):
@@ -1261,7 +1304,7 @@ class Take(ViewStage):
             a MongoDB aggregation pipeline (list of dicts)
         """
         if self._size <= 0:
-            return Match({"_id": None}).to_mongo()
+            return [{"$match": {"_id": None}}]
 
         # @todo avoid creating new field here?
         return [
@@ -1272,7 +1315,11 @@ class Take(ViewStage):
         ]
 
     def _kwargs(self):
-        return [["size", self._size], ["seed", self._seed]]
+        return [
+            ["size", self._size],
+            ["seed", self._seed],
+            ["_randint", self._randint],
+        ]
 
     @classmethod
     def _params(cls):
