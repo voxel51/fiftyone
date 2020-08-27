@@ -1234,7 +1234,7 @@ class SortBy(ViewStage):
     def _params(cls):
         return [
             {"name": "field_or_expr", "type": "dict|str"},
-            {"name": "reverse", "type": "bool", "default": "False"},
+            {"name": "reverse", "type": "bool|NoneType", "default": "False"},
         ]
 
     def validate(self, sample_collection):
