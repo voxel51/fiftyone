@@ -256,8 +256,8 @@ class ExcludeFields(ViewStage):
 
 
 class Exists(ViewStage):
-    """Returns a view containing the samples that have a non-``None`` value
-    for the given field.
+    """Returns a view containing the samples that have (or do not have) a
+    non-``None`` value for the given field.
 
     Examples::
 
@@ -273,17 +273,35 @@ class Exists(ViewStage):
         stage = Exists("predictions")
         view = dataset.add_stage(stage)
 
+        #
+        # Only include samples that do NOT have a value in their `predictions`
+        # field
+        #
+
+        stage = Exists("predictions", bool=False)
+        view = dataset.add_stage(stage)
+
     Args:
         field: the field
+        bool (True): whether to check if the field exists (True) or does not
+            exist (False)
     """
 
-    def __init__(self, field):
+    def __init__(self, field, bool=True):
         self._field = field
+        self._bool = bool
 
     @property
     def field(self):
         """The field to check if exists."""
         return self._field
+
+    @property
+    def bool(self):
+        """Whether to check if the field exists (True) or does not exist
+        (False).
+        """
+        return self._bool
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -291,14 +309,29 @@ class Exists(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return Match({self._field: {"$exists": True, "$ne": None}}).to_mongo()
+        if self._bool:
+            return [{"$match": {self._field: {"$exists": True, "$ne": None}}}]
+
+        return [
+            {
+                "$match": {
+                    "$or": [
+                        {self._field: {"$exists": False}},
+                        {self._field: {"$eq": None}},
+                    ]
+                }
+            }
+        ]
 
     def _kwargs(self):
-        return [["field", self._field]]
+        return [["field", self._field], ["bool", self._bool]]
 
     @classmethod
     def _params(cls):
-        return [{"name": "field", "type": "str"}]
+        return [
+            {"name": "field", "type": "str"},
+            {"name": "bool", "type": "bool|NoneType", "default": "True"},
+        ]
 
 
 class FilterField(ViewStage):
