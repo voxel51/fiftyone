@@ -99,6 +99,8 @@ export default ({
       },
       overlay: overlay,
       colorMap: playerColorMap,
+      activeLabels,
+      filter,
     })
   );
   const props = thumbnail
@@ -109,11 +111,11 @@ export default ({
       if (thumbnail) {
         player.thumbnailMode();
       }
-      player.render(id, activeLabels, filter);
+      player.render(id);
       setInitLoad(true);
       onLoad();
     } else {
-      player.renderer.processFrame(activeLabels, filter);
+      player.updateOptions({ activeLabels, filter });
     }
   }, [filter, overlay, activeLabels]);
   return <div id={id} style={style} {...props} />;
