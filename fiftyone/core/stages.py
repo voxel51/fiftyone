@@ -1061,9 +1061,9 @@ class Shuffle(ViewStage):
         seed (None): an optional random seed to use when shuffling the samples
     """
 
-    def __init__(self, seed=None):
+    def __init__(self, seed=None, _randint=None):
         self._seed = seed
-        self._randint = _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def seed(self):
@@ -1084,7 +1084,7 @@ class Shuffle(ViewStage):
         ]
 
     def _kwargs(self):
-        return [["seed", self._seed]]
+        return [["seed", self._seed], ["_randint", self._randint]]
 
     @classmethod
     def _params(self):
@@ -1272,10 +1272,10 @@ class Take(ViewStage):
         seed (None): an optional random seed to use when selecting the samples
     """
 
-    def __init__(self, size, seed=None):
+    def __init__(self, size, seed=None, _randint=None):
         self._seed = seed
         self._size = size
-        self._randint = _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
 
     @property
     def size(self):
@@ -1305,7 +1305,11 @@ class Take(ViewStage):
         ]
 
     def _kwargs(self):
-        return [["size", self._size], ["seed", self._seed]]
+        return [
+            ["size", self._size],
+            ["seed", self._seed],
+            ["_randint", self._randint],
+        ]
 
     @classmethod
     def _params(cls):
