@@ -164,15 +164,15 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
   </div>
 );
 
-const LabelRow = (props) => {
+const LabelRow = ({ color, field, ...rest }) => {
   const [expanded, setExpanded] = useState(false);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
   return (
     <>
-      <Row {...props}>
-        {activeLabels[props.name] && props.field._cls && (
+      <Row {...rest}>
+        {activeLabels[rest.name] && field._cls && (
           <ArrowDropDown
             onClick={(e) => {
               e.preventDefault();
@@ -185,14 +185,16 @@ const LabelRow = (props) => {
           />
         )}
       </Row>
-      {expanded && activeLabels[props.name] && (
+      {expanded && activeLabels[rest.name] && (
         <Filter
           style={{
             margin: "0.5rem 0",
             border: "1px solid hsl(200,2%,37%)",
           }}
           entry={{
-            name,
+            name: rest.name,
+            color,
+            selected: activeLabels[rest.name],
           }}
           {...{
             includeLabels: atoms.modalFilterIncludeLabels,
@@ -299,6 +301,7 @@ const SampleModal = ({
         field: sample[k],
         renderedName: makeTag(k),
         value,
+        color: colorMapping[k],
       };
     });
   const detections = Object.keys(sample)
@@ -311,6 +314,7 @@ const SampleModal = ({
         renderedName: makeTag(k),
         field: sample[k],
         value: `${len} detection${len == 1 ? "" : "s"}`,
+        color: colorMapping[k],
       };
     });
   const labels = [...classifications, ...detections]

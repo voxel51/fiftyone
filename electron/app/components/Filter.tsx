@@ -248,7 +248,6 @@ const classFilterMachine = Machine({
         assign({
           classes: (_, { classes }) => classes,
           results: ({ inputValue }, { classes }) =>
-            console.log(classes) &&
             classes.filter((c) =>
               c.toLowerCase().includes(inputValue.toLowerCase())
             ),
@@ -464,11 +463,7 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
               checked={includeNoConfidence}
               onChange={() => setIncludeNoConfidence(!includeNoConfidence)}
               style={{
-                color: entry.selected
-                  ? entry.color
-                  : entry.disabled
-                  ? theme.fontDarkest
-                  : theme.fontDark,
+                color: entry.selected ? entry.color : theme.fontDark,
               }}
             />
           }
