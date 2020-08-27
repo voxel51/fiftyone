@@ -123,7 +123,7 @@ const Entry = ({ entry, onCheck }) => {
               {entry.name}
             </span>
             <span className="data">{entry.data}</span>
-            {entry.selected && entry.type && entry.data > 0 && (
+            {entry.selected && entry.type && entry.count > 0 && (
               <ArrowDropDown
                 onClick={(e) => {
                   e.preventDefault();

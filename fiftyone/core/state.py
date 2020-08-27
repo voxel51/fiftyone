@@ -250,8 +250,8 @@ def _get_label_classes(view, field_name, field):
 
     try:
         return next(view.aggregate(pipeline))["labels"]
-    except:
-        return None
+    except StopIteration:
+        pass
 
 
 def _get_label_fields(custom_fields_schema):
@@ -295,7 +295,9 @@ def _get_field_count(view, field_name, field):
                     }
                 }
             ]
-
-            return next(view.aggregate(pipeline))["totalCount"]
+            try:
+                return next(view.aggregate(pipeline))["totalCount"]
+            except StopIteration:
+                return 0
 
     return len(view.exists(field_name))
