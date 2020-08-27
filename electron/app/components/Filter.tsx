@@ -29,19 +29,53 @@ const SearchResultsWrapper = styled.div`
 const SliderContainer = styled.div`
   font-weight: bold;
   display: flex;
-  padding: 0.5rem;
+  padding: 1.5rem 0.5rem 0.5rem;
+  line-height: 1.9rem;
 `;
 
 const Slider = styled(SliderUnstyled)`
   && {
     color: ${({ theme }) => theme.brand};
-    margin: 0.1rem 0.75rem 0 0.75rem;
+    margin: 0 0.7rem 0 0.5rem;
     height: 3px;
   }
 
   && .MuiSlider-rail {
     height: 7px;
-    background: ${({ theme }) => theme.background};
+    border-radius: 6px;
+    background: ${({ theme }) => theme.backgroundLight};
+  }
+
+  && .MuiSlider-track {
+    height: 7px;
+    border-radius: 6px;
+    background: ${({ theme }) => theme.brand};
+  }
+
+  && .MuiSlider-thumb {
+    height: 1rem;
+    width: 1rem;
+    border-radius: 0.5rem;
+    background: ${({ theme }) => theme.brand};
+    box-shadow: none;
+  }
+
+  && .MuiSlider-thumb > span {
+    margin-left: -0.5rem;
+  }
+
+  && .MuiSlider-thumb [class*="PrivateValueLabel-circle-"] {
+    color: transparent;
+    display: flex !important;
+  }
+
+  && .MuiSlider-thumb [class*="PrivateValueLabel-label-"] {
+    color: ${({ theme }) => theme.font};
+    font-weight: bold;
+    font-family: "Palanquin", sans-serif;
+    margin-top: 2rem;
+    font-size: 14px;
+    display: flex !important;
   }
 `;
 
@@ -66,6 +100,7 @@ const RangeSlider = ({ atom, ...rest }) => {
         valueLabelDisplay="auto"
         aria-labelledby="range-slider"
         getAriaValueText={valuetext}
+        valueLabelDisplay={"on"}
         {...rest}
       />
       1

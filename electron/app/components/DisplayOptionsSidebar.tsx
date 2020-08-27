@@ -25,6 +25,15 @@ type Props = {
 
 const Container = styled.div`
   margin-bottom: 2px;
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
 
   .MuiCheckbox-root {
     padding: 4px 8px 4px 4px;
