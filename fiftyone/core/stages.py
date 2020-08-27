@@ -35,7 +35,11 @@ class ViewStage(object):
 
     def __repr__(self):
         kwargs_str = ", ".join(
-            ["%s=%s" % (k, _repr.repr(v)) for k, v in self._kwargs()]
+            [
+                "%s=%s" % (k, _repr.repr(v))
+                for k, v in self._kwargs()
+                if not k.startswith("_")
+            ]
         )
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
