@@ -158,7 +158,24 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
 );
 
 const LabelRow = (props) => {
-  return <Row {...props}></Row>;
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <Row {...props}>
+      {expanded && entry.selected && (
+        <Filter
+          entry={{
+            name,
+          }}
+          {...{
+            includeLabels: atoms.modalFilterIncludeLabels,
+            invertInclude: atoms.modalFilterInvertIncludeLabels,
+            includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
+            confidenceRange: atoms.modalFilterLabelConfidenceRange,
+          }}
+        />
+      )}
+    </Row>
+  );
 };
 
 const SampleModal = ({
