@@ -16,6 +16,7 @@ import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
 import Filter from "./Filter";
+import { Body } from "./CheckboxGrid";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
@@ -34,7 +35,7 @@ type Props = {
   sampleUrl: string;
 };
 
-const Container = styled.div`
+const Container = styled(Body)`
   display: grid;
   grid-template-columns: auto 280px;
   width: 90vw;
@@ -141,9 +142,6 @@ const Container = styled.div`
   }
 
   .row {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
     > label {
       font-weight: bold;
     }

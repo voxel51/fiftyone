@@ -12,7 +12,7 @@ const CHECKBOX_PADDING = 3;
 const CHECKBOX_TOTAL_SIZE = CHECKBOX_SIZE + 2 * CHECKBOX_PADDING;
 const LABEL_PADDING_RIGHT = 6;
 
-const Body = styled.div`
+export const Body = styled.div`
   vertical-align: middle;
 
   label {
