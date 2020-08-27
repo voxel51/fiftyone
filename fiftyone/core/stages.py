@@ -173,7 +173,7 @@ class Exclude(ViewStage):
             a MongoDB aggregation pipeline (list of dicts)
         """
         sample_ids = [ObjectId(id) for id in self._sample_ids]
-        return Match({"_id": {"$not": {"$in": sample_ids}}}).to_mongo()
+        return [{"$match": {"_id": {"$not": {"$in": sample_ids}}}}]
 
     def _kwargs(self):
         return [["sample_ids", self._sample_ids]]
@@ -760,7 +760,7 @@ class MatchTag(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return Match({"tags": self._tag}).to_mongo()
+        return [{"$match": {"tags": self._tag}}]
 
     def _kwargs(self):
         return [["tag", self._tag]]
@@ -808,7 +808,7 @@ class MatchTags(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return Match({"tags": {"$in": self._tags}}).to_mongo()
+        return [{"$match": {"tags": {"$in": self._tags}}}]
 
     def _kwargs(self):
         return [["tags", self._tags]]
@@ -940,7 +940,7 @@ class Select(ViewStage):
             a MongoDB aggregation pipeline (list of dicts)
         """
         sample_ids = [ObjectId(id) for id in self._sample_ids]
-        return Match({"_id": {"$in": sample_ids}}).to_mongo()
+        return [{"$match": {"_id": {"$in": sample_ids}}}]
 
     def _kwargs(self):
         return [["sample_ids", self._sample_ids]]
@@ -1288,7 +1288,7 @@ class Take(ViewStage):
             a MongoDB aggregation pipeline (list of dicts)
         """
         if self._size <= 0:
-            return Match({"_id": None}).to_mongo()
+            return [{"$match": {"_id": None}}]
 
         # @todo avoid creating new field here?
         return [
