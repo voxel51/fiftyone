@@ -624,6 +624,9 @@ class Limit(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if self._limit <= 0:
+            return [{"$match": {"_id": None}}]
+
         return [{"$limit": self._limit}]
 
     def _kwargs(self):
@@ -1124,6 +1127,9 @@ class Skip(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if self._skip <= 0:
+            return []
+
         return [{"$skip": self._skip}]
 
     def _kwargs(self):
