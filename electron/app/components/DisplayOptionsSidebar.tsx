@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
+import { useSetRecoilState, useRecoilValue } from "recoil";
 
 import { BarChart, Help, Label, PhotoLibrary } from "@material-ui/icons";
 
@@ -7,6 +8,8 @@ import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
+
+import * as selectors from "../recoil/selectors";
 
 export type Entry = {
   name: string;
@@ -141,6 +144,11 @@ const DisplayOptionsSidebar = React.forwardRef(
     }: Props,
     ref
   ) => {
+    const filters = useRecoilValue(selectors.labelFilters);
+    const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
+    useEffect(() => {
+      setModalFilters(filters);
+    }, [filters]);
     return (
       <Container ref={ref} {...rest}>
         <Cell

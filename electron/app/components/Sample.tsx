@@ -93,7 +93,7 @@ const Sample = ({
         thumbnail={true}
         activeLabels={activeLabels}
         {...eventHandlers}
-        filter={filter}
+        filterSelector={selectors.labelFilters}
       />
       <div className="sample-info" {...eventHandlers}>
         {Object.keys(sample)

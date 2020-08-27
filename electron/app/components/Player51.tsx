@@ -4,6 +4,7 @@ import uuid from "react-uuid";
 import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
 import { RESERVED_FIELDS, VALID_SCALAR_TYPES } from "../utils/labels";
+import { useRecoilValue } from "recoil";
 
 const PARSERS = {
   Classification: [
@@ -80,8 +81,9 @@ export default ({
   onLoad = () => {},
   activeLabels,
   fieldSchema = {},
-  filter,
+  filterSelector,
 }) => {
+  const filter = useRecoilValue(filterSelector);
   const [overlay, playerColorMap] = loadOverlay(
     sample,
     colorMapping,

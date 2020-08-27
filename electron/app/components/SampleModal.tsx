@@ -170,7 +170,7 @@ const LabelRow = ({ color, field, ...rest }) => {
     atoms.modalActiveLabels
   );
   return (
-    <>
+    <React.Fragment key={rest.key}>
       <Row {...rest}>
         {activeLabels[rest.name] && field._cls && (
           <ArrowDropDown
@@ -187,6 +187,7 @@ const LabelRow = ({ color, field, ...rest }) => {
       </Row>
       {expanded && activeLabels[rest.name] && (
         <Filter
+          key={`${rest.key}-filter`}
           style={{
             margin: "0.5rem 0",
             border: "1px solid hsl(200,2%,37%)",
@@ -204,7 +205,7 @@ const LabelRow = ({ color, field, ...rest }) => {
           }}
         />
       )}
-    </>
+    </React.Fragment>
   );
 };
 
@@ -222,7 +223,6 @@ const SampleModal = ({
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [filter, setFilter] = useRecoilState(selectors.labelFilters);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
@@ -352,7 +352,7 @@ const SampleModal = ({
             colorMapping={colorMapping}
             activeLabels={activeLabels}
             fieldSchema={fieldSchema}
-            filter={filter}
+            filterSelector={selectors.modalLabelFilters}
           />
         )}
         {onPrevious ? (
