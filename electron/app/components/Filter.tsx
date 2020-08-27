@@ -36,7 +36,7 @@ const SliderContainer = styled.div`
 const Slider = styled(SliderUnstyled)`
   && {
     color: ${({ theme }) => theme.brand};
-    margin: 0 0.7rem 0 0.5rem;
+    margin: 0 1rem 0 0.8rem;
     height: 3px;
   }
 
@@ -76,6 +76,8 @@ const Slider = styled(SliderUnstyled)`
     margin-top: 2rem;
     font-size: 14px;
     display: flex !important;
+    padding: 0.2rem;
+    border-radius: 6rem;
   }
 `;
 
@@ -92,7 +94,7 @@ const RangeSlider = ({ atom, ...rest }) => {
       0
       <Slider
         value={[...localValue]}
-        onChange={(e, v) => setLocalValue([...v])}
+        onChange={(_, v) => setLocalValue([...v])}
         onChangeCommitted={(e, v) => {
           setLocalValue([...v]);
           setValue([...v]);
@@ -116,6 +118,7 @@ const FilterDiv = styled.div`
   font-weight: bold;
   font-size: 14px;
   margin: 3px 0;
+  border-radius: 2px;
 `;
 
 const classFilterMachine = Machine({
@@ -245,6 +248,7 @@ const classFilterMachine = Machine({
         assign({
           classes: (_, { classes }) => classes,
           results: ({ inputValue }, { classes }) =>
+            console.log(classes) &&
             classes.filter((c) =>
               c.toLowerCase().includes(inputValue.toLowerCase())
             ),
@@ -422,7 +426,7 @@ const ConfidenceContainer = styled.div`
   color: ${({ theme }) => theme.fontDark};
 `;
 
-const Filter = React.memo(({ entry, ...atoms }) => {
+const Filter = React.memo(({ style, entry, ...atoms }) => {
   const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
     atoms.includeNoConfidence(entry.name)
   );
@@ -432,7 +436,7 @@ const Filter = React.memo(({ entry, ...atoms }) => {
   const isDefaultRange = range[0] === 0 && range[1] === 1;
 
   return (
-    <FilterDiv>
+    <FilterDiv style={style}>
       <ClassFilter name={entry.name} atoms={atoms} />
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         Confidence{" "}

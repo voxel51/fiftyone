@@ -27,6 +27,7 @@ import {
   VALID_OBJECT_TYPES,
   RESERVED_FIELDS,
 } from "../utils/labels";
+import { sample } from "lodash";
 
 type Props = {
   sample: object;
@@ -140,11 +141,17 @@ const Container = styled.div`
   }
 
   .row {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
     > label {
       font-weight: bold;
     }
     > span {
       float: right;
+    }
+    span {
+      word-wrap: break-word;
     }
   }
 `;
@@ -152,17 +159,40 @@ const Container = styled.div`
 const Row = ({ name, renderedName, value, children, ...rest }) => (
   <div className="row" {...rest}>
     <label>{renderedName || name}&nbsp;</label>
-    <span>{value}</span>
-    {children}
+    <span style={{ display: "flex", justifyContent: "space-between" }}>
+      <span>{value}</span>
+      {children}
+    </span>
   </div>
 );
 
 const LabelRow = (props) => {
   const [expanded, setExpanded] = useState(false);
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    atoms.modalActiveLabels
+  );
   return (
-    <Row {...props}>
-      {expanded && entry.selected && (
+    <>
+      <Row {...props}>
+        {activeLabels[props.name] && props.field._cls && (
+          <ArrowDropDown
+            onClick={(e) => {
+              e.preventDefault();
+              setExpanded(!expanded);
+            }}
+            style={{
+              lineHeight: "31px",
+              cursor: "pointer",
+            }}
+          />
+        )}
+      </Row>
+      {expanded && activeLabels[props.name] && (
         <Filter
+          style={{
+            margin: "0.5rem 0",
+            border: "1px solid hsl(200,2%,37%)",
+          }}
           entry={{
             name,
           }}
@@ -174,7 +204,7 @@ const LabelRow = (props) => {
           }}
         />
       )}
-    </Row>
+    </>
   );
 };
 
@@ -268,6 +298,7 @@ const SampleModal = ({
       return {
         key: k,
         name: k,
+        field: sample[k],
         renderedName: makeTag(k),
         value,
       };
@@ -280,6 +311,7 @@ const SampleModal = ({
         key: k,
         name: k,
         renderedName: makeTag(k),
+        field: sample[k],
         value: `${len} detection${len == 1 ? "" : "s"}`,
       };
     });
