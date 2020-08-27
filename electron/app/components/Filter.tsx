@@ -80,6 +80,7 @@ const FilterDiv = styled.div`
   padding: 0.5rem;
   font-weight: bold;
   font-size: 14px;
+  margin: 3px 0;
 `;
 
 const classFilterMachine = Machine({
@@ -232,7 +233,7 @@ const ClassInput = styled.input`
   width: 100%;
   background: ${({ theme }) => theme.backgroundDark};
   border: 1px solid #191c1f;
-  box-shadow: 0 7px 35px 0 rgba(0, 0, 0, 0.43);
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 2px;
   font-size: 14px;
   line-height: 1.2rem;
@@ -379,7 +380,7 @@ const ClassFilter = ({ name, atoms }) => {
 
 const ConfidenceContainer = styled.div`
   background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 10px 35px 0 rgba(0, 0, 0, 0.43);
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border: 1px solid #191c1f;
   border-radius: 2px;
   margin-top: 0.5rem;

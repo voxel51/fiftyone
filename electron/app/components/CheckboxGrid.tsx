@@ -67,10 +67,12 @@ const Body = styled.div`
         overflow-x: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
+        line-height: 24px;
       }
 
       span.data {
         margin-left: 0.5em;
+        line-height: 24px;
       }
     }
   }
