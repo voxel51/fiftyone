@@ -89,7 +89,7 @@ function setStages(ctx, stageInfo) {
         ctx.stages.length,
         i === Math.min(view.length - 1, ctx.activeStage),
         stage.kwargs
-          .filter((k) => !k.startsWith("_"))
+          .filter((k) => !k[0].startsWith("_"))
           .map((p, j) => {
             const stageInfoResult = stageInfo.filter(
               (s) => s.name === stageName
