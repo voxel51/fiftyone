@@ -2,7 +2,6 @@ Exporting FiftyOne Datasets
 ===========================
 
 .. default-role:: code
-.. include:: ../substitutions.rst
 
 FiftyOne provides native support for exporting datasets to disk in a
 variety of :ref:`common formats <supported-export-formats>`, and it can be

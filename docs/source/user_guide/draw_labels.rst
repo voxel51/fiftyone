@@ -2,7 +2,6 @@ Drawing Labels on Samples
 =========================
 
 .. default-role:: code
-.. include:: ../substitutions.rst
 
 FiftyOne provides native support for rendering annotated versions of samples
 with |Label| fields overlaid on the source data (e.g., images).

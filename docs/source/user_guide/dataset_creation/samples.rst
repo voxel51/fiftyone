@@ -2,7 +2,6 @@ Adding Samples to Datasets
 ==========================
 
 .. default-role:: code
-.. include:: ../../substitutions.rst
 
 FiftyOne datasets are composed of |Sample| instances, and FiftyOne provides a
 number of options for building datasets from individual samples.

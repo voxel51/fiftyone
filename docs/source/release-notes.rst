@@ -2,7 +2,6 @@ FiftyOne Release Notes
 ======================
 
 .. default-role:: code
-.. include:: substitutions.rst
 
 FiftyOne 0.5.2
 --------------

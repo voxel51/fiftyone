@@ -89,6 +89,12 @@ source_suffix = [".rst", ".md"]
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# A string of reStructuredText that will be included at the beginning of every
+# source file that is read
+rst_prolog = """
+.. include:: /substitutions.rst
+"""
+
 # Disable nbshinx loading require.js - this breaks the pytorch theme's
 # scrolling handling, and we don't appear to have any notebook content that
 # requires it

@@ -2,7 +2,6 @@ Loading Datasets From Disk
 ==========================
 
 .. default-role:: code
-.. include:: ../../substitutions.rst
 
 FiftyOne provides native support for importing datasets from disk in a
 variety of :ref:`common formats <supported-import-formats>`, and it can be

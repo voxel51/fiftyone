@@ -2,7 +2,6 @@ Loading data into FiftyOne
 ==========================
 
 .. default-role:: code
-.. include:: ../../substitutions.rst
 
 The first step to using FiftyOne is to load your data into a
 |WhatIsAFiftyOneDataset|. FiftyOne supports automatic loading of datasets stored in
