@@ -28,6 +28,7 @@ type Props = {
 
 const Container = styled.div`
   margin-bottom: 2px;
+  height: 100%;
   &::-webkit-scrollbar {
     width: 0px;
     background: transparent;

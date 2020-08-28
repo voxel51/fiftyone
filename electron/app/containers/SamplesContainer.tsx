@@ -123,7 +123,12 @@ const SamplesContainer = (props) => {
       <Grid>
         {showSidebar ? (
           <Grid.Column className="sidebar-column">
-            <Sticky context={containerRef} offset={headerHeight}>
+            <Sticky
+              context={containerRef}
+              offset={headerHeight}
+              style={{ height: "100%" }}
+              styleElement={{ height: "100%" }}
+            >
               <DisplayOptionsSidebar
                 colorMapping={colorMapping}
                 tags={getDisplayOptions(
