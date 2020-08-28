@@ -182,10 +182,11 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
   );
 };
 
-const ViewStageParameter = React.memo(({ parameterRef }) => {
+const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(parameterRef);
-  const inputRef = useRef(null);
+  const inputRef = useRef();
+  const containerRef = useRef();
 
   const actionsMap = useMemo(
     () => ({
@@ -228,7 +229,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
   const isEditing = state.matches("editing");
 
   return (
-    <ViewStageParameterContainer>
+    <ViewStageParameterContainer ref={containerRef}>
       <ViewStageParameterDiv style={props}>
         {hasObjectType ? (
           <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
@@ -254,7 +255,12 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
               }}
               ref={inputRef}
             />
-            <ErrorMessage key="error" serviceRef={parameterRef} />
+            <ErrorMessage
+              key="error"
+              serviceRef={parameterRef}
+              barRef={barRef}
+              followRef={containerRef}
+            />
           </>
         )}
       </ViewStageParameterDiv>

@@ -1,10 +1,10 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { animated, useSpring } from "react-spring";
+import { config, animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import { ReportProblem } from "@material-ui/icons";
 
-import { useOutsideClick } from "../../../utils/hooks";
+import { useFollow, useOutsideClick } from "../../../utils/hooks";
 
 const ErrorMessageDiv = animated(styled.div`
   box-sizing: border-box;
@@ -28,18 +28,20 @@ const ErrorHeader = styled.div`
   padding-bottom: 0.5rem;
 `;
 
-const ErrorMessage = React.memo(({ serviceRef, style }) => {
+const ErrorMessage = React.memo(({ barRef, followRef, serviceRef, style }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(serviceRef);
   const ref = useRef();
   const [errorTimeout, setErrorTimeout] = useState(null);
   const { error, errorId } = state.context;
-  const animations = useSpring({
+  const [props, set] = useSpring(() => ({
     opacity: errorId ? 1 : 0,
+    left: 0,
     from: {
       opacity: 0,
     },
-  });
+    config: config.stiff,
+  }));
 
   useEffect(() => {
     errorTimeout && clearTimeout(errorTimeout);
@@ -48,10 +50,12 @@ const ErrorMessage = React.memo(({ serviceRef, style }) => {
 
   useOutsideClick(ref, () => send("CLEAR_ERROR_ID"));
 
+  useFollow(barRef, followRef, set);
+
   return (
     <ErrorMessageDiv
       ref={ref}
-      style={{ ...animations, display: error ? "block" : "none", ...style }}
+      style={{ ...props, display: error ? "block" : "none", ...style }}
     >
       {error ? (
         <>

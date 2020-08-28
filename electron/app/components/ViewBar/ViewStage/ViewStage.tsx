@@ -349,7 +349,11 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
           )}
         </ViewStageDiv>
         {parameters.map((parameter) => (
-          <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
+          <ViewStageParameter
+            key={parameter.id}
+            parameterRef={parameter.ref}
+            barRef={barRef}
+          />
         ))}
         {state.matches("delible.yes") ? (
           <ViewStageDelete spring={deleteProps} send={send} />
@@ -365,7 +369,11 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
               barRef={barRef}
             />
           )}
-        <ErrorMessage serviceRef={stageRef} />
+        <ErrorMessage
+          serviceRef={stageRef}
+          followRef={containerRef}
+          barRef={barRef}
+        />
       </ViewStageContainer>
     </>
   );

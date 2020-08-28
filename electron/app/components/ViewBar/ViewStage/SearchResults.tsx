@@ -2,6 +2,8 @@ import React, { useContext, useLayoutEffect, useEffect, useRef } from "react";
 import { animated, config, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 
+import { useFollow } from "../../../utils/hooks";
+
 const SearchResultDiv = animated(styled.div`
   cursor: pointer;
   margin: 0.25rem 0.25rem;
@@ -80,10 +82,9 @@ interface SearchResultsProps {
 }
 
 const SearchResults = React.memo(
-  ({ results, send, currentResult, barRef, followRef }) => {
+  ({ results, send, currentResult, barRef, followRef, ...rest }) => {
     const [props, set] = useSpring(() => ({
       left: 0,
-      top: 0,
       opacity: 1,
       from: {
         opacity: 0,
@@ -91,24 +92,8 @@ const SearchResults = React.memo(
       config: config.stiff,
     }));
 
-    useLayoutEffect(() => {
-      const follow = () => {
-        const { x, y } = followRef.current.getBoundingClientRect();
-        const {
-          x: barX,
-          width: barWidth,
-        } = barRef.current.getBoundingClientRect();
-        set({
-          left: x,
-          opacity: x - barX < 0 || x > barX + barWidth ? 0 : 1,
-        });
-      };
-      barRef.current && barRef.current.addEventListener("scroll", follow);
+    useFollow(barRef, followRef, (obj) => set(obj));
 
-      barRef.current && followRef.current && follow();
-      return () =>
-        barRef.current && barRef.current.removeEventListener("scroll", follow);
-    }, [barRef.current, followRef.current]);
     if (!results.length) return null;
 
     return (

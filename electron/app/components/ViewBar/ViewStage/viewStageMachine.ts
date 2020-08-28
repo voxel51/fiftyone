@@ -227,7 +227,7 @@ const viewStageMachine = Machine(
                     }),
                     send("UPDATE_DELIBLE"),
                   ],
-                  cond: (ctx) => {
+                  cond: (ctx, e) => {
                     const result = ctx.stageInfo.filter(
                       (s) => s.name.toLowerCase() === e.value.toLowerCase()
                     );
