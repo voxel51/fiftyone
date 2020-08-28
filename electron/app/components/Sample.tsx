@@ -23,6 +23,7 @@ const Sample = ({
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
   const { activeLabels, activeTags, activeOther } = displayProps;
+  const filter = useRecoilValue(selectors.labelFilters);
   const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const handleClick = () => {
@@ -38,8 +39,7 @@ const Sample = ({
     onClick: () => handleClick(),
     onDoubleClick: () => setView(sample),
   };
-  const renderLabel = (name) => {
-    const label = sample[name];
+  const renderLabel = ({ name, label, idx }) => {
     if (!activeLabels[name] || !label) {
       return null;
     }
@@ -47,9 +47,13 @@ const Sample = ({
     if (value === undefined) {
       return null;
     }
+
+    if (!filter[name](label)) {
+      return null;
+    }
     return (
       <Tag
-        key={"label-" + name}
+        key={"label-" + name + "-" + value + (idx ? "-" + idx : "")}
         title={name}
         name={value}
         color={colorMapping[name]}
@@ -73,7 +77,7 @@ const Sample = ({
       />
     );
   };
-  const tooltip = `Path: ${sample.filepath}\nDouble-click for details`;
+  const tooltip = `Double-click for details`;
 
   return (
     <div className="sample" title={tooltip}>
@@ -89,9 +93,26 @@ const Sample = ({
         thumbnail={true}
         activeLabels={activeLabels}
         {...eventHandlers}
+        filter={filter}
       />
       <div className="sample-info" {...eventHandlers}>
-        {Object.keys(sample).sort().map(renderLabel)}
+        {Object.keys(sample)
+          .sort()
+          .reduce((acc, name) => {
+            const label = sample[name];
+            if (label && label._cls === "Classifications") {
+              return [
+                ...acc,
+                ...label[label._cls.toLowerCase()].map((l, i) => ({
+                  name,
+                  label: l,
+                  idx: i,
+                })),
+              ];
+            }
+            return [...acc, { name, label }];
+          }, [])
+          .map(renderLabel)}
         {[...sample.tags].sort().map((t) => {
           return activeTags[t] ? (
             <Tag key={t} name={String(t)} color={colorMapping[t]} />

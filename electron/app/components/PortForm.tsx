@@ -46,7 +46,7 @@ export default connect(({ connected, port, setResult }) => {
 
   return (
     <Input labelPosition="right" value={formState.port} onChange={onChange}>
-      <input />
+      <input style={{ color: "black" }} />
       <Label>
         {formState.invalid
           ? "Invalid"

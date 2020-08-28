@@ -310,10 +310,10 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
               state.matches("input.editing.searchResults.notHovering") &&
                 send("BLUR");
             }}
-            onChange={(e) => send({ type: "CHANGE", stage: e.target.value })}
+            onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
-                send("COMMIT");
+                send({ type: "COMMIT", value: e.target.value });
               }
             }}
             onKeyDown={(e) => {

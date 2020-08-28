@@ -36,7 +36,7 @@ const SearchResult = React.memo(({ result, isActive, send, followRef }) => {
     set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
 
   const setResult = (e) =>
-    send({ type: "COMMIT", stage: e.target.dataset.result });
+    send({ type: "COMMIT", value: e.target.dataset.result });
 
   return (
     <SearchResultDiv
@@ -62,6 +62,16 @@ const SearchResultsDiv = animated(styled.div`
   width: auto;
   z-index: 800;
   padding: 0.5rem 0;
+
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
 `);
 
 interface SearchResultsProps {
@@ -106,6 +116,7 @@ const SearchResults = React.memo(
         style={props}
         onMouseEnter={() => send("MOUSEENTER_RESULTS")}
         onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
+        {...rest}
       >
         {results.map((result, i) => (
           <SearchResult

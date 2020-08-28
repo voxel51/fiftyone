@@ -3,7 +3,11 @@ import { UPDATE, PORT, CONNECTED, LOADING } from "../actions/update";
 import io from "socket.io-client";
 
 export default function state(
-  state = { port: 5151, connected: false, loading: true },
+  state = {
+    port: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,
+    connected: false,
+    loading: true,
+  },
   action
 ) {
   switch (action.type) {

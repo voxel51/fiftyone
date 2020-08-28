@@ -16,15 +16,15 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.1.6",
-            "fiftyone-gui>=0.5.0",
-            "fiftyone-db>=0.1.1",
+            "fiftyone-brain>=0.1.8,<0.2",
+            "fiftyone-gui>=0.5.2,<0.6",
+            "fiftyone-db>=0.1.1,<0.2",
         ]
 
 
 setup(
     name="fiftyone",
-    version="0.5.0",
+    version="0.5.2",
     description=(
         "FiftyOne: a powerful package for dataset curation, analysis, and "
         "visualization"
@@ -54,7 +54,6 @@ setup(
         "Pillow<7,>=6.2",
         "pprintpp",
         "psutil",
-        "pycocotools",
         "pymongo",
         "python-engineio[client]",
         "python-socketio[client]",
@@ -63,7 +62,7 @@ setup(
         "tabulate",
         "xmltodict",
         # internal packages
-        "voxel51-eta>=0.1.2",
+        "voxel51-eta>=0.1.5,<0.2",
     ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",

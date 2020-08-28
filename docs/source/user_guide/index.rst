@@ -43,6 +43,12 @@ on your data quickly and easily.
     :button_link: using_views.html
 
 .. customcalloutitem::
+    :header: Using the App
+    :description: Visualize your datasets in the FiftyOne App and interactively search, sort, and filter them.
+    :button_text: Learn more about the App
+    :button_link: app.html
+
+.. customcalloutitem::
     :header: Exporting datasets
     :description: Export datasets to disk in any number of common formats, or in your own custom format.
     :button_text: Learn more about exporting datasets
@@ -53,12 +59,6 @@ on your data quickly and easily.
     :description: Render labels on the samples in your FiftyOne dataset with a single line of code.
     :button_text: Learn more about drawing labels
     :button_link: draw_labels.html
-
-.. customcalloutitem::
-    :header: Visualizing datasets in the App
-    :description: Visualize your datasets in the FiftyOne App and interactively search, sort, and filter them.
-    :button_text: Learn more about visualizing datasets
-    :button_link: app.html
 
 .. customcalloutitem::
     :header: The FiftyOne Brain
@@ -95,8 +95,8 @@ on your data quickly and easily.
     Loading datasets<dataset_creation/index>
     Using datasets<using_datasets>
     Dataset views<using_views>
+    Using the App<app>
     Exporting datasets<export_datasets>
     Drawing labels on samples<draw_labels>
-    Viewing datasets in the App<app>
     FiftyOne Brain<brain>
     Configuring FiftyOne<config>

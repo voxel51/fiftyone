@@ -196,6 +196,8 @@ class FiftyOneImageClassificationDataset(ImageClassificationDataset):
     that are mapped to class label strings via ``classes[target]``. If no
     ``classes`` field is provided, then the ``target`` values directly store
     the label strings.
+
+    The target value in ``labels`` for unlabeled images is ``None``.
     """
 
     def get_dataset_importer_cls(self):
@@ -225,6 +227,8 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
                 <image2>.<ext>
                 ...
             ...
+
+    Unlabeled images are stored in a subdirectory named ``_unlabeled``.
     """
 
     def get_dataset_importer_cls(self):
@@ -266,6 +270,8 @@ class TFImageClassificationDataset(ImageClassificationDataset):
             # Class label string
             "label": tf.io.FixedLenFeature([], tf.string),
         }
+
+    For unlabeled samples, the TFRecords do not contain ``label`` features.
     """
 
     def get_dataset_importer_cls(self):
@@ -329,6 +335,8 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
     that are mapped to class label strings via ``classes[target]``. If no
     ``classes`` field is provided, then the ``target`` values directly store
     the label strings.
+
+    The target value in ``labels`` for unlabeled images is ``None``.
     """
 
     def get_dataset_importer_cls(self):
@@ -400,6 +408,9 @@ class COCODetectionDataset(ImageDetectionDataset):
                 ...
             ]
         }
+
+    For unlabeled datasets, ``labels.json`` does not contain an ``annotations``
+    field.
     """
 
     def get_dataset_importer_cls(self):
@@ -475,6 +486,8 @@ class VOCDetectionDataset(ImageDetectionDataset):
 
     When writing datasets in this format, samples with no values for certain
     attributes (like ``pose`` in the above example) are left empty.
+
+    Unlabeled images have no corresponding file in ``labels/``.
     """
 
     def get_dataset_importer_cls(self):
@@ -510,7 +523,8 @@ class KITTIDetectionDataset(ImageDetectionDataset):
     the following meanings:
 
     +---------+------------+----------------------------------------+---------+
-    | \\# cols | Name       | Description                            | Default |
+    | \\#      | Name       | Description                            | Default |
+    | cols    |            |                                        |         |
     +=========+============+========================================+=========+
     | 1       | type       | The object label                       |         |
     +---------+------------+----------------------------------------+---------+
@@ -553,6 +567,8 @@ class KITTIDetectionDataset(ImageDetectionDataset):
 
     When reading datasets of this type, all columns after the four ``bbox``
     columns may be omitted.
+
+    Unlabeled images have no corresponding file in ``labels/``.
     """
 
     def get_dataset_importer_cls(self):
@@ -606,6 +622,9 @@ class TFObjectDetectionDataset(ImageDetectionDataset):
             # Integer class ID
             "image/object/class/label": tf.io.FixedLenSequenceFeature([], tf.int64, allow_missing=True)
         }
+
+    The TFRecords for unlabeled samples do not contain ``image/object/*``
+    features.
     """
 
     def get_dataset_importer_cls(self):
@@ -647,7 +666,7 @@ class CVATImageDataset(ImageDetectionDataset):
                             <attributes>
                                 <attribute>
                                     <name>type</name>
-                                    <values>coupe,sedan,truck</values>
+                                    <values>coupe\nsedan\ntruck</values>
                                 </attribute>
                                 ...
                             </attributes>
@@ -657,7 +676,7 @@ class CVATImageDataset(ImageDetectionDataset):
                             <attributes>
                                 <attribute>
                                     <name>gender</name>
-                                    <values>male,female</values>
+                                    <values>male\nfemale</values>
                                 </attribute>
                                 ...
                             </attributes>
@@ -677,6 +696,8 @@ class CVATImageDataset(ImageDetectionDataset):
                 ...
             </image>
         </annotations>
+
+    Unlabeled images have no corresponding ``image`` tag in ``labels.xml``.
     """
 
     def get_dataset_importer_cls(self):
@@ -729,6 +750,9 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
     and where each labels JSON file is stored in ``eta.core.image.ImageLabels``
     format. See https://voxel51.com/docs/api/#types-imagelabels for more
     details.
+
+    For unlabeled images, an empty ``eta.core.image.ImageLabels`` file is
+    stored.
     """
 
     def get_dataset_importer_cls(self):
@@ -760,6 +784,7 @@ class BDDDataset(ImageLabelsDataset):
 
         [
             {
+                "name": "<filename0>.<ext>",
                 "attributes": {
                     "scene": "city street",
                     "timeofday": "daytime",
@@ -785,11 +810,12 @@ class BDDDataset(ImageLabelsDataset):
                     },
                     ...
                 ],
-                "name": "<filename0>.<ext>",
                 ...
             },
             ...
         ]
+
+    Unlabeled images have no corresponding entry in ``labels.json``.
     """
 
     def get_dataset_importer_cls(self):
@@ -815,10 +841,12 @@ class FiftyOneDataset(Dataset):
                 <filename1>.<ext>
                 <filename2>.<ext>
                 ...
+            metadata.json
             samples.json
 
-    where ``samples.json`` is a JSON file containing a serialized
-    representation of the samples in the dataset generated by
+    where ``metadata.json`` is an optional JSON file containing metadata
+    associated with the dataset, and ``samples.json`` is a JSON file containing
+    a serialized representation of the samples in the dataset generated by
     :meth:`fiftyone.core.sample.Sample.to_dict`.
     """
 

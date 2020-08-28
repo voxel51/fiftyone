@@ -4,6 +4,97 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
+FiftyOne 0.5.2
+--------------
+*Released August 26, 2020*
+
+App
+^^^
+- Added a label filter to the App that allows you to interactively explore your
+  labels, investigating things like confidence thresholds, individual classes,
+  and more, directly from the App
+- Added an App error page with support for refreshing the App if something goes
+  wrong
+- The App can now be closed and reopened within the same session
+
+Core
+^^^^
+- Added a :ref:`fiftyone quickstart <cli-fiftyone-quickstart>` command that
+  downloads a small dataset, launches the App, and prints some suggestions for
+  exploring the dataset
+- Added support for multiple simultaneous FiftyOne processes. You can now
+  operate multiple App instances (using different ports), Python shells, and/or
+  CLI processes.
+- Added support for automatically expanding labels from multitask formats such
+  as :ref:`BDDDataset <BDDDataset-import>` and
+  :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>` into
+  separate label fields when importing datasets
+- Added support for exporting multiple label fields in supported formats such
+  as :ref:`BDDDataset <BDDDataset-export>` and
+  :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-export>`
+  via the :meth:`export() <fiftyone.core.collections.SampleCollection.export>`
+  method
+- Added support for filtering fields via the
+  :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`
+  method
+- Provided a more helpful error message when using the
+  :ref:`Dataset Zoo <dataset-zoo>` with no backend ML framework installed
+- Made ``pycocotools`` an optional dependency to make installation on Windows
+  easier
+
+Docs
+^^^^
+- Added a
+  `getting started with FiftyOne <https://github.com/voxel51/fiftyone/blob/develop/WALKTHROUGH.md>`_
+  walkthrough to the GitHub repository
+- Updated the :doc:`evaluate object detections </tutorials/evaluate_detections>`
+  tutorial to make it more friendly for execution on CPU-only machines
+- Added
+  :meth:`detailed examples <fiftyone.core.collections.SampleCollection.filter_detections>`
+  of using view stages to the docs
+- Refreshed all App-related media in the docs to reflect the new App design
+  introduced in v0.5.0
+
+FiftyOne 0.5.1
+--------------
+*Released August 18, 2020*
+
+App
+^^^
+- Statistics in the display options sidebar now reflect the current
+  :ref:`view <using-views>`, not the entire :ref:`dataset <using-datasets>`
+- Improved image tiling algorithm that prevents single images from filling an
+  entire grid row
+- Added support for toggling label visibility within the expanded sample modal
+- Improved display of long label and tag names throughout the app
+- Enhanced view bar functionality, including keyword arguments, type
+  annotations, error messages, help links, and overall stability improvements
+- Added keyboard shortcuts for interacting with the view bar:
+   - `DEL` and `BACKSPACE` delete the raised (active) stage
+   - `ESC` toggles focus on the ViewBar, which activates shortcuts
+   - `TAB`, `ENTER`, and `ESC` submits stage input fields
+   - `LEFT` and `RIGHT ARROW` traverses view stages and add-stage buttons
+   - `SHIFT + LEFT ARROW` and `SHIFT + RIGHT ARROW` traverse stages
+
+Core
+^^^^
+- Greatly improved the performance of loading dataset samples from the database
+- Added support for :meth:`renaming <fiftyone.core.dataset.Dataset.name>` and
+  :meth:`cloning <fiftyone.core.dataset.Dataset.clone>` datasets
+- Added more string matching operations when
+  :ref:`querying samples <querying-samples>`, including
+  :meth:`starts_with() <fiftyone.core.expressions.ViewExpression.starts_with>`,
+  :meth:`ends_with() <fiftyone.core.expressions.ViewExpression.ends_with>`,
+  :meth:`contains_str() <fiftyone.core.expressions.ViewExpression.contains_str>` and
+  :meth:`matches_str() <fiftyone.core.expressions.ViewExpression.matches_str>`
+
+Documentation
+^^^^^^^^^^^^^
+- Added :doc:`a tutorial </tutorials/open_images_evaluation>` demonstrating
+  performing error analysis on the
+  `Open Images Dataset <https://storage.googleapis.com/openimages/web/index.html>`_
+  powered by FiftyOne
+
 FiftyOne 0.5.0
 --------------
 *Released August 11, 2020*

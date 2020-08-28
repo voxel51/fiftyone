@@ -12,6 +12,7 @@ export type Entry = {
   name: string;
   selected: boolean;
   count: number;
+  type: string;
 };
 
 type Props = {
@@ -101,6 +102,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
           entries={entries.map((e) => ({
             name: e.name,
             selected: e.selected,
+            type: e.type,
             data: [(e.count || 0).toLocaleString()],
             color: colorMapping[e.name],
             disabled: Boolean(e.disabled),

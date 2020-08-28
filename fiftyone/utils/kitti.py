@@ -35,7 +35,8 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``anno_txt_path`` is the path to a KITTI labels TXT file on disk
+        - ``anno_txt_path`` is the path to a KITTI labels TXT file on disk. Or,
+          for unlabeled images, ``anno_txt_path`` can be ``None``.
 
     See :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` for more
     format details.
@@ -52,6 +53,9 @@ class KITTIDetectionSampleParser(foud.ImageDetectionSampleParser):
         )
 
     def _parse_label(self, target, img=None):
+        if target is None:
+            return None
+
         frame_size = etai.to_frame_size(img=img)
         return load_kitti_detection_annotations(target, frame_size)
 
@@ -85,12 +89,22 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
         image_metadata = fom.ImageMetadata.build_for(image_path)
 
-        frame_size = (image_metadata.width, image_metadata.height)
-        anno_path = self._anno_uuids_to_paths[uuid]
-
-        detections = load_kitti_detection_annotations(anno_path, frame_size)
+        anno_path = self._anno_uuids_to_paths.get(uuid, None)
+        if anno_path:
+            # Labeled image
+            frame_size = (image_metadata.width, image_metadata.height)
+            detections = load_kitti_detection_annotations(
+                anno_path, frame_size
+            )
+        else:
+            # Unlabeled image
+            detections = None
 
         return image_path, image_metadata, detections
+
+    @property
+    def has_dataset_info(self):
+        return False
 
     @property
     def has_image_metadata(self):
@@ -102,14 +116,19 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     def setup(self):
         data_dir = os.path.join(self.dataset_dir, "data")
+        if os.path.isdir(data_dir):
+            self._image_paths = etau.list_files(data_dir, abs_paths=True)
+        else:
+            self._image_paths = []
+
         labels_dir = os.path.join(self.dataset_dir, "labels")
-
-        self._image_paths = etau.list_files(data_dir, abs_paths=True)
-
-        self._anno_uuids_to_paths = {
-            os.path.splitext(f)[0]: os.path.join(labels_dir, f)
-            for f in etau.list_files(labels_dir, abs_paths=False)
-        }
+        if os.path.isdir(labels_dir):
+            self._anno_uuids_to_paths = {
+                os.path.splitext(f)[0]: os.path.join(labels_dir, f)
+                for f in etau.list_files(labels_dir, abs_paths=False)
+            }
+        else:
+            self._anno_uuids_to_paths = {}
 
 
 class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
@@ -161,6 +180,9 @@ class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         out_image_path = self._export_image_or_path(
             image_or_path, self._filename_maker
         )
+
+        if detections is None:
+            return
 
         name = os.path.splitext(os.path.basename(out_image_path))[0]
         out_anno_path = os.path.join(self._labels_dir, name + ".txt")

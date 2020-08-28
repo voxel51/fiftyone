@@ -1,8 +1,12 @@
 import React from "react";
 import styled from "styled-components";
-import logo from "../logo.png";
 import { useRecoilValue } from "recoil";
+import { shell } from "electron";
+
 import * as selectors from "../recoil/selectors";
+import logo from "../logo.png";
+import { GitHub, MenuBook } from "@material-ui/icons";
+import { Slack } from "../icons";
 
 const HeaderDiv = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
@@ -31,6 +35,10 @@ const LeftDiv = styled.div`
   display: flex;
 `;
 
+const RightDiv = styled.div`
+  margin-left: auto;
+`;
+
 const TitleDiv = styled.div`
   padding: 0.5rem 0;
 `;
@@ -44,6 +52,24 @@ const FiftyOneDiv = styled.div`
 
 const DatasetDiv = styled.div`
   line-height: 1;
+`;
+
+const IconWrapper = styled.div`
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+
+  a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  svg {
+    margin-right: 0.5em;
+  }
 `;
 
 const Header = () => {
@@ -64,6 +90,38 @@ const Header = () => {
           </DatasetDiv>
         </TitleDiv>
       </LeftDiv>
+      <RightDiv>
+        <IconWrapper>
+          <a
+            title="Slack"
+            onClick={() =>
+              shell.openExternal(
+                "https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg"
+              )
+            }
+          >
+            <Slack />
+          </a>
+          <a
+            title="GitHub"
+            onClick={() =>
+              shell.openExternal("https://github.com/voxel51/fiftyone")
+            }
+          >
+            <GitHub />
+          </a>
+          <a
+            title="Documentation"
+            onClick={() =>
+              shell.openExternal(
+                "https://voxel51.com/docs/fiftyone/user_guide/app.html"
+              )
+            }
+          >
+            <MenuBook />
+          </a>
+        </IconWrapper>
+      </RightDiv>
     </HeaderDiv>
   );
 };

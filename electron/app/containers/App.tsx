@@ -1,43 +1,28 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useEffect, useRef } from "react";
 import ReactGA from "react-ga";
-import { Button, Modal, Label } from "semantic-ui-react";
-import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
 import { useSetRecoilState } from "recoil";
-import { ThemeProvider } from "styled-components";
+import { ErrorBoundary } from "react-error-boundary";
+import { GlobalStyle, ThemeProvider } from "styled-components";
 
-import { GlobalStyle } from "../shared/global";
-import { darkTheme } from "../shared/colors";
-import PortForm from "../components/PortForm";
 import Header from "../components/Header";
 
-import {
-  updateState,
-  updateConnected,
-  updatePort,
-  updateLoading,
-} from "../actions/update";
+import { updateState, updateConnected, updateLoading } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 import { stateDescription } from "../recoil/atoms";
 import gaConfig from "../constants/ga.json";
+import Error from "./Error";
+import { darkTheme } from "../shared/colors";
 
 type Props = {
   children: ReactNode;
 };
 
 function App(props: Props) {
-  const { path, url } = useRouteMatch();
   const [showInfo, setShowInfo] = useState(true);
-  const {
-    loading,
-    children,
-    dispatch,
-    update,
-    connected,
-    port,
-    displayProps,
-  } = props;
+  const [reset, setReset] = useState(false);
+  const { loading, children, dispatch, connected, port } = props;
   const portRef = useRef();
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
@@ -108,6 +93,15 @@ function App(props: Props) {
     handleStateUpdate(data);
   });
 
+  useEffect(() => {
+    if (reset) {
+      socket.emit("get_current_state", "", (data) => {
+        handleStateUpdate(data);
+        dispatch(updateLoading(false));
+      });
+    }
+  }, [reset]);
+
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
@@ -117,38 +111,16 @@ function App(props: Props) {
   };
 
   return (
-    <ThemeProvider theme={darkTheme}>
-      <GlobalStyle />
-      <Modal
-        trigger={
-          <Button
-            style={{ padding: "1rem", display: "none" }}
-            ref={portRef}
-          ></Button>
-        }
-        size="tiny"
-        onClose={() => {
-          dispatch(updatePort(result.port));
-          setSocket(getSocket(result.port, "state"));
-        }}
-      >
-        <Modal.Header>Port number</Modal.Header>
-        <Modal.Content>
-          <Modal.Description>
-            <PortForm
-              setResult={setResultFromForm}
-              connected={connected}
-              port={port}
-              invalid={false}
-            />
-          </Modal.Description>
-        </Modal.Content>
-      </Modal>
+    <ErrorBoundary
+      FallbackComponent={Error}
+      onReset={() => setReset(true)}
+      resetKeys={[reset]}
+    >
       <Header />
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
         {children}
       </div>
-    </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

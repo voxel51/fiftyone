@@ -11,7 +11,21 @@ import fiftyone.utils.imagenet as foui
 import fiftyone.utils.data as foud
 import fiftyone.zoo as foz
 
-tfds = fou.lazy_import("tensorflow_datasets", callback=fou.ensure_tfds)
+
+_TFDS_IMPORT_ERROR = """
+
+You tried to download a dataset from the FiftyOne Dataset Zoo using the
+TensorFlow backend, but you do not have the necessary packages installed.
+
+Ensure that you have `tensorflow` and `tensorflow_datasets` installed on your
+machine, and then try running this command again.
+
+See https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/zoo.html
+for more information about working with the Dataset Zoo.
+"""
+
+_callback = lambda: fou.ensure_tfds(error_msg=_TFDS_IMPORT_ERROR)
+tfds = fou.lazy_import("tensorflow_datasets", callback=_callback)
 
 
 class TFDSDataset(foz.ZooDataset):
@@ -619,7 +633,11 @@ class _TFDSImageClassificationSampleParser(
         return self._parse_image(img)
 
     def get_label(self):
-        target = self.current_sample[self.label_field]
+        try:
+            target = self.current_sample[self.label_field]
+        except:
+            return None
+
         return self._parse_label(target)
 
 
@@ -634,7 +652,10 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
         return self._parse_image(img)
 
     def get_label(self):
-        target = self.current_sample[self.objects_field]
+        try:
+            target = self.current_sample[self.objects_field]
+        except:
+            return None
 
         if not self.normalized:
             # Absolute bounding box coordinates were provided, so we must have
@@ -646,6 +667,9 @@ class _TFDSImageDetectionSampleParser(foud.ImageDetectionSampleParser):
         return self._parse_label(target, img=img)
 
     def _parse_label(self, target, img=None):
+        if target is None:
+            return None
+
         # Convert from dict-of-lists to list-of-dicts
         target = [
             {self.bounding_box_field: bbox, self.label_field: label}

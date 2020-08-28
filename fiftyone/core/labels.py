@@ -6,11 +6,13 @@ Labels stored in dataset samples.
 |
 """
 from bson.objectid import ObjectId
+from collections import defaultdict
 
 import eta.core.data as etad
 import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
+import eta.core.utils as etau
 
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
@@ -155,6 +157,27 @@ class Classification(ImageLabel):
         )
         return image_labels
 
+    @classmethod
+    def from_attribute(cls, attr):
+        """Creates a :class:`Classification` instance from an attribute.
+
+        The attribute value is cast to a string, if necessary.
+
+        Args:
+            attr: an :class:`Attribute` or ``eta.core.data.Attribute``
+
+        Returns:
+            a :class:`Classification`
+        """
+        classification = cls(label=str(attr.value))
+
+        try:
+            classification.confidence = attr.confidence
+        except:
+            pass
+
+        return classification
+
     def _get_repr_fields(self):
         # pylint: disable=no-member
         return ("id",) + self._fields_ordered
@@ -196,6 +219,30 @@ class Classifications(ImageLabel):
             )
 
         return image_labels
+
+    @classmethod
+    def from_attributes(cls, attrs, skip_non_categorical=False):
+        """Creates a :class:`Classifications` instance from a list of
+        attributes.
+
+        Args:
+            attrs: an iterable of :class:`Attribute` or
+                ``eta.core.data.Attribute`` instances
+            skip_non_categorical (False): whether to skip non-categorical
+                attributes (True) or cast all attribute values to strings
+                (False)
+
+        Returns:
+            a :class:`Classifications`
+        """
+        classifications = []
+        for attr in attrs:
+            if skip_non_categorical and not etau.is_str(attr.value):
+                continue
+
+            classifications.append(Classification.from_attribute(attr))
+
+        return cls(classifications=classifications)
 
 
 class Detection(ImageLabel):
@@ -290,7 +337,15 @@ class Detection(ImageLabel):
         # pylint: disable=no-member
         attrs = etad.AttributeContainer()
         for attr_name, attr in self.attributes.items():
-            attrs.add(etad.CategoricalAttribute(attr_name, attr.value))
+            attr_value = attr.value
+            if isinstance(attr_value, bool):
+                _attr = etad.BooleanAttribute(attr_name, attr_value)
+            elif etau.is_numeric(attr_value):
+                _attr = etad.NumericAttribute(attr_name, attr_value)
+            else:
+                _attr = etad.CategoricalAttribute(attr_name, str(attr_value))
+
+            attrs.add(_attr)
 
         return etao.DetectedObject(
             label=label,
@@ -313,6 +368,43 @@ class Detection(ImageLabel):
         image_labels = etai.ImageLabels()
         image_labels.add_object(self.to_detected_object(name=name))
         return image_labels
+
+    @classmethod
+    def from_detected_object(cls, dobj):
+        """Creates a :class:`Detection` instance from an
+        ``eta.core.objects.DetectedObject``.
+
+        Args:
+            dobj: a ``eta.core.objects.DetectedObject``
+
+        Returns:
+            a :class:`Detection`
+        """
+        # Bounding box
+        xtl, ytl, xbr, ybr = dobj.bounding_box.to_coords()
+        bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
+
+        # Atrributes
+        attributes = {}
+        for attr in dobj.attrs:
+            if isinstance(attr, etad.NumericAttribute):
+                _attr = NumericAttribute(value=attr.value)
+            elif isinstance(attr, etad.BooleanAttribute):
+                _attr = BooleanAttribute(value=attr.value)
+            else:
+                _attr = CategoricalAttribute(value=str(attr.value))
+
+            if attr.confidence is not None:
+                _attr.confidence = attr.confidence
+
+            attributes[attr.name] = _attr
+
+        return Detection(
+            label=dobj.label,
+            confidence=dobj.confidence,
+            bounding_box=bounding_box,
+            attributes=attributes,
+        )
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
@@ -349,6 +441,23 @@ class Detections(ImageLabel):
 
         return image_labels
 
+    @classmethod
+    def from_detected_objects(cls, objects):
+        """Creates a :class:`Detections` instance from an
+        ``eta.core.objects.DetectedObjectContainer``.
+
+        Args:
+            objects: a ``eta.core.objects.DetectedObjectContainer``
+
+        Returns:
+            a :class:`Detections`
+        """
+        return Detections(
+            detections=[
+                Detection.from_detected_object(dobj) for dobj in objects
+            ]
+        )
+
 
 class ImageLabels(ImageLabel):
     """A collection of multitask labels for an image sample in a
@@ -374,3 +483,131 @@ class ImageLabels(ImageLabel):
             an ``eta.core.image.ImageLabels``
         """
         return self.labels
+
+    def expand(
+        self,
+        prefix=None,
+        labels_dict=None,
+        multilabel=False,
+        skip_non_categorical=False,
+    ):
+        """Expands the image labels into a dictionary of :class:`Label`
+        instances.
+
+        Provide ``labels_dict`` if you want to customize which components of
+        the labels are expanded. Otherwise, all objects/attributes are expanded
+        as explained below.
+
+        If ``multilabel`` is False, frame attributes will be stored in separate
+        :class:`Classification` fields with names ``prefix + attr.name``.
+
+        If ``multilabel`` if True, all frame attributes will be stored in a
+        :class:`Classifications` field called ``prefix + "attrs"``.
+
+        Objects are expanded into fields with names ``prefix + obj.name``, or
+        ``prefix + "objs"`` for objects that do not have their ``name`` field
+        populated.
+
+        Args:
+            prefix (None): a string prefix to prepend to each field name in the
+                output dict
+            labels_dict (None): a dictionary mapping names of
+                attributes/objects to keys to assign them in the output
+                dictionary
+            multilabel (False): whether to store frame attributes in a single
+                :class:`Classifications` instance
+            skip_non_categorical (False): whether to skip non-categorical
+                frame attributes (True) or cast them to strings (False)
+
+        Returns:
+            a dict mapping label names to :class:`Label` instances
+        """
+        if labels_dict is not None:
+            return _expand_with_labels_dict(
+                self, labels_dict, multilabel, skip_non_categorical
+            )
+
+        return _expand_with_prefix(
+            self, prefix, multilabel, skip_non_categorical
+        )
+
+
+def _expand_with_prefix(
+    image_labels, prefix, multilabel, skip_non_categorical
+):
+    if prefix is None:
+        prefix = ""
+
+    labels = {}
+
+    if multilabel:
+        # Store frame attributes as multilabels
+        # pylint: disable=no-member
+        labels[prefix + "attrs"] = Classifications.from_attributes(
+            image_labels.labels.attrs,
+            skip_non_categorical=skip_non_categorical,
+        )
+    else:
+        # Store each frame attribute separately
+        for attr in image_labels.labels.attrs:  # pylint: disable=no-member
+            if skip_non_categorical and not etau.is_str(attr.value):
+                continue
+
+            labels[prefix + attr.name] = Classification.from_attribute(attr)
+
+    objects_map = defaultdict(etao.DetectedObjectContainer)
+
+    for dobj in image_labels.labels.objects:
+        objects_map[prefix + (dobj.name or "objs")].add(dobj)
+
+    for name, objects in objects_map.items():
+        # pylint: disable=no-member
+        labels[name] = Detections.from_detected_objects(objects)
+
+    return labels
+
+
+def _expand_with_labels_dict(
+    image_labels, labels_dict, multilabel, skip_non_categorical
+):
+    labels = {}
+
+    if multilabel:
+        # Store frame attributes as multilabels
+        attrs_map = defaultdict(etad.AttributeContainer)
+        for attr in image_labels.labels.attrs:
+            if attr.name not in labels_dict:
+                continue
+
+            attrs_map[labels_dict[attr.name]].add(attr)
+
+        for name, attrs in attrs_map.items():
+            labels[name] = Classifications.from_attributes(
+                attrs, skip_non_categorical=skip_non_categorical
+            )
+    else:
+        # Store each frame attribute separately
+        for attr in image_labels.labels.attrs:  # pylint: disable=no-member
+            if skip_non_categorical and not etau.is_str(attr.value):
+                continue
+
+            if attr.name not in labels_dict:
+                continue
+
+            labels[labels_dict[attr.name]] = Classification.from_attribute(
+                attr
+            )
+
+    objects_map = defaultdict(etao.DetectedObjectContainer)
+
+    for dobj in image_labels.labels.objects:
+        if dobj.name not in labels_dict:
+            continue
+
+        objects_map[labels_dict[dobj.name]].add(dobj)
+
+    for name, objects in objects_map.items():
+        # pylint: disable=no-member
+        labels[name] = Detections.from_detected_objects(objects)
+
+    return labels

@@ -182,12 +182,12 @@ const viewStageMachine = Machine(
             on: {
               CHANGE: {
                 actions: assign({
-                  stage: (_, e) => e.stage,
+                  stage: (_, e) => e.value,
                   results: ({ stageInfo }, e) =>
                     stageInfo
                       .map((s) => s.name)
                       .filter((n) =>
-                        n.toLowerCase().includes(e.stage.toLowerCase())
+                        n.toLowerCase().includes(e.value.toLowerCase())
                       ),
                   currentResult: null,
                   errorId: undefined,
@@ -199,13 +199,14 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       focusOnInit: false,
-                      parameters: (ctx) => {
+                      stage: (ctx, { value }) => value,
+                      parameters: (ctx, { value }) => {
                         const result = ctx.stageInfo.filter((s) =>
-                          s.name.toLowerCase().includes(ctx.stage.toLowerCase())
+                          s.name.toLowerCase().includes(value.toLowerCase())
                         )[0].params;
                         const parameters = result.map((parameter, i) =>
                           createParameter(
-                            ctx.stage,
+                            value,
                             parameter.name,
                             parameter.type,
                             parameter.default,
@@ -228,7 +229,7 @@ const viewStageMachine = Machine(
                   ],
                   cond: (ctx) => {
                     const result = ctx.stageInfo.filter(
-                      (s) => s.name.toLowerCase() === ctx.stage.toLowerCase()
+                      (s) => s.name.toLowerCase() === e.value.toLowerCase()
                     );
                     return result.length === 1;
                   },
@@ -237,10 +238,10 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       submitted: () => false,
-                      error: (_, { stage }) => ({
+                      error: (_, { value }) => ({
                         name: "stage",
                         error: `${
-                          stage === "" ? '""' : stage
+                          value === "" ? '""' : value
                         } is not a valid stage`,
                       }),
                       errorId: uuid(),
