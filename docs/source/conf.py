@@ -87,12 +87,12 @@ source_suffix = [".rst", ".md"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ["_includes"]
 
 # A string of reStructuredText that will be included at the beginning of every
 # source file that is read
 rst_prolog = """
-.. include:: /substitutions.rst
+.. include:: /_includes/substitutions.rst
 """
 
 # Disable nbshinx loading require.js - this breaks the pytorch theme's
