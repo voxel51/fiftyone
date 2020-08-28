@@ -28,7 +28,6 @@ import {
   VALID_OBJECT_TYPES,
   RESERVED_FIELDS,
 } from "../utils/labels";
-import { sample } from "lodash";
 
 type Props = {
   sample: object;
@@ -89,6 +88,21 @@ const Container = styled(Body)`
     }
   }
 
+  .top-right-nav-buttons {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    height: 5em;
+    font-size: 150%;
+    font-weight: bold;
+    user-select: none;
+
+    & > svg {
+      height: 2em;
+    }
+  }
+
   .nav-button {
     position: absolute;
     z-index: 1000;
@@ -112,7 +126,7 @@ const Container = styled(Body)`
       right: 0;
     }
 
-    &.fullscreen {
+    &.top-right {
       right: 0;
       top: 0;
       margin-top: 0;
@@ -153,6 +167,41 @@ const Container = styled(Body)`
     }
   }
 `;
+
+const TopRightNavButtonsContainer = styled.div`
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+`;
+
+const TopRightNavButtons = ({ children }) => {
+  return <TopRightNavButtonsContainer>{children}</TopRightNavButtonsContainer>;
+};
+
+const TopRightNavButtonContainer = styled.div`
+  display: block;
+  background-color: ${({ theme }) => theme.overlayButton};
+  cursor: pointer;
+  font-size: 150%;
+  font-weight: bold;
+  user-select: none;
+  width: 2em;
+  margin-top: 0;
+  height: 2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.25rem;
+`;
+
+const TopRightNavButton = ({ icon, title, onClick }) => {
+  return (
+    <TopRightNavButtonContainer title={title} onClick={onClick}>
+      {icon}
+    </TopRightNavButtonContainer>
+  );
+};
 
 const Row = ({ name, renderedName, value, children, ...rest }) => (
   <div className="row" {...rest}>
@@ -341,9 +390,6 @@ const SampleModal = ({
           <h2>
             Metadata
             <span className="push-right" />
-            <span className="close-wrapper" title="Close">
-              <Close onClick={onClose} />
-            </span>
           </h2>
           <Row name="ID" value={sample._id.$oid} />
           <Row name="Source" value={sample.filepath} />
@@ -421,13 +467,18 @@ const SampleModal = ({
             &gt;
           </div>
         ) : null}
-        <div
-          className="nav-button fullscreen"
-          title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-          onClick={() => setFullscreen(!fullscreen)}
-        >
-          {fullscreen ? <FullscreenExit /> : <Fullscreen />}
-        </div>
+        <TopRightNavButtons>
+          <TopRightNavButton
+            onClick={() => setFullscreen(!fullscreen)}
+            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
+          />
+          <TopRightNavButton
+            onClick={onClose}
+            title={"Close"}
+            icon={<Close />}
+          />
+        </TopRightNavButtons>
       </div>
     </Container>
   );
