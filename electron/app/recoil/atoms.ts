@@ -86,7 +86,17 @@ export const activeOther = atom({
   default: {},
 });
 
+export const modalActiveOther = atom({
+  key: "modalActiveOther",
+  default: {},
+});
+
 export const activeTags = atom({
   key: "activeTags",
+  default: {},
+});
+
+export const modalActiveTags = atom({
+  key: "modalActiveTags",
   default: {},
 });

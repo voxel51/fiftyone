@@ -13,7 +13,7 @@ import { VerticalSpacer } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useResizeHandler, useScrollHandler } from "../utils/hooks";
-import { VALID_LABEL_TYPES, VALID_SCALAR_TYPES } from "../utils/labels";
+import { makeLabelNameGroups } from "../utils/labels";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
@@ -61,7 +61,7 @@ const DisplayOptionsWrapper = (props) => {
       selected: Boolean(selected[name]),
     }));
   };
-  const handleSetDisplayOption = (selected, setSelected) => (entry) => {
+  const handleSetDisplayOption = (setSelected) => (entry) => {
     setSelected((selected) => ({
       ...selected,
       [entry.name]: entry.selected,
@@ -80,20 +80,11 @@ const DisplayOptionsWrapper = (props) => {
   useResizeHandler(updateSidebarHeight, [sidebarRef.current]);
   useScrollHandler(updateSidebarHeight, [sidebarRef.current]);
   useEffect(updateSidebarHeight, []);
-  const labelNameGroups = {
-    labels: [],
-    scalars: [],
-    unsupported: [],
-  };
-  for (const name of labelNames) {
-    if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
-      labelNameGroups.labels.push({ name, type: labelTypes[name] });
-    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name])) {
-      labelNameGroups.scalars.push({ name });
-    } else {
-      labelNameGroups.unsupported.push({ name });
-    }
-  }
+  const labelNameGroups = makeLabelNameGroups(
+    fieldSchema,
+    labelNames,
+    labelTypes
+  );
 
   return (
     <Grid.Column className="sidebar-column">
@@ -115,14 +106,14 @@ const DisplayOptionsWrapper = (props) => {
             labelSampleCounts,
             activeLabels
           )}
-          onSelectTag={handleSetDisplayOption(activeTags, setActiveTags)}
-          onSelectLabel={handleSetDisplayOption(activeLabels, setActiveLabels)}
+          onSelectTag={handleSetDisplayOption(setActiveTags)}
+          onSelectLabel={handleSetDisplayOption(setActiveLabels)}
           scalars={getDisplayOptions(
             labelNameGroups.scalars,
             labelSampleCounts,
             activeOther
           )}
-          onSelectScalar={handleSetDisplayOption(activeOther, setActiveOther)}
+          onSelectScalar={handleSetDisplayOption(setActiveOther)}
           unsupported={getDisplayOptions(
             labelNameGroups.unsupported,
             labelSampleCounts,

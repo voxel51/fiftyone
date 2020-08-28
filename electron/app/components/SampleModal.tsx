@@ -7,7 +7,7 @@ import {
   Fullscreen,
   FullscreenExit,
 } from "@material-ui/icons";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
@@ -17,6 +17,7 @@ import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
 import Filter from "./Filter";
 import { Body } from "./CheckboxGrid";
+import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
@@ -27,6 +28,7 @@ import {
   VALID_CLASS_TYPES,
   VALID_OBJECT_TYPES,
   RESERVED_FIELDS,
+  makeLabelNameGroups,
 } from "../utils/labels";
 
 type Props = {
@@ -253,7 +255,6 @@ const LabelRow = ({ color, field, ...rest }) => {
 const SampleModal = ({
   sample,
   sampleUrl,
-  fieldSchema = {},
   colorMapping = {},
   onClose,
   onPrevious,
@@ -266,6 +267,16 @@ const SampleModal = ({
   const [fullscreen, setFullscreen] = useState(false);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
+  );
+  const [activeTags, setActiveTags] = useRecoilState(atoms.modalActiveTags);
+  const [activeOther, setActiveOther] = useRecoilState(atoms.modalActiveOther);
+  const fieldSchema = useRecoilValue(selectors.fieldSchema);
+  const labelNames = useRecoilValue(selectors.labelNames);
+  const labelTypes = useRecoilValue(selectors.labelTypes);
+  const labelNameGroups = makeLabelNameGroups(
+    fieldSchema,
+    labelNames,
+    labelTypes
   );
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
@@ -388,33 +399,41 @@ const SampleModal = ({
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
-          <Row
-            name="Tags"
-            value={
-              sample.tags.length
-                ? sample.tags.map((tag) => (
-                    <Tag
-                      key={tag}
-                      name={tag}
-                      color={colorMapping[tag]}
-                      maxWidth="10em"
-                    />
-                  ))
-                : "none"
-            }
+          <DisplayOptionsSidebar
+            colorMapping={colorMapping}
+            tags={getDisplayOptions(
+              tagNames.map((t) => ({ name: t })),
+              tagSampleCounts,
+              activeTags
+            )}
+            labels={getDisplayOptions(
+              labelNameGroups.labels,
+              labelSampleCounts,
+              activeLabels
+            )}
+            onSelectTag={handleSetDisplayOption(setActiveTags)}
+            onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+            scalars={getDisplayOptions(
+              labelNameGroups.scalars,
+              labelSampleCounts,
+              activeOther
+            )}
+            onSelectScalar={handleSetDisplayOption(setActiveOther)}
+            unsupported={getDisplayOptions(
+              labelNameGroups.unsupported,
+              labelSampleCounts,
+              activeLabels
+            )}
+            style={{
+              maxHeight: sidebarHeight,
+              overflowY: "auto",
+              overflowX: "hidden",
+              paddingRight: 25,
+              marginRight: -25,
+              scrollbarWidth: "thin",
+            }}
+            ref={sidebarRef}
           />
-          {labels.length ? (
-            <>
-              <h2>Labels</h2>
-              {labels}
-            </>
-          ) : null}
-          {scalars.length ? (
-            <>
-              <h2>Scalars</h2>
-              {scalars}
-            </>
-          ) : null}
         </div>
         <ModalFooter>
           <Button onClick={() => setShowJSON(!showJSON)}>
