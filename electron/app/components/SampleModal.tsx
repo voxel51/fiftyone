@@ -7,7 +7,7 @@ import {
   Fullscreen,
   FullscreenExit,
 } from "@material-ui/icons";
-import { useRecoilValue, useRecoilState } from "recoil";
+import { useRecoilState } from "recoil";
 
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
@@ -37,7 +37,7 @@ type Props = {
 
 const Container = styled(Body)`
   display: grid;
-  grid-template-columns: auto 280px;
+  grid-template-columns: 280px auto;
   width: 90vw;
   height: 80vh;
   background-color: ${({ theme }) => theme.background};
@@ -124,7 +124,7 @@ const Container = styled(Body)`
     position: relative;
     display: flex;
     flex-direction: column;
-    border-left: 2px solid ${({ theme }) => theme.border};
+    border-right: 2px solid ${({ theme }) => theme.border};
     max-height: 100%;
     overflow-y: auto;
 
@@ -336,51 +336,6 @@ const SampleModal = ({
 
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
-      <div className="player" ref={playerContainerRef}>
-        {showJSON ? (
-          <JSONView object={sample} />
-        ) : (
-          <Player51
-            key={sampleUrl} // force re-render when this changes
-            src={sampleUrl}
-            onLoad={handleResize}
-            style={{
-              position: "relative",
-              ...playerStyle,
-            }}
-            sample={sample}
-            colorMapping={colorMapping}
-            activeLabels={activeLabels}
-            fieldSchema={fieldSchema}
-            filterSelector={selectors.modalLabelFilters}
-          />
-        )}
-        {onPrevious ? (
-          <div
-            className="nav-button left"
-            onClick={onPrevious}
-            title="Previous sample (Left arrow)"
-          >
-            &lt;
-          </div>
-        ) : null}
-        {onNext ? (
-          <div
-            className="nav-button right"
-            onClick={onNext}
-            title="Next sample (Right arrow)"
-          >
-            &gt;
-          </div>
-        ) : null}
-        <div
-          className="nav-button fullscreen"
-          title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-          onClick={() => setFullscreen(!fullscreen)}
-        >
-          {fullscreen ? <FullscreenExit /> : <Fullscreen />}
-        </div>
-      </div>
       <div className="sidebar">
         <div className="sidebar-content">
           <h2>
@@ -428,6 +383,51 @@ const SampleModal = ({
             {showJSON ? "Hide" : "Show"} JSON
           </Button>
         </ModalFooter>
+      </div>
+      <div className="player" ref={playerContainerRef}>
+        {showJSON ? (
+          <JSONView object={sample} />
+        ) : (
+          <Player51
+            key={sampleUrl} // force re-render when this changes
+            src={sampleUrl}
+            onLoad={handleResize}
+            style={{
+              position: "relative",
+              ...playerStyle,
+            }}
+            sample={sample}
+            colorMapping={colorMapping}
+            activeLabels={activeLabels}
+            fieldSchema={fieldSchema}
+            filterSelector={selectors.modalLabelFilters}
+          />
+        )}
+        {onPrevious ? (
+          <div
+            className="nav-button left"
+            onClick={onPrevious}
+            title="Previous sample (Left arrow)"
+          >
+            &lt;
+          </div>
+        ) : null}
+        {onNext ? (
+          <div
+            className="nav-button right"
+            onClick={onNext}
+            title="Next sample (Right arrow)"
+          >
+            &gt;
+          </div>
+        ) : null}
+        <div
+          className="nav-button fullscreen"
+          title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+          onClick={() => setFullscreen(!fullscreen)}
+        >
+          {fullscreen ? <FullscreenExit /> : <Fullscreen />}
+        </div>
       </div>
     </Container>
   );
