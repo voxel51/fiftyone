@@ -165,9 +165,12 @@ class Service(object):
             for child in fosu.normalize_wrapper_process(self.child).children(
                 recursive=True
             ):
-                for local_port in fosu.get_listening_tcp_ports(child):
-                    if port is None or port == local_port:
-                        return local_port
+                try:
+                    for local_port in fosu.get_listening_tcp_ports(child):
+                        if port is None or port == local_port:
+                            return local_port
+                except psutil.Error:
+                    pass
             raise ServiceListenTimeout(etau.get_class_name(self), port)
 
         return find_port()
@@ -288,7 +291,7 @@ class DatabaseService(MultiClientService):
                 for child in psutil.Process().children()
                 for port in fosu.get_listening_tcp_ports(child)
             )
-        except StopIteration:
+        except (StopIteration, psutil.Error):
             # mongod may have exited - ok to wait until next time
             return
 
