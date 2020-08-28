@@ -125,13 +125,6 @@ const Container = styled(Body)`
     &.right {
       right: 0;
     }
-
-    &.top-right {
-      right: 0;
-      top: 0;
-      margin-top: 0;
-      height: 2em;
-    }
   }
 
   .sidebar {
@@ -192,7 +185,6 @@ const TopRightNavButtonContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 0.25rem;
 `;
 
 const TopRightNavButton = ({ icon, title, onClick }) => {
