@@ -37,6 +37,7 @@ const ErrorMessage = React.memo(({ barRef, followRef, serviceRef, style }) => {
   const [props, set] = useSpring(() => ({
     opacity: errorId ? 1 : 0,
     left: 0,
+    top: 0,
     from: {
       opacity: 0,
     },
@@ -50,7 +51,7 @@ const ErrorMessage = React.memo(({ barRef, followRef, serviceRef, style }) => {
 
   useOutsideClick(ref, () => send("CLEAR_ERROR_ID"));
 
-  useFollow(barRef, followRef, set);
+  barRef && followRef && useFollow(barRef, followRef, set);
 
   return (
     <ErrorMessageDiv

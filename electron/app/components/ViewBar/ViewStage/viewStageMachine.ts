@@ -256,7 +256,7 @@ const viewStageMachine = Machine(
                       focusOnInit: false,
                     }),
                     "blurInput",
-                    send("COMMIT"),
+                    send(({ stage }) => ({ type: "COMMIT", value: stage })),
                   ],
                 },
               ],

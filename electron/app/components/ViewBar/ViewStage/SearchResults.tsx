@@ -84,7 +84,8 @@ interface SearchResultsProps {
 const SearchResults = React.memo(
   ({ results, send, currentResult, barRef, followRef, ...rest }) => {
     const [props, set] = useSpring(() => ({
-      left: 0,
+      left: followRef.current.getBoundingClientRect().x,
+      top: followRef.current.getBoundingClientRect().y,
       opacity: 1,
       from: {
         opacity: 0,
@@ -92,7 +93,7 @@ const SearchResults = React.memo(
       config: config.stiff,
     }));
 
-    useFollow(barRef, followRef, (obj) => set(obj));
+    barRef && followRef && useFollow(barRef, followRef, (obj) => set(obj));
 
     if (!results.length) return null;
 

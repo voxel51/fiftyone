@@ -52,14 +52,21 @@ export const useFollow = (leaderRef, followerRef, set) => {
       } = leaderRef.current.getBoundingClientRect();
       set({
         left: x,
+        top: y,
         opacity: x - leaderX < 0 || x > leaderX + leaderWidth ? 0 : 1,
       });
     };
-    leaderRef.current && leaderRef.current.addEventListener("scroll", follow);
-
-    leaderRef.current && followerRef.current && follow();
+    leaderRef.current &&
+      followerRef.current &&
+      (() => {
+        leaderRef.current.addEventListener("scroll", follow);
+        window.addEventListener("scroll", follow);
+      })();
     return () =>
       leaderRef.current &&
-      leaderRef.current.removeEventListener("scroll", follow);
+      (() => {
+        leaderRef.current.removeEventListener("scroll", follow);
+        window.removeEventListener("scroll", follow);
+      })();
   }, [leaderRef.current, followerRef.current]);
 };
