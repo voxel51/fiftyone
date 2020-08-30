@@ -249,7 +249,7 @@ class DatabaseService(MultiClientService):
 
     @property
     def command(self):
-        return [
+        args = [
             DatabaseService.find_mongod(),
             "--dbpath",
             foc.DB_PATH,
@@ -257,8 +257,10 @@ class DatabaseService(MultiClientService):
             foc.DB_LOG_PATH,
             "--port",
             "0",
-            "--nounixsocket",
         ]
+        if not sys.platform.startswith("win"):
+            args.append("--nounixsocket")
+        return args
 
     @property
     def port(self):
