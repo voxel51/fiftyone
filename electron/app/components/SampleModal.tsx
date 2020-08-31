@@ -160,14 +160,25 @@ const Container = styled(Body)`
   }
 
   .row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: wrap;
+
     > label {
       font-weight: bold;
+      display: block;
+      padding-right: 0.5rem;
+      width: auto;
     }
-    > span {
-      float: right;
+    > div {
+      display: block;
+      max-width: 100%;
     }
     span {
-      word-wrap: break-word;
+      flex-grow: 2;
+      overflow-wrap: break-word;
+      vertical-align: middle;
     }
   }
 `;
@@ -209,10 +220,10 @@ const TopRightNavButton = ({ icon, title, onClick }) => {
 const Row = ({ name, renderedName, value, children, ...rest }) => (
   <div className="row" {...rest}>
     <label>{renderedName || name}&nbsp;</label>
-    <span style={{ display: "flex", justifyContent: "space-between" }}>
+    <div>
       <span>{value}</span>
-      {children}
-    </span>
+    </div>
+    {children}
   </div>
 );
 
