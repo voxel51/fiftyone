@@ -458,9 +458,7 @@ const SampleModal = ({
             style={{
               overflowY: "auto",
               overflowX: "hidden",
-              paddingRight: 25,
-              marginRight: -25,
-              scrollbarWidth: "thin",
+              height: "auto",
             }}
           />
         </div>

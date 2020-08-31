@@ -137,6 +137,7 @@ const Entry = ({ entry, onCheck }) => {
         }
         style={{
           backgroundColor: entry.selected ? theme.backgroundLight : undefined,
+          width: "100%",
           color: entry.selected
             ? theme.font
             : entry.disabled
