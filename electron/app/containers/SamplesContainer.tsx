@@ -96,6 +96,7 @@ const DisplayOptionsWrapper = (props) => {
       >
         <DisplayOptionsSidebar
           colorMap={colorMap}
+          resetColors={resetColors}
           tags={getDisplayOptions(
             tagNames.map((t) => ({ name: t })),
             tagSampleCounts,
@@ -167,7 +168,7 @@ const SamplesContainer = (props) => {
           />
         ) : null}
         <Grid.Column className="content-column">
-          <Samples {...props} colorMap={colorMap} />
+          <Samples {...props} />
         </Grid.Column>
       </Grid>
     </Root>

@@ -3,6 +3,7 @@ import styled from "styled-components";
 
 import {
   ArrowDropDown,
+  Check,
   Close,
   Fullscreen,
   FullscreenExit,
@@ -20,16 +21,7 @@ import { Body } from "./CheckboxGrid";
 import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
-import {
-  stringify,
-  getLabelText,
-  formatMetadata,
-  VALID_SCALAR_TYPES,
-  VALID_CLASS_TYPES,
-  VALID_OBJECT_TYPES,
-  RESERVED_FIELDS,
-  makeLabelNameGroups,
-} from "../utils/labels";
+import { formatMetadata, makeLabelNameGroups } from "../utils/labels";
 
 type Props = {
   sample: object;
@@ -347,11 +339,19 @@ const SampleModal = ({
     [onClose, onPrevious, onNext, fullscreen]
   );
 
-  const getDisplayOptions = (values, counts, selected) => {
+  const getDisplayOptions = (values, countOrExists, selected) => {
     return [...values].sort().map(({ name, type }) => ({
       name,
       type,
-      count: counts[name],
+      icon:
+        typeof countOrExists[name] === "boolean" ? (
+          countOrExists[name] ? (
+            <Check />
+          ) : (
+            <Close />
+          )
+        ) : undefined,
+      count: countOrExists[name],
       selected: Boolean(selected[name]),
     }));
   };
@@ -362,7 +362,53 @@ const SampleModal = ({
       [entry.name]: entry.selected,
     }));
   };
-  console.log(fieldSchema);
+
+  const tagSampleExists = tagNames.reduce(
+    (acc, tag) => ({
+      ...acc,
+      [tag]: sample.tags.includes(tag),
+    }),
+    {}
+  );
+
+  const labelSampleValues = labelNameGroups.labels.reduce((obj, label) => {
+    let value;
+    if (!sample[label]) {
+      value = false;
+    } else {
+      const type = sample[label].type;
+      value = ["Detections", "Classifcations"].includes(type)
+        ? sample[label][type.toLowerCase()].length
+        : true;
+    }
+    return {
+      ...obj,
+      [label]: value,
+    };
+  }, {});
+
+  const scalarSampleValues = labelNameGroups.labels.reduce((obj, label) => {
+    let value;
+    if (!sample[label]) {
+      value = false;
+    } else {
+      const type = sample[label].type;
+      value = ["Detections", "Classifcations"].includes(type)
+        ? sample[label][type.toLowerCase()].length
+        : true;
+    }
+    return {
+      ...obj,
+      [label]: value,
+    };
+  }, {});
+
+  const otherSampleValues = labelNameGroups.unsupported.reduce((obj, label) => {
+    return {
+      ...obj,
+      [label]: label in sample,
+    };
+  }, {});
 
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
@@ -381,24 +427,24 @@ const SampleModal = ({
             colorMap={colorMap}
             tags={getDisplayOptions(
               tagNames.map((t) => ({ name: t })),
-              tagSampleCounts,
+              tagSampleExists,
               activeTags
             )}
             labels={getDisplayOptions(
               labelNameGroups.labels,
-              labelSampleCounts,
+              labelSampleValues,
               activeLabels
             )}
             onSelectLabel={handleSetDisplayOption(setActiveLabels)}
             scalars={getDisplayOptions(
               labelNameGroups.scalars,
-              labelSampleCounts,
+              scalarSampleValues,
               activeLabels
             )}
             onSelectScalar={handleSetDisplayOption(setActiveLabels)}
             unsupported={getDisplayOptions(
               labelNameGroups.unsupported,
-              labelSampleCounts,
+              otherSampleValues,
               activeLabels
             )}
             style={{

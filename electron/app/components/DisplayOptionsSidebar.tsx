@@ -124,7 +124,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title }) => {
             name: e.name,
             selected: e.selected,
             type: e.type,
-            data: [(e.count || 0).toLocaleString()],
+            data: e.icon ? e.icon : [(e.count || 0).toLocaleString()],
             count: e.count,
             color: colorMap[e.name],
             disabled: Boolean(e.disabled),
