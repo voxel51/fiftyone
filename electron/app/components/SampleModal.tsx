@@ -275,7 +275,7 @@ const LabelRow = ({ color, field, ...rest }) => {
 const SampleModal = ({
   sample,
   sampleUrl,
-  colorMapping = {},
+  colorMap = {},
   onClose,
   onPrevious,
   onNext,
@@ -378,7 +378,7 @@ const SampleModal = ({
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
           <DisplayOptionsSidebar
-            colorMapping={colorMapping}
+            colorMap={colorMap}
             tags={getDisplayOptions(
               tagNames.map((t) => ({ name: t })),
               tagSampleCounts,
@@ -427,7 +427,7 @@ const SampleModal = ({
               ...playerStyle,
             }}
             sample={sample}
-            colorMapping={colorMapping}
+            colorMap={colorMap}
             activeLabels={activeLabels}
             fieldSchema={fieldSchema}
             filterSelector={selectors.modalLabelFilters}

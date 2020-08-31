@@ -36,7 +36,7 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
+const loadOverlay = (sample, colorMap, fieldSchema, filter) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
@@ -52,7 +52,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
       }
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
-      playerColorMap[`${sampleField}`] = colorMapping[sampleField];
+      playerColorMap[`${sampleField}`] = colorMap[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
         if (!filter[sampleField] || !filter[sampleField](object)) {
@@ -60,7 +60,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
         }
         const [key, fn] = PARSERS[object._cls];
         imgLabels[key][key].push(fn(sampleField, object));
-        playerColorMap[`${sampleField}`] = colorMapping[sampleField];
+        playerColorMap[`${sampleField}`] = colorMap[sampleField];
       }
       continue;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
@@ -71,7 +71,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
 };
 
 export default ({
-  colorMapping,
+  colorMap,
   thumbnail,
   sample,
   src,
@@ -86,7 +86,7 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const [overlay, playerColorMap] = loadOverlay(
     sample,
-    colorMapping,
+    colorMap,
     fieldSchema,
     filter
   );
@@ -101,6 +101,8 @@ export default ({
       },
       overlay: overlay,
       colorMap: playerColorMap,
+      activeLabels,
+      filter,
     })
   );
   const props = thumbnail
@@ -111,11 +113,11 @@ export default ({
       if (thumbnail) {
         player.thumbnailMode();
       }
-      player.render(id, activeLabels, filter);
+      player.render(id);
       setInitLoad(true);
       onLoad();
     } else {
-      player.renderer.processFrame(activeLabels, filter);
+      player.updateOptions({ activeLabels, filter });
     }
   }, [filter, overlay, activeLabels]);
   return <div id={id} style={style} {...props} />;

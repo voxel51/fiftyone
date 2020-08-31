@@ -38,7 +38,7 @@ const DisplayOptionsWrapper = (props) => {
     setActiveOther,
   } = displayProps;
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
-  const colorMapping = useRecoilValue(selectors.labelColorMapping);
+  const { colorMap, resetColors } = props;
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
   const filters = useRecoilValue(selectors.labelFilters);
@@ -95,7 +95,7 @@ const DisplayOptionsWrapper = (props) => {
         styleElement={{ height: "100%" }}
       >
         <DisplayOptionsSidebar
-          colorMapping={colorMapping}
+          colorMap={colorMap}
           tags={getDisplayOptions(
             tagNames.map((t) => ({ name: t })),
             tagSampleCounts,
@@ -167,7 +167,7 @@ const SamplesContainer = (props) => {
           />
         ) : null}
         <Grid.Column className="content-column">
-          <Samples {...props} />
+          <Samples {...props} colorMap={colorMap} />
         </Grid.Column>
       </Grid>
     </Root>

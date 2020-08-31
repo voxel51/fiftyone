@@ -15,7 +15,6 @@ function Routes({ port }) {
   const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
   const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
   const [activeOther, setActiveOther] = useRecoilState(atoms.activeOther);
-  const colors = useRecoilValue(atoms.colors);
 
   const appProps = {
     activeTags,
@@ -24,7 +23,6 @@ function Routes({ port }) {
     setActiveLabels,
     setActiveOther,
     activeOther,
-    colors,
   };
   const datasetProps = {
     activeTags,
@@ -33,14 +31,13 @@ function Routes({ port }) {
     setActiveTags,
     setActiveLabels,
     setActiveOther,
-    colors,
   };
   const dataset = (props) => {
     return <Dataset {...props} displayProps={datasetProps} />;
   };
 
   return (
-    <App displayProps={appProps} colors={colors}>
+    <App displayProps={appProps}>
       <Switch>
         <Route path={routes.LOADING} exact component={Loading} />
         <Route path={routes.SETUP} exact component={Setup} />
