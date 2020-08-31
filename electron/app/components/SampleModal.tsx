@@ -144,6 +144,15 @@ const Container = styled(Body)`
       flex-grow: 1;
       overflow-y: auto;
     }
+    .sidebar-content::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+      display: none;
+    }
+    .sidebar-content::-webkit-scrollbar-thumb {
+      width: 0px;
+      display: none;
+    }
 
     ${ModalFooter} {
       align-items: flex-start;
