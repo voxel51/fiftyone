@@ -289,7 +289,8 @@ const SampleModal = ({
     atoms.modalActiveLabels
   );
   const [activeTags, setActiveTags] = useRecoilState(atoms.modalActiveTags);
-  const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
+  const tagNames = useRecoilValue(selectors.tagNames);
+
   const [activeOther, setActiveOther] = useRecoilState(atoms.modalActiveOther);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
   const labelNames = useRecoilValue(selectors.labelNames);
@@ -346,67 +347,6 @@ const SampleModal = ({
     [onClose, onPrevious, onNext, fullscreen]
   );
 
-  const makeTag = (name) => (
-    <Tag
-      key={name}
-      name={name}
-      color={colorMapping[name]}
-      outline={!activeLabels[name]}
-      onClick={() =>
-        setActiveLabels({ ...activeLabels, [name]: !activeLabels[name] })
-      }
-    />
-  );
-
-  const classifications = Object.keys(sample)
-    .filter((k) => sample[k] && VALID_CLASS_TYPES.includes(sample[k]._cls))
-    .map((k) => {
-      let value;
-      if (sample[k].classifications) {
-        const len = sample[k].classifications.length;
-        value = `${len} classification${len == 1 ? "" : "s"}`;
-      } else {
-        value = getLabelText(sample[k]);
-      }
-      return {
-        key: k,
-        name: k,
-        field: sample[k],
-        renderedName: makeTag(k),
-        value,
-        color: colorMapping[k],
-      };
-    });
-  const detections = Object.keys(sample)
-    .filter((k) => sample[k] && VALID_OBJECT_TYPES.includes(sample[k]._cls))
-    .map((k) => {
-      const len = sample[k].detections ? sample[k].detections.length : 1;
-      return {
-        key: k,
-        name: k,
-        renderedName: makeTag(k),
-        field: sample[k],
-        value: `${len} detection${len == 1 ? "" : "s"}`,
-        color: colorMapping[k],
-      };
-    });
-  const labels = [...classifications, ...detections]
-    .sort((a, b) => (a.key < b.key ? -1 : 1))
-    .map(LabelRow);
-  const scalars = Object.keys(sample)
-    .filter(
-      (k) =>
-        VALID_SCALAR_TYPES.includes(fieldSchema[k]) &&
-        !RESERVED_FIELDS.includes(k) &&
-        sample[k] !== null &&
-        sample[k] !== undefined
-    )
-    .map((k) => {
-      return (
-        <Row key={k} renderedName={makeTag(k)} value={stringify(sample[k])} />
-      );
-    });
-
   const getDisplayOptions = (values, counts, selected) => {
     return [...values].sort().map(({ name, type }) => ({
       name,
@@ -422,6 +362,7 @@ const SampleModal = ({
       [entry.name]: entry.selected,
     }));
   };
+  console.log(fieldSchema);
 
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
@@ -438,6 +379,11 @@ const SampleModal = ({
           ))}
           <DisplayOptionsSidebar
             colorMapping={colorMapping}
+            tags={getDisplayOptions(
+              tagNames.map((t) => ({ name: t })),
+              tagSampleCounts,
+              activeTags
+            )}
             labels={getDisplayOptions(
               labelNameGroups.labels,
               labelSampleCounts,
@@ -447,9 +393,9 @@ const SampleModal = ({
             scalars={getDisplayOptions(
               labelNameGroups.scalars,
               labelSampleCounts,
-              activeOther
+              activeLabels
             )}
-            onSelectScalar={handleSetDisplayOption(setActiveOther)}
+            onSelectScalar={handleSetDisplayOption(setActiveLabels)}
             unsupported={getDisplayOptions(
               labelNameGroups.unsupported,
               labelSampleCounts,
