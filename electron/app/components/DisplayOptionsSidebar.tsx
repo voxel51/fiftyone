@@ -60,7 +60,7 @@ const Container = styled.div`
   }
 `;
 
-const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
+const Cell = ({ label, icon, entries, onSelect, colorMap, title }) => {
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
@@ -104,7 +104,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
             selected: e.selected,
             type: e.type,
             data: [(e.count || 0).toLocaleString()],
-            color: colorMapping[e.name],
+            color: colorMap[e.name],
             disabled: Boolean(e.disabled),
           }))}
           onCheck={onSelect}
@@ -119,7 +119,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMapping, title }) => {
 const DisplayOptionsSidebar = React.forwardRef(
   (
     {
-      colorMapping = {},
+      colorMap = {},
       tags = [],
       labels = [],
       scalars = [],
@@ -134,21 +134,21 @@ const DisplayOptionsSidebar = React.forwardRef(
     return (
       <Container ref={ref} {...rest}>
         <Cell
-          colorMapping={colorMapping}
+          colorMap={colorMap}
           label="Tags"
           icon={<PhotoLibrary />}
           entries={tags}
           onSelect={onSelectTag}
         />
         <Cell
-          colorMapping={colorMapping}
+          colorMap={colorMap}
           label="Labels"
           icon={<Label style={{ transform: "rotate(180deg)" }} />}
           entries={labels}
           onSelect={onSelectLabel}
         />
         <Cell
-          colorMapping={colorMapping}
+          colorMap={colorMap}
           label="Scalars"
           icon={<BarChart />}
           entries={scalars}
@@ -159,7 +159,7 @@ const DisplayOptionsSidebar = React.forwardRef(
             label="Unsupported"
             title="These fields cannot currently be displayed in the app"
             icon={<Help />}
-            colorMapping={{}}
+            colorMap={{}}
             entries={unsupported.map((entry) => ({
               ...entry,
               selected: false,

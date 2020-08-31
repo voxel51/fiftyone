@@ -11,6 +11,7 @@ import { ModalWrapper, Overlay } from "../components/utils";
 import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { generateColorMap } from "../utils/colors";
 import connect from "../utils/connect";
 import { VALID_LABEL_TYPES } from "../utils/labels";
 
@@ -32,13 +33,19 @@ function Dataset(props) {
     sample: null,
     activeLabels: {},
   });
+  const [colorMap, setColorMap] = useState({});
 
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
-  const colorMapping = useRecoilValue(selectors.labelColorMapping);
   const labelNames = useRecoilValue(selectors.labelNames);
+  const tagNames = useRecoilValue(selectors.tagNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
+
+  // update color map
+  useEffect(() => {
+    setColorMap(generateColorMap([...tagNames, ...labelNames], colorMap));
+  }, [labelNames, tagNames]);
 
   // select any new labels by default
   useEffect(() => {
@@ -110,7 +117,7 @@ function Dataset(props) {
           <SampleModal
             activeLabels={modal.activeLabels}
             fieldSchema={fieldSchema}
-            colorMapping={colorMapping}
+            colorMap={colorMap}
             sample={modal.sample}
             sampleUrl={src}
             onClose={handleHideModal}
@@ -140,6 +147,7 @@ function Dataset(props) {
                     })
                   }
                   displayProps={displayProps}
+                  colorMap={colorMap}
                 />
               </Route>
               <Route path={routes.LABELS}>

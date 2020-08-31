@@ -37,6 +37,7 @@ const SamplesContainer = (props) => {
     setActiveOther,
     labelData,
   } = props.displayProps;
+  const { colorMap } = props;
 
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const [sidebarHeight, setSidebarHeight] = useState("unset");
@@ -49,7 +50,6 @@ const SamplesContainer = (props) => {
   const labelNames = useRecoilValue(selectors.labelNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
-  const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -125,7 +125,7 @@ const SamplesContainer = (props) => {
           <Grid.Column className="sidebar-column">
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
-                colorMapping={colorMapping}
+                colorMap={colorMap}
                 tags={getDisplayOptions(
                   tagNames.map((t) => ({ name: t })),
                   tagSampleCounts,
@@ -169,7 +169,7 @@ const SamplesContainer = (props) => {
           </Grid.Column>
         ) : null}
         <Grid.Column className="content-column">
-          <Samples {...props} />
+          <Samples {...props} colorMap={colorMap} />
         </Grid.Column>
       </Grid>
     </Root>
