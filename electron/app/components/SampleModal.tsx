@@ -269,6 +269,7 @@ const SampleModal = ({
     atoms.modalActiveLabels
   );
   const [activeTags, setActiveTags] = useRecoilState(atoms.modalActiveTags);
+  const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
   const [activeOther, setActiveOther] = useRecoilState(atoms.modalActiveOther);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
   const labelNames = useRecoilValue(selectors.labelNames);
@@ -386,6 +387,22 @@ const SampleModal = ({
       );
     });
 
+  const getDisplayOptions = (values, counts, selected) => {
+    return [...values].sort().map(({ name, type }) => ({
+      name,
+      type,
+      count: counts[name],
+      selected: Boolean(selected[name]),
+    }));
+  };
+
+  const handleSetDisplayOption = (setSelected) => (entry) => {
+    setSelected((selected) => ({
+      ...selected,
+      [entry.name]: entry.selected,
+    }));
+  };
+
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
       <div className="sidebar">
@@ -401,17 +418,11 @@ const SampleModal = ({
           ))}
           <DisplayOptionsSidebar
             colorMapping={colorMapping}
-            tags={getDisplayOptions(
-              tagNames.map((t) => ({ name: t })),
-              tagSampleCounts,
-              activeTags
-            )}
             labels={getDisplayOptions(
               labelNameGroups.labels,
               labelSampleCounts,
               activeLabels
             )}
-            onSelectTag={handleSetDisplayOption(setActiveTags)}
             onSelectLabel={handleSetDisplayOption(setActiveLabels)}
             scalars={getDisplayOptions(
               labelNameGroups.scalars,
@@ -425,14 +436,12 @@ const SampleModal = ({
               activeLabels
             )}
             style={{
-              maxHeight: sidebarHeight,
               overflowY: "auto",
               overflowX: "hidden",
               paddingRight: 25,
               marginRight: -25,
               scrollbarWidth: "thin",
             }}
-            ref={sidebarRef}
           />
         </div>
         <ModalFooter>

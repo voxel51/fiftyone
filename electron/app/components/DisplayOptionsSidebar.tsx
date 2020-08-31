@@ -144,13 +144,15 @@ const DisplayOptionsSidebar = React.forwardRef(
   ) => {
     return (
       <Container ref={ref} {...rest}>
-        <Cell
-          colorMapping={colorMapping}
-          label="Tags"
-          icon={<PhotoLibrary />}
-          entries={tags}
-          onSelect={onSelectTag}
-        />
+        {tags && (
+          <Cell
+            colorMapping={colorMapping}
+            label="Tags"
+            icon={<PhotoLibrary />}
+            entries={tags}
+            onSelect={onSelectTag}
+          />
+        )}
         <Cell
           colorMapping={colorMapping}
           label="Labels"
