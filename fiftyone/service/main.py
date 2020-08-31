@@ -293,7 +293,9 @@ def shutdown():
     # "yarn dev" doesn't pass SIGTERM to its children - to be safe, kill all
     # subprocesses of the child process first
     try:
-        for subchild in child.children(recursive=True):
+        # children() returns parent processes first - start with children
+        # instead to make killing "yarn dev" more reliable
+        for subchild in reversed(child.children(recursive=True)):
             try:
                 subchild.terminate()
             except psutil.NoSuchProcess:
