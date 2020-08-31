@@ -344,7 +344,7 @@ const SampleModal = ({
     {}
   );
 
-  const scalarSampleValues = labelNameGroups.labels.reduce(
+  const scalarSampleValues = labelNameGroups.scalars.reduce(
     (obj, { name }) => ({
       ...obj,
       [name]: sample[name] ? sample[name] : false,
