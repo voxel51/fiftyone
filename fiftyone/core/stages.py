@@ -288,7 +288,7 @@ class Exists(ViewStage):
         # field
         #
 
-        stage = Exists("predictions", bool=False)
+        stage = Exists("predictions", False)
         view = dataset.add_stage(stage)
 
     Args:

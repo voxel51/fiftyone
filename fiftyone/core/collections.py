@@ -324,7 +324,7 @@ class SampleCollection(object):
             # `predictions` field
             #
 
-            view = dataset.exists("predictions", bool=False)
+            view = dataset.exists("predictions", False)
 
         Args:
             field: the field
