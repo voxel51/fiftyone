@@ -256,7 +256,7 @@ class ExcludeFields(ViewStage):
                     "Cannot exclude private field '%s'" % field_name
                 )
 
-            if field_name in default_fields:
+            if (field_name == "id") or (field_name in default_fields):
                 raise ValueError(
                     "Cannot exclude default field '%s'" % field_name
                 )
