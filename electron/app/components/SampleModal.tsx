@@ -213,56 +213,11 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
   <div className="row" {...rest}>
     <label>{renderedName || name}&nbsp;</label>
     <div>
-      <span>{value}</span>
+      <span title={value}>{value}</span>
     </div>
     {children}
   </div>
 );
-
-const LabelRow = ({ color, field, ...rest }) => {
-  const [expanded, setExpanded] = useState(false);
-  const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.modalActiveLabels
-  );
-  return (
-    <React.Fragment key={rest.key}>
-      <Row {...rest}>
-        {activeLabels[rest.name] && field._cls && (
-          <ArrowDropDown
-            onClick={(e) => {
-              e.preventDefault();
-              setExpanded(!expanded);
-            }}
-            style={{
-              lineHeight: "31px",
-              cursor: "pointer",
-            }}
-          />
-        )}
-      </Row>
-      {expanded && activeLabels[rest.name] && (
-        <Filter
-          key={`${rest.key}-filter`}
-          style={{
-            margin: "0.5rem 0",
-            border: "1px solid hsl(200,2%,37%)",
-          }}
-          entry={{
-            name: rest.name,
-            color,
-            selected: activeLabels[rest.name],
-          }}
-          {...{
-            includeLabels: atoms.modalFilterIncludeLabels,
-            invertInclude: atoms.modalFilterInvertIncludeLabels,
-            includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
-            confidenceRange: atoms.modalFilterLabelConfidenceRange,
-          }}
-        />
-      )}
-    </React.Fragment>
-  );
-};
 
 const SampleModal = ({
   sample,
@@ -417,6 +372,10 @@ const SampleModal = ({
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
+          <h2>
+            Display Options
+            <span className="push-right" />
+          </h2>
           <DisplayOptionsSidebar
             colorMap={colorMap}
             tags={getDisplayOptions(
