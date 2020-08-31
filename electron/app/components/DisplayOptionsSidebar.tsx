@@ -131,7 +131,7 @@ const DisplayOptionsSidebar = React.forwardRef(
   (
     {
       colorMapping = {},
-      tags = [],
+      tags = null,
       labels = [],
       scalars = [],
       unsupported = [],
