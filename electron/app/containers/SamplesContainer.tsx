@@ -38,7 +38,6 @@ const DisplayOptionsWrapper = (props) => {
     setActiveOther,
   } = displayProps;
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
-  const { colorMap, resetColors } = props;
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
   const filters = useRecoilValue(selectors.labelFilters);
@@ -95,8 +94,6 @@ const DisplayOptionsWrapper = (props) => {
         styleElement={{ height: "100%" }}
       >
         <DisplayOptionsSidebar
-          colorMap={colorMap}
-          resetColors={resetColors}
           tags={getDisplayOptions(
             tagNames.map((t) => ({ name: t })),
             tagSampleCounts,

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import {
   Autorenew,
@@ -14,6 +15,8 @@ import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Button } from "./utils";
+import { colorMap as colorMapAtom } from "../recoil/atoms";
+import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
 
 export type Entry = {
   name: string;
@@ -78,7 +81,7 @@ const Container = styled.div`
   }
 `;
 
-const Cell = ({ label, icon, entries, onSelect, colorMap, title }) => {
+const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
@@ -138,19 +141,21 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title }) => {
 const DisplayOptionsSidebar = React.forwardRef(
   (
     {
+      modal = false,
       tags = [],
-      colorMap = {},
       labels = [],
       scalars = [],
       unsupported = [],
       onSelectTag,
       onSelectLabel,
       onSelectScalar,
-      resetColors,
       ...rest
     }: Props,
     ref
   ) => {
+    const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
+    const colorMap = useRecoilValue(colorMapAtom);
+    const cellRest = { modal };
     return (
       <Container ref={ref} {...rest}>
         <Cell
@@ -159,6 +164,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           icon={<PhotoLibrary />}
           entries={tags}
           onSelect={onSelectTag}
+          {...cellRest}
         />
         <Cell
           colorMap={colorMap}
@@ -166,6 +172,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           icon={<Label style={{ transform: "rotate(180deg)" }} />}
           entries={labels}
           onSelect={onSelectLabel}
+          {...cellRest}
         />
         <Cell
           colorMap={colorMap}
@@ -173,6 +180,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           icon={<BarChart />}
           entries={scalars}
           onSelect={onSelectScalar}
+          {...cellRest}
         />
         {unsupported.length ? (
           <Cell
@@ -185,10 +193,11 @@ const DisplayOptionsSidebar = React.forwardRef(
               selected: false,
               disabled: true,
             }))}
+            {...cellRest}
           />
         ) : null}
         {tags.length || labels.length || scalars.length ? (
-          <Button onClick={resetColors}>
+          <Button onClick={refreshColorMap}>
             <Autorenew />
             Refresh colors
           </Button>
