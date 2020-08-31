@@ -46,6 +46,9 @@ function Dataset(props) {
   useEffect(() => {
     setColorMap(generateColorMap([...tagNames, ...labelNames], colorMap));
   }, [labelNames, tagNames]);
+  const resetColors = () => {
+    setColorMap(generateColorMap([...tagNames, ...labelNames]));
+  };
 
   // select any new labels by default
   useEffect(() => {
@@ -148,6 +151,7 @@ function Dataset(props) {
                   }
                   displayProps={displayProps}
                   colorMap={colorMap}
+                  resetColors={resetColors}
                 />
               </Route>
               <Route path={routes.LABELS}>

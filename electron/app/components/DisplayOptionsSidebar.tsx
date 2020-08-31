@@ -1,12 +1,19 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 
-import { BarChart, Help, Label, PhotoLibrary } from "@material-ui/icons";
+import {
+  Autorenew,
+  BarChart,
+  Help,
+  Label,
+  PhotoLibrary,
+} from "@material-ui/icons";
 
 import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
+import { Button } from "./utils";
 
 export type Entry = {
   name: string;
@@ -25,6 +32,7 @@ type Props = {
 
 const Container = styled.div`
   margin-bottom: 2px;
+  padding-bottom: 1em;
 
   .MuiCheckbox-root {
     padding: 4px 8px 4px 4px;
@@ -127,6 +135,7 @@ const DisplayOptionsSidebar = React.forwardRef(
       onSelectTag,
       onSelectLabel,
       onSelectScalar,
+      resetColors,
       ...rest
     }: Props,
     ref
@@ -167,6 +176,10 @@ const DisplayOptionsSidebar = React.forwardRef(
             }))}
           />
         ) : null}
+        <Button onClick={resetColors}>
+          <Autorenew />
+          Refresh colors
+        </Button>
       </Container>
     );
   }

@@ -37,7 +37,7 @@ const SamplesContainer = (props) => {
     setActiveOther,
     labelData,
   } = props.displayProps;
-  const { colorMap } = props;
+  const { colorMap, resetColors } = props;
 
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const [sidebarHeight, setSidebarHeight] = useState("unset");
@@ -126,6 +126,7 @@ const SamplesContainer = (props) => {
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
                 colorMap={colorMap}
+                resetColors={resetColors}
                 tags={getDisplayOptions(
                   tagNames.map((t) => ({ name: t })),
                   tagSampleCounts,

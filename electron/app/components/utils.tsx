@@ -15,6 +15,8 @@ export const VerticalSpacer = styled.div`
 `;
 
 export const Button = styled.button`
+  display: flex;
+  align-items: center;
   background-color: ${({ theme }) => theme.button};
   color: ${({ theme }) => theme.font};
   border: 1px solid ${({ theme }) => theme.buttonBorder};
@@ -23,6 +25,12 @@ export const Button = styled.button`
   padding: 3px 10px;
   font-weight: bold;
   cursor: pointer;
+
+  svg.MuiSvgIcon-root {
+    font-size: 1.25em;
+    margin-left: -3px;
+    margin-right: 3px;
+  }
 `;
 
 export const Overlay = styled.div`
