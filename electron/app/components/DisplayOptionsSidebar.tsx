@@ -32,7 +32,6 @@ type Props = {
 
 const Container = styled.div`
   margin-bottom: 2px;
-<<<<<<< HEAD
   height: 100%;
   &::-webkit-scrollbar {
     width: 0px;
@@ -43,9 +42,7 @@ const Container = styled.div`
     width: 0px;
     display: none;
   }
-=======
   padding-bottom: 1em;
->>>>>>> improve-colors
 
   .MuiCheckbox-root {
     padding: 4px 8px 4px 4px;

@@ -346,9 +346,9 @@ const SampleModal = ({
       icon:
         typeof countOrExists[name] === "boolean" ? (
           countOrExists[name] ? (
-            <Check />
+            <Check style={{ color: colorMap[name] }} />
           ) : (
-            <Close />
+            <Close style={{ color: colorMap[name] }} />
           )
         ) : undefined,
       count: countOrExists[name],
@@ -371,37 +371,31 @@ const SampleModal = ({
     {}
   );
 
-  const labelSampleValues = labelNameGroups.labels.reduce((obj, label) => {
-    let value;
-    if (!sample[label]) {
-      value = false;
-    } else {
-      const type = sample[label].type;
-      value = ["Detections", "Classifcations"].includes(type)
-        ? sample[label][type.toLowerCase()].length
-        : true;
-    }
-    return {
-      ...obj,
-      [label]: value,
-    };
-  }, {});
+  const labelSampleValues = labelNameGroups.labels.reduce(
+    (obj, { name, type }) => {
+      let value;
+      if (!sample[name]) {
+        value = false;
+      } else {
+        value = ["Detections", "Classifcations"].includes(type)
+          ? sample[name][type.toLowerCase()].length
+          : true;
+      }
+      return {
+        ...obj,
+        [name]: value,
+      };
+    },
+    {}
+  );
 
-  const scalarSampleValues = labelNameGroups.labels.reduce((obj, label) => {
-    let value;
-    if (!sample[label]) {
-      value = false;
-    } else {
-      const type = sample[label].type;
-      value = ["Detections", "Classifcations"].includes(type)
-        ? sample[label][type.toLowerCase()].length
-        : true;
-    }
-    return {
+  const scalarSampleValues = labelNameGroups.labels.reduce(
+    (obj, { name }) => ({
       ...obj,
-      [label]: value,
-    };
-  }, {});
+      [name]: sample[name] ? sample[name] : false,
+    }),
+    {}
+  );
 
   const otherSampleValues = labelNameGroups.unsupported.reduce((obj, label) => {
     return {

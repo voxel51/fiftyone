@@ -125,15 +125,21 @@ const Entry = ({ entry, onCheck }) => {
             <span className="name" title={entry.name}>
               {entry.name}
             </span>
-            <span className="data">{entry.data}</span>
-            {entry.selected && entry.type && entry.count > 0 && (
-              <ArrowDropDown
-                onClick={(e) => {
-                  e.preventDefault();
-                  setExpanded(!expanded);
-                }}
-              />
-            )}
+            {entry.data}
+            {!(
+              entry.icon &&
+              !["Detections", "Classifications"].includes(entry.type)
+            ) &&
+              entry.selected &&
+              entry.type &&
+              entry.count > 0 && (
+                <ArrowDropDown
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setExpanded(!expanded);
+                  }}
+                />
+              )}
           </>
         }
         style={{
