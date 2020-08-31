@@ -176,10 +176,12 @@ const DisplayOptionsSidebar = React.forwardRef(
             }))}
           />
         ) : null}
-        <Button onClick={resetColors}>
-          <Autorenew />
-          Refresh colors
-        </Button>
+        {tags.length || labels.length || scalars.length ? (
+          <Button onClick={resetColors}>
+            <Autorenew />
+            Refresh colors
+          </Button>
+        ) : null}
       </Container>
     );
   }
