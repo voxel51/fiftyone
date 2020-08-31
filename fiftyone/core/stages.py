@@ -1002,7 +1002,7 @@ class SelectFields(ViewStage):
     """
 
     def __init__(self, field_names=None):
-        default_fields = default_sample_fields(include_private=False)
+        default_fields = default_sample_fields(include_private=True)
 
         if field_names:
             if etau.is_str(field_names):
