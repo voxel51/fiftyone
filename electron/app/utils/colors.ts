@@ -3,7 +3,21 @@ import randomColor from "randomcolor";
 
 import { RESERVED_FIELDS } from "./labels";
 
-const FIXED_COLORS = ["red", "green", "blue"];
+const FIXED_COLORS = [
+  "#ee0000",
+  "#ee6600",
+  "#993300",
+  "#996633",
+  "#999900",
+  "#009900",
+  "#003300",
+  "#009999",
+  "#000099",
+  "#0066ff",
+  "#6600ff",
+  "#cc33cc",
+  "#777799",
+];
 
 type Color = string;
 type ColorMap = { [name: string]: Color };
