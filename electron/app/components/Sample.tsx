@@ -11,6 +11,7 @@ import { getLabelText, stringify } from "../utils/labels";
 
 const Sample = ({
   displayProps,
+  colorMap,
   dispatch,
   sample,
   port,
@@ -24,7 +25,6 @@ const Sample = ({
   const socket = getSocket(port, "state");
   const { activeLabels, activeTags, activeOther } = displayProps;
   const filter = useRecoilValue(selectors.labelFilters);
-  const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const handleClick = () => {
     const newSelected = { ...selected };
@@ -56,7 +56,7 @@ const Sample = ({
         key={"label-" + name + "-" + value + (idx ? "-" + idx : "")}
         title={name}
         name={value}
-        color={colorMapping[name]}
+        color={colorMap[name]}
       />
     );
   };
@@ -73,7 +73,7 @@ const Sample = ({
         key={"scalar-" + name}
         title={name}
         name={stringify(sample[name])}
-        color={colorMapping[name]}
+        color={colorMap[name]}
       />
     );
   };
@@ -88,7 +88,7 @@ const Sample = ({
           width: "100%",
           position: "relative",
         }}
-        colorMapping={colorMapping}
+        colorMap={colorMap}
         sample={sample}
         thumbnail={true}
         activeLabels={activeLabels}
@@ -115,7 +115,7 @@ const Sample = ({
           .map(renderLabel)}
         {[...sample.tags].sort().map((t) => {
           return activeTags[t] ? (
-            <Tag key={t} name={String(t)} color={colorMapping[t]} />
+            <Tag key={t} name={String(t)} color={colorMap[t]} />
           ) : null;
         })}
         {Object.keys(sample).sort().map(renderScalar)}

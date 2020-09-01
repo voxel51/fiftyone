@@ -84,7 +84,7 @@ const sample = {
 export const standard = () => (
   <SampleModal
     sample={sample}
-    colorMapping={{}}
+    colorMap={{}}
     activeLabels={[]}
     onPrevious={boolean("has previous") ? () => {} : null}
     onNext={boolean("has next") ? () => {} : null}

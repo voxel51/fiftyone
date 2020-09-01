@@ -165,7 +165,7 @@ const SampleModal = ({
   sample,
   sampleUrl,
   fieldSchema = {},
-  colorMapping = {},
+  colorMap = {},
   onClose,
   onPrevious,
   onNext,
@@ -230,7 +230,7 @@ const SampleModal = ({
     <Tag
       key={name}
       name={name}
-      color={colorMapping[name]}
+      color={colorMap[name]}
       outline={!activeLabels[name]}
       onClick={() =>
         setActiveLabels({ ...activeLabels, [name]: !activeLabels[name] })
@@ -298,7 +298,7 @@ const SampleModal = ({
               ...playerStyle,
             }}
             sample={sample}
-            colorMapping={colorMapping}
+            colorMap={colorMap}
             activeLabels={activeLabels}
             fieldSchema={fieldSchema}
             filter={filter}
@@ -352,7 +352,7 @@ const SampleModal = ({
                     <Tag
                       key={tag}
                       name={tag}
-                      color={colorMapping[tag]}
+                      color={colorMap[tag]}
                       maxWidth="10em"
                     />
                   ))

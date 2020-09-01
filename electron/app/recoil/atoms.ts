@@ -1,4 +1,3 @@
-import randomColor from "randomcolor";
 import { atom, atomFamily } from "recoil";
 
 export const port = atom({
@@ -14,11 +13,6 @@ export const stateDescription = atom({
 export const stageInfo = atom({
   key: "stageInfo",
   default: undefined,
-});
-
-export const colors = atom({
-  key: "colors",
-  default: randomColor({ count: 100, luminosity: "dark" }),
 });
 
 export const sidebarVisible = atom({
