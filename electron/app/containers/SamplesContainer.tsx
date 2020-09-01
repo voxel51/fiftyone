@@ -28,7 +28,13 @@ const Root = styled.div`
 `;
 
 const DisplayOptionsWrapper = (props) => {
-  const { containerRef, sidebarRef, stickyHeaderRef, displayProps } = props;
+  const {
+    containerRef,
+    sidebarRef,
+    sidebarHeight,
+    displayProps,
+    headerHeight,
+  } = props;
   const {
     activeTags,
     activeLabels,
@@ -42,7 +48,7 @@ const DisplayOptionsWrapper = (props) => {
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
-  const [sidebarHeight, setSidebarHeight] = useState("unset");
+
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
   const labelNames = useRecoilValue(selectors.labelNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
@@ -50,7 +56,6 @@ const DisplayOptionsWrapper = (props) => {
   useEffect(() => {
     setModalFilters(filters);
   }, [filters]);
-  let headerHeight = 0;
 
   const getDisplayOptions = (values, counts, selected) => {
     return [...values].sort().map(({ name, type }) => ({
@@ -66,19 +71,7 @@ const DisplayOptionsWrapper = (props) => {
       [entry.name]: entry.selected,
     }));
   };
-  if (stickyHeaderRef.current && stickyHeaderRef.current.stickyRect) {
-    headerHeight = stickyHeaderRef.current.stickyRect.height;
-  }
-  const updateSidebarHeight = () => {
-    if (sidebarRef.current) {
-      setSidebarHeight(
-        window.innerHeight - sidebarRef.current.getBoundingClientRect().top
-      );
-    }
-  };
-  useResizeHandler(updateSidebarHeight, [sidebarRef.current]);
-  useScrollHandler(updateSidebarHeight, [sidebarRef.current]);
-  useEffect(updateSidebarHeight, []);
+
   const labelNameGroups = makeLabelNameGroups(
     fieldSchema,
     labelNames,
@@ -87,12 +80,7 @@ const DisplayOptionsWrapper = (props) => {
 
   return (
     <Grid.Column className="sidebar-column">
-      <Sticky
-        context={containerRef}
-        offset={headerHeight}
-        style={{ height: "100%" }}
-        styleElement={{ height: "100%" }}
-      >
+      <Sticky context={containerRef} offset={headerHeight}>
         <DisplayOptionsSidebar
           tags={getDisplayOptions(
             tagNames.map((t) => ({ name: t })),
@@ -140,6 +128,21 @@ const SamplesContainer = (props) => {
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
   const sidebarRef = useRef();
+  const [sidebarHeight, setSidebarHeight] = useState("unset");
+  let headerHeight = 0;
+  if (stickyHeaderRef.current && stickyHeaderRef.current.stickyRect) {
+    headerHeight = stickyHeaderRef.current.stickyRect.height;
+  }
+  const updateSidebarHeight = () => {
+    if (sidebarRef.current) {
+      setSidebarHeight(
+        window.innerHeight - sidebarRef.current.getBoundingClientRect().top
+      );
+    }
+  };
+  useResizeHandler(updateSidebarHeight, [sidebarRef.current]);
+  useScrollHandler(updateSidebarHeight, [sidebarRef.current]);
+  useEffect(updateSidebarHeight, []);
 
   return (
     <Root ref={containerRef} showSidebar={showSidebar}>
@@ -161,6 +164,8 @@ const SamplesContainer = (props) => {
             sidebarRef={sidebarRef}
             stickyHeaderRef={stickyHeaderRef}
             containerRef={containerRef}
+            sidebarHeight={sidebarHeight}
+            headerHeight={headerHeight}
             {...props}
           />
         ) : null}
