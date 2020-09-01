@@ -88,21 +88,23 @@ function setStages(ctx, stageInfo) {
         false,
         ctx.stages.length,
         i === Math.min(view.length - 1, ctx.activeStage),
-        stage.kwargs.map((p, j) => {
-          const stageInfoResult = stageInfo.filter(
-            (s) => s.name === stageName
-          )[0];
-          return createParameter(
-            stageName,
-            p[0],
-            stageInfoResult.params[j].type,
-            stageInfoResult.params[j].default,
-            operate(stageInfoResult.params[j].type, "castFrom", p[1]),
-            true,
-            false,
-            j === stageInfoResult.params.length - 1
-          );
-        }),
+        stage.kwargs
+          .filter((k) => !k[0].startsWith("_"))
+          .map((p, j) => {
+            const stageInfoResult = stageInfo.filter(
+              (s) => s.name === stageName
+            )[0];
+            return createParameter(
+              stageName,
+              p[0],
+              stageInfoResult.params[j].type,
+              stageInfoResult.params[j].default,
+              operate(stageInfoResult.params[j].type, "castFrom", p[1]),
+              true,
+              false,
+              j === stageInfoResult.params.length - 1
+            );
+          }),
         true,
         true
       );

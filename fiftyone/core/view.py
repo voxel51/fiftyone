@@ -321,29 +321,20 @@ class DatasetView(foc.SampleCollection):
         return view
 
     def _get_selected_excluded_fields(self):
-        """Checks all stages to find the selected and excluded fields.
-
-        Returns:
-            a tuple of
-
-            -   selected_fields: the set of selected fields
-            -   excluded_fields: the set of excluded_fields
-
-            One of these will always be ``None``, meaning nothing is
-            selected/excluded
-        """
         selected_fields = None
         excluded_fields = set()
 
         for stage in self._stages:
-            if isinstance(stage, fost.SelectFields):
+            _selected_fields = stage.get_selected_fields()
+            if _selected_fields:
                 if selected_fields is None:
-                    selected_fields = set(stage.field_names)
+                    selected_fields = set(_selected_fields)
                 else:
-                    selected_fields.intersection_update(stage.field_names)
+                    selected_fields.intersection_update(_selected_fields)
 
-            if isinstance(stage, fost.ExcludeFields):
-                excluded_fields.update(stage.field_names)
+            _excluded_fields = stage.get_excluded_fields()
+            if _excluded_fields:
+                excluded_fields.update(_excluded_fields)
 
         if selected_fields is not None:
             selected_fields.difference_update(excluded_fields)
@@ -354,6 +345,8 @@ class DatasetView(foc.SampleCollection):
     def _get_filtered_fields(self):
         filtered_fields = set()
         for stage in self._stages:
-            filtered_fields.update(stage.get_filtered_list_fields())
+            _filtered_fields = stage.get_filtered_list_fields()
+            if _filtered_fields:
+                filtered_fields.update(_filtered_fields)
 
         return filtered_fields
