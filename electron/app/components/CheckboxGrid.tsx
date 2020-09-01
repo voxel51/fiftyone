@@ -32,6 +32,11 @@ export const Body = styled.div`
       font-size: unset;
       align-items: center;
       padding-right: 4px;
+      max-width: 100%;
+    }
+
+    .MuiTypography-body1.with-checkbox {
+      max-width: calc(100% - 24px);
     }
 
     .MuiCheckbox-root {
@@ -73,6 +78,7 @@ export const Body = styled.div`
         overflow-x: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
+        max-width: 100%;
         line-height: 24px;
       }
 
@@ -119,7 +125,6 @@ const Entry = ({ entry, onCheck }) => {
       onCheck({ ...entry, selected: !entry.selected });
     }
   };
-  console.log(entry);
 
   return (
     <div key={entry.name}>
@@ -147,6 +152,9 @@ const Entry = ({ entry, onCheck }) => {
               )}
           </>
         }
+        classes={{
+          label: entry.hideCheckbox ? "" : "with-checkbox",
+        }}
         style={{
           backgroundColor:
             entry.hideCheckbox || entry.selected
