@@ -208,11 +208,15 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
-                  value: ({ type, value }) =>
-                    type.split("|").reduce((acc, t) => {
-                      const parser = PARSER[t];
-                      return parser.validate(value) ? parser.parse(value) : acc;
-                    }, undefined),
+                  value: ({ type, value, defaultValue }) =>
+                    value === "" && defaultValue
+                      ? defaultValue
+                      : type.split("|").reduce((acc, t) => {
+                          const parser = PARSER[t];
+                          return parser.validate(value)
+                            ? parser.parse(value)
+                            : acc;
+                        }, undefined),
                   errorId: undefined,
                 }),
                 sendParent((ctx) => ({
@@ -220,8 +224,11 @@ export default Machine(
                   parameter: ctx,
                 })),
               ],
-              cond: ({ type, value }) => {
-                return type.split("|").some((t) => PARSER[t].validate(value));
+              cond: ({ type, value, defaultValue }) => {
+                return (
+                  (value === "" && defaultValue) ||
+                  type.split("|").some((t) => PARSER[t].validate(value))
+                );
               },
             },
             {

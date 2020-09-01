@@ -35,7 +35,7 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
+const loadOverlay = (sample, colorMap, fieldSchema, filter) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
@@ -51,7 +51,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
       }
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
-      playerColorMap[`${sampleField}`] = colorMapping[sampleField];
+      playerColorMap[`${sampleField}`] = colorMap[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
         if (!filter[sampleField] || !filter[sampleField](object)) {
@@ -59,7 +59,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
         }
         const [key, fn] = PARSERS[object._cls];
         imgLabels[key][key].push(fn(sampleField, object));
-        playerColorMap[`${sampleField}`] = colorMapping[sampleField];
+        playerColorMap[`${sampleField}`] = colorMap[sampleField];
       }
       continue;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
@@ -70,7 +70,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
 };
 
 export default ({
-  colorMapping,
+  colorMap,
   thumbnail,
   sample,
   src,
@@ -84,7 +84,7 @@ export default ({
 }) => {
   const [overlay, playerColorMap] = loadOverlay(
     sample,
-    colorMapping,
+    colorMap,
     fieldSchema,
     filter
   );

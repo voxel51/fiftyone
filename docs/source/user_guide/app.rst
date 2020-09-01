@@ -98,68 +98,70 @@ _______________
 
 If your data is stored on a remote machine, you can forward a session from
 the remote machine to the FiftyOne App on your local machine and seemlessly
-browse your remote |Dataset|.
+browse your remote dataset.
 
 Remote machine
 --------------
 
-First log into the **remote machine**, load a FiftyOne |Dataset|, and create a
-session with the argument `remote=True`. This will send the session to port
-`5151`:
+On the remote machine, load a |Dataset| and launch a session using
+:meth:`launch_app() <fiftyone.core.session.launch_app>` with the `remote=True`
+argument. This will open the session on port `5151` on your machine:
 
 .. code-block:: python
     :linenos:
 
-    # Remote Machine
+    # On remote machine
+
     import fiftyone as fo
 
     dataset = fo.Dataset(name="my_dataset")
     session = fo.launch_app(dataset=dataset, remote=True)
 
-This is the session that will be modified to change what is being displayed.
+You can manipulate the `session` object as usual to programmatically interact
+with the remote App instance that you'll connect to next.
 
 Local machine
 -------------
 
-The easiest way to port forward and load the FiftyOne App is using the CLI.
-Alternatively, the port forwarding and App launching steps can be run
-separately.
+On the local machine, you can launch an App instance connected to a remote
+session via the CLI. Alternatively, you can manually setup port forwarding on
+your local machine via `ssh` and connect to the App via Python.
 
 .. tabs::
 
   .. group-tab:: CLI
 
-    On the local machine, the :doc:`FiftyOne CLI <../cli/index>` can be used to
-    forward the port `5151` and open the FiftyOne App locally.
+    On the local machine, you can :ref:`use the CLI <cli-fiftyone-app-connect>`
+    to automatically configure port forwarding and open the App.
 
     In a local terminal, run the command:
 
     .. code-block:: shell
 
-        # Local machine
+        # On local machine
         fiftyone app connect --destination username@remote_machine_ip --port 5151
 
   .. group-tab:: Python
 
-    Open two terminal windows on the **local machine**. In order to forward the
+    Open two terminal windows on the local machine. In order to forward the
     port `5151` from the remote machine to the local machine, run the following
-    command directly in one of the terminal windows and leave this command
-    running:
+    command in one terminal and leave the process running:
 
     .. code-block:: shell
 
-        # Local machine
+        # On local machine
         ssh -N -L 5151:127.0.0.1:5151 username@remote_machine_ip
 
-    The port `5151` is now being forwarded from the remote machine to port
-    `5151` of the local machine through a process running in the background.
-    Now in the other terminal window, open the FiftyOne App locally by starting
-    Python and running the following commands:
+    Port `5151` is now being forwarded from the remote machine to port
+    `5151` of the local machine.
+
+    In the other terminal, launch the FiftyOne App locally by starting Python
+    and running the following commands:
 
     .. code-block:: python
         :linenos:
 
-        # Local machine
+        # On local machine
         import fiftyone.core.session as fos
 
         fos.launch_app()
