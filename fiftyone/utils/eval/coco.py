@@ -335,8 +335,8 @@ def _compute_iou(pred_boxes, gt_boxes, iscrowd):
             indicating whether it represents a crowd
 
     Returns:
-        ious: an array of IoU values computed for each provided predicted and
-        ground truth box
+        an array of IoU values computed for each provided predicted and ground
+        truth box
     """
     ious = np.zeros((len(pred_boxes), len(gt_boxes)))
     for g, gt_box in enumerate(gt_boxes):
