@@ -33,7 +33,7 @@ IOU_THRESHOLDS = [round(0.5 + 0.05 * i, 2) for i in range(10)]
 _IOU_THRESHOLD_STRS = [str(iou).replace(".", "_") for iou in IOU_THRESHOLDS]
 
 
-def _iou(pred_boxes, gt_boxes, iscrowd):
+def _compute_iou(pred_boxes, gt_boxes, iscrowd):
     """Compute IoUs for predicted and ground truth bounding boxes for a single
     image. Bounding boxes should be in the format:
     
@@ -47,6 +47,10 @@ def _iou(pred_boxes, gt_boxes, iscrowd):
         gt_boxes: a list of ground truth bounding box coordinates
         iscrowd: a boolean list corresponding to each ground truth box
             indicating whether it represents a crowd
+
+    Returns:
+        ious: a Numpy array of iou values computed for each provided predicted
+            and ground truth box
 
     """
     ious = np.zeros((len(pred_boxes), len(gt_boxes)))
@@ -203,7 +207,7 @@ def evaluate_detections(
 
                 # Get the IoU of every prediction with every ground truth
                 # shape = [num_preds, num_gts]
-                ious = _iou(pred_boxes, gt_boxes, iscrowd)
+                ious = _compute_iou(pred_boxes, gt_boxes, iscrowd)
 
                 for pind, gt_ious in enumerate(ious):
                     preds[pind][pred_key]["ious"][cat] = list(
