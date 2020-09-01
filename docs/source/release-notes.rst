@@ -10,16 +10,17 @@ FiftyOne 0.5.3
 
 App
 ^^^
-- Added support for filtering labels in expanded sample view
-- Updated look-and-feel of display options in expanded sample view to match the
-  main image grid view
-- Adopting a default color pallete for sample fields in the App that ensures
+- Added support for filtering labels in the expanded sample view
+- Added support for displaying detection attributes in the expanded sample view
+- Added an option to display confidence when viewing labels in the expanded
+  sample view
+- Updated look-and-feel of display options in the expanded sample view to match
+  the main image grid view
+- Adopting a default color palette for sample fields in the App that ensures
   that they are visually distinct
-- Added option to display confidence when viewing labels in expanded sample
-  view
 - Fixed a bug that prevented the App from loading empty views
-- Fixed a bug that prevented the view bar from using default values for stage
-  parameters
+- Fixed a bug that prevented the view bar from using default values for some
+  stage parameters
 
 Core
 ^^^^
@@ -27,8 +28,7 @@ Core
   parameter of the
   :meth:`exists() <fiftyone.core.collections.SampleCollection.exists>`
   view stage
-- Fixed a bug that prevented database connections from being established for
-  some Windows users
+- Fixed a bug that prevented FiftyOne from starting for some Windows users
 - Fixed a bug that caused
   :meth:`take() <fiftyone.core.collections.SampleCollection.take>` and
   :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>` view
