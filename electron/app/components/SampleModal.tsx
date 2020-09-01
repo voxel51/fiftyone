@@ -13,7 +13,11 @@ import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
-import { formatMetadata, makeLabelNameGroups } from "../utils/labels";
+import {
+  formatMetadata,
+  makeLabelNameGroups,
+  stringify,
+} from "../utils/labels";
 
 type Props = {
   sample: object;
@@ -295,14 +299,13 @@ const SampleModal = ({
       hideCheckbox,
       name,
       type,
-      icon:
-        typeof countOrExists[name] === "boolean" ? (
-          countOrExists[name] ? (
-            <Check style={{ color: colorMap[name] }} />
-          ) : (
-            <Close style={{ color: colorMap[name] }} />
-          )
-        ) : undefined,
+      icon: ["boolean", "undefined"].includes(typeof countOrExists[name]) ? (
+        countOrExists[name] ? (
+          <Check style={{ color: colorMap[name] }} />
+        ) : (
+          <Close style={{ color: colorMap[name] }} />
+        )
+      ) : undefined,
       count: countOrExists[name],
       selected: Boolean(selected[name]),
     }));
@@ -344,7 +347,10 @@ const SampleModal = ({
   const scalarSampleValues = labelNameGroups.scalars.reduce(
     (obj, { name }) => ({
       ...obj,
-      [name]: sample[name] ? sample[name] : false,
+      [name]:
+        sample[name] !== undefined && sample[name] !== null
+          ? stringify(sample[name])
+          : undefined,
     }),
     {}
   );
