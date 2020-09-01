@@ -146,8 +146,10 @@ def ensure_torch(error_msg=None):
 
 def ensure_pycocotools(error_msg=None):
     """Verifies that pycocotools is installed on the host machine.
+
     Args:
         error_msg (None): an optional custom error message to print
+
     Raises:
         ImportError: if ``pycocotools`` could not be imported
     """
