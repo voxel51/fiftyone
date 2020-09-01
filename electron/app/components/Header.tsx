@@ -37,7 +37,7 @@ const LeftDiv = styled.div`
 
 const RightDiv = styled.div`
   margin-left: auto;
-  padding-right: 2rem;
+  padding-right: 1.5rem;
 `;
 
 const TitleDiv = styled.div`
