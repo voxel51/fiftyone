@@ -109,6 +109,9 @@ export default ({
       colorMap: playerColorMap,
       activeLabels,
       filter,
+      enableOverlayOptions: {
+        attrRenderMode: false,
+      },
       defaultOverlayOptions: {
         attrRenderMode: "attr-value",
       },
