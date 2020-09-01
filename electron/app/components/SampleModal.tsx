@@ -24,7 +24,7 @@ type Props = {
   sampleUrl: string;
 };
 
-const Container = styled(CheckboxGrid.Body)`
+const Container = styled.div`
   display: grid;
   grid-template-columns: auto 280px;
   width: 90vw;
