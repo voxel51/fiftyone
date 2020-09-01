@@ -1,8 +1,6 @@
 import _ from "lodash";
 import randomColor from "randomcolor";
 
-import { RESERVED_FIELDS } from "./labels";
-
 const FIXED_COLORS = [
   "#ee0000",
   "#ee6600",

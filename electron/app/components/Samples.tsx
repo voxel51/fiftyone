@@ -8,7 +8,7 @@ import tile from "./Samples.hooks";
 import * as atoms from "../recoil/atoms";
 
 function Samples(props) {
-  const { displayProps, state, setView, port, colorMap } = props;
+  const { displayProps, state, setView, port } = props;
   const initialSelected = state.selected.reduce((obj, id) => {
     return {
       ...obj,
@@ -47,7 +47,6 @@ function Samples(props) {
             <Grid.Column key={j} style={{ padding: 0, width: "100%" }}>
               <Sample
                 displayProps={displayProps}
-                colorMap={colorMap}
                 sample={s}
                 selected={selected}
                 setSelected={setSelected}
