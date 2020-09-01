@@ -4,6 +4,9 @@ import uuid from "react-uuid";
 import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
 import { RESERVED_FIELDS, VALID_SCALAR_TYPES } from "../utils/labels";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+
+import * as atoms from "../recoil/atoms";
 
 const PARSERS = {
   Classification: [
@@ -70,7 +73,6 @@ const loadOverlay = (sample, colorMap, fieldSchema, filter) => {
 };
 
 export default ({
-  colorMap,
   thumbnail,
   sample,
   src,
@@ -80,9 +82,11 @@ export default ({
   onLoad = () => {},
   activeLabels,
   fieldSchema = {},
-  filter,
+  filterSelector,
 }) => {
-  const [overlay, playerColorMap] = loadOverlay(
+  const filter = useRecoilValue(filterSelector);
+  const colorMap = useRecoilValue(atoms.colorMap);
+  let [overlay, playerColorMap] = loadOverlay(
     sample,
     colorMap,
     fieldSchema,
@@ -115,8 +119,15 @@ export default ({
       setInitLoad(true);
       onLoad();
     } else {
-      player.updateOptions({ activeLabels, filter });
+      [overlay, playerColorMap] = loadOverlay(
+        sample,
+        colorMap,
+        fieldSchema,
+        filter
+      );
+      player.updateOptions({ activeLabels, filter, colorMap: playerColorMap });
     }
-  }, [filter, overlay, activeLabels]);
+  }, [filter, overlay, activeLabels, colorMap]);
+
   return <div id={id} style={style} {...props} />;
 };

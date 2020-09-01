@@ -65,3 +65,21 @@ export const formatMetadata = (metadata) => {
     value: field.value ? field.value(metadata) : metadata[field.key],
   })).filter(({ value }) => value !== undefined);
 };
+
+export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
+  const labelNameGroups = {
+    labels: [],
+    scalars: [],
+    unsupported: [],
+  };
+  for (const name of labelNames) {
+    if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
+      labelNameGroups.labels.push({ name, type: labelTypes[name] });
+    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name])) {
+      labelNameGroups.scalars.push({ name });
+    } else {
+      labelNameGroups.unsupported.push({ name });
+    }
+  }
+  return labelNameGroups;
+}
