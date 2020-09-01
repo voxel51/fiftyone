@@ -117,7 +117,6 @@ export default ({
       },
       defaultOverlayOptions: {
         action: "hover",
-        labelsOnlyOnClick: true,
         attrRenderMode: "attr-value",
       },
     })
