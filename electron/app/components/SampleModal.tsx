@@ -335,11 +335,11 @@ const SampleModal = ({
     (obj, { name, type }) => {
       let value;
       if (!sample[name]) {
-        value = false;
+        value = 0;
       } else {
         value = ["Detections", "Classifcations"].includes(type)
           ? sample[name][type.toLowerCase()].length
-          : true;
+          : 1;
       }
       return {
         ...obj,
