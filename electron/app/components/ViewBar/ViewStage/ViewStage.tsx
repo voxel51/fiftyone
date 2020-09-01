@@ -249,7 +249,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     borderRightWidth:
       (!parameters.length && index === 0 && length === 1) ||
       (index !== 0 && !parameters.length)
-        ? 2
+        ? 1
         : 0,
     borderColor: isCompleted
       ? active
@@ -257,9 +257,9 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
         : theme.fontDarkest
       : theme.secondary,
     borderTopRightRadius:
-      state.matches("delible") || !parameters.length ? 3 : 0,
+      state.matches("delible") || !parameters.length ? 0 : 3,
     borderBottomRightRadius:
-      state.matches("delible") || !parameters.length ? 3 : 0,
+      state.matches("delible") || !parameters.length ? 0 : 3,
     opacity: 1,
     from: {
       opacity: 0,

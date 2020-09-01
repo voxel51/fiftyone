@@ -217,8 +217,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
         : state.matches("reading.submitted")
         ? theme.backgroundLight
         : theme.background,
-    borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
-    borderRightWidth: tail ? 2 : 0,
+    borderStyle: "solid",
+    borderColor: state.matches("editing") ? theme.secondary : theme.fontDarkest,
+    borderRightWidth: tail ? 1 : 0,
     height: hasObjectType && state.matches("editing") ? 200 : 34,
     opacity: 1,
     from: {
