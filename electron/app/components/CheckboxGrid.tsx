@@ -105,9 +105,10 @@ const Body = styled.div`
     svg, input[type=checkbox] {
       display: none;
     }
+  }
 
-    .MuiFormControlLabel-label {
-    }
+  && .no-checkbox {
+    cursor: default;
   }
 `;
 
@@ -136,6 +137,8 @@ const Entry = ({ entry, onCheck, modal }) => {
   };
   const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
 
+  const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
+
   return (
     <div key={entry.name}>
       <FormControlLabel
@@ -163,7 +166,8 @@ const Entry = ({ entry, onCheck, modal }) => {
           </>
         }
         classes={{
-          label: entry.hideCheckbox ? "" : "with-checkbox",
+          root: checkboxClass,
+          label: checkboxClass,
         }}
         style={{
           backgroundColor:
