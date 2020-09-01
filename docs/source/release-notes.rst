@@ -4,6 +4,33 @@ FiftyOne Release Notes
 .. default-role:: code
 .. include:: substitutions.rst
 
+FiftyOne 0.5.3
+--------------
+*Released September 1, 2020*
+
+App
+^^^
+- Added support for filtering labels in expanded sample view
+- Updated look-and-feel of display options in expanded sample view to match the
+  main image grid view
+- Adopting a default color pallete for sample fields in the App that ensures
+  that they are visually distinct
+- Added option to display confidence when viewing labels in expanded sample
+  view
+- Fixed a bug that prevented the App from loading empty views
+- Fixed a bug that prevented the view bar from using default values for stage
+  parameters
+
+Core
+^^^^
+- Fixed a bug that prevented database connections from being established for
+  some Windows users
+- Fixed a bug that caused
+  :meth:`take() <fiftyone.core.collections.SampleCollection.take>` and
+  :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>` view
+  stages with random seeds to be regenerated when handing off between the App
+  and Python shell
+
 FiftyOne 0.5.2
 --------------
 *Released August 26, 2020*
