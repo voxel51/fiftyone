@@ -14,9 +14,9 @@ const ExternalLink = ({ href, ...props }) => {
   }
   return (
     <Link
+      {...props}
       href={href}
       target="_blank"
-      {...props}
       onClick={
         openExternal
           ? (e) => {
