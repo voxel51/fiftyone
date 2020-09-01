@@ -21,7 +21,7 @@ const MODAL_ATOMS = {
   confidenceRange: atoms.modalFilterLabelConfidenceRange,
 };
 
-export const Body = styled.div`
+const Body = styled.div`
   vertical-align: middle;
 
   label {
@@ -208,5 +208,7 @@ const CheckboxGrid = ({ entries, onCheck, modal }: Props) => {
     </Body>
   );
 };
+
+CheckboxGrid.Body = Body;
 
 export default CheckboxGrid;

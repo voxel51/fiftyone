@@ -4,13 +4,13 @@ import styled from "styled-components";
 import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 
+import CheckboxGrid from "./CheckboxGrid";
+import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
-import * as CheckboxGrid from "./CheckboxGrid";
-import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import { formatMetadata, makeLabelNameGroups } from "../utils/labels";
