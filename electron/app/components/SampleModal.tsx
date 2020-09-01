@@ -30,7 +30,7 @@ type Props = {
 
 const Container = styled(Body)`
   display: grid;
-  grid-template-columns: 280px auto;
+  grid-template-columns: auto 280px;
   width: 90vw;
   height: 80vh;
   background-color: ${({ theme }) => theme.background};
@@ -125,7 +125,7 @@ const Container = styled(Body)`
     position: relative;
     display: flex;
     flex-direction: column;
-    border-right: 2px solid ${({ theme }) => theme.border};
+    border-left: 2px solid ${({ theme }) => theme.border};
     max-height: 100%;
     overflow-y: auto;
 
@@ -201,9 +201,9 @@ const TopRightNavButtonContainer = styled.div`
   justify-content: center;
 `;
 
-const TopRightNavButton = ({ icon, title, onClick }) => {
+const TopRightNavButton = ({ icon, title, onClick, ...rest }) => {
   return (
-    <TopRightNavButtonContainer title={title} onClick={onClick}>
+    <TopRightNavButtonContainer title={title} onClick={onClick} {...rest}>
       {icon}
     </TopRightNavButtonContainer>
   );
@@ -366,6 +366,51 @@ const SampleModal = ({
 
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
+      <div className="player" ref={playerContainerRef}>
+        {showJSON ? (
+          <JSONView object={sample} />
+        ) : (
+          <Player51
+            key={sampleUrl} // force re-render when this changes
+            src={sampleUrl}
+            onLoad={handleResize}
+            style={{
+              position: "relative",
+              ...playerStyle,
+            }}
+            sample={sample}
+            colorMap={colorMap}
+            activeLabels={activeLabels}
+            fieldSchema={fieldSchema}
+            filterSelector={selectors.modalLabelFilters}
+          />
+        )}
+        {onPrevious ? (
+          <div
+            className="nav-button left"
+            onClick={onPrevious}
+            title="Previous sample (Left arrow)"
+          >
+            &lt;
+          </div>
+        ) : null}
+        {onNext ? (
+          <div
+            className="nav-button right"
+            onClick={onNext}
+            title="Next sample (Right arrow)"
+          >
+            &gt;
+          </div>
+        ) : null}
+        <TopRightNavButtons>
+          <TopRightNavButton
+            onClick={() => setFullscreen(!fullscreen)}
+            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
+          />
+        </TopRightNavButtons>
+      </div>
       <div className="sidebar">
         <div className="sidebar-content">
           <h2>
@@ -412,62 +457,18 @@ const SampleModal = ({
               height: "auto",
             }}
           />
+          <TopRightNavButton
+            onClick={onClose}
+            title={"Close"}
+            icon={<Close />}
+            style={{ position: "absolute", top: 0, right: 0 }}
+          />
         </div>
         <ModalFooter>
           <Button onClick={() => setShowJSON(!showJSON)}>
             {showJSON ? "Hide" : "Show"} JSON
           </Button>
         </ModalFooter>
-      </div>
-      <div className="player" ref={playerContainerRef}>
-        {showJSON ? (
-          <JSONView object={sample} />
-        ) : (
-          <Player51
-            key={sampleUrl} // force re-render when this changes
-            src={sampleUrl}
-            onLoad={handleResize}
-            style={{
-              position: "relative",
-              ...playerStyle,
-            }}
-            sample={sample}
-            colorMap={colorMap}
-            activeLabels={activeLabels}
-            fieldSchema={fieldSchema}
-            filterSelector={selectors.modalLabelFilters}
-          />
-        )}
-        {onPrevious ? (
-          <div
-            className="nav-button left"
-            onClick={onPrevious}
-            title="Previous sample (Left arrow)"
-          >
-            &lt;
-          </div>
-        ) : null}
-        {onNext ? (
-          <div
-            className="nav-button right"
-            onClick={onNext}
-            title="Next sample (Right arrow)"
-          >
-            &gt;
-          </div>
-        ) : null}
-        <TopRightNavButtons>
-          <TopRightNavButton
-            onClick={() => setFullscreen(!fullscreen)}
-            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
-          />
-          <TopRightNavButton
-            onClick={onClose}
-            title={"Close"}
-            icon={<Close />}
-          />
-        </TopRightNavButtons>
       </div>
     </Container>
   );
