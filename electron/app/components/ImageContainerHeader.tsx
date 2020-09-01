@@ -13,7 +13,7 @@ type Props = {
 const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
   display: grid;
-  grid-template-columns: 17rem auto auto;
+  grid-template-columns: 264px auto auto;
   padding-top: 5px;
   padding-bottom: 5px;
 
@@ -49,6 +49,7 @@ const ImageContainerHeader = ({
           label="Display Options"
           expanded={showSidebar}
           onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
+          style={{ width: 240 }}
         />
       </div>
       <div>

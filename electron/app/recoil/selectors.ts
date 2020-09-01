@@ -1,5 +1,6 @@
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { generateColorMap } from "../utils/colors";
 
 export const viewStages = selector({
   key: "viewStages",
@@ -40,29 +41,13 @@ export const numSamples = selector({
   },
 });
 
-export const labelColorMapping = selector({
-  key: "labelColorMapping",
-  get: ({ get }) => {
-    const colors = get(atoms.colors);
-    const { labels = [], tags = [] } =
-      get(atoms.stateDescription).derivables || {};
-
-    const colorMapping = {};
-    let i = 0;
-    for (const label of labels) {
-      colorMapping[label._id.field] = colors[i++];
-    }
-    for (const tag of tags) {
-      colorMapping[tag] = colors[i++];
-    }
-    return colorMapping;
-  },
-});
-
 export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
-    return get(atoms.stateDescription).derivables.tags || [];
+    const stateDescription = get(atoms.stateDescription);
+    return (
+      (stateDescription.derivables && stateDescription.derivables.tags) || []
+    );
   },
 });
 
@@ -187,5 +172,16 @@ export const modalLabelFilters = selector({
         get(atoms.filterIncludeLabels(label))
       );
     }
+  },
+});
+
+export const refreshColorMap = selector({
+  key: "refreshColorMap",
+  get: ({ get }) => get(atoms.colorMap),
+  set: ({ get, set }, colorMap) => {
+    set(
+      atoms.colorMap,
+      generateColorMap([...get(tagNames), ...get(labelNames)], colorMap)
+    );
   },
 });

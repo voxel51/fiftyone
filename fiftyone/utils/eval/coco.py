@@ -1,6 +1,5 @@
 """
-COCO-style detection evaluation using
-`pycocotools <https://github.com/cocodataset/cocoapi/tree/master/PythonAPI/pycocotools>`_.
+COCO-style detection evaluation.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -25,10 +24,6 @@ import numpy as np
 
 import fiftyone.core.utils as fou
 
-mask_utils = fou.lazy_import(
-    "pycocotools.mask", callback=fou.ensure_pycocotools
-)
-
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +44,8 @@ def evaluate_detections(
     It should be noted that if a :class:`fiftyone.core.labels.Detection` in the
     ground truth field has a boolean attribute called `iscrowd`, then this
     detection will be matched to multiple predictions and result in them all
-    being true positives. This follows evaluation performed in using the COCO
-    dataset in pycocotools.
+    being true positives, as per the evaluation strategy used by the COCO
+    authors.
 
     Dictionaries are added to each predicted/ground truth
     :class:`fiftyone.core.labels.Detections` instance in the fields listed
@@ -165,7 +160,7 @@ def evaluate_detections(
 
                 # Get the IoU of every prediction with every ground truth
                 # shape = [num_preds, num_gts]
-                ious = mask_utils.iou(pred_boxes, gt_boxes, iscrowd)
+                ious = _compute_iou(pred_boxes, gt_boxes, iscrowd)
 
                 for pind, gt_ious in enumerate(ious):
                     preds[pind][pred_key]["ious"][cat] = list(
@@ -322,3 +317,48 @@ def save_tp_fp_fn_counts(samples, pred_field, gt_field, iou):
             sample["fn_iou_%s" % save_iou_str] = false_negatives
 
             sample.save()
+
+
+def _compute_iou(pred_boxes, gt_boxes, iscrowd):
+    """Computes IoUs for predicted and ground truth bounding boxes for a single
+    image. Bounding boxes should be in the format::
+
+        [top-left-x, top-left-y, width, height]
+
+    An intersection with a ground truth crowd object is always set to the area
+    of the predicted bounding box.
+
+    Args:
+        pred_boxes: a list of predicted bounding box coordinates
+        gt_boxes: a list of ground truth bounding box coordinates
+        iscrowd: a boolean list corresponding to each ground truth box
+            indicating whether it represents a crowd
+
+    Returns:
+        an array of IoU values computed for each provided predicted and ground
+        truth box
+    """
+    ious = np.zeros((len(pred_boxes), len(gt_boxes)))
+    for g, gt_box in enumerate(gt_boxes):
+        gx, gy, gw, gh = gt_box
+        crowd = iscrowd[g]
+        g_area = gh * gw
+        for p, pred_box in enumerate(pred_boxes):
+            px, py, pw, ph = pred_box
+
+            # Width of intersection
+            w = min(px + pw, gx + gw) - max(px, gx)
+            if w <= 0:
+                continue
+
+            # Height of intersection
+            h = min(py + ph, gy + gh) - max(py, gy)
+            if h <= 0:
+                continue
+
+            p_area = ph * pw
+            inter = h * w
+            union = p_area if crowd else p_area + g_area - inter
+            ious[p, g] = inter / union
+
+    return ious

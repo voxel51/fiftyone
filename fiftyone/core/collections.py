@@ -302,9 +302,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeFields(field_names))
 
     @view_stage
-    def exists(self, field):
-        """Returns a view containing the samples that have a non-``None`` value
-        for the given field.
+    def exists(self, field, bool=True):
+        """Returns a view containing the samples that have (or do not have) a
+        non-``None`` value for the given field.
 
         Examples::
 
@@ -319,13 +319,22 @@ class SampleCollection(object):
 
             view = dataset.exists("predictions")
 
+            #
+            # Only include samples that do NOT have a value in their
+            # `predictions` field
+            #
+
+            view = dataset.exists("predictions", False)
+
         Args:
             field: the field
+            bool (True): whether to check if the field exists (True) or does
+                not exist (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Exists(field))
+        return self._add_view_stage(fos.Exists(field, bool=bool))
 
     @view_stage
     def filter_field(self, field, filter):

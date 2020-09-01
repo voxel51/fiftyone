@@ -20,6 +20,15 @@ const Body = styled.div`
     flex-grow: 1;
     overflow-y: auto;
   }
+  pre::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  pre::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
 
   ${ModalFooter} {
     flex-direction: column;

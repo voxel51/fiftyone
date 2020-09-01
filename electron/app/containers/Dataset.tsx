@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Switch, Route, Redirect, useRouteMatch } from "react-router-dom";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Container, Message, Segment } from "semantic-ui-react";
 
 import SamplesContainer from "./SamplesContainer";
@@ -32,13 +32,20 @@ function Dataset(props) {
     sample: null,
     activeLabels: {},
   });
+  const colorMap = useRecoilValue(atoms.colorMap);
+  const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
 
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
-  const colorMapping = useRecoilValue(selectors.labelColorMapping);
   const labelNames = useRecoilValue(selectors.labelNames);
+  const tagNames = useRecoilValue(selectors.tagNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
+
+  // update color map
+  useEffect(() => {
+    refreshColorMap(colorMap);
+  }, [labelNames, tagNames]);
 
   // select any new labels by default
   useEffect(() => {
@@ -110,7 +117,7 @@ function Dataset(props) {
           <SampleModal
             activeLabels={modal.activeLabels}
             fieldSchema={fieldSchema}
-            colorMapping={colorMapping}
+            colorMap={colorMap}
             sample={modal.sample}
             sampleUrl={src}
             onClose={handleHideModal}
@@ -140,6 +147,7 @@ function Dataset(props) {
                     })
                   }
                   displayProps={displayProps}
+                  colorMap={colorMap}
                 />
               </Route>
               <Route path={routes.LABELS}>
