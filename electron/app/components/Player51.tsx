@@ -6,8 +6,7 @@ import clickHandler from "../utils/click.ts";
 import { RESERVED_FIELDS, VALID_SCALAR_TYPES } from "../utils/labels";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
-import { colorMap as colorMapAtom } from "../recoil/atoms";
-import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
+import * as atoms from "../recoil/atoms";
 
 const PARSERS = {
   Classification: [
@@ -86,7 +85,7 @@ export default ({
   filterSelector,
 }) => {
   const filter = useRecoilValue(filterSelector);
-  const colorMap = useRecoilValue(colorMapAtom);
+  const colorMap = useRecoilValue(atoms.colorMap);
   let [overlay, playerColorMap] = loadOverlay(
     sample,
     colorMap,

@@ -7,11 +7,6 @@ import * as atoms from "../recoil/atoms";
 
 import Filter from "./Filter";
 
-const CHECKBOX_SIZE = 24;
-const CHECKBOX_PADDING = 3;
-const CHECKBOX_TOTAL_SIZE = CHECKBOX_SIZE + 2 * CHECKBOX_PADDING;
-const LABEL_PADDING_RIGHT = 6;
-
 const GLOBAL_ATOMS = {
   includeLabels: atoms.filterIncludeLabels,
   invertInclude: atoms.filterInvertIncludeLabels,

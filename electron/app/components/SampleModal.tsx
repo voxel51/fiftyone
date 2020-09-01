@@ -1,23 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
-import {
-  ArrowDropDown,
-  Check,
-  Close,
-  Fullscreen,
-  FullscreenExit,
-} from "@material-ui/icons";
+import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
-import Tag from "./Tags/Tag";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
-import Filter from "./Filter";
-import { Body } from "./CheckboxGrid";
+import * as CheckboxGrid from "./CheckboxGrid";
 import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
@@ -28,7 +20,7 @@ type Props = {
   sampleUrl: string;
 };
 
-const Container = styled(Body)`
+const Container = styled(CheckboxGrid.Body)`
   display: grid;
   grid-template-columns: auto 280px;
   width: 90vw;

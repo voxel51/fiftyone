@@ -15,7 +15,7 @@ import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Button } from "./utils";
-import { colorMap as colorMapAtom } from "../recoil/atoms";
+import * as atoms from "../recoil/atoms";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
 
 export type Entry = {
@@ -156,7 +156,7 @@ const DisplayOptionsSidebar = React.forwardRef(
     ref
   ) => {
     const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
-    const colorMap = useRecoilValue(colorMapAtom);
+    const colorMap = useRecoilValue(atoms.colorMap);
     const cellRest = { modal };
     return (
       <Container ref={ref} {...rest}>
