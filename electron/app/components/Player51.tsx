@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from "react";
 import uuid from "react-uuid";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
-import { RESERVED_FIELDS, VALID_SCALAR_TYPES } from "../utils/labels";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  RESERVED_FIELDS,
+  VALID_SCALAR_TYPES,
+  getDetectionAttributes,
+  convertAttributesToETA,
+} from "../utils/labels";
 
 import * as atoms from "../recoil/atoms";
 
@@ -24,6 +29,7 @@ const PARSERS = {
     "objects",
     (name, obj) => {
       const bb = obj.bounding_box;
+      const attrs = convertAttributesToETA(getDetectionAttributes(obj));
       return {
         type: "eta.core.objects.DetectedObject",
         name,
@@ -33,6 +39,7 @@ const PARSERS = {
           top_left: { x: bb[0], y: bb[1] },
           bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
         },
+        attrs: { attrs },
       };
     },
   ],
@@ -105,6 +112,13 @@ export default ({
       colorMap: playerColorMap,
       activeLabels,
       filter,
+      enableOverlayOptions: {
+        attrRenderMode: false,
+      },
+      defaultOverlayOptions: {
+        action: "hover",
+        attrRenderMode: "attr-value",
+      },
     })
   );
   const props = thumbnail

@@ -213,6 +213,4 @@ const CheckboxGrid = ({ entries, onCheck, modal }: Props) => {
   );
 };
 
-CheckboxGrid.Body = Body;
-
 export default CheckboxGrid;
