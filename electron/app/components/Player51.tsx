@@ -45,7 +45,7 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colorMap, fieldSchema, filter) => {
+const loadOverlay = (sample, colorMap, fieldSchema) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
@@ -56,17 +56,11 @@ const loadOverlay = (sample, colorMap, fieldSchema, filter) => {
     const field = sample[sampleField];
     if (field === null || field === undefined) continue;
     if (["Classification", "Detection"].includes(field._cls)) {
-      if (!filter[sampleField] || !filter[sampleField](field)) {
-        continue;
-      }
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
       playerColorMap[`${sampleField}`] = colorMap[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
-        if (!filter[sampleField] || !filter[sampleField](object)) {
-          continue;
-        }
         const [key, fn] = PARSERS[object._cls];
         imgLabels[key][key].push(fn(sampleField, object));
         playerColorMap[`${sampleField}`] = colorMap[sampleField];
@@ -93,12 +87,7 @@ export default ({
 }) => {
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
-  let [overlay, playerColorMap] = loadOverlay(
-    sample,
-    colorMap,
-    fieldSchema,
-    filter
-  );
+  const [overlay, playerColorMap] = loadOverlay(sample, colorMap, fieldSchema);
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
@@ -133,13 +122,11 @@ export default ({
       setInitLoad(true);
       onLoad();
     } else {
-      [overlay, playerColorMap] = loadOverlay(
-        sample,
-        colorMap,
-        fieldSchema,
-        filter
-      );
-      player.updateOptions({ activeLabels, filter, colorMap: playerColorMap });
+      player.updateOptions({
+        activeLabels,
+        filter,
+        colorMap: playerColorMap,
+      });
     }
   }, [filter, overlay, activeLabels, colorMap]);
 
