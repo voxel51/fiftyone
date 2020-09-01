@@ -1,5 +1,6 @@
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { generateColorMap } from "../utils/colors";
 
 export const viewStages = selector({
   key: "viewStages",
@@ -171,5 +172,16 @@ export const modalLabelFilters = selector({
         get(atoms.filterIncludeLabels(label))
       );
     }
+  },
+});
+
+export const refreshColorMap = selector({
+  key: "refreshColorMap",
+  get: ({ get }) => get(atoms.colorMap),
+  set: ({ get, set }, colorMap) => {
+    set(
+      atoms.colorMap,
+      generateColorMap([...get(tagNames), ...get(labelNames)], colorMap)
+    );
   },
 });

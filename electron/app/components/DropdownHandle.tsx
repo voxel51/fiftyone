@@ -5,7 +5,7 @@ import { Add, ExpandLess, ExpandMore, Remove } from "@material-ui/icons";
 import CellHeader from "./CellHeader";
 
 const Body = styled(CellHeader)`
-  width: 15rem;
+  width: 100%;
 
   svg {
     font-size: 1.25em;

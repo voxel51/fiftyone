@@ -6,12 +6,12 @@ import { getSocket } from "../utils/socket";
 import connect from "../utils/connect";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
 
 const Sample = ({
   displayProps,
-  colorMap,
   dispatch,
   sample,
   port,
@@ -25,6 +25,7 @@ const Sample = ({
   const socket = getSocket(port, "state");
   const { activeLabels, activeTags, activeOther } = displayProps;
   const filter = useRecoilValue(selectors.labelFilters);
+  const colorMap = useRecoilValue(atoms.colorMap);
 
   const handleClick = () => {
     const newSelected = { ...selected };
@@ -88,12 +89,11 @@ const Sample = ({
           width: "100%",
           position: "relative",
         }}
-        colorMap={colorMap}
         sample={sample}
         thumbnail={true}
         activeLabels={activeLabels}
         {...eventHandlers}
-        filter={filter}
+        filterSelector={selectors.labelFilters}
       />
       <div className="sample-info" {...eventHandlers}>
         {Object.keys(sample)

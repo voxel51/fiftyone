@@ -9,6 +9,7 @@ const SearchResultDiv = animated(styled.div`
   margin: 0.25rem 0.25rem;
   padding: 0.1rem 0.25rem;
   font-weight: bold;
+  color: ${({ theme }) => theme.fontDark};
 `);
 
 interface SearchResultProps {
@@ -56,7 +57,7 @@ const SearchResult = React.memo(({ result, isActive, send, followRef }) => {
 const SearchResultsDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
-  border-radius: 3px;
+  border-radius: 2px;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   box-sizing: border-box;
   margin-top: 2.5rem;

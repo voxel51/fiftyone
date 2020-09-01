@@ -11,23 +11,24 @@ const BoxedWrapper = styled.div`
 `;
 
 const BoxedHeader = styled(DropdownHandle)`
-  width: 15rem;
+  width: 100% !important;
 `;
 
 const StandardHeader = styled(BoxedHeader)`
   border-radius: 0;
   border-width: 0 0 1px 0;
   padding: 0.5em 0 0.5em 0;
+  width: 100%;
 `;
 
 const StandardBody = styled.div`
-  width: 15rem;
+  width: 100%;
   padding-top: 0.5em;
   margin-bottom: 1em;
 `;
 
 const BoxedBody = styled(Box)`
-  width: 15rem;
+  width: 100%;
   border-top: none;
 `;
 

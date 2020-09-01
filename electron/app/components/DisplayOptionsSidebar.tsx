@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import {
   Autorenew,
@@ -14,6 +15,8 @@ import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Button } from "./utils";
+import * as atoms from "../recoil/atoms";
+import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
 
 export type Entry = {
   name: string;
@@ -32,6 +35,16 @@ type Props = {
 
 const Container = styled.div`
   margin-bottom: 2px;
+  height: 100%;
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
   padding-bottom: 1em;
 
   .MuiCheckbox-root {
@@ -68,7 +81,7 @@ const Container = styled.div`
   }
 `;
 
-const Cell = ({ label, icon, entries, onSelect, colorMap, title }) => {
+const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
@@ -111,12 +124,14 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title }) => {
             name: e.name,
             selected: e.selected,
             type: e.type,
-            data: [(e.count || 0).toLocaleString()],
+            data: e.icon ? e.icon : [(e.count || 0).toLocaleString()],
             count: e.count,
             color: colorMap[e.name],
+            hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
           }))}
           onCheck={onSelect}
+          modal={modal}
         />
       ) : (
         <span>No options available</span>
@@ -128,7 +143,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title }) => {
 const DisplayOptionsSidebar = React.forwardRef(
   (
     {
-      colorMap = {},
+      modal = false,
       tags = [],
       labels = [],
       scalars = [],
@@ -136,11 +151,13 @@ const DisplayOptionsSidebar = React.forwardRef(
       onSelectTag,
       onSelectLabel,
       onSelectScalar,
-      resetColors,
       ...rest
     }: Props,
     ref
   ) => {
+    const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
+    const colorMap = useRecoilValue(atoms.colorMap);
+    const cellRest = { modal };
     return (
       <Container ref={ref} {...rest}>
         <Cell
@@ -149,6 +166,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           icon={<PhotoLibrary />}
           entries={tags}
           onSelect={onSelectTag}
+          {...cellRest}
         />
         <Cell
           colorMap={colorMap}
@@ -156,6 +174,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           icon={<Label style={{ transform: "rotate(180deg)" }} />}
           entries={labels}
           onSelect={onSelectLabel}
+          {...cellRest}
         />
         <Cell
           colorMap={colorMap}
@@ -163,6 +182,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           icon={<BarChart />}
           entries={scalars}
           onSelect={onSelectScalar}
+          {...cellRest}
         />
         {unsupported.length ? (
           <Cell
@@ -175,10 +195,11 @@ const DisplayOptionsSidebar = React.forwardRef(
               selected: false,
               disabled: true,
             }))}
+            {...cellRest}
           />
         ) : null}
         {tags.length || labels.length || scalars.length ? (
-          <Button onClick={resetColors}>
+          <Button onClick={refreshColorMap}>
             <Autorenew />
             Refresh colors
           </Button>

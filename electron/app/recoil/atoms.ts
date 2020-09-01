@@ -5,6 +5,11 @@ export const port = atom({
   default: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,
 });
 
+export const colorMap = atom({
+  key: "colorMap",
+  default: {},
+});
+
 export const stateDescription = atom({
   key: "stateDescription",
   default: {},
@@ -80,7 +85,17 @@ export const activeOther = atom({
   default: {},
 });
 
+export const modalActiveOther = atom({
+  key: "modalActiveOther",
+  default: {},
+});
+
 export const activeTags = atom({
   key: "activeTags",
+  default: {},
+});
+
+export const modalActiveTags = atom({
+  key: "modalActiveTags",
   default: {},
 });
