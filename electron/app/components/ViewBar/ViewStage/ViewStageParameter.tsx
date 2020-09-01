@@ -5,7 +5,7 @@ import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
 import { PARSER, toTypeAnnotation } from "./viewStageParameterMachine";
-import { useOutsideClick } from "../../../utils/hooks";
+import { useFollow, useOutsideClick } from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
 
 const ViewStageParameterContainer = styled.div`
@@ -42,8 +42,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 `);
 
 const ObjectEditorContainer = styled.div`
-  height: 100%;
-  width: 100%;
+  position: fixed;
   font-weight: bold;
   line-height: 1rem;
   font-size: 14px;
@@ -51,6 +50,7 @@ const ObjectEditorContainer = styled.div`
   margin: 0.5rem;
   overflow: visible;
   display: flex;
+  z-index: 800;
 `;
 
 const ObjectEditorTextArea = animated(styled.textarea`
@@ -128,15 +128,26 @@ const makePlaceholder = (parameter, type, defaultValue) =>
     toTypeAnnotation(type),
   ].join(": ");
 
-const ObjectEditor = ({ parameterRef, inputRef }) => {
+const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
   const [state, send] = useService(parameterRef);
   const containerRef = useRef(null);
 
   const { parameter, defaultValue, value, type } = state.context;
 
+  const [cprops, cset] = useSpring(() => ({
+    left: followRef.current.getBoundingClientRect().x,
+    top: followRef.current.getBoundingClientRect().y,
+    width: state.matches("editing") ? 400 : 0,
+    config: {
+      duration: 1,
+    },
+  }));
+
   const props = useSpring({
     width: state.matches("editing") ? 400 : 0,
   });
+
+  barRef && followRef && useFollow(barRef, followRef, cset);
 
   useOutsideClick(containerRef, (e) => {
     e.stopPropagation();
@@ -145,6 +156,7 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
 
   return (
     <ObjectEditorContainer
+      style={cprops}
       onClick={() => state.matches("reading") && send("EDIT")}
       ref={containerRef}
     >
@@ -236,8 +248,13 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
   return (
     <ViewStageParameterContainer ref={containerRef}>
       <ViewStageParameterDiv style={props}>
-        {hasObjectType ? (
-          <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
+        {hasObjectType && containerRef.current ? (
+          <ObjectEditor
+            parameterRef={parameterRef}
+            barRef={barRef}
+            followRef={containerRef}
+            inputRef={inputRef}
+          />
         ) : (
           <>
             <ViewStageParameterInput
