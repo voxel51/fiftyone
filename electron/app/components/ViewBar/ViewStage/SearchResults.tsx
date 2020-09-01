@@ -84,15 +84,22 @@ interface SearchResultsProps {
 
 const SearchResults = React.memo(
   ({ results, send, currentResult, barRef, followRef, ...rest }) => {
-    const [props, set] = useSpring(() => ({
-      left: followRef.current.getBoundingClientRect().x,
-      top: followRef.current.getBoundingClientRect().y,
-      opacity: 1,
-      from: {
-        opacity: 0,
-      },
-      config: config.stiff,
-    }));
+    const [props, set] = useSpring(() => {
+      const obj = followRef
+        ? {
+            left: followRef.current.getBoundingClientRect().x,
+            top: followRef.current.getBoundingClientRect().y,
+          }
+        : {};
+      return {
+        ...obj,
+        opacity: 1,
+        from: {
+          opacity: 0,
+        },
+        config: config.stiff,
+      };
+    });
 
     barRef && followRef && useFollow(barRef, followRef, (obj) => set(obj));
 

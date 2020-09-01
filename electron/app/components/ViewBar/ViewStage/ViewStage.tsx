@@ -244,8 +244,6 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     },
   });
 
-  console.log(state.matches("delible"), parameters.length);
-
   const props = useSpring({
     backgroundColor: isCompleted ? theme.backgroundLight : theme.background,
     borderRightWidth:
