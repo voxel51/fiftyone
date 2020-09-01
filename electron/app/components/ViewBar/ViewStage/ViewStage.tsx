@@ -244,6 +244,8 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     },
   });
 
+  console.log(state.matches("delible"), parameters.length);
+
   const props = useSpring({
     backgroundColor: isCompleted ? theme.backgroundLight : theme.background,
     borderRightWidth:
@@ -256,10 +258,8 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
         ? theme.brand
         : theme.fontDarkest
       : theme.secondary,
-    borderTopRightRadius:
-      state.matches("delible") || !parameters.length ? 0 : 3,
-    borderBottomRightRadius:
-      state.matches("delible") || !parameters.length ? 0 : 3,
+    borderTopRightRadius: length === 1 && !parameters.length ? 3 : 0,
+    borderBottomRightRadius: length === 1 && !parameters.length ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
