@@ -21,12 +21,14 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
+import fiftyone.types as fot
 import fiftyone.utils.data as foud
 
 
@@ -153,15 +155,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     Args:
         name (None): the name of the dataset. By default,
             :func:`get_default_dataset_name` is used
-        persistent (False): whether the dataset will persist in the database
-            once the session terminates
+        persistent (False): whether the dataset should persist in the database
+            after the session terminates
     """
 
     # Batch size used when commiting samples to the database
     _BATCH_SIZE = 128
 
     def __init__(self, name=None, persistent=False, _create=True):
-        if name is None:
+        if name is None and _create:
             name = get_default_dataset_name()
 
         if _create:
@@ -221,8 +223,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @name.setter
     def name(self, name):
-        self._doc.name = name
-        self._doc.save()
+        _name = self._doc.name
+        try:
+            self._doc.name = name
+            self._doc.save()
+        except:
+            self._doc.name = _name
+            raise
 
     @property
     def persistent(self):
@@ -233,8 +240,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @persistent.setter
     def persistent(self, value):
-        self._doc.persistent = value
-        self._doc.save()
+        _value = self._doc.persistent
+        try:
+            self._doc.persistent = value
+            self._doc.save()
+        except:
+            self._doc.persistent = _value
+            raise
 
     @property
     def info(self):
@@ -360,12 +372,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
-            include_private (False): a boolean indicating whether to return
-                fields that start with the character "_"
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              an ``OrderedDict`` mapping field names to field types
@@ -384,13 +396,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field_name: the field name
             ftype: the field type to create. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): the
-                ``fiftyone.core.odm.BaseEmbeddedDocument`` type of the field.
-                Used only when ``ftype`` is
-                :class:``fiftyone.core.fields.EmbeddedDocumentField``
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
+                field. Used only when ``ftype`` is an embedded
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
             subfield (None): the type of the contained field. Used only when
-                `ftype` is a list or dict type
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
         """
         self._sample_doc_cls.add_field(
             field_name,
@@ -654,24 +667,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a :class:`Dataset`
         """
-        if dataset_exists(name):
-            raise ValueError(
-                "Dataset '%s' already exists; invalid to clone dataset." % name
-            )
+        if name is None:
+            name = get_default_dataset_name()
 
-        conn = foo.get_db_conn()
+        if dataset_exists(name):
+            raise ValueError("Dataset '%s' already exists" % name)
 
         # Make a unique, permanent name for this sample collection
-        sample_collection_name = _make_sample_collection_name(conn)
+        sample_collection_name = _make_sample_collection_name()
 
-        # clone the samples
+        # Clone the samples
         clone_pipeline = [
             {"$match": {}},
             {"$out": sample_collection_name},
         ]
         self._sample_collection.aggregate(clone_pipeline)
 
-        # clone the meta dataset document
+        # Clone the dataset document
         self._doc.reload("sample_fields")
         dataset_doc = deepcopy(self._doc)
         dataset_doc.name = name
@@ -709,6 +721,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field="ground_truth",
         tags=None,
         expand_schema=True,
+        add_info=True,
         **kwargs
     ):
         """Adds the contents of the given directory to the dataset.
@@ -727,6 +740,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            add_info (True): whether to add dataset info from the importer (if
+                any) to the dataset's ``info``
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
                 the specified ``dataset_type`` via the syntax
@@ -738,14 +753,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if inspect.isclass(dataset_type):
             dataset_type = dataset_type()
 
+        # If the input dataset contains TFRecords, they must be unpacked into a
+        # temporary directory during conversion
+        if (
+            isinstance(
+                dataset_type,
+                (
+                    fot.TFImageClassificationDataset,
+                    fot.TFObjectDetectionDataset,
+                ),
+            )
+            and "images_dir" not in kwargs
+        ):
+            images_dir = get_default_dataset_dir(self.name)
+            logger.info("Unpacking images to '%s'", images_dir)
+            kwargs["images_dir"] = images_dir
+
         dataset_importer_cls = dataset_type.get_dataset_importer_cls()
-        dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
+
+        try:
+            dataset_importer = dataset_importer_cls(dataset_dir, **kwargs)
+        except Exception as e:
+            importer_name = dataset_importer_cls.__name__
+            raise ValueError(
+                "Failed to construct importer using syntax "
+                "%s(dataset_dir, **kwargs); you may need to supply mandatory "
+                "arguments to the constructor via `kwargs`. Please consult "
+                "the documentation of `%s` to learn more"
+                % (importer_name, etau.get_class_name(dataset_importer_cls))
+            ) from e
 
         return self.add_importer(
             dataset_importer,
             label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
+            add_info=add_info,
         )
 
     def add_importer(
@@ -754,6 +797,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_field="ground_truth",
         tags=None,
         expand_schema=True,
+        add_info=True,
     ):
         """Adds the samples from the given
         :class:`fiftyone.utils.data.importers.DatasetImporter` to the dataset.
@@ -771,54 +815,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
                 if a sample's schema is not a subset of the dataset schema
+            add_info (True): whether to add dataset info from the importer (if
+                any) to the dataset's ``info``
 
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        if isinstance(dataset_importer, foud.GenericSampleDatasetImporter):
-
-            def parse_sample(sample):
-                if tags:
-                    sample.tags.extend(tags)
-
-                return sample
-
-        elif isinstance(dataset_importer, foud.UnlabeledImageDatasetImporter):
-
-            def parse_sample(sample):
-                image_path, image_metadata = sample
-                return fos.Sample(
-                    filepath=image_path, metadata=image_metadata, tags=tags,
-                )
-
-        elif isinstance(dataset_importer, foud.LabeledImageDatasetImporter):
-
-            def parse_sample(sample):
-                image_path, image_metadata, label = sample
-                sample = fos.Sample(
-                    filepath=image_path, metadata=image_metadata, tags=tags,
-                )
-
-                if label is not None:
-                    sample[label_field] = label
-
-                return sample
-
-        else:
-            raise ValueError(
-                "Unsupported DatasetImporter type %s" % type(dataset_importer)
-            )
-
-        with dataset_importer:
-            try:
-                num_samples = len(dataset_importer)
-            except:
-                num_samples = None
-
-            samples = map(parse_sample, iter(dataset_importer))
-            return self.add_samples(
-                samples, expand_schema=expand_schema, num_samples=num_samples
-            )
+        return foud.import_samples(
+            self,
+            dataset_importer,
+            label_field=label_field,
+            tags=tags,
+            expand_schema=expand_schema,
+            add_info=add_info,
+        )
 
     def add_images(self, samples, sample_parser, tags=None):
         """Adds the given images to the dataset.
@@ -837,35 +847,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
-            a list of IDs of the samples in the dataset
+            a list of IDs of the samples that were added to the dataset
         """
-        if not sample_parser.has_image_path:
-            raise ValueError(
-                "Sample parser must have `has_image_path == True` to add its "
-                "samples to the dataset"
-            )
-
-        def parse_sample(sample):
-            sample_parser.with_sample(sample)
-
-            image_path = sample_parser.get_image_path()
-
-            if sample_parser.has_image_metadata:
-                metadata = sample_parser.get_image_metadata()
-            else:
-                metadata = None
-
-            return fos.Sample(
-                filepath=image_path, metadata=metadata, tags=tags
-            )
-
-        try:
-            num_samples = len(samples)
-        except:
-            num_samples = None
-
-        _samples = map(parse_sample, samples)
-        return self.add_samples(_samples, num_samples=num_samples)
+        return foud.add_images(self, samples, sample_parser, tags=tags)
 
     def add_labeled_images(
         self,
@@ -878,7 +862,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Adds the given labeled images to the dataset.
 
         This operation will iterate over all provided samples, but the images
-        will not be read.
+        will not be read (unless the sample parser requires it in order to
+        compute image metadata).
 
         See :ref:`this guide <custom-sample-parser>` for more details about
         adding labeled images to a dataset by defining your own
@@ -897,43 +882,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if a sample's schema is not a subset of the dataset schema
 
         Returns:
-            a list of IDs of the samples in the dataset
+            a list of IDs of the samples that were added to the dataset
         """
-        if not sample_parser.has_image_path:
-            raise ValueError(
-                "Sample parser must have `has_image_path == True` to add its "
-                "samples to the dataset"
-            )
-
-        def parse_sample(sample):
-            sample_parser.with_sample(sample)
-
-            image_path = sample_parser.get_image_path()
-
-            if sample_parser.has_image_metadata:
-                metadata = sample_parser.get_image_metadata()
-            else:
-                metadata = None
-
-            label = sample_parser.get_label()
-
-            sample = fos.Sample(
-                filepath=image_path, metadata=metadata, tags=tags,
-            )
-
-            if label is not None:
-                sample[label_field] = label
-
-            return sample
-
-        try:
-            num_samples = len(samples)
-        except:
-            num_samples = None
-
-        _samples = map(parse_sample, samples)
-        return self.add_samples(
-            _samples, expand_schema=expand_schema, num_samples=num_samples
+        return foud.add_labeled_images(
+            self,
+            samples,
+            sample_parser,
+            label_field=label_field,
+            tags=tags,
+            expand_schema=expand_schema,
         )
 
     def add_images_dir(self, images_dir, tags=None, recursive=True):
@@ -1298,12 +1255,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             return fos.Sample.from_dict(sd)
 
+        dataset = cls(name)
+
+        # Apply schema
+        dataset._apply_field_schema(d["sample_fields"])
+
+        # Add samples
         samples = d["samples"]
         num_samples = len(samples)
         _samples = map(parse_sample, d["samples"])
+        dataset.add_samples(
+            _samples, expand_schema=False, num_samples=num_samples
+        )
 
-        dataset = cls(name)
-        dataset.add_samples(_samples, num_samples=num_samples)
         return dataset
 
     @classmethod
@@ -1343,6 +1307,38 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _sample_collection(self):
         return foo.get_db_conn()[self._sample_collection_name]
 
+    def _apply_field_schema(self, new_fields):
+        curr_fields = self.get_field_schema()
+        for field_name, field_str in new_fields.items():
+            if field_name in curr_fields:
+                # Ensure that existing field matches the requested field
+                _new_field_str = str(field_str)
+                _curr_field_str = str(curr_fields[field_name])
+                if _new_field_str != _curr_field_str:
+                    raise ValueError(
+                        "Existing field %s=%s does not match new field type %s"
+                        % (field_name, _curr_field_str, _new_field_str)
+                    )
+            else:
+                # Add new sample field
+                ftype, embedded_doc_type, subfield = fof.parse_field_str(
+                    field_str
+                )
+                self.add_sample_field(
+                    field_name,
+                    ftype,
+                    embedded_doc_type=embedded_doc_type,
+                    subfield=subfield,
+                )
+
+    def _ensure_label_field(self, label_field, label_cls):
+        if label_field not in self.get_field_schema():
+            self.add_sample_field(
+                label_field,
+                fof.EmbeddedDocumentField,
+                embedded_doc_type=label_cls,
+            )
+
     def _expand_schema(self, samples):
         fields = self.get_field_schema(include_private=True)
         for sample in samples:
@@ -1360,14 +1356,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._sample_doc_cls.from_dict(d, extended=False)
 
     def _to_fields_str(self, field_schema):
-        fields_dict = {
-            field_name: str(field)
-            for field_name, field in field_schema.items()
-        }
-        max_len = max([len(field_name) for field_name in fields_dict]) + 1
+        max_len = max([len(field_name) for field_name in field_schema]) + 1
         return "\n".join(
-            "    %s %s" % ((field_name + ":").ljust(max_len), field)
-            for field_name, field in fields_dict.items()
+            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
+            for field_name, field in field_schema.items()
         )
 
     def _validate_sample(self, sample):
@@ -1388,6 +1380,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field = fields[field_name]
             if value is None and field.null:
                 continue
+
             field.validate(value)
 
 
@@ -1426,10 +1419,8 @@ def _create_dataset(name, persistent=False):
             % name
         )
 
-    conn = foo.get_db_conn()
-
     # Make a unique, permanent name for this sample collection
-    sample_collection_name = _make_sample_collection_name(conn)
+    sample_collection_name = _make_sample_collection_name()
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
@@ -1446,13 +1437,15 @@ def _create_dataset(name, persistent=False):
     dataset_doc.save()
 
     # Create indexes
+    conn = foo.get_db_conn()
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
 
     return dataset_doc, sample_doc_cls
 
 
-def _make_sample_collection_name(conn):
+def _make_sample_collection_name():
+    conn = foo.get_db_conn()
     now = datetime.datetime.now()
     name = "samples." + now.strftime("%Y.%m.%d.%H.%M.%S")
     if name in conn.list_collection_names():

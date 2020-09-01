@@ -94,6 +94,13 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.name
 
     @property
+    def info(self):
+        """The :meth:`fiftyone.core.dataset.Dataset.info` dict of the
+        underlying dataset.
+        """
+        return self._dataset.info
+
+    @property
     def stages(self):
         """The list of :class:`fiftyone.core.stages.ViewStage` instances in
         this view's pipeline.
@@ -165,12 +172,12 @@ class DatasetView(foc.SampleCollection):
         Args:
             ftype (None): an optional field type to which to restrict the
                 returned schema. Must be a subclass of
-                :class:``fiftyone.core.fields.Field``
+                :class:`fiftyone.core.fields.Field`
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
-                :class:``fiftyone.core.odm.BaseEmbeddedDocument``
-            include_private (False): a boolean indicating whether to return
-                fields that start with the character "_"
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
 
         Returns:
              an ``OrderedDict`` mapping field names to field types
@@ -219,15 +226,6 @@ class DatasetView(foc.SampleCollection):
             pass
 
         return []
-
-    def add_stage(self, stage):
-        """Adds a :class:`fiftyone.core.stages.ViewStage` to the current view,
-        returning a new view.
-
-        Args:
-            stage: a :class:`fiftyone.core.stages.ViewStage`
-        """
-        return self._add_view_stage(stage)
 
     def aggregate(self, pipeline=None):
         """Calls the view's current MongoDB aggregation pipeline.
@@ -316,6 +314,8 @@ class DatasetView(foc.SampleCollection):
         return self.skip(start).limit(stop - start)
 
     def _add_view_stage(self, stage):
+        stage.validate(self)
+
         view = copy(self)
         view._stages.append(stage)
         return view
@@ -353,9 +353,7 @@ class DatasetView(foc.SampleCollection):
 
     def _get_filtered_fields(self):
         filtered_fields = set()
-
         for stage in self._stages:
-            if isinstance(stage, fost._FilterList):
-                filtered_fields.add(stage.list_field)
+            filtered_fields.update(stage.get_filtered_list_fields())
 
         return filtered_fields

@@ -1,25 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Switch, Route, Link, Redirect, useRouteMatch } from "react-router-dom";
+import { Switch, Route, Redirect, useRouteMatch } from "react-router-dom";
 import { useRecoilValue } from "recoil";
-import {
-  Sidebar,
-  Container,
-  Menu,
-  Ref,
-  Sticky,
-  Message,
-  Segment,
-} from "semantic-ui-react";
+import { Container, Message, Segment } from "semantic-ui-react";
 
 import SamplesContainer from "./SamplesContainer";
 import Distributions from "../components/Distributions";
 import HorizontalNav from "../components/HorizontalNav";
-import Player51 from "../components/Player51";
 import SampleModal from "../components/SampleModal";
 import { ModalWrapper, Overlay } from "../components/utils";
 import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { generateColorMap } from "../utils/colors";
 import connect from "../utils/connect";
 import { VALID_LABEL_TYPES } from "../utils/labels";
 
@@ -41,12 +33,22 @@ function Dataset(props) {
     sample: null,
     activeLabels: {},
   });
+  const [colorMap, setColorMap] = useState({});
+
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
-  const colorMapping = useRecoilValue(selectors.labelColorMapping);
   const labelNames = useRecoilValue(selectors.labelNames);
+  const tagNames = useRecoilValue(selectors.tagNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
+
+  // update color map
+  useEffect(() => {
+    setColorMap(generateColorMap([...tagNames, ...labelNames], colorMap));
+  }, [labelNames, tagNames]);
+  const resetColors = () => {
+    setColorMap(generateColorMap([...tagNames, ...labelNames]));
+  };
 
   // select any new labels by default
   useEffect(() => {
@@ -118,7 +120,7 @@ function Dataset(props) {
           <SampleModal
             activeLabels={modal.activeLabels}
             fieldSchema={fieldSchema}
-            colorMapping={colorMapping}
+            colorMap={colorMap}
             sample={modal.sample}
             sampleUrl={src}
             onClose={handleHideModal}
@@ -148,6 +150,8 @@ function Dataset(props) {
                     })
                   }
                   displayProps={displayProps}
+                  colorMap={colorMap}
+                  resetColors={resetColors}
                 />
               </Route>
               <Route path={routes.LABELS}>

@@ -7,6 +7,7 @@ FiftyOne Installation
   :hidden:
 
   Virtual environments <virtualenv>
+  Troubleshooting <troubleshooting>
 
 Prerequisites
 -------------
@@ -29,9 +30,9 @@ Installing FiftyOne
 
 .. note::
 
-  FiftyOne is rapidly growing.
-  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  so we can keep you posted on new features as they come out!
+    FiftyOne is rapidly growing.
+    `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
+    so we can keep you posted on new features as they come out!
 
 To install FiftyOne in a virtual environment, ensure you have activated any
 virtual environment that you are using, then run:
@@ -47,17 +48,30 @@ your virtual environment by importing the `fiftyone` package:
 
 .. code-block:: text
 
-   $ python
-   Python 3.6.9 (default, Apr 18 2020, 01:56:04)
-   [GCC 8.4.0] on linux
-   Type "help", "copyright", "credits" or "license" for more information.
-   >>>
-   >>> import fiftyone as fo
-   >>>
+    $ python
+    Python 3.6.9 (default, Apr 18 2020, 01:56:04)
+    [GCC 8.4.0] on linux
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>>
+    >>> import fiftyone as fo
+    >>>
 
 A successful installation of FiftyOne should result in no output when
-`fiftyone` is imported. See below for help with troubleshooting error
-messages that you may encounter.
+`fiftyone` is imported.
+
+.. note::
+
+    Dive right into FiftyOne by running the command below. It will download a
+    small dataset, launch the App, and print some suggestions for exploring the
+    dataset!
+
+    .. code-block:: shell
+
+        # Launch the FiftyOne quickstart
+        fiftyone quickstart
+
+If you run into any installation issues, review the suggestions below or check
+the :ref:`troubleshooting page <troubleshooting>` for more details.
 
 **Mac users:**
 
@@ -76,7 +90,7 @@ messages that you may encounter.
   ``python3-dev`` package.
 - If you encounter an error related to MongoDB failing to start, such as `Could
   not find mongod`, you may need to install additional packages. See the
-  `troubleshooting section <#troubleshooting>`_ for details.
+  :ref:`troubleshooting page <troubleshooting-mongodb-linux>` for details.
 
 **Windows users:**
 
@@ -84,6 +98,8 @@ messages that you may encounter.
   install the 64-bit Visual Studio 2015 C++ redistributable library,
   `available here <https://www.microsoft.com/en-us/download/details.aspx?id=48145>`_
   (choose the x64 version).
+
+.. _installing-extras:
 
 Installing extra packages
 -------------------------
@@ -94,7 +110,9 @@ helpful instructions on what you need to install. Alternatively, you can
 preemptively install what you'll need by installing the following additional
 packages via `pip` in your virtual environment:
 
-* `ipython` to follow along with interactive examples more easily
+* `ipython` to follow along with interactive examples more easily (note that
+  a system-wide IPython installation will *not* work in a virtual environment,
+  even if it is accessible)
 * `tensorflow` for examples requiring TensorFlow. The installation process
   can vary depending on your system, so consult the
   `Tensorflow documentation <https://www.tensorflow.org/install>`_ for specific
@@ -131,65 +149,6 @@ FiftyOne and all of its subpackages can be uninstalled with:
 Troubleshooting
 ---------------
 
-Installing MongoDB on Linux
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-FiftyOne relies on a version of MongoDB that works on Ubuntu 18.04 and several
-other modern distributions. If this version does not work on your distribution,
-there are alternative builds available, or you can use an existing installation
-of MongoDB.
-
-Alternative builds
-~~~~~~~~~~~~~~~~~~
-
-Alternative builds are available as pip packages for the distributions listed
-below, and can be installed by running the corresponding command. Note that
-these packages must be installed *after* the `fiftyone` package; if you install
-`fiftyone` afterwards, you can fix your MongoDB installation by adding
-`--force-reinstall` to the commands below.
-
-.. tabs::
-
-  .. tab:: Ubuntu 16.04
-
-    .. code-block:: shell
-
-      pip install --index https://pypi.voxel51.com fiftyone-db-ubuntu1604
-
-  .. tab:: Debian 9
-
-    .. code-block:: shell
-
-      pip install --index https://pypi.voxel51.com fiftyone-db-debian9
-
-Manual installation
-~~~~~~~~~~~~~~~~~~~
-
-FiftyOne also supports using an existing MongoDB installation (version 3.6 or
-newer). This can be installed through many distributions' package managers.
-Note that only the `mongod` (server) binary is required, so you may not need
-the complete MongoDB package. For example, Debian-based distributions make this
-available in the `mongodb-server` package.
-
-If your distribution does not provide a new-enough version of MongoDB, or if
-you would like to install a newer version, see
-`the MongoDB documentation <https://docs.mongodb.com/manual/administration/install-on-linux/>`_
-for instructions on installing MongoDB on your distribution. Note that you only
-need the `mongodb-org-server` package in this case.
-
-To verify the version of your MongoDB installation, run `mongod --version`,
-which should produce output that looks like this:
-
-.. code-block:: text
-
-   db version v4.2.6
-   git version: 20364840b8f1af16917e4c23c1b5f5efd8b352f8
-   OpenSSL version: OpenSSL 1.1.1  11 Sep 2018
-   allocator: tcmalloc
-   modules: none
-   build environment:
-       distmod: ubuntu1804
-       distarch: x86_64
-       target_arch: x86_64
-
-Verify that the version after "db version" is at least 3.6.
+If you encounter any issues when installing FiftyOne, verify that you have
+installed any system dependencies as described above, then see the
+:doc:`troubleshooting page <troubleshooting>`.

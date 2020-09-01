@@ -1,20 +1,19 @@
 # [FiftyOne](http://www.voxel51.com/fiftyone): Explore, Analyze and Curate Visual Datasets
 
-<img src="https://user-images.githubusercontent.com/21222883/89923076-001f0400-dbce-11ea-948c-5a7c863f8458.png" alt="FiftyOne"/>
+<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/90993132-ac26fe80-e581-11ea-9efc-c3e1a0f876d8.png">
 
 [FiftyOne](http://www.voxel51.com/docs/fiftyone) is an **open-source** machine
 learning tool that helps you get closer to your data. With FiftyOne, you can
 rapidly experiment with your datasets, enabling you to search, sort, filter,
 visualize, analyze, and improve your datasets without wrangling or writing
 custom scripts for every new dataset you collect. FiftyOne is designed to be
-lightweight and easily integrate into your existing computer vision/machine
-learning workflows.
+lightweight and easily integrate into your existing CV/ML workflows.
 
 To stay up-to-date on all things FiftyOne, collaborate with other users, and
-get support from the Voxel51 team,
-[join the FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg).
+get support from the Voxel51 team, join the
+[FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg).
 
-[Follow us on Medium](https://medium.com/voxel51) for regular posts on computer
+Follow us [on Medium](https://medium.com/voxel51) for regular posts on computer
 vision, machine learning, and data science topics.
 
 You can also follow us on social media (
@@ -32,15 +31,30 @@ You can install the latest stable version of FiftyOne via `pip`:
 pip install --index https://pypi.voxel51.com fiftyone
 ```
 
-Consult the
+FiftyOne requires at least Python 3.5 and pip 19.3. Consult the
 [installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
 
+## Quickstart
+
+Dive right into FiftyOne by launching the quickstart:
+
+```shell
+fiftyone quickstart
+```
+
+This command will download a small dataset, launch the App, and print some
+suggestions for exploring the dataset.
+
+Next, check out [this walkthrough](WALKTHROUGH.md) for a more detailed overview
+of using FiftyOne.
+
 ## Documentation
 
-Full documentation for FiftyOne can be found at
-https://voxel51.com/docs/fiftyone. In particular, check out:
+Full documentation for FiftyOne is
+[available online](https://voxel51.com/docs/fiftyone). In particular, see these
+resources:
 
 -   [Tutorials](https://voxel51.com/docs/fiftyone/tutorials/index.html)
 -   [Recipes](https://voxel51.com/docs/fiftyone/recipes/index.html)
@@ -57,8 +71,8 @@ involved.
 
 ## Installing from source
 
-This section explains how to install the latest development version of
-[FiftyOne](http://www.voxel51.com/docs/fiftyone) from source.
+This section explains how to install the latest development version of FiftyOne
+from source.
 
 The instructions below are for macOS and Linux systems. Windows users may need
 to make adjustments.
@@ -126,6 +140,17 @@ perform a developer installation using the `-d` flag of the install script:
 
 ```shell
 bash install.bash -d
+```
+
+### Upgrading your source installation
+
+To upgrade an existing source installation to the bleeding edge, simply pull
+the latest `develop` branch and rerun the install script:
+
+```shell
+git checkout develop
+git pull
+bash install.bash [-d]
 ```
 
 ### Generating documentation

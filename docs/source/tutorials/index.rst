@@ -41,6 +41,13 @@ your datasets and turn your good models into *great models*.
     :tags: Getting-Started,Model-Evaluation
 
 .. customcarditem::
+    :header: Evaluating detections on Open Images
+    :description: Like the Open Images Dataset? This tutorial uses FiftyOne to distinguish between model errors and ground truth errors on this popular dataset.
+    :link: open_images_evaluation.html
+    :image: ../_static/images/tutorials/missing_wheel.gif
+    :tags: Getting-Started,Model-Evaluation
+
+.. customcarditem::
     :header: Exploring image uniqueness
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
@@ -53,13 +60,6 @@ your datasets and turn your good models into *great models*.
     :link: label_mistakes.html
     :image: ../_static/images/tutorials/label_mistakes.png
     :tags: Getting-Started,Dataset-Evaluation
-
-.. customcarditem::
-    :header: Object Detection Model Evaluation on Google's Open Images Dataset
-    :description: Use Tensorflow Object Detection API to get per-image true/false positives. Then use FiftyOne to see where your model is making mistakes or where the ground truth has errors!
-    :link: open_images_evaluation.html
-    :image: ../_static/images/tutorials/missing_wheel.gif
-    :tags: Model-Evaluation
 
 .. End of tutorial cards
 
@@ -80,6 +80,6 @@ your datasets and turn your good models into *great models*.
    :hidden:
 
    Evaluating object detections<evaluate_detections.ipynb>
+   Evaluating Open Images<open_images_evaluation.ipynb>
    Exploring image uniqueness<uniqueness.ipynb>
    Finding label mistakes<label_mistakes.ipynb>
-   Open Images Evaluation<open_images_evaluation.ipynb>

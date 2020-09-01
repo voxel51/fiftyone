@@ -9,6 +9,8 @@ FiftyOne provides methods that allow you to sort, slice, and search your
 Performing these actions returns a |DatasetView| into your |Dataset| that will
 that will show only the samples and labels therein that match your criteria.
 
+.. _using-views:
+
 Overview
 ________
 
@@ -376,12 +378,12 @@ stages to select or exclude fields from the returned |SampleView|:
     for sample in dataset.select_fields(["tags"]):
         print(sample.tags)     # OKAY: `tags` was selected and thus available
         print(sample.id)       # OKAY: `id` is always available
-        print(sample.filepath) # NameError: `filepath` was not selected
+        print(sample.filepath) # AttributeError: `filepath` was not selected
 
     for sample in dataset.exclude_fields(["tags"]):
         print(sample.id)       # OKAY: `id` is always available
         print(sample.filepath) # OKAY: `filepath` is not excluded
-        print(sample.tags)     # NameError: `tags` was excluded
+        print(sample.tags)     # AttributeError: `tags` was excluded
     )
 
 The :meth:`filter_classifications() <fiftyone.core.view.DatasetView.filter_classifications>`

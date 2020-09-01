@@ -37,6 +37,7 @@ const SamplesContainer = (props) => {
     setActiveOther,
     labelData,
   } = props.displayProps;
+  const { colorMap, resetColors } = props;
 
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const [sidebarHeight, setSidebarHeight] = useState("unset");
@@ -49,7 +50,6 @@ const SamplesContainer = (props) => {
   const labelNames = useRecoilValue(selectors.labelNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
-  const colorMapping = useRecoilValue(selectors.labelColorMapping);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -62,17 +62,18 @@ const SamplesContainer = (props) => {
   };
   for (const name of labelNames) {
     if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
-      labelNameGroups.labels.push(name);
+      labelNameGroups.labels.push({ name, type: labelTypes[name] });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name])) {
-      labelNameGroups.scalars.push(name);
+      labelNameGroups.scalars.push({ name });
     } else {
-      labelNameGroups.unsupported.push(name);
+      labelNameGroups.unsupported.push({ name });
     }
   }
 
-  const getDisplayOptions = (names, counts, selected) => {
-    return [...names].sort().map((name) => ({
+  const getDisplayOptions = (values, counts, selected) => {
+    return [...values].sort().map(({ name, type }) => ({
       name,
+      type,
       count: counts[name],
       selected: Boolean(selected[name]),
     }));
@@ -124,8 +125,13 @@ const SamplesContainer = (props) => {
           <Grid.Column className="sidebar-column">
             <Sticky context={containerRef} offset={headerHeight}>
               <DisplayOptionsSidebar
-                colorMapping={colorMapping}
-                tags={getDisplayOptions(tagNames, tagSampleCounts, activeTags)}
+                colorMap={colorMap}
+                resetColors={resetColors}
+                tags={getDisplayOptions(
+                  tagNames.map((t) => ({ name: t })),
+                  tagSampleCounts,
+                  activeTags
+                )}
                 labels={getDisplayOptions(
                   labelNameGroups.labels,
                   labelSampleCounts,
@@ -164,7 +170,7 @@ const SamplesContainer = (props) => {
           </Grid.Column>
         ) : null}
         <Grid.Column className="content-column">
-          <Samples {...props} />
+          <Samples {...props} colorMap={colorMap} />
         </Grid.Column>
       </Grid>
     </Root>

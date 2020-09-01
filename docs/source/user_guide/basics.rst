@@ -8,7 +8,7 @@ FiftyOne Datasets are the core data structure in FiftyOne, allowing you to
 represent your data and manipulate it through the Python library and the
 :doc:`FiftyOne App <app>`.
 
-.. image:: ../images/dog.png
+.. image:: ../images/dataset-basics.png
    :alt: App
    :align: center
 
@@ -280,7 +280,7 @@ datasets to perform the analysis that you need.
 
 .. custombutton::
     :button_text: Get a full walkthough of dataset views
-    :button_link: using_views.html#using-views
+    :button_link: using_views.html
 
 .. code-block:: python
     :linenos:

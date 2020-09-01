@@ -6,6 +6,8 @@ import { configureStore, history } from "./store/configureStore";
 import "./app.global.css";
 import "semantic-ui-less/definitions/collections/grid.less";
 import "semantic-ui-less/definitions/collections/menu.less";
+import "semantic-ui-less/definitions/modules/dimmer.less";
+import "semantic-ui-less/definitions/modules/modal.less";
 import "semantic-ui-less/definitions/modules/sidebar.less";
 import "semantic-ui-less/definitions/modules/sticky.less";
 

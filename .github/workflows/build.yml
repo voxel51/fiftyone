@@ -29,7 +29,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools "wheel<0.35"
       - name: Build wheel
         run: |
           python setup.py bdist_wheel
@@ -83,10 +83,11 @@ jobs:
           pip install pytest tensorflow tensorflow-datasets torch torchvision
       - name: Run tests
         run: |
-          pytest tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/
+          pytest tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/ --ignore tests/utils/
       - name: Run isolated tests
+        if: success() || failure()
         run: |
-          find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 pytest --verbose
+          find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
 
   publish:
     needs: [build, test]

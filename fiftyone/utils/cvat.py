@@ -59,6 +59,8 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
                 ...
             }
 
+          For unlabeled images, ``image_tag_dict`` can be ``None``.
+
     See :class:`fiftyone.types.dataset_types.CVATImageDataset` for more format
     details.
     """
@@ -77,6 +79,9 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
 
     def get_image_metadata(self):
         cvat_image = self._cvat_image
+        if cvat_image is None:
+            return None
+
         return cvat_image.get_image_metadata()
 
     def get_label(self):
@@ -86,9 +91,13 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
             sample: the sample
 
         Returns:
-            a :class:`fiftyone.core.labels.Detections` instance
+            a :class:`fiftyone.core.labels.Detections` instance, or ``None`` if
+            the sample is unlabeled
         """
         cvat_image = self._cvat_image
+        if cvat_image is None:
+            return None
+
         return cvat_image.to_detections()
 
     def clear_sample(self):
@@ -104,7 +113,7 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
 
     def _parse_cvat_image(self):
         d = self.current_sample[1]
-        return CVATImage.from_image_dict(d)
+        return CVATImage.from_image_dict(d) if d is not None else None
 
 
 class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -121,6 +130,7 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         super().__init__(dataset_dir)
         self._data_dir = None
         self._labels_path = None
+        self._info = None
         self._images_map = None
         self._filenames = None
         self._iter_filenames = None
@@ -136,11 +146,22 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         filename = next(self._iter_filenames)
 
         image_path = os.path.join(self._data_dir, filename)
-        cvat_image = self._images_map[filename]
-        image_metadata = cvat_image.get_image_metadata()
-        detections = cvat_image.to_detections()
+
+        cvat_image = self._images_map.get(filename, None)
+        if cvat_image is not None:
+            # Labeled image
+            image_metadata = cvat_image.get_image_metadata()
+            detections = cvat_image.to_detections()
+        else:
+            # Unlabeled image
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+            detections = None
 
         return image_path, image_metadata, detections
+
+    @property
+    def has_dataset_info(self):
+        return True
 
     @property
     def has_image_metadata(self):
@@ -154,12 +175,23 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         self._data_dir = os.path.join(self.dataset_dir, "data")
         self._labels_path = os.path.join(self.dataset_dir, "labels.xml")
 
-        _, cvat_images = load_cvat_image_annotations(self._labels_path)
+        if os.path.isfile(self._labels_path):
+            info, _, cvat_images = load_cvat_image_annotations(
+                self._labels_path
+            )
+        else:
+            info = {}
+            cvat_images = []
+
+        self._info = info
 
         # Index by filename
         self._images_map = {i.name: i for i in cvat_images}
 
         self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+    def get_dataset_info(self):
+        return self._info
 
 
 class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
@@ -181,6 +213,7 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
 
         super().__init__(export_dir)
         self.image_format = image_format
+        self._task_labels = None
         self._data_dir = None
         self._labels_path = None
         self._cvat_images = None
@@ -202,10 +235,16 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
             output_dir=self._data_dir, default_ext=self.image_format
         )
 
+    def log_collection(self, sample_collection):
+        self._task_labels = sample_collection.info.get("task_labels", None)
+
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(
             image_or_path, self._filename_maker
         )
+
+        if detections is None:
+            return
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
@@ -218,8 +257,15 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         self._cvat_images.append(cvat_image)
 
     def close(self, *args):
-        # Build task labels
-        cvat_task_labels = CVATTaskLabels.from_cvat_images(self._cvat_images)
+        # Get task labels
+        if self._task_labels is None:
+            # Compute task labels from active label schema
+            cvat_task_labels = CVATTaskLabels.from_cvat_images(
+                self._cvat_images
+            )
+        else:
+            # Use task labels from logged collection info
+            cvat_task_labels = CVATTaskLabels(labels=self._task_labels)
 
         # Write annotations
         writer = CVATImageAnnotationWriter()
@@ -284,7 +330,22 @@ class CVATTaskLabels(object):
             a :class:`CVATTaskLabels`
         """
         labels = _ensure_list(d.get("label", []))
-        return cls(labels=labels)
+        _labels = []
+        for label in labels:
+            _tmp = label.get("attributes", None) or {}
+            attributes = _ensure_list(_tmp.get("attribute", []))
+            _attributes = []
+            for attribute in attributes:
+                _attributes.append(
+                    {
+                        "name": attribute["name"],
+                        "categories": attribute["values"].split("\n"),
+                    }
+                )
+
+            _labels.append({"name": label["name"], "attributes": _attributes})
+
+        return cls(labels=_labels)
 
     @classmethod
     def from_schema(cls, schema):
@@ -520,12 +581,20 @@ class CVATBox(object):
 
         label = d.pop("@label")
 
-        xtl = int(d.pop("@xtl"))
-        ytl = int(d.pop("@ytl"))
-        xbr = int(d.pop("@xbr"))
-        ybr = int(d.pop("@ybr"))
+        xtl = int(round(float(d.pop("@xtl"))))
+        ytl = int(round(float(d.pop("@ytl"))))
+        xbr = int(round(float(d.pop("@xbr"))))
+        ybr = int(round(float(d.pop("@ybr"))))
 
-        attributes = [CVATAttribute(name, value) for name, value in d.items()]
+        attributes = []
+        for name, value in d.items():
+            name = name.lstrip("@")
+            try:
+                value = float(value)
+            except:
+                pass
+
+            attributes.append(CVATAttribute(name, value))
 
         return cls(label, xtl, ytl, xbr, ybr, attributes=attributes)
 
@@ -573,8 +642,7 @@ class CVATBox(object):
         ]
 
         attributes = {
-            a.name: fol.CategoricalAttribute(value=a.value)
-            for a in self.attributes
+            a.name: a.to_fiftyone_attribute() for a in self.attributes
         }
 
         return fol.Detection(
@@ -614,7 +682,28 @@ class CVATAttribute(object):
         Returns:
             an ``eta.core.data.Attribute``
         """
+        if isinstance(self.value, bool):
+            return etad.BooleanAttribute(self.name, self.value)
+
+        if etau.is_numeric(self.value):
+            return etad.NumericAttribute(self.name, self.value)
+
         return etad.CategoricalAttribute(self.name, self.value)
+
+    def to_fiftyone_attribute(self):
+        """Returns a :class:`fiftyone.core.labels.Attribute` representation of
+        the attribute.
+
+        Returns:
+            a :class:`fiftyone.core.labels.Attribute`
+        """
+        if isinstance(self.value, bool):
+            return fol.BooleanAttribute(value=self.value)
+
+        if etau.is_numeric(self.value):
+            return fol.NumericAttribute(value=self.value)
+
+        return fol.CategoricalAttribute(value=self.value)
 
 
 class CVATImageAnnotationWriter(object):
@@ -644,7 +733,6 @@ class CVATImageAnnotationWriter(object):
         """
         xml_str = self.template.render(
             {
-                "version": "1.1",
                 "size": len(cvat_images),
                 "mode": "annotation",
                 "labels": cvat_task_labels.labels,
@@ -667,26 +755,38 @@ def load_cvat_image_annotations(xml_path):
     Returns:
         a tuple of
 
+        -   info: a dict of dataset info
         -   cvat_task_labels: a :class:`CVATTaskLabels` instance
         -   cvat_images: a list of :class:`CVATImage` instances
     """
     d = fou.load_xml_as_json_dict(xml_path)
+    annotations = d.get("annotations", {})
+
+    # Load meta
+    meta = annotations.get("meta", {})
 
     # Load task labels
-    labels_dict = (
-        d.get("annotations", {})
-        .get("meta", {})
-        .get("task", {})
-        .get("labels", {})
-    )
+    labels_dict = meta.get("task", {}).get("labels", {})
     cvat_task_labels = CVATTaskLabels.from_labels_dict(labels_dict)
 
     # Load annotations
-    image_dicts = _ensure_list(d.get("annotations", {}).get("image", []))
+    image_dicts = _ensure_list(annotations.get("image", []))
     cvat_images = [CVATImage.from_image_dict(id) for id in image_dicts]
 
-    return cvat_task_labels, cvat_images
+    # Wrangle dataset info
+    info = {
+        "task_labels": cvat_task_labels.labels,
+        "dumped": meta.get("dumped", None),
+    }
+
+    return info, cvat_task_labels, cvat_images
 
 
 def _ensure_list(value):
-    return [value] if not isinstance(value, list) else value
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return value
+
+    return [value]

@@ -57,7 +57,7 @@ The FiftyOne command-line interface.
 
 .. code-block:: text
 
-    fiftyone [-h] [-v] [--all-help] {config,constants,convert,datasets,app,zoo} ...
+    fiftyone [-h] [-v] [--all-help] {quickstart,config,constants,convert,datasets,app,zoo} ...
 
 **Arguments**
 
@@ -70,12 +70,38 @@ The FiftyOne command-line interface.
 
     available commands:
       {config,constants,convert,datasets,app,zoo}
+        quickstart          Launch a FiftyOne quickstart.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
         app                 Tools for working with the FiftyOne App.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
+
+.. _cli-fiftyone-quickstart:
+
+FiftyOne quickstart
+-------------------
+
+Launch a FiftyOne quickstart.
+
+.. code-block:: text
+
+    fiftyone quickstart [-h]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help    show this help message and exit
+
+**Examples**
+
+.. code:: shell
+
+    # Launch the quickstart
+    fiftyone quickstart
 
 .. _cli-fiftyone-config:
 
@@ -226,6 +252,7 @@ Tools for working with FiftyOne datasets.
         stream              Streams the samples in a FiftyOne dataset.
         export              Export FiftyOne datasets to disk in supported formats.
         draw                Writes annotated versions of samples in FiftyOne datasets to disk.
+        rename              Rename FiftyOne datasets.
         delete              Delete FiftyOne datasets.
 
 .. _cli-fiftyone-datasets-list:
@@ -491,6 +518,35 @@ Writes annotated versions of samples in FiftyOne datasets to disk.
     # specified labels overlaid to disk
     fiftyone datasets draw <name> \
         --anno-dir <anno-dir> --label-fields <label-fields>
+
+.. _cli-fiftyone-datasets-rename:
+
+Rename datasets
+~~~~~~~~~~~~~~~
+
+Rename FiftyOne datasets.
+
+.. code-block:: text
+
+    fiftyone datasets rename [-h] NAME NEW_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the name of the dataset
+      NEW_NAME    a new name for the dataset
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Rename the dataset
+    fiftyone datasets rename <old-name> <new-name>
 
 .. _cli-fiftyone-datasets-delete:
 

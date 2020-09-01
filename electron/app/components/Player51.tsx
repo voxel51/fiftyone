@@ -11,7 +11,7 @@ const PARSERS = {
     (name, obj) => {
       return {
         type: "eta.core.data.CategoricalAttribute",
-        name: name,
+        name,
         confidence: obj.confidence,
         value: obj.label,
       };
@@ -19,11 +19,12 @@ const PARSERS = {
   ],
   Detection: [
     "objects",
-    (g, obj) => {
+    (name, obj) => {
       const bb = obj.bounding_box;
       return {
         type: "eta.core.objects.DetectedObject",
-        label: `${g}:${obj.label}`,
+        name,
+        label: `${obj.label}`,
         confidence: obj.confidence,
         bounding_box: {
           top_left: { x: bb[0], y: bb[1] },
@@ -34,7 +35,7 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colorMapping, fieldSchema) => {
+const loadOverlay = (sample, colorMap, fieldSchema, filter) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
@@ -45,16 +46,20 @@ const loadOverlay = (sample, colorMapping, fieldSchema) => {
     const field = sample[sampleField];
     if (field === null || field === undefined) continue;
     if (["Classification", "Detection"].includes(field._cls)) {
+      if (!filter[sampleField] || !filter[sampleField](field)) {
+        continue;
+      }
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
-      playerColorMap[`${sampleField}:${field.label}`] =
-        colorMapping[sampleField];
+      playerColorMap[`${sampleField}`] = colorMap[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
+        if (!filter[sampleField] || !filter[sampleField](object)) {
+          continue;
+        }
         const [key, fn] = PARSERS[object._cls];
         imgLabels[key][key].push(fn(sampleField, object));
-        playerColorMap[`${sampleField}:${object.label}`] =
-          colorMapping[sampleField];
+        playerColorMap[`${sampleField}`] = colorMap[sampleField];
       }
       continue;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
@@ -65,7 +70,7 @@ const loadOverlay = (sample, colorMapping, fieldSchema) => {
 };
 
 export default ({
-  colorMapping,
+  colorMap,
   thumbnail,
   sample,
   src,
@@ -75,11 +80,13 @@ export default ({
   onLoad = () => {},
   activeLabels,
   fieldSchema = {},
+  filter,
 }) => {
   const [overlay, playerColorMap] = loadOverlay(
     sample,
-    colorMapping,
-    fieldSchema
+    colorMap,
+    fieldSchema,
+    filter
   );
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
@@ -92,6 +99,8 @@ export default ({
       },
       overlay: overlay,
       colorMap: playerColorMap,
+      activeLabels,
+      filter,
     })
   );
   const props = thumbnail
@@ -102,13 +111,12 @@ export default ({
       if (thumbnail) {
         player.thumbnailMode();
       }
-      player.render(id, activeLabels);
+      player.render(id);
       setInitLoad(true);
       onLoad();
     } else {
-      player.renderer.handleOverlay(overlay);
-      player.renderer.processFrame(activeLabels);
+      player.updateOptions({ activeLabels, filter });
     }
-  }, [overlay, activeLabels]);
+  }, [filter, overlay, activeLabels]);
   return <div id={id} style={style} {...props} />;
 };
