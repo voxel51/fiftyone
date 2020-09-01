@@ -104,7 +104,8 @@ function setStages(ctx, stageInfo) {
               operate(stageInfoResult.params[j].type, "castFrom", p[1]),
               true,
               false,
-              j === stageInfoResult.params.length - 1
+              j === stageInfoResult.params.length - 1,
+              i === Math.min(view.length - 1, ctx.activeStage)
             );
           }),
         true,

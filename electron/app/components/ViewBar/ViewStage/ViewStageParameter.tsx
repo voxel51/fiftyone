@@ -207,7 +207,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { defaultValue, parameter, tail, type, value } = state.context;
+  const { defaultValue, parameter, tail, type, value, active } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
@@ -218,7 +218,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
         ? theme.backgroundLight
         : theme.background,
     borderStyle: "solid",
-    borderColor: state.matches("editing") ? theme.secondary : theme.fontDarkest,
+    borderColor: state.matches("editing")
+      ? theme.secondary
+      : active
+      ? theme.brand
+      : theme.fontDarkest,
     borderRightWidth: tail ? 1 : 0,
     height: hasObjectType && state.matches("editing") ? 200 : 34,
     opacity: 1,
@@ -256,12 +260,14 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
               }}
               ref={inputRef}
             />
-            <ErrorMessage
-              key="error"
-              serviceRef={parameterRef}
-              barRef={barRef}
-              followRef={containerRef}
-            />
+            {containerRef.current && (
+              <ErrorMessage
+                key="error"
+                serviceRef={parameterRef}
+                barRef={barRef}
+                followRef={containerRef}
+              />
+            )}
           </>
         )}
       </ViewStageParameterDiv>

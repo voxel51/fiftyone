@@ -34,19 +34,27 @@ const ErrorMessage = React.memo(({ barRef, followRef, serviceRef, style }) => {
   const ref = useRef();
   const [errorTimeout, setErrorTimeout] = useState(null);
   const { error, errorId } = state.context;
-  const [props, set] = useSpring(() => ({
-    opacity: errorId ? 1 : 0,
-    left: 0,
-    top: 0,
-    from: {
-      opacity: 0,
-    },
-    config: config.stiff,
-  }));
+  const [props, set] = useSpring(() => {
+    const obj = followRef
+      ? {
+          left: followRef.current.getBoundingClientRect().x,
+          top: followRef.current.getBoundingClientRect().y,
+        }
+      : {};
+    return {
+      ...obj,
+      opacity: errorId ? 1 : 0,
+      from: {
+        opacity: 0,
+      },
+      config: config.stiff,
+    };
+  });
 
   useEffect(() => {
     errorTimeout && clearTimeout(errorTimeout);
     !errorId && setErrorTimeout(setTimeout(() => send("CLEAR_ERROR"), 1000));
+    set({ opacity: errorId ? 1 : 0 });
   }, [errorId]);
 
   useOutsideClick(ref, () => send("CLEAR_ERROR_ID"));

@@ -285,6 +285,11 @@ export default Machine(
           }),
         ],
       },
+      UPDATE: {
+        actions: assign({
+          active: (_, { active }) => active,
+        }),
+      },
     },
   },
   {

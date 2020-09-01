@@ -13,7 +13,8 @@ export const createParameter = (
   value,
   submitted,
   focusOnInit,
-  tail
+  tail,
+  active
 ) => ({
   id: uuid(),
   defaultValue,
@@ -27,6 +28,7 @@ export const createParameter = (
   tail,
   currentResult: null,
   results: [],
+  active,
 });
 
 const isValidStage = (stageInfo, stage) => {
@@ -213,7 +215,8 @@ const viewStageMachine = Machine(
                             "",
                             false,
                             i === 0,
-                            i === result.length - 1
+                            i === result.length - 1,
+                            active
                           )
                         );
                         return parameters.map((parameter) => ({
@@ -251,6 +254,7 @@ const viewStageMachine = Machine(
               ],
               BLUR: [
                 {
+                  target: "reading.pending",
                   actions: [
                     assign({
                       focusOnInit: false,
@@ -374,9 +378,23 @@ const viewStageMachine = Machine(
             length: (_, { length }) => length,
             active: (_, { active }) => active,
           }),
+          (ctx, { active }) => {
+            ctx.parameters.forEach((parameter) =>
+              parameter.ref.send({
+                type: "UPDATE",
+                active: active,
+              })
+            );
+          },
         ],
       },
-      "STAGE.DELETE": "input.deleted",
+      "STAGE.DELETE": [
+        {
+          target: "input.deleted",
+          cond: (ctx) => ctx.index > 0 || ctx.length > 1,
+        },
+        { target: "input.reading" },
+      ],
       "PARAMETER.COMMIT": {
         target: "input",
         actions: [
