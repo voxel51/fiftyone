@@ -23,6 +23,10 @@ App
 
 Core
 ^^^^
+- Added support for checking that a field *does not* exist via a new boolean
+  parameter of the
+  :meth:`exists() <fiftyone.core.collections.SampleCollection.exists>`
+  view stage
 - Fixed a bug that prevented database connections from being established for
   some Windows users
 - Fixed a bug that caused
