@@ -645,9 +645,10 @@ View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: text
 
-    fiftyone app view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE]
-                      [-z NAME] [-s SPLITS [SPLITS ...]]
-                      [-j JSON_PATH] [-p PORT] [-r]
+    fiftyone app view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE] [-z NAME]
+                      [-s SPLITS [SPLITS ...]] [--images-dir IMAGES_DIR]
+                      [--images-patt IMAGES_PATT] [-j JSON_PATH] [-p PORT]
+                      [-r]
 
 **Arguments**
 
@@ -663,10 +664,14 @@ View datasets in the FiftyOne App without persisting them to the database.
                             the name of a zoo dataset to view
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to load
+      --images-dir IMAGES_DIR
+                            the path to a directory of images
+      --images-patt IMAGES_PATT
+                            a glob pattern of images
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to view
       -p PORT, --port PORT  the port number to use
-      -r, --remote          whether to launch a remote App session
+      -r, --remote          whether to launch a remote app session
 
 **Examples**
 
@@ -679,6 +684,16 @@ View datasets in the FiftyOne App without persisting them to the database.
 
     # View a zoo dataset in the App
     fiftyone app view --zoo-dataset <name> --splits <split1> ...
+
+.. code-block:: shell
+
+    # View a directory of images in the app
+    fiftyone app view --images-dir <images-dir>
+
+.. code-block:: shell
+
+    # View a glob pattern of images in the app
+    fiftyone app view --images-patt <images-patt>
 
 .. code-block:: shell
 
