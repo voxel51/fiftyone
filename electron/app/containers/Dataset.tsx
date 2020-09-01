@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Switch, Route, Redirect, useRouteMatch } from "react-router-dom";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Container, Message, Segment } from "semantic-ui-react";
 
 import SamplesContainer from "./SamplesContainer";
@@ -11,7 +11,6 @@ import { ModalWrapper, Overlay } from "../components/utils";
 import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { generateColorMap } from "../utils/colors";
 import connect from "../utils/connect";
 import { VALID_LABEL_TYPES } from "../utils/labels";
 
@@ -33,7 +32,8 @@ function Dataset(props) {
     sample: null,
     activeLabels: {},
   });
-  const [colorMap, setColorMap] = useState({});
+  const colorMap = useRecoilValue(atoms.colorMap);
+  const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
 
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
@@ -44,11 +44,8 @@ function Dataset(props) {
 
   // update color map
   useEffect(() => {
-    setColorMap(generateColorMap([...tagNames, ...labelNames], colorMap));
+    refreshColorMap(colorMap);
   }, [labelNames, tagNames]);
-  const resetColors = () => {
-    setColorMap(generateColorMap([...tagNames, ...labelNames]));
-  };
 
   // select any new labels by default
   useEffect(() => {
@@ -151,7 +148,6 @@ function Dataset(props) {
                   }
                   displayProps={displayProps}
                   colorMap={colorMap}
-                  resetColors={resetColors}
                 />
               </Route>
               <Route path={routes.LABELS}>
