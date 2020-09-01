@@ -287,7 +287,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     top: state.matches("focusedViewBar.yes") && state.context.active ? -3 : 0,
     config: config.stiff,
   });
-  console.log(state.toStrings(), state.event);
+
   return (
     <>
       <ViewStageContainer

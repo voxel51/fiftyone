@@ -201,7 +201,10 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       focusOnInit: false,
-                      stage: (ctx, { value }) => value,
+                      stage: (ctx, { value }) =>
+                        ctx.stageInfo.filter((s) =>
+                          s.name.toLowerCase().includes(value.toLowerCase())
+                        )[0].name,
                       parameters: (ctx, { value }) => {
                         const result = ctx.stageInfo.filter((s) =>
                           s.name.toLowerCase().includes(value.toLowerCase())
@@ -216,7 +219,7 @@ const viewStageMachine = Machine(
                             false,
                             i === 0,
                             i === result.length - 1,
-                            active
+                            ctx.active
                           )
                         );
                         return parameters.map((parameter) => ({
@@ -391,9 +394,7 @@ const viewStageMachine = Machine(
       "STAGE.DELETE": [
         {
           target: "input.deleted",
-          cond: (ctx) => ctx.index > 0 || ctx.length > 1,
         },
-        { target: "input.reading" },
       ],
       "PARAMETER.COMMIT": {
         target: "input",
