@@ -109,6 +109,9 @@ export default ({
       colorMap: playerColorMap,
       activeLabels,
       filter,
+      defaultOverlayOptions: {
+        attrRenderMode: "attr-value",
+      },
     })
   );
   const props = thumbnail
