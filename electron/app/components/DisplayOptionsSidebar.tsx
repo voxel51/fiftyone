@@ -131,6 +131,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
             disabled: Boolean(e.disabled),
           }))}
           onCheck={onSelect}
+          modal={modal}
         />
       ) : (
         <span>No options available</span>

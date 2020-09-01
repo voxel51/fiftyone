@@ -12,6 +12,20 @@ const CHECKBOX_PADDING = 3;
 const CHECKBOX_TOTAL_SIZE = CHECKBOX_SIZE + 2 * CHECKBOX_PADDING;
 const LABEL_PADDING_RIGHT = 6;
 
+const GLOBAL_ATOMS = {
+  includeLabels: atoms.filterIncludeLabels,
+  invertInclude: atoms.filterInvertIncludeLabels,
+  includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
+  confidenceRange: atoms.filterLabelConfidenceRange,
+};
+
+const MODAL_ATOMS = {
+  includeLabels: atoms.modalFilterIncludeLabels,
+  invertInclude: atoms.modalFilterInvertIncludeLabels,
+  includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
+  confidenceRange: atoms.modalFilterLabelConfidenceRange,
+};
+
 export const Body = styled.div`
   vertical-align: middle;
 
@@ -116,7 +130,7 @@ type Props = {
   onCheck: (entry: Entry) => void;
 };
 
-const Entry = ({ entry, onCheck }) => {
+const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
 
@@ -125,6 +139,7 @@ const Entry = ({ entry, onCheck }) => {
       onCheck({ ...entry, selected: !entry.selected });
     }
   };
+  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
 
   return (
     <div key={entry.name}>
@@ -184,26 +199,16 @@ const Entry = ({ entry, onCheck }) => {
           />
         }
       />
-      {expanded && entry.selected && (
-        <Filter
-          entry={entry}
-          {...{
-            includeLabels: atoms.filterIncludeLabels,
-            invertInclude: atoms.filterInvertIncludeLabels,
-            includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
-            confidenceRange: atoms.filterLabelConfidenceRange,
-          }}
-        />
-      )}
+      {expanded && entry.selected && <Filter entry={entry} {...atoms} />}
     </div>
   );
 };
 
-const CheckboxGrid = ({ entries, onCheck }: Props) => {
+const CheckboxGrid = ({ entries, onCheck, modal }: Props) => {
   return (
     <Body>
       {entries.map((entry) => (
-        <Entry key={entry.name} entry={entry} onCheck={onCheck} />
+        <Entry key={entry.name} entry={entry} onCheck={onCheck} modal={modal} />
       ))}
     </Body>
   );

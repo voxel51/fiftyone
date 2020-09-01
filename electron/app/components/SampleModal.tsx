@@ -456,6 +456,7 @@ const SampleModal = ({
               overflowX: "hidden",
               height: "auto",
             }}
+            modal={true}
           />
           <TopRightNavButton
             onClick={onClose}
