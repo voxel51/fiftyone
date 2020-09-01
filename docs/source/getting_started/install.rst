@@ -9,6 +9,12 @@ FiftyOne Installation
   Virtual environments <virtualenv>
   Troubleshooting <troubleshooting>
 
+.. note::
+
+    FiftyOne is rapidly growing.
+    `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
+    so we can keep you posted on new features as they come out!
+
 Prerequisites
 -------------
 
@@ -28,14 +34,8 @@ We encourage installing FiftyOne in a virtual environment. See
 Installing FiftyOne
 -------------------
 
-.. note::
-
-    FiftyOne is rapidly growing.
-    `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-    so we can keep you posted on new features as they come out!
-
-To install FiftyOne in a virtual environment, ensure you have activated any
-virtual environment that you are using, then run:
+To install FiftyOne, ensure you have activated any virtual environment that you
+are using, then run:
 
 .. code-block:: shell
 
@@ -59,16 +59,27 @@ your virtual environment by importing the `fiftyone` package:
 A successful installation of FiftyOne should result in no output when
 `fiftyone` is imported.
 
+.. _fiftyone-quickstart:
+
+Quickstart
+----------
+
 .. note::
 
-    Dive right into FiftyOne by running the command below. It will download a
-    small dataset, launch the App, and print some suggestions for exploring the
-    dataset!
+    Get started in seconds by running the quickstart!
 
-    .. code-block:: shell
+Dive right into FiftyOne by running the command below. It will download a small
+dataset, launch the App, and print some suggestions for exploring the dataset!
 
-        # Launch the FiftyOne quickstart
-        fiftyone quickstart
+.. code-block:: shell
+
+    # Launch the FiftyOne quickstart
+    fiftyone quickstart
+
+.. _install-troubleshooting:
+
+Troubleshooting
+---------------
 
 If you run into any installation issues, review the suggestions below or check
 the :ref:`troubleshooting page <troubleshooting>` for more details.
@@ -127,6 +138,8 @@ packages via `pip` in your virtual environment:
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.
 
+.. _upgrading-fiftyone
+
 Upgrading FiftyOne
 ------------------
 
@@ -137,6 +150,8 @@ upgrade an existing FiftyOne installation:
 
    pip install --index https://pypi.voxel51.com --upgrade fiftyone
 
+.. _uninstalling-fiftyone
+
 Uninstalling FiftyOne
 ---------------------
 
@@ -145,10 +160,3 @@ FiftyOne and all of its subpackages can be uninstalled with:
 .. code-block:: shell
 
    pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
-
-Troubleshooting
----------------
-
-If you encounter any issues when installing FiftyOne, verify that you have
-installed any system dependencies as described above, then see the
-:doc:`troubleshooting page <troubleshooting>`.

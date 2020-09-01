@@ -25,6 +25,7 @@ const Body = styled.div`
 
     .MuiTypography-body1 {
       font-size: unset;
+      align-items: center;
     }
 
     .MuiCheckbox-root {
