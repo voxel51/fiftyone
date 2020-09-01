@@ -914,19 +914,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_parser = foud.ImageSampleParser()
         return self.add_images(image_paths, sample_parser, tags=tags)
 
-    def add_images_patt(self, image_patt, tags=None):
+    def add_images_patt(self, images_patt, tags=None):
         """Adds the given glob pattern of images to the dataset.
 
         This operation does not read the images.
 
         Args:
-            image_patt: a glob pattern of images like ``/path/to/images/*.jpg``
+            images_patt: a glob pattern of images like
+                ``/path/to/images/*.jpg``
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
             a list of IDs of the samples in the dataset
         """
-        image_paths = etau.parse_glob_pattern(image_patt)
+        image_paths = etau.get_glob_matches(images_patt)
         sample_parser = foud.ImageSampleParser()
         return self.add_images(image_paths, sample_parser, tags=tags)
 
@@ -1180,13 +1181,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return dataset
 
     @classmethod
-    def from_images_patt(cls, image_patt, name=None, tags=None):
+    def from_images_patt(cls, images_patt, name=None, tags=None):
         """Creates a :class:`Dataset` from the given glob pattern of images.
 
         This operation does not read the images.
 
         Args:
-            image_patt: a glob pattern of images like ``/path/to/images/*.jpg``
+            images_patt: a glob pattern of images like
+                ``/path/to/images/*.jpg``
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
             tags (None): an optional list of tags to attach to each sample
@@ -1195,7 +1197,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`Dataset`
         """
         dataset = cls(name)
-        dataset.add_images_patt(image_patt, tags=tags)
+        dataset.add_images_patt(images_patt, tags=tags)
         return dataset
 
     def aggregate(self, pipeline=None):

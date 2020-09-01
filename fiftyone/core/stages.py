@@ -46,12 +46,30 @@ class ViewStage(object):
 
     def get_filtered_list_fields(self):
         """Returns a list of names of fields or subfields that contain arrays
-        that may have been filtered by the stage.
+        that may have been filtered by the stage, if any.
 
         Returns:
-            a list of fields
+            a list of fields, or ``None`` if no fields have been filtered
         """
-        return []
+        return None
+
+    def get_selected_fields(self):
+        """Returns a list of fields that have been selected by the stage, if
+        any.
+
+        Returns:
+            a list of fields, or ``None`` if no fields have been selected
+        """
+        return None
+
+    def get_excluded_fields(self):
+        """Returns a list of fields that have been excluded by the stage, if
+        any.
+
+        Returns:
+            a list of fields, or ``None`` if no fields have been selected
+        """
+        return None
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -233,6 +251,9 @@ class ExcludeFields(ViewStage):
         """The list of field names to exclude."""
         return self._field_names
 
+    def get_excluded_fields(self):
+        return self._field_names
+
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
 
@@ -256,7 +277,7 @@ class ExcludeFields(ViewStage):
                     "Cannot exclude private field '%s'" % field_name
                 )
 
-            if field_name in default_fields:
+            if (field_name == "id") or (field_name in default_fields):
                 raise ValueError(
                     "Cannot exclude default field '%s'" % field_name
                 )
@@ -288,7 +309,7 @@ class Exists(ViewStage):
         # field
         #
 
-        stage = Exists("predictions", bool=False)
+        stage = Exists("predictions", False)
         view = dataset.add_stage(stage)
 
     Args:
@@ -997,25 +1018,23 @@ class SelectFields(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        field_names (None): a field name or iterable of field names to select.
-            If not specified, just the default fields will be selected
+        field_names (None): a field name or iterable of field names to select
     """
 
     def __init__(self, field_names=None):
-        default_fields = default_sample_fields(include_private=False)
+        if etau.is_str(field_names):
+            field_names = [field_names]
 
-        if field_names:
-            if etau.is_str(field_names):
-                field_names = [field_names]
-
-            self._field_names = list(set(field_names) | set(default_fields))
-        else:
-            self._field_names = list(default_fields)
+        self._field_names = field_names
 
     @property
     def field_names(self):
         """The list of field names to select."""
-        return self._field_names
+        return self._field_names or []
+
+    def get_selected_fields(self):
+        default_fields = default_sample_fields()
+        return list(set(self.field_names) | set(default_fields))
 
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
@@ -1023,7 +1042,9 @@ class SelectFields(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return [{"$project": {fn: True for fn in self.field_names}}]
+        default_fields = default_sample_fields(include_private=True)
+        selected_fields = list(set(self.field_names) | set(default_fields))
+        return [{"$project": {fn: True for fn in selected_fields}}]
 
     def _kwargs(self):
         return [["field_names", self._field_names]]
@@ -1037,6 +1058,13 @@ class SelectFields(ViewStage):
                 "default": "None",
             }
         ]
+
+    def _validate_params(self):
+        for field_name in self.field_names:
+            if field_name.startswith("_"):
+                raise ValueError(
+                    "Cannot select private field '%s'" % field_name
+                )
 
     def validate(self, sample_collection):
         _validate_fields_exist(sample_collection, self.field_names)
