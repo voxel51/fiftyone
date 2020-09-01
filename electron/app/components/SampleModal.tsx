@@ -238,7 +238,6 @@ const SampleModal = ({
   const [activeTags, setActiveTags] = useRecoilState(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
 
-  const [activeOther, setActiveOther] = useRecoilState(atoms.modalActiveOther);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
   const labelNames = useRecoilValue(selectors.labelNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
@@ -294,8 +293,14 @@ const SampleModal = ({
     [onClose, onPrevious, onNext, fullscreen]
   );
 
-  const getDisplayOptions = (values, countOrExists, selected) => {
+  const getDisplayOptions = (
+    values,
+    countOrExists,
+    selected,
+    hideCheckbox = false
+  ) => {
     return [...values].sort().map(({ name, type }) => ({
+      hideCheckbox,
       name,
       type,
       icon:
@@ -381,7 +386,8 @@ const SampleModal = ({
             tags={getDisplayOptions(
               tagNames.map((t) => ({ name: t })),
               tagSampleExists,
-              activeTags
+              activeTags,
+              true
             )}
             labels={getDisplayOptions(
               labelNameGroups.labels,

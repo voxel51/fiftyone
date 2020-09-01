@@ -17,19 +17,25 @@ export const Body = styled.div`
 
   label {
     width: 100%;
+    height: 32px;
     margin-top: 3px;
     margin-bottom: 3px;
     margin-left: 0;
     margin-right: 0;
+    padding: 0.2em;
     border-radius: 2px;
+    display: flex;
+    justify-content: space-between;
 
     .MuiTypography-body1 {
+      flex: 1;
       font-size: unset;
       align-items: center;
+      padding-right: 4px;
     }
 
     .MuiCheckbox-root {
-      padding: ${CHECKBOX_PADDING}px;
+      padding: 0;
 
       .MuiIconButton-label {
         position: relative;
@@ -54,9 +60,7 @@ export const Body = styled.div`
 
     .MuiFormControlLabel-label {
       display: inline-flex;
-      min-width: 100%;
       font-weight: bold;
-      padding-right: ${CHECKBOX_TOTAL_SIZE + LABEL_PADDING_RIGHT}px;
       color: unset;
 
       span {
@@ -64,6 +68,7 @@ export const Body = styled.div`
       }
 
       span.name {
+        padding-left: 4px;
         white-space: nowrap;
         overflow-x: hidden;
         text-overflow: ellipsis;
@@ -87,7 +92,6 @@ export const Body = styled.div`
     }
 
     .MuiFormControlLabel-label {
-      padding-right: ${LABEL_PADDING_RIGHT + 2 * CHECKBOX_PADDING}px;
     }
   }
 `;
@@ -115,6 +119,7 @@ const Entry = ({ entry, onCheck }) => {
       onCheck({ ...entry, selected: !entry.selected });
     }
   };
+  console.log(entry);
 
   return (
     <div key={entry.name}>
@@ -143,24 +148,30 @@ const Entry = ({ entry, onCheck }) => {
           </>
         }
         style={{
-          backgroundColor: entry.selected ? theme.backgroundLight : undefined,
+          backgroundColor:
+            entry.hideCheckbox || entry.selected
+              ? theme.backgroundLight
+              : undefined,
           width: "100%",
-          color: entry.selected
-            ? theme.font
-            : entry.disabled
-            ? theme.fontDarkest
-            : theme.fontDark,
+          color:
+            entry.selected || entry.hideCheckbox
+              ? theme.font
+              : entry.disabled
+              ? theme.fontDarkest
+              : theme.fontDark,
         }}
         control={
           <Checkbox
             checked={entry.selected}
             onChange={() => handleCheck(entry)}
             style={{
-              color: entry.selected
-                ? entry.color
-                : entry.disabled
-                ? theme.fontDarkest
-                : theme.fontDark,
+              display: entry.hideCheckbox ? "none" : "block",
+              color:
+                entry.selected || entry.hideCheckbox
+                  ? entry.color
+                  : entry.disabled
+                  ? theme.fontDarkest
+                  : theme.fontDark,
             }}
           />
         }

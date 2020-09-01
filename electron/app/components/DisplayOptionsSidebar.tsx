@@ -127,6 +127,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
             data: e.icon ? e.icon : [(e.count || 0).toLocaleString()],
             count: e.count,
             color: colorMap[e.name],
+            hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
           }))}
           onCheck={onSelect}
