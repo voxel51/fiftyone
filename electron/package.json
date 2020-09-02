@@ -320,7 +320,6 @@
     "react-spring": "8.0.1",
     "react-uuid": "^1.0.2",
     "recharts": "^1.8.5",
-    "recoil": "^0.0.10",
     "redux": "^4.0.5",
     "redux-thunk": "^2.3.0",
     "semantic-ui-css": "^2.4.1",
