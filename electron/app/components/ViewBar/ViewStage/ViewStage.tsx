@@ -351,6 +351,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             key={parameter.id}
             parameterRef={parameter.ref}
             barRef={barRef}
+            stageRef={stageRef}
           />
         ))}
         {state.matches("delible.yes") ? (
