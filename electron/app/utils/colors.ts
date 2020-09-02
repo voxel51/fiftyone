@@ -7,9 +7,14 @@ export const FIXED_COLORS = [
   "#993F00", // caramel
   "#4C005C", // damson
   "#005C31", // forest
+  "#2BAE28", // green (dimmed)
+  "#8F7C00", // khaki
   "#C20088", // mallow
   "#003380", // navy
+  "#EE8005", // orpiment (dimmed)
+  "#FF0010", // red
   "#00998F", // turquoise
+  "#740AFF", // violet
   "#990000", // wine
 ];
 
