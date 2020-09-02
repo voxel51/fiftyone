@@ -41,7 +41,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
   }
 `);
 
-const ObjectEditorContainer = styled.div`
+const ObjectEditorContainer = animated(styled.div`
   font-weight: bold;
   position: fixed;
   line-height: 1rem;
@@ -49,16 +49,15 @@ const ObjectEditorContainer = styled.div`
   margin: 0.5rem;
   overflow: visible;
   display: flex;
-  border-width: 1;
+  border: 1px solid pink;
   border-style: solid;
   z-index: 800;
-`;
+`);
 
 const ObjectEditorTextArea = animated(styled.textarea`
   background-color: transparent;
   overflow: visible;
   line-height: 1rem;
-  margin: -0.5rem;
   border: none;
   color: ${({ theme }) => theme.font};
   height: 100%;
@@ -136,8 +135,8 @@ const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
   const { parameter, defaultValue, value, type } = state.context;
 
   const [cprops, cset] = useSpring(() => ({
-    left: followRef.current.getBoundingClientRect().x,
-    top: followRef.current.getBoundingClientRect().y,
+    left: 0,
+    top: 0,
     backgroundColor: state.matches("editing")
       ? theme.backgroundDark
       : state.matches("reading.submitted")
@@ -165,43 +164,67 @@ const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
     send("BLUR");
   });
 
+  useEffect(() => {
+    followRef.current &&
+      cset({
+        left: followRef.current.getBoundingClientRect().x,
+        top: followRef.current.getBoundingClientRect().y,
+        backgroundColor: state.matches("editing")
+          ? theme.backgroundDark
+          : state.matches("reading.submitted")
+          ? theme.backgroundLight
+          : theme.background,
+        borderColor: state.matches("editing")
+          ? theme.secondary
+          : active
+          ? theme.brand
+          : theme.fontDarkest,
+        config: {
+          duration: 1,
+        },
+      });
+  }, [followRef.current]);
+
   return (
-    <ObjectEditorContainer
-      style={cprops}
-      onClick={() => state.matches("reading") && send("EDIT")}
-      ref={containerRef}
-    >
-      {state.matches("reading") ? (
-        convert(value, makePlaceholder(parameter, type, defaultValue))
-      ) : (
-        <>
-          <ObjectEditorTextArea
-            key="textarea"
-            autoFocus={state.matches("editing")}
-            style={props}
-            onChange={(e) => {
-              send({
-                type: "CHANGE",
-                value: e.target.value.replace(/&#13/g, "\n"),
-              });
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send("COMMIT");
-              }
-            }}
-            value={value}
-            ref={inputRef}
-          ></ObjectEditorTextArea>
-          <Submit key="submit" send={send} />
-        </>
-      )}
-      <ErrorMessage
-        key="error"
-        serviceRef={parameterRef}
-        style={{ marginTop: "12rem", marginLeft: -10 }}
-      />
-    </ObjectEditorContainer>
+    <>
+      <animated.div style={{ height: "100%", ...props }} />
+      <ObjectEditorContainer
+        style={cprops}
+        onClick={() => state.matches("reading") && send("EDIT")}
+        ref={containerRef}
+      >
+        {state.matches("reading") ? (
+          convert(value, makePlaceholder(parameter, type, defaultValue))
+        ) : (
+          <>
+            <ObjectEditorTextArea
+              key="textarea"
+              autoFocus={state.matches("editing")}
+              style={props}
+              onChange={(e) => {
+                send({
+                  type: "CHANGE",
+                  value: e.target.value.replace(/&#13/g, "\n"),
+                });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  send("COMMIT");
+                }
+              }}
+              value={value}
+              ref={inputRef}
+            ></ObjectEditorTextArea>
+            <Submit key="submit" send={send} />
+          </>
+        )}
+        <ErrorMessage
+          key="error"
+          serviceRef={parameterRef}
+          style={{ marginTop: "12rem", marginLeft: -10 }}
+        />
+      </ObjectEditorContainer>
+    </>
   );
 };
 
@@ -209,7 +232,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(parameterRef);
   const inputRef = useRef();
-  const containerRef = useRef();
+  const [containerRef, setContainerRef] = useState({});
 
   const actionsMap = useMemo(
     () => ({
@@ -258,8 +281,14 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
   const isEditing = state.matches("editing");
 
   return (
-    <ViewStageParameterContainer ref={containerRef}>
-      {hasObjectType && containerRef.current ? (
+    <ViewStageParameterContainer
+      ref={(node) =>
+        node &&
+        node !== containerRef.current &&
+        setContainerRef({ current: node })
+      }
+    >
+      {hasObjectType ? (
         <ObjectEditor
           parameterRef={parameterRef}
           barRef={barRef}
