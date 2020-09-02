@@ -85,9 +85,7 @@ const Header = () => {
         <TitleDiv>
           <FiftyOneDiv>FiftyOne</FiftyOneDiv>
           <DatasetDiv>
-            {datasetNameValue
-              ? datasetNameValue.toUpperCase()
-              : "NO DATASET LOADED"}
+            {datasetNameValue ? datasetNameValue : "NO DATASET LOADED"}
           </DatasetDiv>
         </TitleDiv>
       </LeftDiv>
