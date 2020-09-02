@@ -55,6 +55,9 @@ jobs:
         exclude:
           - os: windows
             python-version: 3.5
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
