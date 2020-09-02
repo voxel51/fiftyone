@@ -2,7 +2,7 @@ import { setConsoleOptions, withConsole } from "@storybook/addon-console";
 import { withKnobs, radios } from "@storybook/addon-knobs";
 import { addDecorator } from "@storybook/react";
 import React from "react";
-import { RecoilRoot } from "../app/node_modules/recoil";
+import { RecoilRoot } from "recoil";
 import { ThemeProvider } from "styled-components";
 
 import { GlobalStyle } from "../app/shared/global";
