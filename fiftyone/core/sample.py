@@ -195,7 +195,7 @@ class _Sample(object):
     def to_dict(self):
         """Serializes the sample to a JSON dictionary.
 
-        Sample IDs are always excluded in this representation.
+        Sample IDs and private fields are excluded in this representation.
 
         Returns:
             a JSON dict
@@ -205,6 +205,8 @@ class _Sample(object):
 
     def to_json(self, pretty_print=False):
         """Serializes the sample to a JSON string.
+
+        Sample IDs and private fields are excluded in this representation.
 
         Args:
             pretty_print (False): whether to render the JSON in human readable
