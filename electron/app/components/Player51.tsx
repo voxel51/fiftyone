@@ -103,6 +103,8 @@ export default ({
       filter,
       enableOverlayOptions: {
         attrRenderMode: false,
+        attrsOnlyOnClick: false,
+        attrRenderBox: false,
       },
       defaultOverlayOptions: {
         action: "hover",
