@@ -99,14 +99,14 @@ export type Attrs = {
 
 const _formatAttributes = (obj) =>
   Object.fromEntries(
-    Object.entries(obj).filter(
-      ([key, value]) =>
-        !key.startsWith("_") &&
-        !RESERVED_DETECTION_FIELDS.includes(key) &&
-        ["string", "number", "boolean"].includes(typeof value)
-    )
-    // if we want to control string representations fiftyone-side:
-    // .map(([key, value]) => [key, stringify(value)])
+    Object.entries(obj)
+      .filter(
+        ([key, value]) =>
+          !key.startsWith("_") &&
+          !RESERVED_DETECTION_FIELDS.includes(key) &&
+          ["string", "number", "boolean"].includes(typeof value)
+      )
+      .map(([key, value]) => [key, stringify(value)])
   );
 
 export const getDetectionAttributes = (detection: object): Attrs => {
