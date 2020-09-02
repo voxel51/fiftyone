@@ -42,19 +42,19 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
 `);
 
 const ObjectEditorContainer = styled.div`
-  position: fixed;
   font-weight: bold;
+  position: fixed;
   line-height: 1rem;
   font-size: 14px;
-  position: relative;
   margin: 0.5rem;
   overflow: visible;
   display: flex;
+  border-width: 1;
+  border-style: solid;
   z-index: 800;
 `;
 
 const ObjectEditorTextArea = animated(styled.textarea`
-  position: relative;
   background-color: transparent;
   overflow: visible;
   line-height: 1rem;
@@ -130,6 +130,7 @@ const makePlaceholder = (parameter, type, defaultValue) =>
 
 const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
   const [state, send] = useService(parameterRef);
+  const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
 
   const { parameter, defaultValue, value, type } = state.context;
@@ -137,6 +138,16 @@ const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
   const [cprops, cset] = useSpring(() => ({
     left: followRef.current.getBoundingClientRect().x,
     top: followRef.current.getBoundingClientRect().y,
+    backgroundColor: state.matches("editing")
+      ? theme.backgroundDark
+      : state.matches("reading.submitted")
+      ? theme.backgroundLight
+      : theme.background,
+    borderColor: state.matches("editing")
+      ? theme.secondary
+      : active
+      ? theme.brand
+      : theme.fontDarkest,
     width: state.matches("editing") ? 400 : 0,
     config: {
       duration: 1,
@@ -235,8 +246,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
       : active
       ? theme.brand
       : theme.fontDarkest,
-    borderRightWidth: tail ? 1 : 0,
+    borderRightWidth: tail && !hasObjectType ? 1 : 0,
     height: hasObjectType && state.matches("editing") ? 200 : 34,
+    borderWidth: hasObjectType ? 0 : 1,
     opacity: 1,
     from: {
       opacity: 0,
@@ -247,48 +259,46 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
 
   return (
     <ViewStageParameterContainer ref={containerRef}>
-      <ViewStageParameterDiv style={props}>
-        {hasObjectType && containerRef.current ? (
-          <ObjectEditor
-            parameterRef={parameterRef}
-            barRef={barRef}
-            followRef={containerRef}
-            inputRef={inputRef}
+      {hasObjectType && containerRef.current ? (
+        <ObjectEditor
+          parameterRef={parameterRef}
+          barRef={barRef}
+          followRef={containerRef}
+          inputRef={inputRef}
+        />
+      ) : (
+        <ViewStageParameterDiv style={props}>
+          <ViewStageParameterInput
+            placeholder={makePlaceholder(parameter, type, defaultValue)}
+            autoFocus={state.matches("editing")}
+            value={value}
+            onFocus={() => !isEditing && send({ type: "EDIT" })}
+            onBlur={() => isEditing && send({ type: "COMMIT" })}
+            onChange={(e) => {
+              send({ type: "CHANGE", value: e.target.value });
+            }}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                isEditing && send({ type: "COMMIT" });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                send({ type: "COMMIT" });
+              }
+            }}
+            ref={inputRef}
           />
-        ) : (
-          <>
-            <ViewStageParameterInput
-              placeholder={makePlaceholder(parameter, type, defaultValue)}
-              autoFocus={state.matches("editing")}
-              value={value}
-              onFocus={() => !isEditing && send({ type: "EDIT" })}
-              onBlur={() => isEditing && send({ type: "COMMIT" })}
-              onChange={(e) => {
-                send({ type: "CHANGE", value: e.target.value });
-              }}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  isEditing && send({ type: "COMMIT" });
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  send({ type: "COMMIT" });
-                }
-              }}
-              ref={inputRef}
+          {containerRef.current && (
+            <ErrorMessage
+              key="error"
+              serviceRef={parameterRef}
+              barRef={barRef}
+              followRef={containerRef}
             />
-            {containerRef.current && (
-              <ErrorMessage
-                key="error"
-                serviceRef={parameterRef}
-                barRef={barRef}
-                followRef={containerRef}
-              />
-            )}
-          </>
-        )}
-      </ViewStageParameterDiv>
+          )}
+        </ViewStageParameterDiv>
+      )}
     </ViewStageParameterContainer>
   );
 });
