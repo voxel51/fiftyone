@@ -2,7 +2,7 @@ import _ from "lodash";
 import randomColor from "randomcolor";
 
 // From https://en.wikipedia.org/wiki/Help:Distinguishable_colors
-const FIXED_COLORS = [
+export const FIXED_COLORS = [
   "#0075DC", // blue
   "#993F00", // caramel
   "#4C005C", // damson
