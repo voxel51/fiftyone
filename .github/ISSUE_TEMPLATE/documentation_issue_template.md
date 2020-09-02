@@ -5,18 +5,19 @@ labels: "documentation"
 title: "[DOCUMENTATION]"
 ---
 
-Thank you for submitting an issue. Please refer to our
-[issue policy](https://www.github.com/voxel51/fiftyone/blob/develop/ISSUE_POLICY.md)
-for information on what types of issues we address.
-
-**Please fill in this documentation issue template to ensure a timely and
-thorough response.**
-
 ### Instructions
 
--   Place an "x" between the brackets of an item if it applies.
--   Feel free to add more labels to the issue when applicable
--   Please delete this section before submitting the issue
+Thank you for submitting an issue. Please refer to our
+[issue policy](https://www.github.com/voxel51/fiftyone/blob/master/ISSUE_POLICY.md)
+for information on what types of issues we address.
+
+**Please fill in this bug report template to ensure a timely and thorough
+response.**
+
+-   Place an "x" between the brackets next to an option if it applies. Example:
+    -   [x] Selected option
+-   Please delete this section (all content above this line) before submitting
+    the issue
 
 ### URL(s) with the issue:
 
