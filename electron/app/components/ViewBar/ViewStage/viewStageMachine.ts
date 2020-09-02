@@ -145,6 +145,12 @@ const viewStageMachine = Machine(
                     ),
                 currentResult: null,
                 focusOnInit: true,
+                bestMatch: ({ stageInfo, stage }) =>
+                  stageInfo
+                    .map((s) => s.name)
+                    .filter((n) =>
+                      n.toLowerCase().includes(stage.toLowerCase())
+                    )[0],
               }),
             ],
             type: "parallel",
@@ -193,6 +199,14 @@ const viewStageMachine = Machine(
                       ),
                   currentResult: null,
                   errorId: undefined,
+                  bestMatch: ({ stageInfo }, e) =>
+                    stageInfo
+                      .map((s) => s.name)
+                      .filter((n) =>
+                        n
+                          .toLowerCase()
+                          .includes(e.value ? e.value.toLowerCase() : "")
+                      )[0],
                 }),
               },
               COMMIT: [
