@@ -40,19 +40,19 @@ const Slider = styled(SliderUnstyled)`
     height: 3px;
   }
 
-  && .MuiSlider-rail {
+  .rail {
     height: 7px;
     border-radius: 6px;
     background: ${({ theme }) => theme.backgroundLight};
   }
 
-  && .MuiSlider-track {
+  .track {
     height: 7px;
     border-radius: 6px;
     background: ${({ theme }) => theme.brand};
   }
 
-  && .MuiSlider-thumb {
+  .thumb {
     height: 1rem;
     width: 1rem;
     border-radius: 0.5rem;
@@ -60,16 +60,16 @@ const Slider = styled(SliderUnstyled)`
     box-shadow: none;
   }
 
-  && .MuiSlider-thumb > span {
+  .thumb > span {
     margin-left: -0.5rem;
   }
 
-  && .MuiSlider-thumb [class*="PrivateValueLabel-circle-"] {
+  .thumb [class*="PrivateValueLabel-circle-"] {
     color: transparent;
     display: flex !important;
   }
 
-  && .MuiSlider-thumb [class*="PrivateValueLabel-label-"] {
+  .thumb [class*="PrivateValueLabel-label-"] {
     color: ${({ theme }) => theme.font};
     font-weight: bold;
     font-family: "Palanquin", sans-serif;
@@ -98,6 +98,11 @@ const RangeSlider = ({ atom, ...rest }) => {
         onChangeCommitted={(e, v) => {
           setLocalValue([...v]);
           setValue([...v]);
+        }}
+        classes={{
+          thumb: "thumb",
+          track: "track",
+          rail: "rail",
         }}
         valueLabelDisplay="auto"
         aria-labelledby="range-slider"
