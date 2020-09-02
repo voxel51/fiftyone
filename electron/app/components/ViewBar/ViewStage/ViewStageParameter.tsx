@@ -135,13 +135,12 @@ const ObjectEditor = ({
   stageRef,
 }) => {
   const [state, send] = useService(parameterRef);
-  const [stageState] = useService(stageRef);
   const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
 
   const { active, parameter, defaultValue, value, type } = state.context;
 
-  const [cprops, cset] = useSpring(() => ({
+  const [containerProps, containerSet] = useSpring(() => ({
     left: 0,
     top: 0,
     height: state.matches("editing") ? 200 : 36,
@@ -156,6 +155,10 @@ const ObjectEditor = ({
       : active
       ? theme.brand
       : theme.fontDarkest,
+    opacity: 1,
+    from: {
+      opacity: 0,
+    },
     config: {
       duration: 10,
     },
@@ -165,18 +168,20 @@ const ObjectEditor = ({
     width: state.matches("editing") ? 400 : 0,
   });
 
-  barRef && followRef && useFollow(barRef, followRef, cset);
-
   useOutsideClick(containerRef, (e) => {
     e.stopPropagation();
     send("BLUR");
   });
 
   useEffect(() => {
-    followRef.current &&
-      cset({
-        left: followRef.current.getBoundingClientRect().x,
-        top: followRef.current.getBoundingClientRect().y,
+    const update = () => {
+      containerSet({
+        left: state.matches("editing")
+          ? followRef.current.getBoundingClientRect().x
+          : 0,
+        top: state.matches("editing")
+          ? followRef.current.getBoundingClientRect().y
+          : 0,
         position: state.matches("editing") ? "fixed" : "relative",
         backgroundColor: state.matches("editing")
           ? theme.backgroundDark
@@ -189,12 +194,22 @@ const ObjectEditor = ({
           ? theme.brand
           : theme.fontDarkest,
         height: state.matches("editing") ? 200 : 34,
+        opacity: 1,
         config: {
           duration: 1,
         },
       });
-  }, [followRef.current, state.matches("editing"), stageState.event]);
-  console.log(stageState.event);
+
+      barRef.current.addEventListener("scroll", update);
+      window.addEventListener("scroll", update);
+
+      return () => {
+        barRef.current.removeEventListener("scroll", update);
+        window.removeEventListener("scroll", update);
+      };
+    };
+    followRef.current && update();
+  }, [followRef.current, state.matches("editing"), active]);
 
   return (
     <>
@@ -202,12 +217,12 @@ const ObjectEditor = ({
         <animated.div style={{ height: "100%", ...props }} />
       )}
       <ObjectEditorContainer
-        style={cprops}
+        style={containerProps}
         onClick={() => state.matches("reading") && send("EDIT")}
         ref={containerRef}
       >
         {state.matches("reading") ? (
-          <div style={{ padding: "0.5em" }}>
+          <div style={{ padding: "0.5em", whiteSpace: "nowrap" }}>
             {convert(value, makePlaceholder(parameter, type, defaultValue))}
           </div>
         ) : (

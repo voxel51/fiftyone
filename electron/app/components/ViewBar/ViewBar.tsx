@@ -42,7 +42,8 @@ const ViewBarDiv = styled.div`
 
 const IconsContainer = styled.div`
   position: absolute;
-  top: 1rem;
+  z-index: 904;
+  top: 14px;
   right: 0.5rem;
   display: flex;
 `;
