@@ -40,15 +40,21 @@ jobs:
           path: dist/*.whl
 
   test:
-    runs-on: ubuntu-18.04
+    runs-on: ${{ matrix.os }}
     if: github.event.pull_request.draft == false
     needs: build
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - ubuntu-18.04
+          - windows-latest
         python-version:
           - 3.5
           - 3.8
+        exclude:
+          - os: windows
+            python-version: 3.5
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
