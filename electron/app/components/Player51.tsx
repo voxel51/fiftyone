@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from "react";
 import uuid from "react-uuid";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
 import clickHandler from "../utils/click.ts";
-import { RESERVED_FIELDS, VALID_SCALAR_TYPES } from "../utils/labels";
+import {
+  RESERVED_FIELDS,
+  VALID_SCALAR_TYPES,
+  getDetectionAttributes,
+  convertAttributesToETA,
+} from "../utils/labels";
+
+import * as atoms from "../recoil/atoms";
 
 const PARSERS = {
   Classification: [
@@ -21,6 +29,7 @@ const PARSERS = {
     "objects",
     (name, obj) => {
       const bb = obj.bounding_box;
+      const attrs = convertAttributesToETA(getDetectionAttributes(obj));
       return {
         type: "eta.core.objects.DetectedObject",
         name,
@@ -30,12 +39,13 @@ const PARSERS = {
           top_left: { x: bb[0], y: bb[1] },
           bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
         },
+        attrs: { attrs },
       };
     },
   ],
 };
 
-const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
+const loadOverlay = (sample, colorMap, fieldSchema) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
@@ -46,20 +56,14 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
     const field = sample[sampleField];
     if (field === null || field === undefined) continue;
     if (["Classification", "Detection"].includes(field._cls)) {
-      if (!filter[sampleField] || !filter[sampleField](field)) {
-        continue;
-      }
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
-      playerColorMap[`${sampleField}`] = colorMapping[sampleField];
+      playerColorMap[`${sampleField}`] = colorMap[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
-        if (!filter[sampleField] || !filter[sampleField](object)) {
-          continue;
-        }
         const [key, fn] = PARSERS[object._cls];
         imgLabels[key][key].push(fn(sampleField, object));
-        playerColorMap[`${sampleField}`] = colorMapping[sampleField];
+        playerColorMap[`${sampleField}`] = colorMap[sampleField];
       }
       continue;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
@@ -70,7 +74,6 @@ const loadOverlay = (sample, colorMapping, fieldSchema, filter) => {
 };
 
 export default ({
-  colorMapping,
   thumbnail,
   sample,
   src,
@@ -80,14 +83,11 @@ export default ({
   onLoad = () => {},
   activeLabels,
   fieldSchema = {},
-  filter,
+  filterSelector,
 }) => {
-  const [overlay, playerColorMap] = loadOverlay(
-    sample,
-    colorMapping,
-    fieldSchema,
-    filter
-  );
+  const filter = useRecoilValue(filterSelector);
+  const colorMap = useRecoilValue(atoms.colorMap);
+  const [overlay, playerColorMap] = loadOverlay(sample, colorMap, fieldSchema);
   const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
@@ -101,6 +101,13 @@ export default ({
       colorMap: playerColorMap,
       activeLabels,
       filter,
+      enableOverlayOptions: {
+        attrRenderMode: false,
+      },
+      defaultOverlayOptions: {
+        action: "hover",
+        attrRenderMode: "attr-value",
+      },
     })
   );
   const props = thumbnail
@@ -115,8 +122,13 @@ export default ({
       setInitLoad(true);
       onLoad();
     } else {
-      player.updateOptions({ activeLabels, filter });
+      player.updateOptions({
+        activeLabels,
+        filter,
+        colorMap: playerColorMap,
+      });
     }
-  }, [filter, overlay, activeLabels]);
+  }, [filter, overlay, activeLabels, colorMap]);
+
   return <div id={id} style={style} {...props} />;
 };

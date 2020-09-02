@@ -747,6 +747,12 @@ class AppViewCommand(Command):
         # View a zoo dataset in the app
         fiftyone app view --zoo-dataset <name> --splits <split1> ...
 
+        # View a directory of images in the app
+        fiftyone app view --images-dir <images-dir>
+
+        # View a glob pattern of images in the app
+        fiftyone app view --images-patt <images-patt>
+
         # View a dataset stored in JSON format on disk in the app
         fiftyone app view --json-path <json-path>
 
@@ -783,6 +789,16 @@ class AppViewCommand(Command):
             metavar="SPLITS",
             nargs="+",
             help="the dataset splits to load",
+        )
+        parser.add_argument(
+            "--images-dir",
+            metavar="IMAGES_DIR",
+            help="the path to a directory of images",
+        )
+        parser.add_argument(
+            "--images-patt",
+            metavar="IMAGES_PATT",
+            help="a glob pattern of images",
         )
         parser.add_argument(
             "-j",
@@ -823,6 +839,16 @@ class AppViewCommand(Command):
             dataset = fod.Dataset.from_dir(
                 dataset_dir, dataset_type, name=name
             )
+        elif args.images_dir:
+            # View a directory of images
+            name = args.name
+            images_dir = args.images_dir
+            dataset = fod.Dataset.from_images_dir(images_dir, name=name)
+        elif args.images_patt:
+            # View a glob pattern of images
+            name = args.name
+            images_patt = args.images_patt
+            dataset = fod.Dataset.from_images_patt(images_patt, name=name)
         elif args.json_path:
             # View a dataset from a JSON file
             name = args.name

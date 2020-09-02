@@ -7,29 +7,49 @@ import * as atoms from "../recoil/atoms";
 
 import Filter from "./Filter";
 
-const CHECKBOX_SIZE = 24;
-const CHECKBOX_PADDING = 3;
-const CHECKBOX_TOTAL_SIZE = CHECKBOX_SIZE + 2 * CHECKBOX_PADDING;
-const LABEL_PADDING_RIGHT = 6;
+const GLOBAL_ATOMS = {
+  includeLabels: atoms.filterIncludeLabels,
+  invertInclude: atoms.filterInvertIncludeLabels,
+  includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
+  confidenceRange: atoms.filterLabelConfidenceRange,
+};
+
+const MODAL_ATOMS = {
+  includeLabels: atoms.modalFilterIncludeLabels,
+  invertInclude: atoms.modalFilterInvertIncludeLabels,
+  includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
+  confidenceRange: atoms.modalFilterLabelConfidenceRange,
+};
 
 const Body = styled.div`
   vertical-align: middle;
 
   label {
     width: 100%;
+    height: 32px;
     margin-top: 3px;
     margin-bottom: 3px;
     margin-left: 0;
     margin-right: 0;
+    padding: 0.2em;
     border-radius: 2px;
+    display: flex;
+    justify-content: space-between;
 
     .MuiTypography-body1 {
+      flex: 1;
       font-size: unset;
       align-items: center;
+      padding-right: 4px;
+      max-width: 100%;
+    }
+
+    .MuiTypography-body1.with-checkbox {
+      max-width: calc(100% - 24px);
     }
 
     .MuiCheckbox-root {
-      padding: ${CHECKBOX_PADDING}px;
+      padding: 0;
 
       .MuiIconButton-label {
         position: relative;
@@ -54,9 +74,7 @@ const Body = styled.div`
 
     .MuiFormControlLabel-label {
       display: inline-flex;
-      min-width: 100%;
       font-weight: bold;
-      padding-right: ${CHECKBOX_TOTAL_SIZE + LABEL_PADDING_RIGHT}px;
       color: unset;
 
       span {
@@ -64,14 +82,18 @@ const Body = styled.div`
       }
 
       span.name {
+        padding-left: 4px;
         white-space: nowrap;
         overflow-x: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
+        max-width: 100%;
+        line-height: 24px;
       }
 
       span.data {
         margin-left: 0.5em;
+        line-height: 24px;
       }
     }
   }
@@ -83,10 +105,10 @@ const Body = styled.div`
     svg, input[type=checkbox] {
       display: none;
     }
+  }
 
-    .MuiFormControlLabel-label {
-      padding-right: ${LABEL_PADDING_RIGHT + 2 * CHECKBOX_PADDING}px;
-    }
+  && .no-checkbox {
+    cursor: default;
   }
 `;
 
@@ -104,7 +126,7 @@ type Props = {
   onCheck: (entry: Entry) => void;
 };
 
-const Entry = ({ entry, onCheck }) => {
+const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
 
@@ -113,6 +135,9 @@ const Entry = ({ entry, onCheck }) => {
       onCheck({ ...entry, selected: !entry.selected });
     }
   };
+  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
+
+  const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
 
   return (
     <div key={entry.name}>
@@ -123,59 +148,66 @@ const Entry = ({ entry, onCheck }) => {
             <span className="name" title={entry.name}>
               {entry.name}
             </span>
-            <span className="data">{entry.data}</span>
-            {entry.selected && entry.type && (
-              <ArrowDropDown
-                onClick={(e) => {
-                  e.preventDefault();
-                  setExpanded(!expanded);
-                }}
-              />
-            )}
+            {entry.data}
+            {!(
+              entry.icon &&
+              !["Detections", "Classifications"].includes(entry.type)
+            ) &&
+              entry.selected &&
+              entry.type &&
+              entry.count > 0 && (
+                <ArrowDropDown
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setExpanded(!expanded);
+                  }}
+                />
+              )}
           </>
         }
+        classes={{
+          root: checkboxClass,
+          label: checkboxClass,
+        }}
         style={{
-          backgroundColor: entry.selected ? theme.backgroundLight : undefined,
-          color: entry.selected
-            ? theme.font
-            : entry.disabled
-            ? theme.fontDarkest
-            : theme.fontDark,
+          backgroundColor:
+            entry.hideCheckbox || entry.selected
+              ? theme.backgroundLight
+              : undefined,
+          width: "100%",
+          color:
+            entry.selected || entry.hideCheckbox
+              ? theme.font
+              : entry.disabled
+              ? theme.fontDarkest
+              : theme.fontDark,
         }}
         control={
           <Checkbox
             checked={entry.selected}
             onChange={() => handleCheck(entry)}
             style={{
-              color: entry.selected
-                ? entry.color
-                : entry.disabled
-                ? theme.fontDarkest
-                : theme.fontDark,
+              display: entry.hideCheckbox ? "none" : "block",
+              color:
+                entry.selected || entry.hideCheckbox
+                  ? entry.color
+                  : entry.disabled
+                  ? theme.fontDarkest
+                  : theme.fontDark,
             }}
           />
         }
       />
-      {expanded && entry.selected && (
-        <Filter
-          entry={entry}
-          {...{
-            includeLabels: atoms.filterIncludeLabels,
-            invertInclude: atoms.filterInvertIncludeLabels,
-            includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
-            confidenceRange: atoms.filterLabelConfidenceRange,
-          }}
-        />
-      )}
+      {expanded && entry.selected && <Filter entry={entry} {...atoms} />}
     </div>
   );
 };
 
-const CheckboxGrid = ({ entries, onCheck }: Props) => {
+const CheckboxGrid = ({ entries, onCheck, modal }: Props) => {
   return (
     <Body>
       {entries.map((entry) => (
-        <Entry key={entry.name} entry={entry} onCheck={onCheck} />
+        <Entry key={entry.name} entry={entry} onCheck={onCheck} modal={modal} />
       ))}
     </Body>
   );

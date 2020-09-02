@@ -1913,6 +1913,31 @@ class AggregationTests(unittest.TestCase):
                 self.assertEqual(count, counts[tag])
 
 
+class SliceTests(unittest.TestCase):
+    @drop_datasets
+    def test_slice(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample("1.jpg", tags=["tag1"]),
+                fo.Sample("2.jpg", tags=["tag1", "tag2"]),
+                fo.Sample("3.jpg", tags=["tag2", "tag3"]),
+            ]
+        )
+
+        view = dataset[0:2]
+        self.assertEqual(len(view), 2)
+
+        view = dataset[1:3]
+        self.assertEqual(len(view), 2)
+
+        view = dataset[0:0]
+        self.assertEqual(len(view), 0)
+
+        view = dataset[3:3]
+        self.assertEqual(len(view), 0)
+
+
 class ViewStageTests(unittest.TestCase):
     @drop_datasets
     def setUp(self):

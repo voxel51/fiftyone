@@ -1,31 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
-import {
-  ArrowDropDown,
-  Close,
-  Fullscreen,
-  FullscreenExit,
-} from "@material-ui/icons";
-import { useRecoilValue, useRecoilState } from "recoil";
+import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
+import { useRecoilState, useRecoilValue } from "recoil";
 
+import CheckboxGrid from "./CheckboxGrid";
+import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
-import Tag from "./Tags/Tag";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
-import Filter from "./Filter";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
-  stringify,
-  getLabelText,
   formatMetadata,
-  VALID_SCALAR_TYPES,
-  VALID_CLASS_TYPES,
-  VALID_OBJECT_TYPES,
-  RESERVED_FIELDS,
+  makeLabelNameGroups,
+  stringify,
 } from "../utils/labels";
 
 type Props = {
@@ -87,6 +78,21 @@ const Container = styled.div`
     }
   }
 
+  .top-right-nav-buttons {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    height: 5em;
+    font-size: 150%;
+    font-weight: bold;
+    user-select: none;
+
+    & > svg {
+      height: 2em;
+    }
+  }
+
   .nav-button {
     position: absolute;
     z-index: 1000;
@@ -109,13 +115,6 @@ const Container = styled.div`
     &.right {
       right: 0;
     }
-
-    &.fullscreen {
-      right: 0;
-      top: 0;
-      margin-top: 0;
-      height: 2em;
-    }
   }
 
   .sidebar {
@@ -133,6 +132,15 @@ const Container = styled.div`
       flex-grow: 1;
       overflow-y: auto;
     }
+    .sidebar-content::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+      display: none;
+    }
+    .sidebar-content::-webkit-scrollbar-thumb {
+      width: 0px;
+      display: none;
+    }
 
     ${ModalFooter} {
       align-items: flex-start;
@@ -140,32 +148,77 @@ const Container = styled.div`
   }
 
   .row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: wrap;
+
     > label {
       font-weight: bold;
+      display: block;
+      padding-right: 0.5rem;
+      width: auto;
     }
-    > span {
-      float: right;
+    > div {
+      display: block;
+      max-width: 100%;
+    }
+    span {
+      flex-grow: 2;
+      overflow-wrap: break-word;
+      vertical-align: middle;
     }
   }
 `;
 
+const TopRightNavButtonsContainer = styled.div`
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+`;
+
+const TopRightNavButtons = ({ children }) => {
+  return <TopRightNavButtonsContainer>{children}</TopRightNavButtonsContainer>;
+};
+
+const TopRightNavButtonContainer = styled.div`
+  display: block;
+  background-color: ${({ theme }) => theme.overlayButton};
+  cursor: pointer;
+  font-size: 150%;
+  font-weight: bold;
+  user-select: none;
+  width: 2em;
+  margin-top: 0;
+  height: 2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const TopRightNavButton = ({ icon, title, onClick, ...rest }) => {
+  return (
+    <TopRightNavButtonContainer title={title} onClick={onClick} {...rest}>
+      {icon}
+    </TopRightNavButtonContainer>
+  );
+};
+
 const Row = ({ name, renderedName, value, children, ...rest }) => (
   <div className="row" {...rest}>
     <label>{renderedName || name}&nbsp;</label>
-    <span>{value}</span>
+    <div>
+      <span title={value}>{value}</span>
+    </div>
     {children}
   </div>
 );
 
-const LabelRow = (props) => {
-  return <Row {...props}></Row>;
-};
-
 const SampleModal = ({
   sample,
   sampleUrl,
-  fieldSchema = {},
-  colorMapping = {},
+  colorMap = {},
   onClose,
   onPrevious,
   onNext,
@@ -175,9 +228,19 @@ const SampleModal = ({
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [filter, setFilter] = useRecoilState(selectors.labelFilters);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
+  );
+  const [activeTags, setActiveTags] = useRecoilState(atoms.modalActiveTags);
+  const tagNames = useRecoilValue(selectors.tagNames);
+
+  const fieldSchema = useRecoilValue(selectors.fieldSchema);
+  const labelNames = useRecoilValue(selectors.labelNames);
+  const labelTypes = useRecoilValue(selectors.labelTypes);
+  const labelNameGroups = makeLabelNameGroups(
+    fieldSchema,
+    labelNames,
+    labelTypes
   );
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
@@ -226,62 +289,78 @@ const SampleModal = ({
     [onClose, onPrevious, onNext, fullscreen]
   );
 
-  const makeTag = (name) => (
-    <Tag
-      key={name}
-      name={name}
-      color={colorMapping[name]}
-      outline={!activeLabels[name]}
-      onClick={() =>
-        setActiveLabels({ ...activeLabels, [name]: !activeLabels[name] })
-      }
-    />
+  const getDisplayOptions = (
+    values,
+    countOrExists,
+    selected,
+    hideCheckbox = false
+  ) => {
+    return [...values].sort().map(({ name, type }) => ({
+      hideCheckbox,
+      name,
+      type,
+      icon: ["boolean", "undefined"].includes(typeof countOrExists[name]) ? (
+        countOrExists[name] ? (
+          <Check style={{ color: colorMap[name] }} />
+        ) : (
+          <Close style={{ color: colorMap[name] }} />
+        )
+      ) : undefined,
+      count: countOrExists[name],
+      selected: Boolean(selected[name]),
+    }));
+  };
+
+  const handleSetDisplayOption = (setSelected) => (entry) => {
+    setSelected((selected) => ({
+      ...selected,
+      [entry.name]: entry.selected,
+    }));
+  };
+
+  const tagSampleExists = tagNames.reduce(
+    (acc, tag) => ({
+      ...acc,
+      [tag]: sample.tags.includes(tag),
+    }),
+    {}
   );
 
-  const classifications = Object.keys(sample)
-    .filter((k) => sample[k] && VALID_CLASS_TYPES.includes(sample[k]._cls))
-    .map((k) => {
+  const labelSampleValues = labelNameGroups.labels.reduce(
+    (obj, { name, type }) => {
       let value;
-      if (sample[k].classifications) {
-        const len = sample[k].classifications.length;
-        value = `${len} classification${len == 1 ? "" : "s"}`;
+      if (!sample[name]) {
+        value = 0;
       } else {
-        value = getLabelText(sample[k]);
+        value = ["Detections", "Classifcations"].includes(type)
+          ? sample[name][type.toLowerCase()].length
+          : 1;
       }
       return {
-        key: k,
-        name: k,
-        renderedName: makeTag(k),
-        value,
+        ...obj,
+        [name]: value,
       };
-    });
-  const detections = Object.keys(sample)
-    .filter((k) => sample[k] && VALID_OBJECT_TYPES.includes(sample[k]._cls))
-    .map((k) => {
-      const len = sample[k].detections ? sample[k].detections.length : 1;
-      return {
-        key: k,
-        name: k,
-        renderedName: makeTag(k),
-        value: `${len} detection${len == 1 ? "" : "s"}`,
-      };
-    });
-  const labels = [...classifications, ...detections]
-    .sort((a, b) => (a.key < b.key ? -1 : 1))
-    .map(LabelRow);
-  const scalars = Object.keys(sample)
-    .filter(
-      (k) =>
-        VALID_SCALAR_TYPES.includes(fieldSchema[k]) &&
-        !RESERVED_FIELDS.includes(k) &&
-        sample[k] !== null &&
-        sample[k] !== undefined
-    )
-    .map((k) => {
-      return (
-        <Row key={k} renderedName={makeTag(k)} value={stringify(sample[k])} />
-      );
-    });
+    },
+    {}
+  );
+
+  const scalarSampleValues = labelNameGroups.scalars.reduce(
+    (obj, { name }) => ({
+      ...obj,
+      [name]:
+        sample[name] !== undefined && sample[name] !== null
+          ? stringify(sample[name])
+          : undefined,
+    }),
+    {}
+  );
+
+  const otherSampleValues = labelNameGroups.unsupported.reduce((obj, label) => {
+    return {
+      ...obj,
+      [label]: label in sample,
+    };
+  }, {});
 
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
@@ -298,10 +377,10 @@ const SampleModal = ({
               ...playerStyle,
             }}
             sample={sample}
-            colorMapping={colorMapping}
+            colorMap={colorMap}
             activeLabels={activeLabels}
             fieldSchema={fieldSchema}
-            filter={filter}
+            filterSelector={selectors.modalLabelFilters}
           />
         )}
         {onPrevious ? (
@@ -322,55 +401,67 @@ const SampleModal = ({
             &gt;
           </div>
         ) : null}
-        <div
-          className="nav-button fullscreen"
-          title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-          onClick={() => setFullscreen(!fullscreen)}
-        >
-          {fullscreen ? <FullscreenExit /> : <Fullscreen />}
-        </div>
+        <TopRightNavButtons>
+          <TopRightNavButton
+            onClick={() => setFullscreen(!fullscreen)}
+            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
+          />
+        </TopRightNavButtons>
       </div>
       <div className="sidebar">
         <div className="sidebar-content">
           <h2>
             Metadata
             <span className="push-right" />
-            <span className="close-wrapper" title="Close">
-              <Close onClick={onClose} />
-            </span>
           </h2>
           <Row name="ID" value={sample._id.$oid} />
           <Row name="Source" value={sample.filepath} />
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
-          <Row
-            name="Tags"
-            value={
-              sample.tags.length
-                ? sample.tags.map((tag) => (
-                    <Tag
-                      key={tag}
-                      name={tag}
-                      color={colorMapping[tag]}
-                      maxWidth="10em"
-                    />
-                  ))
-                : "none"
-            }
+          <h2>
+            Display Options
+            <span className="push-right" />
+          </h2>
+          <DisplayOptionsSidebar
+            colorMap={colorMap}
+            tags={getDisplayOptions(
+              tagNames.map((t) => ({ name: t })),
+              tagSampleExists,
+              activeTags,
+              true
+            )}
+            labels={getDisplayOptions(
+              labelNameGroups.labels,
+              labelSampleValues,
+              activeLabels
+            )}
+            onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+            scalars={getDisplayOptions(
+              labelNameGroups.scalars,
+              scalarSampleValues,
+              activeLabels
+            )}
+            onSelectScalar={handleSetDisplayOption(setActiveLabels)}
+            unsupported={getDisplayOptions(
+              labelNameGroups.unsupported,
+              otherSampleValues,
+              activeLabels
+            )}
+            style={{
+              overflowY: "auto",
+              overflowX: "hidden",
+              height: "auto",
+            }}
+            modal={true}
           />
-          {labels.length ? (
-            <>
-              <h2>Labels</h2>
-              {labels}
-            </>
-          ) : null}
-          {scalars.length ? (
-            <>
-              <h2>Scalars</h2>
-              {scalars}
-            </>
-          ) : null}
+          <TopRightNavButton
+            onClick={onClose}
+            title={"Close"}
+            icon={<Close />}
+            style={{ position: "absolute", top: 0, right: 0 }}
+          />
         </div>
         <ModalFooter>
           <Button onClick={() => setShowJSON(!showJSON)}>

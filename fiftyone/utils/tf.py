@@ -38,11 +38,11 @@ def from_images_dir(images_dir, recursive=True, num_parallel_calls=None):
     return from_images(image_paths, num_parallel_calls=num_parallel_calls)
 
 
-def from_image_patt(image_patt, num_parallel_calls=None):
+def from_images_patt(images_patt, num_parallel_calls=None):
     """Creates a ``tf.data.Dataset`` for the given glob pattern of images.
 
     Args:
-        image_patt: a glob pattern of images like ``/path/to/images/*.jpg``
+        images_patt: a glob pattern of images like ``/path/to/images/*.jpg``
         num_parallel_calls (None): the number of samples to read
             asynchronously in parallel. See
             https://www.tensorflow.org/api_docs/python/tf/data/Dataset#map for
@@ -51,7 +51,7 @@ def from_image_patt(image_patt, num_parallel_calls=None):
     Returns:
         a ``tf.data.Dataset`` that emits decoded images
     """
-    image_paths = etau.parse_glob_pattern(image_patt)
+    image_paths = etau.get_glob_matches(images_patt)
     return from_images(image_paths, num_parallel_calls=num_parallel_calls)
 
 

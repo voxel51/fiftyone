@@ -405,17 +405,57 @@ class ViewExpression(object):
 
     # Array expression operators ##############################################
 
-    def __getitem__(self, idx):
-        """Returns the element at the given index in the expression, which must
-        resolve to an array ``self[idx]``.
+    def __getitem__(self, idx_or_slice):
+        """Returns the element or slice of the given expression, which must
+        resolve to an array.
+
+        All of the typical array slicing operations are supported, except for
+        specifying a non-unit step.
+
+        Examples::
+
+            expr[3]      # the fourth element of the array
+            expr[:10]    # the first (up to) 10 elements of the array
+            expr[-3:]    # the last (up to) 3 elements of the array
+            expr[3:10]   # the fourth through tenth elements of the array
 
         Args:
-            idx: the index
+            idx_or_slice: the index or slice
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$arrayElemAt": [self, idx]})
+        if not isinstance(idx_or_slice, slice):
+            return ViewExpression({"$arrayElemAt": [self, idx_or_slice]})
+
+        s = idx_or_slice
+
+        if s.step is not None and s.step != 1:
+            raise ValueError(
+                "Unsupported slice '%s'; step is not supported" % s
+            )
+
+        if s.start is not None:
+            if s.stop is None:
+                n = s.start
+                return ViewExpression({"$slice": [self, n]})
+
+            position = s.start
+            n = s.stop - position
+            if position < 0:
+                position += self.length()
+
+            return ViewExpression({"$slice": [self, position, n]})
+
+        if s.stop is None:
+            return self
+
+        if s.stop < 0:
+            n = self.length() + s.stop
+            return ViewExpression({"$slice": [self, n]})
+
+        n = s.stop
+        return ViewExpression({"$slice": [self, n]})
 
     def __len__(self):
         # Annoyingly, Python enforces deep in its depths that __len__ must
