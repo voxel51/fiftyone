@@ -72,7 +72,7 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
     -o docs/source/api fiftyone \
         fiftyone/brain/internal \
         fiftyone/brain/pytransform \
-        fiftyone/service/main.py
+        fiftyone/service
 rm -vf docs/source/api/*pytransform*.rst
 
 # Remove symlink
