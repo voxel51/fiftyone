@@ -199,6 +199,17 @@ const ViewStageDeleteButton = animated(styled.button`
   }
 `);
 
+const BestMatchDiv = styled.div`
+  position: absolute;
+  background-color: transparent;
+  border: none;
+  margin: 0.5rem;
+  color: ${({ theme }) => theme.secondary};
+  line-height: 1rem;
+  border: none;
+  font-weight: bold;
+`;
+
 const ViewStageDelete = React.memo(({ send, spring }) => {
   return (
     <ViewStageDeleteDiv style={spring} onClick={() => send("STAGE.DELETE")}>
@@ -229,6 +240,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     index,
     focusOnInit,
     active,
+    bestMatch,
   } = state.context;
 
   const isCompleted = [
@@ -287,7 +299,6 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     top: state.matches("focusedViewBar.yes") && state.context.active ? -3 : 0,
     config: config.stiff,
   });
-  console.log(state.context.bestMatch);
 
   return (
     <>
@@ -300,8 +311,11 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
         }
       >
         <ViewStageDiv style={props}>
+          {state.matches("input.editing") && bestMatch && (
+            <BestMatchDiv>{bestMatch}</BestMatchDiv>
+          )}
           <ViewStageInput
-            placeholder="+ add stage"
+            placeholder={state.matches("input.editing") ? "" : "+ add stage"}
             value={stage}
             autoFocus={focusOnInit}
             onFocus={() => !state.matches("input.editing") && send("EDIT")}
