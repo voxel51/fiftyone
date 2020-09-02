@@ -53,7 +53,7 @@ jobs:
           - 3.5
           - 3.8
         exclude:
-          - os: windows
+          - os: windows-latest
             python-version: 3.5
     defaults:
       run:
