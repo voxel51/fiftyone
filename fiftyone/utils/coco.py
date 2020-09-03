@@ -61,9 +61,12 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
     Args:
         classes (None): a list of class label strings. If not provided, the
             ``category_id`` of the annotations will be used as labels
+        supercategory_map (None): a dict mapping class labels to
+            supercategories. If provided, ``supercategory`` attributes will be
+            added to all parsed detections
     """
 
-    def __init__(self, classes=None):
+    def __init__(self, classes=None, supercategory_map=None):
         super().__init__(
             label_field=None,
             bounding_box_field=None,
@@ -72,11 +75,16 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
             classes=classes,
             normalized=False,  # image required to convert to relative coords
         )
+        self.supercategory_map = supercategory_map
 
     def _parse_detection(self, obj, img=None):
         coco_obj = COCOObject.from_annotation_dict(obj)
         frame_size = etai.to_frame_size(img=img)
-        return coco_obj.to_detection(frame_size, classes=self.classes)
+        return coco_obj.to_detection(
+            frame_size,
+            classes=self.classes,
+            supercategory_map=self.supercategory_map,
+        )
 
 
 class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -94,6 +102,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._data_dir = None
         self._info = None
         self._classes = None
+        self._supercategory_map = None
         self._images_map = None
         self._annotations = None
         self._filenames = None
@@ -126,7 +135,11 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             frame_size = (width, height)
             detections = fol.Detections(
                 detections=[
-                    obj.to_detection(frame_size, classes=self._classes)
+                    obj.to_detection(
+                        frame_size,
+                        classes=self._classes,
+                        supercategory_map=self._supercategory_map,
+                    )
                     for obj in self._annotations.get(image_id, [])
                 ]
             )
@@ -155,12 +168,14 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             (
                 info,
                 classes,
+                supercategory_map,
                 images,
                 annotations,
             ) = load_coco_detection_annotations(labels_path)
         else:
             info = {}
             classes = None
+            supercategory_map = None
             images = {}
             annotations = None
 
@@ -169,6 +184,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
         self._info = info
         self._classes = classes
+        self._supercategory_map = supercategory_map
         self._images_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
         self._filenames = etau.list_files(self._data_dir, abs_paths=False)
@@ -188,19 +204,23 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
+        info (None): a dict of info as returned by
+            :meth:`load_coco_detection_annotations`. If not provided, this info
+            will be extracted when :meth:`log_collection` is called, if
+            possible
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, classes=None, image_format=None):
+    def __init__(self, export_dir, classes=None, info=None, image_format=None):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
         self.classes = classes
+        self.info = info
         self.image_format = image_format
-        self._info = None
         self._labels_map_rev = None
         self._data_dir = None
         self._labels_path = None
@@ -239,7 +259,8 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self.classes = sample_collection.info["classes"]
             self._parse_classes()
 
-        self._info = sample_collection.info
+        if self.info is None:
+            self.info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(
@@ -287,20 +308,22 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
 
         date_created = datetime.now().replace(microsecond=0).isoformat()
         info = {
-            "year": self._info.get("year", ""),
-            "version": self._info.get("version", ""),
-            "description": self._info.get("year", "Exported from FiftyOne"),
-            "contributor": self._info.get("contributor", ""),
-            "url": self._info.get("url", "https://voxel51.com/fiftyone"),
-            "date_created": self._info.get("date_created", date_created),
+            "year": self.info.get("year", ""),
+            "version": self.info.get("version", ""),
+            "description": self.info.get("year", "Exported from FiftyOne"),
+            "contributor": self.info.get("contributor", ""),
+            "url": self.info.get("url", "https://voxel51.com/fiftyone"),
+            "date_created": self.info.get("date_created", date_created),
         }
 
-        licenses = self._info.get("licenses", [])
+        licenses = self.info.get("licenses", [])
+        categories = self.info.get("categories", None)
 
-        categories = [
-            {"id": i, "name": l, "supercategory": "none"}
-            for i, l in enumerate(classes)
-        ]
+        if categories is None:
+            categories = [
+                {"id": i, "name": l, "supercategory": None}
+                for i, l in enumerate(classes)
+            ]
 
         labels = {
             "info": info,
@@ -410,13 +433,15 @@ class COCOObject(etas.Serializable):
 
         return cls(None, None, category_id, bbox, area=area, iscrowd=iscrowd)
 
-    def to_detection(self, frame_size, classes=None):
+    def to_detection(self, frame_size, classes=None, supercategory_map=None):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of
         the object.
 
         Args:
             frame_size: the ``(width, height)`` of the image
             classes (None): the list of classes
+            supercategory_map (None): a dict mapping class names to
+                supercategories
 
         Returns:
             a :class:`fiftyone.core.labels.Detection`
@@ -431,6 +456,17 @@ class COCOObject(etas.Serializable):
         bounding_box = [x / width, y / height, w / width, h / height]
 
         detection = fol.Detection(label=label, bounding_box=bounding_box)
+
+        if supercategory_map is not None:
+            supercategory = supercategory_map.get(label, None)
+        else:
+            supercategory = None
+
+        if supercategory is not None:
+            # pylint: disable=unsupported-assignment-operation
+            detection.attributes["supercategory"] = fol.CategoricalAttribute(
+                value=supercategory
+            )
 
         if self.area is not None:
             # pylint: disable=unsupported-assignment-operation
@@ -495,6 +531,7 @@ def load_coco_detection_annotations(json_path):
 
         -   info: a dict of dataset info
         -   classes: a list of classes
+        -   supercategory_map: a dict mapping class labels to supercategories
         -   images: a dict mapping image filenames to image dicts
         -   annotations: a dict mapping image IDs to list of
             :class:`COCOObject` instances, or ``None`` for unlabeled datasets
@@ -504,15 +541,19 @@ def load_coco_detection_annotations(json_path):
     # Load info
     info = d.get("info", {})
     licenses = d.get("licenses", None)
+    categories = d.get("categories", None)
     if licenses is not None:
         info["licenses"] = licenses
 
-    # Load classes
-    categories = d.get("categories", None)
     if categories is not None:
-        classes = coco_categories_to_classes(categories)
+        info["categories"] = categories
+
+    # Load classes
+    if categories is not None:
+        classes, supercategory_map = parse_coco_categories(categories)
     else:
         classes = None
+        supercategory_map = None
 
     # Load image metadata
     images = {i["id"]: i for i in d.get("images", [])}
@@ -530,13 +571,14 @@ def load_coco_detection_annotations(json_path):
     else:
         annotations = None
 
-    return info, classes, images, annotations
+    return info, classes, supercategory_map, images, annotations
 
 
-def coco_categories_to_classes(categories):
-    """Converts the COCO categories list to a class list.
+def parse_coco_categories(categories):
+    """Parses the COCO categories list.
 
-    The returned list contains all class IDs from ``[0, max_id]``, inclusive.
+    The returned ``classes`` contains all class IDs from ``[0, max_id]``,
+    inclusive.
 
     Args:
         categories: a dict of the form::
@@ -546,21 +588,33 @@ def coco_categories_to_classes(categories):
                 {
                     "id": 2,
                     "name": "cat",
-                    "supercategory": "none"
+                    "supercategory": "animal"
                 },
                 ...
             ]
 
     Returns:
-        a list of classes
+        a tuple of
+
+        -   classes: a list of classes
+        -   supercategory_map: a dict mapping class labels to supercategories
     """
-    labels_map = {c["id"]: c["name"] for c in categories}
+    id_map = {
+        c["id"]: (c.get("name", None), c.get("supercategory", None))
+        for c in categories
+    }
 
     classes = []
-    for idx in range(max(labels_map) + 1):
-        classes.append(labels_map.get(idx, str(idx)))
+    supercategory_map = {}
+    for idx in range(max(id_map) + 1):
+        name, supercategory = id_map.get(idx, (None, None))
+        if name is None:
+            name = str(idx)
 
-    return classes
+        classes.append(name)
+        supercategory_map[name] = supercategory
+
+    return classes, supercategory_map
 
 
 def download_coco_dataset_split(dataset_dir, split, year="2017", cleanup=True):
