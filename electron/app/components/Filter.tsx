@@ -439,10 +439,13 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
       <ClassFilter name={entry.name} atoms={atoms} />
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         Confidence{" "}
-        {!isDefaultRange ? (
+        {!isDefaultRange || !includeNoConfidence ? (
           <a
             style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => setRange([0, 1])}
+            onClick={() => {
+              setRange([0, 1]);
+              setIncludeNoConfidence(true);
+            }}
           >
             reset
           </a>
