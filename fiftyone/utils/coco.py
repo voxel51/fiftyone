@@ -204,19 +204,23 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         classes (None): the list of possible class labels. If not provided,
             this list will be extracted when :meth:`log_collection` is called,
             if possible
+        info (None): a dict of info as returned by
+            :meth:`load_coco_detection_annotations`. If not provided, this info
+            will be extracted when :meth:`log_collection` is called, if
+            possible
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, export_dir, classes=None, image_format=None):
+    def __init__(self, export_dir, classes=None, info=None, image_format=None):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
         super().__init__(export_dir)
         self.classes = classes
+        self.info = info
         self.image_format = image_format
-        self._info = None
         self._labels_map_rev = None
         self._data_dir = None
         self._labels_path = None
@@ -255,7 +259,8 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self.classes = sample_collection.info["classes"]
             self._parse_classes()
 
-        self._info = sample_collection.info
+        if self.info is None:
+            self.info = sample_collection.info
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(
@@ -303,16 +308,16 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
 
         date_created = datetime.now().replace(microsecond=0).isoformat()
         info = {
-            "year": self._info.get("year", ""),
-            "version": self._info.get("version", ""),
-            "description": self._info.get("year", "Exported from FiftyOne"),
-            "contributor": self._info.get("contributor", ""),
-            "url": self._info.get("url", "https://voxel51.com/fiftyone"),
-            "date_created": self._info.get("date_created", date_created),
+            "year": self.info.get("year", ""),
+            "version": self.info.get("version", ""),
+            "description": self.info.get("year", "Exported from FiftyOne"),
+            "contributor": self.info.get("contributor", ""),
+            "url": self.info.get("url", "https://voxel51.com/fiftyone"),
+            "date_created": self.info.get("date_created", date_created),
         }
 
-        licenses = self._info.get("licenses", [])
-        categories = self._info.get("categories", None)
+        licenses = self.info.get("licenses", [])
+        categories = self.info.get("categories", None)
 
         if categories is None:
             categories = [
