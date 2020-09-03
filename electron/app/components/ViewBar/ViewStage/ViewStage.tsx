@@ -16,6 +16,7 @@ import { shell } from "electron";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
 import ErrorMessage from "./ErrorMessage";
+import { getMatch } from "./viewStageMachine";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem 0.25rem;
@@ -232,6 +233,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
 
   const {
     stage,
+    stageInfo,
     parameters,
     results,
     currentResult,
@@ -322,7 +324,11 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
-                send({ type: "COMMIT", value: e.target.value });
+                const match = getMatch(stageInfo, e.target.value);
+                send({
+                  type: "COMMIT",
+                  value: match ? match : bestMatch.value,
+                });
               }
             }}
             onKeyDown={(e) => {

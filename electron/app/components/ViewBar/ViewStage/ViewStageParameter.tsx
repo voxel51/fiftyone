@@ -5,7 +5,7 @@ import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
 import { PARSER, toTypeAnnotation } from "./viewStageParameterMachine";
-import { useFollow, useOutsideClick } from "../../../utils/hooks";
+import { useOutsideClick } from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
 
 const ViewStageParameterContainer = styled.div`

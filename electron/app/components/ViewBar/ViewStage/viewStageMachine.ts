@@ -37,17 +37,27 @@ const isValidStage = (stageInfo, stage) => {
     .some((n) => n.toLowerCase() === stage.toLowerCase());
 };
 
-const computeBestMatchString = (stageInfo, stage) => {
+const computeBestMatchString = (stageInfo, value) => {
   const match = stageInfo
     .map((s) => s.name)
-    .filter((n) => n.toLowerCase().startsWith(stage.toLowerCase()))[0];
+    .filter((n) => n.toLowerCase().startsWith(value.toLowerCase()))[0];
   if (match) {
     return {
-      placeholder: match.slice(stage.length),
+      placeholder: match.slice(value.length),
       value: match,
     };
   }
   return { placeholder: "", value: null };
+};
+
+export const getMatch = (stageInfo, value) => {
+  const results = stageInfo.filter(
+    (s) => s.name.toLowerCase() === value.toLowerCase()
+  );
+  if (results.length === 1) {
+    return results[0];
+  }
+  return null;
 };
 
 const viewStageMachine = Machine(
@@ -250,12 +260,8 @@ const viewStageMachine = Machine(
                     }),
                     send("UPDATE_DELIBLE"),
                   ],
-                  cond: (ctx, e) => {
-                    const result = ctx.stageInfo.filter(
-                      (s) => s.name.toLowerCase() === e.value.toLowerCase()
-                    );
-                    return result.length === 1;
-                  },
+                  cond: ({ stageInfo }, { value }) =>
+                    getMatch(stageInfo, value),
                 },
                 {
                   actions: [
