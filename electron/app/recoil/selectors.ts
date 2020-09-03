@@ -185,3 +185,25 @@ export const refreshColorMap = selector({
     );
   },
 });
+
+export const isLabel = selectorFamily({
+  key: "isLabel",
+  get: (field) => ({ get }) => {
+    const types = get(labelTypes);
+    return Boolean(types[field]);
+  },
+});
+
+export const fieldIsFiltered = selectorFamily({
+  key: "fieldIsFiltered",
+  get: (field) => ({ get }) => {
+    const label = get(isLabel(field));
+    const range = get(atoms.filterLabelConfidenceRange(field));
+    const none = get(atoms.filterLabelIncludeNoConfidence(field));
+    const include = get(atoms.filterIncludeLabels(field));
+    return (
+      label &&
+      !([0, 1].every((b, i) => b == range[i]) && none && !include.length)
+    );
+  },
+});

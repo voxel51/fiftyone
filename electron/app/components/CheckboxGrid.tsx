@@ -1,9 +1,11 @@
 import React, { useContext, useEffect, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
-import { ArrowDropDown } from "@material-ui/icons";
+import { ArrowDropDown, NoEncryption } from "@material-ui/icons";
+import { useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 
 import Filter from "./Filter";
 
@@ -134,6 +136,7 @@ type Props = {
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
+  const fieldIsFiltered = useRecoilValue(selectors.fieldIsFiltered(entry.name));
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -148,6 +151,7 @@ const Entry = ({ entry, onCheck, modal }) => {
     <div
       key={entry.name}
       style={{
+        border: fieldIsFiltered ? `1px solid ${theme.secondaryLight}` : "none",
         backgroundColor:
           entry.hideCheckbox || entry.selected
             ? theme.backgroundLight
