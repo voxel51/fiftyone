@@ -768,13 +768,13 @@ class SampleTests(unittest.TestCase):
 
     @drop_datasets
     def test_get_field(self):
-        filepath = "/path/to/image.jpg"
-        sample = fo.Sample(filepath=filepath)
+        field_value = "custom_value"
+        sample = fo.Sample(filepath="/path/to/image.jpg", field1=field_value)
 
         # get valid
-        self.assertEqual(sample.get_field("filepath"), filepath)
-        self.assertEqual(sample["filepath"], filepath)
-        self.assertEqual(sample.filepath, filepath)
+        self.assertEqual(sample.get_field("field1"), field_value)
+        self.assertEqual(sample["field1"], field_value)
+        self.assertEqual(sample.field1, field_value)
 
         # get missing
         with self.assertRaises(AttributeError):
