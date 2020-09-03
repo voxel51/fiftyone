@@ -379,6 +379,7 @@ const viewStageMachine = Machine(
             if (currentResult === null) return results[0];
             return results[Math.min(currentResult + 1, results.length - 1)];
           },
+          bestMatch: {},
         }),
       },
       PREVIOUS_RESULT: {
@@ -391,6 +392,7 @@ const viewStageMachine = Machine(
             if (currentResult === 0 || currentResult === null) return prevStage;
             return results[currentResult - 1];
           },
+          bestMatch: {},
         }),
       },
       BAR_FOCUS: "focusedViewBar.yes",
