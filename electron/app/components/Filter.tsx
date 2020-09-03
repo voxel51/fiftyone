@@ -466,6 +466,7 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
               checked={includeNoConfidence}
               onChange={() => setIncludeNoConfidence(!includeNoConfidence)}
               style={{
+                padding: "0 5px",
                 color: entry.selected ? entry.color : theme.fontDark,
               }}
             />
