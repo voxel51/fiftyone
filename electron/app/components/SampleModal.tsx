@@ -262,7 +262,8 @@ const SampleModal = ({
     (e) => {
       if (
         document.activeElement &&
-        document.activeElement.tagName.toLowerCase() === "input"
+        document.activeElement.tagName.toLowerCase() === "input" &&
+        !["checkbox", "radio"].includes(document.activeElement.type)
       ) {
         return;
       } else if (e.key == "Escape") {
