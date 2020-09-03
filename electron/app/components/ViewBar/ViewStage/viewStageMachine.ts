@@ -55,7 +55,7 @@ export const getMatch = (stageInfo, value) => {
     (s) => s.name.toLowerCase() === value.toLowerCase()
   );
   if (results.length === 1) {
-    return results[0];
+    return results[0].name;
   }
   return null;
 };

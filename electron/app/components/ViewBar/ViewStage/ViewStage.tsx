@@ -344,6 +344,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
                   break;
                 case "ArrowRight":
                   e.target.selectionStart === e.target.value.length &&
+                    bestMatch.value &&
                     send({ type: "CHANGE", value: bestMatch.value });
                   break;
               }
