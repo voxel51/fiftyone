@@ -53,6 +53,7 @@ const FiftyOneDiv = styled.div`
 
 const DatasetDiv = styled.div`
   line-height: 1;
+  font-weight: bold;
 `;
 
 const IconWrapper = styled.div`

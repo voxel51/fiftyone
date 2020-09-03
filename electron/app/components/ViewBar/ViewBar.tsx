@@ -15,7 +15,7 @@ const ViewBarContainer = styled.div`
   position: relative;
   width: 100%;
   background-color: ${({ theme }) => theme.background};
-  margin: 1rem 0;
+  padding: 1rem 0;
 `;
 
 const ViewBarDiv = styled.div`
@@ -43,7 +43,7 @@ const ViewBarDiv = styled.div`
 const IconsContainer = styled.div`
   position: absolute;
   z-index: 904;
-  top: 14px;
+  top: 30px;
   right: 0.5rem;
   display: flex;
 `;
