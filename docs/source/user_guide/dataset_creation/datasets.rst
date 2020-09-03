@@ -650,7 +650,7 @@ where ``labels.json`` is a JSON file in the following format:
             {
                 "id": 2,
                 "name": "cat",
-                "supercategory": "none"
+                "supercategory": "animal"
             },
             ...
         ],
