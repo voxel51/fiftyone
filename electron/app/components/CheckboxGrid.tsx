@@ -23,16 +23,21 @@ const MODAL_ATOMS = {
 
 const Body = styled.div`
   vertical-align: middle;
+  font-weight: bold;
+
+  & > div {
+  margin-top: 3px;
+  margin-bottom: 3px;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0.2em;
+  border-radius: 2px;
+  }
 
   label {
+    margin: 0;
     width: 100%;
     height: 32px;
-    margin-top: 3px;
-    margin-bottom: 3px;
-    margin-left: 0;
-    margin-right: 0;
-    padding: 0.2em;
-    border-radius: 2px;
     display: flex;
     justify-content: space-between;
 
@@ -140,7 +145,15 @@ const Entry = ({ entry, onCheck, modal }) => {
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
 
   return (
-    <div key={entry.name}>
+    <div
+      key={entry.name}
+      style={{
+        backgroundColor:
+          entry.hideCheckbox || entry.selected
+            ? theme.backgroundLight
+            : undefined,
+      }}
+    >
       <FormControlLabel
         disabled={entry.disabled}
         label={
@@ -170,10 +183,6 @@ const Entry = ({ entry, onCheck, modal }) => {
           label: checkboxClass,
         }}
         style={{
-          backgroundColor:
-            entry.hideCheckbox || entry.selected
-              ? theme.backgroundLight
-              : undefined,
           width: "100%",
           color:
             entry.selected || entry.hideCheckbox

@@ -435,7 +435,7 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
   const isDefaultRange = range[0] === 0 && range[1] === 1;
 
   return (
-    <FilterDiv style={style}>
+    <div style={{ margin: 6 }}>
       <ClassFilter name={entry.name} atoms={atoms} />
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         Confidence{" "}
@@ -472,7 +472,7 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
           }
         />
       </ConfidenceContainer>
-    </FilterDiv>
+    </div>
   );
 });
 
