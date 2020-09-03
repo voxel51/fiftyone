@@ -274,7 +274,10 @@ const SampleModal = ({
 
   useKeydownHandler(
     (e) => {
-      if (document.activeElement.tagName.toLowerCase() === "input") {
+      if (
+        document.activeElement &&
+        document.activeElement.tagName.toLowerCase() === "input"
+      ) {
         return;
       } else if (e.key == "Escape") {
         if (fullscreen) {
