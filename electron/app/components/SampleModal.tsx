@@ -262,8 +262,9 @@ const SampleModal = ({
     (e) => {
       if (
         document.activeElement &&
-        document.activeElement.tagName.toLowerCase() === "input" &&
-        !["checkbox", "radio"].includes(document.activeElement.type)
+        ((document.activeElement.tagName.toLowerCase() === "input" &&
+          !["checkbox", "radio"].includes(document.activeElement.type)) ||
+          document.activeElement.getAttribute("role") === "slider")
       ) {
         return;
       } else if (e.key == "Escape") {
