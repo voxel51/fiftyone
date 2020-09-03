@@ -1101,7 +1101,7 @@ class Shuffle(ViewStage):
 
     def __init__(self, seed=None, _randint=None):
         self._seed = seed
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_randint(seed)
 
     @property
     def seed(self):
@@ -1313,7 +1313,7 @@ class Take(ViewStage):
     def __init__(self, size, seed=None, _randint=None):
         self._seed = seed
         self._size = size
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_randint(seed)
 
     @property
     def size(self):
@@ -1357,13 +1357,15 @@ class Take(ViewStage):
         ]
 
 
-def _get_rng(seed):
-    if seed is None:
-        return random
+def _get_randint(seed):
+    if seed is not None:
+        _random = random.Random()
+        _random.seed(seed)
+    else:
+        _random = random
 
-    _random = random.Random()
-    _random.seed(seed)
-    return _random
+    # 63 bits since this must fit in a 64 bit signed integer
+    return _random.getrandbits(63)
 
 
 def _validate_fields_exist(sample_collection, field_or_fields):

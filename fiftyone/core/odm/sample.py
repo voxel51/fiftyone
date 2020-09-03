@@ -81,7 +81,7 @@ def _generate_rand(filepath=None):
     if filepath is not None:
         _random.seed(filepath)
 
-    return _random.random() * 0.001 + 0.999
+    return _random.getrandbits(48)
 
 
 def default_sample_fields(include_private=False):
@@ -209,7 +209,7 @@ class DatasetSampleDocument(Document, SampleDocument):
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
     # Random float used for random dataset operations (e.g. shuffle)
-    _rand = fof.FloatField(default=_generate_rand)
+    _rand = fof.IntField()
 
     def __setattr__(self, name, value):
         # pylint: disable=no-member
