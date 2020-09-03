@@ -206,8 +206,6 @@ const SampleModal = ({
   sampleUrl,
   colorMap = {},
   onClose,
-  onPrevious,
-  onNext,
   ...rest
 }: Props) => {
   const playerContainerRef = useRef();
@@ -219,7 +217,6 @@ const SampleModal = ({
   );
   const [activeTags, setActiveTags] = useRecoilState(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
-
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
   const labelNames = useRecoilValue(selectors.labelNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
@@ -231,6 +228,23 @@ const SampleModal = ({
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
+
+  // save overlay options when navigating - these are restored by passing them
+  // in defaultOverlayOptions when the new player is created
+  const playerRef = useRef();
+  const [savedOverlayOptions, setSavedOverlayOptions] = useState({});
+  const wrapNavigationFunc = (callback) => {
+    if (callback) {
+      return () => {
+        if (playerRef.current) {
+          setSavedOverlayOptions(playerRef.current.getOverlayOptions());
+        }
+        callback();
+      };
+    }
+  };
+  const onPrevious = wrapNavigationFunc(rest.onPrevious);
+  const onNext = wrapNavigationFunc(rest.onNext);
 
   const handleResize = () => {
     if (!playerContainerRef.current || showJSON) {
@@ -374,6 +388,8 @@ const SampleModal = ({
             activeLabels={activeLabels}
             fieldSchema={fieldSchema}
             filterSelector={selectors.modalLabelFilters}
+            playerRef={playerRef}
+            defaultOverlayOptions={savedOverlayOptions}
           />
         )}
         {onPrevious ? (

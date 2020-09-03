@@ -88,6 +88,8 @@ export default ({
   activeLabels,
   fieldSchema = {},
   filterSelector,
+  playerRef,
+  defaultOverlayOptions,
 }) => {
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
@@ -111,11 +113,15 @@ export default ({
         attrRenderBox: false,
       },
       defaultOverlayOptions: {
+        ...defaultOverlayOptions,
         action: "hover",
         attrRenderMode: "attr-value",
       },
     })
   );
+  if (playerRef) {
+    playerRef.current = player;
+  }
   const props = thumbnail
     ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
     : {};
