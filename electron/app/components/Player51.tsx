@@ -9,6 +9,7 @@ import {
   VALID_SCALAR_TYPES,
   getDetectionAttributes,
   convertAttributesToETA,
+  stringify,
 } from "../utils/labels";
 
 import * as atoms from "../recoil/atoms";
@@ -67,7 +68,10 @@ const loadOverlay = (sample, colorMap, fieldSchema) => {
       }
       continue;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
-      imgLabels.attrs.attrs.push({ name: sampleField, value: field });
+      imgLabels.attrs.attrs.push({
+        name: sampleField,
+        value: stringify(field),
+      });
     }
   }
   return [imgLabels, playerColorMap];
