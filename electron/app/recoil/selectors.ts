@@ -203,7 +203,7 @@ export const fieldIsFiltered = selectorFamily({
     const include = get(atoms.filterIncludeLabels(field));
     return (
       label &&
-      !([0, 1].every((b, i) => b == range[i]) && none && !include.length)
+      !([0, 1].every((b, i) => b === range[i]) && none && !include.length)
     );
   },
 });
