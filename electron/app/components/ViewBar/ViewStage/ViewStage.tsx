@@ -336,13 +336,17 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
                 case "ArrowUp":
                   send("PREVIOUS_RESULT");
                   break;
+                case "ArrowRight":
+                  e.target.selectionStart === e.target.value.length &&
+                    send({ type: "CHANGE", value: bestMatch.value });
+                  break;
               }
             }}
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
           <BestMatchDiv>
-            {state.matches("input.editing") ? bestMatch : ""}
+            {state.matches("input.editing") ? bestMatch.placeholder : ""}
           </BestMatchDiv>
           {isCompleted && (
             <Help

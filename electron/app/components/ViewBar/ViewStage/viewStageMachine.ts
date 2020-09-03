@@ -42,10 +42,12 @@ const computeBestMatchString = (stageInfo, stage) => {
     .map((s) => s.name)
     .filter((n) => n.toLowerCase().startsWith(stage.toLowerCase()))[0];
   if (match) {
-    console.log(match, stage.length);
-    return match.slice(stage.length);
+    return {
+      placeholder: match.slice(stage.length),
+      value: match,
+    };
   }
-  return "";
+  return { placeholder: "", value: null };
 };
 
 const viewStageMachine = Machine(
