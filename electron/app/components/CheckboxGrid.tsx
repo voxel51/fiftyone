@@ -26,12 +26,12 @@ const Body = styled.div`
   font-weight: bold;
 
   & > div {
-  margin-top: 3px;
-  margin-bottom: 3px;
-  margin-left: 0;
-  margin-right: 0;
-  padding: 0.2em;
-  border-radius: 2px;
+    margin-top: 3px;
+    margin-bottom: 3px;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0.2em;
+    border-radius: 2px;
   }
 
   label {
@@ -174,6 +174,7 @@ const Entry = ({ entry, onCheck, modal }) => {
                     e.preventDefault();
                     setExpanded(!expanded);
                   }}
+                  style={{ marginRight: -4 }}
                 />
               )}
           </>
