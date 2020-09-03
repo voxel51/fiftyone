@@ -78,21 +78,6 @@ const Container = styled.div`
     }
   }
 
-  .top-right-nav-buttons {
-    position: absolute;
-    top: 0;
-    right: 0;
-    display: flex;
-    height: 5em;
-    font-size: 150%;
-    font-weight: bold;
-    user-select: none;
-
-    & > svg {
-      height: 2em;
-    }
-  }
-
   .nav-button {
     position: absolute;
     z-index: 1000;
@@ -173,6 +158,7 @@ const Container = styled.div`
 
 const TopRightNavButtonsContainer = styled.div`
   position: absolute;
+  z-index: 1000;
   top: 0;
   right: 0;
   display: flex;
@@ -274,7 +260,14 @@ const SampleModal = ({
 
   useKeydownHandler(
     (e) => {
-      if (e.key == "Escape") {
+      if (
+        document.activeElement &&
+        ((document.activeElement.tagName.toLowerCase() === "input" &&
+          !["checkbox", "radio"].includes(document.activeElement.type)) ||
+          document.activeElement.getAttribute("role") === "slider")
+      ) {
+        return;
+      } else if (e.key == "Escape") {
         if (fullscreen) {
           setFullscreen(false);
         } else if (onClose) {

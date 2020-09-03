@@ -380,7 +380,7 @@ class COCODetectionDataset(ImageDetectionDataset):
                 {
                     "id": 2,
                     "name": "cat",
-                    "supercategory": "none"
+                    "supercategory": "animal"
                 },
                 ...
             ],
