@@ -37,7 +37,7 @@ const ViewStageInput = styled(AuosizeInput)`
   & input {
     background-color: transparent;
     border: none;
-    margin: 0.5rem;
+    margin: 0.5rem 0 0.5rem 0.5rem;
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     border: none;
@@ -200,10 +200,9 @@ const ViewStageDeleteButton = animated(styled.button`
 `);
 
 const BestMatchDiv = styled.div`
-  position: absolute;
   background-color: transparent;
   border: none;
-  margin: 0.5rem;
+  margin: 0.5rem 0.5rem 0.5rem 0;
   color: ${({ theme }) => theme.secondary};
   line-height: 1rem;
   border: none;
@@ -311,9 +310,6 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
         }
       >
         <ViewStageDiv style={props}>
-          {state.matches("input.editing") && bestMatch && (
-            <BestMatchDiv>{bestMatch}</BestMatchDiv>
-          )}
           <ViewStageInput
             placeholder={state.matches("input.editing") ? "" : "+ add stage"}
             value={stage}
@@ -345,6 +341,9 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
+          <BestMatchDiv>
+            {state.matches("input.editing") ? bestMatch : ""}
+          </BestMatchDiv>
           {isCompleted && (
             <Help
               onClick={() =>

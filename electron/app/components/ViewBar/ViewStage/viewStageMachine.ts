@@ -37,6 +37,17 @@ const isValidStage = (stageInfo, stage) => {
     .some((n) => n.toLowerCase() === stage.toLowerCase());
 };
 
+const computeBestMatchString = (stageInfo, stage) => {
+  const match = stageInfo
+    .map((s) => s.name)
+    .filter((n) => n.toLowerCase().startsWith(stage.toLowerCase()))[0];
+  if (match) {
+    console.log(match, stage.length);
+    return match.slice(stage.length);
+  }
+  return "";
+};
+
 const viewStageMachine = Machine(
   {
     id: "viewStage",
@@ -146,11 +157,7 @@ const viewStageMachine = Machine(
                 currentResult: null,
                 focusOnInit: true,
                 bestMatch: ({ stageInfo, stage }) =>
-                  stageInfo
-                    .map((s) => s.name)
-                    .filter((n) =>
-                      n.toLowerCase().includes(stage.toLowerCase())
-                    )[0],
+                  computeBestMatchString(stageInfo, stage),
               }),
             ],
             type: "parallel",
@@ -199,14 +206,8 @@ const viewStageMachine = Machine(
                       ),
                   currentResult: null,
                   errorId: undefined,
-                  bestMatch: ({ stageInfo }, e) =>
-                    stageInfo
-                      .map((s) => s.name)
-                      .filter((n) =>
-                        n
-                          .toLowerCase()
-                          .includes(e.value ? e.value.toLowerCase() : "")
-                      )[0],
+                  bestMatch: ({ stageInfo }, { value }) =>
+                    computeBestMatchString(stageInfo, value),
                 }),
               },
               COMMIT: [
