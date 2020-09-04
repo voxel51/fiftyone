@@ -1,8 +1,8 @@
 import React from "react";
 import styled from "styled-components";
 import { useRecoilValue } from "recoil";
-import { shell } from "electron";
 
+import ExternalLink from "./ExternalLink";
 import * as selectors from "../recoil/selectors";
 import logo from "../logo.png";
 import { GitHub, MenuBook } from "@material-ui/icons";
@@ -92,34 +92,24 @@ const Header = () => {
       </LeftDiv>
       <RightDiv>
         <IconWrapper>
-          <a
+          <ExternalLink
             title="Slack"
-            onClick={() =>
-              shell.openExternal(
-                "https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg"
-              )
-            }
+            href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg"
           >
             <Slack />
-          </a>
-          <a
+          </ExternalLink>
+          <ExternalLink
             title="GitHub"
-            onClick={() =>
-              shell.openExternal("https://github.com/voxel51/fiftyone")
-            }
+            href="https://github.com/voxel51/fiftyone"
           >
             <GitHub />
-          </a>
-          <a
+          </ExternalLink>
+          <ExternalLink
             title="Documentation"
-            onClick={() =>
-              shell.openExternal(
-                "https://voxel51.com/docs/fiftyone/user_guide/app.html"
-              )
-            }
+            href="https://voxel51.com/docs/fiftyone/user_guide/app.html"
           >
             <MenuBook />
-          </a>
+          </ExternalLink>
         </IconWrapper>
       </RightDiv>
     </HeaderDiv>

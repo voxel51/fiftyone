@@ -1,7 +1,6 @@
 Using FiftyOne Datasets
 =======================
 
-.. include:: ../substitutions.rst
 .. default-role:: code
 
 After a |WhatIsAFiftyOneDataset| has been loaded or created, FiftyOne provides

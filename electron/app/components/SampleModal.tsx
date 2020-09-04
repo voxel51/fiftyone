@@ -4,23 +4,27 @@ import styled from "styled-components";
 import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 
+import CheckboxGrid from "./CheckboxGrid";
+import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
-import * as CheckboxGrid from "./CheckboxGrid";
-import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 
 import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
-import { formatMetadata, makeLabelNameGroups } from "../utils/labels";
+import {
+  formatMetadata,
+  makeLabelNameGroups,
+  stringify,
+} from "../utils/labels";
 
 type Props = {
   sample: object;
   sampleUrl: string;
 };
 
-const Container = styled(CheckboxGrid.Body)`
+const Container = styled.div`
   display: grid;
   grid-template-columns: auto 280px;
   width: 90vw;
@@ -71,21 +75,6 @@ const Container = styled(CheckboxGrid.Body)`
 
     .p51-video-options-panel {
       z-index: 1500;
-    }
-  }
-
-  .top-right-nav-buttons {
-    position: absolute;
-    top: 0;
-    right: 0;
-    display: flex;
-    height: 5em;
-    font-size: 150%;
-    font-weight: bold;
-    user-select: none;
-
-    & > svg {
-      height: 2em;
     }
   }
 
@@ -169,6 +158,7 @@ const Container = styled(CheckboxGrid.Body)`
 
 const TopRightNavButtonsContainer = styled.div`
   position: absolute;
+  z-index: 1000;
   top: 0;
   right: 0;
   display: flex;
@@ -271,7 +261,14 @@ const SampleModal = ({
 
   useKeydownHandler(
     (e) => {
-      if (e.key == "Escape") {
+      if (
+        document.activeElement &&
+        ((document.activeElement.tagName.toLowerCase() === "input" &&
+          !["checkbox", "radio"].includes(document.activeElement.type)) ||
+          document.activeElement.getAttribute("role") === "slider")
+      ) {
+        return;
+      } else if (e.key == "Escape") {
         if (fullscreen) {
           setFullscreen(false);
         } else if (onClose) {
@@ -296,14 +293,13 @@ const SampleModal = ({
       hideCheckbox,
       name,
       type,
-      icon:
-        typeof countOrExists[name] === "boolean" ? (
-          countOrExists[name] ? (
-            <Check style={{ color: colorMap[name] }} />
-          ) : (
-            <Close style={{ color: colorMap[name] }} />
-          )
-        ) : undefined,
+      icon: ["boolean", "undefined"].includes(typeof countOrExists[name]) ? (
+        countOrExists[name] ? (
+          <Check style={{ color: colorMap[name] }} />
+        ) : (
+          <Close style={{ color: colorMap[name] }} />
+        )
+      ) : undefined,
       count: countOrExists[name],
       selected: Boolean(selected[name]),
     }));
@@ -345,7 +341,10 @@ const SampleModal = ({
   const scalarSampleValues = labelNameGroups.scalars.reduce(
     (obj, { name }) => ({
       ...obj,
-      [name]: sample[name] ? sample[name] : false,
+      [name]:
+        sample[name] !== undefined && sample[name] !== null
+          ? stringify(sample[name])
+          : undefined,
     }),
     {}
   );

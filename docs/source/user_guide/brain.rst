@@ -1,7 +1,6 @@
 FiftyOne Brain
 ==============
 
-.. include:: ../substitutions.rst
 .. default-role:: code
 
 The FiftyOne Brain provides powerful machine learning techniques that are

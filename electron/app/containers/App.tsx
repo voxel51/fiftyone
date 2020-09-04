@@ -1,11 +1,14 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useEffect, useRef } from "react";
 import ReactGA from "react-ga";
+import { Button, Modal, Label } from "semantic-ui-react";
 import { useSetRecoilState } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import { GlobalStyle, ThemeProvider } from "styled-components";
 
 import Header from "../components/Header";
+import PortForm from "../components/PortForm";
+import { updatePort } from "../actions/update";
 
 import { updateState, updateConnected, updateLoading } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
@@ -119,6 +122,31 @@ function App(props: Props) {
       <Header />
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
         {children}
+        <Modal
+          trigger={
+            <Button
+              style={{ padding: "1rem", display: "none" }}
+              ref={portRef}
+            ></Button>
+          }
+          size="tiny"
+          onClose={() => {
+            dispatch(updatePort(result.port));
+            setSocket(getSocket(result.port, "state"));
+          }}
+        >
+          <Modal.Header>Port number</Modal.Header>
+          <Modal.Content>
+            <Modal.Description>
+              <PortForm
+                setResult={setResultFromForm}
+                connected={connected}
+                port={port}
+                invalid={false}
+              />
+            </Modal.Description>
+          </Modal.Content>
+        </Modal>
       </div>
     </ErrorBoundary>
   );

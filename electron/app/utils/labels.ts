@@ -10,6 +10,12 @@ export const VALID_SCALAR_TYPES = [
 ];
 
 export const RESERVED_FIELDS = ["metadata", "_id", "tags", "filepath"];
+export const RESERVED_DETECTION_FIELDS = [
+  "label",
+  "bounding_box",
+  "confidence",
+  "attributes",
+];
 
 export const METADATA_FIELDS = [
   { name: "Size (bytes)", key: "size_bytes" },
@@ -83,3 +89,40 @@ export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
   }
   return labelNameGroups;
 }
+
+export type Attrs = {
+  [name: string]: {
+    name: string;
+    value: string;
+  };
+};
+
+const _formatAttributes = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj)
+      .filter(
+        ([key, value]) =>
+          !key.startsWith("_") &&
+          !RESERVED_DETECTION_FIELDS.includes(key) &&
+          ["string", "number", "boolean"].includes(typeof value)
+      )
+      .map(([key, value]) => [key, stringify(value)])
+  );
+
+export const getDetectionAttributes = (detection: object): Attrs => {
+  return {
+    ..._formatAttributes(detection),
+    ..._formatAttributes(
+      Object.fromEntries(
+        Object.entries(detection.attributes).map(([key, value]) => [
+          key,
+          value.value,
+        ])
+      )
+    ),
+  };
+};
+
+export const convertAttributesToETA = (attrs: Attrs): object[] => {
+  return Object.entries(attrs).map(([name, value]) => ({ name, value }));
+};

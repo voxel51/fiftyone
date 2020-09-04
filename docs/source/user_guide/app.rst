@@ -1,7 +1,6 @@
 Using the FiftyOne App
 ======================
 
-.. include:: ../substitutions.rst
 .. default-role:: code
 
 The FiftyOne App is a powerful graphical user interface that enables you to

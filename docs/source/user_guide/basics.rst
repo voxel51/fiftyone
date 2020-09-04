@@ -1,7 +1,6 @@
 FiftyOne Dataset Basics
 =======================
 
-.. include:: ../substitutions.rst
 .. default-role:: code
 
 FiftyOne Datasets are the core data structure in FiftyOne, allowing you to

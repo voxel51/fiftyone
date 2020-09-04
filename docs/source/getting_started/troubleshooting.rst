@@ -4,7 +4,6 @@
 Install Troubleshooting
 =======================
 
-.. include:: /substitutions.rst
 .. default-role:: code
 
 This page lists common issues encountered when installing FiftyOne and possible

@@ -60,7 +60,6 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
-    "sphinx.ext.autosectionlabel",
     "nbsphinx",
     "sphinx_tabs.tabs",
     "sphinx_copybutton",
@@ -88,7 +87,13 @@ source_suffix = [".rst", ".md"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ["_includes"]
+
+# A string of reStructuredText that will be included at the beginning of every
+# source file that is read
+rst_prolog = """
+.. include:: /_includes/substitutions.rst
+"""
 
 # Disable nbshinx loading require.js - this breaks the pytorch theme's
 # scrolling handling, and we don't appear to have any notebook content that
