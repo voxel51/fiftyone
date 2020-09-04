@@ -1,8 +1,6 @@
 FiftyOne User Guide
 ===================
 
-.. include:: ../substitutions.rst
-
 Welcome to the FiftyOne User Guide!
 
 Each section in this guide provides an example-centric deep dive into a core
