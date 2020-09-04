@@ -22,11 +22,24 @@ const SelectionMenu = ({ port, dispatch }) => {
     });
   };
 
+  const sendEvent = (event) => {
+    socket.emit(event, (data) => {
+      dispatch(updateState(data));
+    });
+  };
+
   return (
     <DropdownTag
       name={selectedSamples.size + " selected"}
       onSelect={(item) => item.action()}
-      menuItems={[{ name: "Clear selection", action: clearSelection }]}
+      menuItems={[
+        { name: "Clear selection", action: clearSelection },
+        { name: "Hide selected", action: () => sendEvent("exclude_selected") },
+        {
+          name: "Only show selected",
+          action: () => sendEvent("select_selected"),
+        },
+      ]}
       menuZIndex={500}
     />
   );

@@ -264,6 +264,48 @@ class StateController(Namespace):
 
         return _get_distributions(view, group)
 
+    @_load_state
+    def on_select_selected(self, state):
+        """Adds a Select stage containing the selected samples to the current
+        view (creating a view if necessary).
+
+        Args:
+            state: the current
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+
+        Returns:
+            the updated
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+        """
+        if not state.dataset or not state.selected:
+            return state
+
+        if state.view is None:
+            state.view = state.dataset.view()
+        state.view = state.view.select(state.selected)
+        return state
+
+    @_load_state
+    def on_exclude_selected(self, state):
+        """Adds an Exclude stage containing the selected samples to the current
+        view (creating a view if necessary).
+
+        Args:
+            state: the current
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+
+        Returns:
+            the updated
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+        """
+        if not state.dataset or not state.selected:
+            return state
+
+        if state.view is None:
+            state.view = state.dataset.view()
+        state.view = state.view.exclude(state.selected)
+        return state
+
 
 def _get_distributions(view, group):
     pipeline = DISTRIBUTION_PIPELINES[group]
