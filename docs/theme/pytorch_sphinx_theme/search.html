@@ -9,8 +9,8 @@
 #}
 {%- extends "layout.html" %}
 {% set title = _('Search') %}
-{% set script_files = script_files + ['_static/searchtools.js'] %}
 {% block footer %}
+  <script type="text/javascript" src="{{ pathto('_static/searchtools.js', 1) }}" defer></script>
   <script type="text/javascript" src="{{ pathto('searchindex.js', 1) }}" defer></script>
   {{ super() }}
 {% endblock %}

@@ -138,7 +138,7 @@ packages via `pip` in your virtual environment:
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.
 
-.. _upgrading-fiftyone
+.. _upgrading-fiftyone:
 
 Upgrading FiftyOne
 ------------------
@@ -150,7 +150,7 @@ upgrade an existing FiftyOne installation:
 
    pip install --index https://pypi.voxel51.com --upgrade fiftyone
 
-.. _uninstalling-fiftyone
+.. _uninstalling-fiftyone:
 
 Uninstalling FiftyOne
 ---------------------

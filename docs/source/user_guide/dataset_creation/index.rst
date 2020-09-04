@@ -2,7 +2,6 @@ Loading data into FiftyOne
 ==========================
 
 .. default-role:: code
-.. include:: ../../substitutions.rst
 
 The first step to using FiftyOne is to load your data into a
 |WhatIsAFiftyOneDataset|. FiftyOne supports automatic loading of datasets stored in
@@ -70,7 +69,7 @@ below to figure out which option is best for you.
 
         .. note::
 
-            :doc:`Learn more  <datasets>` about loading common-format datasets!
+            :doc:`Learn more <datasets>` about loading common-format datasets!
 
     .. tab:: I have data in a custom format
 
@@ -243,8 +242,8 @@ below to figure out which option is best for you.
                   dataset.add_samples(samples)
 
         If your data does not fit naturally into this pattern, check out the
-        :ref:`advanced loading options <Advanced loading options>` to find the
-        best approach for your use case.
+        `Advanced loading options`_ section to find the best approach for your
+        use case.
 
         .. note::
 
@@ -292,7 +291,7 @@ your custom format.
         For example, a `torch.utils.data.Dataset` is a parser for various
         datasets that has been wrapped in a FiftyOne |SampleParser|.
 
-        :ref:`Writing a custom SampleParser<Writing a custom SampleParser>`
+        :ref:`Writing a custom SampleParser <custom-sample-parser>`
         will allow you to automatically load your samples using these methods:
 
         - :meth:`Dataset.add_labeled_images() <fiftyone.core.dataset.Dataset.add_labeled_images>`
@@ -334,7 +333,7 @@ your custom format.
 
         .. note::
 
-            :ref:`Learn more <Writing a custom SampleParser>` about
+            :ref:`Learn more <custom-sample-parser>` about
             implementing your own custom SampleParser!
 
     .. tab:: My data is stored as media files on disk
@@ -343,7 +342,7 @@ your custom format.
         recommended option to load into FiftyOne is to create a custom
         |DatasetImporter|.
 
-        :ref:`Writing your own DatasetImporter <Writing a custom Dataset type>`
+        :ref:`Writing your own DatasetImporter <writing-a-custom-dataset-type-importer>`
         will allow you to use
         :meth:`Dataset.from_importer() <fiftyone.core.dataset.Dataset.from_importer>`
         to automatically load your data:
@@ -363,13 +362,13 @@ your custom format.
 
         .. note::
 
-            :ref:`Learn more <Writing a custom DatasetImporter>` about
+            :ref:`Learn more <writing-a-custom-dataset-importer>` about
             implementing your own custom DatasetImporter!
 
         You can take this a step further by writing a custom |DatasetType|
         that encapsulates your dataset format. This will allow you to import
         (and export) datasets in your custom format using
-        :meth:`dataset.from_dir()<fiftyone.core.dataset.Dataset.from_dir>`:
+        :meth:`dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
 
         .. code-block:: python
             :linenos:
@@ -386,7 +385,7 @@ your custom format.
 
         .. note::
 
-            :ref:`Learn more <Writing a custom Dataset type>` about
+            :ref:`Learn more <writing-a-custom-dataset-type-importer>` about
             implementing your own custom Dataset type!
 
 .. toctree::

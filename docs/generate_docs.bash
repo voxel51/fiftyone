@@ -69,7 +69,10 @@ ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
-    -o docs/source/api fiftyone fiftyone/brain/internal
+    -o docs/source/api fiftyone \
+        fiftyone/brain/internal \
+        fiftyone/brain/pytransform \
+        fiftyone/service
 rm -vf docs/source/api/*pytransform*.rst
 
 # Remove symlink
