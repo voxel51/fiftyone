@@ -17,7 +17,7 @@ import SelectionTag from "./SelectionTag";
 
 const Container = styled.div`
   .popper {
-    z-index: 1;
+    z-index: ${({ menuZIndex }) => menuZIndex};
   }
 `;
 
@@ -27,17 +27,26 @@ const Body = styled(SelectionTag.Body)`
   text-transform: none;
 `;
 
-const DropdownTag = ({ name, menuItems, ...rest }) => {
+const DropdownTag = ({
+  name,
+  menuItems,
+  menuZIndex = 1,
+  onSelect,
+  ...rest
+}) => {
   // adapted from https://material-ui.com/components/menus/#menulist-composition
   const [isOpen, setOpen] = useState(false);
   const anchorRef = useRef(null);
 
   const handleToggle = () => setOpen(!isOpen);
   const handleClose = () => setOpen(false);
-  const handleSelect = () => setOpen(false);
+  const handleSelect = (item) => {
+    onSelect(item);
+    setOpen(false);
+  };
 
   return (
-    <Container>
+    <Container menuZIndex={menuZIndex}>
       <Button ref={anchorRef} onClick={handleToggle}>
         <Body {...rest}>
           {name} <ArrowDropDown />

@@ -191,6 +191,21 @@ class StateController(Namespace):
         state.selected = list(selected)
         return state
 
+    @_load_state
+    def on_clear_selection(self, state):
+        """Remove all samples from the selected samples list
+
+        Args:
+            state: the current
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+
+        Returns:
+            the updated
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+        """
+        state.selected = []
+        return state
+
     def on_page(self, page, page_length=20):
         """Gets the requested page of samples.
 
