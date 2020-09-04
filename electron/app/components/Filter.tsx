@@ -330,12 +330,15 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
   const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
     atoms.includeNoConfidence(entry.name)
   );
-  const bounds = useRecoilValue(selectors.labelConfidenceBounds(entry.name));
   const [range, setRange] = useRecoilState(atoms.confidenceRange(entry.name));
+  const bounds = useRecoilValue(atoms.confidenceBounds(entry.name));
   const theme = useContext(ThemeContext);
 
-  const isDefaultRange = range[0] === 0 && range[1] === 1;
+  const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   const hasBounds = bounds.every((b) => b !== null);
+
+  useEffect(() => setRange([...bounds]), [bounds]);
+
   return (
     <div style={{ margin: 6 }}>
       <ClassFilter name={entry.name} atoms={atoms} />
@@ -345,7 +348,7 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
           <a
             style={{ cursor: "pointer", textDecoration: "underline" }}
             onClick={() => {
-              setRange([0, 1]);
+              setRange([...bounds]);
               setIncludeNoConfidence(true);
             }}
           >
@@ -356,10 +359,8 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
       <ConfidenceContainer>
         {hasBounds && (
           <RangeSlider
-            atom={atoms.confidenceRange(entry.name)}
-            min={bounds[0]}
-            max={bounds[1]}
-            step={0.01}
+            rangeAtom={atoms.confidenceRange(entry.name)}
+            boundsAtom={selectors.labelConfidenceBounds(entry.name)}
           />
         )}
         <FormControlLabel

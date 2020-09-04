@@ -14,6 +14,7 @@ const GLOBAL_ATOMS = {
   invertInclude: atoms.filterInvertIncludeLabels,
   includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
   confidenceRange: atoms.filterLabelConfidenceRange,
+  confidenceBounds: selectors.labelConfidenceBounds,
 };
 
 const MODAL_ATOMS = {
@@ -21,6 +22,7 @@ const MODAL_ATOMS = {
   invertInclude: atoms.modalFilterInvertIncludeLabels,
   includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
   confidenceRange: atoms.modalFilterLabelConfidenceRange,
+  confidenceBounds: selectors.labelConfidenceBounds,
 };
 
 const Body = styled.div`
@@ -138,7 +140,6 @@ const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
   const fieldIsFiltered = useRecoilValue(selectors.fieldIsFiltered(entry.name));
-  console.log(entry);
 
   const handleCheck = (entry) => {
     if (onCheck) {

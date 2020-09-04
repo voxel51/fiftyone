@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { RecoilState, useRecoilState } from "recoil";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
@@ -63,30 +63,38 @@ const Slider = styled(SliderUnstyled)`
   }
 `;
 
-export type Range = [number, number];
+type RangeValue = number | undefined;
 
-const valueText = (value: Range) => {
-  return `${value[0].toFixed(2)}-${value[1].toFixed(2)}`;
+export type Range = [RangeValue, RangeValue];
+
+const valueText = (value: number) => {
+  return value.toFixed(2);
 };
 
 type Props = {
-  atom: RecoilState<Range>;
+  rangeAtom: RecoilState<Range>;
+  boundsAtom: RecoilState<Range>;
   max: number;
   min: number;
   step: number;
 };
 
-const RangeSlider = ({ atom, max, min, step }: Props) => {
-  const [value, setValue] = useRecoilState<Range>(atom);
-  const [localValue, setLocalValue] = useState<Range>([0, 1]);
+const RangeSlider = ({ rangeAtom, boundsAtom }: Props) => {
+  const [value, setValue] = useRecoilState<Range>(rangeAtom);
+  const bounds = useRecoilValue<Range>(boundsAtom);
+  const [localValue, setLocalValue] = useState<Range>([null, null]);
   useEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
   }, [value]);
-  console.log(min, max);
-  return (
+
+  const hasBounds =
+    bounds.every((b) => b !== null) && bounds[1] - bounds[0] > 0;
+  const hasValue = value.every((v) => v !== null);
+
+  return hasBounds && hasValue ? (
     <SliderContainer>
-      {min.toFixed(2)}
+      {bounds[0].toFixed(2)}
       <Slider
         value={[...localValue]}
         onChange={(_, v: Range) => setLocalValue([...v])}
@@ -104,13 +112,13 @@ const RangeSlider = ({ atom, max, min, step }: Props) => {
         aria-labelledby="range-slider"
         getAriaValueText={valueText}
         valueLabelDisplay={"on"}
-        max={max}
-        min={min}
-        step={step}
+        max={bounds[1]}
+        min={bounds[0]}
+        step={(bounds[1] - bounds[0]) / 100}
       />
-      {max.toFixed(2)}
+      {bounds[1].toFixed(2)}
     </SliderContainer>
-  );
+  ) : null;
 };
 
 export default RangeSlider;

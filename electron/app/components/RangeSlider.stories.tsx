@@ -8,11 +8,16 @@ const rangeAtomStory = atom<Range>({
   default: [0, 1],
 });
 
+const boundsAtomStory = atom<Range>({
+  key: "rangeAtomStory",
+  default: [null, null],
+});
+
 export default {
   component: RangeSlider,
   title: "RangeSlider",
 };
 
 export const standard = () => (
-  <RangeSlider atom={rangeAtomStory} min={0} max={1} step={0.01} />
+  <RangeSlider rangeAtom={rangeAtomStory} boundsAtom={boundsAtomStory} />
 );
