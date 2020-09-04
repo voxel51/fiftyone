@@ -236,7 +236,7 @@ def _get_label_field_derivables(view):
     return {
         field.name: {
             "confidence_bounds": confidence_bounds[field.name],
-            "classes": _get_label_classes(view, field.name),
+            "classes": classes[field.name],
         }
         for field in label_fields
     }
