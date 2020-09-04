@@ -268,6 +268,19 @@ def _get_label_fields(custom_fields_schema):
     return filter(_filter, custom_fields_schema.items())
 
 
+def _get_numeric_range(view, path):
+    path = "$%s" % path
+    pipeline = [
+        {"$group": {"_id": None, "min": {"$min": path}, "max": {"$max": path}}}
+    ]
+
+    try:
+        result = next(view.aggregate(pipeline))
+        return [result["min"], result["max"]]
+    except StopIteration:
+        return None
+
+
 def _get_field_count(view, field_name, field):
     if isinstance(field, fof.EmbeddedDocumentField):
         if issubclass(field.document_type, fol.Classifications):
