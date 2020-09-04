@@ -277,14 +277,19 @@ def _get_numeric_field_ranges(view):
         )
     )
     path = "$%s"
-    min_key = "%s:min"
-    max_key = "%s:max"
-    ranges = {"_id": None}
-    for field in numeric_fields:
-        ranges[min_key % field.name] = {"$min": path % field.name}
-        ranges[max_key % field.name] = {"$max": path % field.name}
-
-    pipeline = [{"$group": ranges}]
+    facets = {
+        field.name: [
+            {
+                "$group": {
+                    "_id": None,
+                    "min": {"$min": path % field.name},
+                    "max": {"$max": path % field.name},
+                }
+            }
+        ]
+        for field in numeric_fields
+    }
+    pipeline = [{"$facet": facets}]
 
     try:
         result = next(view.aggregate(pipeline))
@@ -293,8 +298,8 @@ def _get_numeric_field_ranges(view):
 
     return {
         field.name: [
-            result[min_key % field.name],
-            result[max_key % field.name],
+            result[field.name][0]["min"],
+            result[field.name][0]["max"],
         ]
         for field in numeric_fields
     }
