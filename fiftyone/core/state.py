@@ -219,21 +219,21 @@ def get_view_stats(dataset_or_view):
     return {
         "tags": {tag: len(view.match_tag(tag)) for tag in view.get_tags()},
         "custom_fields": {
-            field_name: _get_field_count(view, field_name, field)
+            field_name: _get_field_count(view, field)
             for field_name, field in custom_fields_schema.items()
         },
         "label_classes": {
-            field.name: _get_label_classes(view, field_name, field)
+            field.name: _get_label_classes(view, field)
             for field in _get_label_fields(view)
         },
         "numeric_field_ranges": _get_numeric_field_ranges(view),
     }
 
 
-def _get_label_classes(view, field_name, field):
+def _get_label_classes(view, field):
     pipeline = []
     is_list = False
-    path = "$%s" % field_name
+    path = "$%s" % field.name
     if issubclass(field.document_type, fol.Classifications):
         path = "%s.classifications" % path
         is_list = True
@@ -351,12 +351,12 @@ def _get_label_confidence_ranges(view):
     }
 
 
-def _get_field_count(view, field_name, field):
+def _get_field_count(view, field):
     if isinstance(field, fof.EmbeddedDocumentField):
         if issubclass(field.document_type, fol.Classifications):
-            array_field = "$%s.classifications" % field_name
+            array_field = "$%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
-            array_field = "$%s.detections" % field_name
+            array_field = "$%s.detections" % field.name
         else:
             array_field = None
 
@@ -383,4 +383,4 @@ def _get_field_count(view, field_name, field):
             except StopIteration:
                 return 0
 
-    return len(view.exists(field_name))
+    return len(view.exists(field.name))
