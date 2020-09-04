@@ -151,7 +151,11 @@ const Entry = ({ entry, onCheck, modal }) => {
     <div
       key={entry.name}
       style={{
-        border: fieldIsFiltered ? `1px solid ${theme.secondaryLight}` : "none",
+        border: fieldIsFiltered
+          ? `1px solid ${theme.fontDark}`
+          : entry.hideCheckbox || entry.selected
+          ? `1px solid ${theme.background}`
+          : `1px solid transparent`,
         backgroundColor:
           entry.hideCheckbox || entry.selected
             ? theme.backgroundLight
