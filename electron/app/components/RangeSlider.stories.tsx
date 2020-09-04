@@ -1,9 +1,9 @@
 import React from "react";
-import RangeSlider from "./RangeSlider";
+import RangeSlider, { Range } from "./RangeSlider";
 
 import { atom } from "recoil";
 
-const rangeAtomStory = atom<[number, number]>({
+const rangeAtomStory = atom<Range>({
   key: "rangeAtomStory",
   default: [0, 1],
 });

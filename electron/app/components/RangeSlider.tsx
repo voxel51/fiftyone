@@ -63,22 +63,22 @@ const Slider = styled(SliderUnstyled)`
   }
 `;
 
-type range = [number, number];
+export type Range = [number, number];
 
-const valueText = (value: range) => {
+const valueText = (value: Range) => {
   return `${value[0]}-${value[1]}`;
 };
 
 type Props = {
-  atom: RecoilState<range>;
+  atom: RecoilState<Range>;
   max: number;
   min: number;
   step: number;
 };
 
 const RangeSlider = ({ atom, max, min, step }: Props) => {
-  const [value, setValue] = useRecoilState<range>(atom);
-  const [localValue, setLocalValue] = useState<range>([0, 1]);
+  const [value, setValue] = useRecoilState<Range>(atom);
+  const [localValue, setLocalValue] = useState<Range>([0, 1]);
   useEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
@@ -89,8 +89,8 @@ const RangeSlider = ({ atom, max, min, step }: Props) => {
       {min}
       <Slider
         value={[...localValue]}
-        onChange={(_, v: range) => setLocalValue([...v])}
-        onChangeCommitted={(_, v: range) => {
+        onChange={(_, v: Range) => setLocalValue([...v])}
+        onChangeCommitted={(_, v: Range) => {
           setLocalValue([...v]);
           setValue([...v]);
         }}
