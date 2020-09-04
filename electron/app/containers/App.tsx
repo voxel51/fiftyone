@@ -12,7 +12,7 @@ import { updatePort } from "../actions/update";
 import { updateState, updateConnected, updateLoading } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
-import { stateDescription } from "../recoil/atoms";
+import { stateDescription, selectedSamples } from "../recoil/atoms";
 import gaConfig from "../constants/ga.json";
 import Error from "./Error";
 
@@ -28,9 +28,11 @@ function App(props: Props) {
   const [result, setResultFromForm] = useState({ port, connected });
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
   const setStateDescription = useSetRecoilState(stateDescription);
+  const setSelectedSamples = useSetRecoilState(selectedSamples);
 
   const handleStateUpdate = (data) => {
     setStateDescription(data);
+    setSelectedSamples(new Set(data.selected));
     dispatch(updateState(data));
   };
 
