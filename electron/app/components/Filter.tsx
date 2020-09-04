@@ -6,7 +6,7 @@ import { useMachine } from "@xstate/react";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import uuid from "uuid-v4";
 
-import { labelClasses } from "../recoil/selectors";
+import * as selectors from "../recoil/selectors";
 import { useOutsideClick } from "../utils/hooks";
 import RangeSlider from "./RangeSlider";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
@@ -216,7 +216,7 @@ const ClassFilterContainer = styled.div`
 
 const ClassFilter = ({ name, atoms }) => {
   const theme = useContext(ThemeContext);
-  const classes = useRecoilValue(labelClasses(name));
+  const classes = useRecoilValue(selectors.labelClasses(name));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
     atoms.includeLabels(name)
   );
@@ -330,11 +330,12 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
   const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
     atoms.includeNoConfidence(entry.name)
   );
+  const bounds = useRecoilValue(selectors.labelConfidenceBounds(entry.name));
   const [range, setRange] = useRecoilState(atoms.confidenceRange(entry.name));
   const theme = useContext(ThemeContext);
 
   const isDefaultRange = range[0] === 0 && range[1] === 1;
-
+  const hasBounds = bounds.every((b) => b !== null);
   return (
     <div style={{ margin: 6 }}>
       <ClassFilter name={entry.name} atoms={atoms} />
@@ -353,12 +354,14 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
         ) : null}
       </div>
       <ConfidenceContainer>
-        <RangeSlider
-          atom={atoms.confidenceRange(entry.name)}
-          min={0}
-          max={1}
-          step={0.01}
-        />
+        {hasBounds && (
+          <RangeSlider
+            atom={atoms.confidenceRange(entry.name)}
+            min={bounds[0]}
+            max={bounds[1]}
+            step={0.01}
+          />
+        )}
         <FormControlLabel
           label={<div style={{ lineHeight: "20px" }}>Show no confidence</div>}
           control={

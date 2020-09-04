@@ -131,12 +131,14 @@ export type Entry = {
 type Props = {
   entries: Entry[];
   onCheck: (entry: Entry) => void;
+  modal: boolean;
 };
 
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
   const fieldIsFiltered = useRecoilValue(selectors.fieldIsFiltered(entry.name));
+  console.log(entry);
 
   const handleCheck = (entry) => {
     if (onCheck) {

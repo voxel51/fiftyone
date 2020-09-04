@@ -66,7 +66,7 @@ const Slider = styled(SliderUnstyled)`
 export type Range = [number, number];
 
 const valueText = (value: Range) => {
-  return `${value[0]}-${value[1]}`;
+  return `${value[0].toFixed(2)}-${value[1].toFixed(2)}`;
 };
 
 type Props = {
@@ -83,10 +83,10 @@ const RangeSlider = ({ atom, max, min, step }: Props) => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
   }, [value]);
-
+  console.log(min, max);
   return (
     <SliderContainer>
-      {min}
+      {min.toFixed(2)}
       <Slider
         value={[...localValue]}
         onChange={(_, v: Range) => setLocalValue([...v])}
@@ -108,7 +108,7 @@ const RangeSlider = ({ atom, max, min, step }: Props) => {
         min={min}
         step={step}
       />
-      {max}
+      {max.toFixed(2)}
     </SliderContainer>
   );
 };

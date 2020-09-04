@@ -28,6 +28,7 @@ export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+    console.log(stateDescription);
     return stateDescription.derivables
       ? stateDescription.derivables.view_stats
       : {};
@@ -98,9 +99,8 @@ export const labelTypes = selector({
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).derivables.view_stats.label_classes[
-      label
-    ];
+    return get(atoms.stateDescription).derivables.view_stats.labels[label]
+      .classes;
   },
 });
 
@@ -205,5 +205,22 @@ export const fieldIsFiltered = selectorFamily({
       label &&
       !([0, 1].every((b, i) => b === range[i]) && none && !include.length)
     );
+  },
+});
+
+export const labelConfidenceBounds = selectorFamily({
+  key: "labelConfidenceBounds",
+  get: (label) => ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return get(atoms.stateDescription).derivables.view_stats.labels[label]
+      .confidence_bounds;
+  },
+});
+
+export const numericFieldBounds = selectorFamily({
+  key: "numericFieldBounds",
+  get: (label) => ({ get }) => {
+    return get(atoms.stateDescription).derivables.view_stats
+      .numeric_field_bounds[label];
   },
 });
