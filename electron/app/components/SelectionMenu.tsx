@@ -1,5 +1,5 @@
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
 import { updateState } from "../actions/update";
@@ -11,21 +11,25 @@ import DropdownTag from "./Tags/DropdownTag";
 
 const SelectionMenu = ({ port, dispatch }) => {
   const socket = getSocket(port, "state");
+  const setStateDescription = useSetRecoilState(atoms.stateDescription);
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
 
+  // from App.tsx - todo: refactor into action?
+  const handleStateUpdate = (data) => {
+    setStateDescription(data);
+    setSelectedSamples(new Set(data.selected));
+    dispatch(updateState(data));
+  };
+
   const clearSelection = () => {
     setSelectedSamples(new Set());
-    socket.emit("clear_selection", (data) => {
-      dispatch(updateState(data));
-    });
+    socket.emit("clear_selection");
   };
 
   const sendEvent = (event) => {
-    socket.emit(event, (data) => {
-      dispatch(updateState(data));
-    });
+    socket.emit(event, handleStateUpdate);
   };
 
   return (
@@ -33,11 +37,17 @@ const SelectionMenu = ({ port, dispatch }) => {
       name={selectedSamples.size + " selected"}
       onSelect={(item) => item.action()}
       menuItems={[
-        { name: "Clear selection", action: clearSelection },
-        { name: "Hide selected", action: () => sendEvent("exclude_selected") },
+        {
+          name: "Clear selection",
+          action: clearSelection,
+        },
         {
           name: "Only show selected",
           action: () => sendEvent("select_selected"),
+        },
+        {
+          name: "Hide selected",
+          action: () => sendEvent("exclude_selected"),
         },
       ]}
       menuZIndex={500}
