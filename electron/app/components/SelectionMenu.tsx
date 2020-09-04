@@ -35,6 +35,12 @@ const SelectionMenu = ({ port, dispatch }) => {
   return (
     <DropdownTag
       name={selectedSamples.size + " selected"}
+      disabled={!selectedSamples.size}
+      title={
+        selectedSamples.size
+          ? undefined
+          : "Click on samples below to select them"
+      }
       onSelect={(item) => item.action()}
       menuItems={[
         {

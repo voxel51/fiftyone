@@ -16,6 +16,8 @@ import Menu from "./Menu";
 import SelectionTag from "./SelectionTag";
 
 const Container = styled.div`
+  cursor: ${({ disabled }) => (disabled ? "not-allowed" : undefined)};
+
   .popper {
     z-index: ${({ menuZIndex }) => menuZIndex};
   }
@@ -31,6 +33,8 @@ const DropdownTag = ({
   name,
   menuItems,
   menuZIndex = 1,
+  disabled = false,
+  title,
   onSelect,
   ...rest
 }) => {
@@ -46,8 +50,8 @@ const DropdownTag = ({
   };
 
   return (
-    <Container menuZIndex={menuZIndex}>
-      <Button ref={anchorRef} onClick={handleToggle}>
+    <Container menuZIndex={menuZIndex} disabled={disabled} title={title}>
+      <Button ref={anchorRef} onClick={handleToggle} disabled={disabled}>
         <Body {...rest}>
           {name} <ArrowDropDown />
         </Body>
