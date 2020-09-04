@@ -355,7 +355,6 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
       <ConfidenceContainer>
         <RangeSlider
           atom={atoms.confidenceRange(entry.name)}
-          title={"Confidence"}
           min={0}
           max={1}
           step={0.01}

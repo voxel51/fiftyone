@@ -4,10 +4,6 @@ import { RecoilState, useRecoilState } from "recoil";
 
 import { Slider as SliderUnstyled } from "@material-ui/core";
 
-function valuetext(value: number[]) {
-  return `${value[0]}-${value[1]}`;
-}
-
 const SliderContainer = styled.div`
   font-weight: bold;
   display: flex;
@@ -67,16 +63,22 @@ const Slider = styled(SliderUnstyled)`
   }
 `;
 
+type range = [number, number];
+
+const valueText = (value: range) => {
+  return `${value[0]}-${value[1]}`;
+};
+
 type Props = {
-  atom: RecoilState<[number, number]>;
+  atom: RecoilState<range>;
   max: number;
   min: number;
   step: number;
 };
 
-const RangeSlider = ({ atom, ...rest }: Props) => {
-  const [value, setValue] = useRecoilState(atom);
-  const [localValue, setLocalValue] = useState([0, 1]);
+const RangeSlider = ({ atom, max, min, step }: Props) => {
+  const [value, setValue] = useRecoilState<range>(atom);
+  const [localValue, setLocalValue] = useState<range>([0, 1]);
   useEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
       setLocalValue(value);
@@ -84,11 +86,11 @@ const RangeSlider = ({ atom, ...rest }: Props) => {
 
   return (
     <SliderContainer>
-      0
+      {min}
       <Slider
         value={[...localValue]}
-        onChange={(_, v) => setLocalValue([...v])}
-        onChangeCommitted={(e, v) => {
+        onChange={(_, v: range) => setLocalValue([...v])}
+        onChangeCommitted={(_, v: range) => {
           setLocalValue([...v]);
           setValue([...v]);
         }}
@@ -100,11 +102,13 @@ const RangeSlider = ({ atom, ...rest }: Props) => {
           valueLabel: "valueLabel",
         }}
         aria-labelledby="range-slider"
-        getAriaValueText={valuetext}
+        getAriaValueText={valueText}
         valueLabelDisplay={"on"}
-        {...rest}
+        max={max}
+        min={min}
+        step={step}
       />
-      1
+      {max}
     </SliderContainer>
   );
 };

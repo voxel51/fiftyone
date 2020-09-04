@@ -14,5 +14,5 @@ export default {
 };
 
 export const standard = () => (
-  <RangeSlider atom={rangeAtomStory} min={1} max={1} step={0.01} />
+  <RangeSlider atom={rangeAtomStory} min={0} max={1} step={0.01} />
 );
