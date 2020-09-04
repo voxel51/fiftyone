@@ -268,17 +268,35 @@ def _get_label_fields(custom_fields_schema):
     return filter(_filter, custom_fields_schema.items())
 
 
-def _get_numeric_range(view, path):
-    path = "$%s" % path
-    pipeline = [
-        {"$group": {"_id": None, "min": {"$min": path}, "max": {"$max": path}}}
-    ]
+def _get_numeric_field_ranges(view):
+    numeric_fields = list(
+        filter(
+            lambda f: type(f) in {fof.FloatField, fof.IntField},
+            view.get_field_schema().values(),
+        )
+    )
+    path = "$%s"
+    min_key = "%s:min"
+    max_key = "%s:max"
+    ranges = {"_id": None}
+    for field in numeric_fields:
+        ranges[min_key % field.name] = {"$min": path % field.name}
+        ranges[max_key % field.name] = {"$max": path % field.name}
+
+    pipeline = [{"$group": ranges}]
 
     try:
         result = next(view.aggregate(pipeline))
-        return [result["min"], result["max"]]
     except StopIteration:
-        return None
+        return {}
+
+    return {
+        field.name: [
+            result[min_key % field.name],
+            result[max_key % field.name],
+        ]
+        for field in numeric_fields
+    }
 
 
 def _get_field_count(view, field_name, field):
