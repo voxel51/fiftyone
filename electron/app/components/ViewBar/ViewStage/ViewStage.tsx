@@ -4,11 +4,11 @@ import { animated, useSpring, config } from "react-spring";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
-import { shell } from "electron";
 
+import ErrorMessage from "./ErrorMessage";
+import ExternalLink from "../../ExternalLink";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
-import ErrorMessage from "./ErrorMessage";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem 0.25rem;
@@ -298,19 +298,18 @@ const ViewStage = React.memo(({ stageRef }) => {
             ref={inputRef}
           />
           {isCompleted && (
-            <Help
-              onClick={() =>
-                shell.openExternal(
-                  `https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`
-                )
-              }
-              style={{
-                cursor: "pointer",
-                width: "1rem",
-                height: "1rem",
-                margin: "0.5rem 0.5rem 0.5rem 0",
-              }}
-            />
+            <ExternalLink
+              href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
+            >
+              <Help
+                style={{
+                  cursor: "pointer",
+                  width: "1rem",
+                  height: "1rem",
+                  margin: "0.5rem 0.5rem 0.5rem 0",
+                }}
+              />
+            </ExternalLink>
           )}
         </ViewStageDiv>
         {parameters.map((parameter) => (

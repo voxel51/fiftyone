@@ -1,7 +1,6 @@
 Dataset Views
 =============
 
-.. include:: ../substitutions.rst
 .. default-role:: code
 
 FiftyOne provides methods that allow you to sort, slice, and search your

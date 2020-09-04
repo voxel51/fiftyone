@@ -4,10 +4,10 @@ import { useMachine } from "@xstate/react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
-import { shell } from "electron";
 
 import { useOutsideClick } from "../../utils/hooks";
 import { port, stateDescription } from "../../recoil/atoms";
+import ExternalLink from "../ExternalLink";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
 
@@ -138,14 +138,9 @@ const ViewBar = () => {
             cursor: "pointer",
           }}
         />
-        <Help
-          onClick={() =>
-            shell.openExternal(
-              "https://voxel51.com/docs/fiftyone/user_guide/app.html"
-            )
-          }
-          style={{ cursor: "pointer" }}
-        />
+        <ExternalLink href="https://voxel51.com/docs/fiftyone/user_guide/app.html">
+          <Help />
+        </ExternalLink>
       </IconsContainer>
     </ViewBarContainer>
   );

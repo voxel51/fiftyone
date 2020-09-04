@@ -545,10 +545,10 @@ class ViewExpression(object):
         Args:
             regex: the regular expression to apply. Must be a Perl Compatible
                 Regular Expression (PCRE). See
-                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-regex>`_
+                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-regex>`__
                 for  details
             options (None): an optional string of regex options to apply. See
-                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-options>`_
+                `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-options>`__
                 for the available options
 
         Returns:
@@ -763,10 +763,10 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
 
 
 def _escape_regex_chars(str_or_strs):
-    # Must escape `]` and `-` because they have special meaning inside the `[]`
-    # that will be used in the replacement regex
-    regex_chars = "[\]{}()*+\-?.,\\^$|#"
-    _escape = lambda s: re.sub(r"([%s])" % "".join(regex_chars), r"\\\1", s)
+    # Must escape `[`, `]`, `-`, and `\` because they have special meaning
+    # inside the `[]` that will be used in the replacement regex
+    regex_chars = r"\[\]{}()*+\-?.,\\^$|#"
+    _escape = lambda s: re.sub(r"([%s])" % regex_chars, r"\\\1", s)
 
     if etau.is_str(str_or_strs):
         return _escape(str_or_strs)

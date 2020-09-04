@@ -2,7 +2,6 @@ FiftyOne Recipes
 ================
 
 .. default-role:: code
-.. include:: ../substitutions.rst
 
 Welcome to FiftyOne recipes!
 

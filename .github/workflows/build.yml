@@ -40,15 +40,24 @@ jobs:
           path: dist/*.whl
 
   test:
-    runs-on: ubuntu-18.04
+    runs-on: ${{ matrix.os }}
     if: github.event.pull_request.draft == false
     needs: build
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - ubuntu-18.04
+          - windows-latest
         python-version:
           - 3.5
           - 3.8
+        exclude:
+          - os: windows-latest
+            python-version: 3.5
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
@@ -78,9 +87,15 @@ jobs:
       - name: Install fiftyone
         run: |
           pip install -e .
-      - name: Install test dependencies
+      - name: Install test dependencies (non-Windows)
+        if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets torch torchvision
+      - name: Install test dependencies (Windows)
+        if: ${{ startsWith(matrix.os, 'windows') }}
+        run: |
+          pip install pytest tensorflow tensorflow-datasets
+          pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Run tests
         run: |
           pytest tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/ --ignore tests/utils/
