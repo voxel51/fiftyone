@@ -666,7 +666,7 @@ class CVATImageDataset(ImageDetectionDataset):
                             <attributes>
                                 <attribute>
                                     <name>type</name>
-                                    <values>coupe\nsedan\ntruck</values>
+                                    <values>coupe\\nsedan\\ntruck</values>
                                 </attribute>
                                 ...
                             </attributes>
@@ -676,7 +676,7 @@ class CVATImageDataset(ImageDetectionDataset):
                             <attributes>
                                 <attribute>
                                     <name>gender</name>
-                                    <values>male\nfemale</values>
+                                    <values>male\\nfemale</values>
                                 </attribute>
                                 ...
                             </attributes>
