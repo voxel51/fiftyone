@@ -223,8 +223,8 @@ def get_view_stats(dataset_or_view):
             for field_name, field in custom_fields_schema.items()
         },
         "label_classes": {
-            field_name: _get_label_classes(view, field_name, field)
-            for field_name, field in _get_label_fields(custom_fields_schema)
+            field.name: _get_label_classes(view, field_name, field)
+            for field in _get_label_fields(view)
         },
         "numeric_field_ranges": _get_numeric_field_ranges(view),
     }
@@ -255,9 +255,8 @@ def _get_label_classes(view, field_name, field):
         pass
 
 
-def _get_label_fields(custom_fields_schema):
-    def _filter(item):
-        _, field = item
+def _get_label_fields(view):
+    def _filter(field):
         if not isinstance(field, fof.EmbeddedDocumentField):
             return False
 
@@ -266,7 +265,7 @@ def _get_label_fields(custom_fields_schema):
 
         return False
 
-    return filter(_filter, custom_fields_schema.items())
+    return list(filter(_filter, view.get_field_schema().values()))
 
 
 def _get_numeric_field_ranges(view):
@@ -302,6 +301,53 @@ def _get_numeric_field_ranges(view):
             result[field.name][0]["max"],
         ]
         for field in numeric_fields
+    }
+
+
+def _get_label_confidence_ranges(view):
+    fields = _get_label_fields(view)
+    facets = {}
+    for field in fields:
+        is_list = False
+        path = "$%s" % field.name
+        if issubclass(field.document_type, fol.Classifications):
+            path = "%s.classifications" % path
+            is_list = True
+        elif issubclass(field.document_type, fol.Detections):
+            path = "%s.detections" % path
+            is_list = True
+
+        facet_pipeline = []
+        if is_list:
+            facet_pipeline.append(
+                {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
+            )
+
+        path = "%s.confidence" % path
+        facet_pipeline.append(
+            {
+                "$group": {
+                    "_id": None,
+                    "min": {"$min": path},
+                    "max": {"$max": path},
+                }
+            },
+        )
+        facets[field.name] = facet_pipeline
+
+    pipeline = [{"$facet": facets}]
+
+    try:
+        result = next(view.aggregate(pipeline))
+    except StopIteration:
+        return {}
+
+    return {
+        field.name: [
+            result[field.name][0]["min"],
+            result[field.name][0]["max"],
+        ]
+        for field in fields
     }
 
 
