@@ -222,11 +222,23 @@ def get_view_stats(dataset_or_view):
             field_name: _get_field_count(view, field)
             for field_name, field in custom_fields_schema.items()
         },
-        "label_classes": {
-            field.name: _get_label_classes(view, field)
-            for field in _get_label_fields(view)
-        },
-        "numeric_field_ranges": _get_numeric_field_ranges(view),
+        "labels": _get_label_field_derivables(view),
+        "numeric_field_bounds": _get_numeric_field_bounds(view),
+    }
+
+
+def _get_label_field_derivables(view):
+    label_fields = _get_label_fields(view)
+    confidence_bounds = _get_label_confidence_bounds(view)
+    classes = {
+        field.name: _get_label_classes(view, field) for field in label_fields
+    }
+    return {
+        field.name: {
+            "confidence_bounds": confidence_bounds[field.name],
+            "classes": _get_label_classes(view, field.name),
+        }
+        for field in label_fields
     }
 
 
@@ -268,7 +280,7 @@ def _get_label_fields(view):
     return list(filter(_filter, view.get_field_schema().values()))
 
 
-def _get_numeric_field_ranges(view):
+def _get_numeric_field_bounds(view):
     numeric_fields = list(
         filter(
             lambda f: type(f) in {fof.FloatField, fof.IntField},
@@ -304,7 +316,7 @@ def _get_numeric_field_ranges(view):
     }
 
 
-def _get_label_confidence_ranges(view):
+def _get_label_confidence_bounds(view):
     fields = _get_label_fields(view)
     facets = {}
     for field in fields:
