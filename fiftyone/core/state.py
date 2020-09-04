@@ -226,6 +226,7 @@ def get_view_stats(dataset_or_view):
             field_name: _get_label_classes(view, field_name, field)
             for field_name, field in _get_label_fields(custom_fields_schema)
         },
+        "numeric_field_ranges": _get_numeric_field_ranges(view),
     }
 
 
