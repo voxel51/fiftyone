@@ -1,12 +1,6 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { Slider as SliderUnstyled } from "@material-ui/core";
-import {
-  useSetRecoilState,
-  useRecoilSetState,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
@@ -14,112 +8,8 @@ import uuid from "uuid-v4";
 
 import { labelClasses } from "../recoil/selectors";
 import { useOutsideClick } from "../utils/hooks";
+import RangeSlider from "./RangeSlider";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
-
-function valuetext(value: number[]) {
-  return `${value[0]}-${value[1]}`;
-}
-
-const SearchResultsWrapper = styled.div`
-  display: block;
-  position: relative;
-  top: -2rem;
-`;
-
-const SliderContainer = styled.div`
-  font-weight: bold;
-  display: flex;
-  padding: 1.5rem 0.5rem 0.5rem;
-  line-height: 1.9rem;
-`;
-
-const Slider = styled(SliderUnstyled)`
-  && {
-    color: ${({ theme }) => theme.brand};
-    margin: 0 1rem 0 0.8rem;
-    height: 3px;
-  }
-
-  .rail {
-    height: 7px;
-    border-radius: 6px;
-    background: ${({ theme }) => theme.backgroundLight};
-  }
-
-  .track {
-    height: 7px;
-    border-radius: 6px;
-    background: ${({ theme }) => theme.brand};
-  }
-
-  .thumb {
-    height: 1rem;
-    width: 1rem;
-    border-radius: 0.5rem;
-    background: ${({ theme }) => theme.brand};
-    box-shadow: none;
-    color: transparent;
-  }
-
-  .thumb:hover,
-  .thumb.active {
-    box-shadow: none;
-  }
-
-  .valueLabel {
-    margin-top: 0.5rem;
-    font-weight: bold;
-    font-family: "Palanquin", sans-serif;
-    font-size: 14px;
-    padding: 0.2rem;
-    border-radius: 6rem;
-    color: transparent;
-  }
-
-  .valueLabel > span > span {
-    color: transparent;
-  }
-
-  .valueLabel > span > span {
-    color: ${({ theme }) => theme.font};
-  }
-`;
-
-const RangeSlider = ({ atom, ...rest }) => {
-  const [value, setValue] = useRecoilState(atom);
-  const [localValue, setLocalValue] = useState([0, 1]);
-  useEffect(() => {
-    JSON.stringify(value) !== JSON.stringify(localValue) &&
-      setLocalValue(value);
-  }, [value]);
-
-  return (
-    <SliderContainer>
-      0
-      <Slider
-        value={[...localValue]}
-        onChange={(_, v) => setLocalValue([...v])}
-        onChangeCommitted={(e, v) => {
-          setLocalValue([...v]);
-          setValue([...v]);
-        }}
-        classes={{
-          thumb: "thumb",
-          track: "track",
-          rail: "rail",
-          active: "active",
-          valueLabel: "valueLabel",
-        }}
-        valueLabelDisplay="auto"
-        aria-labelledby="range-slider"
-        getAriaValueText={valuetext}
-        valueLabelDisplay={"on"}
-        {...rest}
-      />
-      1
-    </SliderContainer>
-  );
-};
 
 const FilterDiv = styled.div`
   width: 100%;
