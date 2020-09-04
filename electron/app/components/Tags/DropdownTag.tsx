@@ -15,7 +15,11 @@ import { ArrowDropDown } from "@material-ui/icons";
 import Menu from "./Menu";
 import SelectionTag from "./SelectionTag";
 
-const Container = styled.div``;
+const Container = styled.div`
+  .popper {
+    z-index: 1;
+  }
+`;
 
 const Body = styled(SelectionTag.Body)`
   display: flex;
@@ -45,6 +49,7 @@ const DropdownTag = ({ name, menuItems, ...rest }) => {
         role={undefined}
         transition
         disablePortal
+        className="popper"
       >
         <Menu
           autoFocusItem={isOpen}
