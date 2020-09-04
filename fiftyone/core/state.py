@@ -190,7 +190,7 @@ def get_view_stats(dataset_or_view):
             :class:`fiftyone.core.dataset.Dataset` instance
 
     Returns:
-        a dictionary with structure:
+        a dictionary with structure::
 
             {
                 'tags': {

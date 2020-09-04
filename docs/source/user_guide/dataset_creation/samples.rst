@@ -2,7 +2,6 @@ Adding Samples to Datasets
 ==========================
 
 .. default-role:: code
-.. include:: ../../substitutions.rst
 
 FiftyOne datasets are composed of |Sample| instances, and FiftyOne provides a
 number of options for building datasets from individual samples.
@@ -11,11 +10,13 @@ If you have entire datasets on disk that you would like to load into a FiftyOne
 dataset, see :doc:`loading datasets from disk <datasets>`.
 
 You can take a fully customized approach and
-:ref:`build your own samples <Manually building datasets>`, or you can
-:ref:`use a builtin SampleParser <Builtin SampleParser classes>` to parse
+:ref:`build your own samples <manually-building-datasets>`, or you can
+:ref:`use a built-in SampleParser <builtin-sample-parser>` to parse
 samples from a variety of common formats, or you can
 :ref:`provide your own SampleParser <custom-sample-parser>` to automatically
 load samples in your own custom formats.
+
+.. _manually-building-datasets:
 
 Manually building datasets
 --------------------------
@@ -218,11 +219,13 @@ manually.
         # Print the first few samples in the dataset
         print(dataset.head())
 
+.. _adding-samples-to-datasets:
+
 Adding samples to datasets
 --------------------------
 
 FiftyOne provides native support for loading samples in a variety of
-:ref:`common formats <Builtin SampleParser classes>`, and it can be easily
+:ref:`common formats <builtin-sample-parser>`, and it can be easily
 extended to import datasets in :ref:`custom formats <custom-sample-parser>`.
 
 Basic recipe
@@ -394,6 +397,8 @@ dataset:
     # Add labeled images to the dataset
     dataset.add_labeled_images(samples, sample_parser)
 
+.. _ingesting-samples-into-datasets:
+
 Ingesting samples into datasets
 -------------------------------
 
@@ -407,7 +412,7 @@ it can be desirable to *ingest* the raw data for each sample into a common
 backing location.
 
 FiftyOne provides support for ingesting samples and their underlying source
-data in both :ref:`common formats <Builtin SampleParser classes>` and
+data in both :ref:`common formats <builtin-sample-parser>` and
 extended to import datasets in :ref:`custom formats <custom-sample-parser>`.
 
 Basic recipe
@@ -569,17 +574,19 @@ a FiftyOne dataset:
     # The source images are copied into `dataset_dir`
     dataset.ingest_labeled_images(samples, sample_parser, dataset_dir=dataset_dir)
 
-Builtin SampleParser classes
-----------------------------
+.. _builtin-sample-parser:
+
+Built-in SampleParser classes
+-----------------------------
 
 The table below lists the common data formats for which FiftyOne provides
-builtin |SampleParser| implementations. You can also write a
+built-in |SampleParser| implementations. You can also write a
 :ref:`custom SampleParser <custom-sample-parser>` to automate the parsing of
 samples in your own custom data format.
 
 You can use a |SampleParser| to
-:ref:`add samples to datasets <Adding samples to datasets>` and
-:ref:`ingest samples into datasets <Ingesting samples into datasets>`.
+:ref:`add samples to datasets <adding-samples-to-datasets>` and
+:ref:`ingest samples into datasets <ingesting-samples-into-datasets>`.
 
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | SampleParser                                                           | Description                                                                                                     |
@@ -636,11 +643,11 @@ Writing a custom SampleParser
 -----------------------------
 
 FiftyOne provides a variety of
-:ref:`builtin SampleParser classes <Builtin SampleParser classes>` to parse
+:ref:`built-in SampleParser classes <builtin-sample-parser>` to parse
 data in common formats. However, if your samples are stored in a custom format,
 you can provide a custom |SampleParser| class and provide it to FiftyOne when
-:ref:`adding <Adding samples to datasets>` or
-:ref:`ingesting <Ingesting samples into datasets>` samples into your datasets.
+:ref:`adding <adding-samples-to-datasets>` or
+:ref:`ingesting <ingesting-samples-into-datasets>` samples into your datasets.
 
 The |SampleParser| interface provides a mechanism for defining methods that
 parse a data sample that is stored in a particular (external to FiftyOne)

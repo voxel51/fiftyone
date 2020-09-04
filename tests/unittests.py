@@ -768,13 +768,13 @@ class SampleTests(unittest.TestCase):
 
     @drop_datasets
     def test_get_field(self):
-        filepath = "/path/to/image.jpg"
-        sample = fo.Sample(filepath=filepath)
+        field_value = "custom_value"
+        sample = fo.Sample(filepath="/path/to/image.jpg", field1=field_value)
 
         # get valid
-        self.assertEqual(sample.get_field("filepath"), filepath)
-        self.assertEqual(sample["filepath"], filepath)
-        self.assertEqual(sample.filepath, filepath)
+        self.assertEqual(sample.get_field("field1"), field_value)
+        self.assertEqual(sample["field1"], field_value)
+        self.assertEqual(sample.field1, field_value)
 
         # get missing
         with self.assertRaises(AttributeError):
@@ -1502,12 +1502,17 @@ class ViewExpressionTests(unittest.TestCase):
 
     @drop_datasets
     def test_str(self):
+        special_chars = r"[]{}()*+-?.,\\^$|#"
         self.dataset = fo.Dataset()
         self.dataset.add_samples(
             [
                 fo.Sample(filepath="test1.jpg", test="test1.jpg"),
                 fo.Sample(filepath="test2.jpg", test="test2.jpg"),
-                fo.Sample(filepath="test3.jpg", test="test3.jpg"),
+                fo.Sample(
+                    filepath="test3.jpg",
+                    test="test3.jpg",
+                    special_chars=special_chars,
+                ),
             ]
         )
 
@@ -1570,6 +1575,16 @@ class ViewExpressionTests(unittest.TestCase):
             len(
                 self.dataset.match(
                     F("test").matches_str("TEST1.JPG", case_sensitive=False)
+                )
+            ),
+            1,
+        )
+
+        # test escaping
+        self.assertEqual(
+            len(
+                self.dataset.match(
+                    F("special_chars").matches_str(special_chars)
                 )
             ),
             1,

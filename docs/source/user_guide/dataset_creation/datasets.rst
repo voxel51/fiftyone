@@ -2,7 +2,6 @@ Loading Datasets From Disk
 ==========================
 
 .. default-role:: code
-.. include:: ../../substitutions.rst
 
 FiftyOne provides native support for importing datasets from disk in a
 variety of :ref:`common formats <supported-import-formats>`, and it can be
@@ -650,7 +649,7 @@ where ``labels.json`` is a JSON file in the following format:
             {
                 "id": 2,
                 "name": "cat",
-                "supercategory": "none"
+                "supercategory": "animal"
             },
             ...
         ],
@@ -1158,7 +1157,7 @@ where `labels.xml` is an XML file in the following format:
                         <attributes>
                             <attribute>
                                 <name>type</name>
-                                <values>coupe,sedan,truck</values>
+                                <values>coupe\nsedan\ntruck</values>
                             </attribute>
                             ...
                         </attributes>
@@ -1168,7 +1167,7 @@ where `labels.xml` is an XML file in the following format:
                         <attributes>
                             <attribute>
                                 <name>gender</name>
-                                <values>male,female</values>
+                                <values>male\nfemale</values>
                             </attribute>
                             ...
                         </attributes>
