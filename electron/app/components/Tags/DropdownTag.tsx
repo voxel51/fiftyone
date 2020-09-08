@@ -18,6 +18,17 @@ import SelectionTag from "./SelectionTag";
 const Container = styled.div`
   cursor: ${({ disabled }) => (disabled ? "not-allowed" : undefined)};
 
+  .dropdown-button {
+    font-family: unset;
+    padding-left: 0;
+    padding-right: 0;
+
+    .dropdown-icon {
+      color: ${({ theme, disabled }) =>
+        disabled ? theme.fontDarkest : undefined};
+    }
+  }
+
   .popper {
     z-index: ${({ menuZIndex }) => menuZIndex};
   }
@@ -27,6 +38,7 @@ const Body = styled(SelectionTag.Body)`
   display: flex;
   align-items: center;
   text-transform: none;
+  padding-right: 0.5em;
 `;
 
 const DropdownTag = ({
@@ -51,9 +63,14 @@ const DropdownTag = ({
 
   return (
     <Container menuZIndex={menuZIndex} disabled={disabled} title={title}>
-      <Button ref={anchorRef} onClick={handleToggle} disabled={disabled}>
-        <Body {...rest}>
-          {name} <ArrowDropDown />
+      <Button
+        classes={{ root: "dropdown-button" }}
+        ref={anchorRef}
+        onClick={handleToggle}
+        disabled={disabled}
+      >
+        <Body disabled={disabled} {...rest}>
+          {name} <ArrowDropDown className="dropdown-icon" />
         </Body>
       </Button>
       <Popper

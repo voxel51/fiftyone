@@ -32,15 +32,12 @@ const SelectionMenu = ({ port, dispatch }) => {
     socket.emit(event, handleStateUpdate);
   };
 
+  const size = selectedSamples.size;
   return (
     <DropdownTag
-      name={selectedSamples.size + " selected"}
-      disabled={!selectedSamples.size}
-      title={
-        selectedSamples.size
-          ? undefined
-          : "Click on samples below to select them"
-      }
+      name={`${size} sample${size == 1 ? "" : "s"} selected`}
+      disabled={!size}
+      title={size ? undefined : "Click on samples below to select them"}
       onSelect={(item) => item.action()}
       menuItems={[
         {
