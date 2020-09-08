@@ -307,7 +307,7 @@ def _get_numeric_field_bounds(view):
     except StopIteration:
         return {}
 
-    return {
+    result = {
         field.name: [
             result[field.name][0]["min"],
             result[field.name][0]["max"],
