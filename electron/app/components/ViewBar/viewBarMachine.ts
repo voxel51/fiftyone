@@ -277,7 +277,8 @@ const viewBarMachine = Machine(
                             type: "STAGE.ADD",
                             index: Math.ceil(activeStage),
                           })),
-                          cond: ({ activeStage }) => activeStage % 1 === 0.5,
+                          cond: ({ activeStage }) =>
+                            Math.abs(activeStage % 1) === 0.5,
                         },
                       ]),
                     ],
