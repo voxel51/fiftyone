@@ -30,7 +30,7 @@ const SelectionMenu = ({ port, dispatch }) => {
     socket.emit("clear_selection");
   };
 
-  const addStage = (name, callback) => {
+  const addStage = (name, callback = () => {}) => {
     const newState = JSON.parse(JSON.stringify(stateDescription));
     const newView = JSON.parse(newState.view.view);
     newView.push({
@@ -38,11 +38,10 @@ const SelectionMenu = ({ port, dispatch }) => {
       kwargs: [["sample_ids", Array.from(selectedSamples)]],
     });
     newState.view.view = JSON.stringify(newView);
-    socket.emit("update", { data: newState, include_self: true }, callback);
-  };
-
-  const sendEvent = (event) => {
-    socket.emit(event, handleStateUpdate);
+    socket.emit("update", { data: newState, include_self: true }, () => {
+      handleStateUpdate(newState);
+      callback();
+    });
   };
 
   const size = selectedSamples.size;
@@ -59,7 +58,8 @@ const SelectionMenu = ({ port, dispatch }) => {
         },
         {
           name: "Only show selected",
-          action: () => addStage("Select"),
+          action: () =>
+            addStage("Select", () => setSelectedSamples(selectedSamples)),
         },
         {
           name: "Hide selected",
