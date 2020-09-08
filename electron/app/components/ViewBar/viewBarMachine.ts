@@ -41,18 +41,23 @@ function getStageInfo(context) {
 
 function serializeStage(stage, stageMap) {
   return {
-    kwargs: stage.parameters.map((param, i) => [
-      param.parameter,
-      operate(stageMap[stage.stage][i].type, "castTo", param.value),
-    ]),
+    kwargs: stage.parameters.map((param, i) => {
+      return [
+        param.parameter,
+        operate(stageMap[stage.stage][i].type, "castTo", param.value),
+      ];
+    }),
     _cls: `fiftyone.core.stages.${stage.stage}`,
   };
 }
 
-function operate(type, operator, value) {
+function operate(type, operator, value, isString = true) {
   return type.split("|").reduce((acc, t) => {
+    if (acc !== undefined) return acc;
     const parser = PARAM_PARSER[t];
-    return parser.validate(value) ? parser[operator](value) : acc;
+    return parser.validate(!isString ? parser.castFrom(value) : value)
+      ? parser[operator](value)
+      : acc;
   }, undefined);
 }
 
@@ -101,7 +106,7 @@ function setStages(ctx, stageInfo) {
               p[0],
               stageInfoResult.params[j].type,
               stageInfoResult.params[j].default,
-              operate(stageInfoResult.params[j].type, "castFrom", p[1]),
+              operate(stageInfoResult.params[j].type, "castFrom", p[1], false),
               true,
               false,
               j === stageInfoResult.params.length - 1,

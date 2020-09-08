@@ -94,26 +94,19 @@ export const PARSER = {
     },
   },
   "list<id>": {
-    castFrom: (value) => {
-      return JSON.stringify(value);
+    castFrom: (value) => value.join(","),
+    castTo: (value) => {
+      return value.split(",");
     },
-    castTo: (value) =>
-      typeof value === "string"
-        ? JSON.parse(value).map((e) => PARSER.str.castTo(e))
-        : value,
     parse: (value) => {
-      const array = JSON.parse(value);
-      return JSON.stringify(array.map((e) => PARSER.id.parse(e)));
+      console.log(value.replace(/[\s\'\"\[\]]/g, ""));
+      return value.replace(/[\s\'\"\[\]]/g, "");
     },
     validate: (value) => {
-      try {
-        const array = typeof value === "string" ? JSON.parse(value) : value;
-        return (
-          Array.isArray(array) && array.every((e) => PARSER.id.validate(e))
-        );
-      } catch {
-        return false;
-      }
+      return value
+        .replace(/[\s\'\"\[\]]/g, "")
+        .split(",")
+        .every((e) => PARSER.id.validate(e));
     },
   },
   str: {
@@ -212,6 +205,7 @@ export default Machine(
                     value === "" && defaultValue
                       ? defaultValue
                       : type.split("|").reduce((acc, t) => {
+                          if (acc !== undefined) return acc;
                           const parser = PARSER[t];
                           return parser.validate(value)
                             ? parser.parse(value)

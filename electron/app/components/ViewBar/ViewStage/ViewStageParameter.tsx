@@ -359,7 +359,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           <ViewStageParameterInput
             placeholder={makePlaceholder(parameter, type, defaultValue)}
             autoFocus={state.matches("editing")}
-            value={value}
+            value={
+              state.matches("reading") && value.length > 24
+                ? value.slice(0, 25) + "..."
+                : value
+            }
             onFocus={() => !isEditing && send({ type: "EDIT" })}
             onBlur={() => isEditing && send({ type: "COMMIT" })}
             onChange={(e) => {

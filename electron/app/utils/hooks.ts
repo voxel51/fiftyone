@@ -42,7 +42,7 @@ export const useOutsideClick = (ref, callback) => {
   }, [ref, callback]);
 };
 
-export const useFollow = (leaderRef, followerRef, set) => {
+export const useFollow = (leaderRef, followerRef, set, deps = []) => {
   useLayoutEffect(() => {
     const follow = () => {
       const { x, y } = followerRef.current.getBoundingClientRect();
@@ -68,5 +68,5 @@ export const useFollow = (leaderRef, followerRef, set) => {
         leaderRef.current.removeEventListener("scroll", follow);
         window.removeEventListener("scroll", follow);
       })();
-  }, [leaderRef.current, followerRef.current]);
+  }, [leaderRef.current, followerRef.current, ...deps]);
 };

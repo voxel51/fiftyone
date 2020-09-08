@@ -325,7 +325,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
                 const match = getMatch(stageInfo, e.target.value);
                 send({
                   type: "COMMIT",
-                  value: match ? bestMatch.value : e.target.value,
+                  value: match ? match : e.target.value,
                 });
               }
             }}
