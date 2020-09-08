@@ -59,8 +59,8 @@ const ViewStageInput = styled(AuosizeInput)`
 
 const ViewStageButtonContainer = animated(styled.div`
   box-sizing: border-box;
-  border: 1px dashed ${({ theme }) => theme.button};
-  color: ${({ theme }) => theme.button};
+  border: 1px dashed ${({ theme }) => theme.fontDarkest};
+  color: ${({ theme }) => theme.fontDarkest};
   border-radius: 3px;
   position: relative;
   margin: 0.5rem;
@@ -101,7 +101,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   const [hovering, setHovering] = useState(false);
   const [props, set] = useSpring(() => ({
     background: theme.background,
-    color: active ? theme.font : theme.button,
+    color: active ? theme.font : theme.fontDarkest,
     top: active ? -3 : 0,
     opacity: 1,
     from: {
@@ -113,8 +113,8 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   useEffect(() => {
     set({
       top: active ? -3 : 0,
-      color: active ? theme.font : theme.button,
-      borderColor: active ? theme.brand : theme.button,
+      color: active ? theme.font : theme.fontDarkest,
+      borderColor: active ? theme.brand : theme.fontDarkest,
     });
     active ? setEnterProps() : setLeaveProps();
   }, [active]);
@@ -262,11 +262,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
 
   const props = useSpring({
     backgroundColor: isCompleted ? theme.backgroundLight : theme.background,
-    borderRightWidth:
-      (!parameters.length && index === 0 && length === 1) ||
-      (index !== 0 && !parameters.length)
-        ? 1
-        : 0,
+    borderRightWidth: state.matches("delible.yes") ? 0 : 1,
     borderColor:
       active && state.matches("focusedViewBar.yes")
         ? theme.brand
