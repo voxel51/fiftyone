@@ -38,7 +38,6 @@ const SelectionMenu = ({ port, dispatch }) => {
     });
     newState.view.view = JSON.stringify(newView);
     socket.emit("update", { data: newState, include_self: true }, () => {
-      handleStateUpdate(newState);
       callback();
     });
   };
@@ -57,8 +56,7 @@ const SelectionMenu = ({ port, dispatch }) => {
         },
         {
           name: "Only show selected",
-          action: () =>
-            addStage("Select", () => setSelectedSamples(selectedSamples)),
+          action: () => addStage("Select"),
         },
         {
           name: "Hide selected",
