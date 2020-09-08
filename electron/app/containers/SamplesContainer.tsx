@@ -48,10 +48,7 @@ const DisplayOptionsWrapper = (props) => {
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
-
-  const fieldSchema = useRecoilValue(selectors.fieldSchema);
-  const labelNames = useRecoilValue(selectors.labelNames);
-  const labelTypes = useRecoilValue(selectors.labelTypes);
+  const labelNameGroups = useRecoilValue(selectors.labelNameGroups);
 
   useEffect(() => {
     setModalFilters(filters);
@@ -71,12 +68,6 @@ const DisplayOptionsWrapper = (props) => {
       [entry.name]: entry.selected,
     }));
   };
-
-  const labelNameGroups = makeLabelNameGroups(
-    fieldSchema,
-    labelNames,
-    labelTypes
-  );
 
   return (
     <Grid.Column className="sidebar-column">

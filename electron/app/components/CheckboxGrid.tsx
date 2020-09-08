@@ -140,6 +140,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
   const fieldIsFiltered = useRecoilValue(selectors.fieldIsFiltered(entry.name));
+  const isScalar = useRecoilValue(selectors.isScalar(entry.name));
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -178,7 +179,7 @@ const Entry = ({ entry, onCheck, modal }) => {
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
               entry.selected &&
-              entry.type &&
+              (entry.type || (isScalar && !modal)) &&
               entry.count > 0 && (
                 <ArrowDropDown
                   onClick={(e) => {

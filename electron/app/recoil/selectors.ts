@@ -1,6 +1,7 @@
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
+import { makeLabelNameGroups } from "../utils/labels";
 
 export const viewStages = selector({
   key: "viewStages",
@@ -28,7 +29,6 @@ export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    console.log(stateDescription);
     return stateDescription.derivables
       ? stateDescription.derivables.view_stats
       : {};
@@ -223,4 +223,20 @@ export const numericFieldBounds = selectorFamily({
     return get(atoms.stateDescription).derivables.view_stats
       .numeric_field_bounds[label];
   },
+});
+
+export const labelNameGroups = selector({
+  key: "labelNameGroups",
+  get: ({ get }) =>
+    makeLabelNameGroups(get(fieldSchema), get(labelNames), get(labelTypes)),
+});
+
+export const scalars = selector({
+  key: "scalars",
+  get: ({ get }) => new Set(get(labelNameGroups).scalars.map((e) => e.name)),
+});
+
+export const isScalar = selectorFamily({
+  key: "isScalar",
+  get: (name) => ({ get }) => get(scalars).has(name),
 });
