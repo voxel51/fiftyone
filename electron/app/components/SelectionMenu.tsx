@@ -1,6 +1,5 @@
 import React from "react";
 import { useRecoilState } from "recoil";
-import styled from "styled-components";
 
 import { updateState } from "../actions/update";
 import * as atoms from "../recoil/atoms";
