@@ -267,10 +267,8 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
       active && state.matches("focusedViewBar.yes")
         ? theme.brand
         : theme.fontDarkest,
-    borderTopRightRadius:
-      state.matches("delible.yes") && !parameters.length ? 3 : 0,
-    borderBottomRightRadius:
-      state.matches("delible.yes") && !parameters.length ? 3 : 0,
+    borderTopRightRadius: !length || !parameters.length ? 3 : 0,
+    borderBottomRightRadius: !length || !parameters.length ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -327,7 +325,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
                 const match = getMatch(stageInfo, e.target.value);
                 send({
                   type: "COMMIT",
-                  value: match ? match : bestMatch.value,
+                  value: match ? bestMatch.value : e.target.value,
                 });
               }
             }}
