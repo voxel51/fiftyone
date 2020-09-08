@@ -16,6 +16,16 @@ const Container = styled.div`
     background-color: ${({ theme }) => theme.menuBackground};
     border: 2px solid ${({ theme }) => theme.menuBorder};
     box-shadow: 0 2px 20px 0 ${({ theme }) => theme.menuShadow};
+
+    .item {
+      color: ${({ theme }) => theme.fontDark};
+      font-family: unset;
+      font-weight: bold;
+      font-size: 14px;
+      line-height: 29px;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
   }
 `;
 
@@ -25,7 +35,11 @@ const Menu = ({ items, onClose, onSelect, ...rest }) => {
       <ClickAwayListener onClickAway={onClose}>
         <MenuList classes={{ root: "menu" }} {...rest}>
           {items.map((item, i) => (
-            <MenuItem key={i} onClick={() => onSelect(item)}>
+            <MenuItem
+              key={i}
+              onClick={() => onSelect(item)}
+              classes={{ root: "item" }}
+            >
               {item.name}
             </MenuItem>
           ))}
