@@ -1,4 +1,11 @@
-import React, { useContext, useMemo, useEffect, useRef, useState } from "react";
+import React, {
+  useContext,
+  useMemo,
+  useEffect,
+  useRef,
+  useState,
+  useLayoutEffect,
+} from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
@@ -62,6 +69,7 @@ const ObjectEditorTextArea = animated(styled.textarea`
   color: ${({ theme }) => theme.font};
   height: 100%;
   font-size: 14px;
+  will-change: tranform;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -83,7 +91,7 @@ const SubmitButton = animated(styled.button`
   box-sizing: border-box;
   border: 1px solid ${({ theme }) => theme.brand};
   color: ${({ theme }) => theme.font};
-  background-color: ${({ theme }) => theme.brandTransparent};
+  background-color: ${({ theme }) => theme.backgroundLight};
   border-radius: 3px;
   position: relative;
   line-height: 1rem;
@@ -127,13 +135,7 @@ const makePlaceholder = (parameter, type, defaultValue) =>
     toTypeAnnotation(type),
   ].join(": ");
 
-const ObjectEditor = ({
-  barRef,
-  parameterRef,
-  followRef,
-  inputRef,
-  stageRef,
-}) => {
+const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
   const [state, send] = useService(parameterRef);
   const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
@@ -141,8 +143,6 @@ const ObjectEditor = ({
   const { active, parameter, defaultValue, value, type } = state.context;
 
   const [containerProps, containerSet] = useSpring(() => ({
-    left: 0,
-    top: 0,
     height: state.matches("editing") ? 200 : 36,
     position: state.matches("editing") ? "fixed" : "relative",
     backgroundColor: state.matches("editing")
@@ -159,9 +159,6 @@ const ObjectEditor = ({
     from: {
       opacity: 0,
     },
-    config: {
-      duration: 10,
-    },
   }));
 
   const props = useSpring({
@@ -174,42 +171,65 @@ const ObjectEditor = ({
   });
 
   useEffect(() => {
-    const update = () => {
-      containerSet({
-        left: state.matches("editing")
-          ? followRef.current.getBoundingClientRect().x
-          : 0,
-        top: state.matches("editing")
-          ? followRef.current.getBoundingClientRect().y
-          : 0,
-        position: state.matches("editing") ? "fixed" : "relative",
-        backgroundColor: state.matches("editing")
-          ? theme.backgroundDark
-          : state.matches("reading.submitted")
-          ? theme.backgroundLight
-          : theme.background,
-        borderColor: state.matches("editing")
-          ? theme.secondary
-          : active
-          ? theme.brand
-          : theme.fontDarkest,
-        height: state.matches("editing") ? 200 : 34,
-        opacity: 1,
-        config: {
-          duration: 1,
-        },
+    containerSet({
+      backgroundColor: state.matches("editing")
+        ? theme.backgroundDark
+        : state.matches("reading.submitted")
+        ? theme.backgroundLight
+        : theme.background,
+      borderColor: state.matches("editing")
+        ? theme.secondary
+        : active
+        ? theme.brand
+        : theme.fontDarkest,
+      height: state.matches("editing") ? 200 : 34,
+      opacity: 1,
+    });
+  }, [state.matches("editing")]);
+
+  useLayoutEffect(() => {
+    let request = null;
+    const attach = () => {
+      request = window.requestAnimationFrame(() => {
+        const { x, y } = state.matches("editing")
+          ? followRef.current.getBoundingClientRect()
+          : { x: 0, y: 0 };
+        containerRef.current.style.top = state.matches("editing")
+          ? `${y}px`
+          : "unset";
+        containerRef.current.style.left = state.matches("editing")
+          ? `${x}px`
+          : "unset";
+        containerRef.current.style.position = state.matches("editing")
+          ? "fixed"
+          : "relative";
+        const {
+          x: barX,
+          width: barWidth,
+        } = barRef.current.getBoundingClientRect();
+        const barRight = barX + barWidth;
+        containerRef.current.style.width = state.matches("editing")
+          ? `${Math.min(barRight - x, 400)}px`
+          : "auto";
+        request = null;
       });
-
-      barRef.current.addEventListener("scroll", update);
-      window.addEventListener("scroll", update);
-
-      return () => {
-        barRef.current.removeEventListener("scroll", update);
-        window.removeEventListener("scroll", update);
-      };
     };
-    followRef.current && update();
-  }, [followRef.current, state.matches("editing"), active]);
+
+    barRef.current.addEventListener("scroll", attach);
+    window.addEventListener("scroll", attach);
+    followRef.current && attach();
+
+    return () => {
+      barRef.current.removeEventListener("scroll", attach);
+      window.removeEventListener("scroll", attach);
+      request && window.cancelAnimationFrame(request);
+    };
+  }, [
+    followRef.current,
+    containerRef.current,
+    active,
+    state.matches("editing"),
+  ]);
 
   return (
     <>
@@ -258,7 +278,7 @@ const ObjectEditor = ({
   );
 };
 
-const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
+const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(parameterRef);
   const inputRef = useRef();
@@ -324,7 +344,6 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           barRef={barRef}
           followRef={containerRef}
           inputRef={inputRef}
-          stageRef={stageRef}
         />
       ) : (
         <ViewStageParameterDiv style={props}>
