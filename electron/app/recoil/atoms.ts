@@ -104,3 +104,8 @@ export const filterNumericFieldRange = atomFamily({
   key: "filterNumericFieldRange",
   default: [null, null],
 });
+
+export const filterNumericFieldIncludeNone = atomFamily({
+  key: "filterNumericFieldIncludeNone",
+  default: true,
+});

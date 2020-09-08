@@ -198,13 +198,29 @@ export const fieldIsFiltered = selectorFamily({
   key: "fieldIsFiltered",
   get: (field) => ({ get }) => {
     const label = get(isLabel(field));
-    const range = get(atoms.filterLabelConfidenceRange(field));
-    const none = get(atoms.filterLabelIncludeNoConfidence(field));
-    const include = get(atoms.filterIncludeLabels(field));
-    return (
-      label &&
-      !([0, 1].every((b, i) => b === range[i]) && none && !include.length)
+    const numeric = get(isNumericField(field));
+    const range = get(
+      label
+        ? atoms.filterLabelConfidenceRange(field)
+        : atoms.filterNumericFieldRange(field)
     );
+    const bounds = get(
+      label ? labelConfidenceBounds(field) : numericFieldBounds(field)
+    );
+    const none = get(
+      label
+        ? atoms.filterLabelIncludeNoConfidence(field)
+        : atoms.filterNumericFieldIncludeNone(field)
+    );
+    const include = get(atoms.filterIncludeLabels(field));
+
+    if (!label && !numeric) return false;
+
+    const rangeIsFiltered = bounds.some(
+      (b, i) => range[i] !== b && b !== null && range[i] !== null
+    );
+
+    return ((label && !include.length) || numeric) && rangeIsFiltered && none;
   },
 });
 
@@ -219,8 +235,9 @@ export const labelConfidenceBounds = selectorFamily({
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).derivables.view_stats
+    const bounds = get(atoms.stateDescription).derivables.view_stats
       .numeric_field_bounds[label];
+    return bounds ? bounds : [null, null];
   },
 });
 

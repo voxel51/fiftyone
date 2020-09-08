@@ -3,24 +3,19 @@ import { useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import RangeSlider from "./RangeSlider";
+import { NamedRangeSlider } from "./RangeSlider";
 
 const NumericFieldFilter = ({ entry }) => {
-  const [range, setRange] = useRecoilState(
-    atoms.filterNumericFieldRange(entry.name)
-  );
-  const bounds = useRecoilValue(selectors.numericFieldBounds(entry.name));
-
-  const hasBounds = bounds.every((b) => b !== null);
-
-  useEffect(() => setRange([...bounds]), [bounds]);
-
-  return hasBounds ? (
-    <RangeSlider
-      rangeAtom={atoms.filterNumericFieldRange(entry.name)}
+  return (
+    <NamedRangeSlider
+      color={entry.color}
+      name={"Range"}
+      valueName={"value"}
+      includeNoneAtom={atoms.filterNumericFieldIncludeNone(entry.name)}
       boundsAtom={selectors.numericFieldBounds(entry.name)}
+      rangeAtom={atoms.filterNumericFieldRange(entry.name)}
     />
-  ) : null;
+  );
 };
 
 export default NumericFieldFilter;
