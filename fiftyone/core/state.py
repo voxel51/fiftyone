@@ -315,6 +315,13 @@ def _get_numeric_field_bounds(view):
         for field in numeric_fields
     }
 
+    for bounds in result.values():
+        for idx, bound in enumerate(bounds):
+            if bound is not None:
+                bounds[idx] = round(float(bound), 2)
+
+    return result
+
 
 def _get_label_confidence_bounds(view):
     fields = _get_label_fields(view)
