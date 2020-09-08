@@ -59,6 +59,7 @@ const ObjectEditorContainer = animated(styled.div`
   border: 1px solid pink;
   border-style: solid;
   z-index: 800;
+  will-change: transform;
 `);
 
 const ObjectEditorTextArea = animated(styled.textarea`
@@ -135,8 +136,15 @@ const makePlaceholder = (parameter, type, defaultValue) =>
     toTypeAnnotation(type),
   ].join(": ");
 
-const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
+const ObjectEditor = ({
+  barRef,
+  parameterRef,
+  followRef,
+  inputRef,
+  stageRef,
+}) => {
   const [state, send] = useService(parameterRef);
+  const [stageState] = useService(stageRef);
   const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
 
@@ -150,11 +158,10 @@ const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
       : state.matches("reading.submitted")
       ? theme.backgroundLight
       : theme.background,
-    borderColor: state.matches("editing")
-      ? theme.secondary
-      : active
-      ? theme.brand
-      : theme.fontDarkest,
+    borderColor:
+      active && stageState.matches("focusedViewBar.yes")
+        ? theme.brand
+        : theme.fontDarkest,
     opacity: 1,
     from: {
       opacity: 0,
@@ -172,20 +179,20 @@ const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
 
   useEffect(() => {
     containerSet({
+      position: state.matches("editing") ? "fixed" : "relative",
       backgroundColor: state.matches("editing")
         ? theme.backgroundDark
         : state.matches("reading.submitted")
         ? theme.backgroundLight
         : theme.background,
-      borderColor: state.matches("editing")
-        ? theme.secondary
-        : active
-        ? theme.brand
-        : theme.fontDarkest,
+      borderColor:
+        active && stageState.matches("focusedViewBar.yes")
+          ? theme.brand
+          : theme.fontDarkest,
       height: state.matches("editing") ? 200 : 34,
       opacity: 1,
     });
-  }, [state.matches("editing")]);
+  }, [state.matches("editing"), active]);
 
   useLayoutEffect(() => {
     let request = null;
@@ -200,9 +207,6 @@ const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
         containerRef.current.style.left = state.matches("editing")
           ? `${x}px`
           : "unset";
-        containerRef.current.style.position = state.matches("editing")
-          ? "fixed"
-          : "relative";
         const {
           x: barX,
           width: barWidth,
@@ -344,6 +348,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           barRef={barRef}
           followRef={containerRef}
           inputRef={inputRef}
+          stageRef={stageRef}
         />
       ) : (
         <ViewStageParameterDiv style={props}>
