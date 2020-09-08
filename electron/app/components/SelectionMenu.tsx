@@ -43,6 +43,9 @@ const SelectionMenu = ({ port, dispatch }) => {
   };
 
   const size = selectedSamples.size;
+  if (size == 0) {
+    return <span>0 samples selected</span>;
+  }
   return (
     <DropdownTag
       name={`${size} sample${size == 1 ? "" : "s"} selected`}
