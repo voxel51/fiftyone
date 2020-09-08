@@ -47,7 +47,7 @@ export const filterIncludeLabels = atomFamily({
 
 export const filterLabelConfidenceRange = atomFamily({
   key: "filterLabelConfidenceRange",
-  default: [0, 1],
+  default: [null, null],
 });
 
 export const filterLabelIncludeNoConfidence = atomFamily({
@@ -62,7 +62,7 @@ export const modalFilterIncludeLabels = atomFamily({
 
 export const modalFilterLabelConfidenceRange = atomFamily({
   key: "modalFilterLabelConfidenceRange",
-  default: [0, 1],
+  default: [null, null],
 });
 
 export const modalFilterLabelIncludeNoConfidence = atomFamily({
@@ -98,4 +98,9 @@ export const activeTags = atom({
 export const modalActiveTags = atom({
   key: "modalActiveTags",
   default: {},
+});
+
+export const filterNumericFieldRange = atomFamily({
+  key: "filterNumericFieldRange",
+  default: [null, null],
 });

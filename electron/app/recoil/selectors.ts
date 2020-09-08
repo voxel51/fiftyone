@@ -211,7 +211,6 @@ export const fieldIsFiltered = selectorFamily({
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    const stateDescription = get(atoms.stateDescription);
     return get(atoms.stateDescription).derivables.view_stats.labels[label]
       .confidence_bounds;
   },
@@ -231,12 +230,7 @@ export const labelNameGroups = selector({
     makeLabelNameGroups(get(fieldSchema), get(labelNames), get(labelTypes)),
 });
 
-export const scalars = selector({
-  key: "scalars",
-  get: ({ get }) => new Set(get(labelNameGroups).scalars.map((e) => e.name)),
-});
-
-export const isScalar = selectorFamily({
-  key: "isScalar",
-  get: (name) => ({ get }) => get(scalars).has(name),
+export const isNumericField = selectorFamily({
+  key: "isNumericField",
+  get: (name) => ({ get }) => Boolean(get(numericFieldBounds(name))),
 });

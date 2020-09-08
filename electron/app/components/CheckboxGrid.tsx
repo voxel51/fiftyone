@@ -1,13 +1,14 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
-import { ArrowDropDown, NoEncryption } from "@material-ui/icons";
+import { ArrowDropDown } from "@material-ui/icons";
 import { useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
 import Filter from "./Filter";
+import NumericFieldFilter from "./NumericFieldFilter";
 
 const GLOBAL_ATOMS = {
   includeLabels: atoms.filterIncludeLabels,
@@ -140,7 +141,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
   const fieldIsFiltered = useRecoilValue(selectors.fieldIsFiltered(entry.name));
-  const isScalar = useRecoilValue(selectors.isScalar(entry.name));
+  const isNumericField = useRecoilValue(selectors.isNumericField(entry.name));
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -179,7 +180,7 @@ const Entry = ({ entry, onCheck, modal }) => {
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
               entry.selected &&
-              (entry.type || (isScalar && !modal)) &&
+              (entry.type || (isNumericField && !modal)) &&
               entry.count > 0 && (
                 <ArrowDropDown
                   onClick={(e) => {
@@ -220,7 +221,13 @@ const Entry = ({ entry, onCheck, modal }) => {
           />
         }
       />
-      {expanded && entry.selected && <Filter entry={entry} {...atoms} />}
+      {expanded &&
+        entry.selected &&
+        (isNumericField ? (
+          <NumericFieldFilter entry={entry} />
+        ) : (
+          <Filter entry={entry} {...atoms} />
+        ))}
     </div>
   );
 };
