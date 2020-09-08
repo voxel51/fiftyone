@@ -249,5 +249,34 @@ export const labelNameGroups = selector({
 
 export const isNumericField = selectorFamily({
   key: "isNumericField",
-  get: (name) => ({ get }) => Boolean(get(numericFieldBounds(name))),
+  get: (name) => ({ get }) => {
+    return [
+      "fiftyone.core.fields.IntField",
+      "fiftyone.core.fields.FloatField",
+    ].includes(get(fieldSchema)[name]);
+  },
+});
+
+export const sampleFilter = selector({
+  key: "sampleFilter",
+  get: ({ get }) => {
+    const fields = get(fieldSchema);
+    const filters = [];
+    for (const field in fields) {
+      if (get(isNumericField(field))) {
+        const includeNone = get(atoms.filterNumericFieldIncludeNone(field));
+        const range = get(atoms.filterNumericFieldRange(field));
+        if (range.some((r) => r === null)) continue;
+        filters.push((sample) => {
+          return (
+            (sample[field] >= range[0] && sample[field] <= range[1]) ||
+            (includeNone && sample[field] === null)
+          );
+        });
+      }
+    }
+    return (sample) => {
+      return filters.every((filter) => filter(sample));
+    };
+  },
 });

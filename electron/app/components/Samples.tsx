@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import InfiniteScroll from "react-infinite-scroller";
-import { useSetRecoilState } from "recoil";
+import { useSetRecoilState, useRecoilValue } from "recoil";
 import { Grid, Loader, Dimmer } from "semantic-ui-react";
 import Sample from "./Sample";
 import connect from "../utils/connect";
