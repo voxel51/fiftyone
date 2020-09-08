@@ -337,7 +337,9 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   const hasBounds = bounds.every((b) => b !== null);
 
-  useEffect(() => setRange([...bounds]), [bounds]);
+  useEffect(() => {
+    hasBounds && range.every((r) => r === null) && setRange([...bounds]);
+  }, [bounds]);
 
   return (
     <div style={{ margin: 6 }}>
