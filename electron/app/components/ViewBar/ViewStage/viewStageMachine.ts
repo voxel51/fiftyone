@@ -286,7 +286,7 @@ const viewStageMachine = Machine(
                       focusOnInit: false,
                     }),
                     "blurInput",
-                    send(({ stage }) => ({ type: "COMMIT", value: stage })),
+                    sendParent((ctx) => ({ type: "STAGE.DELETE", stage: ctx })),
                   ],
                 },
               ],

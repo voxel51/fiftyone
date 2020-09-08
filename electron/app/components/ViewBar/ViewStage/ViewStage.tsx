@@ -262,13 +262,15 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
 
   const props = useSpring({
     backgroundColor: isCompleted ? theme.backgroundLight : theme.background,
-    borderRightWidth: state.matches("delible.yes") ? 0 : 1,
+    borderRightWidth: state.matches("delible.yes") && parameters.length ? 0 : 1,
     borderColor:
       active && state.matches("focusedViewBar.yes")
         ? theme.brand
         : theme.fontDarkest,
-    borderTopRightRadius: length === 1 && !parameters.length ? 3 : 0,
-    borderBottomRightRadius: length === 1 && !parameters.length ? 3 : 0,
+    borderTopRightRadius:
+      state.matches("delible.yes") && !parameters.length ? 3 : 0,
+    borderBottomRightRadius:
+      state.matches("delible.yes") && !parameters.length ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -376,7 +378,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             stageRef={stageRef}
           />
         ))}
-        {state.matches("delible.yes") ? (
+        {state.matches("delible.yes") && parameters.length ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
         {state.matches("input.editing") &&
