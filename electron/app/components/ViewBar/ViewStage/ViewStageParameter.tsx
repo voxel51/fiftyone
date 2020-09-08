@@ -192,7 +192,11 @@ const ObjectEditor = ({
       height: state.matches("editing") ? 200 : 34,
       opacity: 1,
     });
-  }, [state.matches("editing"), active]);
+  }, [
+    state.matches("editing"),
+    active,
+    stageState.matches("focusedViewBar.yes"),
+  ]);
 
   useLayoutEffect(() => {
     let request = null;
