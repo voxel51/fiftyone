@@ -313,7 +313,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
       >
         <ViewStageDiv style={props}>
           <ViewStageInput
-            placeholder={state.matches("input.editing") ? "" : "+ add stage"}
+            placeholder={stage.length === 0 ? "+ add stage" : ""}
             value={stage}
             autoFocus={focusOnInit}
             onFocus={() => !state.matches("input.editing") && send("EDIT")}
@@ -388,6 +388,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
               results={results}
               send={send}
               currentResult={currentResult}
+              bestMatch={bestMatch.value}
               followRef={containerRef}
               barRef={barRef}
             />

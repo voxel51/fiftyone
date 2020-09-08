@@ -83,7 +83,7 @@ interface SearchResultsProps {
 }
 
 const SearchResults = React.memo(
-  ({ results, send, currentResult, barRef, followRef, ...rest }) => {
+  ({ results, send, currentResult, barRef, followRef, bestMatch, ...rest }) => {
     const [props, set] = useSpring(() => {
       const obj = followRef
         ? {
@@ -116,7 +116,7 @@ const SearchResults = React.memo(
           <SearchResult
             key={result}
             result={result}
-            isActive={currentResult === i}
+            isActive={currentResult === i || bestMatch === result}
             send={send}
           />
         ))}

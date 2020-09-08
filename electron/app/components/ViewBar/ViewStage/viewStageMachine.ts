@@ -41,7 +41,7 @@ const computeBestMatchString = (stageInfo, value) => {
   const match = stageInfo
     .map((s) => s.name)
     .filter((n) => n.toLowerCase().startsWith(value.toLowerCase()))[0];
-  if (match) {
+  if (match && value.length) {
     return {
       placeholder: match.slice(value.length),
       value: match,
