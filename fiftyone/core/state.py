@@ -354,13 +354,19 @@ def _get_label_confidence_bounds(view):
     except StopIteration:
         return {}
 
-    return {
+    result = {
         field.name: [
             result[field.name][0]["min"],
             result[field.name][0]["max"],
         ]
         for field in fields
     }
+    for bounds in result.values():
+        for idx, bound in enumerate(bounds):
+            if bound is not None:
+                bounds[idx] = round(float(bound), 2)
+
+    return result
 
 
 def _get_field_count(view, field):
