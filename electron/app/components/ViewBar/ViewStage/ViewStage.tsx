@@ -250,7 +250,10 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
   ].some(state.matches);
 
   const deleteProps = useSpring({
-    borderColor: active ? theme.brand : theme.fontDarkest,
+    borderColor:
+      active && state.matches("focusedViewBar.yes")
+        ? theme.brand
+        : theme.fontDarkest,
     opacity: 1,
     from: {
       opacity: 0,
@@ -264,11 +267,10 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
       (index !== 0 && !parameters.length)
         ? 1
         : 0,
-    borderColor: isCompleted
-      ? active
+    borderColor:
+      active && state.matches("focusedViewBar.yes")
         ? theme.brand
-        : theme.fontDarkest
-      : theme.secondary,
+        : theme.fontDarkest,
     borderTopRightRadius: length === 1 && !parameters.length ? 3 : 0,
     borderBottomRightRadius: length === 1 && !parameters.length ? 3 : 0,
     opacity: 1,

@@ -278,9 +278,10 @@ const ObjectEditor = ({ barRef, parameterRef, followRef, inputRef }) => {
   );
 };
 
-const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
+const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(parameterRef);
+  const [stageState] = useService(stageRef);
   const inputRef = useRef();
   const [containerRef, setContainerRef] = useState({});
 
@@ -314,11 +315,10 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef }) => {
         ? theme.backgroundLight
         : theme.background,
     borderStyle: "solid",
-    borderColor: state.matches("editing")
-      ? theme.secondary
-      : active
-      ? theme.brand
-      : theme.fontDarkest,
+    borderColor:
+      active && stageState.matches("focusedViewBar.yes")
+        ? theme.brand
+        : theme.fontDarkest,
     borderRightWidth: tail && !hasObjectType ? 1 : 0,
     height: hasObjectType && state.matches("editing") ? 200 : 34,
     borderWidth: hasObjectType ? 0 : 1,
