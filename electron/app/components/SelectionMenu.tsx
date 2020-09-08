@@ -1,5 +1,5 @@
 import React from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState } from "recoil";
 import styled from "styled-components";
 
 import { updateState } from "../actions/update";
@@ -11,7 +11,9 @@ import DropdownTag from "./Tags/DropdownTag";
 
 const SelectionMenu = ({ port, dispatch }) => {
   const socket = getSocket(port, "state");
-  const setStateDescription = useSetRecoilState(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
@@ -26,6 +28,17 @@ const SelectionMenu = ({ port, dispatch }) => {
   const clearSelection = () => {
     setSelectedSamples(new Set());
     socket.emit("clear_selection");
+  };
+
+  const addStage = (name, callback) => {
+    const newState = JSON.parse(JSON.stringify(stateDescription));
+    const newView = JSON.parse(newState.view.view);
+    newView.push({
+      _cls: `fiftyone.core.stages.${name}`,
+      kwargs: [["sample_ids", Array.from(selectedSamples)]],
+    });
+    newState.view.view = JSON.stringify(newView);
+    socket.emit("update", { data: newState, include_self: true }, callback);
   };
 
   const sendEvent = (event) => {
@@ -46,11 +59,11 @@ const SelectionMenu = ({ port, dispatch }) => {
         },
         {
           name: "Only show selected",
-          action: () => sendEvent("select_selected"),
+          action: () => addStage("Select"),
         },
         {
           name: "Hide selected",
-          action: () => sendEvent("exclude_selected"),
+          action: () => addStage("Exclude", clearSelection),
         },
       ]}
       menuZIndex={500}
