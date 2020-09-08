@@ -3,6 +3,32 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.5.4
+--------------
+*Released September 8, 2020*
+
+App
+^^^
+- Added support for filtering samples by scalar fields in the App via filtering
+  widgets that are accessible from the display options menu
+- Added autocomplete when creating new stages in the view bar
+- Updated the look-and-feel of the view bar to make the active stage more
+  visually apparaent and to make the bar more consistent with the rest of the
+  App
+- Added support for selecting/excluding samples from the current view in the App
+  by selecting them and then choosing the appropriate option from a selected
+  samples menu
+- Media viewer options are maintained while browsing between samples in
+  expanded sample view
+- Improved the look-and-feel of confidence sliders when filtering labels
+- Limited floating point numbers to three decimals when rendering them in the
+  media viewer
+
+Core
+^^^^
+- Added support for importing/exporting supercategories for
+  :ref:`COCO format <COCODetectionDataset-import>`
+
 FiftyOne 0.5.3
 --------------
 *Released September 1, 2020*
