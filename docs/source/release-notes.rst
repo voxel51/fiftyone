@@ -9,8 +9,6 @@ FiftyOne 0.5.4
 
 App
 ^^^
-- Added support for filtering samples by scalar fields in the App via widgets
-  that are accessible from the display options menu
 - Added support for selecting/excluding samples from the current view in the
   App by selecting them and then choosing the appropriate option from a sample
   selection menu
@@ -27,6 +25,8 @@ App
 
 Core
 ^^^^
+- Added support for exporting |Classification| labels in dataset formats that
+  expect |Detections| labels
 - Added support for importing/exporting supercategories for datasets in
   :ref:`COCO format <COCODetectionDataset-import>`
 
