@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.5.4
 --------------
-*Released September 8, 2020*
+*Released September 9, 2020*
 
 App
 ^^^
