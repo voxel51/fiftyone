@@ -180,7 +180,7 @@ const Entry = ({ entry, onCheck, modal }) => {
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
               entry.selected &&
-              entry.type &&
+              (entry.type || (isNumericField && !modal)) &&
               entry.count > 0 && (
                 <ArrowDropDown
                   onClick={(e) => {

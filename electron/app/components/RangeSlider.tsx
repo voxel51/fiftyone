@@ -159,6 +159,7 @@ export const NamedRangeSlider = ({
 
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   const hasBounds = bounds.every((b) => b !== null);
+
   return (
     <NamedRangeSliderContainer>
       <NamedRangeSliderHeader>

@@ -113,10 +113,11 @@ class StateDescriptionWithDerivables(StateDescription):
     broker.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, filter_stages={}, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.derivables = self.get_derivables()
+        self.filter_stages = filter_stages
 
     def get_derivables(self):
         """Computes all "derivable" data that needs to be passed to the app,
@@ -131,6 +132,11 @@ class StateDescriptionWithDerivables(StateDescription):
             "field_schema": self._get_field_schema(),
             **self._get_label_info(),
         }
+
+    @classmethod
+    def from_dict(cls, d, **kwargs):
+        kwargs["filter_stages"] = d.get("filter_stages", {})
+        return super().from_dict(d, **kwargs)
 
     def _get_view_stats(self):
         if self.view is not None:
