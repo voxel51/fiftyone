@@ -74,39 +74,35 @@ export const PARSER = {
     validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
   },
   "list<str>": {
-    castFrom: (value) => {
-      return value === "string" ? JSON.stringify(value) : value;
-    },
-    castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
-    parse: (value) => {
-      const array = JSON.parse(value);
-      return JSON.stringify(array.map((e) => PARSER.str.parse(e)));
-    },
+    castFrom: (value) => value.join(","),
+    castTo: (value) => value.split(","),
+    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
     validate: (value) => {
+      const stripped = value.replace(/[\s]/g, "");
+      let array = null;
       try {
-        const array = typeof value === "string" ? JSON.parse(value) : value;
-        return (
-          Array.isArray(array) && array.every((e) => PARSER.str.validate(e))
-        );
+        array = JSON.parse(stripped);
       } catch {
-        return false;
+        if (!Array.isArray(array)) return false;
+        array = stripped.split(",");
       }
+      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
     },
   },
   "list<id>": {
     castFrom: (value) => value.join(","),
-    castTo: (value) => {
-      return value.split(",");
-    },
-    parse: (value) => {
-      console.log(value.replace(/[\s\'\"\[\]]/g, ""));
-      return value.replace(/[\s\'\"\[\]]/g, "");
-    },
+    castTo: (value) => value.split(","),
+    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
     validate: (value) => {
-      return value
-        .replace(/[\s\'\"\[\]]/g, "")
-        .split(",")
-        .every((e) => PARSER.id.validate(e));
+      const stripped = value.replace(/[\s]/g, "");
+      let array = null;
+      try {
+        array = JSON.parse(stripped);
+      } catch {
+        if (!Array.isArray(array)) return false;
+        array = stripped.split(",");
+      }
+      return Array.isArray(array) && array.every((e) => PARSER.id.validate(e));
     },
   },
   str: {
