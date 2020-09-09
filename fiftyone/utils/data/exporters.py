@@ -138,12 +138,13 @@ def write_dataset(
                         dataset_exporter.label_cls is fol.Detections
                         and isinstance(label, fol.Classification)
                     ):
-                        warnings.warn(
+                        msg = (
                             "Dataset exporter expects labels in %s format, "
                             "but found %s. Converting labels to detections "
                             "whose bounding boxes span the entire image"
                             % (fol.Detections, label.__class__)
                         )
+                        warnings.warn(msg)
                         label = fol.Detections(
                             detections=[
                                 fol.Detection(
