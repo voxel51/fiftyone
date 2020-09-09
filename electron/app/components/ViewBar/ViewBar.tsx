@@ -15,6 +15,7 @@ const ViewBarContainer = styled.div`
   position: relative;
   width: 100%;
   background-color: ${({ theme }) => theme.background};
+  padding: 1rem 0;
 `;
 
 const ViewBarDiv = styled.div`
@@ -22,10 +23,11 @@ const ViewBarDiv = styled.div`
   border-radius: 3px;
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   box-sizing: border-box;
-  height: 54px;
+  height: 52px;
   width: 100%;
   padding: 0 0.25rem;
   display: flex;
+  overflow-x: scroll;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -38,11 +40,10 @@ const ViewBarDiv = styled.div`
   }
 `;
 
-const Link = styled.a``;
-
 const IconsContainer = styled.div`
   position: absolute;
-  top: 1rem;
+  z-index: 904;
+  top: 30px;
   right: 0.5rem;
   display: flex;
 `;
@@ -54,6 +55,7 @@ const viewBarKeyMap = {
   VIEW_BAR_NEXT_STAGE: "shift+right",
   VIEW_BAR_PREVIOUS_STAGE: "shift+left",
   VIEW_BAR_DELETE: ["del", "backspace"],
+  VIEW_BAR_ENTER: "enter",
 };
 
 const ViewBar = () => {
@@ -82,6 +84,10 @@ const ViewBar = () => {
     VIEW_BAR_NEXT_STAGE: useCallback(() => send("NEXT_STAGE"), []),
     VIEW_BAR_PREVIOUS_STAGE: useCallback(() => send("PREVIOUS_STAGE"), []),
     VIEW_BAR_DELETE: useCallback(() => send("DELETE_ACTIVE_STAGE"), []),
+    VIEW_BAR_ENTER: useCallback((e) => {
+      e.preventDefault();
+      send("ENTER");
+    }, []),
   };
 
   useOutsideClick(
@@ -113,7 +119,11 @@ const ViewBar = () => {
                       }
                     />
                   ) : null}
-                  <ViewStage key={stage.id} stageRef={stage.ref} />
+                  <ViewStage
+                    key={stage.id}
+                    stageRef={stage.ref}
+                    barRef={barRef}
+                  />
                 </React.Fragment>
               );
             })

@@ -26,11 +26,6 @@ function Samples(props) {
           : null
       }
       hasMore={scrollState.hasMore}
-      loader={
-        <Dimmer active className="samples-dimmer" key={-1}>
-          <Loader />
-        </Dimmer>
-      }
       useWindow={true}
     >
       {scrollState.rows.map((r, i) => (

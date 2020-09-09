@@ -74,46 +74,33 @@ export const PARSER = {
     validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
   },
   "list<str>": {
-    castFrom: (value) => {
-      return value === "string" ? JSON.stringify(value) : value;
-    },
-    castTo: (value) => JSON.parse(value).map((e) => PARSER.str.castTo(e)),
-    parse: (value) => {
-      const array = JSON.parse(value);
-      return JSON.stringify(array.map((e) => PARSER.str.parse(e)));
-    },
+    castFrom: (value) => value.join(","),
+    castTo: (value) => value.split(","),
+    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
     validate: (value) => {
+      const stripped = value.replace(/[\s]/g, "");
+      let array = null;
       try {
-        const array = typeof value === "string" ? JSON.parse(value) : value;
-        return (
-          Array.isArray(array) && array.every((e) => PARSER.str.validate(e))
-        );
+        array = JSON.parse(stripped);
       } catch {
-        return false;
+        array = stripped.split(",");
       }
+      return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
     },
   },
   "list<id>": {
-    castFrom: (value) => {
-      return JSON.stringify(value);
-    },
-    castTo: (value) =>
-      typeof value === "string"
-        ? JSON.parse(value).map((e) => PARSER.str.castTo(e))
-        : value,
-    parse: (value) => {
-      const array = JSON.parse(value);
-      return JSON.stringify(array.map((e) => PARSER.id.parse(e)));
-    },
+    castFrom: (value) => value.join(","),
+    castTo: (value) => value.split(","),
+    parse: (value) => value.replace(/[\s\'\"\[\]]/g, ""),
     validate: (value) => {
+      const stripped = value.replace(/[\s]/g, "");
+      let array = null;
       try {
-        const array = typeof value === "string" ? JSON.parse(value) : value;
-        return (
-          Array.isArray(array) && array.every((e) => PARSER.id.validate(e))
-        );
+        array = JSON.parse(stripped);
       } catch {
-        return false;
+        array = stripped.split(",");
       }
+      return Array.isArray(array) && array.every((e) => PARSER.id.validate(e));
     },
   },
   str: {
@@ -123,7 +110,7 @@ export const PARSER = {
     validate: () => true,
   },
   dict: {
-    castFrom: (value) => JSON.stringify(value),
+    castFrom: (value) => JSON.stringify(value, null, 2),
     castTo: (value) => (typeof value === "string" ? JSON.parse(value) : value),
     parse: (value) => value,
     validate: (value) => {
@@ -186,10 +173,6 @@ export default Machine(
           assign({
             prevValue: ({ value }) => value,
             focusOnInit: false,
-            value: ({ value }) =>
-              PARSER.dict.validate(value)
-                ? JSON.stringify(JSON.parse(value), null, 2)
-                : value,
           }),
           "focusInput",
         ],
@@ -212,6 +195,7 @@ export default Machine(
                     value === "" && defaultValue
                       ? defaultValue
                       : type.split("|").reduce((acc, t) => {
+                          if (acc !== undefined) return acc;
                           const parser = PARSER[t];
                           return parser.validate(value)
                             ? parser.parse(value)
@@ -284,6 +268,11 @@ export default Machine(
             errorId: undefined,
           }),
         ],
+      },
+      UPDATE: {
+        actions: assign({
+          active: (_, { active }) => active,
+        }),
       },
     },
   },

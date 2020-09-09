@@ -1,4 +1,11 @@
-import React, { useContext, useMemo, useEffect, useRef, useState } from "react";
+import React, {
+  useContext,
+  useMemo,
+  useEffect,
+  useRef,
+  useState,
+  useLayoutEffect,
+} from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
@@ -14,7 +21,7 @@ const ViewStageParameterContainer = styled.div`
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.brand};
   position: relative;
   display: flex;
   z-index: 801;
@@ -41,28 +48,29 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
   }
 `);
 
-const ObjectEditorContainer = styled.div`
-  height: 100%;
-  width: 100%;
+const ObjectEditorContainer = animated(styled.div`
   font-weight: bold;
+  position: fixed;
   line-height: 1rem;
   font-size: 14px;
-  position: relative;
-  margin: 0.5rem;
+  margin-left: -1px;
   overflow: visible;
   display: flex;
-`;
+  border: 1px solid pink;
+  border-style: solid;
+  z-index: 800;
+  will-change: transform;
+`);
 
 const ObjectEditorTextArea = animated(styled.textarea`
-  position: relative;
   background-color: transparent;
   overflow: visible;
   line-height: 1rem;
-  margin: -0.5rem;
   border: none;
   color: ${({ theme }) => theme.font};
   height: 100%;
-  font-size: 1rem;
+  font-size: 14px;
+  will-change: tranform;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -82,17 +90,17 @@ const ObjectEditorTextArea = animated(styled.textarea`
 
 const SubmitButton = animated(styled.button`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.brand};
   color: ${({ theme }) => theme.font};
-  background-color: hsla(27, 95%, 49%, 0.4);
+  background-color: ${({ theme }) => theme.backgroundLight};
   border-radius: 3px;
   position: relative;
   line-height: 1rem;
   cursor: pointer;
   font-weight: bold;
   position: absolute;
-  bottom: 1rem;
-  right: 0;
+  bottom: 0.5rem;
+  right: 0.5rem;
 
   :focus {
     outline: none;
@@ -128,11 +136,37 @@ const makePlaceholder = (parameter, type, defaultValue) =>
     toTypeAnnotation(type),
   ].join(": ");
 
-const ObjectEditor = ({ parameterRef, inputRef }) => {
+const ObjectEditor = ({
+  barRef,
+  parameterRef,
+  followRef,
+  inputRef,
+  stageRef,
+}) => {
   const [state, send] = useService(parameterRef);
+  const [stageState] = useService(stageRef);
+  const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
 
-  const { parameter, defaultValue, value, type } = state.context;
+  const { active, parameter, defaultValue, value, type } = state.context;
+
+  const [containerProps, containerSet] = useSpring(() => ({
+    height: state.matches("editing") ? 200 : 36,
+    position: state.matches("editing") ? "fixed" : "relative",
+    backgroundColor: state.matches("editing")
+      ? theme.backgroundDark
+      : state.matches("reading.submitted")
+      ? theme.backgroundLight
+      : theme.background,
+    borderColor:
+      active && stageState.matches("focusedViewBar.yes")
+        ? theme.brand
+        : theme.fontDarkest,
+    opacity: 1,
+    from: {
+      opacity: 0,
+    },
+  }));
 
   const props = useSpring({
     width: state.matches("editing") ? 400 : 0,
@@ -143,49 +177,121 @@ const ObjectEditor = ({ parameterRef, inputRef }) => {
     send("BLUR");
   });
 
+  useEffect(() => {
+    containerSet({
+      position: state.matches("editing") ? "fixed" : "relative",
+      backgroundColor: state.matches("editing")
+        ? theme.backgroundDark
+        : state.matches("reading.submitted")
+        ? theme.backgroundLight
+        : theme.background,
+      borderColor:
+        active && stageState.matches("focusedViewBar.yes")
+          ? theme.brand
+          : theme.fontDarkest,
+      height: state.matches("editing") ? 200 : 34,
+      opacity: 1,
+    });
+  }, [
+    state.matches("editing"),
+    active,
+    stageState.matches("focusedViewBar.yes"),
+  ]);
+
+  useLayoutEffect(() => {
+    let request = null;
+    const attach = () => {
+      request = window.requestAnimationFrame(() => {
+        const { x, y } = state.matches("editing")
+          ? followRef.current.getBoundingClientRect()
+          : { x: 0, y: 0 };
+        containerRef.current.style.top = state.matches("editing")
+          ? `${y}px`
+          : "unset";
+        containerRef.current.style.left = state.matches("editing")
+          ? `${x}px`
+          : "unset";
+        const {
+          x: barX,
+          width: barWidth,
+        } = barRef.current.getBoundingClientRect();
+        const barRight = barX + barWidth;
+        containerRef.current.style.width = state.matches("editing")
+          ? `${Math.min(barRight - x, 400)}px`
+          : "auto";
+        request = null;
+      });
+    };
+
+    barRef.current.addEventListener("scroll", attach);
+    window.addEventListener("scroll", attach);
+    followRef.current && attach();
+
+    return () => {
+      barRef.current.removeEventListener("scroll", attach);
+      window.removeEventListener("scroll", attach);
+      request && window.cancelAnimationFrame(request);
+    };
+  }, [
+    followRef.current,
+    containerRef.current,
+    active,
+    state.matches("editing"),
+  ]);
+
   return (
-    <ObjectEditorContainer
-      onClick={() => state.matches("reading") && send("EDIT")}
-      ref={containerRef}
-    >
-      {state.matches("reading") ? (
-        convert(value, makePlaceholder(parameter, type, defaultValue))
-      ) : (
-        <>
-          <ObjectEditorTextArea
-            key="textarea"
-            autoFocus={state.matches("editing")}
-            style={props}
-            onChange={(e) => {
-              send({
-                type: "CHANGE",
-                value: e.target.value.replace(/&#13/g, "\n"),
-              });
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send("COMMIT");
-              }
-            }}
-            value={value}
-            ref={inputRef}
-          ></ObjectEditorTextArea>
-          <Submit key="submit" send={send} />
-        </>
+    <>
+      {state.matches("editing") && (
+        <animated.div style={{ height: "100%", ...props }} />
       )}
-      <ErrorMessage
-        key="error"
-        serviceRef={parameterRef}
-        style={{ marginTop: "12rem", marginLeft: -10 }}
-      />
-    </ObjectEditorContainer>
+      <ObjectEditorContainer
+        style={containerProps}
+        onClick={() => state.matches("reading") && send("EDIT")}
+        ref={containerRef}
+      >
+        {state.matches("reading") ? (
+          <div style={{ padding: "0.5em", whiteSpace: "nowrap" }}>
+            {convert(value, makePlaceholder(parameter, type, defaultValue))}
+          </div>
+        ) : (
+          <>
+            <ObjectEditorTextArea
+              key="textarea"
+              autoFocus={state.matches("editing")}
+              style={props}
+              onChange={(e) => {
+                send({
+                  type: "CHANGE",
+                  value: e.target.value.replace(/&#13/g, "\n"),
+                });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  send("COMMIT");
+                }
+              }}
+              value={value}
+              ref={inputRef}
+            ></ObjectEditorTextArea>
+            <Submit key="submit" send={send} />
+          </>
+        )}
+        <ErrorMessage
+          key="error"
+          serviceRef={parameterRef}
+          style={{ marginTop: "12rem", marginLeft: -10 }}
+        />
+      </ObjectEditorContainer>
+    </>
   );
 };
 
-const ViewStageParameter = React.memo(({ parameterRef }) => {
+const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(parameterRef);
-  const inputRef = useRef(null);
+  const [stageState] = useService(stageRef);
+  const inputRef = useRef();
+  const [containerRef, setContainerRef] = useState({});
 
   const actionsMap = useMemo(
     () => ({
@@ -206,7 +312,7 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { defaultValue, parameter, tail, type, value } = state.context;
+  const { defaultValue, parameter, tail, type, value, active } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
@@ -214,11 +320,16 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
       state.matches("editing") && hasObjectType
         ? theme.backgroundDark
         : state.matches("reading.submitted")
-        ? theme.brandTransparent
-        : theme.brandMoreTransparent,
-    borderStyle: state.matches("reading.submitted") ? "solid" : "dashed",
-    borderRightWidth: tail ? 2 : 0,
-    height: hasObjectType && state.matches("editing") ? 200 : 36,
+        ? theme.backgroundLight
+        : theme.background,
+    borderStyle: "solid",
+    borderColor:
+      active && stageState.matches("focusedViewBar.yes")
+        ? theme.brand
+        : theme.fontDarkest,
+    borderRightWidth: tail && !hasObjectType ? 1 : 0,
+    height: hasObjectType && state.matches("editing") ? 200 : 34,
+    borderWidth: hasObjectType ? 0 : 1,
     opacity: 1,
     from: {
       opacity: 0,
@@ -228,36 +339,58 @@ const ViewStageParameter = React.memo(({ parameterRef }) => {
   const isEditing = state.matches("editing");
 
   return (
-    <ViewStageParameterContainer>
-      <ViewStageParameterDiv style={props}>
-        {hasObjectType ? (
-          <ObjectEditor parameterRef={parameterRef} inputRef={inputRef} />
-        ) : (
-          <>
-            <ViewStageParameterInput
-              placeholder={makePlaceholder(parameter, type, defaultValue)}
-              value={value}
-              onFocus={() => !isEditing && send({ type: "EDIT" })}
-              onBlur={() => isEditing && send({ type: "COMMIT" })}
-              onChange={(e) => {
-                send({ type: "CHANGE", value: e.target.value });
-              }}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  isEditing && send({ type: "COMMIT" });
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  send({ type: "COMMIT" });
-                }
-              }}
-              ref={inputRef}
+    <ViewStageParameterContainer
+      ref={(node) =>
+        node &&
+        node !== containerRef.current &&
+        setContainerRef({ current: node })
+      }
+    >
+      {hasObjectType ? (
+        <ObjectEditor
+          parameterRef={parameterRef}
+          barRef={barRef}
+          followRef={containerRef}
+          inputRef={inputRef}
+          stageRef={stageRef}
+        />
+      ) : (
+        <ViewStageParameterDiv style={props}>
+          <ViewStageParameterInput
+            placeholder={makePlaceholder(parameter, type, defaultValue)}
+            autoFocus={state.matches("editing")}
+            value={
+              state.matches("reading") && value.length > 24
+                ? value.slice(0, 25) + "..."
+                : value
+            }
+            onFocus={() => !isEditing && send({ type: "EDIT" })}
+            onBlur={() => isEditing && send({ type: "COMMIT" })}
+            onChange={(e) => {
+              send({ type: "CHANGE", value: e.target.value });
+            }}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                isEditing && send({ type: "COMMIT" });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                send({ type: "COMMIT" });
+              }
+            }}
+            ref={inputRef}
+          />
+          {containerRef.current && (
+            <ErrorMessage
+              key="error"
+              serviceRef={parameterRef}
+              barRef={barRef}
+              followRef={containerRef}
             />
-            <ErrorMessage key="error" serviceRef={parameterRef} />
-          </>
-        )}
-      </ViewStageParameterDiv>
+          )}
+        </ViewStageParameterDiv>
+      )}
     </ViewStageParameterContainer>
   );
 });
