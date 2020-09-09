@@ -445,7 +445,6 @@ const viewBarMachine = Machine(
               }
             },
           }),
-          "sendStagesUpdate",
           "submit",
         ],
       },
@@ -460,13 +459,14 @@ const viewBarMachine = Machine(
             },
             setStateDescription: (_, e) => e.setStateDescription,
           }),
+          "sendStagesUpdate",
         ],
       },
     },
   },
   {
     actions: {
-      sendStagesUpdate: (ctx) =>
+      sendStagesUpdate: (ctx) => {
         ctx.stages.forEach((stage) =>
           stage.ref.send({
             type: "STAGE.UPDATE",
@@ -475,7 +475,8 @@ const viewBarMachine = Machine(
             active: stage.index === ctx.activeStage,
             stage: stage.stage,
           })
-        ),
+        );
+      },
       submit: ({ socket, stateDescription, stages, stageInfo }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
