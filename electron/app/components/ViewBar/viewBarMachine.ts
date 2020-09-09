@@ -141,7 +141,7 @@ const viewBarMachine = Machine(
       decide: {
         always: [
           {
-            target: "running",
+            target: "running.hist",
             cond: (ctx) => ctx.stageInfo,
             actions: [
               assign({
@@ -319,6 +319,10 @@ const viewBarMachine = Machine(
               },
             },
           },
+          hist: {
+            type: "history",
+            history: "deep",
+          },
         },
       },
     },
@@ -376,7 +380,6 @@ const viewBarMachine = Machine(
               return stages;
             },
           }),
-          send("FOCUS"),
           "submit",
         ],
       },
