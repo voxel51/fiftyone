@@ -633,8 +633,12 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
     def label_cls(self):
         return fol.Detections
 
-    def get_label(self):
+    def get_label(self, class_only=False):
         """Returns the label for the current sample.
+
+        Args:
+            class_only (False): whether the label of each sample is just a
+                classification we want to store as a detection
 
         Returns:
             a :class:`fiftyone.core.labels.Detections` instance
@@ -648,7 +652,22 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
         else:
             img = None
 
-        return self._parse_label(target, img=img)
+        if class_only:
+            return self._parse_class(target)
+
+        else:
+            return self._parse_label(target, img=img)
+
+    def _parse_class(self, target):
+        if target is None:
+            return None
+
+        try:
+            label = self.classes[target]
+        except:
+            label = str(target)
+
+        return fol.Detections(detections=[fol.Detection(label=label)])
 
     def _parse_label(self, target, img=None):
         if target is None:

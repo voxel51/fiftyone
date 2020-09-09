@@ -242,6 +242,37 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
         return foud.ImageClassificationDirectoryTreeExporter
 
 
+class ImageDetectionDirectoryTree(ImageDetectionDataset):
+    """A directory tree whose subfolders define an image detection
+    dataset.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <classA>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+            <classB>/
+                <image1>.<ext>
+                <image2>.<ext>
+                ...
+            ...
+
+    Unlabeled images are stored in a subdirectory named ``_unlabeled``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.ImageDetectionDirectoryTreeImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.ImageDetectionDirectoryTreeExporter
+
+
 class TFImageClassificationDataset(ImageClassificationDataset):
     """A labeled dataset consisting of images and their associated
     classification labels stored as

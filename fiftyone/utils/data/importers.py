@@ -21,6 +21,7 @@ from .parsers import (
     FiftyOneImageDetectionSampleParser,
     FiftyOneImageLabelsSampleParser,
     ImageClassificationSampleParser,
+    ImageDetectionSampleParser,
 )
 
 
@@ -693,6 +694,85 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
 
     def setup(self):
         self._sample_parser = ImageClassificationSampleParser()
+
+        classes = set()
+        self._samples = []
+        glob_patt = os.path.join(self.dataset_dir, "*", "*")
+        for path in etau.get_glob_matches(glob_patt):
+            chunks = path.split(os.path.sep)
+            if any(s.startswith(".") for s in chunks[-2:]):
+                continue
+
+            label = chunks[-2]
+            if label == "_unlabeled":
+                label = None
+            else:
+                classes.add(label)
+
+            self._samples.append((path, label))
+
+        self._classes = sorted(classes)
+
+    def get_dataset_info(self):
+        return {"classes": self._classes}
+
+
+class ImageDetectionDirectoryTreeImporter(LabeledImageDatasetImporter):
+    """Importer for an image detection directory tree stored on disk.
+
+    See :class:`fiftyone.types.dataset_types.ImageDetectionDirectoryTree`
+    for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.ImageMetadata` instances for each
+            image when importing
+    """
+
+    def __init__(self, dataset_dir, compute_metadata=False):
+        super().__init__(dataset_dir)
+        self.compute_metadata = compute_metadata
+        self._classes = None
+        self._sample_parser = None
+        self._samples = None
+        self._iter_samples = None
+
+    def __iter__(self):
+        self._iter_samples = iter(self._samples)
+        return self
+
+    def __len__(self):
+        return len(self._samples)
+
+    def __next__(self):
+        sample = next(self._iter_samples)
+
+        self._sample_parser.with_sample(sample)
+        image_path = self._sample_parser.get_image_path()
+        label = self._sample_parser.get_label(class_only=True)
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        return image_path, image_metadata, label
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def has_dataset_info(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        self._sample_parser = ImageDetectionSampleParser()
 
         classes = set()
         self._samples = []

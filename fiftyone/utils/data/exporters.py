@@ -732,6 +732,90 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
             etai.write(img, out_image_path)
 
 
+class ImageDetectionDirectoryTreeExporter(LabeledImageDatasetExporter):
+    """Exporter that writes an image detection directory tree to disk.
+
+    See :class:`fiftyone.types.dataset_types.ImageDetectionDirectoryTree`
+    for format details.
+
+    If the path to an image is provided, the image is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
+
+    Args:
+        export_dir: the directory to write the export
+        image_format (None): the image format to use when writing in-memory
+            images to disk. By default, ``fiftyone.config.default_image_ext``
+            is used
+    """
+
+    def __init__(self, export_dir, image_format=None):
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
+        super().__init__(export_dir)
+        self.image_format = image_format
+        self._class_counts = None
+        self._filename_counts = None
+        self._default_filename_patt = (
+            fo.config.default_sequence_idx + image_format
+        )
+
+    @property
+    def requires_image_metadata(self):
+        return False
+
+    @property
+    def label_cls(self):
+        return fol.Detections
+
+    def setup(self):
+        self._class_counts = defaultdict(int)
+        self._filename_counts = defaultdict(int)
+        etau.ensure_dir(self.export_dir)
+
+    def export_sample(self, image_or_path, detections, metadata=None):
+        is_image_path = self._is_image_path(image_or_path)
+
+        _label = _parse_detections(detections)
+
+        try:
+            _label = detections.detections[0].label
+
+        except:
+            _label = None
+
+        if _label is None:
+            _label = "_unlabeled"
+
+        self._class_counts[_label] += 1
+
+        if is_image_path:
+            image_path = image_or_path
+        else:
+            img = image_or_path
+            image_path = self._default_filename_patt % (
+                self._class_counts[_label]
+            )
+
+        filename = os.path.basename(image_path)
+        name, ext = os.path.splitext(filename)
+
+        key = (_label, filename)
+        self._filename_counts[key] += 1
+        count = self._filename_counts[key]
+        if count > 1:
+            filename = name + ("-%d" % count) + ext
+
+        out_image_path = os.path.join(self.export_dir, _label, filename)
+
+        if is_image_path:
+            etau.copy_file(image_path, out_image_path)
+        else:
+            etai.write(img, out_image_path)
+
+
 class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes an image detection dataset to disk in FiftyOne's
     default format.
@@ -939,10 +1023,13 @@ def _parse_detections(detections, labels_map_rev=None):
         if labels_map_rev is not None:
             label = labels_map_rev[label]
 
-        _detection = {
-            "label": label,
-            "bounding_box": detection.bounding_box,
-        }
+        _detection = {}
+
+        if detection.bounding_box is not None:
+            _detection = {
+                "label": label,
+                "bounding_box": detection.bounding_box,
+            }
         if detection.confidence is not None:
             _detection["confidence"] = detection.confidence
 
