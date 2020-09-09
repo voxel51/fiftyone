@@ -323,7 +323,6 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             onKeyPress={(e) => {
               if (e.key === "Enter") {
                 const match = getMatch(stageInfo, e.target.value);
-                console.log(match);
                 send({
                   type: "COMMIT",
                   value: match

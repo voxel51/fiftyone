@@ -83,7 +83,6 @@ export const PARSER = {
       try {
         array = JSON.parse(stripped);
       } catch {
-        if (!Array.isArray(array)) return false;
         array = stripped.split(",");
       }
       return Array.isArray(array) && array.every((e) => PARSER.str.validate(e));
@@ -99,7 +98,6 @@ export const PARSER = {
       try {
         array = JSON.parse(stripped);
       } catch {
-        if (!Array.isArray(array)) return false;
         array = stripped.split(",");
       }
       return Array.isArray(array) && array.every((e) => PARSER.id.validate(e));
@@ -112,7 +110,7 @@ export const PARSER = {
     validate: () => true,
   },
   dict: {
-    castFrom: (value) => JSON.stringify(value),
+    castFrom: (value) => JSON.stringify(value, null, 2),
     castTo: (value) => (typeof value === "string" ? JSON.parse(value) : value),
     parse: (value) => value,
     validate: (value) => {
@@ -175,10 +173,6 @@ export default Machine(
           assign({
             prevValue: ({ value }) => value,
             focusOnInit: false,
-            value: ({ value }) =>
-              PARSER.dict.validate(value)
-                ? JSON.stringify(JSON.parse(value), null, 2)
-                : value,
           }),
           "focusInput",
         ],
