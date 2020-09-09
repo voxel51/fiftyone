@@ -286,6 +286,26 @@ def _get_label_fields(view):
     return list(filter(_filter, view.get_field_schema().values()))
 
 
+def _get_bounds(fields, view, facets):
+    pipeline = [{"$facet": facets}]
+
+    try:
+        result = next(view.aggregate(pipeline))
+    except StopIteration:
+        return {}
+    bounds = {}
+    for field in fields:
+        if len(result[field.name]):
+            bounds[field.name] = [
+                round(float(result[field.name][0]["min"]), 2),
+                round(float(result[field.name][0]["max"]), 2),
+            ]
+        else:
+            bounds[field.name] = [None, None]
+
+    return bounds
+
+
 def _get_numeric_field_bounds(view):
     numeric_fields = list(
         filter(
@@ -306,27 +326,8 @@ def _get_numeric_field_bounds(view):
         ]
         for field in numeric_fields
     }
-    pipeline = [{"$facet": facets}]
 
-    try:
-        result = next(view.aggregate(pipeline))
-    except StopIteration:
-        return {}
-
-    result = {
-        field.name: [
-            result[field.name][0]["min"],
-            result[field.name][0]["max"],
-        ]
-        for field in numeric_fields
-    }
-
-    for bounds in result.values():
-        for idx, bound in enumerate(bounds):
-            if bound is not None:
-                bounds[idx] = round(float(bound), 2)
-
-    return result
+    return _get_bounds(numeric_fields, view, facets)
 
 
 def _get_label_confidence_bounds(view):
@@ -360,26 +361,7 @@ def _get_label_confidence_bounds(view):
         )
         facets[field.name] = facet_pipeline
 
-    pipeline = [{"$facet": facets}]
-
-    try:
-        result = next(view.aggregate(pipeline))
-    except StopIteration:
-        return {}
-
-    result = {
-        field.name: [
-            result[field.name][0]["min"],
-            result[field.name][0]["max"],
-        ]
-        for field in fields
-    }
-    for bounds in result.values():
-        for idx, bound in enumerate(bounds):
-            if bound is not None:
-                bounds[idx] = round(float(bound), 2)
-
-    return result
+    return _get_bounds(fields, view, facets)
 
 
 def _get_field_count(view, field):
