@@ -2,6 +2,7 @@ import React from "react";
 import styled from "styled-components";
 
 import DropdownHandle from "./DropdownHandle";
+import SelectionMenu from "./SelectionMenu";
 
 type Props = {
   datasetName: string;
@@ -53,11 +54,7 @@ const ImageContainerHeader = ({
         />
       </div>
       <div>
-        {datasetName ? (
-          <div>
-            Dataset: <strong>{datasetName}</strong>
-          </div>
-        ) : null}
+        <SelectionMenu />
       </div>
       <div>
         <div className="total">
