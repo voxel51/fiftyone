@@ -25,8 +25,7 @@ export const blue15 = "hsl(210, 20%, 15%)";
 
 // Dark theme colors
 const black0a16 = "hsla(0, 0%, 0%, 0.16)";
-const black0a25 = "hsla(0, 0%, 0%, 0.16)";
-
+const black0a25 = "hsla(0, 0%, 0%, 0.25)";
 const grey11 = "hsl(210, 11%, 11%)";
 const grey15 = "hsl(210, 11%, 15%)";
 const grey19 = "hsl(214, 7%, 19%)";
@@ -59,6 +58,8 @@ export const darkTheme = {
   buttonBorder: grey24,
   overlay: grey46a70,
   overlayButton: grey46a30,
+  menuBackground: grey15,
+  menuBorder: grey11,
   darkShadow: black0a16,
   darkerShadow: black0a25,
 

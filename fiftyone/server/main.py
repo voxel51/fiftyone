@@ -88,15 +88,23 @@ def get_stages():
     }
 
 
-def _load_state(func):
-    def wrapper(self, *args, **kwargs):
-        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
-        state = func(self, state, *args, **kwargs)
-        self.state = state.serialize()
-        emit("update", self.state, broadcast=True, include_self=False)
-        return self.state
+def _load_state(trigger_update=False):
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            state = fos.StateDescriptionWithDerivables.from_dict(self.state)
+            state = func(self, state, *args, **kwargs)
+            self.state = state.serialize()
+            emit(
+                "update",
+                self.state,
+                broadcast=True,
+                include_self=trigger_update,
+            )
+            return self.state
 
-    return wrapper
+        return wrapper
+
+    return decorator
 
 
 class StateController(Namespace):
@@ -155,7 +163,7 @@ class StateController(Namespace):
         """
         return self.state
 
-    @_load_state
+    @_load_state()
     def on_add_selection(self, state, _id):
         """Adds a sample to the selected samples list.
 
@@ -173,7 +181,7 @@ class StateController(Namespace):
         state.selected = list(selected)
         return state
 
-    @_load_state
+    @_load_state()
     def on_remove_selection(self, state, _id):
         """Remove a sample from the selected samples list
 
@@ -189,6 +197,21 @@ class StateController(Namespace):
         selected = set(state.selected)
         selected.remove(_id)
         state.selected = list(selected)
+        return state
+
+    @_load_state()
+    def on_clear_selection(self, state):
+        """Remove all samples from the selected samples list
+
+        Args:
+            state: the current
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+
+        Returns:
+            the updated
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+        """
+        state.selected = []
         return state
 
     def on_page(self, page, page_length=20):

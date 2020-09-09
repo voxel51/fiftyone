@@ -283,7 +283,7 @@ class ExcludeFields(ViewStage):
                 )
 
     def validate(self, sample_collection):
-        _validate_fields_exist(sample_collection, self.field_names)
+        sample_collection.validate_fields_exist(self.field_names)
 
 
 class Exists(ViewStage):
@@ -464,7 +464,7 @@ class FilterField(ViewStage):
         if self.field == "filepath":
             raise ValueError("Cannot filter required field `filepath`")
 
-        _validate_fields_exist(sample_collection, self.field)
+        sample_collection.validate_fields_exist(self.field)
 
 
 class _FilterListField(FilterField):
@@ -548,8 +548,7 @@ class FilterClassifications(_FilterListField):
         return self.field + ".classifications"
 
     def validate(self, sample_collection):
-        _validate_field_type(
-            sample_collection,
+        sample_collection.validate_field_type(
             self.field,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fol.Classifications,
@@ -611,8 +610,7 @@ class FilterDetections(_FilterListField):
         return self.field + ".detections"
 
     def validate(self, sample_collection):
-        _validate_field_type(
-            sample_collection,
+        sample_collection.validate_field_type(
             self.field,
             fof.EmbeddedDocumentField,
             embedded_doc_type=fol.Detections,
@@ -1067,7 +1065,7 @@ class SelectFields(ViewStage):
                 )
 
     def validate(self, sample_collection):
-        _validate_fields_exist(sample_collection, self.field_names)
+        sample_collection.validate_fields_exist(self.field_names)
 
 
 class Shuffle(ViewStage):
@@ -1277,7 +1275,7 @@ class SortBy(ViewStage):
 
     def validate(self, sample_collection):
         if etau.is_str(self._field_or_expr):
-            _validate_fields_exist(sample_collection, self._field_or_expr)
+            sample_collection.validate_fields_exist(self._field_or_expr)
 
 
 class Take(ViewStage):
@@ -1364,49 +1362,6 @@ def _get_rng(seed):
     _random = random.Random()
     _random.seed(seed)
     return _random
-
-
-def _validate_fields_exist(sample_collection, field_or_fields):
-    if etau.is_str(field_or_fields):
-        field_or_fields = [field_or_fields]
-
-    schema = sample_collection.get_field_schema()
-    default_fields = set(default_sample_fields(include_private=True))
-    for field in field_or_fields:
-        # We only validate that the root field exists
-        field_name = field.split(".", 1)[0]
-        if field_name not in schema and field_name not in default_fields:
-            raise ViewStageError("Field '%s' does not exist" % field_name)
-
-
-def _validate_field_type(
-    sample_collection, field_name, ftype, embedded_doc_type=None
-):
-    schema = sample_collection.get_field_schema()
-
-    if field_name not in schema:
-        raise ViewStageError("Field '%s' does not exist" % field_name)
-
-    field = schema[field_name]
-
-    if embedded_doc_type is not None:
-        if not isinstance(field, fof.EmbeddedDocumentField) or (
-            field.document_type is not embedded_doc_type
-        ):
-            raise ViewStageError(
-                "Field '%s' must be an instance of %s; found %s"
-                % (
-                    field_name,
-                    fof.EmbeddedDocumentField(embedded_doc_type),
-                    field,
-                )
-            )
-    else:
-        if not isinstance(field, ftype):
-            raise ViewStageError(
-                "Field '%s' must be an instance of %s; found %s"
-                % (field_name, ftype, field)
-            )
 
 
 class _ViewStageRepr(reprlib.Repr):
