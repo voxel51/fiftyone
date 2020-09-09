@@ -4,6 +4,7 @@ import ReactGA from "react-ga";
 import { Button, Modal, Label } from "semantic-ui-react";
 import { useSetRecoilState } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
+import { GlobalStyle, ThemeProvider } from "styled-components";
 
 import Header from "../components/Header";
 import PortForm from "../components/PortForm";
@@ -15,6 +16,7 @@ import connect from "../utils/connect";
 import { stateDescription } from "../recoil/atoms";
 import gaConfig from "../constants/ga.json";
 import Error from "./Error";
+import { darkTheme } from "../shared/colors";
 
 type Props = {
   children: ReactNode;
@@ -117,8 +119,8 @@ function App(props: Props) {
       onReset={() => setReset(true)}
       resetKeys={[reset]}
     >
+      <Header />
       <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
-        <Header />
         {children}
         <Modal
           trigger={
