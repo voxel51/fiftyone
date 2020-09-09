@@ -164,7 +164,7 @@ const viewStageMachine = Machine(
                   stageInfo
                     .map((s) => s.name)
                     .filter((n) =>
-                      n.toLowerCase().includes(stage.toLowerCase())
+                      n.toLowerCase().startsWith(stage.toLowerCase())
                     ),
                 currentResult: null,
                 focusOnInit: true,
@@ -214,7 +214,7 @@ const viewStageMachine = Machine(
                     stageInfo
                       .map((s) => s.name)
                       .filter((n) =>
-                        n.toLowerCase().includes(e.value.toLowerCase())
+                        n.toLowerCase().startsWith(e.value.toLowerCase())
                       ),
                   currentResult: null,
                   errorId: undefined,
@@ -230,11 +230,11 @@ const viewStageMachine = Machine(
                       focusOnInit: false,
                       stage: (ctx, { value }) =>
                         ctx.stageInfo.filter((s) =>
-                          s.name.toLowerCase().includes(value.toLowerCase())
+                          s.name.toLowerCase().startsWith(value.toLowerCase())
                         )[0].name,
                       parameters: (ctx, { value }) => {
                         const result = ctx.stageInfo.filter((s) =>
-                          s.name.toLowerCase().includes(value.toLowerCase())
+                          s.name.toLowerCase().startsWith(value.toLowerCase())
                         )[0].params;
                         const parameters = result.map((parameter, i) =>
                           createParameter(
@@ -286,7 +286,6 @@ const viewStageMachine = Machine(
                       focusOnInit: false,
                     }),
                     "blurInput",
-                    sendParent((ctx) => ({ type: "STAGE.DELETE", stage: ctx })),
                   ],
                 },
               ],
