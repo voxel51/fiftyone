@@ -11,7 +11,7 @@ import Loading from "./containers/Loading";
 import connect from "./utils/connect";
 import * as atoms from "./recoil/atoms";
 
-function Routes({ port }) {
+function Routes() {
   const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
   const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
   const [activeOther, setActiveOther] = useRecoilState(atoms.activeOther);

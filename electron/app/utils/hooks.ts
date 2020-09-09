@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 
 export const useResizeHandler = (handler, deps = []) => {
   useEffect(() => {
@@ -40,4 +40,33 @@ export const useOutsideClick = (ref, callback) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [ref, callback]);
+};
+
+export const useFollow = (leaderRef, followerRef, set, deps = []) => {
+  useLayoutEffect(() => {
+    const follow = () => {
+      const { x, y } = followerRef.current.getBoundingClientRect();
+      const {
+        x: leaderX,
+        width: leaderWidth,
+      } = leaderRef.current.getBoundingClientRect();
+      set({
+        left: x,
+        top: y,
+        opacity: x - leaderX < 0 || x > leaderX + leaderWidth ? 0 : 1,
+      });
+    };
+    leaderRef.current &&
+      followerRef.current &&
+      (() => {
+        leaderRef.current.addEventListener("scroll", follow);
+        window.addEventListener("scroll", follow);
+      })();
+    return () =>
+      leaderRef.current &&
+      (() => {
+        leaderRef.current.removeEventListener("scroll", follow);
+        window.removeEventListener("scroll", follow);
+      })();
+  }, [leaderRef.current, followerRef.current, ...deps]);
 };

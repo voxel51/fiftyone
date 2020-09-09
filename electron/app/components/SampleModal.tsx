@@ -215,7 +215,8 @@ const SampleModal = ({
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
-  const [activeTags, setActiveTags] = useRecoilState(atoms.modalActiveTags);
+  const filters = useRecoilValue(selectors.modalLabelFilters);
+  const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
   const labelNames = useRecoilValue(selectors.labelNames);
