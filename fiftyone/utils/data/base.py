@@ -5,9 +5,8 @@ Data utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import os
-import random
-import string
 
 import eta.core.image as etai
 import eta.core.utils as etau
@@ -15,6 +14,9 @@ import eta.core.utils as etau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
 
 
 def parse_images_dir(dataset_dir, recursive=True):
@@ -76,33 +78,6 @@ def parse_image_classification_dir_tree(dataset_dir):
     return samples, classes
 
 
-def make_unique_field_name(sample_collection, root=""):
-    """Makes a unique field name with the given root name for the sample
-    collection.
-
-    Args:
-        sample_collection: a
-            :class:`fiftyone.core.collections.SampleCollection`
-        root (""): an optional root for the output field name
-
-    Returns:
-        the field name
-    """
-    if not root:
-        root = _get_random_characters(6)
-
-    fields = sample_collection.get_field_schema()
-
-    field_name = root
-    if field_name in fields:
-        field_name += "_" + _get_random_characters(6)
-
-    while field_name in fields:
-        field_name += _get_random_characters(1)
-
-    return field_name
-
-
 def convert_classification_field_to_detections(
     dataset,
     classification_field,
@@ -129,14 +104,31 @@ def convert_classification_field_to_detections(
             ``classification_field`` is being overwritten, this flag has no
             effect
     """
+    dataset.validate_field_type(
+        classification_field,
+        fof.EmbeddedDocumentField,
+        embedded_doc_type=fol.Classification,
+    )
+
     if detections_field is None:
         detections_field = classification_field
 
     overwrite = detections_field == classification_field
     if overwrite:
+        logger.info(
+            "Converting Classification field '%s' to Detections format",
+            classification_field,
+        )
         keep_classification_field = False
-        detections_field = make_unique_field_name(
-            dataset, root=classification_field
+        detections_field = dataset.make_unique_field_name(
+            root=classification_field
+        )
+    else:
+        logger.info(
+            "Converting Classification field '%s' to Detections format in "
+            "field '%s'",
+            classification_field,
+            detections_field,
         )
 
     with fou.ProgressBar() as pb:
@@ -159,8 +151,9 @@ def convert_classification_field_to_detections(
     if not keep_classification_field:
         dataset.delete_sample_field(classification_field)
 
-    # @todo replace with `dataset.rename_field()` when such a method exists
     if overwrite:
+        # @todo replace with `dataset.rename_field()` when such a method exists
+        logger.info("Finalizing operation")
         dataset.clone_field(detections_field, classification_field)
         dataset.delete_sample_field(detections_field)
 
@@ -208,6 +201,7 @@ def expand_image_labels_field(
             expansion is completed. By default, the field is deleted from the
             dataset
     """
+    logger.info("Expanding image labels field '%s'", label_field)
     with fou.ProgressBar() as pb:
         for sample in pb(dataset):
             labels = sample[label_field]
@@ -265,6 +259,7 @@ def condense_image_labels_field(
     if labels_dict is None:
         labels_dict = _get_label_dict_for_prefix(dataset, prefix)
 
+    logger.info("Condensing image labels into field '%s'", label_field)
     with fou.ProgressBar() as pb:
         for sample in pb(dataset):
             image_labels = etai.ImageLabels()
@@ -281,12 +276,6 @@ def condense_image_labels_field(
     if not keep_label_fields:
         for field_name in labels_dict:
             dataset.delete_sample_field(field_name)
-
-
-def _get_random_characters(n):
-    return "".join(
-        random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
-    )
 
 
 def _get_label_dict_for_prefix(dataset, prefix):

@@ -8,12 +8,15 @@ Base classes for collections of samples.
 import inspect
 import logging
 import os
+import random
+import string
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+from fiftyone.core.odm.sample import default_sample_fields
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
@@ -185,6 +188,113 @@ class SampleCollection(object):
              a dictionary mapping field names to field types
         """
         raise NotImplementedError("Subclass must implement get_field_schema()")
+
+    def make_unique_field_name(self, root=""):
+        """Makes a unique field name with the given root name for the
+        collection.
+
+        Args:
+            root (""): an optional root for the output field name
+
+        Returns:
+            the field name
+        """
+        if not root:
+            root = _get_random_characters(6)
+
+        fields = self.get_field_schema()
+
+        field_name = root
+        if field_name in fields:
+            field_name += "_" + _get_random_characters(6)
+
+        while field_name in fields:
+            field_name += _get_random_characters(1)
+
+        return field_name
+
+    def validate_fields_exist(self, field_or_fields):
+        """Validates that the collection has fields with the given names.
+
+        If ``field_or_fields`` contains an embedded field name such as
+        ``field_name.document.field``, only the root ``field_name`` is checked
+        for existence.
+
+        Args:
+            field_or_fields: a field name or iterable of field names
+
+        Raises:
+            ValueError: if one or more of the fields do not exist
+        """
+        if etau.is_str(field_or_fields):
+            field_or_fields = [field_or_fields]
+
+        schema = self.get_field_schema()
+        default_fields = set(
+            default_sample_fields(include_private=True, include_id=True)
+        )
+        for field in field_or_fields:
+            # We only validate that the root field exists
+            field_name = field.split(".", 1)[0]
+            if field_name not in schema and field_name not in default_fields:
+                raise ValueError("Field '%s' does not exist" % field_name)
+
+    def validate_field_type(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        """Validates that the collection has a field of the given type.
+
+        Args:
+            field_name: the field name
+            ftype: the expected field type. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): the
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
+                field. Used only when ``ftype`` is an embedded
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            subfield (None): the type of the contained field. Used only when
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
+
+        Raises:
+            ValueError: if the field does not exist or does not have the
+            expected type
+        """
+        schema = self.get_field_schema()
+
+        if field_name not in schema:
+            raise ValueError("Field '%s' does not exist" % field_name)
+
+        field = schema[field_name]
+
+        if embedded_doc_type is not None:
+            if not isinstance(field, fof.EmbeddedDocumentField) or (
+                field.document_type is not embedded_doc_type
+            ):
+                raise ValueError(
+                    "Field '%s' must be an instance of %s; found %s"
+                    % (field_name, ftype(embedded_doc_type), field)
+                )
+        elif subfield is not None:
+            if not isinstance(field, (fof.ListField, fof.DictField)):
+                raise ValueError(
+                    "Field type %s must be an instance of %s when a subfield "
+                    "is provided" % (ftype, (fof.ListField, fof.DictField))
+                )
+
+            if not isinstance(field, ftype) or not isinstance(
+                field.field, subfield
+            ):
+                raise ValueError(
+                    "Field '%s' must be an instance of %s; found %s"
+                    % (field_name, ftype(field=subfield()), field)
+                )
+        else:
+            if not isinstance(field, ftype):
+                raise ValueError(
+                    "Field '%s' must be an instance of %s; found %s"
+                    % (field_name, ftype, field)
+                )
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the collection.
@@ -1145,6 +1255,12 @@ class SampleCollection(object):
             field_name: str(field)
             for field_name, field in field_schema.items()
         }
+
+
+def _get_random_characters(n):
+    return "".join(
+        random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
+    )
 
 
 def _get_labels_dict_for_prefix(sample_collection, label_prefix):
