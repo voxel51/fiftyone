@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import styled from "styled-components";
+import styled, { ThemeContext } from "styled-components";
 
 import { Grid, Sticky } from "semantic-ui-react";
 
@@ -8,7 +8,6 @@ import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
 import ImageContainerHeader from "../components/ImageContainerHeader";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
-import { VerticalSpacer } from "../components/utils";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -80,7 +79,13 @@ const DisplayOptionsWrapper = (props) => {
 
   return (
     <Grid.Column className="sidebar-column">
-      <Sticky context={containerRef} offset={headerHeight}>
+      <Sticky
+        context={containerRef}
+        offset={headerHeight}
+        styleElement={{
+          paddingTop: "1rem",
+        }}
+      >
         <DisplayOptionsSidebar
           tags={getDisplayOptions(
             tagNames.map((t) => ({ name: t })),
@@ -124,6 +129,7 @@ const SamplesContainer = (props) => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const datasetName = useRecoilValue(selectors.datasetName);
   const numSamples = useRecoilValue(selectors.numSamples);
+  const theme = useContext(ThemeContext);
 
   const containerRef = useRef();
   const stickyHeaderRef = useRef();
@@ -146,17 +152,20 @@ const SamplesContainer = (props) => {
 
   return (
     <Root ref={containerRef} showSidebar={showSidebar}>
-      <VerticalSpacer opaque height={5} />
-      <Sticky ref={stickyHeaderRef} context={containerRef}>
+      <Sticky
+        ref={stickyHeaderRef}
+        context={containerRef}
+        styleElement={{
+          background: theme.background,
+        }}
+      >
         <ViewBar />
-        <VerticalSpacer opaque height={5} />
         <ImageContainerHeader
           datasetName={datasetName}
           total={numSamples}
           showSidebar={showSidebar}
           onShowSidebar={setShowSidebar}
         />
-        <VerticalSpacer opaque height={5} />
       </Sticky>
       <Grid>
         {showSidebar ? (

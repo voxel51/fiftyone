@@ -2,16 +2,22 @@
 
 <img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/90993132-ac26fe80-e581-11ea-9efc-c3e1a0f876d8.png">
 
-[FiftyOne](http://www.voxel51.com/docs/fiftyone) is an **open-source** machine
-learning tool that helps you get closer to your data. With FiftyOne, you can
-rapidly experiment with your datasets, enabling you to search, sort, filter,
-visualize, analyze, and improve your datasets without wrangling or writing
-custom scripts for every new dataset you collect. FiftyOne is designed to be
-lightweight and easily integrate into your existing CV/ML workflows.
+[FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source machine
+learning tool created by [Voxel51](https://voxel51.com) that helps you get
+closer to your data and ML models.
 
-To stay up-to-date on all things FiftyOne, collaborate with other users, and
-get support from the Voxel51 team, join the
-[FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg).
+With FiftyOne, you can rapidly experiment with your datasets, enabling you to
+search, sort, filter, visualize, analyze, and improve your datasets without
+excess wrangling or writing custom scripts. It also provides powerful
+functionality for analyzing your models, allowing you to understand their
+strengths and weaknesses, visualize, diagnose, and correct their failure modes,
+and more. FiftyOne is designed to be lightweight and easily integrate into your
+existing CV/ML workflows.
+
+Join the
+[FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
+to collaborate with other users, get support, and stay up-to-date on all things
+FiftyOne.
 
 Follow us [on Medium](https://medium.com/voxel51) for regular posts on computer
 vision, machine learning, and data science topics.
@@ -165,7 +171,3 @@ You can uninstall FiftyOne as follows:
 ```shell
 pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
 ```
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

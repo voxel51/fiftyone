@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useRef, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useMemo,
+  useState,
+} from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
 import { useService } from "@xstate/react";
@@ -9,6 +16,7 @@ import ErrorMessage from "./ErrorMessage";
 import ExternalLink from "../../ExternalLink";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
+import { getMatch } from "./viewStageMachine";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem 0.25rem;
@@ -18,7 +26,7 @@ const ViewStageContainer = animated(styled.div`
 
 const ViewStageDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.brand};
   border-top-left-radius: 3px;
   border-bottom-left-radius: 3px;
   border-right-width: 0;
@@ -30,7 +38,7 @@ const ViewStageInput = styled(AuosizeInput)`
   & input {
     background-color: transparent;
     border: none;
-    margin: 0.5rem;
+    margin: 0.5rem 0 0.5rem 0.5rem;
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     border: none;
@@ -49,23 +57,31 @@ const ViewStageInput = styled(AuosizeInput)`
   }
 `;
 
-const ViewStageButton = animated(styled.div`
+const ViewStageButtonContainer = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
-  color: ${({ theme }) => theme.font};
+  border: 1px dashed ${({ theme }) => theme.fontDarkest};
+  color: ${({ theme }) => theme.fontDarkest};
   border-radius: 3px;
   position: relative;
   margin: 0.5rem;
   line-height: 1rem;
   cursor: pointer;
   font-weight: bold;
-  overflow: hidden;
+
   padding: 0 0.25rem;
 
   :focus {
     outline: none;
   }
 `);
+
+const ViewStageButton = styled.div`
+  width: 14px;
+  height: 32px;
+  display: block;
+  position: relative;
+  overflow: hidden;
+`;
 
 const AddIcon = animated(styled(Add)`
   display: block;
@@ -84,7 +100,9 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
   const [hovering, setHovering] = useState(false);
   const [props, set] = useSpring(() => ({
-    background: theme.brandMoreTransparent,
+    background: theme.background,
+    color: active ? theme.font : theme.fontDarkest,
+    borderColor: active ? theme.brand : theme.fontDarkest,
     top: active ? -3 : 0,
     opacity: 1,
     from: {
@@ -94,7 +112,11 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }));
 
   useEffect(() => {
-    set({ top: active ? -3 : 0 });
+    set({
+      top: active ? -3 : 0,
+      color: active ? theme.font : theme.fontDarkest,
+      borderColor: active ? theme.brand : theme.fontDarkest,
+    });
     active ? setEnterProps() : setLeaveProps();
   }, [active]);
 
@@ -107,13 +129,13 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }));
 
   const setEnterProps = () => {
-    set({ background: theme.brandTransparent });
+    set({ background: theme.background });
     setAdd({ y: 0 });
     setArrow({ y: -40 });
   };
 
   const setLeaveProps = () => {
-    set({ background: theme.brandMoreTransparent });
+    set({ background: theme.backgroundDark });
     setAdd({ y: 40 });
     setArrow({ y: 0 });
   };
@@ -124,35 +146,37 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }, [active, hovering]);
 
   return (
-    <ViewStageButton
+    <ViewStageButtonContainer
       style={props}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
       onClick={() => send({ type: "STAGE.ADD", index })}
     >
-      <ArrowIcon
-        style={{
-          transform: arrowProps.y.interpolate(arrowTransform),
-          display: "block",
-          fontSize: "14px",
-          margin: "9px 0",
-        }}
-      />
-      <AddIcon
-        style={{
-          transform: addProps.y.interpolate(addTransform),
-          display: "block",
-          fontSize: "14px",
-          margin: "9px 0",
-        }}
-      />
-    </ViewStageButton>
+      <ViewStageButton>
+        <ArrowIcon
+          style={{
+            transform: arrowProps.y.interpolate(arrowTransform),
+            display: "block",
+            fontSize: "14px",
+            margin: "9px 0",
+          }}
+        />
+        <AddIcon
+          style={{
+            transform: addProps.y.interpolate(addTransform),
+            display: "block",
+            fontSize: "14px",
+            margin: "9px 0",
+          }}
+        />
+      </ViewStageButton>
+    </ViewStageButtonContainer>
   );
 });
 
 const ViewStageDeleteDiv = animated(styled.div`
   box-sizing: border-box;
-  border: 2px dashed ${({ theme }) => theme.brand};
+  border: 1px solid ${({ theme }) => theme.brand};
   position: relative;
   border-top-right-radius: 3px;
   border-bottom-right-radius: 3px;
@@ -161,7 +185,7 @@ const ViewStageDeleteDiv = animated(styled.div`
 `);
 
 const ViewStageDeleteButton = animated(styled.button`
-  background-color: transparent;
+  background-color: ${({ theme }) => theme.backgroundLight};
   border: none;
   padding: 0.5rem;
   color: ${({ theme }) => theme.font};
@@ -176,6 +200,16 @@ const ViewStageDeleteButton = animated(styled.button`
     outline: none;
   }
 `);
+
+const BestMatchDiv = styled.div`
+  background-color: transparent;
+  border: none;
+  margin: 0.5rem 0.5rem 0.5rem 0;
+  color: ${({ theme }) => theme.brand};
+  line-height: 1rem;
+  border: none;
+  font-weight: bold;
+`;
 
 const ViewStageDelete = React.memo(({ send, spring }) => {
   return (
@@ -192,19 +226,21 @@ const ViewStageDelete = React.memo(({ send, spring }) => {
   );
 });
 
-const ViewStage = React.memo(({ stageRef }) => {
+const ViewStage = React.memo(({ barRef, stageRef }) => {
   const theme = useContext(ThemeContext);
   const [state, send] = useService(stageRef);
-  const inputRef = useRef(null);
+  const inputRef = useRef();
+  const [containerRef, setContainerRef] = useState({});
 
   const {
     stage,
+    stageInfo,
     parameters,
     results,
     currentResult,
-    length,
-    index,
     focusOnInit,
+    active,
+    bestMatch,
   } = state.context;
 
   const isCompleted = [
@@ -213,8 +249,10 @@ const ViewStage = React.memo(({ stageRef }) => {
   ].some(state.matches);
 
   const deleteProps = useSpring({
-    borderStyle: "solid",
-    backgroundColor: theme.brandTransparent,
+    borderColor:
+      active && state.matches("focusedViewBar.yes")
+        ? theme.brand
+        : theme.fontDarkest,
     opacity: 1,
     from: {
       opacity: 0,
@@ -222,17 +260,14 @@ const ViewStage = React.memo(({ stageRef }) => {
   });
 
   const props = useSpring({
-    borderStyle: isCompleted ? "solid" : "dashed",
-    backgroundColor: isCompleted
-      ? theme.brandTransparent
-      : theme.brandMoreTransparent,
-    borderRightWidth:
-      (!parameters.length && index === 0 && length === 1) ||
-      (index !== 0 && !parameters.length)
-        ? 2
-        : 0,
-    borderTopRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
-    borderBottomRightRadius: state.matches("delible") && !isCompleted ? 3 : 0,
+    backgroundColor: isCompleted ? theme.backgroundLight : theme.background,
+    borderRightWidth: state.matches("delible.yes") && parameters.length ? 0 : 1,
+    borderColor:
+      active && state.matches("focusedViewBar.yes")
+        ? theme.brand
+        : theme.fontDarkest,
+    borderTopRightRadius: !parameters.length ? 3 : 0,
+    borderBottomRightRadius: !parameters.length ? 3 : 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -252,6 +287,7 @@ const ViewStage = React.memo(({ stageRef }) => {
       state.actions.forEach((action) => {
         if (action.type in actionsMap) actionsMap[action.type]();
       });
+      <ErrorMessage serviceRef={stageRef} />;
     };
     stageRef.onTransition(listener);
     return () => stageRef.listeners.delete(listener);
@@ -264,10 +300,17 @@ const ViewStage = React.memo(({ stageRef }) => {
 
   return (
     <>
-      <ViewStageContainer style={containerProps}>
+      <ViewStageContainer
+        style={containerProps}
+        ref={(node) =>
+          node &&
+          node !== containerRef.current &&
+          setContainerRef({ current: node })
+        }
+      >
         <ViewStageDiv style={props}>
           <ViewStageInput
-            placeholder="+ add stage"
+            placeholder={stage.length === 0 ? "+ add stage" : ""}
             value={stage}
             autoFocus={focusOnInit}
             onFocus={() => !state.matches("input.editing") && send("EDIT")}
@@ -278,7 +321,15 @@ const ViewStage = React.memo(({ stageRef }) => {
             onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
-                send({ type: "COMMIT", value: e.target.value });
+                const match = getMatch(stageInfo, e.target.value);
+                send({
+                  type: "COMMIT",
+                  value: match
+                    ? match
+                    : bestMatch.value
+                    ? bestMatch.value
+                    : e.target.value,
+                });
               }
             }}
             onKeyDown={(e) => {
@@ -292,11 +343,19 @@ const ViewStage = React.memo(({ stageRef }) => {
                 case "ArrowUp":
                   send("PREVIOUS_RESULT");
                   break;
+                case "ArrowRight":
+                  e.target.selectionStart === e.target.value.length &&
+                    bestMatch.value &&
+                    send({ type: "CHANGE", value: bestMatch.value });
+                  break;
               }
             }}
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
+          <BestMatchDiv>
+            {state.matches("input.editing") ? bestMatch.placeholder : ""}
+          </BestMatchDiv>
           {isCompleted && (
             <ExternalLink
               href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
@@ -313,19 +372,35 @@ const ViewStage = React.memo(({ stageRef }) => {
           )}
         </ViewStageDiv>
         {parameters.map((parameter) => (
-          <ViewStageParameter key={parameter.id} parameterRef={parameter.ref} />
+          <ViewStageParameter
+            key={parameter.id}
+            parameterRef={parameter.ref}
+            barRef={barRef}
+            stageRef={stageRef}
+          />
         ))}
-        {state.matches("delible.yes") ? (
+        {state.matches("delible.yes") && parameters.length ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
-        {state.matches("input.editing") && (
-          <SearchResults
-            results={results}
-            send={send}
-            currentResult={currentResult}
+        {state.matches("input.editing") &&
+          barRef.current &&
+          containerRef.current && (
+            <SearchResults
+              results={results}
+              send={send}
+              currentResult={currentResult}
+              bestMatch={bestMatch.value}
+              followRef={containerRef}
+              barRef={barRef}
+            />
+          )}
+        {containerRef.current && (
+          <ErrorMessage
+            serviceRef={stageRef}
+            followRef={containerRef}
+            barRef={barRef}
           />
         )}
-        <ErrorMessage serviceRef={stageRef} />
       </ViewStageContainer>
     </>
   );

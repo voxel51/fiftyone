@@ -13,7 +13,8 @@ export const createParameter = (
   value,
   submitted,
   focusOnInit,
-  tail
+  tail,
+  active
 ) => ({
   id: uuid(),
   defaultValue,
@@ -27,12 +28,36 @@ export const createParameter = (
   tail,
   currentResult: null,
   results: [],
+  active,
 });
 
 const isValidStage = (stageInfo, stage) => {
   return stageInfo
     .map((s) => s.name)
     .some((n) => n.toLowerCase() === stage.toLowerCase());
+};
+
+const computeBestMatchString = (stageInfo, value) => {
+  const match = stageInfo
+    .map((s) => s.name)
+    .filter((n) => n.toLowerCase().startsWith(value.toLowerCase()))[0];
+  if (match && value.length) {
+    return {
+      placeholder: match.slice(value.length),
+      value: match,
+    };
+  }
+  return { placeholder: "", value: null };
+};
+
+export const getMatch = (stageInfo, value) => {
+  const results = stageInfo.filter(
+    (s) => s.name.toLowerCase() === value.toLowerCase()
+  );
+  if (results.length === 1) {
+    return results[0].name;
+  }
+  return null;
 };
 
 const viewStageMachine = Machine(
@@ -139,10 +164,12 @@ const viewStageMachine = Machine(
                   stageInfo
                     .map((s) => s.name)
                     .filter((n) =>
-                      n.toLowerCase().includes(stage.toLowerCase())
+                      n.toLowerCase().startsWith(stage.toLowerCase())
                     ),
                 currentResult: null,
                 focusOnInit: true,
+                bestMatch: ({ stageInfo, stage }) =>
+                  computeBestMatchString(stageInfo, stage),
               }),
             ],
             type: "parallel",
@@ -187,10 +214,12 @@ const viewStageMachine = Machine(
                     stageInfo
                       .map((s) => s.name)
                       .filter((n) =>
-                        n.toLowerCase().includes(e.value.toLowerCase())
+                        n.toLowerCase().startsWith(e.value.toLowerCase())
                       ),
                   currentResult: null,
                   errorId: undefined,
+                  bestMatch: ({ stageInfo }, { value }) =>
+                    computeBestMatchString(stageInfo, value),
                 }),
               },
               COMMIT: [
@@ -199,10 +228,13 @@ const viewStageMachine = Machine(
                   actions: [
                     assign({
                       focusOnInit: false,
-                      stage: (ctx, { value }) => value,
+                      stage: (ctx, { value }) =>
+                        ctx.stageInfo.filter((s) =>
+                          s.name.toLowerCase().startsWith(value.toLowerCase())
+                        )[0].name,
                       parameters: (ctx, { value }) => {
                         const result = ctx.stageInfo.filter((s) =>
-                          s.name.toLowerCase().includes(value.toLowerCase())
+                          s.name.toLowerCase().startsWith(value.toLowerCase())
                         )[0].params;
                         const parameters = result.map((parameter, i) =>
                           createParameter(
@@ -213,7 +245,8 @@ const viewStageMachine = Machine(
                             "",
                             false,
                             i === 0,
-                            i === result.length - 1
+                            i === result.length - 1,
+                            ctx.active
                           )
                         );
                         return parameters.map((parameter) => ({
@@ -227,12 +260,8 @@ const viewStageMachine = Machine(
                     }),
                     send("UPDATE_DELIBLE"),
                   ],
-                  cond: (ctx, e) => {
-                    const result = ctx.stageInfo.filter(
-                      (s) => s.name.toLowerCase() === e.value.toLowerCase()
-                    );
-                    return result.length === 1;
-                  },
+                  cond: ({ stageInfo }, { value }) =>
+                    getMatch(stageInfo, value),
                 },
                 {
                   actions: [
@@ -251,25 +280,17 @@ const viewStageMachine = Machine(
               ],
               BLUR: [
                 {
+                  target: "deleted",
+                  cond: (ctx) => ctx.parameters.length === 0,
+                },
+                {
                   target: "reading.pending",
                   actions: [
                     assign({
-                      stage: () => "",
-                      errorId: undefined,
+                      focusOnInit: false,
                     }),
                     "blurInput",
                   ],
-                  cond: (ctx) => !ctx.submitted,
-                },
-                {
-                  target: "reading.submitted",
-                  actions: [
-                    assign({
-                      stage: (ctx) => ctx.prevStage,
-                      errorId: undefined,
-                    }),
-                  ],
-                  cond: (ctx) => ctx.submitted,
                 },
               ],
             },
@@ -361,6 +382,7 @@ const viewStageMachine = Machine(
             if (currentResult === null) return results[0];
             return results[Math.min(currentResult + 1, results.length - 1)];
           },
+          bestMatch: {},
         }),
       },
       PREVIOUS_RESULT: {
@@ -373,6 +395,7 @@ const viewStageMachine = Machine(
             if (currentResult === 0 || currentResult === null) return prevStage;
             return results[currentResult - 1];
           },
+          bestMatch: {},
         }),
       },
       BAR_FOCUS: "focusedViewBar.yes",
@@ -386,9 +409,21 @@ const viewStageMachine = Machine(
             length: (_, { length }) => length,
             active: (_, { active }) => active,
           }),
+          (ctx, { active }) => {
+            ctx.parameters.forEach((parameter) =>
+              parameter.ref.send({
+                type: "UPDATE",
+                active: active,
+              })
+            );
+          },
         ],
       },
-      "STAGE.DELETE": "input.deleted",
+      "STAGE.DELETE": [
+        {
+          target: "input.deleted",
+        },
+      ],
       "PARAMETER.COMMIT": {
         target: "input",
         actions: [
@@ -440,7 +475,16 @@ const viewStageMachine = Machine(
                 assign({
                   submitted: true,
                   focusOnInit: false,
+                  active: false,
                 }),
+                (ctx) => {
+                  ctx.parameters.forEach((parameter) =>
+                    parameter.ref.send({
+                      type: "UPDATE",
+                      active: false,
+                    })
+                  );
+                },
                 sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
               ],
             },

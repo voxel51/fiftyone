@@ -84,18 +84,23 @@ def _generate_rand(filepath=None):
     return _random.random() * 0.001 + 0.999
 
 
-def default_sample_fields(include_private=False):
+def default_sample_fields(include_private=False, include_id=False):
     """The default fields present on all :class:`SampleDocument` objects.
 
     Args:
         include_private (False): whether to include fields that start with `_`
+        include_id (False): whether to include the ``id`` field
 
     Returns:
         a tuple of field names
     """
-    return DatasetSampleDocument._get_fields_ordered(
+    fields = DatasetSampleDocument._get_fields_ordered(
         include_private=include_private
     )
+    if include_id:
+        fields = ("id",) + fields
+
+    return fields
 
 
 def no_delete_default_field(func):

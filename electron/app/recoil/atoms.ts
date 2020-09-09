@@ -15,6 +15,11 @@ export const stateDescription = atom({
   default: {},
 });
 
+export const selectedSamples = atom({
+  key: "selectedSamples",
+  default: new Set(),
+});
+
 export const stageInfo = atom({
   key: "stageInfo",
   default: undefined,

@@ -1,5 +1,5 @@
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
@@ -10,15 +10,7 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
 
-const Sample = ({
-  displayProps,
-  dispatch,
-  sample,
-  port,
-  setSelected,
-  selected,
-  setView,
-}) => {
+const Sample = ({ displayProps, dispatch, sample, port, setView }) => {
   const host = `http://127.0.0.1:${port}`;
   const id = sample._id.$oid;
   const src = `${host}?path=${sample.filepath}&id=${id}`;
@@ -26,12 +18,21 @@ const Sample = ({
   const { activeLabels, activeTags, activeOther } = displayProps;
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);
+  const [selectedSamples, setSelectedSamples] = useRecoilState(
+    atoms.selectedSamples
+  );
 
   const handleClick = () => {
-    const newSelected = { ...selected };
-    const event = newSelected[id] ? "remove_selection" : "add_selection";
-    newSelected[id] = newSelected[id] ? false : true;
-    setSelected(newSelected);
+    const newSelected = new Set(selectedSamples);
+    let event;
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+      event = "remove_selection";
+    } else {
+      newSelected.add(id);
+      event = "add_selection";
+    }
+    setSelectedSamples(newSelected);
     socket.emit(event, id, (data) => {
       dispatch(updateState(data));
     });
@@ -120,7 +121,7 @@ const Sample = ({
         })}
         {Object.keys(sample).sort().map(renderScalar)}
       </div>
-      {selected[id] ? (
+      {selectedSamples.has(id) ? (
         <div
           style={{
             border: "2px solid rgb(255, 109, 4)",

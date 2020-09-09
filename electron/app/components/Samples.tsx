@@ -9,17 +9,9 @@ import * as atoms from "../recoil/atoms";
 
 function Samples(props) {
   const { displayProps, state, setView, port } = props;
-  const initialSelected = state.selected.reduce((obj, id) => {
-    return {
-      ...obj,
-      [id]: true,
-    };
-  }, {});
-
-  const [selected, setSelected] = useState(initialSelected);
-  const [scrollState, setScrollState] = tile(port);
-
   const setCurrentSamples = useSetRecoilState(atoms.currentSamples);
+
+  const [scrollState, setScrollState] = tile(port);
   useEffect(() => {
     setCurrentSamples(scrollState.rows.map((row) => row.samples).flat());
   }, [scrollState.rows]);
@@ -34,11 +26,6 @@ function Samples(props) {
           : null
       }
       hasMore={scrollState.hasMore}
-      loader={
-        <Dimmer active className="samples-dimmer" key={-1}>
-          <Loader />
-        </Dimmer>
-      }
       useWindow={true}
     >
       {scrollState.rows.map((r, i) => (
@@ -48,8 +35,6 @@ function Samples(props) {
               <Sample
                 displayProps={displayProps}
                 sample={s}
-                selected={selected}
-                setSelected={setSelected}
                 setView={setView}
               />
             </Grid.Column>

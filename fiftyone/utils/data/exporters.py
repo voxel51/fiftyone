@@ -8,6 +8,7 @@ Dataset exporters.
 from collections import defaultdict
 import inspect
 import os
+import warnings
 
 import eta.core.datasets as etad
 import eta.core.image as etai
@@ -126,6 +127,33 @@ def write_dataset(
 
                 if labeled_images:
                     label = sample_parser.get_label()
+
+                    #
+                    # SPECIAL CASE
+                    #
+                    # Convert `Classification` labels to `Detections` format,
+                    # if necessary
+                    #
+                    if (
+                        dataset_exporter.label_cls is fol.Detections
+                        and isinstance(label, fol.Classification)
+                    ):
+                        msg = (
+                            "Dataset exporter expects labels in %s format, "
+                            "but found %s. Converting labels to detections "
+                            "whose bounding boxes span the entire image"
+                            % (fol.Detections, label.__class__)
+                        )
+                        warnings.warn(msg)
+                        label = fol.Detections(
+                            detections=[
+                                fol.Detection(
+                                    label=label.label,
+                                    bounding_box=[0, 0, 1, 1],  # entire image
+                                    confidence=label.confidence,
+                                )
+                            ]
+                        )
 
                     dataset_exporter.export_sample(
                         image_or_path, label, metadata=metadata
