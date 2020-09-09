@@ -15,7 +15,7 @@ const Container = styled.div`
   .menu {
     background-color: ${({ theme }) => theme.menuBackground};
     border: 2px solid ${({ theme }) => theme.menuBorder};
-    box-shadow: 0 2px 20px 0 ${({ theme }) => theme.menuShadow};
+    box-shadow: 0 2px 20px 0 ${({ theme }) => theme.darkerShadow};
 
     .item {
       color: ${({ theme }) => theme.fontDark};
