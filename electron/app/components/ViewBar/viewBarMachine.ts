@@ -402,7 +402,6 @@ const viewBarMachine = Machine(
       },
       "STAGE.DELETE": {
         actions: [
-          (ctx, e) => console.log(e),
           assign({
             activeStage: ({ activeStage }) => Math.max(activeStage - 1, 0),
             stages: ({ stages, stageInfo }, e) => {

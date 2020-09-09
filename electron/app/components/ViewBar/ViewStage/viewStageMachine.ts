@@ -280,6 +280,10 @@ const viewStageMachine = Machine(
               ],
               BLUR: [
                 {
+                  target: "deleted",
+                  cond: (ctx) => ctx.parameters.length === 0,
+                },
+                {
                   target: "reading.pending",
                   actions: [
                     assign({
