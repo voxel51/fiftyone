@@ -102,6 +102,7 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   const [props, set] = useSpring(() => ({
     background: theme.background,
     color: active ? theme.font : theme.fontDarkest,
+    borderColor: active ? theme.brand : theme.fontDarkest,
     top: active ? -3 : 0,
     opacity: 1,
     from: {
@@ -237,8 +238,6 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     parameters,
     results,
     currentResult,
-    length,
-    index,
     focusOnInit,
     active,
     bestMatch,
