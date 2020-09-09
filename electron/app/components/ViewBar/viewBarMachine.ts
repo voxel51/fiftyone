@@ -379,6 +379,7 @@ const viewBarMachine = Machine(
               };
               return stages;
             },
+            activeStage: ({ activeStage }) => activeStage + 0.5,
           }),
           "submit",
         ],
