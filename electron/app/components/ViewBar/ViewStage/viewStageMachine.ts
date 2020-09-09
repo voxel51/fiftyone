@@ -475,7 +475,16 @@ const viewStageMachine = Machine(
                 assign({
                   submitted: true,
                   focusOnInit: false,
+                  active: false,
                 }),
+                (ctx) => {
+                  ctx.parameters.forEach((parameter) =>
+                    parameter.ref.send({
+                      type: "UPDATE",
+                      active: false,
+                    })
+                  );
+                },
                 sendParent((ctx) => ({ type: "STAGE.COMMIT", stage: ctx })),
               ],
             },
