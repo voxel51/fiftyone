@@ -6,6 +6,8 @@ Data utilities.
 |
 """
 import os
+import random
+import string
 
 import eta.core.image as etai
 import eta.core.utils as etau
@@ -74,6 +76,33 @@ def parse_image_classification_dir_tree(dataset_dir):
     return samples, classes
 
 
+def make_unique_field_name(sample_collection, root=""):
+    """Makes a unique field name with the given root name for the sample
+    collection.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        root (""): an optional root for the output field name
+
+    Returns:
+        the field name
+    """
+    if not root:
+        root = _get_random_characters(6)
+
+    fields = sample_collection.get_field_schema()
+
+    field_name = root
+    if field_name in fields:
+        field_name += "_" + _get_random_characters(6)
+
+    while field_name in fields:
+        field_name += _get_random_characters(1)
+
+    return field_name
+
+
 def convert_classification_field_to_detections(
     dataset,
     classification_field,
@@ -105,8 +134,9 @@ def convert_classification_field_to_detections(
 
     overwrite = detections_field == classification_field
     if overwrite:
-        # @todo handle field name clash here
-        detections_field += "_tmp"
+        detections_field = make_unique_field_name(
+            dataset, root=classification_field
+        )
 
     with fou.ProgressBar() as pb:
         for sample in pb(dataset):
@@ -128,7 +158,7 @@ def convert_classification_field_to_detections(
     if overwrite or not keep_classification_field:
         dataset.delete_sample_field(classification_field)
 
-    # @todo replace with `dataset.rename_field()`
+    # @todo replace with `dataset.rename_field()` when such a method exists
     if overwrite:
         dataset.clone_field(detections_field, classification_field)
         dataset.delete_sample_field(detections_field)
@@ -250,6 +280,12 @@ def condense_image_labels_field(
     if not keep_label_fields:
         for field_name in labels_dict:
             dataset.delete_sample_field(field_name)
+
+
+def _get_random_characters(n):
+    return "".join(
+        random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
+    )
 
 
 def _get_label_dict_for_prefix(dataset, prefix):
