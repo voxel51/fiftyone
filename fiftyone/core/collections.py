@@ -258,7 +258,7 @@ class SampleCollection(object):
 
         Raises:
             ValueError: if the field does not exist or does not have the
-            expected type
+                expected type
         """
         schema = self.get_field_schema()
 
@@ -340,8 +340,8 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
 
         Raises:
-            :class:`fiftyone.core.stages.ViewStageError` if the stage was not a
-            valid stage for this collection
+            :class:`fiftyone.core.stages.ViewStageError`: if the stage was not
+                a valid stage for this collection
         """
         return self._add_view_stage(stage)
 
@@ -1244,8 +1244,8 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
 
         Raises:
-            :class:`fiftyone.core.stages.ViewStageError` if the stage was not a
-            valid stage for this collection
+            :class:`fiftyone.core.stages.ViewStageError`: if the stage was not
+                a valid stage for this collection
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
