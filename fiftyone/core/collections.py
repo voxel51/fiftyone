@@ -1169,6 +1169,18 @@ def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
             if issubclass(field_type.document_type, label_cls):
                 return field
 
+        #
+        # SPECIAL CASE
+        #
+        # The export routine can convert `Classification` labels to Detections`
+        # format just-in-time, if necessary. So, allow a `Classification` field
+        # to be returned here
+        #
+        if label_cls is fol.Detections:
+            for field, field_type in label_fields.items():
+                if issubclass(field_type.document_type, fol.Classification):
+                    return field
+
         raise ValueError(
             "No compatible label field of type %s found" % label_cls
         )

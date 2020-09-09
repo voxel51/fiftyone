@@ -134,6 +134,7 @@ def convert_classification_field_to_detections(
 
     overwrite = detections_field == classification_field
     if overwrite:
+        keep_classification_field = False
         detections_field = make_unique_field_name(
             dataset, root=classification_field
         )
@@ -155,7 +156,7 @@ def convert_classification_field_to_detections(
 
             sample.save()
 
-    if overwrite or not keep_classification_field:
+    if not keep_classification_field:
         dataset.delete_sample_field(classification_field)
 
     # @todo replace with `dataset.rename_field()` when such a method exists
