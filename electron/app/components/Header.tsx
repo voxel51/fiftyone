@@ -9,25 +9,25 @@ import { GitHub, MenuBook } from "@material-ui/icons";
 import { Slack } from "../icons";
 
 const HeaderDiv = styled.div`
-  background-color: ${(theme) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.backgroundDark};
   display: flex;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: 10px;
-  border-bottom: 2px hsl(210, 5%, 24%) solid;
+  border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
 `;
 
 const LogoDiv = styled.div`
-  height: 60px;
+  height: 40px;
+  margin: 1rem 1rem 1rem 2rem;
 `;
 
 const LogoImg = styled.img`
   height: 100%;
   width: auto;
   margin-top: 2px;
-  padding: 0.25rem 0.5rem 0.25rem 0;
-  border-right-width: 2px;
-  border-color: hsl(210, 5%, 24%);
+  padding: 0.25rem 1rem 0.25rem 0;
+  border-right-width: 1px;
+  border-color: ${({ theme }) => theme.backgroundDarkBorder};
   border-right-style: solid;
 `;
 
@@ -37,10 +37,11 @@ const LeftDiv = styled.div`
 
 const RightDiv = styled.div`
   margin-left: auto;
+  padding-right: 1.5rem;
 `;
 
 const TitleDiv = styled.div`
-  padding: 0.25rem 1rem;
+  padding: 0.5rem 0;
 `;
 
 const FiftyOneDiv = styled.div`
@@ -52,6 +53,7 @@ const FiftyOneDiv = styled.div`
 
 const DatasetDiv = styled.div`
   line-height: 1;
+  font-weight: bold;
 `;
 
 const IconWrapper = styled.div`
@@ -84,9 +86,7 @@ const Header = () => {
         <TitleDiv>
           <FiftyOneDiv>FiftyOne</FiftyOneDiv>
           <DatasetDiv>
-            {datasetNameValue
-              ? datasetNameValue.toUpperCase()
-              : "NO DATASET LOADED"}
+            {datasetNameValue ? datasetNameValue : "NO DATASET LOADED"}
           </DatasetDiv>
         </TitleDiv>
       </LeftDiv>
