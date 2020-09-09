@@ -285,6 +285,11 @@ const viewBarMachine = Machine(
                           cond: ({ activeStage }) =>
                             Math.abs(activeStage % 1) === 0.5,
                         },
+                        {
+                          actions: send(({ stages, activeStage }) => {
+                            stages[activeStage].ref.send({ type: "EDIT" });
+                          }),
+                        },
                       ]),
                     ],
                   },
@@ -370,9 +375,11 @@ const viewBarMachine = Machine(
               };
               return stages;
             },
+            activeStage: ({ activeStage }) => activeStage + 0.5,
           }),
           send("FOCUS"),
           "submit",
+          "sendStagesUpdate",
         ],
       },
       CLEAR: {
