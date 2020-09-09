@@ -5,6 +5,7 @@ Data utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import os
 
 import eta.core.image as etai
@@ -13,6 +14,9 @@ import eta.core.utils as etau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
 
 
 def parse_images_dir(dataset_dir, recursive=True):
@@ -74,6 +78,86 @@ def parse_image_classification_dir_tree(dataset_dir):
     return samples, classes
 
 
+def convert_classification_field_to_detections(
+    dataset,
+    classification_field,
+    detections_field=None,
+    keep_classification_field=False,
+):
+    """Converts the :class:`fiftyone.core.labels.Classification` field of the
+    dataset into a :class:`fiftyone.core.labels.Detections` field containing
+    the classification label.
+
+    The detections are given bounding boxes that span the entire image.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        classification_field: the name of the
+            :class:`fiftyone.core.labels.Classification` field to convert to
+            detections
+        detections_field (None): the name of the
+            :class:`fiftyone.core.labels.Detections` field to create. By
+            default, ``classification_field`` is overwritten
+        keep_classification_field (False): whether to keep
+            ``classification_field`` after the conversion is completed. By
+            default, the field is deleted from the dataset. If
+            ``classification_field`` is being overwritten, this flag has no
+            effect
+    """
+    dataset.validate_field_type(
+        classification_field,
+        fof.EmbeddedDocumentField,
+        embedded_doc_type=fol.Classification,
+    )
+
+    if detections_field is None:
+        detections_field = classification_field
+
+    overwrite = detections_field == classification_field
+    if overwrite:
+        logger.info(
+            "Converting Classification field '%s' to Detections format",
+            classification_field,
+        )
+        keep_classification_field = False
+        detections_field = dataset.make_unique_field_name(
+            root=classification_field
+        )
+    else:
+        logger.info(
+            "Converting Classification field '%s' to Detections format in "
+            "field '%s'",
+            classification_field,
+            detections_field,
+        )
+
+    with fou.ProgressBar() as pb:
+        for sample in pb(dataset):
+            label = sample[classification_field]
+            if label is None:
+                continue
+
+            detection = fol.Detection(
+                label=label.label,
+                bounding_box=[0, 0, 1, 1],  # entire image
+                confidence=label.confidence,
+            )
+            sample[detections_field] = fol.Detections(detections=[detection])
+            if not keep_classification_field:
+                sample.clear_field(classification_field)
+
+            sample.save()
+
+    if not keep_classification_field:
+        dataset.delete_sample_field(classification_field)
+
+    if overwrite:
+        # @todo replace with `dataset.rename_field()` when such a method exists
+        logger.info("Finalizing operation")
+        dataset.clone_field(detections_field, classification_field)
+        dataset.delete_sample_field(detections_field)
+
+
 def expand_image_labels_field(
     dataset,
     label_field,
@@ -117,6 +201,7 @@ def expand_image_labels_field(
             expansion is completed. By default, the field is deleted from the
             dataset
     """
+    logger.info("Expanding image labels field '%s'", label_field)
     with fou.ProgressBar() as pb:
         for sample in pb(dataset):
             labels = sample[label_field]
@@ -174,6 +259,7 @@ def condense_image_labels_field(
     if labels_dict is None:
         labels_dict = _get_label_dict_for_prefix(dataset, prefix)
 
+    logger.info("Condensing image labels into field '%s'", label_field)
     with fou.ProgressBar() as pb:
         for sample in pb(dataset):
             image_labels = etai.ImageLabels()

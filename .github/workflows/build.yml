@@ -66,8 +66,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
+        # use `python -m pip` to work around Windows permission issues when
+        # upgrading pip
         run: |
-          pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip setuptools wheel
       - name: Download fiftyone wheel
         uses: actions/download-artifact@v2
         with:

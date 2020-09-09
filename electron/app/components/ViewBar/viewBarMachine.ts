@@ -1,9 +1,11 @@
-import { Machine, assign, spawn, send } from "xstate";
+import { Machine, actions, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
 import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
+
+const { choose } = actions;
 
 export const createStage = (
   stage,
@@ -39,18 +41,23 @@ function getStageInfo(context) {
 
 function serializeStage(stage, stageMap) {
   return {
-    kwargs: stage.parameters.map((param, i) => [
-      param.parameter,
-      operate(stageMap[stage.stage][i].type, "castTo", param.value),
-    ]),
+    kwargs: stage.parameters.map((param, i) => {
+      return [
+        param.parameter,
+        operate(stageMap[stage.stage][i].type, "castTo", param.value),
+      ];
+    }),
     _cls: `fiftyone.core.stages.${stage.stage}`,
   };
 }
 
-function operate(type, operator, value) {
+function operate(type, operator, value, isString = true) {
   return type.split("|").reduce((acc, t) => {
+    if (acc !== undefined) return acc;
     const parser = PARAM_PARSER[t];
-    return parser.validate(value) ? parser[operator](value) : acc;
+    return parser.validate(!isString ? parser.castFrom(value) : value)
+      ? parser[operator](value)
+      : acc;
   }, undefined);
 }
 
@@ -99,10 +106,11 @@ function setStages(ctx, stageInfo) {
               p[0],
               stageInfoResult.params[j].type,
               stageInfoResult.params[j].default,
-              operate(stageInfoResult.params[j].type, "castFrom", p[1]),
+              operate(stageInfoResult.params[j].type, "castFrom", p[1], false),
               true,
               false,
-              j === stageInfoResult.params.length - 1
+              j === stageInfoResult.params.length - 1,
+              i === Math.min(view.length - 1, ctx.activeStage)
             );
           }),
         true,
@@ -133,7 +141,7 @@ const viewBarMachine = Machine(
       decide: {
         always: [
           {
-            target: "running",
+            target: "running.hist",
             cond: (ctx) => ctx.stageInfo,
             actions: [
               assign({
@@ -195,10 +203,15 @@ const viewBarMachine = Machine(
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) => {
-                          return Math.min(
-                            stages.length - 0.5,
-                            activeStage + 0.5
-                          );
+                          const i = activeStage;
+                          if (i === stages.length - 0.5) return i;
+                          if (i % 1 !== 0) return Math.ceil(i);
+                          if (
+                            stages[i].submitted &&
+                            (i === stages.length - 1 || stages[i + 1].submitted)
+                          )
+                            return i + 0.5;
+                          return Math.min(stages.length - 1, i + 1);
                         },
                       }),
                       "sendStagesUpdate",
@@ -208,7 +221,15 @@ const viewBarMachine = Machine(
                     actions: [
                       assign({
                         activeStage: ({ stages, activeStage }) => {
-                          return Math.max(-0.5, activeStage - 0.5);
+                          const i = activeStage;
+                          if (i === -0.5) return i;
+                          if (i % 1 !== 0) return Math.floor(i);
+                          if (
+                            stages[i].submitted &&
+                            (i === 0 || stages[i - 1].submitted)
+                          )
+                            return i - 0.5;
+                          return Math.max(0, i - 1);
                         },
                       }),
                       "sendStagesUpdate",
@@ -253,6 +274,25 @@ const viewBarMachine = Machine(
                       stage: stages[activeStage],
                     })),
                   },
+                  ENTER: {
+                    actions: [
+                      choose([
+                        {
+                          actions: send(({ activeStage }) => ({
+                            type: "STAGE.ADD",
+                            index: Math.ceil(activeStage),
+                          })),
+                          cond: ({ activeStage }) =>
+                            Math.abs(activeStage % 1) === 0.5,
+                        },
+                        {
+                          actions: send(({ stages, activeStage }) => {
+                            stages[activeStage].ref.send({ type: "EDIT" });
+                          }),
+                        },
+                      ]),
+                    ],
+                  },
                 },
               },
               blurred: {
@@ -278,6 +318,10 @@ const viewBarMachine = Machine(
                 },
               },
             },
+          },
+          hist: {
+            type: "history",
+            history: "deep",
           },
         },
       },
@@ -335,8 +379,8 @@ const viewBarMachine = Machine(
               };
               return stages;
             },
+            activeStage: ({ activeStage }) => activeStage + 0.5,
           }),
-          send("FOCUS"),
           "submit",
         ],
       },
@@ -367,7 +411,6 @@ const viewBarMachine = Machine(
       },
       "STAGE.DELETE": {
         actions: [
-          (ctx, e) => console.log(e),
           assign({
             activeStage: ({ activeStage }) => Math.max(activeStage - 1, 0),
             stages: ({ stages, stageInfo }, e) => {
@@ -402,7 +445,6 @@ const viewBarMachine = Machine(
               }
             },
           }),
-          "sendStagesUpdate",
           "submit",
         ],
       },
@@ -417,13 +459,14 @@ const viewBarMachine = Machine(
             },
             setStateDescription: (_, e) => e.setStateDescription,
           }),
+          "sendStagesUpdate",
         ],
       },
     },
   },
   {
     actions: {
-      sendStagesUpdate: (ctx) =>
+      sendStagesUpdate: (ctx) => {
         ctx.stages.forEach((stage) =>
           stage.ref.send({
             type: "STAGE.UPDATE",
@@ -432,7 +475,8 @@ const viewBarMachine = Machine(
             active: stage.index === ctx.activeStage,
             stage: stage.stage,
           })
-        ),
+        );
+      },
       submit: ({ socket, stateDescription, stages, stageInfo }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
