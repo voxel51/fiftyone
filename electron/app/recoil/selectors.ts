@@ -1,7 +1,12 @@
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
-import { makeLabelNameGroups } from "../utils/labels";
+import {
+  RESERVED_FIELDS,
+  VALID_LIST_TYPES,
+  VALID_NUMERIC_TYPES,
+  makeLabelNameGroups,
+} from "../utils/labels";
 
 export const viewStages = selector({
   key: "viewStages",
@@ -148,7 +153,7 @@ export const modalLabelFilters = selector({
         const isIncluded =
           include.length === 0 ||
           include.includes(useValue ? s.value : s.label);
-        return (inRange || noConfidence) && isIncluded;
+        return labels[label] && (inRange || noConfidence) && isIncluded;
       };
     }
     return filters;
@@ -250,33 +255,33 @@ export const labelNameGroups = selector({
 export const isNumericField = selectorFamily({
   key: "isNumericField",
   get: (name) => ({ get }) => {
-    return [
-      "fiftyone.core.fields.IntField",
-      "fiftyone.core.fields.FloatField",
-    ].includes(get(fieldSchema)[name]);
+    return VALID_NUMERIC_TYPES.includes(get(fieldSchema)[name]);
   },
 });
 
-export const sampleFilter = selector({
-  key: "sampleFilter",
+export const sampleModalFilter = selector({
+  key: "sampleModalFilter",
   get: ({ get }) => {
-    const fields = get(fieldSchema);
-    const filters = [];
-    for (const field in fields) {
-      if (get(isNumericField(field))) {
-        const includeNone = get(atoms.filterNumericFieldIncludeNone(field));
-        const range = get(atoms.filterNumericFieldRange(field));
-        if (range.some((r) => r === null)) continue;
-        filters.push((sample) => {
-          return (
-            (sample[field] >= range[0] && sample[field] <= range[1]) ||
-            (includeNone && sample[field] === null)
-          );
-        });
-      }
-    }
+    const filters = get(modalLabelFilters);
+    const activeLabels = get(atoms.modalActiveLabels);
     return (sample) => {
-      return filters.every((filter) => filter(sample));
+      return Object.entries(sample).reduce((acc, [key, value]) => {
+        if (key === "tags") {
+          acc[key] = value;
+        } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
+          acc[key] = value[value._cls.toLowerCase()].filter(filters[key]);
+        } else if (value && filters[key] && filters[key](value)) {
+          acc[key] = value;
+        } else if (RESERVED_FIELDS.includes(key)) {
+          acc[key] = value;
+        } else if (
+          ["string", "number", "null"].includes(typeof value) &&
+          activeLabels[key]
+        ) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
     };
   },
 });
