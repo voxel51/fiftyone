@@ -274,14 +274,16 @@ class Session(foc.HasClient):
         self._update_state()
 
     def wait(self):
-        """Waits for the FiftyOne App to be closed by the user.
+        """Waits for the session to be closed by the user.
 
-        This requires a local (not remote) session.
+        For local sessions, this will wait until the app is closed by the user.
+        For remote sessions, this will wait until the server shuts down, which
+        typically requires interrupting the calling process with Ctrl-C.
         """
         if self._remote:
-            raise ValueError("Cannot `wait()` for remote sessions to close")
-
-        self._app_service.wait()
+            _server_services[self._port].wait()
+        else:
+            self._app_service.wait()
 
     # PRIVATE #################################################################
 

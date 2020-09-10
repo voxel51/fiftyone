@@ -727,11 +727,9 @@ def _watch_session(session, remote=False):
     try:
         if remote:
             print("\nTo exit, press ctrl + c\n")
-            while True:
-                time.sleep(60)
         else:
             print("\nTo exit, close the app or press ctrl + c\n")
-            session.wait()
+        session.wait()
     except KeyboardInterrupt:
         pass
 
