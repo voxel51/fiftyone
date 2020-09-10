@@ -29,6 +29,7 @@ const Code = styled.pre`
   background-color: ${({ theme }) => theme.backgroundDark};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   color: ${({ theme }) => theme.secondary};
+  border-radius: 3px;
 `;
 
 const LocalInstructions = () => (
