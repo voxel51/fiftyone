@@ -183,7 +183,7 @@ corresponding data on disk.
 .. code-block:: python
     :linenos:
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
 .. note::
 
@@ -363,7 +363,7 @@ By default, all |Sample| instances have the following fields:
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
     print(sample)
 
@@ -531,8 +531,8 @@ dataset splits or mark low quality images:
 
     dataset.add_samples(
         [
-            fo.Sample(filepath="path/to/image1.png", tags=["train"]),
-            fo.Sample(filepath="path/to/image2.png", tags=["test", "low_quality"]),
+            fo.Sample(filepath="/path/to/image1.png", tags=["train"]),
+            fo.Sample(filepath="/path/to/image2.png", tags=["test", "low_quality"]),
         ]
     )
 
@@ -707,7 +707,7 @@ be visualized in the App or used by Brain methods, e.g., when
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
     sample["ground_truth"] = fo.Classification(label="sunny")
     sample["prediction"] = fo.Classification(label="sunny", confidence=0.9)
@@ -748,7 +748,7 @@ overarching model (if applicable) in the
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
     sample["ground_truth"] = fo.Classifications(
         classifications=[
@@ -825,7 +825,7 @@ detection can be stored in the
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
     sample["ground_truth"] = fo.Detections(
         detections=[fo.Detection(label="cat", bounding_box=[0.5, 0.5, 0.4, 0.3],),]
@@ -907,7 +907,7 @@ schema of the attributes that you're storing.
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
     sample["ground_truth"] = fo.Detections(
         detections=[
