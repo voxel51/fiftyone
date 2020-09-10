@@ -31,11 +31,9 @@ const Body = styled.div`
   font-weight: bold;
 
   & > div {
-    margin-top: 3px;
-    margin-bottom: 3px;
     margin-left: 0;
     margin-right: 0;
-    padding: 0.2em;
+    padding: 0 0.2em;
     border-radius: 2px;
   }
 
