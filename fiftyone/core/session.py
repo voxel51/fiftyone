@@ -5,8 +5,9 @@ Session class for interacting with the FiftyOne App.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
 from collections import defaultdict
+import logging
+import time
 
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
@@ -135,6 +136,10 @@ class Session(foc.HasClient):
     def __init__(self, dataset=None, view=None, port=5151, remote=False):
         self._port = port
         self._remote = remote
+        # maintain a reference to prevent garbage collection
+        self._get_time = time.perf_counter
+        self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
+
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
             _server_services[port] = fos.ServerService(port)
@@ -157,6 +162,7 @@ class Session(foc.HasClient):
                 _REMOTE_INSTRUCTIONS.strip()
                 % (self.server_port, self.server_port, self.server_port)
             )
+        self._start_time = self._get_time()
 
     def __del__(self):
         """Deletes the Session by removing it from the `_subscribed_sessions`
@@ -165,6 +171,10 @@ class Session(foc.HasClient):
         subscribed.
         """
         try:
+            if self._get_time() - self._start_time < 5:
+                # logger may already have been garbage-collected
+                print(self._WAIT_INSTRUCTIONS)
+
             global _subscribed_sessions  # pylint: disable=global-statement
             _subscribed_sessions[self._port].discard(self)
 
@@ -293,4 +303,10 @@ ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
 
 and then connect to the app on that machine using either
 `fiftyone app connect` or from Python via `fiftyone.launch_app()`.
+"""
+
+_WAIT_INSTRUCTIONS = """
+A session appears to have terminated shortly after it was started. If you
+intended to start an app instance or a remote session from a script, you
+should call `session.wait()` to keep the session (and the script) alive.
 """
