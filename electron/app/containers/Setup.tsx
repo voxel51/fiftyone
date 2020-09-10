@@ -106,9 +106,6 @@ function Setup(props) {
   const { connected } = props;
   const theme = useContext(ThemeContext);
   const [activeTab, setActiveTab] = useState<string>("local");
-  if (connected) {
-    return <Redirect to={routes.DATASET} />;
-  }
   const localProps = useSpring({
     borderBottomColor: activeTab === "local" ? theme.brand : theme.background,
     color: activeTab === "local" ? theme.font : theme.fontDark,
@@ -117,6 +114,9 @@ function Setup(props) {
     borderBottomColor: activeTab === "remote" ? theme.brand : theme.background,
     color: activeTab === "remote" ? theme.font : theme.fontDark,
   });
+  if (connected) {
+    return <Redirect to={routes.DATASET} />;
+  }
 
   return (
     <SetupContainer>
