@@ -1,6 +1,7 @@
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
+import { RESERVED_FIELDS, VALID_LIST_TYPES } from "../utils/labels";
 
 export const viewStages = selector({
   key: "viewStages",
@@ -148,7 +149,7 @@ export const modalLabelFilters = selector({
         const isIncluded =
           include.length === 0 ||
           include.includes(useValue ? s.value : s.label);
-        return (inRange || noConfidence) && isIncluded;
+        return labels[label] && (inRange || noConfidence) && isIncluded;
       };
     }
     return filters;
@@ -183,5 +184,35 @@ export const refreshColorMap = selector({
       atoms.colorMap,
       generateColorMap([...get(tagNames), ...get(labelNames)], colorMap)
     );
+  },
+});
+
+export const sampleModalFilter = selector({
+  key: "sampleModalFilter",
+  get: ({ get }) => {
+    const filters = get(modalLabelFilters);
+    const activeTags = get(atoms.activeTags);
+    const activeLabels = get(atoms.modalActiveLabels);
+    return (sample) => {
+      return Object.entries(sample).reduce((acc, [key, value]) => {
+        if (value === null) {
+          return acc;
+        } else if (key === "tags") {
+          acc[key] = value.filter((tag) => activeTags[tag]);
+        } else if (VALID_LIST_TYPES.includes(value._cls)) {
+          acc[key] = value[value._cls.toLowerCase()].filter(filters[key]);
+        } else if (filters[key] && filters[key](value)) {
+          acc[key] = value;
+        } else if (RESERVED_FIELDS.includes(key)) {
+          acc[key] = value;
+        } else if (
+          ["string", "number", "null"].includes(typeof value) &&
+          activeLabels[key]
+        ) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+    };
   },
 });

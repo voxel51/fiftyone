@@ -2,14 +2,15 @@ import React from "react";
 import styled from "styled-components";
 import copy from "copy-to-clipboard";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
+import { useRecoilValue } from "recoil";
 
-import { RESERVED_FIELDS } from "../utils/labels";
 import { Button, ModalFooter } from "./utils";
+import * as selectors from "../recoil/selectors";
 
 type Props = {
   object: object;
-  filter: { [key: string]: boolean };
   enableFilter: (enabled: boolean) => void;
+  filterJSON: boolean;
 };
 
 const Body = styled.div`
@@ -58,15 +59,10 @@ const Body = styled.div`
   }
 `;
 
-const JSONView = ({ object, filter, enableFilter }: Props) => {
-  if (filter) {
-    object = Object.fromEntries(
-      Object.entries(object).filter(
-        ([key]) => filter[key] || RESERVED_FIELDS.includes(key)
-      )
-    );
-  }
-  const str = JSON.stringify(object, null, 4);
+const JSONView = ({ object, enableFilter, filterJSON }: Props) => {
+  const filter = useRecoilValue(selectors.sampleModalFilter);
+  const str = JSON.stringify(filterJSON ? filter(object) : object, null, 4);
+
   return (
     <Body>
       <pre>{str}</pre>
@@ -78,8 +74,8 @@ const JSONView = ({ object, filter, enableFilter }: Props) => {
               classes={{ label: "label" }}
               control={
                 <Checkbox
-                  checked={Boolean(filter)}
-                  onChange={() => enableFilter(!filter)}
+                  checked={Boolean(filterJSON)}
+                  onChange={() => enableFilter(!filterJSON)}
                   classes={{ root: "checkbox", checked: "checked" }}
                 />
               }

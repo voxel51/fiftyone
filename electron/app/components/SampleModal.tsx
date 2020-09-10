@@ -362,7 +362,7 @@ const SampleModal = ({
         {showJSON ? (
           <JSONView
             object={sample}
-            filter={enableJSONFilter ? activeLabels : null}
+            filterJSON={enableJSONFilter}
             enableFilter={setEnableJSONFilter}
           />
         ) : (
