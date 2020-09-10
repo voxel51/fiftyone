@@ -6,29 +6,40 @@ Tests related to Session behavior.
 |
 """
 
-import time
+import os
+import sys
+import subprocess
 
 import fiftyone as fo
 import fiftyone.core.session as fos
 
 
+def _run_helper(*args):
+    # -u: unbuffered output, to ensure that the warning gets captured
+    return subprocess.check_output(
+        [
+            sys.executable,
+            "-u",
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "utils",
+                "session_helper.py",
+            ),
+        ]
+        + list(args)
+    ).decode()
+
+
 def test_fast_shutdown(capsys):
-    session = fo.Session()
-    session.__del__()
-    out, _ = capsys.readouterr()
+    out = _run_helper()
     assert fos._WAIT_INSTRUCTIONS in out
 
 
 def test_fast_shutdown_remote(capsys):
-    session = fo.Session(remote=True)
-    session.__del__()
-    out, _ = capsys.readouterr()
+    out = _run_helper("--remote")
     assert fos._WAIT_INSTRUCTIONS in out
 
 
-def test_slow_shutdown(capsys, monkeypatch):
-    session = fo.Session(remote=True)
-    monkeypatch.setattr(session, "_start_time", time.perf_counter() - 3600)
-    session.__del__()
-    out, _ = capsys.readouterr()
+def test_slow_shutdown(capsys):
+    out = _run_helper("--slow")
     assert fos._WAIT_INSTRUCTIONS not in out
