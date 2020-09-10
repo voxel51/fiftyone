@@ -72,6 +72,10 @@ const IconWrapper = styled.div`
   svg {
     margin-right: 0.5em;
   }
+
+  svg:focus {
+    outline: none;
+  }
 `;
 
 const Header = () => {
