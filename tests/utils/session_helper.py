@@ -10,5 +10,5 @@ args = parser.parse_args()
 
 session = fo.launch_app(remote=args.remote)
 if args.slow:
-    assert isinstance(session._start_time, float)
-    session._start_time -= 3600
+    assert isinstance(session._disable_wait_warning, bool)
+    session._disable_wait_warning = True

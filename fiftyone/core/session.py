@@ -139,6 +139,7 @@ class Session(foc.HasClient):
         # maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
+        self._disable_wait_warning = False
 
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
@@ -171,7 +172,10 @@ class Session(foc.HasClient):
         subscribed.
         """
         try:
-            if self._get_time() - self._start_time < 5:
+            if (
+                not self._disable_wait_warning
+                and self._get_time() - self._start_time < 2.5
+            ):
                 # logger may already have been garbage-collected
                 print(self._WAIT_INSTRUCTIONS)
 
@@ -280,10 +284,14 @@ class Session(foc.HasClient):
         For remote sessions, this will wait until the server shuts down, which
         typically requires interrupting the calling process with Ctrl-C.
         """
-        if self._remote:
-            _server_services[self._port].wait()
-        else:
-            self._app_service.wait()
+        try:
+            if self._remote:
+                _server_services[self._port].wait()
+            else:
+                self._app_service.wait()
+        except KeyboardInterrupt:
+            self._disable_wait_warning = True
+            raise
 
     # PRIVATE #################################################################
 
