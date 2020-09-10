@@ -31,6 +31,7 @@ const Body = styled.div`
   font-weight: bold;
 
   & > div {
+    margin-top: 3px;
     margin-left: 0;
     margin-right: 0;
     padding: 0 0.2em;
@@ -155,7 +156,7 @@ const Entry = ({ entry, onCheck, modal }) => {
       key={entry.name}
       style={{
         border: fieldIsFiltered
-          ? `1px solid ${theme.fontDark}`
+          ? `1px solid ${theme.brand}`
           : entry.hideCheckbox || entry.selected
           ? `1px solid ${theme.background}`
           : `1px solid transparent`,

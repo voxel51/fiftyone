@@ -116,8 +116,18 @@ class StateDescriptionWithDerivables(StateDescription):
     def __init__(self, filter_stages={}, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.derivables = self.get_derivables()
         self.filter_stages = filter_stages
+        self._filtered_view = None
+        if self.view is not None:
+            self._filtered_view = self.view
+        elif self.dataset is not None:
+            self._filtered_view = self.dataset
+
+        for stage_dict in self.filter_stages.values():
+            self._filtered_view = self._filtered_view.add_stage(
+                fos.ViewStage._from_dict(stage_dict)
+            )
+        self.derivables = self.get_derivables()
 
     def get_derivables(self):
         """Computes all "derivable" data that needs to be passed to the app,
@@ -139,13 +149,10 @@ class StateDescriptionWithDerivables(StateDescription):
         return super().from_dict(d, **kwargs)
 
     def _get_view_stats(self):
-        if self.view is not None:
-            return get_view_stats(self.view)
+        if self._filtered_view is not None:
+            return get_view_stats(self._filtered_view)
 
-        if self.dataset is None:
-            return {}
-
-        return get_view_stats(self.dataset)
+        return {}
 
     def _get_field_schema(self):
         if self.dataset is None:
@@ -157,13 +164,10 @@ class StateDescriptionWithDerivables(StateDescription):
         }
 
     def _get_label_info(self):
-        if self.view is not None:
-            view = self.view
-        elif self.dataset is not None:
-            view = self.dataset.view()
-        else:
+        if self._filtered_view is None:
             return {}
 
+        view = self._filtered_view
         return {
             "labels": self._get_label_fields(view),
             "tags": list(sorted(view.get_tags())),

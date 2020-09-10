@@ -10,6 +10,11 @@ export const VALID_SCALAR_TYPES = [
   "fiftyone.core.fields.StringField",
 ];
 
+export const VALID_NUMERIC_TYPES = [
+  "fiftyone.core.fields.FloatField",
+  "fiftyone.core.fields.IntField",
+];
+
 export const RESERVED_FIELDS = ["metadata", "_id", "tags", "filepath"];
 export const RESERVED_DETECTION_FIELDS = [
   "label",

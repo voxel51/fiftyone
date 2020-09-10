@@ -225,7 +225,9 @@ export const fieldIsFiltered = selectorFamily({
       (b, i) => range[i] !== b && b !== null && range[i] !== null
     );
 
-    return ((label && !include.length) || numeric) && rangeIsFiltered && none;
+    if (numeric) return rangeIsFiltered || !none;
+
+    return include.length || rangeIsFiltered || !none;
   },
 });
 
