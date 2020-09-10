@@ -196,9 +196,9 @@ export const sampleModalFilter = selector({
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {
           acc[key] = value;
-        } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
+        } else if (value !== null && VALID_LIST_TYPES.includes(value._cls)) {
           acc[key] = value[value._cls.toLowerCase()].filter(filters[key]);
-        } else if (value && filters[key] && filters[key](value)) {
+        } else if (value !== null && filters[key] && filters[key](value)) {
           acc[key] = value;
         } else if (RESERVED_FIELDS.includes(key)) {
           acc[key] = value;
