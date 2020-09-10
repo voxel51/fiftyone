@@ -5,8 +5,6 @@ import { animated, useSpring } from "react-spring";
 
 import routes from "../constants/routes.json";
 import connect from "../utils/connect";
-
-import CodeBlock from "../components/CodeBlock";
 import localSnippet from "../snippets/local.py";
 import bashSnippet from "../snippets/remote.bash";
 import remoteSnippet from "../snippets/remote.py";
@@ -27,7 +25,7 @@ const Text = styled.p`
 `;
 
 const Code = styled.pre`
-  padding: 1rem;
+  padding: 2rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   color: ${({ theme }) => theme.secondary};
@@ -72,7 +70,7 @@ const SetupContainer = styled.div`
 
 const Title = styled.div`
   font-size: 2.5rem;
-  line-height: 4rem;
+  line-height: 3.5rem;
   color: ${({ theme }) => theme.font};
   font-weight: bold;
 `;
