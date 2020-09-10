@@ -191,12 +191,11 @@ export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
     const filters = get(modalLabelFilters);
-    const activeTags = get(atoms.activeTags);
     const activeLabels = get(atoms.modalActiveLabels);
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {
-          acc[key] = value.filter((tag) => activeTags[tag]);
+          acc[key] = value;
         } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
           acc[key] = value[value._cls.toLowerCase()].filter(filters[key]);
         } else if (value && filters[key] && filters[key](value)) {
