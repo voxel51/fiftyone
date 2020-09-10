@@ -4,6 +4,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
+import { getSocket } from "../utils/socket";
 
 const makeFilter = (fieldName, range, includeNone) => {
   let expr,
@@ -18,12 +19,14 @@ const makeFilter = (fieldName, range, includeNone) => {
     expr = { $or: [rangeExpr, { $eq: [fieldStr, null] }] };
   }
   return {
-    kwargs: ["filter", { $expr: expr }],
+    kwargs: [["filter", { $expr: expr }]],
     _cls: "fiftyone.core.stages.Match",
   };
 };
 
 const NumericFieldFilter = ({ entry }) => {
+  const port = useRecoilValue(atoms.port);
+  const socket = getSocket(port, "state");
   const boundsAtom = selectors.numericFieldBounds(entry.name);
   const rangeAtom = atoms.filterNumericFieldRange(entry.name);
   const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.name);
@@ -40,17 +43,25 @@ const NumericFieldFilter = ({ entry }) => {
   }, [bounds]);
 
   useEffect(() => {
+    const newState = JSON.parse(JSON.stringify(stateDescription));
+    if (isDefaultRange && newState.filter_stages[entry.name]) {
+      delete newState.filter_stages[entry.name];
+    } else {
+      newState.filter_stages[entry.name] = makeFilter(
+        entry.name,
+        range,
+        includeNone
+      );
+    }
     hasBounds &&
-      setStateDescription({
-        ...stateDescription,
-        filter_stages: {
-          ...stateDescription.filter_stages,
-          [entry.name]:
-            isDefaultRange || !hasBounds
-              ? null
-              : makeFilter(entry.name, range, includeNone),
+      socket.emit(
+        "update",
+        {
+          data: newState,
+          include_self: true,
         },
-      });
+        () => {}
+      );
   }, [range, bounds, includeNone]);
 
   return (

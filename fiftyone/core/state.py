@@ -135,7 +135,10 @@ class StateDescriptionWithDerivables(StateDescription):
 
     @classmethod
     def from_dict(cls, d, **kwargs):
-        kwargs["filter_stages"] = d.get("filter_stages", {})
+        kwargs["filter_stages"] = {
+            field: fos.ViewStage._from_dict(stage_dict)
+            for field, stage_dict in d.get("filter_stages", {}).items()
+        }
         return super().from_dict(d, **kwargs)
 
     def _get_view_stats(self):
@@ -295,12 +298,12 @@ def _get_bounds(fields, view, facets):
         return {}
     bounds = {}
     for field in fields:
-        if len(result[field.name]):
+        try:
             bounds[field.name] = [
                 round(float(result[field.name][0]["min"]), 2),
                 round(float(result[field.name][0]["max"]), 2),
             ]
-        else:
+        except:
             bounds[field.name] = [None, None]
 
     return bounds

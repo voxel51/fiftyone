@@ -214,13 +214,6 @@ class StateController(Namespace):
         state.selected = []
         return state
 
-    @_load_state
-    def on_update_filter_stage(self, state, filter):
-        """Update a single filter stage"""
-        key, stage = filter
-        # state.filter_stages[key] = Stage.from_dict(stage)
-        return state
-
     def on_page(self, page, page_length=20):
         """Gets the requested page of samples.
 
@@ -239,6 +232,10 @@ class StateController(Namespace):
         else:
             return []
 
+        for i in state.filter_stages.values():
+            view = view.add_stage(i)
+        print(state.filter_stages)
+        print(view)
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [
             json.loads(
