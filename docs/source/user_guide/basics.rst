@@ -93,7 +93,7 @@ source data for the sample on disk. By default, samples are also given `id`,
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
     print(sample)
 
@@ -120,7 +120,7 @@ a |Field| is unset on a particular |Sample|, its value will be `None`.
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
     sample["quality"] = 89.7
     sample["keypoints"] = [[31, 27], [63, 72]]
@@ -168,7 +168,7 @@ like.
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png", tags=["train"])
+    sample = fo.Sample(filepath="/path/to/image.png", tags=["train"])
     sample.tags.append("my_favorite_samples")
 
     print(sample.tags)
@@ -232,7 +232,7 @@ FiftyOne provides a |Label| subclass for common tasks:
 
     import fiftyone as fo
 
-    sample = fo.Sample(filepath="path/to/image.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
 
     sample["weather"] = fo.Classification(label="sunny")
     sample["animals"] = fo.Detections(

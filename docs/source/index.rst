@@ -124,7 +124,7 @@ adding custom tags, model predictions and more.
 
     dataset = fo.Dataset("my_dataset")
 
-    sample = fo.Sample(filepath="path/to/img.png")
+    sample = fo.Sample(filepath="/path/to/image.png")
     sample.tags.append("train")
     sample["custom_field"] = 51
 
