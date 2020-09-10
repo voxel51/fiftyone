@@ -34,9 +34,7 @@ export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    return stateDescription.derivables
-      ? stateDescription.derivables.view_stats
-      : {};
+    return stateDescription.view_stats ? stateDescription.view_stats : {};
   },
 });
 
@@ -51,24 +49,21 @@ export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    return (
-      (stateDescription.derivables && stateDescription.derivables.tags) || []
-    );
+    return stateDescription.tags || [];
   },
 });
 
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.stateDescription).derivables.view_stats.tags || {};
+    return get(atoms.stateDescription).view_stats.tags || {};
   },
 });
 
 export const fieldSchema = selector({
   key: "fieldSchema",
   get: ({ get }) => {
-    const derivables = get(atoms.stateDescription).derivables || {};
-    return derivables.field_schema || {};
+    return get(atoms.stateDescription).field_schema || {};
   },
 });
 
@@ -77,10 +72,10 @@ export const labelNames = selector({
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
     const stats = get(datasetStats);
-    if (!stateDescription.derivables || !stateDescription.derivables.labels) {
+    if (!stateDescription.labels) {
       return [];
     }
-    return stateDescription.derivables.labels
+    return stateDescription.labels
       .map((label) => label._id.field)
       .filter((name) => stats.custom_fields.hasOwnProperty(name));
   },
@@ -89,7 +84,7 @@ export const labelNames = selector({
 export const labelTypes = selector({
   key: "labelTypes",
   get: ({ get }) => {
-    const labels = (get(atoms.stateDescription).derivables || {}).labels || [];
+    const labels = get(atoms.stateDescription).labels || [];
     const names = get(labelNames);
     const types = {};
     for (const label of labels) {
@@ -104,8 +99,7 @@ export const labelTypes = selector({
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).derivables.view_stats.labels[label]
-      .classes;
+    return get(atoms.stateDescription).view_stats.labels[label].classes;
   },
 });
 
@@ -234,7 +228,7 @@ export const fieldIsFiltered = selectorFamily({
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).derivables.view_stats.labels[label]
+    return get(atoms.stateDescription).view_stats.labels[label]
       .confidence_bounds;
   },
 });
@@ -242,8 +236,9 @@ export const labelConfidenceBounds = selectorFamily({
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    const bounds = get(atoms.stateDescription).derivables.view_stats
-      .numeric_field_bounds[label];
+    const bounds = get(atoms.stateDescription).view_stats.numeric_field_bounds[
+      label
+    ];
     return bounds ? bounds : [null, null];
   },
 });

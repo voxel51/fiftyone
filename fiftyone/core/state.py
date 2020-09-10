@@ -117,40 +117,27 @@ class StateDescriptionWithDerivables(StateDescription):
         super().__init__(*args, **kwargs)
 
         self.filter_stages = filter_stages
-        self._filtered_view = None
-        if self.view is not None:
-            self._filtered_view = self.view
-        elif self.dataset is not None:
-            self._filtered_view = self.dataset
+        view = self.view if self.view is not None else self.dataset
+        self.labels = self._get_label_fields(view)
+        self.tags = list(sorted(view.get_tags()))
+        self.view_stats = get_view_stats(view)
+        self.field_schema = self._get_field_schema()
 
+        extended_view = view
         for stage_dict in self.filter_stages.values():
             self._filtered_view = self._filtered_view.add_stage(
                 fos.ViewStage._from_dict(stage_dict)
             )
-        self.derivables = self.get_derivables()
-
-    def get_derivables(self):
-        """Computes all "derivable" data that needs to be passed to the app,
-        but does not define the state.
-
-        Returns:
-            a dictionary with key, value pairs for each piece of derivable
-                information.
-        """
-        return {
-            "view_stats": self._get_view_stats(),
-            "field_schema": self._get_field_schema(),
-            **self._get_label_info(),
-        }
+        self.extended_view_stats = get_view_stats(extended_view)
 
     @classmethod
     def from_dict(cls, d, **kwargs):
         kwargs["filter_stages"] = d.get("filter_stages", {})
         return super().from_dict(d, **kwargs)
 
-    def _get_view_stats(self):
-        if self._filtered_view is not None:
-            return get_view_stats(self._filtered_view)
+    def _get_view_stats(self, view):
+        if self.view is not None:
+            return get_view_stats(view)
 
         return {}
 
@@ -161,16 +148,6 @@ class StateDescriptionWithDerivables(StateDescription):
         return {
             name: str(field)
             for name, field in self.dataset.get_field_schema().items()
-        }
-
-    def _get_label_info(self):
-        if self._filtered_view is None:
-            return {}
-
-        view = self._filtered_view
-        return {
-            "labels": self._get_label_fields(view),
-            "tags": list(sorted(view.get_tags())),
         }
 
     @staticmethod
