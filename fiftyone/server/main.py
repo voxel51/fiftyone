@@ -24,6 +24,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
+from fiftyone.core.stages import ViewStage
 import fiftyone.core.state as fos
 
 from util import get_image_size
@@ -233,9 +234,8 @@ class StateController(Namespace):
             return []
 
         for i in state.filter_stages.values():
-            view = view.add_stage(i)
-        print(state.filter_stages)
-        print(view)
+            view = view.add_stage(ViewStage._from_dict(i))
+
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [
             json.loads(

@@ -135,10 +135,7 @@ class StateDescriptionWithDerivables(StateDescription):
 
     @classmethod
     def from_dict(cls, d, **kwargs):
-        kwargs["filter_stages"] = {
-            field: fos.ViewStage._from_dict(stage_dict)
-            for field, stage_dict in d.get("filter_stages", {}).items()
-        }
+        kwargs["filter_stages"] = d.get("filter_stages", {})
         return super().from_dict(d, **kwargs)
 
     def _get_view_stats(self):
