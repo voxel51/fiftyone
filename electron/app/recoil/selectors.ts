@@ -58,6 +58,7 @@ export const totalCount = selector({
 export const filteredCount = selector({
   key: "filteredCount",
   get: ({ get }): number => {
+    console.log(get(atoms.stateDescription));
     return get(atoms.stateDescription).extended_view_count;
   },
 });
@@ -80,7 +81,7 @@ export const tagSampleCounts = selector({
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return (get(atoms.stateDescription).extended_view_stats || {}).tags || {};
+    return get(atoms.stateDescription).extended_view_stats.tags || {};
   },
 });
 
@@ -100,7 +101,7 @@ export const labelNames = selector({
       return [];
     }
     return stateDescription.labels
-      .map((label) => label._id.field)
+      .map((label) => label.field)
       .filter((name) => stats.custom_fields.hasOwnProperty(name));
   },
 });
@@ -112,8 +113,8 @@ export const labelTypes = selector({
     const names = get(labelNames);
     const types = {};
     for (const label of labels) {
-      if (names.includes(label._id.field)) {
-        types[label._id.field] = label._id.cls;
+      if (names.includes(label.field)) {
+        types[label.field] = label.cls;
       }
     }
     return types;

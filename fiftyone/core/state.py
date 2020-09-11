@@ -164,18 +164,14 @@ class StateDescriptionWithDerivables(StateDescription):
     def _get_label_fields(view):
         label_fields = []
 
-        # @todo is this necessary?
-        label_fields.append({"_id": {"field": "_id"}})
-
-        # @todo can we remove the "_id" nesting?
         for k, v in view.get_field_schema().items():
             d = {"field": k}
             if isinstance(v, fof.EmbeddedDocumentField):
                 d["cls"] = v.document_type.__name__
 
-            label_fields.append({"_id": d})
+            label_fields.append(d)
 
-        return sorted(label_fields, key=lambda field: field["_id"]["field"])
+        return sorted(label_fields, key=lambda field: field["field"])
 
 
 def get_view_stats(dataset_or_view):
